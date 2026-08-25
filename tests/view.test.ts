@@ -1,7 +1,7 @@
 import path from "path";
 import { Midi } from "../src/midi.js";
 import { expect, test } from 'vitest';
-import { SongView, Instrument } from "../src/view.js";
+import { SongView, Instrument, Difficulty } from "../src/view.js";
 
 
 test('is constructed', async () => {
@@ -13,8 +13,23 @@ test('is constructed', async () => {
     expect(midi).toBeDefined();
 
     const view = new SongView(midi);
-    expect(view.getInstrumentView(Instrument.Lead)).toBeDefined();
+
+    const lead = view.getInstrumentView(Instrument.Lead);
+    console.log(lead);
+    expect(lead).toBeDefined();
     expect(view.getInstrumentView(Instrument.Groove)).toBeDefined();
     expect(view.getInstrumentView(Instrument.Drums)).toBeDefined();
     expect(view.getInstrumentView(Instrument.Vocals)).toBeDefined();
+
+    const expert = lead.getDifficulty(Difficulty.Expert);
+    const hard = lead.getDifficulty(Difficulty.Hard);
+    const medium = lead.getDifficulty(Difficulty.Medium);
+    const easy = lead.getDifficulty(Difficulty.Easy);
+
+    const noteCounts = [1954, 1425, 980, 661];
+    const diffs = [expert, hard, medium, easy];
+    diffs.forEach((view, index) => {
+        const notes = view.getNotes();
+        expect(notes.length).toBe(noteCounts[index]);
+    })
 })

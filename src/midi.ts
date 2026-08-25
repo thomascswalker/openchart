@@ -376,6 +376,14 @@ class MidiTrack {
     public getMetaEvents(): MidiMetaEvent[] {
         return this.events.filter((e) => e.status === 0xff) as MidiMetaEvent[];
     }
+
+    public getNotes() {
+        return this.getChannelEvents().filter((e) => [ChannelMessage.NoteOn, ChannelMessage.NoteOff].includes(e.messageType));
+    }
+
+    public getNotesInRange(low: number, high: number) {
+        return this.getNotes().filter((e) => low <= e.data1 && e.data1 < high);
+    }
 }
 
 class Midi {
