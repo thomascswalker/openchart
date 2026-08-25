@@ -1,5 +1,15 @@
 import { ChannelMessage, Midi, MidiTrack, type MidiChannelEvent } from "./midi.js";
 
+const OCTAVE = 12;
+
+const EASY_OFFSET = OCTAVE * 5;
+const MEDIUM_OFFSET = OCTAVE * 6;
+const HARD_OFFSET = OCTAVE * 7;
+const EXPERT_OFFSET = OCTAVE * 8;
+
+const GUITAR_NOTE_COUNT = 5;
+const DRUMS_NOTE_COUNT = 9;
+
 enum Instrument {
     Lead = "LEAD GUITAR",
     Groove = "RHYTHM GUITAR",
@@ -14,17 +24,35 @@ enum Difficulty {
     Expert
 }
 
-export interface Note {
-    channel: number;
+class Note {
     note: number;
     velocity: number;
 
-    startTick: number;
-    endTick: number;
-    durationTicks: number;
+    start: number;
+    end: number;
 
     noteOn: MidiChannelEvent;
     noteOff: MidiChannelEvent;
+
+    constructor(
+        note: number,
+        velocity: number,
+        start: number,
+        end: number,
+        noteOn: MidiChannelEvent,
+        noteOff: MidiChannelEvent,
+    ) {
+        this.note = note;
+        this.velocity = velocity;
+        this.start = start;
+        this.end = end;
+        this.noteOn = noteOn;
+        this.noteOff = noteOff;
+    }
+
+    public getLength(): number {
+        return this.end - this.start;
+    }
 }
 
 
@@ -41,6 +69,10 @@ class ChartView {
         this.lanes = lanes;
     }
 
+    public getDifficulty(): Difficulty {
+        return this.difficulty;
+    }
+
     public getNotes(): Note[] {
         interface PendingNote {
             note: number;
@@ -49,7 +81,7 @@ class ChartView {
             noteOn: MidiChannelEvent;
         }
 
-        const events = this.track?.getNotesInRange(this.offset, this.offset + this.lanes) || [];
+        const events = this.track?.getNotesInPitchRange(this.offset, this.offset + this.lanes) || [];
         if (events.length === 0) {
             return [];
         }
@@ -98,22 +130,21 @@ class ChartView {
                 }
 
                 const pending = notesForPitch.shift()!;
-                notes.push({
-                    note: pending.note,
-                    velocity: pending.velocity,
-                    startTick: pending.startTick,
-                    endTick: absoluteTick,
-                    durationTicks: absoluteTick - pending.startTick,
-                    noteOn: pending.noteOn,
-                    noteOff: event,
-                } as Note);
+                notes.push(new Note(
+                    pending.note,
+                    pending.velocity,
+                    pending.startTick,
+                    absoluteTick,
+                    pending.noteOn,
+                    event,
+                ));
 
                 if (notesForPitch.length === 0) {
                     activeNotes.delete(noteNumber);
                 }
             }
         }
-        notes.sort((a, b) => a.startTick - b.startTick);
+        notes.sort((a, b) => a.start - b.start);
         return notes;
     }
 }
@@ -122,10 +153,10 @@ class TrackView {
     private track: MidiTrack | undefined;
     private validator: (track: MidiTrack) => boolean;
 
-    private easy: ChartView;
-    private medium: ChartView;
-    private hard: ChartView;
     private expert: ChartView;
+    private hard: ChartView;
+    private medium: ChartView;
+    private easy: ChartView;
 
     constructor(
         track: MidiTrack | undefined,
@@ -134,10 +165,10 @@ class TrackView {
         this.track = track;
         this.validator = validator;
 
-        this.easy = new ChartView(this.track, Difficulty.Easy, 60, 5);
-        this.medium = new ChartView(this.track, Difficulty.Medium, 72, 5);
-        this.hard = new ChartView(this.track, Difficulty.Hard, 84, 5);
-        this.expert = new ChartView(this.track, Difficulty.Expert, 96, 5);
+        this.expert = new ChartView(this.track, Difficulty.Expert, EXPERT_OFFSET, GUITAR_NOTE_COUNT);
+        this.hard = new ChartView(this.track, Difficulty.Hard, HARD_OFFSET, GUITAR_NOTE_COUNT);
+        this.medium = new ChartView(this.track, Difficulty.Medium, MEDIUM_OFFSET, GUITAR_NOTE_COUNT);
+        this.easy = new ChartView(this.track, Difficulty.Easy, EASY_OFFSET, GUITAR_NOTE_COUNT);
     }
 
     public isValid(): boolean {
@@ -147,14 +178,16 @@ class TrackView {
         return this.validator(this.track);
     }
 
-    public getDifficulty(difficulty: Difficulty) {
+    public getChart(difficulty: Difficulty) {
         switch (difficulty) {
-            case Difficulty.Easy: return this.easy;
-            case Difficulty.Medium: return this.medium;
-            case Difficulty.Hard: return this.hard;
             case Difficulty.Expert: return this.expert;
+            case Difficulty.Hard: return this.hard;
+            case Difficulty.Medium: return this.medium;
+            case Difficulty.Easy: return this.easy;
         }
     }
+
+    public getCharts(): ChartView[] { return [this.expert, this.hard, this.medium, this.easy]; }
 }
 
 class SongView {

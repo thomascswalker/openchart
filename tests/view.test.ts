@@ -12,24 +12,23 @@ test('is constructed', async () => {
     const midi = Midi.fromFile(midiPath);
     expect(midi).toBeDefined();
 
-    const view = new SongView(midi);
+    const song = new SongView(midi);
 
-    const lead = view.getInstrumentView(Instrument.Lead);
+    const lead = song.getInstrumentView(Instrument.Lead);
     console.log(lead);
     expect(lead).toBeDefined();
-    expect(view.getInstrumentView(Instrument.Groove)).toBeDefined();
-    expect(view.getInstrumentView(Instrument.Drums)).toBeDefined();
-    expect(view.getInstrumentView(Instrument.Vocals)).toBeDefined();
+    expect(song.getInstrumentView(Instrument.Groove)).toBeDefined();
+    expect(song.getInstrumentView(Instrument.Drums)).toBeDefined();
+    expect(song.getInstrumentView(Instrument.Vocals)).toBeDefined();
 
-    const expert = lead.getDifficulty(Difficulty.Expert);
-    const hard = lead.getDifficulty(Difficulty.Hard);
-    const medium = lead.getDifficulty(Difficulty.Medium);
-    const easy = lead.getDifficulty(Difficulty.Easy);
-
-    const noteCounts = [1954, 1425, 980, 661];
-    const diffs = [expert, hard, medium, easy];
-    diffs.forEach((view, index) => {
-        const notes = view.getNotes();
+    const noteCounts = [
+        1954, // Expert
+        1425, // Hard
+        980, // Medium
+        661, // Easy
+    ];
+    lead.getCharts().forEach((chart, index) => {
+        const notes = chart.getNotes();
         expect(notes.length).toBe(noteCounts[index]);
     })
 })

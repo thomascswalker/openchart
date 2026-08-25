@@ -381,7 +381,7 @@ class MidiTrack {
         return this.getChannelEvents().filter((e) => [ChannelMessage.NoteOn, ChannelMessage.NoteOff].includes(e.messageType));
     }
 
-    public getNotesInRange(low: number, high: number) {
+    public getNotesInPitchRange(low: number, high: number) {
         return this.getNotes().filter((e) => low <= e.data1 && e.data1 < high);
     }
 }
