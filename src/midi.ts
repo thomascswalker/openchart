@@ -126,6 +126,12 @@ export interface MidiSysExEvent extends BaseMidiEvent {
 
 export type MidiEvent = MidiChannelEvent | MidiMetaEvent | MidiSysExEvent;
 
+interface TimedMidiEvent {
+    event: MidiEvent;
+    tick: number;
+    order: number;
+}
+
 // Variable Length Quantity (VLQ) parser for Delta Times and Meta/SysEx lengths
 const vlqParser = new Parser()
     .array("bytes", {
@@ -385,26 +391,165 @@ class MidiTrack {
         return this.getNotes().filter((e) => low <= e.data1 && e.data1 < high);
     }
 
-    public addNote(note: number, start: number, velocity: number = 0, end: number = 240) {
-        this.events.push({
-            deltaTime: start,
-            status: 0,
-            channel: 0,
+    private getTimedEvents(): TimedMidiEvent[] {
+        let tick = 0;
+
+        return this.events.map((event, order) => {
+            tick += event.deltaTime;
+            return { event, tick, order };
+        });
+    }
+
+    private isEndOfTrack(event: MidiEvent): event is MidiMetaEvent {
+        return event.status === 0xff && "type" in event && event.type === MetaType.EndOfTrack;
+    }
+
+    private replaceTimedEvents(timedEvents: TimedMidiEvent[]): void {
+        let previousTick = 0;
+
+        for (const timedEvent of timedEvents) {
+            if (timedEvent.tick < previousTick) {
+                throw new Error("MIDI events must be ordered by absolute tick");
+            }
+
+            timedEvent.event.deltaTime = timedEvent.tick - previousTick;
+            previousTick = timedEvent.tick;
+        }
+
+        // Keep the original array object alive for callers holding a reference
+        // to this track's events.
+        this.events.splice(0, this.events.length, ...timedEvents.map(({ event }) => event));
+    }
+
+    /** Returns the absolute tick immediately before eventIndex. */
+    public getAbsoluteTickAt(eventIndex: number): number {
+        if (!Number.isInteger(eventIndex) || eventIndex < 0 || eventIndex > this.events.length) {
+            throw new RangeError("eventIndex is outside the MIDI track");
+        }
+
+        let tick = 0;
+        for (let index = 0; index < eventIndex; index++) {
+            tick += this.events[index].deltaTime;
+        }
+        return tick;
+    }
+
+    /** Finds an insertion point after all events at absoluteTick. */
+    public getInsertionIndexAt(absoluteTick: number): number {
+        if (!Number.isInteger(absoluteTick) || absoluteTick < 0) {
+            throw new RangeError("absoluteTick must be a non-negative integer");
+        }
+
+        let tick = 0;
+        const endOfTrackIndex = this.events.findIndex((event) => this.isEndOfTrack(event));
+        const eventLimit = endOfTrackIndex < 0 ? this.events.length : endOfTrackIndex;
+
+        for (let index = 0; index < eventLimit; index++) {
+            tick += this.events[index].deltaTime;
+            if (tick > absoluteTick) {
+                return index;
+            }
+        }
+        return eventLimit;
+    }
+
+    /**
+     * Adds a note using relative MIDI timing.
+     *
+     * startDelta is relative to the event immediately before insertAt;
+     * endDelta is relative to the new NoteOn. insertAt defaults to the end of
+     * the track. The full event list is then re-encoded as delta times.
+     */
+    public addNote(
+        note: number,
+        startDelta: number,
+        velocity: number = 100,
+        endDelta: number = 240,
+        insertAt: number = this.events.length,
+    ): { noteOn: MidiChannelEvent; noteOff: MidiChannelEvent } {
+        if (!Number.isInteger(note) || note < 0 || note > 127) {
+            throw new RangeError("MIDI note must be between 0 and 127");
+        }
+        if (!Number.isInteger(startDelta) || startDelta < 0) {
+            throw new RangeError("startDelta must be a non-negative integer");
+        }
+        if (!Number.isInteger(endDelta) || endDelta < 0) {
+            throw new RangeError("endDelta must be a non-negative integer");
+        }
+        if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+            throw new RangeError("NoteOn velocity must be between 1 and 127");
+        }
+        if (!Number.isInteger(insertAt) || insertAt < 0 || insertAt > this.events.length) {
+            throw new RangeError("insertAt is outside the MIDI track");
+        }
+
+        const startTick = this.getAbsoluteTickAt(insertAt) + startDelta;
+        const endTick = startTick + endDelta;
+        const channel = 0;
+
+        const noteOn: MidiChannelEvent = {
+            deltaTime: 0,
+            status: 0x90 | channel,
+            channel,
             messageType: ChannelMessage.NoteOn,
             data1: note,
-            data2: velocity
-
-        }
-        );
-        this.events.push({
-            deltaTime: end,
-            status: 0,
-            channel: 0,
+            data2: velocity,
+        };
+        const noteOff: MidiChannelEvent = {
+            deltaTime: 0,
+            status: 0x80 | channel,
+            channel,
             messageType: ChannelMessage.NoteOff,
             data1: note,
-            data2: velocity
+            data2: 0,
+        };
+
+        const timedEvents = this.getTimedEvents();
+        const firstNewOrder = timedEvents.length;
+        timedEvents.push({ event: noteOn, tick: startTick, order: firstNewOrder });
+        timedEvents.push({ event: noteOff, tick: endTick, order: firstNewOrder + 1 });
+
+        // EndOfTrack is a structural marker and must remain last. If the new
+        // note extends beyond the previous track end, move the marker to the
+        // new end tick instead of placing note events after it.
+        const finalTick = timedEvents
+            .filter(({ event }) => !this.isEndOfTrack(event))
+            .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
+        for (const timedEvent of timedEvents) {
+            if (this.isEndOfTrack(timedEvent.event)) {
+                timedEvent.tick = Math.max(timedEvent.tick, finalTick);
+                timedEvent.order = Number.MAX_SAFE_INTEGER;
+            }
         }
-        );
+
+        timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
+
+        this.replaceTimedEvents(timedEvents);
+        return { noteOn, noteOff };
+    }
+
+    /** Removes an exact NoteOn/NoteOff pair and preserves later absolute ticks. */
+    public removeNote(noteOn: MidiChannelEvent, noteOff: MidiChannelEvent): boolean {
+        if (noteOn === noteOff || noteOn.data1 !== noteOff.data1) {
+            return false;
+        }
+
+        if (this.events.indexOf(noteOn) < 0 || this.events.indexOf(noteOff) < 0) {
+            return false;
+        }
+
+        const isNoteOn = noteOn.messageType === ChannelMessage.NoteOn && (noteOn.data2 ?? 0) > 0;
+        const isNoteOff =
+            noteOff.messageType === ChannelMessage.NoteOff ||
+            (noteOff.messageType === ChannelMessage.NoteOn && (noteOff.data2 ?? 0) === 0);
+        if (!isNoteOn || !isNoteOff) {
+            return false;
+        }
+
+        const removed = new Set<MidiEvent>([noteOn, noteOff]);
+        const remaining = this.getTimedEvents().filter(({ event }) => !removed.has(event));
+        this.replaceTimedEvents(remaining);
+        return true;
     }
 }
 

@@ -193,16 +193,35 @@ class ChartView {
         return notes;
     }
 
-    public addNote(note: Note, start: number, end: number) {
-        if (note < this.offset || note >= this.offset + this.lanes) {
+    public addNote(note: Note, start: number, end: number = 0): void {
+        if (!this.midiTrack || !Number.isInteger(start) ||
+            !Number.isInteger(end) || start < 0 || end <= start ||
+            note < 0 || note >= this.lanes) {
             return;
         }
 
-        if (this.midiTrack === undefined) {
-            return;
+        const pitch = this.offset + note;
+        const insertAt = this.midiTrack.getInsertionIndexAt(start);
+        const previousTick = this.midiTrack.getAbsoluteTickAt(insertAt);
+        const startDelta = start - previousTick;
+
+        this.midiTrack.addNote(
+            pitch,
+            startDelta,
+            100,
+            (end > 0 ? end : 240) - start,
+            insertAt,
+        );
+    }
+
+    public removeNote(note: NoteView): boolean {
+        if (!this.midiTrack ||
+            note.note < this.offset ||
+            note.note >= this.offset + this.lanes) {
+            return false;
         }
 
-        this.midiTrack.addNote(note, start, 100, end);
+        return this.midiTrack.removeNote(note.noteOn, note.noteOff);
     }
 }
 
