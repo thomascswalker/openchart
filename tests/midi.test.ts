@@ -1,8 +1,6 @@
+import path from "path";
 import { Midi } from "../src/midi.js";
 import { expect, test } from 'vitest';
-import fs from 'fs/promises';
-import path from 'path';
-
 
 test('is constructed', () => {
     const midi = new Midi();
@@ -11,10 +9,10 @@ test('is constructed', () => {
 
 test('read file', async () => {
     const { default: testData } = await import('./data.json');
+
     const currentDir = path.dirname(new URL(import.meta.url).pathname);
     const midiPath = path.join(currentDir, testData.filename);
-    const data = await fs.readFile(midiPath);
-    const midi = new Midi(data);
+    const midi = Midi.fromFile(midiPath);
 
     const header = midi.header;
     expect(header.format).toBe(testData.header.format);

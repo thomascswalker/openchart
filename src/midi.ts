@@ -1,6 +1,8 @@
 // https://midimusic.github.io/tech/midispec.html
 
 import { Parser } from "binary-parser/dist/binary_parser.js";
+import path from "path";
+import * as fs from 'fs';
 
 enum MidiFormat {
     Single = 0,
@@ -387,6 +389,11 @@ class Midi {
         if (data) {
             this.parse(data);
         }
+    }
+
+    static fromFile(filename: string): Midi {
+        let data = fs.readFileSync(filename);
+        return new Midi(data);
     }
 
     private parse(data: Buffer | Uint8Array) {
