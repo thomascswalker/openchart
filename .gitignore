@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build outputs (adjust 'dist' or 'build' to match your outDir)
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
