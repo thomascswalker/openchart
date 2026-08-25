@@ -115,9 +115,6 @@ export interface MidiMetaEvent extends BaseMidiEvent {
     data: MidiMetaPayload;
 }
 
-function isMetaEvent(obj: BaseMidiEvent) {
-    return obj.status === 0xff;
-}
 
 export interface MidiSysExEvent extends BaseMidiEvent {
     status: 0xf0 | 0xf7;
