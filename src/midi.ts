@@ -384,6 +384,28 @@ class MidiTrack {
     public getNotesInPitchRange(low: number, high: number) {
         return this.getNotes().filter((e) => low <= e.data1 && e.data1 < high);
     }
+
+    public addNote(note: number, start: number, velocity: number = 0, end: number = 240) {
+        this.events.push({
+            deltaTime: start,
+            status: 0,
+            channel: 0,
+            messageType: ChannelMessage.NoteOn,
+            data1: note,
+            data2: velocity
+
+        }
+        );
+        this.events.push({
+            deltaTime: end,
+            status: 0,
+            channel: 0,
+            messageType: ChannelMessage.NoteOff,
+            data1: note,
+            data2: velocity
+        }
+        );
+    }
 }
 
 class Midi {

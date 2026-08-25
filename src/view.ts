@@ -24,7 +24,15 @@ enum Difficulty {
     Expert
 }
 
-class Note {
+enum Note {
+    Green = 0x0,
+    Red = 0x1,
+    Yellow = 0x2,
+    Blue = 0x3,
+    Orange = 0x4,
+}
+
+class NoteView {
     note: number;
     velocity: number;
 
@@ -34,6 +42,8 @@ class Note {
     noteOn: MidiChannelEvent;
     noteOff: MidiChannelEvent;
 
+    previous: NoteView | undefined;
+
     constructor(
         note: number,
         velocity: number,
@@ -41,6 +51,7 @@ class Note {
         end: number,
         noteOn: MidiChannelEvent,
         noteOff: MidiChannelEvent,
+        previous: NoteView | undefined,
     ) {
         this.note = note;
         this.velocity = velocity;
@@ -48,32 +59,55 @@ class Note {
         this.end = end;
         this.noteOn = noteOn;
         this.noteOff = noteOff;
+        this.previous = previous;
     }
 
     public getLength(): number {
         return this.end - this.start;
     }
+
+    public setStart(value: number) {
+        this.start = value;
+    }
+
+    public setEnd(value: number) {
+        this.end = value;
+    }
+
+    public setNote(value: number) {
+        this.note = value;
+    }
 }
 
 
 class ChartView {
-    private track: MidiTrack | undefined;
+    private track: TrackView;
+    private midiTrack: MidiTrack | undefined;
     private difficulty: Difficulty;
     private offset: number;
     private lanes: number;
 
-    constructor(track: MidiTrack | undefined, difficulty: Difficulty, offset: number, lanes: number) {
+    constructor(track: TrackView, midiTrack: MidiTrack | undefined, difficulty: Difficulty, offset: number, lanes: number) {
         this.track = track;
+        this.midiTrack = midiTrack;
         this.difficulty = difficulty;
         this.offset = offset;
         this.lanes = lanes;
+    }
+
+    public getTrack(): TrackView {
+        return this.track;
+    }
+
+    public getSong(): SongView {
+        return this.track.getSong();
     }
 
     public getDifficulty(): Difficulty {
         return this.difficulty;
     }
 
-    public getNotes(): Note[] {
+    public getNotes(): NoteView[] {
         interface PendingNote {
             note: number;
             velocity: number;
@@ -81,16 +115,18 @@ class ChartView {
             noteOn: MidiChannelEvent;
         }
 
-        const events = this.track?.getNotesInPitchRange(this.offset, this.offset + this.lanes) || [];
+        const events = this.midiTrack?.getNotesInPitchRange(this.offset, this.offset + this.lanes) || [];
         if (events.length === 0) {
             return [];
         }
 
-        let absoluteTick = 0;
+        let currentTick = 0;
         const activeNotes = new Map<number, PendingNote[]>();
-        const notes: Note[] = [];
+        const notes: NoteView[] = [];
+        let previousNote: NoteView | undefined;
+
         for (const event of events) {
-            absoluteTick += event.deltaTime;
+            currentTick += event.deltaTime;
 
             const noteNumber = event.data1;
             const velocity = event.data2 ?? 0;
@@ -110,7 +146,7 @@ class ChartView {
                 const pending: PendingNote = {
                     note: noteNumber,
                     velocity,
-                    startTick: absoluteTick,
+                    startTick: currentTick,
                     noteOn: event,
                 };
 
@@ -130,14 +166,23 @@ class ChartView {
                 }
 
                 const pending = notesForPitch.shift()!;
-                notes.push(new Note(
+
+                const newNote = new NoteView(
                     pending.note,
                     pending.velocity,
                     pending.startTick,
-                    absoluteTick,
+                    currentTick,
                     pending.noteOn,
                     event,
-                ));
+                    previousNote,
+                );
+                notes.push(newNote);
+
+                // Store the previous note which is not the same tick position
+                // as this current note.
+                if (previousNote && previousNote.start !== newNote.start) {
+                    previousNote = newNote;
+                }
 
                 if (notesForPitch.length === 0) {
                     activeNotes.delete(noteNumber);
@@ -147,9 +192,22 @@ class ChartView {
         notes.sort((a, b) => a.start - b.start);
         return notes;
     }
+
+    public addNote(note: Note, start: number, end: number) {
+        if (note < this.offset || note >= this.offset + this.lanes) {
+            return;
+        }
+
+        if (this.midiTrack === undefined) {
+            return;
+        }
+
+        this.midiTrack.addNote(note, start, 100, end);
+    }
 }
 
 class TrackView {
+    private song: SongView;
     private track: MidiTrack | undefined;
     private validator: (track: MidiTrack) => boolean;
 
@@ -159,16 +217,18 @@ class TrackView {
     private easy: ChartView;
 
     constructor(
-        track: MidiTrack | undefined,
-        validator: ((track: MidiTrack) => boolean) = () => { return true }
+        song: SongView,
+        midiTrack: MidiTrack | undefined,
+        validator: ((midiTrack: MidiTrack) => boolean) = () => { return true }
     ) {
-        this.track = track;
+        this.song = song;
+        this.track = midiTrack;
         this.validator = validator;
 
-        this.expert = new ChartView(this.track, Difficulty.Expert, EXPERT_OFFSET, GUITAR_NOTE_COUNT);
-        this.hard = new ChartView(this.track, Difficulty.Hard, HARD_OFFSET, GUITAR_NOTE_COUNT);
-        this.medium = new ChartView(this.track, Difficulty.Medium, MEDIUM_OFFSET, GUITAR_NOTE_COUNT);
-        this.easy = new ChartView(this.track, Difficulty.Easy, EASY_OFFSET, GUITAR_NOTE_COUNT);
+        this.expert = new ChartView(this, this.track, Difficulty.Expert, EXPERT_OFFSET, GUITAR_NOTE_COUNT);
+        this.hard = new ChartView(this, this.track, Difficulty.Hard, HARD_OFFSET, GUITAR_NOTE_COUNT);
+        this.medium = new ChartView(this, this.track, Difficulty.Medium, MEDIUM_OFFSET, GUITAR_NOTE_COUNT);
+        this.easy = new ChartView(this, this.track, Difficulty.Easy, EASY_OFFSET, GUITAR_NOTE_COUNT);
     }
 
     public isValid(): boolean {
@@ -176,6 +236,10 @@ class TrackView {
             return false;
         }
         return this.validator(this.track);
+    }
+
+    public getSong(): SongView {
+        return this.song;
     }
 
     public getChart(difficulty: Difficulty) {
@@ -204,10 +268,10 @@ class SongView {
     }
 
     public sync(): void {
-        this.lead = new TrackView(this.midi.getTrack(Instrument.Lead));
-        this.groove = new TrackView(this.midi.getTrack(Instrument.Groove));
-        this.drums = new TrackView(this.midi.getTrack(Instrument.Drums));
-        this.vocals = new TrackView(this.midi.getTrack(Instrument.Vocals));
+        this.lead = new TrackView(this, this.midi.getTrack(Instrument.Lead));
+        this.groove = new TrackView(this, this.midi.getTrack(Instrument.Groove));
+        this.drums = new TrackView(this, this.midi.getTrack(Instrument.Drums));
+        this.vocals = new TrackView(this, this.midi.getTrack(Instrument.Vocals));
     }
 
     public getInstrumentView(instrument: Instrument): TrackView {
@@ -220,4 +284,4 @@ class SongView {
     }
 }
 
-export { SongView, Instrument, Difficulty };
+export { SongView, Instrument, Difficulty, Note };
