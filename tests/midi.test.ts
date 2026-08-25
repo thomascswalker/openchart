@@ -1,6 +1,7 @@
 import path from "path";
-import { Midi } from "../src/midi.js";
+import { Midi, MidiTrack } from "../src/midi.js";
 import { expect, test } from 'vitest';
+import * as fs from 'fs';
 
 test('is constructed', () => {
     const midi = new Midi();
@@ -22,4 +23,28 @@ test('read file', async () => {
     expect(midi.tracks).toHaveLength(9);
     expect(midi.tracks.every((t, i) => t.events.length === testData.trackLengths[i])).toBe(true);
     expect(midi.tracks.every((t, i) => t.name === testData.trackNames[i])).toBe(true);
+})
+
+test('write file', async () => {
+    const midi = new Midi();
+    const track = new MidiTrack();
+    midi.tracks = [track];
+
+    track.addNote(50, 0);
+    track.addNote(52, 120);
+    track.addNote(53, 120);
+    track.addNote(55, 120);
+
+    expect(track.getNotes().length).toBe(8);
+
+    // Write the MIDI to a file
+    const outPath = './test-write.mid';
+    midi.write('./test-write.mid');
+
+    // Re-read the file we just wrote
+    const writtenMidi = Midi.fromFile(outPath);
+    expect(writtenMidi).toBeDefined();
+
+    // Delete the file
+    fs.unlinkSync(outPath);
 })
