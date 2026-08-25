@@ -11,6 +11,6 @@ test('is constructed', () => {
 test('read file', async () => {
     const currentDir = path.dirname(new URL(import.meta.url).pathname);
     const midiPath = path.join(currentDir, 'song.mid');
-    const data = await fs.readFile(midiPath, 'utf-8');
+    const data = await fs.readFile(midiPath);
     const midi = new Midi(data);
 })
