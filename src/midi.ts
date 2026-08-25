@@ -429,6 +429,10 @@ class Midi {
             return track;
         });
     }
+
+    public getTrack(name: string): MidiTrack | undefined {
+        return this.tracks.find((t) => t.name === name);
+    }
 }
 
 export { Midi, MidiHeader, MidiTrack, MidiFormat, ChannelMessage };

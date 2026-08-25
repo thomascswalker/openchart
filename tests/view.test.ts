@@ -1,7 +1,7 @@
 import path from "path";
 import { Midi } from "../src/midi.js";
 import { expect, test } from 'vitest';
-import { SongView } from "../src/view.js";
+import { SongView, Instrument } from "../src/view.js";
 
 
 test('is constructed', async () => {
@@ -13,4 +13,8 @@ test('is constructed', async () => {
     expect(midi).toBeDefined();
 
     const view = new SongView(midi);
+    expect(view.getInstrumentView(Instrument.Lead)).toBeDefined();
+    expect(view.getInstrumentView(Instrument.Groove)).toBeDefined();
+    expect(view.getInstrumentView(Instrument.Drums)).toBeDefined();
+    expect(view.getInstrumentView(Instrument.Vocals)).toBeDefined();
 })
