@@ -127,7 +127,7 @@ export abstract class PixiMidiViewRenderer
         state: MidiViewState,
     ): void;
 
-    private render(): void {
+    protected render(): void {
         if (!this.app) {
             return;
         }
