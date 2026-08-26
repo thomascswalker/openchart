@@ -4,13 +4,21 @@ import {
     type ChangeEvent,
 } from 'react';
 
-import { MidiProvider, useMidi } from './MidiContext';
 import { Midi } from '@midiedit/core';
+
+import {
+    MidiProvider,
+    useMidi,
+} from './MidiContext';
+
+import { MidiViewHost } from './views/MidiViewHost';
+import { MidiViews } from './views/MidiViews';
 
 import './MidiEditor.css';
 
 function MidiToolbar() {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef =
+        useRef<HTMLInputElement>(null);
 
     const {
         midiData,
@@ -23,19 +31,31 @@ function MidiToolbar() {
         fileInputRef.current?.click();
     };
 
-    const handleFileLoad = (event: ChangeEvent<HTMLInputElement>): void => {
+    const handleFileLoad = (
+        event: ChangeEvent<HTMLInputElement>,
+    ): void => {
         const files = event.target.files;
 
-        if (!files || files.length === 0) {
+        if (
+            !files ||
+            files.length === 0
+        ) {
             return;
         }
 
         const file = files[0];
 
-        void file.arrayBuffer().then((data) => {
-            setFileName(file.name);
-            setMidiData(new Midi(new Uint8Array(data)));
-        });
+        void file
+            .arrayBuffer()
+            .then((data) => {
+                setFileName(file.name);
+
+                setMidiData(
+                    new Midi(
+                        new Uint8Array(data),
+                    ),
+                );
+            });
     };
 
     const handleSave = (): void => {
@@ -44,7 +64,7 @@ function MidiToolbar() {
         }
 
         // TODO:
-        // Serialize midiData and save using the existing filename.
+        // Serialize MIDI and save using fileName.
         console.log('Save', fileName);
     };
 
@@ -54,7 +74,7 @@ function MidiToolbar() {
         }
 
         // TODO:
-        // Serialize midiData and prompt the user for a filename/location.
+        // Serialize MIDI and choose a new file.
         console.log('Save As');
     };
 
@@ -102,7 +122,10 @@ function MidiToolbar() {
 
 interface TrackListProps {
     selectedTrackIndex: number | null;
-    onSelectTrack: (index: number) => void;
+
+    onSelectTrack(
+        index: number,
+    ): void;
 }
 
 function TrackList({
@@ -121,78 +144,125 @@ function TrackList({
 
     return (
         <div className="track-list">
-            {midiData.tracks.map((track, index) => {
-                const isSelected = selectedTrackIndex === index;
+            {midiData.tracks.map(
+                (track, index) => {
+                    const selected =
+                        selectedTrackIndex ===
+                        index;
 
-                return (
-                    <div
-                        key={index}
-                        className={
-                            isSelected
-                                ? 'track-row track-row--selected'
-                                : 'track-row'
-                        }
-                        onClick={() => onSelectTrack(index)}
-                    >
-                        <div className="track-row__header">
-                            <span className="track-row__number">
-                                {index + 1}
-                            </span>
+                    return (
+                        <div
+                            key={index}
+                            className={
+                                selected
+                                    ? 'track-row track-row--selected'
+                                    : 'track-row'
+                            }
+                            onClick={() => {
+                                onSelectTrack(
+                                    index,
+                                );
+                            }}
+                        >
+                            <div className="track-row__header">
+                                <span className="track-row__number">
+                                    {index + 1}
+                                </span>
 
-                            <span className="track-row__name">
-                                {track.name || `Track ${index + 1}`}
-                            </span>
+                                <span className="track-row__name">
+                                    {track.name ||
+                                        `Track ${index + 1}`}
+                                </span>
+                            </div>
+
+                            <div className="track-row__timeline">
+                                <span className="track-row__placeholder">
+                                    Track contents
+                                </span>
+                            </div>
                         </div>
-
-                        <div className="track-row__timeline">
-                            <span className="track-row__placeholder">
-                                Track contents
-                            </span>
-                        </div>
-                    </div>
-                );
-            })}
+                    );
+                },
+            )}
         </div>
     );
 }
 
-interface PianoRollProps {
+interface MidiVisualizationProps {
     selectedTrackIndex: number | null;
 }
 
-function PianoRoll({
+function MidiVisualization({
     selectedTrackIndex,
-}: PianoRollProps) {
+}: MidiVisualizationProps) {
     const { midiData } = useMidi();
 
-    const track =
-        midiData && selectedTrackIndex !== null
-            ? midiData.tracks[selectedTrackIndex]
+    const [
+        activeViewId,
+        setActiveViewId,
+    ] = useState(
+        MidiViews[0].id,
+    );
+
+    const activeView =
+        MidiViews.find(
+            (view) =>
+                view.id === activeViewId,
+        ) ?? MidiViews[0];
+
+    const selectedTrack =
+        midiData &&
+            selectedTrackIndex !== null
+            ? midiData.tracks[
+            selectedTrackIndex
+            ]
             : null;
 
     return (
-        <section className="piano-roll">
-            <div className="piano-roll__header">
-                <strong>Piano Roll</strong>
+        <section className="midi-view">
+            <div className="midi-view__header">
+                <div className="midi-view__title">
+                    <strong>
+                        {activeView.name}
+                    </strong>
 
-                <span>
-                    {track
-                        ? track.name || `Track ${selectedTrackIndex! + 1}`
-                        : 'No track selected'}
-                </span>
+                    <span>
+                        {selectedTrack
+                            ? selectedTrack.name ||
+                            `Track ${selectedTrackIndex! + 1}`
+                            : 'No track selected'}
+                    </span>
+                </div>
+
+                <select
+                    value={activeViewId}
+                    onChange={(event) => {
+                        setActiveViewId(
+                            event.target.value,
+                        );
+                    }}
+                >
+                    {MidiViews.map((view) => (
+                        <option
+                            key={view.id}
+                            value={view.id}
+                        >
+                            {view.name}
+                        </option>
+                    ))}
+                </select>
             </div>
 
-            <div className="piano-roll__body">
-                <div className="piano-roll__keyboard">
-                    <div>C6</div>
-                    <div>C5</div>
-                    <div>C4</div>
-                    <div>C3</div>
-                </div>
-
-                <div className="piano-roll__canvas">
-                    Piano roll renderer will go here
-                </div>
+            <div className="midi-view__body">
+                <MidiViewHost
+                    createRenderer={
+                        activeView.createRenderer
+                    }
+                    state={{
+                        midi: midiData,
+                        selectedTrackIndex,
+                    }}
+                />
             </div>
         </section>
     );
@@ -201,18 +271,24 @@ function PianoRoll({
 function MidiWorkspace() {
     const { midiData } = useMidi();
 
-    const [selectedTrackIndex, setSelectedTrackIndex] =
-        useState<number | null>(null);
+    const [
+        selectedTrackIndex,
+        setSelectedTrackIndex,
+    ] = useState<number | null>(
+        null,
+    );
 
     const selectedTrackIsValid =
         midiData !== null &&
         selectedTrackIndex !== null &&
-        selectedTrackIndex < midiData.tracks.length;
+        selectedTrackIndex <
+        midiData.tracks.length;
 
     const actualSelectedTrack =
         selectedTrackIsValid
             ? selectedTrackIndex
-            : midiData && midiData.tracks.length > 0
+            : midiData &&
+                midiData.tracks.length > 0
                 ? 0
                 : null;
 
@@ -224,35 +300,59 @@ function MidiWorkspace() {
 
                     {midiData && (
                         <span className="arrangement__metadata">
-                            Format {midiData.header.format}
+                            Format{' '}
+                            {
+                                midiData.header
+                                    .format
+                            }
                             {' · '}
-                            PPQN {midiData.header.division}
+                            PPQN{' '}
+                            {
+                                midiData.header
+                                    .division
+                            }
                             {' · '}
-                            {midiData.tracks.length} tracks
+                            {
+                                midiData.tracks
+                                    .length
+                            }{' '}
+                            tracks
                         </span>
                     )}
                 </div>
 
                 <TrackList
-                    selectedTrackIndex={actualSelectedTrack}
-                    onSelectTrack={setSelectedTrackIndex}
+                    selectedTrackIndex={
+                        actualSelectedTrack
+                    }
+                    onSelectTrack={
+                        setSelectedTrackIndex
+                    }
                 />
             </section>
 
-            <PianoRoll
-                selectedTrackIndex={actualSelectedTrack}
+            <MidiVisualization
+                selectedTrackIndex={
+                    actualSelectedTrack
+                }
             />
         </main>
+    );
+}
+
+function MidiEditorContent() {
+    return (
+        <div className="midi-editor">
+            <MidiToolbar />
+            <MidiWorkspace />
+        </div>
     );
 }
 
 function MidiEditor() {
     return (
         <MidiProvider>
-            <div className="midi-editor">
-                <MidiToolbar />
-                <MidiWorkspace />
-            </div>
+            <MidiEditorContent />
         </MidiProvider>
     );
 }
