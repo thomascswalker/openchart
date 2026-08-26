@@ -1,4 +1,4 @@
-import { ChannelMessage, Midi, MidiTrack, type MidiChannelEvent } from "./midi.js";
+import { ChannelMessage, Midi, MidiTrack, type MidiChannelEvent } from "@midiedit/core";
 
 const OCTAVE = 12;
 

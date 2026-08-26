@@ -6,9 +6,18 @@
                 "^build"
             ],
             "outputs": [
+                "dist/**",
                 ".next/**",
                 "!.next/cache/**",
                 "!.next/dev/**"
+            ]
+        },
+        "test": {
+            "dependsOn": [
+                "build"
+            ],
+            "outputs": [
+                "coverage/**"
             ]
         },
         "check-types": {

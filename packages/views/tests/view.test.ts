@@ -1,5 +1,5 @@
 import path from "path";
-import { ChannelMessage, Midi, MidiTrack } from "../src/midi.js";
+import { ChannelMessage, Midi, MidiTrack } from "@midiedit/core";
 import { expect, test, describe, beforeAll, it } from 'vitest';
 import { SongView, Instrument, Difficulty, Note } from "../src/view.js";
 

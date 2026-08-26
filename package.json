@@ -7,7 +7,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:core": "turbo run test --filter=@midiedit/core",
+    "test:views": "turbo run test --filter=@midiedit/views"
   },
   "repository": {
     "type": "git",
@@ -33,7 +36,6 @@
     }
   },
   "workspaces": [
-    "apps/*",
     "packages/*"
   ]
 }
