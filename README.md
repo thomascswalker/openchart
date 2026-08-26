@@ -40,7 +40,6 @@ track.addNote(65, 480);
 track.addNote(63, 0);
 track.addNote(62, 0);
 
-
 // Remove some notes
 const notes = track.getNoteEvents();
 track.removeNote(notes[0] /* NoteOn */, notes[1] /* NoteOff */);
