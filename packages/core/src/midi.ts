@@ -225,8 +225,7 @@ class MidiTrack {
             );
         }
 
-        const startTick =
-            this.getAbsoluteTickAt(insertAt) + startDelta;
+        const startTick = this.getAbsoluteTickAt(insertAt) + startDelta;
         const endTick = startTick + endDelta;
         const channel = 0;
 
@@ -265,14 +264,8 @@ class MidiTrack {
         );
 
         const finalTick = timedEvents
-            .filter(
-                ({ event }) => !this.isEndOfTrack(event),
-            )
-            .reduce(
-                (maximum, timedEvent) =>
-                    Math.max(maximum, timedEvent.tick),
-                0,
-            );
+            .filter(({ event }) => !this.isEndOfTrack(event))
+            .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
 
         for (const timedEvent of timedEvents) {
             if (this.isEndOfTrack(timedEvent.event)) {
@@ -284,16 +277,11 @@ class MidiTrack {
             }
         }
 
-        timedEvents.sort(
-            (a, b) => a.tick - b.tick || a.order - b.order,
-        );
+        timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
 
         this.replaceTimedEvents(timedEvents);
 
-        return {
-            noteOn,
-            noteOff,
-        };
+        return { noteOn, noteOff };
     }
 
     public removeNote(
