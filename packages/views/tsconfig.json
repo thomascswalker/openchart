@@ -9,7 +9,8 @@
     "noEmit": false
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*",
+    "configs/*"
   ],
   "exclude": [
     "dist",

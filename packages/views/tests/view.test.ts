@@ -20,12 +20,11 @@ describe('data.json', () => {
     })
 
     it('instrument parsing', async () => {
-        const lead = song.getInstrumentView(Instrument.Lead);
-        console.log(lead);
+        const lead = song.getInstrumentTrackView("LEAD GUITAR")!;
         expect(lead).toBeDefined();
-        expect(song.getInstrumentView(Instrument.Groove)).toBeDefined();
-        expect(song.getInstrumentView(Instrument.Drums)).toBeDefined();
-        expect(song.getInstrumentView(Instrument.Vocals)).toBeDefined();
+        expect(song.getInstrumentTrackView("RHYTHM GUITAR")).toBeDefined();
+        expect(song.getInstrumentTrackView("DRUMS")).toBeDefined();
+        expect(song.getInstrumentTrackView("VOCALS")).toBeDefined();
 
         const noteCounts = [
             1954, // Expert
@@ -42,11 +41,11 @@ describe('data.json', () => {
     it('mutates both the ChartView and its underlying MidiTrack', () => {
         const midi = new Midi();
         const track = new MidiTrack();
-        track.name = Instrument.Lead;
+        track.name = "LEAD GUITAR";
         midi.tracks = [track];
 
         const chart = new SongView(midi)
-            .getInstrumentView(Instrument.Lead)
+            .getInstrumentTrackView("LEAD GUITAR")!
             .getChart(Difficulty.Expert);
 
         chart.addNote(Note.Green, 480, 720);
@@ -65,7 +64,7 @@ describe('data.json', () => {
         expect(notes).toHaveLength(1);
         expect(notes[0]?.start).toBe(480);
         expect(notes[0]?.end).toBe(720);
-        expect(midi.getTrack(Instrument.Lead)?.events).toBe(track.events);
+        expect(midi.getTrack("LEAD GUITAR")?.events).toBe(track.events);
 
         expect(chart.removeNote(notes[0])).toBe(true);
         expect(track.events).toHaveLength(0);
@@ -75,14 +74,14 @@ describe('data.json', () => {
     it('keeps MidiTrack relative timing and ChartView absolute timing separate', () => {
         const midi = new Midi();
         const track = new MidiTrack();
-        track.name = Instrument.Lead;
+        track.name = "LEAD GUITAR";
         midi.tracks = [track];
 
         track.addNote(97, 0, 100, 960);
         track.addNote(98, 240, 100, 240);
 
         const chart = new SongView(midi)
-            .getInstrumentView(Instrument.Lead)
+            .getInstrumentTrackView("LEAD GUITAR")!
             .getChart(Difficulty.Expert);
 
         chart.addNote(Note.Green, 480, 720);
