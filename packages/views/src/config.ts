@@ -2,7 +2,7 @@ import * as fs from "fs";
 import path from "path";
 import { z } from 'zod';
 
-const DEFAULT_CONFIG = '../configs/default.json';
+const DEFAULT_CONFIG = './configs/default.json';
 
 const TrackTypeSchema = z.union([
     z.literal("meta"),

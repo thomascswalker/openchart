@@ -21,7 +21,6 @@ describe('data.json', () => {
 
     it('instrument parsing', async () => {
         const lead = song.getInstrumentView(Instrument.Lead);
-        console.log(lead);
         expect(lead).toBeDefined();
         expect(song.getInstrumentView(Instrument.Groove)).toBeDefined();
         expect(song.getInstrumentView(Instrument.Drums)).toBeDefined();
