@@ -329,7 +329,7 @@ class SongView {
                 case "instrument":
                     this.instruments.push(new InstrumentTrackView(this, midiTrack, def as InstrumentTrackViewConfig));
                     break;
-                case "animation":
+                default:
                     console.error("Not implemented yet");
                     break;
             }
