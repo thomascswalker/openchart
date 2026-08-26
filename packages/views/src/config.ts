@@ -1,8 +1,6 @@
-import * as fs from "fs";
-import path from "path";
 import { z } from 'zod';
+import defaultConfigData from "../configs/default.json" with { type: "json" };
 
-const DEFAULT_CONFIG = './configs/default.json';
 
 const TrackViewTypeSchema = z.union([
     z.literal("global"),
@@ -53,10 +51,8 @@ export function loadConfig(content: string): SongViewConfig | undefined {
     }
 }
 
-export function loadConfigFromFile(filename: string = DEFAULT_CONFIG): SongViewConfig | undefined {
-    const fullPath = path.resolve(filename);
-    const content = fs.readFileSync(fullPath, 'utf-8');
-    return loadConfig(content);
+export async function loadConfigFromFile(file: Blob): Promise<SongViewConfig | undefined> {
+    return loadConfig(await file.text());
 }
 
-export const defaultConfig = loadConfigFromFile()!;
+export const defaultConfig = loadConfig(JSON.stringify(defaultConfigData))!;

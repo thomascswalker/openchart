@@ -65,7 +65,41 @@ export function formatTrackEvents(rawEvents: any[]): MidiEvent[] {
     });
 }
 
-export function encodeVariableLengthValue(value: number): Buffer {
+export function concatBytes(chunks: Uint8Array[]): Uint8Array {
+    const result = new Uint8Array(chunks.reduce((n, chunk) => n + chunk.length, 0));
+    let offset = 0;
+    for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+    }
+    return result;
+}
+
+export function writeAscii(target: Uint8Array, offset: number, value: string): void {
+    for (let index = 0; index < value.length; index++) {
+        target[offset + index] = value.charCodeAt(index) & 0x7f;
+    }
+}
+
+export function writeUInt16BE(target: Uint8Array, offset: number, value: number): void {
+    target[offset] = (value >>> 8) & 0xff;
+    target[offset + 1] = value & 0xff;
+}
+
+export function writeUInt32BE(target: Uint8Array, offset: number, value: number): void {
+    target[offset] = (value >>> 24) & 0xff;
+    target[offset + 1] = (value >>> 16) & 0xff;
+    target[offset + 2] = (value >>> 8) & 0xff;
+    target[offset + 3] = value & 0xff;
+}
+
+function asciiBytes(value: string): Uint8Array {
+    const result = new Uint8Array(value.length);
+    writeAscii(result, 0, value);
+    return result;
+}
+
+export function encodeVariableLengthValue(value: number): Uint8Array {
     if (
         !Number.isInteger(value) ||
         value < 0 ||
@@ -84,7 +118,7 @@ export function encodeVariableLengthValue(value: number): Buffer {
         value >>>= 7;
     }
 
-    return Buffer.from(bytes);
+    return new Uint8Array(bytes);
 }
 
 export function requireByte(value: number, field: string): number {
@@ -114,9 +148,9 @@ export function requireSignedByte(value: number, field: string): number {
 export function encodeMetaPayload(
     type: number,
     data: MidiMetaPayload,
-): Buffer {
-    if (Buffer.isBuffer(data) || data instanceof Uint8Array) {
-        return Buffer.from(data);
+): Uint8Array {
+    if (data instanceof Uint8Array) {
+        return new Uint8Array(data);
     }
 
     if (
@@ -124,17 +158,15 @@ export function encodeMetaPayload(
         typeof data === "object" &&
         "bytes" in data
     ) {
-        return Buffer.from(
-            (data as DefaultMetaPayload).bytes,
-        );
+        return new Uint8Array((data as DefaultMetaPayload).bytes);
     }
 
     const payload = (data ?? {}) as Record<string, any>;
 
     switch (type) {
         case MetaType.SequenceNumber: {
-            const result = Buffer.alloc(2);
-            result.writeUInt16BE(payload.sequenceNumber, 0);
+            const result = new Uint8Array(2);
+            writeUInt16BE(result, 0, payload.sequenceNumber);
             return result;
         }
 
@@ -145,10 +177,10 @@ export function encodeMetaPayload(
         case MetaType.Lyric:
         case MetaType.Marker:
         case MetaType.CuePoint:
-            return Buffer.from(payload.text ?? "", "ascii");
+            return asciiBytes(payload.text ?? "");
 
         case 0x20:
-            return Buffer.from([
+            return new Uint8Array([
                 requireByte(
                     payload.channel,
                     "MIDI channel prefix",
@@ -156,25 +188,24 @@ export function encodeMetaPayload(
             ]);
 
         case 0x21:
-            return Buffer.from([
+            return new Uint8Array([
                 requireByte(payload.port, "MIDI port"),
             ]);
 
         case MetaType.EndOfTrack:
-            return Buffer.alloc(0);
+            return new Uint8Array(0);
 
         case MetaType.Tempo: {
-            const result = Buffer.alloc(3);
-            result.writeUIntBE(
-                payload.microsecondsPerQuarterNote,
-                0,
-                3,
-            );
+            const result = new Uint8Array(3);
+            const value = payload.microsecondsPerQuarterNote;
+            result[0] = (value >>> 16) & 0xff;
+            result[1] = (value >>> 8) & 0xff;
+            result[2] = value & 0xff;
             return result;
         }
 
         case MetaType.SMPTEOffset:
-            return Buffer.from([
+            return new Uint8Array([
                 requireByte(payload.hr, "SMPTE hour"),
                 requireByte(payload.mn, "SMPTE minute"),
                 requireByte(payload.se, "SMPTE second"),
@@ -186,7 +217,7 @@ export function encodeMetaPayload(
             ]);
 
         case MetaType.TimeSignature:
-            return Buffer.from([
+            return new Uint8Array([
                 requireByte(
                     payload.numerator,
                     "time-signature numerator",
@@ -206,7 +237,7 @@ export function encodeMetaPayload(
             ]);
 
         case 0x59:
-            return Buffer.from([
+            return new Uint8Array([
                 requireSignedByte(
                     payload.key,
                     "key signature key",
@@ -224,7 +255,7 @@ export function encodeMetaPayload(
     }
 }
 
-export function encodeMidiEvent(event: MidiEvent): Buffer {
+export function encodeMidiEvent(event: MidiEvent): Uint8Array {
     const deltaTime = encodeVariableLengthValue(
         event.deltaTime,
     );
@@ -235,9 +266,9 @@ export function encodeMidiEvent(event: MidiEvent): Buffer {
             event.data,
         );
 
-        return Buffer.concat([
+        return concatBytes([
             deltaTime,
-            Buffer.from([0xff, event.type]),
+            new Uint8Array([0xff, event.type]),
             encodeVariableLengthValue(payload.length),
             payload,
         ]);
@@ -247,11 +278,11 @@ export function encodeMidiEvent(event: MidiEvent): Buffer {
         event.status === 0xf0 ||
         event.status === 0xf7
     ) {
-        const payload = Buffer.from((event as MidiSysExEvent).data);
+        const payload = new Uint8Array((event as MidiSysExEvent).data);
 
-        return Buffer.concat([
+        return concatBytes([
             deltaTime,
-            Buffer.from([event.status]),
+            new Uint8Array([event.status]),
             encodeVariableLengthValue(payload.length),
             payload,
         ]);
@@ -285,8 +316,8 @@ export function encodeMidiEvent(event: MidiEvent): Buffer {
         );
     }
 
-    return Buffer.concat([
+    return concatBytes([
         deltaTime,
-        Buffer.from(bytes),
+        new Uint8Array(bytes),
     ]);
 }
