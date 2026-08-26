@@ -1,7 +1,6 @@
 // https://midimusic.github.io/tech/midispec.html
 
 import { Parser } from "binary-parser/dist/binary_parser.js";
-import path from "path";
 import * as fs from "fs";
 
 enum MidiFormat {
@@ -589,7 +588,7 @@ function encodeMidiEvent(event: MidiEvent): Buffer {
         event.status === 0xf0 ||
         event.status === 0xf7
     ) {
-        const payload = Buffer.from(event.data);
+        const payload = Buffer.from((event as MidiSysExEvent).data);
 
         return Buffer.concat([
             deltaTime,
@@ -741,7 +740,7 @@ class MidiTrack {
             index < eventIndex;
             index++
         ) {
-            tick += this.events[index].deltaTime;
+            tick += this.events.at(index)?.deltaTime || 0;
         }
 
         return tick;
@@ -770,7 +769,7 @@ class MidiTrack {
                 : endOfTrackIndex;
 
         for (let index = 0; index < eventLimit; index++) {
-            tick += this.events[index].deltaTime;
+            tick += this.events.at(index)?.deltaTime || 0;
 
             if (tick > absoluteTick) {
                 return index;
