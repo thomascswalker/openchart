@@ -1,0 +1,122 @@
+{
+    "name": "Default",
+    "ppqn": 480,
+    "tracks": [
+        {
+            "names": [
+                "LEAD GUITAR",
+                "RHYTHM GUITAR"
+            ],
+            "notes": {
+                "expert": {
+                    "green": 96,
+                    "red": 97,
+                    "yellow": 98,
+                    "blue": 99,
+                    "orange": 100,
+                    "hopo": 101,
+                    "strum": 102,
+                    "tap": 103
+                },
+                "hard": {
+                    "green": 84,
+                    "red": 85,
+                    "yellow": 86,
+                    "blue": 87,
+                    "orange": 88,
+                    "hopo": 89,
+                    "strum": 90,
+                    "tap": 91
+                },
+                "medium": {
+                    "green": 72,
+                    "red": 73,
+                    "yellow": 74,
+                    "blue": 75,
+                    "orange": 76,
+                    "hopo": 77,
+                    "strum": 78,
+                    "tap": 79
+                },
+                "easy": {
+                    "green": 60,
+                    "red": 61,
+                    "yellow": 62,
+                    "blue": 63,
+                    "orange": 64,
+                    "hopo": 65,
+                    "strum": 66,
+                    "tap": 67
+                }
+            },
+            "phrases": {
+                "solo": 118,
+                "power": 116
+            },
+            "handPositions": {
+                "high": 47,
+                "low": 36
+            }
+        },
+        {
+            "names": [
+                "DRUMS"
+            ],
+            "phrases": {
+                "soloPhrase": 118,
+                "powerActivation": 117,
+                "powerPhrase": 116,
+                "discoFlip": 108,
+                "singleRoll": 109,
+                "doubleRoll": 110
+            },
+            "notes": {
+                "expert": {
+                    "kick2": 95,
+                    "kick": 96,
+                    "redDrum": 97,
+                    "yellowDrum": 98,
+                    "blueDrum": 99,
+                    "greenDrum": 100,
+                    "yellowCymbal": 101,
+                    "blueCymbal": 102,
+                    "greenCymbal": 103,
+                    "flam": 104
+                },
+                "hard": {
+                    "kick": 84,
+                    "redDrum": 85,
+                    "yellowDrum": 86,
+                    "blueDrum": 87,
+                    "greenDrum": 88,
+                    "yellowCymbal": 89,
+                    "blueCymbal": 90,
+                    "greenCymbal": 91,
+                    "flam": 92
+                },
+                "medium": {
+                    "kick": 72,
+                    "redDrum": 73,
+                    "yellowDrum": 74,
+                    "blueDrum": 75,
+                    "greenDrum": 76,
+                    "yellowCymbal": 77,
+                    "blueCymbal": 78,
+                    "greenCymbal": 79,
+                    "flam": 80
+                },
+                "easy": {
+                    "kick": 60,
+                    "redDrum": 61,
+                    "yellowDrum": 62,
+                    "blueDrum": 63,
+                    "greenDrum": 64,
+                    "yellowCymbal": 65,
+                    "blueCymbal": 66,
+                    "greenCymbal": 67,
+                    "flam": 68
+                }
+            }
+        }
+    ]
+}
