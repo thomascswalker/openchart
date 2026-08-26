@@ -1,10 +1,13 @@
 {
-  "name": "midiview",
+  "name": "midiedit",
   "version": "1.0.0",
   "description": "",
   "main": "index.ts",
+  "private": true,
   "scripts": {
-    "test": "vitest"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint"
   },
   "repository": {
     "type": "git",
@@ -20,10 +23,17 @@
   "homepage": "https://github.com/thomascswalker/midiview#readme",
   "devDependencies": {
     "@types/node": "^26.3.0",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "turbo": "latest",
+    "typescript": "^7.0.2"
   },
-  "dependencies": {
-    "binary-parser": "^2.3.0"
-  }
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "11.9.0"
+    }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

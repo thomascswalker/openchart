@@ -1,7 +1,6 @@
 // https://midimusic.github.io/tech/midispec.html
 
 import { Parser } from "binary-parser/dist/binary_parser.js";
-import path from "path";
 import * as fs from "fs";
 
 enum MidiFormat {

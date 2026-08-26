@@ -1,0 +1,29 @@
+{
+    "name": "midilib",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.ts",
+    "scripts": {
+        "test": "vitest"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thomascswalker/midiview.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/thomascswalker/midiview/issues"
+    },
+    "homepage": "https://github.com/thomascswalker/midiview#readme",
+    "dependencies": {
+        "binary-parser": "^2.3.0"
+    },
+    "devDependencies": {
+        "@types/node": "^26.3.0",
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.11"
+    }
+}
