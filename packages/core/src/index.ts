@@ -1,1 +1,2 @@
-export * from "./midi.js";
+export { ChannelMessage, MidiChannelEvent } from "./types.js";
+export { Midi, MidiFormat, MidiHeader, MidiTrack, MidiNote } from "./midi.js";

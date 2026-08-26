@@ -115,7 +115,7 @@ class ChartView {
             noteOn: MidiChannelEvent;
         }
 
-        const events = this.midiTrack?.getNotesInPitchRange(this.offset, this.offset + this.lanes) || [];
+        const events = this.midiTrack?.getNoteEventsInPitchRange(this.offset, this.offset + this.lanes) || [];
         if (events.length === 0) {
             return [];
         }
