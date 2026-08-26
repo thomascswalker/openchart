@@ -71,7 +71,7 @@ export interface ChannelOrPortMetaPayload {
 }
 
 export interface DefaultMetaPayload {
-    bytes: Buffer | Uint8Array;
+    bytes: Uint8Array;
 }
 
 export type MidiMetaPayload =
@@ -111,7 +111,7 @@ export interface MidiMetaEvent extends BaseMidiEvent {
 export interface MidiSysExEvent extends BaseMidiEvent {
     status: 0xf0 | 0xf7;
     length: number;
-    data: Buffer | Uint8Array;
+    data: Uint8Array;
 }
 
 export type MidiEvent =

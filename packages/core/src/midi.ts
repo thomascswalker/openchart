@@ -1,9 +1,8 @@
 // https://midimusic.github.io/tech/midispec.html
 
-import * as fs from "fs";
 import { Parser } from "binary-parser/dist/binary_parser.js";
 import { ChannelMessage, MetaType, MidiChannelEvent, MidiEvent, MidiFormat, MidiMetaEvent, TextMetaPayload, TimedMidiEvent } from "./types.js";
-import { encodeMidiEvent } from "./util.js";
+import { concatBytes, encodeMidiEvent, writeAscii, writeUInt16BE, writeUInt32BE } from "./util.js";
 import { headerParser, trackParser } from "./parsers.js";
 
 class MidiNote {
@@ -329,7 +328,7 @@ class MidiTrack {
         return true;
     }
 
-    public toBuffer(): Buffer {
+    public toBuffer(): Uint8Array {
         const endOfTrackIndices = this.events
             .map((event, index) =>
                 this.isEndOfTrack(event) ? index : -1,
@@ -352,17 +351,17 @@ class MidiTrack {
 
         if (endOfTrackIndices.length === 0) {
             eventBytes.push(
-                Buffer.from([0x00, 0xff, 0x2f, 0x00]),
+                new Uint8Array([0x00, 0xff, 0x2f, 0x00]),
             );
         }
 
-        const body = Buffer.concat(eventBytes);
-        const chunk = Buffer.alloc(8);
+        const body = concatBytes(eventBytes);
+        const chunk = new Uint8Array(8);
 
-        chunk.write("MTrk", 0, 4, "ascii");
-        chunk.writeUInt32BE(body.length, 4);
+        writeAscii(chunk, 0, "MTrk");
+        writeUInt32BE(chunk, 4, body.length);
 
-        return Buffer.concat([chunk, body]);
+        return concatBytes([chunk, body]);
     }
 }
 
@@ -371,7 +370,7 @@ class Midi {
     tracks: MidiTrack[];
 
     constructor(
-        data: Buffer | Uint8Array | undefined = undefined,
+        data: Uint8Array | undefined = undefined,
     ) {
         this.header = new MidiHeader();
         this.tracks = [];
@@ -381,16 +380,7 @@ class Midi {
         }
     }
 
-    static fromFile(filename: string): Midi {
-        const data = fs.readFileSync(filename);
-        return new Midi(data);
-    }
-
-    private parse(data: Buffer | Uint8Array): void {
-        const buffer = Buffer.isBuffer(data)
-            ? data
-            : Buffer.from(data);
-
+    private parse(data: Uint8Array): void {
         const midiParser = new Parser()
             .useContextVars()
             .nest("header", {
@@ -403,7 +393,7 @@ class Midi {
                 },
             });
 
-        const result = midiParser.parse(buffer);
+        const result = midiParser.parse(data);
 
         this.header.format = result.header.format;
         this.header.trackCount = result.header.trackCount;
@@ -443,7 +433,7 @@ class Midi {
         );
     }
 
-    public toBuffer(): Buffer {
+    public toBuffer(): Uint8Array {
         const trackCount = this.tracks.length;
 
         if (
@@ -485,25 +475,22 @@ class Midi {
             ? 0x8000 | this.header.division
             : this.header.division;
 
-        const header = Buffer.alloc(14);
+        const header = new Uint8Array(14);
 
-        header.write("MThd", 0, 4, "ascii");
-        header.writeUInt32BE(6, 4);
-        header.writeUInt16BE(this.header.format, 8);
-        header.writeUInt16BE(trackCount, 10);
-        header.writeUInt16BE(division, 12);
+        writeAscii(header, 0, "MThd");
+        writeUInt32BE(header, 4, 6);
+        writeUInt16BE(header, 8, this.header.format);
+        writeUInt16BE(header, 10, trackCount);
+        writeUInt16BE(header, 12, division);
 
         this.header.trackCount = trackCount;
 
-        return Buffer.concat([
+        return concatBytes([
             header,
             ...this.tracks.map((track) => track.toBuffer()),
         ]);
     }
 
-    public write(filename: string): void {
-        fs.writeFileSync(filename, this.toBuffer());
-    }
 }
 
 export { Midi, MidiFormat, MidiHeader, MidiTrack, MidiNote };

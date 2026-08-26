@@ -1,12 +1,23 @@
-import { useRef, type ChangeEvent } from 'react';
+import {
+    useRef,
+    useState,
+    type ChangeEvent,
+} from 'react';
+
 import { MidiProvider, useMidi } from './MidiContext';
 import { Midi } from '@midiedit/core';
 
-function MidiLoader() {
+import './MidiEditor.css';
+
+function MidiToolbar() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Destructure the global state setters from our context hook
-    const { setMidiData, setFileName, fileName } = useMidi();
+    const {
+        midiData,
+        setMidiData,
+        setFileName,
+        fileName,
+    } = useMidi();
 
     const triggerFileDialog = (): void => {
         fileInputRef.current?.click();
@@ -14,68 +25,234 @@ function MidiLoader() {
 
     const handleFileLoad = (event: ChangeEvent<HTMLInputElement>): void => {
         const files = event.target.files;
-        if (!files || files.length === 0) return;
+
+        if (!files || files.length === 0) {
+            return;
+        }
 
         const file = files[0];
 
-        // Save the file name globally
-        setFileName(file.name);
+        void file.arrayBuffer().then((data) => {
+            setFileName(file.name);
+            setMidiData(new Midi(new Uint8Array(data)));
+        });
+    };
 
-        const reader = new FileReader();
-        reader.readAsDataURL(file); // Reads as Base64 string
+    const handleSave = (): void => {
+        if (!midiData) {
+            return;
+        }
 
-        reader.onload = (e) => {
-            const rawResult = e.target?.result;
-            if (typeof rawResult === 'string') {
-                const base64String = rawResult.split(',')[1];
+        // TODO:
+        // Serialize midiData and save using the existing filename.
+        console.log('Save', fileName);
+    };
 
-                // Update the global context with the string data
-                setMidiData(new Midi(Buffer.from(base64String, 'base64')));
-            }
-        };
+    const handleSaveAs = (): void => {
+        if (!midiData) {
+            return;
+        }
+
+        // TODO:
+        // Serialize midiData and prompt the user for a filename/location.
+        console.log('Save As');
     };
 
     return (
-        <div>
-            <button onClick={triggerFileDialog} type="button">
-                Open MIDI File
-            </button>
+        <header className="midi-toolbar">
+            <div className="midi-toolbar__actions">
+                <button
+                    type="button"
+                    onClick={triggerFileDialog}
+                >
+                    Open
+                </button>
+
+                <button
+                    type="button"
+                    disabled={!midiData}
+                    onClick={handleSave}
+                >
+                    Save
+                </button>
+
+                <button
+                    type="button"
+                    disabled={!midiData}
+                    onClick={handleSaveAs}
+                >
+                    Save As
+                </button>
+            </div>
+
+            <div className="midi-toolbar__file">
+                {fileName ?? 'No MIDI file loaded'}
+            </div>
+
             <input
-                type="file"
                 ref={fileInputRef}
+                type="file"
                 accept=".mid,.midi"
                 onChange={handleFileLoad}
-                style={{ display: 'none' }}
+                hidden
             />
-            {fileName && <p>Loaded: {fileName}</p>}
+        </header>
+    );
+}
+
+interface TrackListProps {
+    selectedTrackIndex: number | null;
+    onSelectTrack: (index: number) => void;
+}
+
+function TrackList({
+    selectedTrackIndex,
+    onSelectTrack,
+}: TrackListProps) {
+    const { midiData } = useMidi();
+
+    if (!midiData) {
+        return (
+            <div className="track-list track-list--empty">
+                No MIDI file loaded.
+            </div>
+        );
+    }
+
+    return (
+        <div className="track-list">
+            {midiData.tracks.map((track, index) => {
+                const isSelected = selectedTrackIndex === index;
+
+                return (
+                    <div
+                        key={index}
+                        className={
+                            isSelected
+                                ? 'track-row track-row--selected'
+                                : 'track-row'
+                        }
+                        onClick={() => onSelectTrack(index)}
+                    >
+                        <div className="track-row__header">
+                            <span className="track-row__number">
+                                {index + 1}
+                            </span>
+
+                            <span className="track-row__name">
+                                {track.name || `Track ${index + 1}`}
+                            </span>
+                        </div>
+
+                        <div className="track-row__timeline">
+                            <span className="track-row__placeholder">
+                                Track contents
+                            </span>
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }
 
-function MidiViewer() {
-    // Grab the data directly from the context hook
-    const { midiData, fileName } = useMidi();
+interface PianoRollProps {
+    selectedTrackIndex: number | null;
+}
 
-    if (!midiData) {
-        return <p>No MIDI file loaded yet. Use the loader above.</p>;
-    }
+function PianoRoll({
+    selectedTrackIndex,
+}: PianoRollProps) {
+    const { midiData } = useMidi();
+
+    const track =
+        midiData && selectedTrackIndex !== null
+            ? midiData.tracks[selectedTrackIndex]
+            : null;
 
     return (
-        <div>
-            <h3>Now Playing Configuration</h3>
-            <p><strong>File:</strong> {fileName}</p>
-            <p><strong>Memory String length:</strong> {midiData.tracks.length} characters</p>
-        </div>
+        <section className="piano-roll">
+            <div className="piano-roll__header">
+                <strong>Piano Roll</strong>
+
+                <span>
+                    {track
+                        ? track.name || `Track ${selectedTrackIndex! + 1}`
+                        : 'No track selected'}
+                </span>
+            </div>
+
+            <div className="piano-roll__body">
+                <div className="piano-roll__keyboard">
+                    <div>C6</div>
+                    <div>C5</div>
+                    <div>C4</div>
+                    <div>C3</div>
+                </div>
+
+                <div className="piano-roll__canvas">
+                    Piano roll renderer will go here
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function MidiWorkspace() {
+    const { midiData } = useMidi();
+
+    const [selectedTrackIndex, setSelectedTrackIndex] =
+        useState<number | null>(null);
+
+    const selectedTrackIsValid =
+        midiData !== null &&
+        selectedTrackIndex !== null &&
+        selectedTrackIndex < midiData.tracks.length;
+
+    const actualSelectedTrack =
+        selectedTrackIsValid
+            ? selectedTrackIndex
+            : midiData && midiData.tracks.length > 0
+                ? 0
+                : null;
+
+    return (
+        <main className="midi-workspace">
+            <section className="arrangement">
+                <div className="arrangement__header">
+                    <strong>Tracks</strong>
+
+                    {midiData && (
+                        <span className="arrangement__metadata">
+                            Format {midiData.header.format}
+                            {' · '}
+                            PPQN {midiData.header.division}
+                            {' · '}
+                            {midiData.tracks.length} tracks
+                        </span>
+                    )}
+                </div>
+
+                <TrackList
+                    selectedTrackIndex={actualSelectedTrack}
+                    onSelectTrack={setSelectedTrackIndex}
+                />
+            </section>
+
+            <PianoRoll
+                selectedTrackIndex={actualSelectedTrack}
+            />
+        </main>
     );
 }
 
 function MidiEditor() {
-
     return (
         <MidiProvider>
-            <h1>MIDI Editor</h1>
-            <MidiLoader />
-            <MidiViewer />
+            <div className="midi-editor">
+                <MidiToolbar />
+                <MidiWorkspace />
+            </div>
         </MidiProvider>
     );
 }
