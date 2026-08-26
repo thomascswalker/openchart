@@ -4,118 +4,105 @@
     "tracks": [
         {
             "names": [
+                "GLOBAL"
+            ],
+            "type": "meta",
+            "notes": {}
+        },
+        {
+            "names": [
                 "LEAD GUITAR",
                 "RHYTHM GUITAR"
             ],
-            "phrases": {
-                "power": 116,
-                "solo": 118
-            },
-            "handPositions": {
-                "low": 36,
-                "high": 47
-            },
+            "type": "instrument",
             "notes": {
-                "expert": {
-                    "green": 96,
-                    "red": 97,
-                    "yellow": 98,
-                    "blue": 99,
-                    "orange": 100,
-                    "hopo": 101,
-                    "strum": 102,
-                    "tap": 103
-                },
-                "hard": {
-                    "green": 84,
-                    "red": 85,
-                    "yellow": 86,
-                    "blue": 87,
-                    "orange": 88,
-                    "hopo": 89,
-                    "strum": 90,
-                    "tap": 91
-                },
-                "medium": {
-                    "green": 72,
-                    "red": 73,
-                    "yellow": 74,
-                    "blue": 75,
-                    "orange": 76,
-                    "hopo": 77,
-                    "strum": 78,
-                    "tap": 79
-                },
-                "easy": {
-                    "green": 60,
-                    "red": 61,
-                    "yellow": 62,
-                    "blue": 63,
-                    "orange": 64,
-                    "hopo": 65,
-                    "strum": 66,
-                    "tap": 67
-                }
+                "power": 116,
+                "solo": 118,
+                "handPositionsLow": 36,
+                "handPositionsHigh": 47,
+                "expertGreen": 96,
+                "expertRed": 97,
+                "expertYellow": 98,
+                "expertBlue": 99,
+                "expertOrange": 100,
+                "expertHopo": 101,
+                "expertStrum": 102,
+                "expertTap": 103,
+                "hardGreen": 84,
+                "hardRed": 85,
+                "hardYellow": 86,
+                "hardBlue": 87,
+                "hardOrange": 88,
+                "hardHopo": 89,
+                "hardStrum": 90,
+                "hardTap": 91,
+                "mediumGreen": 72,
+                "mediumRed": 73,
+                "mediumYellow": 74,
+                "mediumBlue": 75,
+                "mediumOrange": 76,
+                "mediumHopo": 77,
+                "mediumStrum": 78,
+                "mediumTap": 79,
+                "easyGreen": 60,
+                "easyRed": 61,
+                "easyYellow": 62,
+                "easyBlue": 63,
+                "easyOrange": 64,
+                "easyHopo": 65,
+                "easyStrum": 66,
+                "easyTap": 67
             }
         },
         {
             "names": [
                 "DRUMS"
             ],
-            "phrases": {
+            "type": "instrument",
+            "notes": {
                 "solo": 118,
                 "powerActivation": 117,
                 "power": 116,
                 "discoFlip": 108,
                 "singleRoll": 109,
-                "doubleRoll": 110
-            },
-            "notes": {
-                "expert": {
-                    "kick2": 95,
-                    "kick": 96,
-                    "redDrum": 97,
-                    "yellowDrum": 98,
-                    "blueDrum": 99,
-                    "greenDrum": 100,
-                    "yellowCymbal": 101,
-                    "blueCymbal": 102,
-                    "greenCymbal": 103,
-                    "flam": 104
-                },
-                "hard": {
-                    "kick": 84,
-                    "redDrum": 85,
-                    "yellowDrum": 86,
-                    "blueDrum": 87,
-                    "greenDrum": 88,
-                    "yellowCymbal": 89,
-                    "blueCymbal": 90,
-                    "greenCymbal": 91,
-                    "flam": 92
-                },
-                "medium": {
-                    "kick": 72,
-                    "redDrum": 73,
-                    "yellowDrum": 74,
-                    "blueDrum": 75,
-                    "greenDrum": 76,
-                    "yellowCymbal": 77,
-                    "blueCymbal": 78,
-                    "greenCymbal": 79,
-                    "flam": 80
-                },
-                "easy": {
-                    "kick": 60,
-                    "redDrum": 61,
-                    "yellowDrum": 62,
-                    "blueDrum": 63,
-                    "greenDrum": 64,
-                    "yellowCymbal": 65,
-                    "blueCymbal": 66,
-                    "greenCymbal": 67,
-                    "flam": 68
-                }
+                "doubleRoll": 110,
+                "expertKick2": 95,
+                "expertKick": 96,
+                "expertRedDrum": 97,
+                "expertYellowDrum": 98,
+                "expertBlueDrum": 99,
+                "expertGreenDrum": 100,
+                "expertYellowCymbal": 101,
+                "expertBlueCymbal": 102,
+                "expertGreenCymbal": 103,
+                "expertFlam": 104,
+                "hardKick": 84,
+                "hardRedDrum": 85,
+                "hardYellowDrum": 86,
+                "hardBlueDrum": 87,
+                "hardGreenDrum": 88,
+                "hardYellowCymbal": 89,
+                "hardBlueCymbal": 90,
+                "hardGreenCymbal": 91,
+                "hardFlam": 92,
+                "mediumKick": 72,
+                "mediumRedDrum": 73,
+                "mediumYellowDrum": 74,
+                "mediumBlueDrum": 75,
+                "mediumGreenDrum": 76,
+                "mediumYellowCymbal": 77,
+                "mediumBlueCymbal": 78,
+                "mediumGreenCymbal": 79,
+                "mediumFlam": 80,
+                "easyKick": 60,
+                "easyRedDrum": 61,
+                "easyYellowDrum": 62,
+                "easyBlueDrum": 63,
+                "easyGreenDrum": 64,
+                "easyYellowCymbal": 65,
+                "easyBlueCymbal": 66,
+                "easyGreenCymbal": 67,
+                "easyFlam": 68
             }
         }
     ]

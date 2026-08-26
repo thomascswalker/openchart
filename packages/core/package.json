@@ -30,11 +30,11 @@
     },
     "homepage": "https://github.com/thomascswalker/midiview#readme",
     "dependencies": {
+        "typescript": "^7.0.2",
+        "@types/node": "^26.3.0",
         "binary-parser": "^2.3.0"
     },
     "devDependencies": {
-        "@types/node": "^26.3.0",
-        "typescript": "^7.0.2",
         "vitest": "^4.1.11"
     }
 }
