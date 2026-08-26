@@ -3,18 +3,20 @@
     "ppqn": 480,
     "tracks": [
         {
-            "names": [
-                "GLOBAL"
-            ],
-            "type": "meta",
+            "name": "GLOBAL",
+            "type": "global",
             "notes": {}
         },
         {
-            "names": [
-                "LEAD GUITAR",
-                "RHYTHM GUITAR"
-            ],
+            "name": "LEAD GUITAR",
             "type": "instrument",
+            "noteCount": 5,
+            "offsets": {
+                "expert": 96,
+                "hard": 84,
+                "medium": 72,
+                "easy": 60
+            },
             "notes": {
                 "power": 116,
                 "solo": 118,
@@ -55,10 +57,64 @@
             }
         },
         {
-            "names": [
-                "DRUMS"
-            ],
+            "name": "RHYTHM GUITAR",
             "type": "instrument",
+            "noteCount": 5,
+            "offsets": {
+                "expert": 96,
+                "hard": 84,
+                "medium": 72,
+                "easy": 60
+            },
+            "notes": {
+                "power": 116,
+                "solo": 118,
+                "handPositionsLow": 36,
+                "handPositionsHigh": 47,
+                "expertGreen": 96,
+                "expertRed": 97,
+                "expertYellow": 98,
+                "expertBlue": 99,
+                "expertOrange": 100,
+                "expertHopo": 101,
+                "expertStrum": 102,
+                "expertTap": 103,
+                "hardGreen": 84,
+                "hardRed": 85,
+                "hardYellow": 86,
+                "hardBlue": 87,
+                "hardOrange": 88,
+                "hardHopo": 89,
+                "hardStrum": 90,
+                "hardTap": 91,
+                "mediumGreen": 72,
+                "mediumRed": 73,
+                "mediumYellow": 74,
+                "mediumBlue": 75,
+                "mediumOrange": 76,
+                "mediumHopo": 77,
+                "mediumStrum": 78,
+                "mediumTap": 79,
+                "easyGreen": 60,
+                "easyRed": 61,
+                "easyYellow": 62,
+                "easyBlue": 63,
+                "easyOrange": 64,
+                "easyHopo": 65,
+                "easyStrum": 66,
+                "easyTap": 67
+            }
+        },
+        {
+            "name": "DRUMS",
+            "type": "instrument",
+            "noteCount": 9,
+            "offsets": {
+                "expert": 96,
+                "hard": 84,
+                "medium": 72,
+                "easy": 60
+            },
             "notes": {
                 "solo": 118,
                 "powerActivation": 117,
@@ -104,6 +160,17 @@
                 "easyGreenCymbal": 67,
                 "easyFlam": 68
             }
+        },
+        {
+            "name": "VOCALS",
+            "type": "instrument",
+            "offsets": {
+                "expert": 96,
+                "hard": 84,
+                "medium": 72,
+                "easy": 60
+            },
+            "notes": {}
         }
     ]
 }

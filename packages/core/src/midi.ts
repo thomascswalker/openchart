@@ -28,6 +28,10 @@ class MidiTrack {
     name: string = "";
     events: MidiEvent[] = [];
 
+    public constructor(name: string = "") {
+        this.name = name;
+    }
+
     public getChannelEvents(): MidiChannelEvent[] {
         return this.events.filter(
             (event) => event.status < 0xff,

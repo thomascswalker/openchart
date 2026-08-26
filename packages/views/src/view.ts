@@ -1,4 +1,5 @@
 import { ChannelMessage, Midi, MidiTrack, type MidiChannelEvent } from "@midiedit/core";
+import { defaultConfig, InstrumentTrackViewConfig, SongViewConfig, TrackViewConfig } from "./config.js";
 
 const OCTAVE = 12;
 
@@ -10,7 +11,8 @@ const EXPERT_OFFSET = OCTAVE * 8;
 const GUITAR_NOTE_COUNT = 5;
 const DRUMS_NOTE_COUNT = 9;
 
-enum Instrument {
+type Instrument = "LEAD GUITAR" | "RHYTHM GUITAR" | "DRUMS" | "VOCALS";
+enum InstrumentType {
     Lead = "LEAD GUITAR",
     Groove = "RHYTHM GUITAR",
     Drums = "DRUMS",
@@ -226,28 +228,18 @@ class ChartView {
 }
 
 class TrackView {
-    private song: SongView;
-    private track: MidiTrack | undefined;
-    private validator: (track: MidiTrack) => boolean;
-
-    private expert: ChartView;
-    private hard: ChartView;
-    private medium: ChartView;
-    private easy: ChartView;
+    protected song: SongView;
+    protected track: MidiTrack;
+    protected validator: (track: MidiTrack) => boolean;
 
     constructor(
         song: SongView,
-        midiTrack: MidiTrack | undefined,
+        midiTrack: MidiTrack,
         validator: ((midiTrack: MidiTrack) => boolean) = () => { return true }
     ) {
         this.song = song;
         this.track = midiTrack;
         this.validator = validator;
-
-        this.expert = new ChartView(this, this.track, Difficulty.Expert, EXPERT_OFFSET, GUITAR_NOTE_COUNT);
-        this.hard = new ChartView(this, this.track, Difficulty.Hard, HARD_OFFSET, GUITAR_NOTE_COUNT);
-        this.medium = new ChartView(this, this.track, Difficulty.Medium, MEDIUM_OFFSET, GUITAR_NOTE_COUNT);
-        this.easy = new ChartView(this, this.track, Difficulty.Easy, EASY_OFFSET, GUITAR_NOTE_COUNT);
     }
 
     public isValid(): boolean {
@@ -259,6 +251,38 @@ class TrackView {
 
     public getSong(): SongView {
         return this.song;
+    }
+}
+
+class GlobalTrackView extends TrackView {
+
+}
+
+class InstrumentTrackView extends TrackView {
+    private config: InstrumentTrackViewConfig;
+    private expert: ChartView;
+    private hard: ChartView;
+    private medium: ChartView;
+    private easy: ChartView;
+
+    constructor(
+        song: SongView,
+        midiTrack: MidiTrack,
+        config: InstrumentTrackViewConfig,
+        validator: ((midiTrack: MidiTrack) => boolean) = () => { return true },
+    ) {
+        super(song, midiTrack, validator);
+        this.config = config;
+
+        this.expert = new ChartView(this, this.track, Difficulty.Expert, config.offsets.expert, config.noteCount);
+        this.hard = new ChartView(this, this.track, Difficulty.Hard, config.offsets.hard, config.noteCount);
+        this.medium = new ChartView(this, this.track, Difficulty.Medium, config.offsets.medium, config.noteCount);
+        this.easy = new ChartView(this, this.track, Difficulty.Easy, config.offsets.easy, config.noteCount);
+
+    }
+
+    public getName(): string {
+        return this.track.name;
     }
 
     public getChart(difficulty: Difficulty) {
@@ -275,32 +299,46 @@ class TrackView {
 
 class SongView {
     private midi: Midi;
+    private config: SongViewConfig;
 
-    private lead!: TrackView;
-    private groove!: TrackView;
-    private drums!: TrackView;
-    private vocals!: TrackView;
+    private instruments!: InstrumentTrackView[];
+    private global!: GlobalTrackView;
 
-    constructor(midi: Midi) {
+    constructor(midi: Midi, config: SongViewConfig = defaultConfig) {
         this.midi = midi;
+        this.config = config;
         this.sync();
     }
 
     public sync(): void {
-        this.lead = new TrackView(this, this.midi.getTrack(Instrument.Lead));
-        this.groove = new TrackView(this, this.midi.getTrack(Instrument.Groove));
-        this.drums = new TrackView(this, this.midi.getTrack(Instrument.Drums));
-        this.vocals = new TrackView(this, this.midi.getTrack(Instrument.Vocals));
+        this.instruments = [];
+        this.config.tracks.forEach((def: TrackViewConfig) => {
+            // Attempt to find the existing MIDI track
+            let midiTrack = this.midi.getTrack(def.name);
+
+            // If it doesn't exist, make a new one
+            if (!midiTrack) {
+                midiTrack = new MidiTrack(def.name);
+            }
+
+            // Initialize the respective track view for the MIDI track
+            switch (def.type) {
+                case "global":
+                    this.global = new GlobalTrackView(this, midiTrack);
+                    break;
+                case "instrument":
+                    this.instruments.push(new InstrumentTrackView(this, midiTrack, def as InstrumentTrackViewConfig));
+                    break;
+                case "animation":
+                    console.error("Not implemented yet");
+                    break;
+            }
+        })
     }
 
-    public getInstrumentView(instrument: Instrument): TrackView {
-        switch (instrument) {
-            case Instrument.Lead: return this.lead;
-            case Instrument.Groove: return this.groove;
-            case Instrument.Drums: return this.drums;
-            case Instrument.Vocals: return this.vocals;
-        }
+    public getInstrumentTrackView(instrument: string | Instrument): InstrumentTrackView | undefined {
+        return this.instruments.find((v) => v.getName() === instrument);
     }
 }
 
-export { SongView, Instrument, Difficulty, Note };
+export { SongView, InstrumentType, Instrument, Difficulty, Note };
