@@ -85,6 +85,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas = null;
     this.panPointerId = null;
     this.noteGeometryCache = null;
+    this.clearMappedNotes();
 
     super.destroy();
   }
@@ -92,6 +93,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   protected override draw(app: Application): void {
     const width = app.screen.width;
     const height = app.screen.height;
+
+    this.pitchRows.clear();
+    this.minorGrid.clear();
+    this.majorGrid.clear();
+    this.keyboard.clear();
 
     this.drawPitchRows(width, height);
     this.drawGrid(width, height);
@@ -252,8 +258,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawPitchRows(width: number, height: number): void {
-    this.pitchRows.clear();
-
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -282,8 +286,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawKeyboard(height: number): void {
-    this.keyboard.clear();
-
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -328,9 +330,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawGrid(width: number, height: number): void {
-    this.minorGrid.clear();
-    this.majorGrid.clear();
-
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -377,6 +376,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (!this.state.midi || this.state.selectedTrackIndex === null) {
       this.notes.clear();
       this.noteGeometryCache = null;
+      this.clearMappedNotes();
       return;
     }
 
@@ -385,6 +385,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (!track) {
       this.notes.clear();
       this.noteGeometryCache = null;
+      this.clearMappedNotes();
       return;
     }
 
@@ -427,6 +428,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       -this.camera.x * tickWidth,
       this.camera.y * rowHeight,
     );
+  }
+
+  private clearMappedNotes(): void {
+    this.mappedNotesTrack = null;
+    this.mappedNotesSource = null;
+    this.mappedNotes = [];
+    this.mappedNotesIndex = null;
   }
 
   private canReuseNoteGeometry(

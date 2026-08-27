@@ -11,6 +11,7 @@ import "./MidiEditor.css";
 
 function MidiToolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadRequestRef = useRef(0);
 
   const { midiData, setMidiData, setFileName, fileName } = useMidi();
 
@@ -26,12 +27,23 @@ function MidiToolbar() {
     }
 
     const file = files[0];
+    const requestId = ++loadRequestRef.current;
 
-    void file.arrayBuffer().then((data) => {
-      setFileName(file.name);
+    void file
+      .arrayBuffer()
+      .then((data) => {
+        if (requestId !== loadRequestRef.current) {
+          return;
+        }
 
-      setMidiData(new Midi(new Uint8Array(data)));
-    });
+        setFileName(file.name);
+        setMidiData(new Midi(new Uint8Array(data)));
+      })
+      .catch((error: unknown) => {
+        if (requestId === loadRequestRef.current) {
+          console.error("Failed to load MIDI file", error);
+        }
+      });
   };
 
   const handleSave = (): void => {

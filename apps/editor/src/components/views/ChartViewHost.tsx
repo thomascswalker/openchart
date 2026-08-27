@@ -13,8 +13,7 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
 
   const viewRef = useRef<ChartView | null>(null);
   const latestStateRef = useRef(state);
-
-  latestStateRef.current = state;
+  const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   /*
    * Renderer lifecycle.
@@ -32,14 +31,21 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
     const renderer = createRenderer();
 
     viewRef.current = renderer;
+    lastSizeRef.current = null;
 
     const resizeRenderer = (): void => {
       const bounds = host.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(bounds.width));
+      const height = Math.max(1, Math.floor(bounds.height));
+      const lastSize = lastSizeRef.current;
 
-      renderer.resize(
-        Math.max(1, Math.floor(bounds.width)),
-        Math.max(1, Math.floor(bounds.height)),
-      );
+      if (lastSize && lastSize.width === width && lastSize.height === height) {
+        return;
+      }
+
+      lastSizeRef.current = { width, height };
+
+      renderer.resize(width, height);
     };
 
     const resizeObserver = new ResizeObserver(() => {
@@ -74,5 +80,5 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
     viewRef.current?.update(state);
   }, [state.midi, state.selectedTrackIndex]);
 
-  return <div ref={hostRef} className="chart-view-host" />;
+  return <div ref={hostRef} className="midi-view-host" />;
 }
