@@ -32,7 +32,7 @@
   "devEngines": {
     "packageManager": {
       "name": "npm",
-      "version": "11.9.0"
+      "version": "^11"
     }
   },
   "workspaces": [
