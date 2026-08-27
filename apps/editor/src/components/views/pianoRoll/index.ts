@@ -1,4 +1,4 @@
-import { ChannelMessage, type Midi } from "@midiedit/core";
+import { Midi } from "@midiedit/core";
 import { clamp } from "es-toolkit";
 import { Graphics, type Application } from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
@@ -10,7 +10,7 @@ import {
   MinimumPixelsPerSemitone,
   ZoomSensitivity,
 } from "./constants";
-import type { ActiveNote, PianoRollCamera, PianoRollNote } from "./types";
+import type { PianoRollCamera, PianoRollNote } from "./types";
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly keyboardWidth = 64;
