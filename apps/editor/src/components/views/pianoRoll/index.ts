@@ -202,68 +202,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return [];
     }
 
-    const notes: PianoRollNote[] = [];
-
-    let absoluteTick = 0;
-
-    const activeNotes = new Map<number, ActiveNote[]>();
-
-    // For now, only draw notes
-    for (const event of track.getNoteEvents()) {
-      absoluteTick += event.deltaTime;
-
-      const pitch = event.data1;
-      const velocity = event.data2 ?? 0;
-
-      const isNoteOn =
-        event.messageType === ChannelMessage.NoteOn && velocity > 0;
-      const isNoteOff =
-        event.messageType === ChannelMessage.NoteOff ||
-        (event.messageType === ChannelMessage.NoteOn && velocity === 0);
-
-      if (isNoteOn) {
-        let active = activeNotes.get(pitch);
-
-        if (!active) {
-          active = [];
-          activeNotes.set(pitch, active);
-        }
-
-        active.push({
-          tick: absoluteTick,
-          velocity,
-        });
-
-        continue;
-      }
-
-      if (isNoteOff) {
-        const active = activeNotes.get(pitch);
-
-        if (!active || active.length === 0) {
-          continue;
-        }
-
-        const noteOn = active.shift();
-
-        if (!noteOn) {
-          continue;
-        }
-
-        notes.push({
-          tick: noteOn.tick,
-          durationTicks: absoluteTick - noteOn.tick,
-          pitch,
-          velocity: noteOn.velocity,
-        } as PianoRollNote);
-
-        if (active.length === 0) {
-          activeNotes.delete(pitch);
-        }
-      }
-    }
-
-    return notes;
+    return track.getNotes().map((n) => {
+      return {
+        tick: n.start,
+        durationTicks: n.end - n.start,
+        pitch: n.note,
+        velocity: n.velocity,
+      };
+    });
   }
 
   private drawPitchRows(width: number, height: number): void {
