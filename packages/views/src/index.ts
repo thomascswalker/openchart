@@ -1,2 +1,2 @@
-export * from "./view.js";
+export * from "./chartView.js";
 export * from "./config.js";

@@ -1,8 +1,10 @@
 import {
   ChannelMessage,
   Midi,
+  MidiNote,
   MidiTrack,
   type MidiChannelEvent,
+  GetNotesOptions,
 } from "@midiedit/core";
 import {
   defaultConfig,
@@ -44,53 +46,6 @@ enum Note {
   Orange = 0x4,
 }
 
-class NoteView {
-  note: number;
-  velocity: number;
-
-  start: number;
-  end: number;
-
-  noteOn: MidiChannelEvent;
-  noteOff: MidiChannelEvent;
-
-  previous: NoteView | undefined;
-
-  constructor(
-    note: number,
-    velocity: number,
-    start: number,
-    end: number,
-    noteOn: MidiChannelEvent,
-    noteOff: MidiChannelEvent,
-    previous: NoteView | undefined,
-  ) {
-    this.note = note;
-    this.velocity = velocity;
-    this.start = start;
-    this.end = end;
-    this.noteOn = noteOn;
-    this.noteOff = noteOff;
-    this.previous = previous;
-  }
-
-  public getLength(): number {
-    return this.end - this.start;
-  }
-
-  public setStart(value: number) {
-    this.start = value;
-  }
-
-  public setEnd(value: number) {
-    this.end = value;
-  }
-
-  public setNote(value: number) {
-    this.note = value;
-  }
-}
-
 class ChartView {
   private track: TrackView;
   private midiTrack: MidiTrack | undefined;
@@ -124,90 +79,21 @@ class ChartView {
     return this.difficulty;
   }
 
-  public getNotes(): NoteView[] {
-    interface PendingNote {
-      note: number;
-      velocity: number;
-      startTick: number;
-      noteOn: MidiChannelEvent;
+  public getOffset(): number {
+    return this.offset;
+  }
+
+  public getLaneCount(): number {
+    return this.lanes;
+  }
+
+  public getNotes(): MidiNote[] {
+    const low = this.offset;
+    const high = this.offset + this.lanes;
+    if (!this.midiTrack) {
+      throw new Error("MIDI Track is invalid!");
     }
-
-    const events =
-      this.midiTrack?.getNoteEventsInPitchRange(
-        this.offset,
-        this.offset + this.lanes,
-      ) || [];
-    if (events.length === 0) {
-      return [];
-    }
-
-    let currentTick = 0;
-    const activeNotes = new Map<number, PendingNote[]>();
-    const notes: NoteView[] = [];
-    let previousNote: NoteView | undefined;
-
-    for (const event of events) {
-      currentTick += event.deltaTime;
-
-      const noteNumber = event.data1;
-      const velocity = event.data2 ?? 0;
-
-      const isNoteOn =
-        event.messageType === ChannelMessage.NoteOn && velocity > 0;
-
-      const isNoteOff =
-        event.messageType === ChannelMessage.NoteOff ||
-        (event.messageType === ChannelMessage.NoteOn && velocity === 0);
-
-      if (isNoteOn) {
-        const pending: PendingNote = {
-          note: noteNumber,
-          velocity,
-          startTick: currentTick,
-          noteOn: event,
-        };
-
-        const notesForPitch = activeNotes.get(noteNumber) ?? [];
-        notesForPitch.push(pending);
-        activeNotes.set(noteNumber, notesForPitch);
-
-        continue;
-      }
-
-      if (isNoteOff) {
-        const notesForPitch = activeNotes.get(noteNumber);
-
-        if (!notesForPitch || notesForPitch.length === 0) {
-          console.error(`Unmatched NoteOff event: ${notesForPitch}`);
-          continue;
-        }
-
-        const pending = notesForPitch.shift()!;
-
-        const newNote = new NoteView(
-          pending.note,
-          pending.velocity,
-          pending.startTick,
-          currentTick,
-          pending.noteOn,
-          event,
-          previousNote,
-        );
-        notes.push(newNote);
-
-        // Store the previous note which is not the same tick position
-        // as this current note.
-        if (previousNote && previousNote.start !== newNote.start) {
-          previousNote = newNote;
-        }
-
-        if (notesForPitch.length === 0) {
-          activeNotes.delete(noteNumber);
-        }
-      }
-    }
-    notes.sort((a, b) => a.start - b.start);
-    return notes;
+    return this.midiTrack?.getNotes({ pitch: { low, high } }) || [];
   }
 
   public addNote(note: Note, start: number, end: number = 0): void {
@@ -237,7 +123,7 @@ class ChartView {
     );
   }
 
-  public removeNote(note: NoteView): boolean {
+  public removeNote(note: MidiNote): boolean {
     if (
       !this.midiTrack ||
       note.note < this.offset ||
