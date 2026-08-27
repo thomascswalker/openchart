@@ -1,7 +1,7 @@
 import path from "path";
 import { ChannelMessage, Midi, MidiTrack } from "@midiedit/core";
 import { expect, describe, beforeAll, it } from "vitest";
-import { SongView, Difficulty, Note } from "../src/view.js";
+import { SongView, Difficulty, Note } from "../src/chartView.js";
 import * as fs from "fs";
 
 describe("data.json", () => {

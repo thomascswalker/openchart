@@ -1,10 +1,13 @@
 import { MAX_VARIABLE_LENGTH_VALUE } from "./constants.js";
+import { MidiTrack } from "./midi.js";
 import {
   MidiEvent,
   MidiMetaPayload,
   DefaultMetaPayload,
   MetaType,
   MidiSysExEvent,
+  MidiChannelEvent,
+  ChannelMessage,
 } from "./types.js";
 
 export function isTwoByteMessage(status: number): boolean {

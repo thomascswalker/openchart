@@ -20,14 +20,14 @@ import {
 } from "./util.js";
 import { headerParser, trackParser } from "./parsers.js";
 
-class MidiNote {
-  on: MidiChannelEvent;
-  off: MidiChannelEvent;
-
-  constructor(on: MidiChannelEvent, off: MidiChannelEvent) {
-    this.on = on;
-    this.off = off;
-  }
+interface MidiNote {
+  note: number;
+  velocity: number;
+  start: number;
+  end: number;
+  noteOn: MidiChannelEvent;
+  noteOff: MidiChannelEvent;
+  previous?: MidiNote;
 }
 
 class MidiHeader {
@@ -37,10 +37,20 @@ class MidiHeader {
   isSMPTE: boolean = false;
 }
 
+export interface GetNotesOptions {
+  pitch?: {
+    low: number;
+    high: number;
+  };
+}
+
 class MidiTrack {
   format: MidiFormat = 0;
   name: string = "";
   events: MidiEvent[] = [];
+
+  private noteCache: MidiNote[] | null = null;
+  private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
 
   public constructor(name: string = "") {
     this.name = name;
@@ -114,6 +124,9 @@ class MidiTrack {
       this.events.length,
       ...timedEvents.map(({ event }) => event),
     );
+
+    this.noteCache = null;
+    this.noteCacheByPitch = null;
   }
 
   public getAbsoluteTickAt(eventIndex: number): number {
@@ -280,6 +293,116 @@ class MidiTrack {
 
     this.replaceTimedEvents(remaining);
     return true;
+  }
+
+  private buildNoteCache(): void {
+    interface PendingNote {
+      pitch: number;
+      velocity: number;
+      startTick: number;
+      noteOn: MidiChannelEvent;
+    }
+
+    let currentTick = 0;
+    const activeNotes = new Map<number, PendingNote[]>();
+    const notes: MidiNote[] = [];
+    let previousNote: MidiNote | undefined;
+
+    const noteEvents = this.getNoteEvents();
+    for (const event of noteEvents) {
+      currentTick += event.deltaTime;
+
+      const pitch = event.data1;
+      const velocity = event.data2 ?? 0;
+
+      const isNoteOn =
+        event.messageType === ChannelMessage.NoteOn && velocity > 0;
+
+      const isNoteOff =
+        event.messageType === ChannelMessage.NoteOff ||
+        (event.messageType === ChannelMessage.NoteOn && velocity === 0);
+
+      if (isNoteOn) {
+        const pending: PendingNote = {
+          pitch,
+          velocity,
+          startTick: currentTick,
+          noteOn: event,
+        };
+
+        const notesForPitch = activeNotes.get(pitch) ?? [];
+        notesForPitch.push(pending);
+        activeNotes.set(pitch, notesForPitch);
+
+        continue;
+      }
+
+      if (isNoteOff) {
+        const notesForPitch = activeNotes.get(pitch);
+
+        if (!notesForPitch || notesForPitch.length === 0) {
+          console.error(`Unmatched NoteOff event: ${notesForPitch}`);
+          continue;
+        }
+
+        const pending = notesForPitch.shift()!;
+
+        const newNote = {
+          note: pending.pitch,
+          velocity: pending.velocity,
+          start: pending.startTick,
+          end: currentTick,
+          noteOn: pending.noteOn,
+          noteOff: event,
+          previous: previousNote,
+        } as MidiNote;
+
+        notes.push(newNote);
+
+        // Store the previous note which is not the same tick position
+        // as this current note.
+        if (previousNote && previousNote.start !== newNote.start) {
+          previousNote = newNote;
+        }
+
+        if (notesForPitch.length === 0) {
+          activeNotes.delete(pitch);
+        }
+      }
+    }
+    notes.sort((a, b) => a.start - b.start);
+
+    const notesByPitch = new Map<number, MidiNote[]>();
+    for (const note of notes) {
+      const group = notesByPitch.get(note.note) ?? [];
+      group.push(note);
+      notesByPitch.set(note.note, group);
+    }
+
+    this.noteCache = notes;
+    this.noteCacheByPitch = notesByPitch;
+  }
+
+  public getNotes(options: GetNotesOptions = {}): MidiNote[] {
+    if (this.noteCache === null || this.noteCacheByPitch === null) {
+      this.buildNoteCache();
+    }
+
+    if (options.pitch) {
+      const { low, high } = options.pitch;
+      const rangeNotes: MidiNote[] = [];
+
+      for (const [pitch, notesForPitch] of this.noteCacheByPitch!) {
+        if (pitch >= low && pitch < high) {
+          rangeNotes.push(...notesForPitch);
+        }
+      }
+
+      rangeNotes.sort((a, b) => a.start - b.start);
+      return rangeNotes;
+    }
+
+    return this.noteCache!;
   }
 
   public toBuffer(): Uint8Array {

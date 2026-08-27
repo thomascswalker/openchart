@@ -1,4 +1,4 @@
-import { ChannelMessage, type Midi } from "@midiedit/core";
+import { Midi, type MidiNote, type MidiTrack } from "@midiedit/core";
 import { clamp } from "es-toolkit";
 import { Graphics, type Application } from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
@@ -10,7 +10,25 @@ import {
   MinimumPixelsPerSemitone,
   ZoomSensitivity,
 } from "./constants";
-import type { ActiveNote, PianoRollCamera, PianoRollNote } from "./types";
+import type { PianoRollCamera, PianoRollNote } from "./types";
+import {
+  buildNoteIndex,
+  getVisibleNoteRange,
+  type PianoRollNoteIndex,
+} from "./visibility";
+
+interface NoteGeometryCache {
+  track: MidiTrack;
+  source: PianoRollNote[];
+  tickWidth: number;
+  rowHeight: number;
+  width: number;
+  height: number;
+  startTick: number;
+  endTick: number;
+  minPitch: number;
+  maxPitch: number;
+}
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly keyboardWidth = 64;
@@ -21,6 +39,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly majorGrid = new Graphics();
   private readonly notes = new Graphics();
   private readonly keyboard = new Graphics();
+
+  private mappedNotesTrack: MidiTrack | null = null;
+  private mappedNotesSource: MidiNote[] | null = null;
+  private mappedNotes: PianoRollNote[] = [];
+  private mappedNotesIndex: PianoRollNoteIndex | null = null;
+  private noteGeometryCache: NoteGeometryCache | null = null;
 
   private canvas: HTMLCanvasElement | null = null;
 
@@ -60,6 +84,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     this.canvas = null;
     this.panPointerId = null;
+    this.noteGeometryCache = null;
+    this.clearMappedNotes();
 
     super.destroy();
   }
@@ -67,6 +93,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   protected override draw(app: Application): void {
     const width = app.screen.width;
     const height = app.screen.height;
+
+    this.pitchRows.clear();
+    this.minorGrid.clear();
+    this.majorGrid.clear();
+    this.keyboard.clear();
 
     this.drawPitchRows(width, height);
     this.drawGrid(width, height);
@@ -202,73 +233,31 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return [];
     }
 
-    const notes: PianoRollNote[] = [];
+    const sourceNotes = track.getNotes();
 
-    let absoluteTick = 0;
-
-    const activeNotes = new Map<number, ActiveNote[]>();
-
-    // For now, only draw notes
-    for (const event of track.getNoteEvents()) {
-      absoluteTick += event.deltaTime;
-
-      const pitch = event.data1;
-      const velocity = event.data2 ?? 0;
-
-      const isNoteOn =
-        event.messageType === ChannelMessage.NoteOn && velocity > 0;
-      const isNoteOff =
-        event.messageType === ChannelMessage.NoteOff ||
-        (event.messageType === ChannelMessage.NoteOn && velocity === 0);
-
-      if (isNoteOn) {
-        let active = activeNotes.get(pitch);
-
-        if (!active) {
-          active = [];
-          activeNotes.set(pitch, active);
-        }
-
-        active.push({
-          tick: absoluteTick,
-          velocity,
-        });
-
-        continue;
-      }
-
-      if (isNoteOff) {
-        const active = activeNotes.get(pitch);
-
-        if (!active || active.length === 0) {
-          continue;
-        }
-
-        const noteOn = active.shift();
-
-        if (!noteOn) {
-          continue;
-        }
-
-        notes.push({
-          tick: noteOn.tick,
-          durationTicks: absoluteTick - noteOn.tick,
-          pitch,
-          velocity: noteOn.velocity,
-        } as PianoRollNote);
-
-        if (active.length === 0) {
-          activeNotes.delete(pitch);
-        }
-      }
+    if (
+      track === this.mappedNotesTrack &&
+      sourceNotes === this.mappedNotesSource
+    ) {
+      return this.mappedNotes;
     }
 
-    return notes;
+    this.mappedNotesTrack = track;
+    this.mappedNotesSource = sourceNotes;
+    this.mappedNotes = sourceNotes.map((n) => {
+      return {
+        tick: n.start,
+        durationTicks: n.end - n.start,
+        pitch: n.note,
+        velocity: n.velocity,
+      };
+    });
+    this.mappedNotesIndex = buildNoteIndex(this.mappedNotes);
+
+    return this.mappedNotes;
   }
 
   private drawPitchRows(width: number, height: number): void {
-    this.pitchRows.clear();
-
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -297,8 +286,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawKeyboard(height: number): void {
-    this.keyboard.clear();
-
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -343,9 +330,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawGrid(width: number, height: number): void {
-    this.minorGrid.clear();
-    this.majorGrid.clear();
-
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -386,16 +370,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private drawNotes(width: number, height: number): void {
     // Clear all notes in the view
-    this.notes.clear();
+    this.notes.position.set(0, 0);
 
     // If a MIDI file has not been loaded or there's no selected track, return.
     if (!this.state.midi || this.state.selectedTrackIndex === null) {
+      this.notes.clear();
+      this.noteGeometryCache = null;
+      this.clearMappedNotes();
       return;
     }
 
     // Get the current track. If it's invalid, return.
     const track = this.state.midi.tracks[this.state.selectedTrackIndex];
     if (!track) {
+      this.notes.clear();
+      this.noteGeometryCache = null;
+      this.clearMappedNotes();
       return;
     }
 
@@ -410,23 +400,132 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.state.midi,
       this.state.selectedTrackIndex,
     );
-    notes.forEach((note) => {
-      // Compute note rect
-      const x = this.keyboardWidth + (note.tick - this.camera.x) * tickWidth;
-      const y = (this.camera.y - note.pitch) * rowHeight;
-      const w = Math.max(2, note.durationTicks * tickWidth);
 
-      // If the note is outside the bounds of the current view frame, return
-      if (x + w < this.keyboardWidth || x > width || y + h < 0 || y > height) {
-        return;
+    if (
+      !this.canReuseNoteGeometry(
+        track,
+        notes,
+        tickWidth,
+        rowHeight,
+        width,
+        height,
+      )
+    ) {
+      this.rebuildNoteGeometry(
+        track,
+        notes,
+        tickWidth,
+        rowHeight,
+        width,
+        height,
+        h,
+        fill,
+        stroke,
+      );
+    }
+
+    this.notes.position.set(
+      -this.camera.x * tickWidth,
+      this.camera.y * rowHeight,
+    );
+  }
+
+  private clearMappedNotes(): void {
+    this.mappedNotesTrack = null;
+    this.mappedNotesSource = null;
+    this.mappedNotes = [];
+    this.mappedNotesIndex = null;
+  }
+
+  private canReuseNoteGeometry(
+    track: MidiTrack,
+    notes: PianoRollNote[],
+    tickWidth: number,
+    rowHeight: number,
+    width: number,
+    height: number,
+  ): boolean {
+    const cache = this.noteGeometryCache;
+
+    if (
+      !cache ||
+      cache.track !== track ||
+      cache.source !== notes ||
+      cache.tickWidth !== tickWidth ||
+      cache.rowHeight !== rowHeight ||
+      cache.width !== width ||
+      cache.height !== height
+    ) {
+      return false;
+    }
+
+    const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
+    const verticalRange = height / rowHeight;
+
+    return (
+      this.camera.x >= cache.startTick &&
+      this.camera.x + horizontalRange <= cache.endTick &&
+      this.camera.y - verticalRange >= cache.minPitch &&
+      this.camera.y <= cache.maxPitch
+    );
+  }
+
+  private rebuildNoteGeometry(
+    track: MidiTrack,
+    notes: PianoRollNote[],
+    tickWidth: number,
+    rowHeight: number,
+    width: number,
+    height: number,
+    noteHeight: number,
+    fill: number,
+    stroke: { color: number; width: number },
+  ): void {
+    const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
+    const verticalRange = height / rowHeight;
+    const startTick = Math.max(0, this.camera.x - horizontalRange);
+    const endTick = this.camera.x + horizontalRange * 2;
+    const minPitch = this.camera.y - verticalRange;
+    const maxPitch = this.camera.y + verticalRange;
+    const visibleRange = getVisibleNoteRange(
+      notes,
+      this.mappedNotesIndex,
+      startTick,
+      endTick,
+      tickWidth,
+    );
+    const radius = Math.min(2, noteHeight / 4);
+
+    this.notes.clear();
+
+    for (let index = visibleRange.start; index < visibleRange.end; index++) {
+      const note = notes[index];
+
+      if (note.pitch < minPitch || note.pitch > maxPitch) {
+        continue;
       }
 
-      // Draw the note
-      const radius = Math.min(2, h / 4);
+      const x = this.keyboardWidth + note.tick * tickWidth;
+      const y = -note.pitch * rowHeight;
+      const noteWidth = Math.max(2, note.durationTicks * tickWidth);
+
       this.notes
-        .roundRect(x, y + 1, w, h, radius)
+        .roundRect(x, y + 1, noteWidth, noteHeight, radius)
         .fill(fill)
         .stroke(stroke);
-    });
+    }
+
+    this.noteGeometryCache = {
+      track,
+      source: notes,
+      tickWidth,
+      rowHeight,
+      width,
+      height,
+      startTick,
+      endTick,
+      minPitch,
+      maxPitch,
+    };
   }
 }
