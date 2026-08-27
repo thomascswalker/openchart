@@ -1,8 +1,16 @@
-import type { ChartViewDefinition } from "./AbstractChartView";
-
 import { PianoRollView } from "./pianoRoll";
 
-export const ChartViews: readonly ChartViewDefinition[] = [
+export type ChartView = PianoRollView | any;
+export type ChartViewFactory = () => ChartView;
+
+export interface ChartViewDefinition {
+  id: string;
+  name: string;
+
+  createRenderer: ChartViewFactory;
+}
+
+export const CHART_VIEWS = [
   {
     id: "piano-roll",
     name: "Piano Roll",

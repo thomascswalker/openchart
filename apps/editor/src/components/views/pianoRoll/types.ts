@@ -14,22 +14,22 @@ export interface PianoRollCamera {
   /**
    * Absolute MIDI tick at the left edge of the note viewport.
    */
-  startTick: number;
+  x: number;
 
   /**
    * MIDI pitch at the top edge of the viewport.
    *
    * This is a float so vertical panning can be smooth.
    */
-  topPitch: number;
+  y: number;
 
   /**
    * Horizontal zoom.
    */
-  pixelsPerQuarter: number;
+  h: number;
 
   /**
    * Vertical zoom.
    */
-  pixelsPerSemitone: number;
+  v: number;
 }

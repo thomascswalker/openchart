@@ -1,10 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import type {
-  AbstractChartView,
-  ChartViewFactory,
-  ChartViewState,
-} from "./AbstractChartView";
+import type { ChartViewState } from "./AbstractChartView";
+import type { ChartView, ChartViewFactory } from "./ChartViews";
 
 interface ChartViewHostProps {
   createRenderer: ChartViewFactory;
@@ -14,7 +11,7 @@ interface ChartViewHostProps {
 export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
-  const rendererRef = useRef<AbstractChartView | null>(null);
+  const viewRef = useRef<ChartView | null>(null);
   const latestStateRef = useRef(state);
 
   latestStateRef.current = state;
@@ -34,7 +31,7 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
 
     const renderer = createRenderer();
 
-    rendererRef.current = renderer;
+    viewRef.current = renderer;
 
     const resizeRenderer = (): void => {
       const bounds = host.getBoundingClientRect();
@@ -61,8 +58,8 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
     return () => {
       resizeObserver.disconnect();
 
-      if (rendererRef.current === renderer) {
-        rendererRef.current = null;
+      if (viewRef.current === renderer) {
+        viewRef.current = null;
       }
 
       renderer.destroy();
@@ -74,7 +71,7 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
    * the existing renderer.
    */
   useEffect(() => {
-    rendererRef.current?.update(state);
+    viewRef.current?.update(state);
   }, [state]);
 
   return <div ref={hostRef} className="chart-view-host" />;

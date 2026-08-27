@@ -5,7 +5,7 @@ import { Midi } from "@midiedit/core";
 import { MidiProvider, useMidi } from "./MidiContext";
 
 import { ChartViewHost } from "./views/ChartViewHost";
-import { ChartViews } from "./views/ChartViews";
+import { CHART_VIEWS } from "./views/ChartViews";
 
 import "./MidiEditor.css";
 
@@ -138,10 +138,10 @@ interface MidiVisualizationProps {
 function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
   const { midiData } = useMidi();
 
-  const [activeViewId, setActiveViewId] = useState(ChartViews[0].id);
+  const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
 
   const activeView =
-    ChartViews.find((view) => view.id === activeViewId) ?? ChartViews[0];
+    CHART_VIEWS.find((view) => view.id === activeViewId) ?? CHART_VIEWS[0];
 
   const selectedTrack =
     midiData && selectedTrackIndex !== null
@@ -167,7 +167,7 @@ function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
             setActiveViewId(event.target.value);
           }}
         >
-          {ChartViews.map((view) => (
+          {CHART_VIEWS.map((view) => (
             <option key={view.id} value={view.id}>
               {view.name}
             </option>
