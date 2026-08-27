@@ -1,360 +1,254 @@
-import {
-    useRef,
-    useState,
-    type ChangeEvent,
-} from 'react';
+import { useRef, useState, type ChangeEvent } from "react";
 
-import { Midi } from '@midiedit/core';
+import { Midi } from "@midiedit/core";
 
-import {
-    MidiProvider,
-    useMidi,
-} from './MidiContext';
+import { MidiProvider, useMidi } from "./MidiContext";
 
-import { MidiViewHost } from './views/MidiViewHost';
-import { MidiViews } from './views/MidiViews';
+import { ChartViewHost } from "./views/ChartViewHost";
+import { ChartViews } from "./views/ChartViews";
 
-import './MidiEditor.css';
+import "./MidiEditor.css";
 
 function MidiToolbar() {
-    const fileInputRef =
-        useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const {
-        midiData,
-        setMidiData,
-        setFileName,
-        fileName,
-    } = useMidi();
+  const { midiData, setMidiData, setFileName, fileName } = useMidi();
 
-    const triggerFileDialog = (): void => {
-        fileInputRef.current?.click();
-    };
+  const triggerFileDialog = (): void => {
+    fileInputRef.current?.click();
+  };
 
-    const handleFileLoad = (
-        event: ChangeEvent<HTMLInputElement>,
-    ): void => {
-        const files = event.target.files;
+  const handleFileLoad = (event: ChangeEvent<HTMLInputElement>): void => {
+    const files = event.target.files;
 
-        if (
-            !files ||
-            files.length === 0
-        ) {
-            return;
-        }
+    if (!files || files.length === 0) {
+      return;
+    }
 
-        const file = files[0];
+    const file = files[0];
 
-        void file
-            .arrayBuffer()
-            .then((data) => {
-                setFileName(file.name);
+    void file.arrayBuffer().then((data) => {
+      setFileName(file.name);
 
-                setMidiData(
-                    new Midi(
-                        new Uint8Array(data),
-                    ),
-                );
-            });
-    };
+      setMidiData(new Midi(new Uint8Array(data)));
+    });
+  };
 
-    const handleSave = (): void => {
-        if (!midiData) {
-            return;
-        }
+  const handleSave = (): void => {
+    if (!midiData) {
+      return;
+    }
 
-        // TODO:
-        // Serialize MIDI and save using fileName.
-        console.log('Save', fileName);
-    };
+    // TODO:
+    // Serialize MIDI and save using fileName.
+    console.log("Save", fileName);
+  };
 
-    const handleSaveAs = (): void => {
-        if (!midiData) {
-            return;
-        }
+  const handleSaveAs = (): void => {
+    if (!midiData) {
+      return;
+    }
 
-        // TODO:
-        // Serialize MIDI and choose a new file.
-        console.log('Save As');
-    };
+    // TODO:
+    // Serialize MIDI and choose a new file.
+    console.log("Save As");
+  };
 
-    return (
-        <header className="midi-toolbar">
-            <div className="midi-toolbar__actions">
-                <button
-                    type="button"
-                    onClick={triggerFileDialog}
-                >
-                    Open
-                </button>
+  return (
+    <header className="midi-toolbar">
+      <div className="midi-toolbar__actions">
+        <button type="button" onClick={triggerFileDialog}>
+          Open
+        </button>
 
-                <button
-                    type="button"
-                    disabled={!midiData}
-                    onClick={handleSave}
-                >
-                    Save
-                </button>
+        <button type="button" disabled={!midiData} onClick={handleSave}>
+          Save
+        </button>
 
-                <button
-                    type="button"
-                    disabled={!midiData}
-                    onClick={handleSaveAs}
-                >
-                    Save As
-                </button>
-            </div>
+        <button type="button" disabled={!midiData} onClick={handleSaveAs}>
+          Save As
+        </button>
+      </div>
 
-            <div className="midi-toolbar__file">
-                {fileName ?? 'No MIDI file loaded'}
-            </div>
+      <div className="midi-toolbar__file">
+        {fileName ?? "No MIDI file loaded"}
+      </div>
 
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".mid,.midi"
-                onChange={handleFileLoad}
-                hidden
-            />
-        </header>
-    );
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".mid,.midi"
+        onChange={handleFileLoad}
+        hidden
+      />
+    </header>
+  );
 }
 
 interface TrackListProps {
-    selectedTrackIndex: number | null;
+  selectedTrackIndex: number | null;
 
-    onSelectTrack(
-        index: number,
-    ): void;
+  onSelectTrack(index: number): void;
 }
 
-function TrackList({
-    selectedTrackIndex,
-    onSelectTrack,
-}: TrackListProps) {
-    const { midiData } = useMidi();
+function TrackList({ selectedTrackIndex, onSelectTrack }: TrackListProps) {
+  const { midiData } = useMidi();
 
-    if (!midiData) {
-        return (
-            <div className="track-list track-list--empty">
-                No MIDI file loaded.
-            </div>
-        );
-    }
-
+  if (!midiData) {
     return (
-        <div className="track-list">
-            {midiData.tracks.map(
-                (track, index) => {
-                    const selected =
-                        selectedTrackIndex ===
-                        index;
-
-                    return (
-                        <div
-                            key={index}
-                            className={
-                                selected
-                                    ? 'track-row track-row--selected'
-                                    : 'track-row'
-                            }
-                            onClick={() => {
-                                onSelectTrack(
-                                    index,
-                                );
-                            }}
-                        >
-                            <div className="track-row__header">
-                                <span className="track-row__number">
-                                    {index + 1}
-                                </span>
-
-                                <span className="track-row__name">
-                                    {track.name ||
-                                        `Track ${index + 1}`}
-                                </span>
-                            </div>
-
-                            <div className="track-row__timeline">
-                                <span className="track-row__placeholder">
-                                    Track contents
-                                </span>
-                            </div>
-                        </div>
-                    );
-                },
-            )}
-        </div>
+      <div className="track-list track-list--empty">No MIDI file loaded.</div>
     );
+  }
+
+  return (
+    <div className="track-list">
+      {midiData.tracks.map((track, index) => {
+        const selected = selectedTrackIndex === index;
+
+        return (
+          <div
+            key={index}
+            className={selected ? "track-row track-row--selected" : "track-row"}
+            onClick={() => {
+              onSelectTrack(index);
+            }}
+          >
+            <div className="track-row__header">
+              <span className="track-row__number">{index + 1}</span>
+
+              <span className="track-row__name">
+                {track.name || `Track ${index + 1}`}
+              </span>
+            </div>
+
+            <div className="track-row__timeline">
+              <span className="track-row__placeholder">Track contents</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 interface MidiVisualizationProps {
-    selectedTrackIndex: number | null;
+  selectedTrackIndex: number | null;
 }
 
-function MidiVisualization({
-    selectedTrackIndex,
-}: MidiVisualizationProps) {
-    const { midiData } = useMidi();
+function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
+  const { midiData } = useMidi();
 
-    const [
-        activeViewId,
-        setActiveViewId,
-    ] = useState(
-        MidiViews[0].id,
-    );
+  const [activeViewId, setActiveViewId] = useState(ChartViews[0].id);
 
-    const activeView =
-        MidiViews.find(
-            (view) =>
-                view.id === activeViewId,
-        ) ?? MidiViews[0];
+  const activeView =
+    ChartViews.find((view) => view.id === activeViewId) ?? ChartViews[0];
 
-    const selectedTrack =
-        midiData &&
-            selectedTrackIndex !== null
-            ? midiData.tracks[
-            selectedTrackIndex
-            ]
-            : null;
+  const selectedTrack =
+    midiData && selectedTrackIndex !== null
+      ? midiData.tracks[selectedTrackIndex]
+      : null;
 
-    return (
-        <section className="midi-view">
-            <div className="midi-view__header">
-                <div className="midi-view__title">
-                    <strong>
-                        {activeView.name}
-                    </strong>
+  return (
+    <section className="midi-view">
+      <div className="midi-view__header">
+        <div className="midi-view__title">
+          <strong>{activeView.name}</strong>
 
-                    <span>
-                        {selectedTrack
-                            ? selectedTrack.name ||
-                            `Track ${selectedTrackIndex! + 1}`
-                            : 'No track selected'}
-                    </span>
-                </div>
+          <span>
+            {selectedTrack
+              ? selectedTrack.name || `Track ${selectedTrackIndex! + 1}`
+              : "No track selected"}
+          </span>
+        </div>
 
-                <select
-                    value={activeViewId}
-                    onChange={(event) => {
-                        setActiveViewId(
-                            event.target.value,
-                        );
-                    }}
-                >
-                    {MidiViews.map((view) => (
-                        <option
-                            key={view.id}
-                            value={view.id}
-                        >
-                            {view.name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+        <select
+          value={activeViewId}
+          onChange={(event) => {
+            setActiveViewId(event.target.value);
+          }}
+        >
+          {ChartViews.map((view) => (
+            <option key={view.id} value={view.id}>
+              {view.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-            <div className="midi-view__body">
-                <MidiViewHost
-                    createRenderer={
-                        activeView.createRenderer
-                    }
-                    state={{
-                        midi: midiData,
-                        selectedTrackIndex,
-                    }}
-                />
-            </div>
-        </section>
-    );
+      <div className="midi-view__body">
+        <ChartViewHost
+          createRenderer={activeView.createRenderer}
+          state={{
+            midi: midiData,
+            selectedTrackIndex,
+          }}
+        />
+      </div>
+    </section>
+  );
 }
 
 function MidiWorkspace() {
-    const { midiData } = useMidi();
+  const { midiData } = useMidi();
 
-    const [
-        selectedTrackIndex,
-        setSelectedTrackIndex,
-    ] = useState<number | null>(
-        null,
-    );
+  const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(
+    null,
+  );
 
-    const selectedTrackIsValid =
-        midiData !== null &&
-        selectedTrackIndex !== null &&
-        selectedTrackIndex <
-        midiData.tracks.length;
+  const selectedTrackIsValid =
+    midiData !== null &&
+    selectedTrackIndex !== null &&
+    selectedTrackIndex < midiData.tracks.length;
 
-    const actualSelectedTrack =
-        selectedTrackIsValid
-            ? selectedTrackIndex
-            : midiData &&
-                midiData.tracks.length > 0
-                ? 0
-                : null;
+  const actualSelectedTrack = selectedTrackIsValid
+    ? selectedTrackIndex
+    : midiData && midiData.tracks.length > 0
+      ? 0
+      : null;
 
-    return (
-        <main className="midi-workspace">
-            <section className="arrangement">
-                <div className="arrangement__header">
-                    <strong>Tracks</strong>
+  return (
+    <main className="midi-workspace">
+      <section className="arrangement">
+        <div className="arrangement__header">
+          <strong>Tracks</strong>
 
-                    {midiData && (
-                        <span className="arrangement__metadata">
-                            Format{' '}
-                            {
-                                midiData.header
-                                    .format
-                            }
-                            {' · '}
-                            PPQN{' '}
-                            {
-                                midiData.header
-                                    .division
-                            }
-                            {' · '}
-                            {
-                                midiData.tracks
-                                    .length
-                            }{' '}
-                            tracks
-                        </span>
-                    )}
-                </div>
+          {midiData && (
+            <span className="arrangement__metadata">
+              Format {midiData.header.format}
+              {" · "}
+              PPQN {midiData.header.division}
+              {" · "}
+              {midiData.tracks.length} tracks
+            </span>
+          )}
+        </div>
 
-                <TrackList
-                    selectedTrackIndex={
-                        actualSelectedTrack
-                    }
-                    onSelectTrack={
-                        setSelectedTrackIndex
-                    }
-                />
-            </section>
+        <TrackList
+          selectedTrackIndex={actualSelectedTrack}
+          onSelectTrack={setSelectedTrackIndex}
+        />
+      </section>
 
-            <MidiVisualization
-                selectedTrackIndex={
-                    actualSelectedTrack
-                }
-            />
-        </main>
-    );
+      <MidiVisualization selectedTrackIndex={actualSelectedTrack} />
+    </main>
+  );
 }
 
 function MidiEditorContent() {
-    return (
-        <div className="midi-editor">
-            <MidiToolbar />
-            <MidiWorkspace />
-        </div>
-    );
+  return (
+    <div className="midi-editor">
+      <MidiToolbar />
+      <MidiWorkspace />
+    </div>
+  );
 }
 
 function MidiEditor() {
-    return (
-        <MidiProvider>
-            <MidiEditorContent />
-        </MidiProvider>
-    );
+  return (
+    <MidiProvider>
+      <MidiEditorContent />
+    </MidiProvider>
+  );
 }
 
 export default MidiEditor;

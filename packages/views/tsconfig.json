@@ -9,13 +9,6 @@
     "resolveJsonModule": true,
     "noEmit": false
   },
-  "include": [
-    "src/**/*",
-    "configs/*"
-  ],
-  "exclude": [
-    "dist",
-    "node_modules",
-    "tests"
-  ]
+  "include": ["src/**/*", "configs/*"],
+  "exclude": ["dist", "node_modules", "tests"]
 }

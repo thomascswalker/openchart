@@ -1,496 +1,417 @@
 // https://midimusic.github.io/tech/midispec.html
 
 import { Parser } from "binary-parser/dist/binary_parser.js";
-import { ChannelMessage, MetaType, MidiChannelEvent, MidiEvent, MidiFormat, MidiMetaEvent, TextMetaPayload, TimedMidiEvent } from "./types.js";
-import { concatBytes, encodeMidiEvent, writeAscii, writeUInt16BE, writeUInt32BE } from "./util.js";
+import {
+  ChannelMessage,
+  MetaType,
+  MidiChannelEvent,
+  MidiEvent,
+  MidiFormat,
+  MidiMetaEvent,
+  TextMetaPayload,
+  TimedMidiEvent,
+} from "./types.js";
+import {
+  concatBytes,
+  encodeMidiEvent,
+  writeAscii,
+  writeUInt16BE,
+  writeUInt32BE,
+} from "./util.js";
 import { headerParser, trackParser } from "./parsers.js";
 
 class MidiNote {
-    on: MidiChannelEvent;
-    off: MidiChannelEvent;
+  on: MidiChannelEvent;
+  off: MidiChannelEvent;
 
-    constructor(on: MidiChannelEvent, off: MidiChannelEvent) {
-        this.on = on;
-        this.off = off;
-    }
+  constructor(on: MidiChannelEvent, off: MidiChannelEvent) {
+    this.on = on;
+    this.off = off;
+  }
 }
 
 class MidiHeader {
-    format: MidiFormat = 0;
-    trackCount: number = 0;
-    division: number = 480;
-    isSMPTE: boolean = false;
+  format: MidiFormat = 0;
+  trackCount: number = 0;
+  division: number = 480;
+  isSMPTE: boolean = false;
 }
 
 class MidiTrack {
-    format: MidiFormat = 0;
-    name: string = "";
-    events: MidiEvent[] = [];
+  format: MidiFormat = 0;
+  name: string = "";
+  events: MidiEvent[] = [];
 
-    public constructor(name: string = "") {
-        this.name = name;
+  public constructor(name: string = "") {
+    this.name = name;
+  }
+
+  public getChannelEvents(): MidiChannelEvent[] {
+    return this.events.filter(
+      (event) => event.status < 0xff,
+    ) as MidiChannelEvent[];
+  }
+
+  public getMetaEvents(): MidiMetaEvent[] {
+    return this.events.filter(
+      (event) => event.status === 0xff,
+    ) as MidiMetaEvent[];
+  }
+
+  public getNoteEvents(): MidiChannelEvent[] {
+    return this.getChannelEvents().filter((event) =>
+      [ChannelMessage.NoteOn, ChannelMessage.NoteOff].includes(
+        event.messageType,
+      ),
+    );
+  }
+
+  public getNoteEventsInPitchRange(
+    low: number,
+    high: number,
+  ): MidiChannelEvent[] {
+    return this.getNoteEvents().filter(
+      (event) => low <= event.data1 && event.data1 < high,
+    );
+  }
+
+  private getTimedEvents(): TimedMidiEvent[] {
+    let tick = 0;
+
+    return this.events.map((event, order) => {
+      tick += event.deltaTime;
+      return {
+        event,
+        tick,
+        order,
+      };
+    });
+  }
+
+  private isEndOfTrack(event: MidiEvent): event is MidiMetaEvent {
+    return (
+      event.status === 0xff &&
+      "type" in event &&
+      event.type === MetaType.EndOfTrack
+    );
+  }
+
+  private replaceTimedEvents(timedEvents: TimedMidiEvent[]): void {
+    let previousTick = 0;
+
+    for (const timedEvent of timedEvents) {
+      if (timedEvent.tick < previousTick) {
+        throw new Error("MIDI events must be ordered by absolute tick");
+      }
+
+      timedEvent.event.deltaTime = timedEvent.tick - previousTick;
+
+      previousTick = timedEvent.tick;
     }
 
-    public getChannelEvents(): MidiChannelEvent[] {
-        return this.events.filter(
-            (event) => event.status < 0xff,
-        ) as MidiChannelEvent[];
+    this.events.splice(
+      0,
+      this.events.length,
+      ...timedEvents.map(({ event }) => event),
+    );
+  }
+
+  public getAbsoluteTickAt(eventIndex: number): number {
+    if (
+      !Number.isInteger(eventIndex) ||
+      eventIndex < 0 ||
+      eventIndex > this.events.length
+    ) {
+      throw new RangeError("eventIndex is outside the MIDI track");
     }
 
-    public getMetaEvents(): MidiMetaEvent[] {
-        return this.events.filter(
-            (event) => event.status === 0xff,
-        ) as MidiMetaEvent[];
+    let tick = 0;
+
+    for (let index = 0; index < eventIndex; index++) {
+      tick += this.events.at(index)?.deltaTime || 0;
     }
 
-    public getNoteEvents(): MidiChannelEvent[] {
-        return this.getChannelEvents().filter(
-            (event) => [
-                ChannelMessage.NoteOn,
-                ChannelMessage.NoteOff,
-            ].includes(event.messageType),
-        );
+    return tick;
+  }
+
+  public getInsertionIndexAt(absoluteTick: number): number {
+    if (!Number.isInteger(absoluteTick) || absoluteTick < 0) {
+      throw new RangeError("absoluteTick must be a non-negative integer");
     }
 
-    public getNoteEventsInPitchRange(
-        low: number,
-        high: number,
-    ): MidiChannelEvent[] {
-        return this.getNoteEvents().filter(
-            (event) => low <= event.data1 && event.data1 < high,
-        );
+    let tick = 0;
+    const endOfTrackIndex = this.events.findIndex((event) =>
+      this.isEndOfTrack(event),
+    );
+
+    const eventLimit =
+      endOfTrackIndex < 0 ? this.events.length : endOfTrackIndex;
+
+    for (let index = 0; index < eventLimit; index++) {
+      tick += this.events.at(index)?.deltaTime || 0;
+
+      if (tick > absoluteTick) {
+        return index;
+      }
     }
 
-    private getTimedEvents(): TimedMidiEvent[] {
-        let tick = 0;
+    return eventLimit;
+  }
 
-        return this.events.map((event, order) => {
-            tick += event.deltaTime;
-            return {
-                event,
-                tick,
-                order,
-            };
-        });
+  public addNote(
+    note: number,
+    startDelta: number,
+    velocity: number = 100,
+    endDelta: number = 240,
+    insertAt: number = this.events.length,
+  ): {
+    noteOn: MidiChannelEvent;
+    noteOff: MidiChannelEvent;
+  } {
+    if (!Number.isInteger(note) || note < 0 || note > 127) {
+      throw new RangeError("MIDI note must be between 0 and 127");
     }
 
-    private isEndOfTrack(event: MidiEvent): event is MidiMetaEvent {
-        return (
-            event.status === 0xff &&
-            "type" in event &&
-            event.type === MetaType.EndOfTrack
-        );
+    if (!Number.isInteger(startDelta) || startDelta < 0) {
+      throw new RangeError("startDelta must be a non-negative integer");
     }
 
-    private replaceTimedEvents(
-        timedEvents: TimedMidiEvent[],
-    ): void {
-        let previousTick = 0;
-
-        for (const timedEvent of timedEvents) {
-            if (timedEvent.tick < previousTick) {
-                throw new Error(
-                    "MIDI events must be ordered by absolute tick",
-                );
-            }
-
-            timedEvent.event.deltaTime =
-                timedEvent.tick - previousTick;
-
-            previousTick = timedEvent.tick;
-        }
-
-        this.events.splice(
-            0,
-            this.events.length,
-            ...timedEvents.map(
-                ({ event }) => event,
-            ),
-        );
+    if (!Number.isInteger(endDelta) || endDelta < 0) {
+      throw new RangeError("endDelta must be a non-negative integer");
     }
 
-    public getAbsoluteTickAt(eventIndex: number): number {
-        if (
-            !Number.isInteger(eventIndex) ||
-            eventIndex < 0 ||
-            eventIndex > this.events.length
-        ) {
-            throw new RangeError(
-                "eventIndex is outside the MIDI track",
-            );
-        }
-
-        let tick = 0;
-
-        for (
-            let index = 0;
-            index < eventIndex;
-            index++
-        ) {
-            tick += this.events.at(index)?.deltaTime || 0;
-        }
-
-        return tick;
+    if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+      throw new RangeError("NoteOn velocity must be between 1 and 127");
     }
 
-    public getInsertionIndexAt(
-        absoluteTick: number,
-    ): number {
-        if (
-            !Number.isInteger(absoluteTick) ||
-            absoluteTick < 0
-        ) {
-            throw new RangeError(
-                "absoluteTick must be a non-negative integer",
-            );
-        }
-
-        let tick = 0;
-        const endOfTrackIndex = this.events.findIndex(
-            (event) => this.isEndOfTrack(event),
-        );
-
-        const eventLimit =
-            endOfTrackIndex < 0
-                ? this.events.length
-                : endOfTrackIndex;
-
-        for (let index = 0; index < eventLimit; index++) {
-            tick += this.events.at(index)?.deltaTime || 0;
-
-            if (tick > absoluteTick) {
-                return index;
-            }
-        }
-
-        return eventLimit;
+    if (
+      !Number.isInteger(insertAt) ||
+      insertAt < 0 ||
+      insertAt > this.events.length
+    ) {
+      throw new RangeError("insertAt is outside the MIDI track");
     }
 
-    public addNote(
-        note: number,
-        startDelta: number,
-        velocity: number = 100,
-        endDelta: number = 240,
-        insertAt: number = this.events.length,
-    ): {
-        noteOn: MidiChannelEvent;
-        noteOff: MidiChannelEvent;
-    } {
-        if (
-            !Number.isInteger(note) ||
-            note < 0 ||
-            note > 127
-        ) {
-            throw new RangeError(
-                "MIDI note must be between 0 and 127",
-            );
-        }
+    const startTick = this.getAbsoluteTickAt(insertAt) + startDelta;
+    const endTick = startTick + endDelta;
+    const channel = 0;
 
-        if (
-            !Number.isInteger(startDelta) ||
-            startDelta < 0
-        ) {
-            throw new RangeError(
-                "startDelta must be a non-negative integer",
-            );
-        }
+    const noteOn: MidiChannelEvent = {
+      deltaTime: 0,
+      status: 0x90 | channel,
+      channel,
+      messageType: ChannelMessage.NoteOn,
+      data1: note,
+      data2: velocity,
+    };
 
-        if (
-            !Number.isInteger(endDelta) ||
-            endDelta < 0
-        ) {
-            throw new RangeError(
-                "endDelta must be a non-negative integer",
-            );
-        }
+    const noteOff: MidiChannelEvent = {
+      deltaTime: 0,
+      status: 0x80 | channel,
+      channel,
+      messageType: ChannelMessage.NoteOff,
+      data1: note,
+      data2: 0,
+    };
 
-        if (
-            !Number.isInteger(velocity) ||
-            velocity < 1 ||
-            velocity > 127
-        ) {
-            throw new RangeError(
-                "NoteOn velocity must be between 1 and 127",
-            );
-        }
+    const timedEvents = this.getTimedEvents();
+    const firstNewOrder = timedEvents.length;
 
-        if (
-            !Number.isInteger(insertAt) ||
-            insertAt < 0 ||
-            insertAt > this.events.length
-        ) {
-            throw new RangeError(
-                "insertAt is outside the MIDI track",
-            );
-        }
+    timedEvents.push(
+      {
+        event: noteOn,
+        tick: startTick,
+        order: firstNewOrder,
+      },
+      {
+        event: noteOff,
+        tick: endTick,
+        order: firstNewOrder + 1,
+      },
+    );
 
-        const startTick = this.getAbsoluteTickAt(insertAt) + startDelta;
-        const endTick = startTick + endDelta;
-        const channel = 0;
+    const finalTick = timedEvents
+      .filter(({ event }) => !this.isEndOfTrack(event))
+      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
 
-        const noteOn: MidiChannelEvent = {
-            deltaTime: 0,
-            status: 0x90 | channel,
-            channel,
-            messageType: ChannelMessage.NoteOn,
-            data1: note,
-            data2: velocity,
-        };
-
-        const noteOff: MidiChannelEvent = {
-            deltaTime: 0,
-            status: 0x80 | channel,
-            channel,
-            messageType: ChannelMessage.NoteOff,
-            data1: note,
-            data2: 0,
-        };
-
-        const timedEvents = this.getTimedEvents();
-        const firstNewOrder = timedEvents.length;
-
-        timedEvents.push(
-            {
-                event: noteOn,
-                tick: startTick,
-                order: firstNewOrder,
-            },
-            {
-                event: noteOff,
-                tick: endTick,
-                order: firstNewOrder + 1,
-            },
-        );
-
-        const finalTick = timedEvents
-            .filter(({ event }) => !this.isEndOfTrack(event))
-            .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
-
-        for (const timedEvent of timedEvents) {
-            if (this.isEndOfTrack(timedEvent.event)) {
-                timedEvent.tick = Math.max(
-                    timedEvent.tick,
-                    finalTick,
-                );
-                timedEvent.order = Number.MAX_SAFE_INTEGER;
-            }
-        }
-
-        timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
-
-        this.replaceTimedEvents(timedEvents);
-
-        return { noteOn, noteOff };
+    for (const timedEvent of timedEvents) {
+      if (this.isEndOfTrack(timedEvent.event)) {
+        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
+        timedEvent.order = Number.MAX_SAFE_INTEGER;
+      }
     }
 
-    public removeNote(
-        noteOn: MidiChannelEvent,
-        noteOff: MidiChannelEvent,
-    ): boolean {
-        if (
-            noteOn === noteOff ||
-            noteOn.data1 !== noteOff.data1
-        ) {
-            return false;
-        }
+    timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
 
-        if (
-            this.events.indexOf(noteOn) < 0 ||
-            this.events.indexOf(noteOff) < 0
-        ) {
-            return false;
-        }
+    this.replaceTimedEvents(timedEvents);
 
-        const isNoteOn =
-            noteOn.messageType === ChannelMessage.NoteOn &&
-            (noteOn.data2 ?? 0) > 0;
+    return { noteOn, noteOff };
+  }
 
-        const isNoteOff =
-            noteOff.messageType === ChannelMessage.NoteOff ||
-            (
-                noteOff.messageType === ChannelMessage.NoteOn &&
-                (noteOff.data2 ?? 0) === 0
-            );
-
-        if (!isNoteOn || !isNoteOff) {
-            return false;
-        }
-
-        const removed = new Set<MidiEvent>([
-            noteOn,
-            noteOff,
-        ]);
-
-        const remaining = this.getTimedEvents()
-            .filter(({ event }) => !removed.has(event));
-
-        this.replaceTimedEvents(remaining);
-        return true;
+  public removeNote(
+    noteOn: MidiChannelEvent,
+    noteOff: MidiChannelEvent,
+  ): boolean {
+    if (noteOn === noteOff || noteOn.data1 !== noteOff.data1) {
+      return false;
     }
 
-    public toBuffer(): Uint8Array {
-        const endOfTrackIndices = this.events
-            .map((event, index) =>
-                this.isEndOfTrack(event) ? index : -1,
-            )
-            .filter((index) => index >= 0);
-
-        if (
-            endOfTrackIndices.length > 1 ||
-            (
-                endOfTrackIndices.length === 1 &&
-                endOfTrackIndices[0] !== this.events.length - 1
-            )
-        ) {
-            throw new Error(
-                "EndOfTrack must be the final event in a MIDI track",
-            );
-        }
-
-        const eventBytes = this.events.map(encodeMidiEvent);
-
-        if (endOfTrackIndices.length === 0) {
-            eventBytes.push(
-                new Uint8Array([0x00, 0xff, 0x2f, 0x00]),
-            );
-        }
-
-        const body = concatBytes(eventBytes);
-        const chunk = new Uint8Array(8);
-
-        writeAscii(chunk, 0, "MTrk");
-        writeUInt32BE(chunk, 4, body.length);
-
-        return concatBytes([chunk, body]);
+    if (this.events.indexOf(noteOn) < 0 || this.events.indexOf(noteOff) < 0) {
+      return false;
     }
+
+    const isNoteOn =
+      noteOn.messageType === ChannelMessage.NoteOn && (noteOn.data2 ?? 0) > 0;
+
+    const isNoteOff =
+      noteOff.messageType === ChannelMessage.NoteOff ||
+      (noteOff.messageType === ChannelMessage.NoteOn &&
+        (noteOff.data2 ?? 0) === 0);
+
+    if (!isNoteOn || !isNoteOff) {
+      return false;
+    }
+
+    const removed = new Set<MidiEvent>([noteOn, noteOff]);
+
+    const remaining = this.getTimedEvents().filter(
+      ({ event }) => !removed.has(event),
+    );
+
+    this.replaceTimedEvents(remaining);
+    return true;
+  }
+
+  public toBuffer(): Uint8Array {
+    const endOfTrackIndices = this.events
+      .map((event, index) => (this.isEndOfTrack(event) ? index : -1))
+      .filter((index) => index >= 0);
+
+    if (
+      endOfTrackIndices.length > 1 ||
+      (endOfTrackIndices.length === 1 &&
+        endOfTrackIndices[0] !== this.events.length - 1)
+    ) {
+      throw new Error("EndOfTrack must be the final event in a MIDI track");
+    }
+
+    const eventBytes = this.events.map(encodeMidiEvent);
+
+    if (endOfTrackIndices.length === 0) {
+      eventBytes.push(new Uint8Array([0x00, 0xff, 0x2f, 0x00]));
+    }
+
+    const body = concatBytes(eventBytes);
+    const chunk = new Uint8Array(8);
+
+    writeAscii(chunk, 0, "MTrk");
+    writeUInt32BE(chunk, 4, body.length);
+
+    return concatBytes([chunk, body]);
+  }
 }
 
 class Midi {
-    header: MidiHeader;
-    tracks: MidiTrack[];
+  header: MidiHeader;
+  tracks: MidiTrack[];
 
-    constructor(
-        data: Uint8Array | undefined = undefined,
+  constructor(data: Uint8Array | undefined = undefined) {
+    this.header = new MidiHeader();
+    this.tracks = [];
+
+    if (data) {
+      this.parse(data);
+    }
+  }
+
+  private parse(data: Uint8Array): void {
+    const midiParser = new Parser()
+      .useContextVars()
+      .nest("header", {
+        type: headerParser,
+      })
+      .array("tracks", {
+        type: trackParser,
+        length: function (this: any) {
+          return this.header.trackCount;
+        },
+      });
+
+    const result = midiParser.parse(data);
+
+    this.header.format = result.header.format;
+    this.header.trackCount = result.header.trackCount;
+    this.header.division = result.header.ppqn;
+    this.header.isSMPTE = Boolean(result.header.isSMPTE);
+
+    this.tracks = result.tracks.map((parsedTrack: any) => {
+      const track = new MidiTrack();
+
+      track.format = result.header.format;
+      track.events = parsedTrack.events as MidiEvent[];
+
+      const trackNameEvent = track
+        .getMetaEvents()
+        .find((event) => event.type === MetaType.TrackName);
+
+      if (trackNameEvent) {
+        track.name = (trackNameEvent.data as TextMetaPayload).text;
+      }
+
+      return track;
+    });
+  }
+
+  public getTrack(name: string): MidiTrack | undefined {
+    return this.tracks.find((track) => track.name === name);
+  }
+
+  public toBuffer(): Uint8Array {
+    const trackCount = this.tracks.length;
+
+    if (
+      !Number.isInteger(this.header.format) ||
+      this.header.format < 0 ||
+      this.header.format > 2
     ) {
-        this.header = new MidiHeader();
-        this.tracks = [];
-
-        if (data) {
-            this.parse(data);
-        }
+      throw new RangeError("MIDI format must be 0, 1, or 2");
     }
 
-    private parse(data: Uint8Array): void {
-        const midiParser = new Parser()
-            .useContextVars()
-            .nest("header", {
-                type: headerParser,
-            })
-            .array("tracks", {
-                type: trackParser,
-                length: function (this: any) {
-                    return this.header.trackCount;
-                },
-            });
-
-        const result = midiParser.parse(data);
-
-        this.header.format = result.header.format;
-        this.header.trackCount = result.header.trackCount;
-        this.header.division = result.header.ppqn;
-        this.header.isSMPTE = Boolean(
-            result.header.isSMPTE,
-        );
-
-        this.tracks = result.tracks.map(
-            (parsedTrack: any) => {
-                const track = new MidiTrack();
-
-                track.format = result.header.format;
-                track.events = parsedTrack.events as MidiEvent[];
-
-                const trackNameEvent = track
-                    .getMetaEvents()
-                    .find(
-                        (event) =>
-                            event.type === MetaType.TrackName,
-                    );
-
-                if (trackNameEvent) {
-                    track.name = (
-                        trackNameEvent.data as TextMetaPayload
-                    ).text;
-                }
-
-                return track;
-            },
-        );
+    if (this.header.format === MidiFormat.Single && trackCount !== 1) {
+      throw new Error("Format 0 MIDI files must contain exactly one track");
     }
 
-    public getTrack(name: string): MidiTrack | undefined {
-        return this.tracks.find(
-            (track) => track.name === name,
-        );
+    if (trackCount === 0) {
+      throw new Error("A MIDI file must contain at least one track");
     }
 
-    public toBuffer(): Uint8Array {
-        const trackCount = this.tracks.length;
-
-        if (
-            !Number.isInteger(this.header.format) ||
-            this.header.format < 0 ||
-            this.header.format > 2
-        ) {
-            throw new RangeError(
-                "MIDI format must be 0, 1, or 2",
-            );
-        }
-
-        if (
-            this.header.format === MidiFormat.Single &&
-            trackCount !== 1
-        ) {
-            throw new Error(
-                "Format 0 MIDI files must contain exactly one track",
-            );
-        }
-
-        if (trackCount === 0) {
-            throw new Error(
-                "A MIDI file must contain at least one track",
-            );
-        }
-
-        if (
-            !Number.isInteger(this.header.division) ||
-            this.header.division < 0 ||
-            this.header.division > 0x7fff
-        ) {
-            throw new RangeError(
-                "MIDI division must fit in the lower 15 bits",
-            );
-        }
-
-        const division = this.header.isSMPTE
-            ? 0x8000 | this.header.division
-            : this.header.division;
-
-        const header = new Uint8Array(14);
-
-        writeAscii(header, 0, "MThd");
-        writeUInt32BE(header, 4, 6);
-        writeUInt16BE(header, 8, this.header.format);
-        writeUInt16BE(header, 10, trackCount);
-        writeUInt16BE(header, 12, division);
-
-        this.header.trackCount = trackCount;
-
-        return concatBytes([
-            header,
-            ...this.tracks.map((track) => track.toBuffer()),
-        ]);
+    if (
+      !Number.isInteger(this.header.division) ||
+      this.header.division < 0 ||
+      this.header.division > 0x7fff
+    ) {
+      throw new RangeError("MIDI division must fit in the lower 15 bits");
     }
 
+    const division = this.header.isSMPTE
+      ? 0x8000 | this.header.division
+      : this.header.division;
+
+    const header = new Uint8Array(14);
+
+    writeAscii(header, 0, "MThd");
+    writeUInt32BE(header, 4, 6);
+    writeUInt16BE(header, 8, this.header.format);
+    writeUInt16BE(header, 10, trackCount);
+    writeUInt16BE(header, 12, division);
+
+    this.header.trackCount = trackCount;
+
+    return concatBytes([
+      header,
+      ...this.tracks.map((track) => track.toBuffer()),
+    ]);
+  }
 }
 
 export { Midi, MidiFormat, MidiHeader, MidiTrack, MidiNote };

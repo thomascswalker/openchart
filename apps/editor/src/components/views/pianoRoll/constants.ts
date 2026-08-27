@@ -1,0 +1,16 @@
+export const BlackPitchClasses = new Set([
+  1, // C#
+  3, // D#
+  6, // F#
+  8, // G#
+  10, // A#
+]);
+export const MinimumPixelsPerQuarter = 20;
+export const MaximumPixelsPerQuarter = 2000;
+export const MinimumPixelsPerSemitone = 6;
+export const MaximumPixelsPerSemitone = 64;
+
+/**
+ * Controls how quickly wheel input zooms.
+ */
+export const ZoomSensitivity = 0.0015;

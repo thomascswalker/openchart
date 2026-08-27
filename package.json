@@ -8,6 +8,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "format": "prettier --write .",
     "test": "turbo run test",
     "test:core": "turbo run test --filter=@midiedit/core",
     "test:views": "turbo run test --filter=@midiedit/views"
@@ -26,6 +27,7 @@
   "homepage": "https://github.com/thomascswalker/midiview#readme",
   "devDependencies": {
     "@types/node": "^26.3.0",
+    "prettier": "^3.9.6",
     "turbo": "latest",
     "typescript": "^7.0.2"
   },
