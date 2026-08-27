@@ -72,7 +72,7 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
    */
   useEffect(() => {
     viewRef.current?.update(state);
-  }, [state]);
+  }, [state.midi, state.selectedTrackIndex]);
 
   return <div ref={hostRef} className="chart-view-host" />;
 }

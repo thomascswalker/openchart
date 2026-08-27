@@ -1,4 +1,4 @@
-import { Midi } from "@midiedit/core";
+import { Midi, type MidiNote, type MidiTrack } from "@midiedit/core";
 import { clamp } from "es-toolkit";
 import { Graphics, type Application } from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
@@ -21,6 +21,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly majorGrid = new Graphics();
   private readonly notes = new Graphics();
   private readonly keyboard = new Graphics();
+
+  private mappedNotesTrack: MidiTrack | null = null;
+  private mappedNotesSource: MidiNote[] | null = null;
+  private mappedNotes: PianoRollNote[] = [];
 
   private canvas: HTMLCanvasElement | null = null;
 
@@ -202,7 +206,18 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return [];
     }
 
-    return track.getNotes().map((n) => {
+    const sourceNotes = track.getNotes();
+
+    if (
+      track === this.mappedNotesTrack &&
+      sourceNotes === this.mappedNotesSource
+    ) {
+      return this.mappedNotes;
+    }
+
+    this.mappedNotesTrack = track;
+    this.mappedNotesSource = sourceNotes;
+    this.mappedNotes = sourceNotes.map((n) => {
       return {
         tick: n.start,
         durationTicks: n.end - n.start,
@@ -210,6 +225,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         velocity: n.velocity,
       };
     });
+
+    return this.mappedNotes;
   }
 
   private drawPitchRows(width: number, height: number): void {
