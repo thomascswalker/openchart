@@ -12,6 +12,12 @@ import {
 } from "./constants";
 import type { PianoRollCamera, PianoRollNote } from "./types";
 
+interface PianoRollNoteIndex {
+  source: PianoRollNote[];
+  maxEndTicks: number[];
+  maxStartTicks: number[];
+}
+
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly keyboardWidth = 64;
 
@@ -25,6 +31,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private mappedNotesTrack: MidiTrack | null = null;
   private mappedNotesSource: MidiNote[] | null = null;
   private mappedNotes: PianoRollNote[] = [];
+  private mappedNotesIndex: PianoRollNoteIndex | null = null;
 
   private canvas: HTMLCanvasElement | null = null;
 
@@ -225,8 +232,57 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         velocity: n.velocity,
       };
     });
+    this.mappedNotesIndex = this.buildNoteIndex(this.mappedNotes);
 
     return this.mappedNotes;
+  }
+
+  private buildNoteIndex(notes: PianoRollNote[]): PianoRollNoteIndex {
+    const maxEndTicks: number[] = [];
+    const maxStartTicks: number[] = [];
+    let maxEnd = Number.NEGATIVE_INFINITY;
+    let maxStart = Number.NEGATIVE_INFINITY;
+
+    notes.forEach((note, index) => {
+      maxEnd = Math.max(maxEnd, note.tick + note.durationTicks);
+      maxStart = Math.max(maxStart, note.tick);
+      maxEndTicks[index] = maxEnd;
+      maxStartTicks[index] = maxStart;
+    });
+
+    return { source: notes, maxEndTicks, maxStartTicks };
+  }
+
+  private getFirstVisibleNoteIndex(
+    notes: PianoRollNote[],
+    tickWidth: number,
+    startTick: number,
+  ): number {
+    const index = this.mappedNotesIndex;
+
+    if (!index || index.source !== notes) {
+      return 0;
+    }
+
+    const minimumNoteWidthTicks = 2 / tickWidth;
+    let low = 0;
+    let high = notes.length;
+
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      const maximumEnd = Math.max(
+        index.maxEndTicks[middle],
+        index.maxStartTicks[middle] + minimumNoteWidthTicks,
+      );
+
+      if (maximumEnd < startTick) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+
+    return low;
   }
 
   private drawPitchRows(width: number, height: number): void {
@@ -373,7 +429,21 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.state.midi,
       this.state.selectedTrackIndex,
     );
-    notes.forEach((note) => {
+    const firstVisibleNoteIndex = this.getFirstVisibleNoteIndex(
+      notes,
+      tickWidth,
+      this.camera.x,
+    );
+    const rightTick =
+      this.camera.x + Math.max(0, width - this.keyboardWidth) / tickWidth;
+
+    for (let index = firstVisibleNoteIndex; index < notes.length; index++) {
+      const note = notes[index];
+
+      if (note.tick > rightTick) {
+        break;
+      }
+
       // Compute note rect
       const x = this.keyboardWidth + (note.tick - this.camera.x) * tickWidth;
       const y = (this.camera.y - note.pitch) * rowHeight;
@@ -381,7 +451,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
       // If the note is outside the bounds of the current view frame, return
       if (x + w < this.keyboardWidth || x > width || y + h < 0 || y > height) {
-        return;
+        continue;
       }
 
       // Draw the note
@@ -390,6 +460,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         .roundRect(x, y + 1, w, h, radius)
         .fill(fill)
         .stroke(stroke);
-    });
+    }
   }
 }
