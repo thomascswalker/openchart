@@ -95,6 +95,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas = app.canvas;
 
     this.canvas.style.touchAction = "none";
+    // Canvas elements aren't focusable (and won't receive keydown events)
+    // unless they have a tabIndex and are explicitly focused.
+    this.canvas.tabIndex = 0;
+    this.canvas.addEventListener("keydown", this.handleKeyDown);
     this.canvas.addEventListener("click", this.handleClick);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
@@ -106,6 +110,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   public override destroy(): void {
     if (this.canvas) {
+      this.canvas.removeEventListener("keydown", this.handleKeyDown);
       this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
@@ -140,6 +145,29 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.drawKeyboard(height);
     this.drawSelectionBox();
   }
+
+  private readonly handleKeyDown = (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey)) {
+      return;
+    }
+
+    switch (event.key.toLowerCase()) {
+      case "a": {
+        event.preventDefault();
+        this.selection.notes = this.mappedNotes;
+        this.render();
+        break;
+      }
+      case "d": {
+        event.preventDefault();
+        this.selection.clear();
+        this.render();
+        break;
+      }
+      default:
+        break;
+    }
+  };
 
   private readonly handleClick = (event: MouseEvent) => {
     const button = this.clickButton;
@@ -183,6 +211,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.clickButton = this.pointer.button;
     this.clickStart.x = local.x;
     this.clickStart.y = local.y;
+
+    // Ensure the canvas has focus so subsequent keydown events (e.g.
+    // Ctrl+A / Ctrl+D) are dispatched to it.
+    this.canvas?.focus();
 
     switch (this.pointer.button) {
       case PointerButton.Left: {
@@ -584,9 +616,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       );
     }
 
-    // Render each note
+    // Render each note. Avoid a per-note Set lookup when the selection is
+    // empty or covers every note (e.g. after Ctrl+A) since panning/zooming
+    // re-runs this loop on every frame.
+    const selectionSize = this.selection.size;
+    const allSelected = selectionSize > 0 && selectionSize >= notes.length;
+    const noneSelected = selectionSize === 0;
+
     this.noteGeometryCache?.geometry?.forEach((n) => {
-      const isSelected = this.selection.isSelected(n.note);
+      const isSelected = allSelected
+        ? true
+        : noneSelected
+          ? false
+          : this.selection.isSelected(n.note);
       this.notes
         .roundRect(n.x, n.y + 1, n.width, n.height, n.radius)
         .fill(isSelected ? noteSelectedColor : noteColor)
