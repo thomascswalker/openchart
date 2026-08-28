@@ -26,6 +26,12 @@ export const HeaderTempoLaneHeight = HeaderHeight / 2;
 export const HeaderMarkerHitRadius = 6;
 
 /**
+ * Width, in pixels, of the draggable hit-region along a note's right edge
+ * used to resize its duration.
+ */
+export const NoteResizeHandleWidth = 6;
+
+/**
  * Controls how quickly wheel input zooms.
  */
 export const ZoomSensitivity = 0.0015;

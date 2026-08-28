@@ -332,6 +332,67 @@ class MidiTrack {
     return true;
   }
 
+  /**
+   * Resizes a note by moving its NoteOff to `durationTicks` after its NoteOn,
+   * re-sorting events by absolute tick and invalidating the note cache.
+   */
+  public setNoteDuration(note: MidiNote, durationTicks: number): boolean {
+    if (!Number.isInteger(durationTicks) || durationTicks < 1) {
+      throw new RangeError("durationTicks must be a positive integer");
+    }
+
+    if (
+      this.events.indexOf(note.noteOn) < 0 ||
+      this.events.indexOf(note.noteOff) < 0
+    ) {
+      return false;
+    }
+
+    const timedEvents = this.getTimedEvents();
+    const noteOnTimed = timedEvents.find(
+      (timedEvent) => timedEvent.event === note.noteOn,
+    );
+    const noteOffTimed = timedEvents.find(
+      (timedEvent) => timedEvent.event === note.noteOff,
+    );
+
+    if (!noteOnTimed || !noteOffTimed) {
+      return false;
+    }
+
+    const newEndTick = noteOnTimed.tick + durationTicks;
+
+    const others = timedEvents.filter(
+      (timedEvent) => timedEvent.event !== note.noteOff,
+    );
+    others.push({
+      event: note.noteOff,
+      tick: newEndTick,
+      order: noteOffTimed.order,
+    });
+
+    const finalTick = others
+      .filter(({ event }) => !this.isEndOfTrack(event))
+      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
+
+    for (const timedEvent of others) {
+      if (this.isEndOfTrack(timedEvent.event)) {
+        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
+      }
+    }
+
+    others.sort((a, b) => a.tick - b.tick || a.order - b.order);
+
+    this.replaceTimedEvents(others);
+
+    note.end = newEndTick;
+
+    this.noteCache = null;
+    this.noteCacheByPitch = null;
+
+    return true;
+  }
+
   public removeEvent(event: MidiEvent): boolean {
     if (this.events.indexOf(event) < 0) {
       return false;

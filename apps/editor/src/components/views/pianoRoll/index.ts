@@ -25,6 +25,7 @@ import {
   MaximumPixelsPerSemitone,
   MinimumPixelsPerQuarter,
   MinimumPixelsPerSemitone,
+  NoteResizeHandleWidth,
   ZoomSensitivity,
 } from "./constants";
 import type { PianoRollCamera, PianoRollNote } from "./types";
@@ -118,6 +119,16 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   // True while right-drag erase (scrubbing across notes) is active.
   private erasing = false;
+
+  // True while left-drag resizing a note's (or selected notes') duration.
+  private resizing = false;
+  private resizeAnchor: PianoRollNote | null = null;
+  private resizeAnchorInitialEnd = 0;
+  private resizeTargets: { note: PianoRollNote; initialDuration: number }[] =
+    [];
+  // Snapshot of the selection's stable note identities, restored via
+  // remapSelection() after each resize step invalidates note object identity.
+  private resizeSelectionKeep: Set<MidiChannelEvent> = new Set();
 
   private clipboard: {
     relativeTick: number;
@@ -384,6 +395,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         }
         break;
       }
+      case PointerButton.Left: {
+        if (local.y >= HeaderHeight) {
+          const edgeHit = this.hitTestNoteEdge(local);
+          if (edgeHit) {
+            this.beginResize(edgeHit);
+          }
+        }
+        break;
+      }
       default:
         break;
     }
@@ -402,6 +422,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.hasHovered = true;
 
     if (this.pointer.id === null || event.pointerId !== this.pointer.id) {
+      if (this.canvas) {
+        this.canvas.style.cursor = this.hitTestNoteEdge(local)
+          ? "ew-resize"
+          : "";
+      }
       return;
     }
 
@@ -420,6 +445,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
           }
         } else {
           this.updateSelection();
+        }
+        break;
+      }
+      case PointerButton.Left: {
+        if (this.resizing) {
+          this.updateResize(local);
         }
         break;
       }
@@ -446,6 +477,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.pointer.id = null;
     this.pointer.button = null;
     this.erasing = false;
+    this.resizing = false;
+    this.resizeAnchor = null;
+    this.resizeTargets = [];
+    this.resizeSelectionKeep = new Set();
 
     if (this.selection.bounds !== null) {
       this.selection.bounds = null;
@@ -570,6 +605,41 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return null;
   }
 
+  /**
+   * Hit-tests the draggable strip along a note's right edge, used to start
+   * a duration resize.
+   */
+  private hitTestNoteEdge(point: Point): PianoRollNote | null {
+    const cache = this.noteGeometryCache;
+    if (!cache) {
+      return null;
+    }
+
+    for (let index = cache.geometry.length - 1; index >= 0; index--) {
+      const geo = cache.geometry[index];
+      const screenRect = this.toScreenSpace(
+        new Rectangle(geo.x, geo.y, geo.width, geo.height),
+      );
+
+      if (
+        point.y < screenRect.y ||
+        point.y > screenRect.y + screenRect.height
+      ) {
+        continue;
+      }
+
+      const handleWidth = Math.min(NoteResizeHandleWidth, screenRect.width / 2);
+      const edgeStart = screenRect.x + screenRect.width - handleWidth;
+      const edgeEnd = screenRect.x + screenRect.width;
+
+      if (point.x >= edgeStart && point.x <= edgeEnd) {
+        return geo.note;
+      }
+    }
+
+    return null;
+  }
+
   private tickAtScreenX(x: number): number {
     return this.camera.x + (x - this.keyboardWidth) / this.getPixelsPerTick();
   }
@@ -594,6 +664,68 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     return Math.max(0, Math.floor(tick / ticksPerSnap) * ticksPerSnap);
+  }
+
+  /**
+   * Snaps to the nearest grid increment (rather than flooring), used for
+   * note-edge resizing so the resulting length snaps irrespective of the
+   * note's original (possibly off-grid) end tick.
+   */
+  private snapTickToNearest(tick: number): number {
+    if (!this.state.snap.enabled) {
+      return Math.max(0, Math.round(tick));
+    }
+
+    const ticksPerSnap = this.getSnapTicks();
+    if (!Number.isFinite(ticksPerSnap) || ticksPerSnap <= 0) {
+      return Math.max(0, Math.round(tick));
+    }
+
+    return Math.max(0, Math.round(tick / ticksPerSnap) * ticksPerSnap);
+  }
+
+  /**
+   * Begins a right-edge duration drag. If the grabbed note is part of the
+   * current (multi-)selection, all selected notes resize together by the
+   * same tick delta; otherwise only the grabbed note resizes.
+   */
+  private beginResize(anchor: PianoRollNote): void {
+    const targets =
+      this.selection.isSelected(anchor) && this.selection.size > 0
+        ? this.selection.notes
+        : [anchor];
+
+    this.resizing = true;
+    this.resizeAnchor = anchor;
+    this.resizeAnchorInitialEnd = anchor.tick + anchor.durationTicks;
+    this.resizeTargets = targets.map((note) => ({
+      note,
+      initialDuration: note.durationTicks,
+    }));
+    // Preserve the pre-drag selection identity; only the resize targets'
+    // durations change, not which notes are selected.
+    this.resizeSelectionKeep = new Set(
+      this.selection.notes.map((note) => note.midiNote.noteOn),
+    );
+  }
+
+  private updateResize(local: Point): void {
+    const track = this.getSelectedTrack();
+    if (!track || !this.resizeAnchor) {
+      return;
+    }
+
+    const snappedEnd = this.snapTickToNearest(this.tickAtScreenX(local.x));
+    const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
+    const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
+
+    for (const { note, initialDuration } of this.resizeTargets) {
+      const newDuration = Math.max(1, initialDuration + delta);
+      track.setNoteDuration(note.midiNote, newDuration);
+    }
+
+    this.remapSelection(this.resizeSelectionKeep);
+    this.render();
   }
 
   /**
