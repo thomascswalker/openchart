@@ -600,6 +600,18 @@ class Midi {
     return this.tracks.find((track) => track.name === name);
   }
 
+  public addTrack(): number {
+    const index = this.tracks.length;
+    const track = new MidiTrack(`Track ${index}`);
+    this.tracks.push(track);
+    return index;
+  }
+
+  public removeTrack(index: number): number {
+    this.tracks.splice(index, 1);
+    return this.tracks.length;
+  }
+
   public getTempoChanges(): TempoChange[] {
     const changes = (this.tracks[0]?.getTimedEvents() ?? [])
       .filter(

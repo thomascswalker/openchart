@@ -1,10 +1,10 @@
 import "./App.css";
-import MidiEditor from "./components/MidiEditor";
+import Editor from "./components/Editor";
 
 function App() {
   return (
     <section>
-      <MidiEditor />
+      <Editor />
     </section>
   );
 }
