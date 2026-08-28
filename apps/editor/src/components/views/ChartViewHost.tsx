@@ -6,6 +6,7 @@ import type { ChartView, ChartViewFactory } from "./ChartViews";
 interface ChartViewHostProps {
   createRenderer: ChartViewFactory;
   state: ChartViewState;
+  onSelectionChange?: (count: number) => void;
 }
 
 export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {

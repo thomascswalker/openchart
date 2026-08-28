@@ -1,6 +1,6 @@
 import { Midi, type MidiNote, type MidiTrack } from "@midiedit/core";
 import { clamp } from "es-toolkit";
-import { Graphics, type Application } from "pixi.js";
+import { Graphics, Point, Rectangle, type Application } from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
 import {
   BlackPitchClasses,
@@ -16,14 +16,30 @@ import {
   getVisibleNoteRange,
   type PianoRollNoteIndex,
 } from "./visibility";
+import { SelectionContext } from "./selection";
+import { PointerButton, PointerContext } from "./pointer";
+
+const noteColor = 0x5d9cec;
+const noteSelectedColor = 0xff0000;
+const noteStrokeColor = { color: 0x82b8f4, width: 1 };
+
+interface NoteGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radius: number;
+  note: PianoRollNote;
+}
 
 interface NoteGeometryCache {
   track: MidiTrack;
-  source: PianoRollNote[];
+  notes: PianoRollNote[];
   tickWidth: number;
   rowHeight: number;
   width: number;
   height: number;
+  geometry: NoteGeometry[];
   startTick: number;
   endTick: number;
   minPitch: number;
@@ -39,6 +55,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly majorGrid = new Graphics();
   private readonly notes = new Graphics();
   private readonly keyboard = new Graphics();
+  private readonly selectionBox = new Graphics();
 
   private mappedNotesTrack: MidiTrack | null = null;
   private mappedNotesSource: MidiNote[] | null = null;
@@ -48,9 +65,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private canvas: HTMLCanvasElement | null = null;
 
-  private panPointerId: number | null = null;
-  private lastPanX = 0;
-  private lastPanY = 0;
+  // Contexts
+  private pointer: PointerContext = new PointerContext();
+  private selection: SelectionContext = new SelectionContext();
+
+  // The "click" DOM event always reports button 0, so track the real
+  // pointerdown button/position ourselves to detect genuine left clicks.
+  private static readonly clickMovementThreshold = 4;
+  private clickButton: PointerButton | null = null;
+  private readonly clickStart: Point = new Point(0, 0);
+
+  public getPointerContext(): PointerContext {
+    return this.pointer;
+  }
+  public getSelectionContext(): SelectionContext {
+    return this.selection;
+  }
 
   protected override onMounted(app: Application): void {
     app.stage.addChild(
@@ -59,11 +89,17 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.majorGrid,
       this.notes,
       this.keyboard,
+      this.selectionBox,
     );
 
     this.canvas = app.canvas;
 
     this.canvas.style.touchAction = "none";
+    // Canvas elements aren't focusable (and won't receive keydown events)
+    // unless they have a tabIndex and are explicitly focused.
+    this.canvas.tabIndex = 0;
+    this.canvas.addEventListener("keydown", this.handleKeyDown);
+    this.canvas.addEventListener("click", this.handleClick);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -74,6 +110,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   public override destroy(): void {
     if (this.canvas) {
+      this.canvas.removeEventListener("keydown", this.handleKeyDown);
+      this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);
@@ -83,7 +121,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     this.canvas = null;
-    this.panPointerId = null;
+    this.pointer.id = null;
     this.noteGeometryCache = null;
     this.clearMappedNotes();
 
@@ -94,48 +132,135 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const width = app.screen.width;
     const height = app.screen.height;
 
+    this.notes.clear();
     this.pitchRows.clear();
     this.minorGrid.clear();
     this.majorGrid.clear();
     this.keyboard.clear();
+    this.selectionBox.clear();
 
     this.drawPitchRows(width, height);
     this.drawGrid(width, height);
     this.drawNotes(width, height);
     this.drawKeyboard(height);
+    this.drawSelectionBox();
   }
 
-  private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (event.button !== 1) {
+  private readonly handleKeyDown = (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey)) {
+      return;
+    }
+
+    switch (event.key.toLowerCase()) {
+      case "a": {
+        event.preventDefault();
+        this.selection.notes = this.mappedNotes;
+        this.render();
+        break;
+      }
+      case "d": {
+        event.preventDefault();
+        this.selection.clear();
+        this.render();
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  private readonly handleClick = (event: MouseEvent) => {
+    const button = this.clickButton;
+    this.clickButton = null;
+
+    // Ignore clicks that didn't originate from a left button press, and
+    // clicks that ended a drag (e.g. panning or box-selecting).
+    if (button !== PointerButton.Left) {
+      return;
+    }
+    const dx = this.pointer.position.x - this.clickStart.x;
+    const dy = this.pointer.position.y - this.clickStart.y;
+    if (Math.hypot(dx, dy) > PianoRollView.clickMovementThreshold) {
       return;
     }
 
     event.preventDefault();
 
-    this.panPointerId = event.pointerId;
+    if (this.selection.size > 0) {
+      // Clear selection and re-render
+      this.selection.clear();
+      this.render();
+    }
+  };
 
-    this.lastPanX = event.clientX;
-    this.lastPanY = event.clientY;
+  private readonly handlePointerDown = (event: PointerEvent): void => {
+    if (event.button === PointerButton.None) {
+      return;
+    }
+
+    event.preventDefault();
+
+    this.pointer.id = event.pointerId;
+    this.pointer.button =
+      event.button !== PointerButton.None
+        ? (event.button as PointerButton)
+        : null;
+
+    const local = this.toCanvasLocal(event.clientX, event.clientY);
+
+    this.clickButton = this.pointer.button;
+    this.clickStart.x = local.x;
+    this.clickStart.y = local.y;
+
+    // Ensure the canvas has focus so subsequent keydown events (e.g.
+    // Ctrl+A / Ctrl+D) are dispatched to it.
+    this.canvas?.focus();
+
+    switch (this.pointer.button) {
+      case PointerButton.Left: {
+        this.selection.bounds = new Rectangle(local.x, local.y, 1, 1);
+        break;
+      }
+      default:
+        break;
+    }
+
+    this.pointer.position.x = local.x;
+    this.pointer.position.y = local.y;
 
     this.canvas?.setPointerCapture(event.pointerId);
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
-    if (this.panPointerId === null || event.pointerId !== this.panPointerId) {
+    if (this.pointer.id === null || event.pointerId !== this.pointer.id) {
       return;
     }
 
-    const deltaX = event.clientX - this.lastPanX;
-    const deltaY = event.clientY - this.lastPanY;
+    const local = this.toCanvasLocal(event.clientX, event.clientY);
+    const dx = local.x - this.pointer.position.x;
+    const dy = local.y - this.pointer.position.y;
 
-    this.lastPanX = event.clientX;
-    this.lastPanY = event.clientY;
+    this.pointer.position.x = local.x;
+    this.pointer.position.y = local.y;
 
-    this.pan(deltaX, deltaY);
+    switch (this.pointer.button) {
+      case PointerButton.Left: {
+        this.updateSelection();
+        break;
+      }
+      case PointerButton.Middle: {
+        this.pan(dx, dy);
+        break;
+      }
+      default:
+        return;
+    }
+
+    this.render();
   };
 
   private readonly handlePointerUp = (event: PointerEvent): void => {
-    if (this.panPointerId === null || event.pointerId !== this.panPointerId) {
+    if (this.pointer.id === null || event.pointerId !== this.pointer.id) {
       return;
     }
 
@@ -143,7 +268,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.canvas.releasePointerCapture(event.pointerId);
     }
 
-    this.panPointerId = null;
+    this.pointer.id = null;
+    this.pointer.button = null;
+
+    if (this.selection.bounds !== null) {
+      this.selection.bounds = null;
+    }
+    this.render();
   };
 
   private readonly handleAuxClick = (event: MouseEvent): void => {
@@ -173,15 +304,71 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.zoomHorizontal(zoomFactor, mouseX);
   };
 
-  private pan(deltaX: number, deltaY: number): void {
+  protected override toScreenSpace(value: Point): Point;
+  protected override toScreenSpace(value: Rectangle): Rectangle;
+  protected override toScreenSpace(
+    value: Point | Rectangle,
+  ): Point | Rectangle {
+    const cache = this.noteGeometryCache;
+    if (!cache) {
+      return value;
+    }
+
+    // Calculate coordinates once to avoid repeating code
+    const screenX = value.x - this.camera.x * cache.tickWidth;
+    const screenY = value.y + this.camera.y * cache.rowHeight;
+
+    if (value instanceof Point) {
+      return new Point(screenX, screenY);
+    }
+
+    if (value instanceof Rectangle) {
+      // Assuming your Rectangle constructor takes (x, y, width, height)
+      return new Rectangle(screenX, screenY, value.width, value.height);
+    }
+
+    // Fallback for safety, though overloads prevent getting here
+    return value;
+  }
+
+  private updateSelection() {
+    if (this.selection.bounds === null) {
+      return;
+    }
+
+    // Anchor to clickStart and re-derive bounds each time so the setter can
+    // normalize negative width/height regardless of drag direction.
+    this.selection.bounds = new Rectangle(
+      this.clickStart.x,
+      this.clickStart.y,
+      this.pointer.position.x - this.clickStart.x,
+      this.pointer.position.y - this.clickStart.y,
+    );
+
+    // Update note selection
+    const cache = this.noteGeometryCache;
+    cache?.geometry.forEach((geo) => {
+      const worldRect = new Rectangle(geo.x, geo.y, geo.width, geo.height);
+      const screenRect = this.toScreenSpace(worldRect);
+
+      // Deselect notes
+      if (!this.selection.intersects(screenRect)) {
+        this.selection.delete(geo.note);
+        return;
+      }
+
+      // Select notes
+      this.selection.add(geo.note);
+    });
+  }
+
+  private pan(dx: number, dy: number): void {
     const pixelsPerTick = this.getPixelsPerTick();
 
-    this.camera.x -= deltaX / pixelsPerTick;
-    this.camera.y += deltaY / this.camera.v;
+    this.camera.x -= dx / pixelsPerTick;
+    this.camera.y += dy / this.camera.v;
     this.camera.x = Math.max(0, this.camera.x);
     this.camera.y = clamp(this.camera.y, 0, 127);
-
-    this.render();
   }
 
   private zoomHorizontal(zoomFactor: number, mouseX: number): void {
@@ -221,6 +408,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private getPixelsPerTick(): number {
     return this.camera.h / this.getPpqn();
+  }
+
+  private toCanvasLocal(clientX: number, clientY: number): Point {
+    if (!this.canvas) {
+      return new Point(clientX, clientY);
+    }
+
+    const bounds = this.canvas.getBoundingClientRect();
+    return new Point(clientX - bounds.left, clientY - bounds.top);
   }
 
   public override getTrackNotes(
@@ -393,24 +589,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const tickWidth = this.camera.h / this.getPpqn();
     const rowHeight = this.camera.v;
     const h = Math.max(1, rowHeight - 2);
-    const fill = 0x5d9cec;
-    const stroke = { color: 0x82b8f4, width: 1 };
 
     const notes = this.getTrackNotes(
       this.state.midi,
       this.state.selectedTrackIndex,
     );
 
-    if (
-      !this.canReuseNoteGeometry(
-        track,
-        notes,
-        tickWidth,
-        rowHeight,
-        width,
-        height,
-      )
-    ) {
+    // Do we need to rebuild note geometry?
+    const needsRebuild = this.needsRebuild(
+      track,
+      notes,
+      tickWidth,
+      rowHeight,
+      width,
+      height,
+    );
+    if (needsRebuild) {
       this.rebuildNoteGeometry(
         track,
         notes,
@@ -419,15 +613,45 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         width,
         height,
         h,
-        fill,
-        stroke,
       );
     }
+
+    // Render each note. Avoid a per-note Set lookup when the selection is
+    // empty or covers every note (e.g. after Ctrl+A) since panning/zooming
+    // re-runs this loop on every frame.
+    const selectionSize = this.selection.size;
+    const allSelected = selectionSize > 0 && selectionSize >= notes.length;
+    const noneSelected = selectionSize === 0;
+
+    this.noteGeometryCache?.geometry?.forEach((n) => {
+      const isSelected = allSelected
+        ? true
+        : noneSelected
+          ? false
+          : this.selection.isSelected(n.note);
+      this.notes
+        .roundRect(n.x, n.y + 1, n.width, n.height, n.radius)
+        .fill(isSelected ? noteSelectedColor : noteColor)
+        .stroke(noteStrokeColor);
+    });
 
     this.notes.position.set(
       -this.camera.x * tickWidth,
       this.camera.y * rowHeight,
     );
+  }
+
+  private drawSelectionBox() {
+    if (this.selection.isSelecting) {
+      this.selectionBox
+        .rect(
+          this.selection.bounds!.x,
+          this.selection.bounds!.y,
+          this.selection.bounds!.width,
+          this.selection.bounds!.height,
+        )
+        .fill({ color: 0xffffff, alpha: 0.5 });
+    }
   }
 
   private clearMappedNotes(): void {
@@ -437,7 +661,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.mappedNotesIndex = null;
   }
 
-  private canReuseNoteGeometry(
+  private needsRebuild(
     track: MidiTrack,
     notes: PianoRollNote[],
     tickWidth: number,
@@ -450,19 +674,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (
       !cache ||
       cache.track !== track ||
-      cache.source !== notes ||
+      cache.notes !== notes ||
       cache.tickWidth !== tickWidth ||
       cache.rowHeight !== rowHeight ||
       cache.width !== width ||
       cache.height !== height
     ) {
-      return false;
+      return true;
     }
 
     const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
     const verticalRange = height / rowHeight;
 
-    return (
+    return !(
       this.camera.x >= cache.startTick &&
       this.camera.x + horizontalRange <= cache.endTick &&
       this.camera.y - verticalRange >= cache.minPitch &&
@@ -478,8 +702,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     width: number,
     height: number,
     noteHeight: number,
-    fill: number,
-    stroke: { color: number; width: number },
   ): void {
     const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
     const verticalRange = height / rowHeight;
@@ -496,8 +718,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     );
     const radius = Math.min(2, noteHeight / 4);
 
-    this.notes.clear();
-
+    const geometry: NoteGeometry[] = [];
     for (let index = visibleRange.start; index < visibleRange.end; index++) {
       const note = notes[index];
 
@@ -509,15 +730,20 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const y = -note.pitch * rowHeight;
       const noteWidth = Math.max(2, note.durationTicks * tickWidth);
 
-      this.notes
-        .roundRect(x, y + 1, noteWidth, noteHeight, radius)
-        .fill(fill)
-        .stroke(stroke);
+      geometry.push({
+        x,
+        y,
+        width: noteWidth,
+        height: noteHeight,
+        radius,
+        note,
+      });
     }
 
     this.noteGeometryCache = {
       track,
-      source: notes,
+      notes: notes,
+      geometry,
       tickWidth,
       rowHeight,
       width,
