@@ -1,6 +1,6 @@
 import { Midi, type MidiNote, type MidiTrack } from "@midiedit/core";
 import { clamp } from "es-toolkit";
-import { Graphics, type Application } from "pixi.js";
+import { Graphics, Point, type Application } from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
 import {
   BlackPitchClasses,
@@ -48,9 +48,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private canvas: HTMLCanvasElement | null = null;
 
+  /* Tracks the active panning pointer */
+
   private panPointerId: number | null = null;
-  private lastPanX = 0;
-  private lastPanY = 0;
+  private panPosition: Point = new Point(0, 0);
 
   protected override onMounted(app: Application): void {
     app.stage.addChild(
@@ -114,8 +115,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     this.panPointerId = event.pointerId;
 
-    this.lastPanX = event.clientX;
-    this.lastPanY = event.clientY;
+    this.panPosition.x = event.clientX;
+    this.panPosition.y = event.clientY;
 
     this.canvas?.setPointerCapture(event.pointerId);
   };
@@ -125,11 +126,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return;
     }
 
-    const deltaX = event.clientX - this.lastPanX;
-    const deltaY = event.clientY - this.lastPanY;
+    const deltaX = event.clientX - this.panPosition.x;
+    const deltaY = event.clientY - this.panPosition.y;
 
-    this.lastPanX = event.clientX;
-    this.lastPanY = event.clientY;
+    this.panPosition.x = event.clientX;
+    this.panPosition.y = event.clientY;
 
     this.pan(deltaX, deltaY);
   };
