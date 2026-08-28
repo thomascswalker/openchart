@@ -175,6 +175,39 @@ class MidiTrack {
     return eventLimit;
   }
 
+  /**
+   * Inserts one or more events at absolute ticks in a single pass, bumping
+   * any trailing EndOfTrack event so it stays last. Shared by note creation
+   * and single meta-event insertion (tempo/time-signature changes).
+   */
+  public insertEventsAt(entries: { tick: number; event: MidiEvent }[]): void {
+    const timedEvents = this.getTimedEvents();
+    const firstNewOrder = timedEvents.length;
+
+    entries.forEach(({ tick, event }, index) => {
+      if (!Number.isInteger(tick) || tick < 0) {
+        throw new RangeError("tick must be a non-negative integer");
+      }
+
+      timedEvents.push({ event, tick, order: firstNewOrder + index });
+    });
+
+    const finalTick = timedEvents
+      .filter(({ event }) => !this.isEndOfTrack(event))
+      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
+
+    for (const timedEvent of timedEvents) {
+      if (this.isEndOfTrack(timedEvent.event)) {
+        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
+        timedEvent.order = Number.MAX_SAFE_INTEGER;
+      }
+    }
+
+    timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
+
+    this.replaceTimedEvents(timedEvents);
+  }
+
   public addNote(
     note: number,
     startDelta: number,
@@ -231,36 +264,10 @@ class MidiTrack {
       data2: 0,
     };
 
-    const timedEvents = this.getTimedEvents();
-    const firstNewOrder = timedEvents.length;
-
-    timedEvents.push(
-      {
-        event: noteOn,
-        tick: startTick,
-        order: firstNewOrder,
-      },
-      {
-        event: noteOff,
-        tick: endTick,
-        order: firstNewOrder + 1,
-      },
-    );
-
-    const finalTick = timedEvents
-      .filter(({ event }) => !this.isEndOfTrack(event))
-      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
-
-    for (const timedEvent of timedEvents) {
-      if (this.isEndOfTrack(timedEvent.event)) {
-        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
-        timedEvent.order = Number.MAX_SAFE_INTEGER;
-      }
-    }
-
-    timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
-
-    this.replaceTimedEvents(timedEvents);
+    this.insertEventsAt([
+      { tick: startTick, event: noteOn },
+      { tick: endTick, event: noteOff },
+    ]);
 
     return { noteOn, noteOff };
   }
@@ -293,6 +300,45 @@ class MidiTrack {
 
     const remaining = this.getTimedEvents().filter(
       ({ event }) => !removed.has(event),
+    );
+
+    this.replaceTimedEvents(remaining);
+    return true;
+  }
+
+  /**
+   * Sets a note's pitch in place, updating both its NoteOn/NoteOff events
+   * and invalidating the note cache so subsequent getNotes() calls rebuild.
+   */
+  public setNotePitch(note: MidiNote, pitch: number): boolean {
+    if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
+      throw new RangeError("MIDI note must be between 0 and 127");
+    }
+
+    if (
+      this.events.indexOf(note.noteOn) < 0 ||
+      this.events.indexOf(note.noteOff) < 0
+    ) {
+      return false;
+    }
+
+    note.noteOn.data1 = pitch;
+    note.noteOff.data1 = pitch;
+    note.note = pitch;
+
+    this.noteCache = null;
+    this.noteCacheByPitch = null;
+
+    return true;
+  }
+
+  public removeEvent(event: MidiEvent): boolean {
+    if (this.events.indexOf(event) < 0) {
+      return false;
+    }
+
+    const remaining = this.getTimedEvents().filter(
+      (timedEvent) => timedEvent.event !== event,
     );
 
     this.replaceTimedEvents(remaining);
@@ -537,6 +583,93 @@ class Midi {
     }
 
     return changes;
+  }
+
+  public addTempoChange(
+    tick: number,
+    microsecondsPerQuarterNote: number,
+  ): void {
+    const track = this.tracks[0];
+
+    if (!track) {
+      throw new Error("Midi file has no tracks");
+    }
+
+    const event: MidiMetaEvent = {
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: 3,
+      data: { microsecondsPerQuarterNote } as TempoMetaPayload,
+    };
+
+    track.insertEventsAt([{ tick, event }]);
+  }
+
+  public removeTempoChangeAt(tick: number): boolean {
+    const track = this.tracks[0];
+
+    if (!track) {
+      return false;
+    }
+
+    const match = track
+      .getTimedEvents()
+      .find(
+        (timedEvent) =>
+          timedEvent.tick === tick &&
+          timedEvent.event.status === 0xff &&
+          (timedEvent.event as MidiMetaEvent).type === MetaType.Tempo,
+      );
+
+    return match ? track.removeEvent(match.event) : false;
+  }
+
+  public addTimeSignatureChange(
+    tick: number,
+    numerator: number,
+    denominator: number,
+  ): void {
+    const track = this.tracks[0];
+
+    if (!track) {
+      throw new Error("Midi file has no tracks");
+    }
+
+    const event: MidiMetaEvent = {
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.TimeSignature,
+      length: 4,
+      data: {
+        numerator,
+        denominator,
+        // Standard defaults: 24 clocks per metronome click, 8 32nd-notes per quarter.
+        clocksPerClick: 24,
+        thirtySecondNotesPerQuarter: 8,
+      } as TimeSignatureMetaPayload,
+    };
+
+    track.insertEventsAt([{ tick, event }]);
+  }
+
+  public removeTimeSignatureChangeAt(tick: number): boolean {
+    const track = this.tracks[0];
+
+    if (!track) {
+      return false;
+    }
+
+    const match = track
+      .getTimedEvents()
+      .find(
+        (timedEvent) =>
+          timedEvent.tick === tick &&
+          timedEvent.event.status === 0xff &&
+          (timedEvent.event as MidiMetaEvent).type === MetaType.TimeSignature,
+      );
+
+    return match ? track.removeEvent(match.event) : false;
   }
 
   public toBuffer(): Uint8Array {

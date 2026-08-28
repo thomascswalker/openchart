@@ -4,6 +4,13 @@ import { Application, Point, Rectangle } from "pixi.js";
 export interface ChartViewState {
   midi: Midi | null;
   selectedTrackIndex: number | null;
+  snap: SnapSettings;
+}
+
+export interface SnapSettings {
+  enabled: boolean;
+  /** Note-value denominator (4 == quarter note, 3 == triplet half note, etc). */
+  denominator: number;
 }
 
 export abstract class AbstractChartView<T> {
@@ -16,6 +23,7 @@ export abstract class AbstractChartView<T> {
   protected state: ChartViewState = {
     midi: null,
     selectedTrackIndex: null,
+    snap: { enabled: true, denominator: 4 },
   };
 
   public async mount(host: HTMLElement): Promise<void> {

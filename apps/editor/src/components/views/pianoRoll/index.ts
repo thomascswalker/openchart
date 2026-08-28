@@ -1,5 +1,6 @@
 import type {
   Midi,
+  MidiChannelEvent,
   MidiNote,
   MidiTrack,
   TempoChange,
@@ -18,6 +19,8 @@ import { AbstractChartView } from "../AbstractChartView";
 import {
   BlackPitchClasses,
   HeaderHeight,
+  HeaderMarkerHitRadius,
+  HeaderTempoLaneHeight,
   MaximumPixelsPerQuarter,
   MaximumPixelsPerSemitone,
   MinimumPixelsPerQuarter,
@@ -65,6 +68,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private readonly camera: PianoRollCamera = { x: 0, y: 84, h: 120, v: 18 };
   private readonly pitchRows = new Graphics();
+  private readonly snapGrid = new Graphics();
   private readonly minorGrid = new Graphics();
   private readonly majorGrid = new Graphics();
   private readonly notes = new Graphics();
@@ -108,6 +112,24 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private clickButton: PointerButton | null = null;
   private readonly clickStart: Point = new Point(0, 0);
 
+  // Tracks hover position (independent of any button press) for paste anchoring.
+  private readonly hoverPosition: Point = new Point(0, 0);
+  private hasHovered = false;
+
+  // True while right-drag erase (scrubbing across notes) is active.
+  private erasing = false;
+
+  private clipboard: {
+    relativeTick: number;
+    pitch: number;
+    durationTicks: number;
+    velocity: number;
+  }[] = [];
+
+  // Cached viewport size, used by focusSelection() to fit the camera.
+  private lastWidth = 1;
+  private lastHeight = 1;
+
   public getPointerContext(): PointerContext {
     return this.pointer;
   }
@@ -118,6 +140,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   protected override onMounted(app: Application): void {
     app.stage.addChild(
       this.pitchRows,
+      this.snapGrid,
       this.minorGrid,
       this.majorGrid,
       this.notes,
@@ -135,6 +158,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas.tabIndex = 0;
     this.canvas.addEventListener("keydown", this.handleKeyDown);
     this.canvas.addEventListener("click", this.handleClick);
+    this.canvas.addEventListener("dblclick", this.handleDoubleClick);
+    this.canvas.addEventListener("contextmenu", this.handleContextMenu);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -147,6 +172,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (this.canvas) {
       this.canvas.removeEventListener("keydown", this.handleKeyDown);
       this.canvas.removeEventListener("click", this.handleClick);
+      this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
+      this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);
@@ -167,10 +194,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const width = app.screen.width;
     const height = app.screen.height;
 
+    this.lastWidth = width;
+    this.lastHeight = height;
+
     this.updateTempoCache();
 
     this.notes.clear();
     this.pitchRows.clear();
+    this.snapGrid.clear();
     this.minorGrid.clear();
     this.majorGrid.clear();
     this.keyboard.clear();
@@ -202,23 +233,64 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent) => {
-    if (!(event.ctrlKey || event.metaKey)) {
+    const key = event.key.toLowerCase();
+    const isArrow = key === "arrowup" || key === "arrowdown";
+    const direction = key === "arrowup" ? 1 : -1;
+
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && isArrow) {
+      event.preventDefault();
+      this.transposeSelection(direction * 12);
       return;
     }
 
-    switch (event.key.toLowerCase()) {
-      case "a": {
-        event.preventDefault();
-        this.selection.notes = this.mappedNotes;
-        this.render();
-        break;
+    // Bare Shift+Arrow, or the Cmd+Arrow alt-binding, transpose by a semitone.
+    if (
+      isArrow &&
+      ((event.shiftKey && !event.ctrlKey && !event.metaKey) ||
+        (event.metaKey && !event.shiftKey && !event.ctrlKey))
+    ) {
+      event.preventDefault();
+      this.transposeSelection(direction);
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey) {
+      switch (key) {
+        case "a": {
+          event.preventDefault();
+          this.selection.notes = this.mappedNotes;
+          this.render();
+          break;
+        }
+        case "d": {
+          event.preventDefault();
+          this.selection.clear();
+          this.render();
+          break;
+        }
+        default:
+          break;
       }
-      case "d": {
+      return;
+    }
+
+    switch (key) {
+      case "c":
         event.preventDefault();
-        this.selection.clear();
-        this.render();
+        this.copySelection();
         break;
-      }
+      case "x":
+        event.preventDefault();
+        this.cutSelection();
+        break;
+      case "v":
+        event.preventDefault();
+        this.pasteClipboard();
+        break;
+      case "f":
+        event.preventDefault();
+        this.focusSelection();
+        break;
       default:
         break;
     }
@@ -241,11 +313,35 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     event.preventDefault();
 
-    if (this.selection.size > 0) {
-      // Clear selection and re-render
-      this.selection.clear();
-      this.render();
+    if (this.clickStart.y < HeaderHeight) {
+      this.handleHeaderClick(this.clickStart.x, this.clickStart.y);
+      return;
     }
+
+    const hit = this.hitTestNote(this.clickStart);
+    if (hit) {
+      this.selection.notes = [hit];
+      this.render();
+      return;
+    }
+
+    this.createNoteAt(this.clickStart.x, this.clickStart.y);
+  };
+
+  private readonly handleDoubleClick = (event: MouseEvent): void => {
+    const local = this.toCanvasLocal(event.clientX, event.clientY);
+
+    if (local.y >= HeaderHeight) {
+      return;
+    }
+
+    event.preventDefault();
+    this.editHeaderMarkerAt(local.x, local.y);
+  };
+
+  private readonly handleContextMenu = (event: MouseEvent): void => {
+    // Right-click drives marquee-select/erase; suppress the browser menu.
+    event.preventDefault();
   };
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -272,8 +368,20 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas?.focus();
 
     switch (this.pointer.button) {
-      case PointerButton.Left: {
-        this.selection.bounds = new Rectangle(local.x, local.y, 1, 1);
+      case PointerButton.Right: {
+        if (local.y < HeaderHeight) {
+          this.handleHeaderRightClick(local.x, local.y);
+          break;
+        }
+
+        const hit = this.hitTestNote(local);
+        if (hit) {
+          this.erasing = true;
+          this.eraseNote(hit);
+        } else {
+          this.erasing = false;
+          this.selection.bounds = new Rectangle(local.x, local.y, 1, 1);
+        }
         break;
       }
       default:
@@ -287,11 +395,16 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
+    const local = this.toCanvasLocal(event.clientX, event.clientY);
+
+    this.hoverPosition.x = local.x;
+    this.hoverPosition.y = local.y;
+    this.hasHovered = true;
+
     if (this.pointer.id === null || event.pointerId !== this.pointer.id) {
       return;
     }
 
-    const local = this.toCanvasLocal(event.clientX, event.clientY);
     const dx = local.x - this.pointer.position.x;
     const dy = local.y - this.pointer.position.y;
 
@@ -299,8 +412,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.pointer.position.y = local.y;
 
     switch (this.pointer.button) {
-      case PointerButton.Left: {
-        this.updateSelection();
+      case PointerButton.Right: {
+        if (this.erasing) {
+          const hit = this.hitTestNote(local);
+          if (hit) {
+            this.eraseNote(hit);
+          }
+        } else {
+          this.updateSelection();
+        }
         break;
       }
       case PointerButton.Middle: {
@@ -325,6 +445,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     this.pointer.id = null;
     this.pointer.button = null;
+    this.erasing = false;
 
     if (this.selection.bounds !== null) {
       this.selection.bounds = null;
@@ -417,6 +538,442 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     });
   }
 
+  private getSelectedTrack(): MidiTrack | null {
+    const midi = this.state.midi;
+    const trackIndex = this.state.selectedTrackIndex;
+
+    if (!midi || trackIndex === null) {
+      return null;
+    }
+
+    return midi.tracks[trackIndex] ?? null;
+  }
+
+  private hitTestNote(point: Point): PianoRollNote | null {
+    const cache = this.noteGeometryCache;
+    if (!cache) {
+      return null;
+    }
+
+    // Iterate back-to-front so the topmost-drawn note wins on overlap.
+    for (let index = cache.geometry.length - 1; index >= 0; index--) {
+      const geo = cache.geometry[index];
+      const screenRect = this.toScreenSpace(
+        new Rectangle(geo.x, geo.y, geo.width, geo.height),
+      );
+
+      if (screenRect.contains(point.x, point.y)) {
+        return geo.note;
+      }
+    }
+
+    return null;
+  }
+
+  private tickAtScreenX(x: number): number {
+    return this.camera.x + (x - this.keyboardWidth) / this.getPixelsPerTick();
+  }
+
+  private pitchAtScreenY(y: number): number {
+    const pitch = Math.ceil(this.camera.y - (y - HeaderHeight) / this.camera.v);
+    return clamp(pitch, 0, 127);
+  }
+
+  private getSnapTicks(): number {
+    return (this.getPpqn() * 4) / this.state.snap.denominator;
+  }
+
+  private snapTick(tick: number): number {
+    if (!this.state.snap.enabled) {
+      return Math.max(0, Math.round(tick));
+    }
+
+    const ticksPerSnap = this.getSnapTicks();
+    if (!Number.isFinite(ticksPerSnap) || ticksPerSnap <= 0) {
+      return Math.max(0, Math.round(tick));
+    }
+
+    return Math.max(0, Math.floor(tick / ticksPerSnap) * ticksPerSnap);
+  }
+
+  /**
+   * Re-derives the current selection after a mutation invalidates note
+   * identity, matching by each note's stable NoteOn event reference.
+   */
+  private remapSelection(keep: Set<MidiChannelEvent>): void {
+    const midi = this.state.midi;
+    const trackIndex = this.state.selectedTrackIndex;
+
+    if (!midi || trackIndex === null || keep.size === 0) {
+      this.selection.clear();
+      return;
+    }
+
+    const notes = this.getTrackNotes(midi, trackIndex);
+    this.selection.notes = notes.filter((note) =>
+      keep.has(note.midiNote.noteOn),
+    );
+  }
+
+  private createNoteAt(x: number, y: number): void {
+    const track = this.getSelectedTrack();
+    if (!track) {
+      return;
+    }
+
+    const pitch = this.pitchAtScreenY(y);
+    const tick = this.snapTick(this.tickAtScreenX(x));
+    const duration = Math.max(
+      1,
+      Math.round(
+        this.state.snap.enabled ? this.getSnapTicks() : this.getPpqn(),
+      ),
+    );
+
+    const insertAt = track.getInsertionIndexAt(tick);
+    const startDelta = tick - track.getAbsoluteTickAt(insertAt);
+
+    const { noteOn } = track.addNote(
+      pitch,
+      startDelta,
+      100,
+      duration,
+      insertAt,
+    );
+
+    this.remapSelection(new Set([noteOn]));
+    this.render();
+  }
+
+  private eraseNote(note: PianoRollNote): void {
+    const track = this.getSelectedTrack();
+    if (!track) {
+      return;
+    }
+
+    const keep = new Set(
+      this.selection.notes
+        .filter((selected) => selected !== note)
+        .map((selected) => selected.midiNote.noteOn),
+    );
+
+    track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
+
+    this.remapSelection(keep);
+    this.render();
+  }
+
+  private transposeSelection(semitones: number): void {
+    const track = this.getSelectedTrack();
+    if (!track || this.selection.size === 0) {
+      return;
+    }
+
+    const keep = new Set(
+      this.selection.notes.map((note) => note.midiNote.noteOn),
+    );
+
+    for (const note of this.selection.notes) {
+      track.setNotePitch(note.midiNote, clamp(note.pitch + semitones, 0, 127));
+    }
+
+    this.remapSelection(keep);
+    this.render();
+  }
+
+  private copySelection(): void {
+    if (this.selection.size === 0) {
+      return;
+    }
+
+    const notes = this.selection.notes;
+    const minTick = Math.min(...notes.map((note) => note.tick));
+
+    this.clipboard = notes.map((note) => ({
+      relativeTick: note.tick - minTick,
+      pitch: note.pitch,
+      durationTicks: note.durationTicks,
+      velocity: note.velocity,
+    }));
+  }
+
+  private cutSelection(): void {
+    const track = this.getSelectedTrack();
+    if (!track || this.selection.size === 0) {
+      return;
+    }
+
+    this.copySelection();
+
+    for (const note of this.selection.notes) {
+      track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
+    }
+
+    this.remapSelection(new Set());
+    this.render();
+  }
+
+  private pasteClipboard(): void {
+    const track = this.getSelectedTrack();
+    if (!track || this.clipboard.length === 0) {
+      return;
+    }
+
+    const anchorX = this.hasHovered ? this.hoverPosition.x : this.keyboardWidth;
+    const anchorTick = this.snapTick(this.tickAtScreenX(anchorX));
+
+    const pastedNoteOns = new Set<MidiChannelEvent>();
+
+    for (const entry of this.clipboard) {
+      const tick = Math.max(0, anchorTick + entry.relativeTick);
+      const insertAt = track.getInsertionIndexAt(tick);
+      const startDelta = tick - track.getAbsoluteTickAt(insertAt);
+
+      const { noteOn } = track.addNote(
+        entry.pitch,
+        startDelta,
+        entry.velocity,
+        entry.durationTicks,
+        insertAt,
+      );
+
+      pastedNoteOns.add(noteOn);
+    }
+
+    this.remapSelection(pastedNoteOns);
+    this.render();
+  }
+
+  private focusSelection(): void {
+    if (this.selection.size === 0) {
+      return;
+    }
+
+    const notes = this.selection.notes;
+    const minTick = Math.min(...notes.map((note) => note.tick));
+    const maxTick = Math.max(
+      ...notes.map((note) => note.tick + note.durationTicks),
+    );
+    const minPitch = Math.min(...notes.map((note) => note.pitch));
+    const maxPitch = Math.max(...notes.map((note) => note.pitch));
+
+    const viewWidth = Math.max(1, this.lastWidth - this.keyboardWidth);
+    const viewHeight = Math.max(1, this.lastHeight - HeaderHeight);
+
+    // Pad the fitted range so notes aren't flush against the viewport edges.
+    const padding = 1.2;
+    const tickSpan = Math.max(1, maxTick - minTick) * padding;
+    const pitchSpan = Math.max(1, maxPitch - minPitch + 1) * padding;
+
+    this.camera.h = clamp(
+      (viewWidth / tickSpan) * this.getPpqn(),
+      MinimumPixelsPerQuarter,
+      MaximumPixelsPerQuarter,
+    );
+    this.camera.v = clamp(
+      viewHeight / pitchSpan,
+      MinimumPixelsPerSemitone,
+      MaximumPixelsPerSemitone,
+    );
+
+    const pixelsPerTick = this.getPixelsPerTick();
+    this.camera.x = Math.max(
+      0,
+      minTick - (viewWidth / pixelsPerTick - tickSpan) / 2,
+    );
+    this.camera.y = clamp(
+      maxPitch + 1 + (viewHeight / this.camera.v - pitchSpan) / 2,
+      0,
+      127,
+    );
+
+    this.render();
+  }
+
+  private headerLaneAt(y: number): "tempo" | "timeSignature" | null {
+    if (y < 0 || y >= HeaderHeight) {
+      return null;
+    }
+
+    return y < HeaderTempoLaneHeight ? "tempo" : "timeSignature";
+  }
+
+  private effectiveTempoAt(tick: number): number {
+    let value = this.tempoChanges[0]?.microsecondsPerQuarterNote ?? 500_000;
+
+    for (const change of this.tempoChanges) {
+      if (change.tick > tick) {
+        break;
+      }
+      value = change.microsecondsPerQuarterNote;
+    }
+
+    return value;
+  }
+
+  private effectiveTimeSignatureAt(tick: number): {
+    numerator: number;
+    denominator: number;
+  } {
+    let value = this.timeSignatureChanges[0] ?? {
+      numerator: 4,
+      denominator: 2,
+    };
+
+    for (const change of this.timeSignatureChanges) {
+      if (change.tick > tick) {
+        break;
+      }
+      value = change;
+    }
+
+    return { numerator: value.numerator, denominator: value.denominator };
+  }
+
+  private findTempoMarkerNear(x: number): TempoChange | null {
+    const pixelsPerTick = this.getPixelsPerTick();
+    let closest: TempoChange | null = null;
+    let closestDistance = HeaderMarkerHitRadius;
+
+    for (const change of this.tempoChanges) {
+      const markerX =
+        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+      const distance = Math.abs(markerX - x);
+
+      if (distance <= closestDistance) {
+        closest = change;
+        closestDistance = distance;
+      }
+    }
+
+    return closest;
+  }
+
+  private findTimeSignatureMarkerNear(x: number): TimeSignatureChange | null {
+    const pixelsPerTick = this.getPixelsPerTick();
+    let closest: TimeSignatureChange | null = null;
+    let closestDistance = HeaderMarkerHitRadius;
+
+    for (const change of this.timeSignatureChanges) {
+      const markerX =
+        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+      const distance = Math.abs(markerX - x);
+
+      if (distance <= closestDistance) {
+        closest = change;
+        closestDistance = distance;
+      }
+    }
+
+    return closest;
+  }
+
+  private handleHeaderClick(x: number, y: number): void {
+    const midi = this.state.midi;
+    const lane = this.headerLaneAt(y);
+
+    if (!midi || !lane) {
+      return;
+    }
+
+    const tick = this.snapTick(this.tickAtScreenX(x));
+
+    if (lane === "tempo") {
+      midi.addTempoChange(tick, this.effectiveTempoAt(tick));
+    } else {
+      const current = this.effectiveTimeSignatureAt(tick);
+      midi.addTimeSignatureChange(tick, current.numerator, current.denominator);
+    }
+
+    this.tempoCacheMidi = null;
+    this.render();
+  }
+
+  private handleHeaderRightClick(x: number, y: number): void {
+    const midi = this.state.midi;
+    const lane = this.headerLaneAt(y);
+
+    if (!midi || !lane) {
+      return;
+    }
+
+    if (lane === "tempo") {
+      const marker = this.findTempoMarkerNear(x);
+      if (marker) {
+        midi.removeTempoChangeAt(marker.tick);
+      }
+    } else {
+      const marker = this.findTimeSignatureMarkerNear(x);
+      if (marker) {
+        midi.removeTimeSignatureChangeAt(marker.tick);
+      }
+    }
+
+    this.tempoCacheMidi = null;
+    this.render();
+  }
+
+  private editHeaderMarkerAt(x: number, y: number): void {
+    const midi = this.state.midi;
+    const lane = this.headerLaneAt(y);
+
+    if (!midi || !lane) {
+      return;
+    }
+
+    if (lane === "tempo") {
+      const marker = this.findTempoMarkerNear(x);
+      if (!marker) {
+        return;
+      }
+
+      const bpm = Math.round(60_000_000 / marker.microsecondsPerQuarterNote);
+      const input = window.prompt("Tempo (BPM):", String(bpm));
+      const parsed = input !== null ? Number(input) : NaN;
+
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return;
+      }
+
+      midi.removeTempoChangeAt(marker.tick);
+      midi.addTempoChange(marker.tick, Math.round(60_000_000 / parsed));
+    } else {
+      const marker = this.findTimeSignatureMarkerNear(x);
+      if (!marker) {
+        return;
+      }
+
+      const input = window.prompt(
+        "Time signature (e.g. 3/4):",
+        `${marker.numerator}/${2 ** marker.denominator}`,
+      );
+
+      const match = input ? /^(\d+)\s*\/\s*(\d+)$/.exec(input.trim()) : null;
+
+      if (!match) {
+        return;
+      }
+
+      const numerator = Number(match[1]);
+      const denominatorValue = Number(match[2]);
+      const denominator = Math.round(Math.log2(denominatorValue));
+
+      if (
+        !Number.isInteger(numerator) ||
+        numerator <= 0 ||
+        2 ** denominator !== denominatorValue
+      ) {
+        return;
+      }
+
+      midi.removeTimeSignatureChangeAt(marker.tick);
+      midi.addTimeSignatureChange(marker.tick, numerator, denominator);
+    }
+
+    this.tempoCacheMidi = null;
+    this.render();
+  }
+
   private pan(dx: number, dy: number): void {
     const pixelsPerTick = this.getPixelsPerTick();
 
@@ -501,6 +1058,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         durationTicks: n.end - n.start,
         pitch: n.note,
         velocity: n.velocity,
+        midiNote: n,
       };
     });
     this.mappedNotesIndex = buildNoteIndex(this.mappedNotes);
@@ -602,6 +1160,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const visibleStart = this.camera.x;
     const visibleEnd = this.camera.x + visibleWidth / pixelsPerTick;
 
+    this.drawSnapGrid(height, pixelsPerTick, visibleStart, visibleEnd);
+
     for (const { tick, isMeasure } of this.iterateGridBeats(
       visibleStart,
       visibleEnd,
@@ -620,6 +1180,44 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.majorGrid.stroke({
       color: 0x555555,
       width: 2,
+    });
+  }
+
+  /**
+   * Draws vertical guide lines at the current snap interval so the grid
+   * visually reflects whatever denominator is selected (when snap is on).
+   */
+  private drawSnapGrid(
+    height: number,
+    pixelsPerTick: number,
+    visibleStart: number,
+    visibleEnd: number,
+  ): void {
+    if (!this.state.snap.enabled) {
+      return;
+    }
+
+    const ticksPerSnap = this.getSnapTicks();
+    if (!Number.isFinite(ticksPerSnap) || ticksPerSnap <= 0) {
+      return;
+    }
+
+    // Skip when lines would be too dense to read.
+    if (ticksPerSnap * pixelsPerTick < 4) {
+      return;
+    }
+
+    const firstTick = Math.floor(visibleStart / ticksPerSnap) * ticksPerSnap;
+
+    for (let tick = firstTick; tick <= visibleEnd; tick += ticksPerSnap) {
+      const x = this.keyboardWidth + (tick - this.camera.x) * pixelsPerTick;
+
+      this.snapGrid.moveTo(x, HeaderHeight).lineTo(x, height);
+    }
+
+    this.snapGrid.stroke({
+      color: 0x2a2a2a,
+      width: 1,
     });
   }
 
@@ -758,8 +1356,18 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private drawHeader(width: number): void {
     this.header
-      .rect(0, 0, width, HeaderHeight)
+      .rect(0, 0, width, HeaderTempoLaneHeight)
       .fill(0x1c1c1c)
+      .rect(
+        0,
+        HeaderTempoLaneHeight,
+        width,
+        HeaderHeight - HeaderTempoLaneHeight,
+      )
+      .fill(0x181818)
+      .moveTo(0, HeaderTempoLaneHeight)
+      .lineTo(width, HeaderTempoLaneHeight)
+      .stroke({ color: 0x3a3a3a, width: 1 })
       .moveTo(0, HeaderHeight)
       .lineTo(width, HeaderHeight)
       .stroke({ color: 0x555555, width: 1 });
@@ -776,6 +1384,16 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const timeSignatureMarkers = this.timeSignatureChanges.filter(inView);
 
     for (const change of tempoMarkers) {
+      const x =
+        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+
+      this.header
+        .moveTo(x, HeaderTempoLaneHeight - 6)
+        .lineTo(x, HeaderTempoLaneHeight)
+        .stroke({ color: 0x888888, width: 1 });
+    }
+
+    for (const change of timeSignatureMarkers) {
       const x =
         this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
 
@@ -798,7 +1416,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.timeSignatureLabelPool,
       timeSignatureMarkers,
       pixelsPerTick,
-      HeaderHeight / 2 + 1,
+      HeaderTempoLaneHeight + 2,
       (change) => `${change.numerator}/${2 ** change.denominator}`,
     );
   }
