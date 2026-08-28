@@ -12,7 +12,7 @@
     "test": "turbo run test",
     "test:core": "turbo run test --filter=@midiedit/core",
     "test:views": "turbo run test --filter=@midiedit/views",
-    "deploy:editor": "npm run deploy --workspace=@midiedit/editor"
+    "deploy:editor": "turbo run build --filter=@midiedit/editor^... && npm run deploy --workspace=@midiedit/editor"
   },
   "repository": {
     "type": "git",
