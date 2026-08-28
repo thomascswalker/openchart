@@ -86,8 +86,8 @@ button:disabled {
 
 .midi-workspace {
   display: grid;
-
-  grid-template-rows: minmax(200px, 1fr) minmax(250px, 1fr);
+  grid-template-columns: 1fr 4fr;
+  grid-template-rows: none;
 
   flex: 1;
 
@@ -148,8 +148,6 @@ button:disabled {
 
 .track-row {
   display: grid;
-
-  grid-template-columns: 180px 1fr;
 
   height: 72px;
 
