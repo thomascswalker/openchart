@@ -16,6 +16,8 @@ import {
   getVisibleNoteRange,
   type PianoRollNoteIndex,
 } from "./visibility";
+import { SelectionContext } from "./selection";
+import { PointerContext } from "./pointer";
 
 interface NoteGeometryCache {
   track: MidiTrack;
@@ -48,10 +50,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private canvas: HTMLCanvasElement | null = null;
 
-  /* Tracks the active panning pointer */
-
-  private panPointerId: number | null = null;
-  private panPosition: Point = new Point(0, 0);
+  // Contexts
+  private pointer: PointerContext = new PointerContext();
+  private selection: SelectionContext = new SelectionContext();
 
   protected override onMounted(app: Application): void {
     app.stage.addChild(
@@ -84,7 +85,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     this.canvas = null;
-    this.panPointerId = null;
+    this.pointer.id = null;
     this.noteGeometryCache = null;
     this.clearMappedNotes();
 
@@ -113,30 +114,30 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     event.preventDefault();
 
-    this.panPointerId = event.pointerId;
+    this.pointer.id = event.pointerId;
 
-    this.panPosition.x = event.clientX;
-    this.panPosition.y = event.clientY;
+    this.pointer.position.x = event.clientX;
+    this.pointer.position.y = event.clientY;
 
     this.canvas?.setPointerCapture(event.pointerId);
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
-    if (this.panPointerId === null || event.pointerId !== this.panPointerId) {
+    if (this.pointer.id === null || event.pointerId !== this.pointer.id) {
       return;
     }
 
-    const deltaX = event.clientX - this.panPosition.x;
-    const deltaY = event.clientY - this.panPosition.y;
+    const deltaX = event.clientX - this.pointer.position.x;
+    const deltaY = event.clientY - this.pointer.position.y;
 
-    this.panPosition.x = event.clientX;
-    this.panPosition.y = event.clientY;
+    this.pointer.position.x = event.clientX;
+    this.pointer.position.y = event.clientY;
 
     this.pan(deltaX, deltaY);
   };
 
   private readonly handlePointerUp = (event: PointerEvent): void => {
-    if (this.panPointerId === null || event.pointerId !== this.panPointerId) {
+    if (this.pointer.id === null || event.pointerId !== this.pointer.id) {
       return;
     }
 
@@ -144,7 +145,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.canvas.releasePointerCapture(event.pointerId);
     }
 
-    this.panPointerId = null;
+    this.pointer.id = null;
   };
 
   private readonly handleAuxClick = (event: MouseEvent): void => {
