@@ -79,7 +79,12 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
    */
   useEffect(() => {
     viewRef.current?.update(state);
-  }, [state.midi, state.selectedTrackIndex]);
+  }, [
+    state.midi,
+    state.selectedTrackIndex,
+    state.snap.enabled,
+    state.snap.denominator,
+  ]);
 
   return <div ref={hostRef} className="midi-view-host" />;
 }

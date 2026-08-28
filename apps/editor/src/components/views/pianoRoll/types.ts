@@ -1,8 +1,12 @@
+import type { MidiNote } from "@midiedit/core";
+
 export interface PianoRollNote {
   tick: number;
   durationTicks: number;
   pitch: number;
   velocity: number;
+  /** Back-reference to the source note, used to keep selection stable across edits. */
+  midiNote: MidiNote;
 }
 
 export interface ActiveNote {

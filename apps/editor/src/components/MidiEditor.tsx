@@ -6,6 +6,7 @@ import { MidiProvider, useMidi } from "./MidiContext";
 
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
+import { SnapDenominators } from "./views/pianoRoll/constants";
 
 import "./MidiEditor.css";
 
@@ -271,9 +272,42 @@ interface MidiViewportProps {
   selectedTrackIndex: number | null;
 }
 
+// Text inputs should still receive a typed "s" instead of toggling snap.
+function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.isContentEditable)
+  );
+}
+
 function MidiViewport({ selectedTrackIndex }: MidiViewportProps) {
   const { midiData } = useMidi();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [snapDenominator, setSnapDenominator] = useState(4);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (event.key.toLowerCase() !== "s" || isTypingTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      setSnapEnabled((enabled) => !enabled);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   const activeView =
     CHART_VIEWS.find((view) => view.id === activeViewId) ?? CHART_VIEWS[0];
@@ -296,7 +330,32 @@ function MidiViewport({ selectedTrackIndex }: MidiViewportProps) {
           </span>
         </div>
 
-        <div>
+        <div className="midi-view__controls">
+          <label className="midi-view__snap">
+            <input
+              type="checkbox"
+              checked={snapEnabled}
+              onChange={(event) => {
+                setSnapEnabled(event.target.checked);
+              }}
+            />
+            Snap
+          </label>
+
+          <select
+            value={snapDenominator}
+            disabled={!snapEnabled}
+            onChange={(event) => {
+              setSnapDenominator(Number(event.target.value));
+            }}
+          >
+            {SnapDenominators.map((denominator) => (
+              <option key={denominator} value={denominator}>
+                1/{denominator}
+              </option>
+            ))}
+          </select>
+
           <select
             value={activeViewId}
             onChange={(event) => {
@@ -318,6 +377,7 @@ function MidiViewport({ selectedTrackIndex }: MidiViewportProps) {
           state={{
             midi: midiData,
             selectedTrackIndex,
+            snap: { enabled: snapEnabled, denominator: snapDenominator },
           }}
         />
       </div>
