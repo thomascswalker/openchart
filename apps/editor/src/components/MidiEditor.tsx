@@ -175,8 +175,6 @@ function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
         </div>
 
         <div>
-          <strong>Selection: {selectedNoteCount ?? "None"}</strong>
-
           <select
             value={activeViewId}
             onChange={(event) => {
@@ -198,9 +196,7 @@ function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
           state={{
             midi: midiData,
             selectedTrackIndex,
-            selectedNoteCount: null,
           }}
-          onSelectionChange={setSelectedNoteCount}
         />
       </div>
     </section>

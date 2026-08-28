@@ -69,6 +69,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private pointer: PointerContext = new PointerContext();
   private selection: SelectionContext = new SelectionContext();
 
+  // The "click" DOM event always reports button 0, so track the real
+  // pointerdown button/position ourselves to detect genuine left clicks.
+  private static readonly clickMovementThreshold = 4;
+  private clickButton: PointerButton | null = null;
+  private readonly clickStart: Point = new Point(0, 0);
+
   public getPointerContext(): PointerContext {
     return this.pointer;
   }
@@ -89,6 +95,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas = app.canvas;
 
     this.canvas.style.touchAction = "none";
+    this.canvas.addEventListener("click", this.handleClick);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -99,6 +106,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   public override destroy(): void {
     if (this.canvas) {
+      this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);
@@ -133,6 +141,30 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.drawSelectionBox();
   }
 
+  private readonly handleClick = (event: MouseEvent) => {
+    const button = this.clickButton;
+    this.clickButton = null;
+
+    // Ignore clicks that didn't originate from a left button press, and
+    // clicks that ended a drag (e.g. panning or box-selecting).
+    if (button !== PointerButton.Left) {
+      return;
+    }
+    const dx = this.pointer.position.x - this.clickStart.x;
+    const dy = this.pointer.position.y - this.clickStart.y;
+    if (Math.hypot(dx, dy) > PianoRollView.clickMovementThreshold) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (this.selection.size > 0) {
+      // Clear selection and re-render
+      this.selection.clear();
+      this.render();
+    }
+  };
+
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (event.button === PointerButton.None) {
       return;
@@ -147,24 +179,24 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         : null;
 
     const local = this.toCanvasLocal(event.clientX, event.clientY);
-    this.pointer.position.x = local.x;
-    this.pointer.position.y = local.y;
 
-    this.canvas?.setPointerCapture(event.pointerId);
+    this.clickButton = this.pointer.button;
+    this.clickStart.x = local.x;
+    this.clickStart.y = local.y;
 
     switch (this.pointer.button) {
       case PointerButton.Left: {
-        this.selection.bounds = new Rectangle(
-          this.pointer.position.x,
-          this.pointer.position.y,
-          1,
-          1,
-        );
+        this.selection.bounds = new Rectangle(local.x, local.y, 1, 1);
         break;
       }
       default:
         break;
     }
+
+    this.pointer.position.x = local.x;
+    this.pointer.position.y = local.y;
+
+    this.canvas?.setPointerCapture(event.pointerId);
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
@@ -181,7 +213,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     switch (this.pointer.button) {
       case PointerButton.Left: {
-        this.updateSelection(dx, dy);
+        this.updateSelection();
         break;
       }
       case PointerButton.Middle: {
@@ -267,14 +299,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return value;
   }
 
-  private updateSelection(dx: number, dy: number) {
+  private updateSelection() {
     if (this.selection.bounds === null) {
       return;
     }
 
-    // Update selection box bounds
-    this.selection.bounds.width += dx;
-    this.selection.bounds.height += dy;
+    // Anchor to clickStart and re-derive bounds each time so the setter can
+    // normalize negative width/height regardless of drag direction.
+    this.selection.bounds = new Rectangle(
+      this.clickStart.x,
+      this.clickStart.y,
+      this.pointer.position.x - this.clickStart.x,
+      this.pointer.position.y - this.clickStart.y,
+    );
 
     // Update note selection
     const cache = this.noteGeometryCache;
@@ -291,7 +328,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       // Select notes
       this.selection.add(geo.note);
     });
-    this.setSelectedNoteCount(this.selection.size);
   }
 
   private pan(dx: number, dy: number): void {

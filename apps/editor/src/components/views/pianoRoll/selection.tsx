@@ -16,7 +16,7 @@ export class SelectionContext {
   }
 
   public set bounds(value: Rectangle | null) {
-    this.#bounds = value;
+    this.#bounds = value !== null ? normalizeRectangle(value) : value;
   }
 
   public get notes(): PianoRollNote[] {
@@ -45,10 +45,7 @@ export class SelectionContext {
       return false;
     }
 
-    // Rectangle.intersects assumes non-negative width/height, but dragging
-    // up/left produces negative values, so normalize before checking.
-    const bounds = normalizeRectangle(this.#bounds);
-    return bounds.intersects(rect);
+    return this.#bounds.intersects(rect);
   }
 
   public isSelected(note: PianoRollNote): boolean {

@@ -9,18 +9,12 @@ interface ChartViewHostProps {
   onSelectionChange?: (count: number) => void;
 }
 
-export function ChartViewHost({
-  createRenderer,
-  state,
-  onSelectionChange,
-}: ChartViewHostProps) {
+export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   const viewRef = useRef<ChartView | null>(null);
   const latestStateRef = useRef(state);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const onSelectionChangeRef = useRef(onSelectionChange);
-  onSelectionChangeRef.current = onSelectionChange;
 
   /*
    * Renderer lifecycle.
@@ -39,9 +33,6 @@ export function ChartViewHost({
 
     viewRef.current = renderer;
     lastSizeRef.current = null;
-    renderer.onSelectionChange = (count: number) => {
-      onSelectionChangeRef.current?.(count);
-    };
 
     const resizeRenderer = (): void => {
       const bounds = host.getBoundingClientRect();
