@@ -9,7 +9,7 @@ import { CHART_VIEWS } from "./views/ChartViews";
 
 import "./MidiEditor.css";
 
-const MIDI_FILE_PICKER_TYPES = [
+const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
     description: "MIDI file",
     accept: { "audio/midi": [".mid", ".midi"] },
