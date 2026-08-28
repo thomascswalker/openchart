@@ -186,10 +186,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.pointer.button = null;
 
     if (this.selection.bounds !== null) {
-      console.log("Ending selection");
       this.selection.bounds = null;
-      this.selectionBox.clear();
     }
+    this.render();
   };
 
   private readonly handleAuxClick = (event: MouseEvent): void => {
