@@ -11,6 +11,11 @@ export const MinimumPixelsPerSemitone = 6;
 export const MaximumPixelsPerSemitone = 64;
 
 /**
+ * Height, in pixels, of the tempo/time-signature strip above the grid.
+ */
+export const HeaderHeight = 28;
+
+/**
  * Controls how quickly wheel input zooms.
  */
 export const ZoomSensitivity = 0.0015;

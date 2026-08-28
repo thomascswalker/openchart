@@ -6,4 +6,6 @@ export {
   MidiTrack,
   MidiNote,
   GetNotesOptions,
+  TempoChange,
+  TimeSignatureChange,
 } from "./midi.js";

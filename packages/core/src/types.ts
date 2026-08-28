@@ -121,3 +121,15 @@ export interface TimedMidiEvent {
   tick: number;
   order: number;
 }
+
+export interface TempoChange {
+  tick: number;
+  microsecondsPerQuarterNote: number;
+}
+
+export interface TimeSignatureChange {
+  tick: number;
+  numerator: number;
+  /** Power-of-two exponent per the MIDI spec (2 == quarter note, 3 == eighth note). */
+  denominator: number;
+}

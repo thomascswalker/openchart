@@ -1,9 +1,23 @@
-import { Midi, type MidiNote, type MidiTrack } from "@midiedit/core";
+import type {
+  Midi,
+  MidiNote,
+  MidiTrack,
+  TempoChange,
+  TimeSignatureChange,
+} from "@midiedit/core";
 import { clamp } from "es-toolkit";
-import { Graphics, Point, Rectangle, type Application } from "pixi.js";
+import {
+  Container,
+  Graphics,
+  Point,
+  Rectangle,
+  Text,
+  type Application,
+} from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
 import {
   BlackPitchClasses,
+  HeaderHeight,
   MaximumPixelsPerQuarter,
   MaximumPixelsPerSemitone,
   MinimumPixelsPerQuarter,
@@ -56,12 +70,31 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly notes = new Graphics();
   private readonly keyboard = new Graphics();
   private readonly selectionBox = new Graphics();
+  private readonly header = new Graphics();
+  private readonly headerLabels = new Container();
+  private readonly tempoLabelPool: Text[] = [];
+  private readonly timeSignatureLabelPool: Text[] = [];
 
   private mappedNotesTrack: MidiTrack | null = null;
   private mappedNotesSource: MidiNote[] | null = null;
   private mappedNotes: PianoRollNote[] = [];
   private mappedNotesIndex: PianoRollNoteIndex | null = null;
   private noteGeometryCache: NoteGeometryCache | null = null;
+
+  private tempoCacheMidi: Midi | null = null;
+  private tempoChanges: TempoChange[] = [
+    {
+      tick: 0,
+      microsecondsPerQuarterNote: 500_000,
+    },
+  ];
+  private timeSignatureChanges: TimeSignatureChange[] = [
+    {
+      tick: 0,
+      numerator: 4,
+      denominator: 2,
+    },
+  ];
 
   private canvas: HTMLCanvasElement | null = null;
 
@@ -90,6 +123,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.notes,
       this.keyboard,
       this.selectionBox,
+      this.header,
+      this.headerLabels,
     );
 
     this.canvas = app.canvas;
@@ -132,18 +167,38 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const width = app.screen.width;
     const height = app.screen.height;
 
+    this.updateTempoCache();
+
     this.notes.clear();
     this.pitchRows.clear();
     this.minorGrid.clear();
     this.majorGrid.clear();
     this.keyboard.clear();
     this.selectionBox.clear();
+    this.header.clear();
 
     this.drawPitchRows(width, height);
     this.drawGrid(width, height);
     this.drawNotes(width, height);
     this.drawKeyboard(height);
     this.drawSelectionBox();
+    this.drawHeader(width);
+  }
+
+  private updateTempoCache(): void {
+    const midi = this.state.midi;
+
+    if (midi === this.tempoCacheMidi) {
+      return;
+    }
+
+    this.tempoCacheMidi = midi;
+    this.tempoChanges = midi?.getTempoChanges() ?? [
+      { tick: 0, microsecondsPerQuarterNote: 500_000 },
+    ];
+    this.timeSignatureChanges = midi?.getTimeSignatureChanges() ?? [
+      { tick: 0, numerator: 4, denominator: 2 },
+    ];
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent) => {
@@ -297,7 +352,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const zoomFactor = Math.exp(-event.deltaY * ZoomSensitivity);
 
     if (event.ctrlKey) {
-      this.zoomVertical(zoomFactor, mouseY);
+      this.zoomVertical(zoomFactor, mouseY - HeaderHeight);
       return;
     }
 
@@ -316,7 +371,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     // Calculate coordinates once to avoid repeating code
     const screenX = value.x - this.camera.x * cache.tickWidth;
-    const screenY = value.y + this.camera.y * cache.rowHeight;
+    const screenY = value.y + this.camera.y * cache.rowHeight + HeaderHeight;
 
     if (value instanceof Point) {
       return new Point(screenX, screenY);
@@ -455,9 +510,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private drawPitchRows(width: number, height: number): void {
     const rowHeight = this.camera.v;
+    const rollHeight = Math.max(0, height - HeaderHeight);
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
-    const rowCount = Math.ceil(height / rowHeight) + 2;
+    const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
 
     for (let row = 0; row < rowCount; row++) {
       const pitch = firstPitch - row;
@@ -468,7 +524,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
       const pitchClass = ((pitch % 12) + 12) % 12;
       const isBlackKey = BlackPitchClasses.has(pitchClass);
-      const y = topOffset + row * rowHeight;
+      const y = HeaderHeight + topOffset + row * rowHeight;
 
       this.pitchRows
         .rect(
@@ -483,11 +539,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private drawKeyboard(height: number): void {
     const rowHeight = this.camera.v;
+    const rollHeight = Math.max(0, height - HeaderHeight);
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
-    const rowCount = Math.ceil(height / rowHeight) + 2;
+    const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
 
-    this.keyboard.rect(0, 0, this.keyboardWidth, height).fill(0xd6d6d6);
+    this.keyboard
+      .rect(0, HeaderHeight, this.keyboardWidth, rollHeight)
+      .fill(0xd6d6d6);
 
     for (let row = 0; row < rowCount; row++) {
       const pitch = firstPitch - row;
@@ -498,7 +557,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
       const pitchClass = ((pitch % 12) + 12) % 12;
       const isBlackKey = BlackPitchClasses.has(pitchClass);
-      const y = topOffset + row * rowHeight;
+      const y = HeaderHeight + topOffset + row * rowHeight;
 
       if (isBlackKey) {
         this.keyboard
@@ -517,7 +576,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     });
 
     this.keyboard
-      .moveTo(this.keyboardWidth, 0)
+      .moveTo(this.keyboardWidth, HeaderHeight)
       .lineTo(this.keyboardWidth, height)
       .stroke({
         color: 0x777777,
@@ -530,27 +589,27 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
 
-    for (let y = topOffset; y <= height + rowHeight; y += rowHeight) {
+    for (
+      let y = HeaderHeight + topOffset;
+      y <= height + rowHeight;
+      y += rowHeight
+    ) {
       this.minorGrid.moveTo(this.keyboardWidth, y).lineTo(width, y);
     }
 
-    const ppqn = this.getPpqn();
-    const pixelsPerTick = this.camera.h / ppqn;
-    const firstQuarter = Math.floor(this.camera.x / ppqn);
+    const pixelsPerTick = this.getPixelsPerTick();
     const visibleWidth = Math.max(0, width - this.keyboardWidth);
+    const visibleStart = this.camera.x;
+    const visibleEnd = this.camera.x + visibleWidth / pixelsPerTick;
 
-    const quarterCount = Math.ceil(visibleWidth / this.camera.h) + 2;
-
-    for (let index = 0; index < quarterCount; index++) {
-      const quarter = firstQuarter + index;
-      const tick = quarter * ppqn;
+    for (const { tick, isMeasure } of this.iterateGridBeats(
+      visibleStart,
+      visibleEnd,
+    )) {
       const x = this.keyboardWidth + (tick - this.camera.x) * pixelsPerTick;
-
-      // TODO: Update to reflect time signatures accurately
-      const isMeasure = quarter % 4 === 0;
       const target = isMeasure ? this.majorGrid : this.minorGrid;
 
-      target.moveTo(x, 0).lineTo(x, height);
+      target.moveTo(x, HeaderHeight).lineTo(x, height);
     }
 
     this.minorGrid.stroke({
@@ -562,6 +621,49 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       color: 0x555555,
       width: 2,
     });
+  }
+
+  /**
+   * Walks bar/beat positions across the visible tick range, honoring each
+   * time-signature segment's beat length (ppqn * 4 / denominator) and
+   * measure length (numerator beats) instead of assuming a fixed 4/4 grid.
+   */
+  private *iterateGridBeats(
+    startTick: number,
+    endTick: number,
+  ): Generator<{ tick: number; isMeasure: boolean }> {
+    const ppqn = this.getPpqn();
+    const segments = this.timeSignatureChanges;
+
+    for (let index = 0; index < segments.length; index++) {
+      const segment = segments[index];
+      const segmentEnd =
+        index + 1 < segments.length ? segments[index + 1].tick : Infinity;
+
+      if (segmentEnd <= startTick || segment.tick >= endTick) {
+        continue;
+      }
+
+      const beatTicks = (ppqn * 4) / 2 ** segment.denominator;
+
+      if (!Number.isFinite(beatTicks) || beatTicks <= 0) {
+        continue;
+      }
+
+      const rangeStart = Math.max(segment.tick, startTick - beatTicks);
+      const rangeEnd = Math.min(segmentEnd, endTick + beatTicks);
+      const firstBeat = Math.floor((rangeStart - segment.tick) / beatTicks);
+
+      for (let beat = firstBeat; ; beat++) {
+        const tick = segment.tick + beat * beatTicks;
+
+        if (tick > rangeEnd) {
+          break;
+        }
+
+        yield { tick, isMeasure: beat % segment.numerator === 0 };
+      }
+    }
   }
 
   private drawNotes(width: number, height: number): void {
@@ -637,7 +739,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     this.notes.position.set(
       -this.camera.x * tickWidth,
-      this.camera.y * rowHeight,
+      this.camera.y * rowHeight + HeaderHeight,
     );
   }
 
@@ -651,6 +753,89 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
           this.selection.bounds!.height,
         )
         .fill({ color: 0xffffff, alpha: 0.5 });
+    }
+  }
+
+  private drawHeader(width: number): void {
+    this.header
+      .rect(0, 0, width, HeaderHeight)
+      .fill(0x1c1c1c)
+      .moveTo(0, HeaderHeight)
+      .lineTo(width, HeaderHeight)
+      .stroke({ color: 0x555555, width: 1 });
+
+    const pixelsPerTick = this.getPixelsPerTick();
+    const visibleWidth = Math.max(0, width - this.keyboardWidth);
+    const visibleStart = this.camera.x;
+    const visibleEnd = this.camera.x + visibleWidth / pixelsPerTick;
+
+    const inView = (change: { tick: number }) =>
+      change.tick >= visibleStart && change.tick <= visibleEnd;
+
+    const tempoMarkers = this.tempoChanges.filter(inView);
+    const timeSignatureMarkers = this.timeSignatureChanges.filter(inView);
+
+    for (const change of tempoMarkers) {
+      const x =
+        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+
+      this.header
+        .moveTo(x, HeaderHeight - 6)
+        .lineTo(x, HeaderHeight)
+        .stroke({ color: 0x888888, width: 1 });
+    }
+
+    this.layoutHeaderLabels(
+      this.tempoLabelPool,
+      tempoMarkers,
+      pixelsPerTick,
+      2,
+      (change) =>
+        `\u266a=${Math.round(60_000_000 / change.microsecondsPerQuarterNote)}`,
+    );
+
+    this.layoutHeaderLabels(
+      this.timeSignatureLabelPool,
+      timeSignatureMarkers,
+      pixelsPerTick,
+      HeaderHeight / 2 + 1,
+      (change) => `${change.numerator}/${2 ** change.denominator}`,
+    );
+  }
+
+  /**
+   * Positions pooled Text labels at each change's tick, reusing existing
+   * Text instances (rather than recreating them) to avoid per-frame churn.
+   */
+  private layoutHeaderLabels<T extends { tick: number }>(
+    pool: Text[],
+    changes: T[],
+    pixelsPerTick: number,
+    y: number,
+    formatText: (change: T) => string,
+  ): void {
+    changes.forEach((change, index) => {
+      let label = pool[index];
+
+      if (!label) {
+        label = new Text({
+          text: "",
+          style: { fill: 0xcccccc, fontSize: 11 },
+        });
+        pool[index] = label;
+        this.headerLabels.addChild(label);
+      }
+
+      const x =
+        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+
+      label.text = formatText(change);
+      label.position.set(x + 3, y);
+      label.visible = x >= this.keyboardWidth;
+    });
+
+    for (let index = changes.length; index < pool.length; index++) {
+      pool[index].visible = false;
     }
   }
 
