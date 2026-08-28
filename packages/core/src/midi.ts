@@ -35,7 +35,7 @@ interface MidiNote {
 }
 
 class MidiHeader {
-  format: MidiFormat = 0;
+  format: MidiFormat = 1;
   trackCount: number = 0;
   division: number = 480;
   isSMPTE: boolean = false;
