@@ -284,21 +284,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
       // Deselect notes
       if (!this.selection.intersects(screenRect)) {
-        const index = this.selection.notes.indexOf(geo.note);
-        if (index !== -1) {
-          this.selection.notes.splice(index, 1);
-        }
+        this.selection.delete(geo.note);
         return;
       }
 
       // Select notes
-      const index = this.selection.notes.indexOf(geo.note);
-      if (index !== -1) {
-        return;
-      }
-      this.selection.notes.push(geo.note);
+      this.selection.add(geo.note);
     });
-    this.setSelectedNoteCount(this.selection.notes.length);
+    this.setSelectedNoteCount(this.selection.size);
   }
 
   private pan(dx: number, dy: number): void {
