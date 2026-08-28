@@ -1,6 +1,6 @@
 import { Midi, type MidiNote, type MidiTrack } from "@midiedit/core";
 import { clamp } from "es-toolkit";
-import { Graphics, Point, type Application } from "pixi.js";
+import { Graphics, Point, Rectangle, type Application } from "pixi.js";
 import { AbstractChartView } from "../AbstractChartView";
 import {
   BlackPitchClasses,
@@ -17,7 +17,7 @@ import {
   type PianoRollNoteIndex,
 } from "./visibility";
 import { SelectionContext } from "./selection";
-import { PointerContext } from "./pointer";
+import { PointerButton, PointerContext } from "./pointer";
 
 interface NoteGeometryCache {
   track: MidiTrack;
@@ -41,6 +41,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly majorGrid = new Graphics();
   private readonly notes = new Graphics();
   private readonly keyboard = new Graphics();
+  private readonly selectionBox = new Graphics();
 
   private mappedNotesTrack: MidiTrack | null = null;
   private mappedNotesSource: MidiNote[] | null = null;
@@ -61,6 +62,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.majorGrid,
       this.notes,
       this.keyboard,
+      this.selectionBox,
     );
 
     this.canvas = app.canvas;
@@ -100,26 +102,47 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.minorGrid.clear();
     this.majorGrid.clear();
     this.keyboard.clear();
+    this.selectionBox.clear();
 
     this.drawPitchRows(width, height);
     this.drawGrid(width, height);
     this.drawNotes(width, height);
     this.drawKeyboard(height);
+    this.drawSelectionBox();
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (event.button !== 1) {
+    if (event.button === PointerButton.None) {
       return;
     }
 
     event.preventDefault();
 
     this.pointer.id = event.pointerId;
+    this.pointer.button =
+      event.button !== PointerButton.None
+        ? (event.button as PointerButton)
+        : null;
 
-    this.pointer.position.x = event.clientX;
-    this.pointer.position.y = event.clientY;
+    const local = this.toCanvasLocal(event.clientX, event.clientY);
+    this.pointer.position.x = local.x;
+    this.pointer.position.y = local.y;
 
     this.canvas?.setPointerCapture(event.pointerId);
+
+    switch (this.pointer.button) {
+      case PointerButton.Left: {
+        this.selection.bounds = new Rectangle(
+          this.pointer.position.x,
+          this.pointer.position.y,
+          1,
+          1,
+        );
+        break;
+      }
+      default:
+        break;
+    }
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
@@ -127,13 +150,27 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return;
     }
 
-    const deltaX = event.clientX - this.pointer.position.x;
-    const deltaY = event.clientY - this.pointer.position.y;
+    const local = this.toCanvasLocal(event.clientX, event.clientY);
+    const dx = local.x - this.pointer.position.x;
+    const dy = local.y - this.pointer.position.y;
 
-    this.pointer.position.x = event.clientX;
-    this.pointer.position.y = event.clientY;
+    this.pointer.position.x = local.x;
+    this.pointer.position.y = local.y;
 
-    this.pan(deltaX, deltaY);
+    switch (this.pointer.button) {
+      case PointerButton.Left: {
+        this.updateSelection(dx, dy);
+        break;
+      }
+      case PointerButton.Middle: {
+        this.pan(dx, dy);
+        break;
+      }
+      default:
+        return;
+    }
+
+    this.render();
   };
 
   private readonly handlePointerUp = (event: PointerEvent): void => {
@@ -146,6 +183,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     this.pointer.id = null;
+    this.pointer.button = null;
+
+    if (this.selection.bounds !== null) {
+      console.log("Ending selection");
+      this.selection.bounds = null;
+      this.selectionBox.clear();
+    }
   };
 
   private readonly handleAuxClick = (event: MouseEvent): void => {
@@ -175,15 +219,21 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.zoomHorizontal(zoomFactor, mouseX);
   };
 
-  private pan(deltaX: number, deltaY: number): void {
+  private updateSelection(dx: number, dy: number) {
+    if (this.selection.bounds === null) {
+      return;
+    }
+    this.selection.bounds.width += dx;
+    this.selection.bounds.height += dy;
+  }
+
+  private pan(dx: number, dy: number): void {
     const pixelsPerTick = this.getPixelsPerTick();
 
-    this.camera.x -= deltaX / pixelsPerTick;
-    this.camera.y += deltaY / this.camera.v;
+    this.camera.x -= dx / pixelsPerTick;
+    this.camera.y += dy / this.camera.v;
     this.camera.x = Math.max(0, this.camera.x);
     this.camera.y = clamp(this.camera.y, 0, 127);
-
-    this.render();
   }
 
   private zoomHorizontal(zoomFactor: number, mouseX: number): void {
@@ -223,6 +273,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private getPixelsPerTick(): number {
     return this.camera.h / this.getPpqn();
+  }
+
+  private toCanvasLocal(clientX: number, clientY: number): Point {
+    if (!this.canvas) {
+      return new Point(clientX, clientY);
+    }
+
+    const bounds = this.canvas.getBoundingClientRect();
+    return new Point(clientX - bounds.left, clientY - bounds.top);
   }
 
   public override getTrackNotes(
@@ -430,6 +489,20 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       -this.camera.x * tickWidth,
       this.camera.y * rowHeight,
     );
+  }
+
+  private drawSelectionBox() {
+    console.log(`Is selecting: ${this.selection.isSelecting}`);
+    if (this.selection.isSelecting) {
+      this.selectionBox
+        .rect(
+          this.selection.bounds!.x,
+          this.selection.bounds!.y,
+          this.selection.bounds!.width,
+          this.selection.bounds!.height,
+        )
+        .fill({ color: 0xffffff, alpha: 0.5 });
+    }
   }
 
   private clearMappedNotes(): void {
