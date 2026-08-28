@@ -132,10 +132,6 @@ function TrackList({ selectedTrackIndex, onSelectTrack }: TrackListProps) {
                 {track.name || `Track ${index + 1}`}
               </span>
             </div>
-
-            <div className="track-row__timeline">
-              <span className="track-row__placeholder">Track contents</span>
-            </div>
           </div>
         );
       })}
@@ -143,11 +139,11 @@ function TrackList({ selectedTrackIndex, onSelectTrack }: TrackListProps) {
   );
 }
 
-interface MidiVisualizationProps {
+interface MidiViewportProps {
   selectedTrackIndex: number | null;
 }
 
-function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
+function MidiViewport({ selectedTrackIndex }: MidiViewportProps) {
   const { midiData } = useMidi();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
 
@@ -220,7 +216,7 @@ function MidiWorkspace() {
       : null;
 
   return (
-    <main className="midi-workspace">
+    <div className="midi-workspace">
       <section className="arrangement">
         <div className="arrangement__header">
           <strong>Tracks</strong>
@@ -241,9 +237,8 @@ function MidiWorkspace() {
           onSelectTrack={setSelectedTrackIndex}
         />
       </section>
-
-      <MidiVisualization selectedTrackIndex={actualSelectedTrack} />
-    </main>
+      <MidiViewport selectedTrackIndex={actualSelectedTrack} />
+    </div>
   );
 }
 
