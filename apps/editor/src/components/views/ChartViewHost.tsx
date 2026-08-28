@@ -6,14 +6,21 @@ import type { ChartView, ChartViewFactory } from "./ChartViews";
 interface ChartViewHostProps {
   createRenderer: ChartViewFactory;
   state: ChartViewState;
+  onSelectionChange?: (count: number) => void;
 }
 
-export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
+export function ChartViewHost({
+  createRenderer,
+  state,
+  onSelectionChange,
+}: ChartViewHostProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   const viewRef = useRef<ChartView | null>(null);
   const latestStateRef = useRef(state);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
 
   /*
    * Renderer lifecycle.
@@ -32,6 +39,9 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
 
     viewRef.current = renderer;
     lastSizeRef.current = null;
+    renderer.onSelectionChange = (count: number) => {
+      onSelectionChangeRef.current?.(count);
+    };
 
     const resizeRenderer = (): void => {
       const bounds = host.getBoundingClientRect();

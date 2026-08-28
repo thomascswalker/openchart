@@ -150,6 +150,7 @@ interface MidiVisualizationProps {
 function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
   const { midiData } = useMidi();
 
+  const [selectedNoteCount, setSelectedNoteCount] = useState(0);
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
 
   const activeView =
@@ -173,18 +174,22 @@ function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
           </span>
         </div>
 
-        <select
-          value={activeViewId}
-          onChange={(event) => {
-            setActiveViewId(event.target.value);
-          }}
-        >
-          {CHART_VIEWS.map((view) => (
-            <option key={view.id} value={view.id}>
-              {view.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <strong>Selection: {selectedNoteCount ?? "None"}</strong>
+
+          <select
+            value={activeViewId}
+            onChange={(event) => {
+              setActiveViewId(event.target.value);
+            }}
+          >
+            {CHART_VIEWS.map((view) => (
+              <option key={view.id} value={view.id}>
+                {view.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="midi-view__body">
@@ -193,7 +198,9 @@ function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
           state={{
             midi: midiData,
             selectedTrackIndex,
+            selectedNoteCount: null,
           }}
+          onSelectionChange={setSelectedNoteCount}
         />
       </div>
     </section>

@@ -19,13 +19,27 @@ import {
 import { SelectionContext } from "./selection";
 import { PointerButton, PointerContext } from "./pointer";
 
+const noteColor = 0x5d9cec;
+const noteSelectedColor = 0xff0000;
+const noteStrokeColor = { color: 0x82b8f4, width: 1 };
+
+interface NoteGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radius: number;
+  note: PianoRollNote;
+}
+
 interface NoteGeometryCache {
   track: MidiTrack;
-  source: PianoRollNote[];
+  notes: PianoRollNote[];
   tickWidth: number;
   rowHeight: number;
   width: number;
   height: number;
+  geometry: NoteGeometry[];
   startTick: number;
   endTick: number;
   minPitch: number;
@@ -54,6 +68,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   // Contexts
   private pointer: PointerContext = new PointerContext();
   private selection: SelectionContext = new SelectionContext();
+
+  public getPointerContext(): PointerContext {
+    return this.pointer;
+  }
+  public getSelectionContext(): SelectionContext {
+    return this.selection;
+  }
 
   protected override onMounted(app: Application): void {
     app.stage.addChild(
@@ -98,6 +119,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const width = app.screen.width;
     const height = app.screen.height;
 
+    this.notes.clear();
     this.pitchRows.clear();
     this.minorGrid.clear();
     this.majorGrid.clear();
@@ -222,8 +244,37 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (this.selection.bounds === null) {
       return;
     }
+
+    // Update selection box bounds
     this.selection.bounds.width += dx;
     this.selection.bounds.height += dy;
+
+    // Update note selection
+    const cache = this.noteGeometryCache;
+    cache?.geometry.forEach((geo) => {
+      // geo.x/geo.y are cached in world space; shift into screen space to
+      // match the selection bounds, mirroring the offset applied at render time.
+      const screenX = geo.x - this.camera.x * cache.tickWidth;
+      const screenY = geo.y + this.camera.y * cache.rowHeight;
+      const rect = new Rectangle(screenX, screenY, geo.width, geo.height);
+
+      // Deselect notes
+      if (!this.selection.intersects(rect)) {
+        const index = this.selection.notes.indexOf(geo.note);
+        if (index !== -1) {
+          this.selection.notes.splice(index, 1);
+        }
+        return;
+      }
+
+      // Select notes
+      const index = this.selection.notes.indexOf(geo.note);
+      if (index !== -1) {
+        return;
+      }
+      this.selection.notes.push(geo.note);
+    });
+    this.setSelectedNoteCount(this.selection.notes.length);
   }
 
   private pan(dx: number, dy: number): void {
@@ -453,24 +504,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const tickWidth = this.camera.h / this.getPpqn();
     const rowHeight = this.camera.v;
     const h = Math.max(1, rowHeight - 2);
-    const fill = 0x5d9cec;
-    const stroke = { color: 0x82b8f4, width: 1 };
 
     const notes = this.getTrackNotes(
       this.state.midi,
       this.state.selectedTrackIndex,
     );
 
-    if (
-      !this.canReuseNoteGeometry(
-        track,
-        notes,
-        tickWidth,
-        rowHeight,
-        width,
-        height,
-      )
-    ) {
+    // Do we need to rebuild note geometry?
+    const needsRebuild = this.needsRebuild(
+      track,
+      notes,
+      tickWidth,
+      rowHeight,
+      width,
+      height,
+    );
+    if (needsRebuild) {
       this.rebuildNoteGeometry(
         track,
         notes,
@@ -479,10 +528,17 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         width,
         height,
         h,
-        fill,
-        stroke,
       );
     }
+
+    // Render each note
+    this.noteGeometryCache?.geometry?.forEach((n) => {
+      const isSelected = this.selection.isSelected(n.note);
+      this.notes
+        .roundRect(n.x, n.y + 1, n.width, n.height, n.radius)
+        .fill(isSelected ? noteSelectedColor : noteColor)
+        .stroke(noteStrokeColor);
+    });
 
     this.notes.position.set(
       -this.camera.x * tickWidth,
@@ -491,7 +547,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawSelectionBox() {
-    console.log(`Is selecting: ${this.selection.isSelecting}`);
     if (this.selection.isSelecting) {
       this.selectionBox
         .rect(
@@ -511,7 +566,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.mappedNotesIndex = null;
   }
 
-  private canReuseNoteGeometry(
+  private needsRebuild(
     track: MidiTrack,
     notes: PianoRollNote[],
     tickWidth: number,
@@ -524,19 +579,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (
       !cache ||
       cache.track !== track ||
-      cache.source !== notes ||
+      cache.notes !== notes ||
       cache.tickWidth !== tickWidth ||
       cache.rowHeight !== rowHeight ||
       cache.width !== width ||
       cache.height !== height
     ) {
-      return false;
+      return true;
     }
 
     const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
     const verticalRange = height / rowHeight;
 
-    return (
+    return !(
       this.camera.x >= cache.startTick &&
       this.camera.x + horizontalRange <= cache.endTick &&
       this.camera.y - verticalRange >= cache.minPitch &&
@@ -552,8 +607,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     width: number,
     height: number,
     noteHeight: number,
-    fill: number,
-    stroke: { color: number; width: number },
   ): void {
     const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
     const verticalRange = height / rowHeight;
@@ -570,8 +623,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     );
     const radius = Math.min(2, noteHeight / 4);
 
-    this.notes.clear();
-
+    const geometry: NoteGeometry[] = [];
     for (let index = visibleRange.start; index < visibleRange.end; index++) {
       const note = notes[index];
 
@@ -583,15 +635,20 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const y = -note.pitch * rowHeight;
       const noteWidth = Math.max(2, note.durationTicks * tickWidth);
 
-      this.notes
-        .roundRect(x, y + 1, noteWidth, noteHeight, radius)
-        .fill(fill)
-        .stroke(stroke);
+      geometry.push({
+        x,
+        y,
+        width: noteWidth,
+        height: noteHeight,
+        radius,
+        note,
+      });
     }
 
     this.noteGeometryCache = {
       track,
-      source: notes,
+      notes: notes,
+      geometry,
       tickWidth,
       rowHeight,
       width,

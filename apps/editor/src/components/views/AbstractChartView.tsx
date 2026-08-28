@@ -4,6 +4,7 @@ import { Application } from "pixi.js";
 export interface ChartViewState {
   midi: Midi | null;
   selectedTrackIndex: number | null;
+  selectedNoteCount: number | null;
 }
 
 export abstract class AbstractChartView<T> {
@@ -16,7 +17,10 @@ export abstract class AbstractChartView<T> {
   protected state: ChartViewState = {
     midi: null,
     selectedTrackIndex: null,
+    selectedNoteCount: null,
   };
+
+  public onSelectionChange: ((count: number) => void) | null = null;
 
   public async mount(host: HTMLElement): Promise<void> {
     const app = new Application();
@@ -77,6 +81,11 @@ export abstract class AbstractChartView<T> {
   }
 
   protected onMounted(_app: Application): void {}
+
+  protected setSelectedNoteCount(count: number): void {
+    this.state.selectedNoteCount = count;
+    this.onSelectionChange?.(count);
+  }
 
   protected abstract draw(app: Application): void;
 
