@@ -1,10 +1,10 @@
-import type { Midi } from "@midiedit/core";
+import { Midi } from "@midiedit/core";
 import { createContext, useContext, useState } from "react";
 
 // Define the shape of our global state
 interface MidiContextType {
   midiData: Midi | null;
-  setMidiData: (data: Midi | null) => void;
+  setMidiData: (data: Midi) => void;
   fileName: string | null;
   setFileName: (name: string | null) => void;
   // Handle to the file's on-disk location; doubles as the "save path" for plain Save.
@@ -17,7 +17,7 @@ const MidiContext = createContext<MidiContextType | undefined>(undefined);
 
 // Provide the context to the app component tree
 export function MidiProvider({ children }: { children: React.ReactNode }) {
-  const [midiData, setMidiData] = useState<Midi | null>(null);
+  const [midiData, setMidiData] = useState<Midi>(new Midi());
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
     null,
