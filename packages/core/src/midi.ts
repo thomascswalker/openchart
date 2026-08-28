@@ -8,8 +8,12 @@ import {
   MidiEvent,
   MidiFormat,
   MidiMetaEvent,
+  TempoChange,
+  TempoMetaPayload,
   TextMetaPayload,
   TimedMidiEvent,
+  TimeSignatureChange,
+  TimeSignatureMetaPayload,
 } from "./types.js";
 import {
   concatBytes,
@@ -85,7 +89,7 @@ class MidiTrack {
     );
   }
 
-  private getTimedEvents(): TimedMidiEvent[] {
+  public getTimedEvents(): TimedMidiEvent[] {
     let tick = 0;
 
     return this.events.map((event, order) => {
@@ -489,6 +493,52 @@ class Midi {
     return this.tracks.find((track) => track.name === name);
   }
 
+  public getTempoChanges(): TempoChange[] {
+    const changes = (this.tracks[0]?.getTimedEvents() ?? [])
+      .filter(
+        (timedEvent): timedEvent is TimedMidiEvent & { event: MidiMetaEvent } =>
+          timedEvent.event.status === 0xff &&
+          (timedEvent.event as MidiMetaEvent).type === MetaType.Tempo,
+      )
+      .map((timedEvent) => ({
+        tick: timedEvent.tick,
+        microsecondsPerQuarterNote: (timedEvent.event.data as TempoMetaPayload)
+          .microsecondsPerQuarterNote,
+      }))
+      .sort((a, b) => a.tick - b.tick);
+
+    if (changes.length === 0 || changes[0].tick !== 0) {
+      changes.unshift({ tick: 0, microsecondsPerQuarterNote: 500_000 });
+    }
+
+    return changes;
+  }
+
+  public getTimeSignatureChanges(): TimeSignatureChange[] {
+    const changes = (this.tracks[0]?.getTimedEvents() ?? [])
+      .filter(
+        (timedEvent): timedEvent is TimedMidiEvent & { event: MidiMetaEvent } =>
+          timedEvent.event.status === 0xff &&
+          (timedEvent.event as MidiMetaEvent).type === MetaType.TimeSignature,
+      )
+      .map((timedEvent) => {
+        const payload = timedEvent.event.data as TimeSignatureMetaPayload;
+        return {
+          tick: timedEvent.tick,
+          numerator: payload.numerator,
+          denominator: payload.denominator,
+        };
+      })
+      .sort((a, b) => a.tick - b.tick);
+
+    if (changes.length === 0 || changes[0].tick !== 0) {
+      // Denominator is stored as a power-of-two exponent (2 == quarter note), per the MIDI spec.
+      changes.unshift({ tick: 0, numerator: 4, denominator: 2 });
+    }
+
+    return changes;
+  }
+
   public toBuffer(): Uint8Array {
     const trackCount = this.tracks.length;
 
@@ -537,4 +587,12 @@ class Midi {
   }
 }
 
-export { Midi, MidiFormat, MidiHeader, MidiTrack, MidiNote };
+export {
+  Midi,
+  MidiFormat,
+  MidiHeader,
+  MidiTrack,
+  MidiNote,
+  TempoChange,
+  TimeSignatureChange,
+};

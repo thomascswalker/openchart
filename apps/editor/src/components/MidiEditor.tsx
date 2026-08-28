@@ -149,8 +149,6 @@ interface MidiVisualizationProps {
 
 function MidiVisualization({ selectedTrackIndex }: MidiVisualizationProps) {
   const { midiData } = useMidi();
-
-  const [selectedNoteCount, setSelectedNoteCount] = useState(0);
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
 
   const activeView =
