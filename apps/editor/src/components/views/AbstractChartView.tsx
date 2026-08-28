@@ -1,5 +1,7 @@
 import type { Midi } from "@midiedit/core";
-import { Application } from "pixi.js";
+import { Application, Point, Rectangle } from "pixi.js";
+
+type TSS = Point | Rectangle;
 
 export interface ChartViewState {
   midi: Midi | null;
@@ -96,6 +98,12 @@ export abstract class AbstractChartView<T> {
 
     this.draw(this.app);
     this.app.render();
+  }
+
+  protected toScreenSpace(value: Point): Point;
+  protected toScreenSpace(value: Rectangle): Rectangle;
+  protected toScreenSpace(value: Point | Rectangle): Point | Rectangle {
+    return value;
   }
 
   public getPpqn(): number {

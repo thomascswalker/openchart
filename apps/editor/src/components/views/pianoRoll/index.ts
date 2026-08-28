@@ -240,6 +240,33 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.zoomHorizontal(zoomFactor, mouseX);
   };
 
+  protected override toScreenSpace(value: Point): Point;
+  protected override toScreenSpace(value: Rectangle): Rectangle;
+  protected override toScreenSpace(
+    value: Point | Rectangle,
+  ): Point | Rectangle {
+    const cache = this.noteGeometryCache;
+    if (!cache) {
+      return value;
+    }
+
+    // Calculate coordinates once to avoid repeating code
+    const screenX = value.x - this.camera.x * cache.tickWidth;
+    const screenY = value.y + this.camera.y * cache.rowHeight;
+
+    if (value instanceof Point) {
+      return new Point(screenX, screenY);
+    }
+
+    if (value instanceof Rectangle) {
+      // Assuming your Rectangle constructor takes (x, y, width, height)
+      return new Rectangle(screenX, screenY, value.width, value.height);
+    }
+
+    // Fallback for safety, though overloads prevent getting here
+    return value;
+  }
+
   private updateSelection(dx: number, dy: number) {
     if (this.selection.bounds === null) {
       return;
@@ -252,14 +279,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     // Update note selection
     const cache = this.noteGeometryCache;
     cache?.geometry.forEach((geo) => {
-      // geo.x/geo.y are cached in world space; shift into screen space to
-      // match the selection bounds, mirroring the offset applied at render time.
-      const screenX = geo.x - this.camera.x * cache.tickWidth;
-      const screenY = geo.y + this.camera.y * cache.rowHeight;
-      const rect = new Rectangle(screenX, screenY, geo.width, geo.height);
+      const worldRect = new Rectangle(geo.x, geo.y, geo.width, geo.height);
+      const screenRect = this.toScreenSpace(worldRect);
 
       // Deselect notes
-      if (!this.selection.intersects(rect)) {
+      if (!this.selection.intersects(screenRect)) {
         const index = this.selection.notes.indexOf(geo.note);
         if (index !== -1) {
           this.selection.notes.splice(index, 1);
