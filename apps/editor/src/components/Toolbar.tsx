@@ -1,6 +1,6 @@
 import { Midi } from "@midiedit/core";
 import { useRef, type ChangeEvent, useEffect } from "react";
-import { useMidi } from "./Context";
+import { useEditor } from "./Context";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
@@ -50,7 +50,7 @@ export const Toolbar = () => {
     fileName,
     fileHandle,
     setFileHandle,
-  } = useMidi();
+  } = useEditor();
 
   const triggerFileDialog = (): void => {
     if (supportsFileSystemAccess) {

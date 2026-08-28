@@ -1,23 +1,23 @@
-import { useMidi } from "./Context";
+import { useEditor } from "./Context";
 import "./styles.css";
 
-interface TrackListProps {
-  selectedTrackIndex: number | null;
-
-  onSelectTrack(index: number): void;
-}
-
-export function TrackList({
-  selectedTrackIndex,
-  onSelectTrack,
-}: TrackListProps) {
-  const { midiData } = useMidi();
+export function TrackList() {
+  const { midiData, selectedTrackIndex, setSelectedTrackIndex } = useEditor();
 
   if (!midiData) {
     return (
       <div className="track-list track-list--empty">No MIDI file loaded.</div>
     );
   }
+
+  const handleTrackSelected = (index: number) => {
+    const actualSelectedTrack = index
+      ? index
+      : midiData && midiData.tracks.length > 0
+        ? 0
+        : null;
+    setSelectedTrackIndex(actualSelectedTrack);
+  };
 
   return (
     <div className="track-list">
@@ -29,12 +29,11 @@ export function TrackList({
             key={index}
             className={selected ? "track-row track-row--selected" : "track-row"}
             onClick={() => {
-              onSelectTrack(index);
+              handleTrackSelected(index);
             }}
           >
             <div className="track-row__header">
               <span className="track-row__number">{index + 1}</span>
-
               <span className="track-row__name">
                 {track.name || `Track ${index + 1}`}
               </span>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMidi } from "./Context";
+import { useEditor } from "./Context";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
 import { SnapDenominators } from "./views/pianoRoll/constants";
@@ -14,12 +14,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-interface ViewportProps {
-  selectedTrackIndex: number | null;
-}
-
-export const Viewport = ({ selectedTrackIndex }: ViewportProps) => {
-  const { midiData } = useMidi();
+export const Viewport = () => {
+  const { midiData, selectedTrackIndex } = useEditor();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
