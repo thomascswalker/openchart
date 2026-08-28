@@ -7,6 +7,9 @@ interface MidiContextType {
   setMidiData: (data: Midi | null) => void;
   fileName: string | null;
   setFileName: (name: string | null) => void;
+  // Handle to the file's on-disk location; doubles as the "save path" for plain Save.
+  fileHandle: FileSystemFileHandle | null;
+  setFileHandle: (handle: FileSystemFileHandle | null) => void;
 }
 
 // Create the context with an undefined default value
@@ -16,10 +19,20 @@ const MidiContext = createContext<MidiContextType | undefined>(undefined);
 export function MidiProvider({ children }: { children: React.ReactNode }) {
   const [midiData, setMidiData] = useState<Midi | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
+    null,
+  );
 
   return (
     <MidiContext.Provider
-      value={{ midiData, setMidiData, fileName, setFileName }}
+      value={{
+        midiData,
+        setMidiData,
+        fileName,
+        setFileName,
+        fileHandle,
+        setFileHandle,
+      }}
     >
       {children}
     </MidiContext.Provider>
