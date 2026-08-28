@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "test": "turbo run test",
     "test:core": "turbo run test --filter=@midiedit/core",
-    "test:views": "turbo run test --filter=@midiedit/views"
+    "test:views": "turbo run test --filter=@midiedit/views",
+    "deploy:editor": "npm run deploy --workspace=editor"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
   "homepage": "https://github.com/thomascswalker/midiview#readme",
   "devDependencies": {
     "@types/node": "^26.3.0",
+    "gh-pages": "^6.3.0",
     "prettier": "^3.9.6",
     "turbo": "latest",
     "typescript": "^7.0.2"
