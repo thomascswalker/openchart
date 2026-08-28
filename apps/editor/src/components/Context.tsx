@@ -12,6 +12,9 @@ interface EditorContextType {
   fileHandle: FileSystemFileHandle | null;
   setFileHandle: (handle: FileSystemFileHandle | null) => void;
 
+  trackCount: number;
+  setTrackCount: (count: number) => void;
+
   selectedTrackIndex: number | null;
   setSelectedTrackIndex: (index: number | null) => void;
 }
@@ -29,18 +32,26 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(
     null,
   );
+  const [trackCount, setTrackCount] = useState<number>(0);
+
+  const handleMidiDataChanged = (data: Midi) => {
+    setMidiData(data);
+    setTrackCount(data.tracks.length);
+  };
 
   return (
     <EditorContext.Provider
       value={{
         midiData,
-        setMidiData,
+        setMidiData: handleMidiDataChanged,
         fileName,
         setFileName,
         fileHandle,
         setFileHandle,
         selectedTrackIndex,
         setSelectedTrackIndex,
+        trackCount,
+        setTrackCount,
       }}
     >
       {children}

@@ -1,10 +1,10 @@
 import { Viewport } from "./Viewport";
-import { Arrangement } from "./Arrangement";
+import { TrackList } from "./Tracklist";
 
 export const Workspace = () => {
   return (
     <div className="midi-workspace">
-      <Arrangement />
+      <TrackList />
       <Viewport />
     </div>
   );

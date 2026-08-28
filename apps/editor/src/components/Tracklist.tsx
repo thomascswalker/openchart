@@ -2,7 +2,8 @@ import { useEditor } from "./Context";
 import "./styles.css";
 
 export function TrackList() {
-  const { midiData, selectedTrackIndex, setSelectedTrackIndex } = useEditor();
+  const { midiData, selectedTrackIndex, setSelectedTrackIndex, setTrackCount } =
+    useEditor();
 
   if (!midiData) {
     return (
@@ -10,37 +11,62 @@ export function TrackList() {
     );
   }
 
-  const handleTrackSelected = (index: number) => {
-    const actualSelectedTrack = index
-      ? index
-      : midiData && midiData.tracks.length > 0
-        ? 0
-        : null;
-    setSelectedTrackIndex(actualSelectedTrack);
+  const handleAddTrack = (): void => {
+    midiData.addTrack();
+    setTrackCount(midiData.tracks.length);
+  };
+
+  const handleDeleteTrack = (): void => {
+    if (selectedTrackIndex !== null) {
+      console.log(`Deleting track ${selectedTrackIndex}`);
+      const length = midiData.removeTrack(selectedTrackIndex);
+      setTrackCount(length);
+    }
   };
 
   return (
-    <div className="track-list">
-      {midiData.tracks.map((track, index) => {
-        const selected = selectedTrackIndex === index;
+    <section className="arrangement">
+      <div className="arrangement__header">
+        <strong>Tracks</strong>
 
-        return (
-          <div
-            key={index}
-            className={selected ? "track-row track-row--selected" : "track-row"}
-            onClick={() => {
-              handleTrackSelected(index);
-            }}
-          >
-            <div className="track-row__header">
-              <span className="track-row__number">{index + 1}</span>
-              <span className="track-row__name">
-                {track.name || `Track ${index + 1}`}
-              </span>
+        {midiData && (
+          <span className="arrangement__metadata">
+            Format {midiData.header.format}
+            {" · "}
+            PPQN {midiData.header.division}
+            {" · "}
+            {midiData.tracks.length} tracks
+          </span>
+        )}
+      </div>
+      <section>
+        <button onClick={handleAddTrack}>Add</button>
+        <button onClick={handleDeleteTrack}>Delete</button>
+      </section>
+      <div className="track-list">
+        {midiData.tracks.map((track, index) => {
+          const selected = selectedTrackIndex === index;
+
+          return (
+            <div
+              key={index}
+              className={
+                selected ? "track-row track-row--selected" : "track-row"
+              }
+              onClick={() => {
+                setSelectedTrackIndex(index);
+              }}
+            >
+              <div className="track-row__header">
+                <span className="track-row__number">{index + 1}</span>
+                <span className="track-row__name">
+                  {track.name || `Track ${index + 1}`}
+                </span>
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
