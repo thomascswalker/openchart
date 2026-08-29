@@ -43,7 +43,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const playheadTickRef = useRef(playheadTick);
   playheadTickRef.current = playheadTick;
 
-  const rafRef = useRef<number | null>(null);
+  const animationRef = useRef<number | null>(null);
   const lastFrameMsRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -120,14 +120,14 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         setPlayheadTickState(nextTick);
       }
 
-      rafRef.current = requestAnimationFrame(step);
+      animationRef.current = requestAnimationFrame(step);
     };
 
-    rafRef.current = requestAnimationFrame(step);
+    animationRef.current = requestAnimationFrame(step);
 
     return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
       }
     };
   }, [isPlaying, ppqn, tempoChanges, totalTicks]);
