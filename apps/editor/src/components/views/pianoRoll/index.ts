@@ -261,24 +261,27 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private readonly handleKeyDown = (event: KeyboardEvent) => {
     const key = event.key.toLowerCase();
-    const isArrow = key === "arrowup" || key === "arrowdown";
-    const direction = key === "arrowup" ? 1 : -1;
 
-    if ((event.ctrlKey || event.metaKey) && event.shiftKey && isArrow) {
-      event.preventDefault();
-      this.transposeSelection(direction * 12);
-      return;
-    }
-
-    // Bare Shift+Arrow, or the Cmd+Arrow alt-binding, transpose by a semitone.
-    if (
-      isArrow &&
-      ((event.shiftKey && !event.ctrlKey && !event.metaKey) ||
-        (event.metaKey && !event.shiftKey && !event.ctrlKey))
-    ) {
-      event.preventDefault();
-      this.transposeSelection(direction);
-      return;
+    switch (key) {
+      case "arrowup":
+      case "arrowdown": {
+        event.preventDefault();
+        const direction = key === "arrowup" ? 1 : -1;
+        // Shift moves by an octave instead of a semitone.
+        this.transposeSelection(event.shiftKey ? direction * 12 : direction);
+        return;
+      }
+      case "arrowleft":
+      case "arrowright": {
+        event.preventDefault();
+        const direction = key === "arrowleft" ? -1 : 1;
+        // 7.5 ticks (a 1/64 note) is the fallback step when snapping is off.
+        const step = this.state.snap.enabled ? this.getSnapTicks() : 7.5;
+        this.moveSelectionTicks(direction * step);
+        return;
+      }
+      default:
+        break;
     }
 
     if (event.ctrlKey || event.metaKey) {
@@ -940,6 +943,27 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     for (const note of this.selection.notes) {
       track.setNotePitch(note.midiNote, clamp(note.pitch + semitones, 0, 127));
+    }
+
+    this.remapSelection(keep);
+    this.render();
+  }
+
+  private moveSelectionTicks(deltaTicks: number): void {
+    const track = this.getSelectedTrack();
+    if (!track || this.selection.size === 0) {
+      return;
+    }
+
+    const keep = new Set(
+      this.selection.notes.map((note) => note.midiNote.noteOn),
+    );
+
+    for (const note of this.selection.notes) {
+      track.setNoteStart(
+        note.midiNote,
+        Math.max(0, Math.round(note.tick + deltaTicks)),
+      );
     }
 
     this.remapSelection(keep);
