@@ -130,6 +130,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   // remapSelection() after each resize step invalidates note object identity.
   private resizeSelectionKeep: Set<MidiChannelEvent> = new Set();
 
+  // True while a left-drag started on empty space, which resizes a
+  // freshly-created 1-tick note via the same resize state as above.
+  private creating = false;
+
+  // True while left-dragging a note's (or selected notes') body to move it.
+  private moving = false;
+  private moveAnchor: PianoRollNote | null = null;
+  private moveAnchorInitialTick = 0;
+  private moveAnchorInitialPitch = 0;
+  private moveTargets: {
+    note: PianoRollNote;
+    initialTick: number;
+    initialPitch: number;
+  }[] = [];
+  private moveSelectionKeep: Set<MidiChannelEvent> = new Set();
+
   private clipboard: {
     relativeTick: number;
     pitch: number;
@@ -302,6 +318,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         event.preventDefault();
         this.focusSelection();
         break;
+      case "delete":
+        event.preventDefault();
+        this.deleteSelection();
+        break;
       default:
         break;
     }
@@ -333,10 +353,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (hit) {
       this.selection.notes = [hit];
       this.render();
-      return;
     }
-
-    this.createNoteAt(this.clickStart.x, this.clickStart.y);
   };
 
   private readonly handleDoubleClick = (event: MouseEvent): void => {
@@ -385,10 +402,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
           break;
         }
 
-        const hit = this.hitTestNote(local);
-        if (hit) {
+        // Paint-delete only engages while Alt is held; a plain right-drag
+        // is always a box-select.
+        if (event.altKey) {
           this.erasing = true;
-          this.eraseNote(hit);
+          const hit = this.hitTestNote(local);
+          if (hit) {
+            this.eraseNote(hit);
+          }
         } else {
           this.erasing = false;
           this.selection.bounds = new Rectangle(local.x, local.y, 1, 1);
@@ -400,7 +421,16 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
           const edgeHit = this.hitTestNoteEdge(local);
           if (edgeHit) {
             this.beginResize(edgeHit);
+            break;
           }
+
+          const bodyHit = this.hitTestNote(local);
+          if (bodyHit) {
+            this.beginMove(bodyHit);
+            break;
+          }
+
+          this.beginCreate(local);
         }
         break;
       }
@@ -425,7 +455,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       if (this.canvas) {
         this.canvas.style.cursor = this.hitTestNoteEdge(local)
           ? "ew-resize"
-          : "";
+          : this.hitTestNote(local)
+            ? "move"
+            : "";
       }
       return;
     }
@@ -451,6 +483,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       case PointerButton.Left: {
         if (this.resizing) {
           this.updateResize(local);
+        } else if (this.moving) {
+          this.updateMove(local);
         }
         break;
       }
@@ -477,10 +511,40 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.pointer.id = null;
     this.pointer.button = null;
     this.erasing = false;
+
+    // A plain click (no real drag) still gets the default snap/quarter-note
+    // length, rather than being left at the 1-tick creation stub.
+    if (this.creating && this.resizeTargets[0]) {
+      const dx = this.pointer.position.x - this.clickStart.x;
+      const dy = this.pointer.position.y - this.clickStart.y;
+      const dragged = Math.hypot(dx, dy) > PianoRollView.clickMovementThreshold;
+      const track = this.getSelectedTrack();
+
+      if (!dragged && track) {
+        const defaultDuration = Math.max(
+          1,
+          Math.round(
+            this.state.snap.enabled ? this.getSnapTicks() : this.getPpqn(),
+          ),
+        );
+        track.setNoteDuration(
+          this.resizeTargets[0].note.midiNote,
+          defaultDuration,
+        );
+        this.remapSelection(this.resizeSelectionKeep);
+      }
+    }
+
+    this.creating = false;
     this.resizing = false;
     this.resizeAnchor = null;
     this.resizeTargets = [];
     this.resizeSelectionKeep = new Set();
+
+    this.moving = false;
+    this.moveAnchor = null;
+    this.moveTargets = [];
+    this.moveSelectionKeep = new Set();
 
     if (this.selection.bounds !== null) {
       this.selection.bounds = null;
@@ -729,6 +793,54 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   /**
+   * Begins dragging the body of a note (or, if it's part of the current
+   * selection, the whole selection) to a new tick/pitch.
+   */
+  private beginMove(anchor: PianoRollNote): void {
+    if (!this.selection.isSelected(anchor) || this.selection.size === 0) {
+      this.selection.notes = [anchor];
+    }
+
+    const targets = this.selection.notes;
+
+    this.moving = true;
+    this.moveAnchor = anchor;
+    this.moveAnchorInitialTick = anchor.tick;
+    this.moveAnchorInitialPitch = anchor.pitch;
+    this.moveTargets = targets.map((note) => ({
+      note,
+      initialTick: note.tick,
+      initialPitch: note.pitch,
+    }));
+    this.moveSelectionKeep = new Set(
+      this.selection.notes.map((note) => note.midiNote.noteOn),
+    );
+  }
+
+  private updateMove(local: Point): void {
+    const track = this.getSelectedTrack();
+    if (!track || !this.moveAnchor) {
+      return;
+    }
+
+    const newAnchorTick = this.snapTick(this.tickAtScreenX(local.x));
+    const newAnchorPitch = this.pitchAtScreenY(local.y);
+    const tickDelta = newAnchorTick - this.moveAnchorInitialTick;
+    const pitchDelta = newAnchorPitch - this.moveAnchorInitialPitch;
+
+    for (const { note, initialTick, initialPitch } of this.moveTargets) {
+      track.setNoteStart(note.midiNote, Math.max(0, initialTick + tickDelta));
+      track.setNotePitch(
+        note.midiNote,
+        clamp(initialPitch + pitchDelta, 0, 127),
+      );
+    }
+
+    this.remapSelection(this.moveSelectionKeep);
+    this.render();
+  }
+
+  /**
    * Re-derives the current selection after a mutation invalidates note
    * identity, matching by each note's stable NoteOn event reference.
    */
@@ -747,33 +859,40 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     );
   }
 
-  private createNoteAt(x: number, y: number): void {
+  /**
+   * Starts a note as a 1-tick stub and hands it off to the resize state so
+   * dragging out from the click point extends its length live.
+   */
+  private beginCreate(local: Point): void {
     const track = this.getSelectedTrack();
     if (!track) {
       return;
     }
 
-    const pitch = this.pitchAtScreenY(y);
-    const tick = this.snapTick(this.tickAtScreenX(x));
-    const duration = Math.max(
-      1,
-      Math.round(
-        this.state.snap.enabled ? this.getSnapTicks() : this.getPpqn(),
-      ),
-    );
+    const pitch = this.pitchAtScreenY(local.y);
+    const tick = this.snapTick(this.tickAtScreenX(local.x));
 
     const insertAt = track.getInsertionIndexAt(tick);
     const startDelta = tick - track.getAbsoluteTickAt(insertAt);
 
-    const { noteOn } = track.addNote(
-      pitch,
-      startDelta,
-      100,
-      duration,
-      insertAt,
-    );
+    const { noteOn } = track.addNote(pitch, startDelta, 100, 1, insertAt);
 
     this.remapSelection(new Set([noteOn]));
+
+    const anchor = this.selection.notes[0];
+    if (!anchor) {
+      return;
+    }
+
+    this.creating = true;
+    this.resizing = true;
+    this.resizeAnchor = anchor;
+    this.resizeAnchorInitialEnd = anchor.tick + anchor.durationTicks;
+    this.resizeTargets = [
+      { note: anchor, initialDuration: anchor.durationTicks },
+    ];
+    this.resizeSelectionKeep = new Set([noteOn]);
+
     this.render();
   }
 
@@ -792,6 +911,20 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
 
     this.remapSelection(keep);
+    this.render();
+  }
+
+  private deleteSelection(): void {
+    const track = this.getSelectedTrack();
+    if (!track || this.selection.size === 0) {
+      return;
+    }
+
+    for (const note of this.selection.notes) {
+      track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
+    }
+
+    this.selection.clear();
     this.render();
   }
 
