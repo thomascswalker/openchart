@@ -7,14 +7,22 @@ interface ChartViewHostProps {
   createRenderer: ChartViewFactory;
   state: ChartViewState;
   onSelectionChange?: (count: number) => void;
+  /** Called with the mounted renderer instance, and again with null when it's torn down. */
+  onReady?: (view: ChartView | null) => void;
 }
 
-export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
+export function ChartViewHost({
+  createRenderer,
+  state,
+  onReady,
+}: ChartViewHostProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   const viewRef = useRef<ChartView | null>(null);
   const latestStateRef = useRef(state);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   /*
    * Renderer lifecycle.
@@ -60,6 +68,7 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
 
     void renderer.mount(host).then(() => {
       renderer.update(latestStateRef.current);
+      onReadyRef.current?.(renderer);
     });
 
     return () => {
@@ -69,6 +78,7 @@ export function ChartViewHost({ createRenderer, state }: ChartViewHostProps) {
         viewRef.current = null;
       }
 
+      onReadyRef.current?.(null);
       renderer.destroy();
     };
   }, [createRenderer]);

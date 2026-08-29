@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useEditor } from "./Context";
+import { usePlayback } from "./PlaybackContext";
+import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
+import type { ChartView } from "./views/ChartViews";
 import { SnapDenominators } from "./views/pianoRoll/constants";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -16,13 +19,27 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export const Viewport = () => {
   const { midiData, selectedTrackIndex } = useEditor();
+  const { isPlaying, playheadTick, togglePlay } = usePlayback();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
+  const [chartView, setChartView] = useState<ChartView | null>(null);
+  const togglePlayRef = useRef(togglePlay);
+  togglePlayRef.current = togglePlay;
+
+  const handleChartViewReady = useCallback((view: ChartView | null) => {
+    setChartView(view);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (event.code === "Space" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        togglePlayRef.current();
         return;
       }
 
@@ -39,6 +56,24 @@ export const Viewport = () => {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
+
+  // While playing, keep the playhead in view by following it with the camera.
+  useEffect(() => {
+    if (!isPlaying || !chartView) {
+      return;
+    }
+
+    const visibleSpan = chartView.getVisibleTickSpan();
+    const cameraTick = chartView.getCameraTick();
+    const followMargin = visibleSpan * 0.1;
+
+    if (
+      playheadTick < cameraTick + followMargin ||
+      playheadTick > cameraTick + visibleSpan - followMargin
+    ) {
+      chartView.setCameraTick(Math.max(0, playheadTick - followMargin));
+    }
+  }, [isPlaying, playheadTick, chartView]);
 
   const activeView =
     CHART_VIEWS.find((view) => view.id === activeViewId) ?? CHART_VIEWS[0];
@@ -110,8 +145,11 @@ export const Viewport = () => {
             selectedTrackIndex,
             snap: { enabled: snapEnabled, denominator: snapDenominator },
           }}
+          onReady={handleChartViewReady}
         />
       </div>
+
+      <Timeline chartView={chartView} />
     </section>
   );
 };

@@ -157,11 +157,31 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private lastWidth = 1;
   private lastHeight = 1;
 
+  /** Notified whenever the camera's horizontal position or zoom changes. */
+  private lastNotifiedCameraX: number | null = null;
+  private lastNotifiedCameraH: number | null = null;
+
   public getPointerContext(): PointerContext {
     return this.pointer;
   }
   public getSelectionContext(): SelectionContext {
     return this.selection;
+  }
+
+  /** Absolute MIDI tick at the left edge of the visible piano roll. */
+  public override getCameraTick(): number {
+    return this.camera.x;
+  }
+
+  /** Number of MIDI ticks currently visible horizontally in the piano roll. */
+  public override getVisibleTickSpan(): number {
+    const viewWidth = Math.max(1, this.lastWidth - this.keyboardWidth);
+    return viewWidth / this.getPixelsPerTick();
+  }
+
+  public override setCameraTick(tick: number): void {
+    this.camera.x = Math.max(0, tick);
+    this.render();
   }
 
   protected override onMounted(app: Application): void {
@@ -241,6 +261,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.drawKeyboard(height);
     this.drawSelectionBox();
     this.drawHeader(width);
+
+    if (
+      this.camera.x !== this.lastNotifiedCameraX ||
+      this.camera.h !== this.lastNotifiedCameraH
+    ) {
+      this.lastNotifiedCameraX = this.camera.x;
+      this.lastNotifiedCameraH = this.camera.h;
+      this.onCameraChange?.();
+    }
   }
 
   private updateTempoCache(): void {

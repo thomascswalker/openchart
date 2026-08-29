@@ -1,4 +1,5 @@
 import { EditorProvider } from "./Context";
+import { PlaybackProvider } from "./PlaybackContext";
 import { Workspace } from "./Workspace";
 import { Toolbar } from "./Toolbar";
 
@@ -7,10 +8,12 @@ import "./styles.css";
 const Editor = () => {
   return (
     <EditorProvider>
-      <div className="midi-editor">
-        <Toolbar />
-        <Workspace />
-      </div>
+      <PlaybackProvider>
+        <div className="midi-editor">
+          <Toolbar />
+          <Workspace />
+        </div>
+      </PlaybackProvider>
     </EditorProvider>
   );
 };

@@ -8,6 +8,7 @@ import {
   MidiSysExEvent,
   MidiChannelEvent,
   ChannelMessage,
+  TempoChange,
 } from "./types.js";
 
 export function isTwoByteMessage(status: number): boolean {
@@ -281,4 +282,59 @@ export function encodeMidiEvent(event: MidiEvent): Uint8Array {
   }
 
   return concatBytes([deltaTime, new Uint8Array(bytes)]);
+}
+
+/** Converts an absolute MIDI tick to milliseconds, honoring tempo changes along the way. */
+export function ticksToMs(
+  tick: number,
+  ppqn: number,
+  tempoChanges: TempoChange[],
+): number {
+  let ms = 0;
+  let previousTick = 0;
+  let microsecondsPerQuarterNote = 500_000;
+
+  for (const change of tempoChanges) {
+    if (change.tick >= tick) {
+      break;
+    }
+
+    ms +=
+      ((change.tick - previousTick) * microsecondsPerQuarterNote) / ppqn / 1000;
+    previousTick = change.tick;
+    microsecondsPerQuarterNote = change.microsecondsPerQuarterNote;
+  }
+
+  ms += ((tick - previousTick) * microsecondsPerQuarterNote) / ppqn / 1000;
+
+  return ms;
+}
+
+/** Converts milliseconds to an absolute MIDI tick, honoring tempo changes along the way. */
+export function msToTicks(
+  ms: number,
+  ppqn: number,
+  tempoChanges: TempoChange[],
+): number {
+  let remainingMs = ms;
+  let previousTick = 0;
+  let microsecondsPerQuarterNote = 500_000;
+
+  for (const change of tempoChanges) {
+    const segmentMs =
+      ((change.tick - previousTick) * microsecondsPerQuarterNote) / ppqn / 1000;
+
+    if (segmentMs >= remainingMs) {
+      break;
+    }
+
+    remainingMs -= segmentMs;
+    previousTick = change.tick;
+    microsecondsPerQuarterNote = change.microsecondsPerQuarterNote;
+  }
+
+  const ticks =
+    previousTick + (remainingMs * 1000 * ppqn) / microsecondsPerQuarterNote;
+
+  return Math.max(0, ticks);
 }

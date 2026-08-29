@@ -107,5 +107,20 @@ export abstract class AbstractChartView<T> {
     return this.state.midi?.header.division ?? 480;
   }
 
+  /** Absolute MIDI tick at the left edge of the visible viewport, if this view supports panning. */
+  public getCameraTick(): number {
+    return 0;
+  }
+
+  /** Number of MIDI ticks currently visible horizontally, if this view supports panning. */
+  public getVisibleTickSpan(): number {
+    return 0;
+  }
+
+  public setCameraTick(_tick: number): void {}
+
+  /** Notified whenever the view's camera position or zoom changes, if supported. */
+  public onCameraChange: (() => void) | null = null;
+
   public abstract getTrackNotes(midi: Midi, trackIndex: number): T[];
 }
