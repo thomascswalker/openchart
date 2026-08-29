@@ -1,6 +1,6 @@
 import { Midi } from "@midiedit/core";
 import { useRef, type ChangeEvent, useEffect } from "react";
-import { useEditor } from "./Context";
+import { useEditor } from "./EditorContext";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {

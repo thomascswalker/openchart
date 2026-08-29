@@ -6,8 +6,6 @@ import {
   DefaultMetaPayload,
   MetaType,
   MidiSysExEvent,
-  MidiChannelEvent,
-  ChannelMessage,
   TempoChange,
 } from "./types.js";
 
