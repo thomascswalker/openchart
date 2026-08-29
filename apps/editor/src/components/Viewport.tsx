@@ -19,7 +19,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export const Viewport = () => {
   const { midiData, selectedTrackIndex } = useEditor();
-  const { isPlaying, playheadTick, togglePlay } = usePlayback();
+  const {
+    isPlaying,
+    playheadTick,
+    togglePlay,
+    setPlayheadTick,
+    refreshTotalTicks,
+  } = usePlayback();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
@@ -56,6 +62,37 @@ export const Viewport = () => {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
+
+  // Keep the chart view's rendered cursor in sync with the playhead.
+  useEffect(() => {
+    chartView?.setPlayheadTick(playheadTick);
+  }, [chartView, playheadTick]);
+
+  // Recompute the playback range whenever notes are added or removed.
+  useEffect(() => {
+    if (!chartView) {
+      return;
+    }
+
+    chartView.onNotesChanged = refreshTotalTicks;
+
+    return () => {
+      chartView.onNotesChanged = null;
+    };
+  }, [chartView, refreshTotalTicks]);
+
+  // A plain click (no drag) in the chart view seeks the playhead there.
+  useEffect(() => {
+    if (!chartView) {
+      return;
+    }
+
+    chartView.onSeekRequest = setPlayheadTick;
+
+    return () => {
+      chartView.onSeekRequest = null;
+    };
+  }, [chartView, setPlayheadTick]);
 
   // While playing, keep the playhead in view by following it with the camera.
   useEffect(() => {

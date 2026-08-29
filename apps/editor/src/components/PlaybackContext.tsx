@@ -18,6 +18,7 @@ interface PlaybackContextType {
   pause: () => void;
   togglePlay: () => void;
   setPlayheadTick: (tick: number) => void;
+  refreshTotalTicks: () => void;
 }
 
 const PlaybackContext = createContext<PlaybackContextType | undefined>(
@@ -46,7 +47,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const animationRef = useRef<number | null>(null);
   const lastFrameMsRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  const computeTotalTicks = useCallback((): number => {
     let maxTick = 0;
 
     for (const track of midiData?.tracks ?? []) {
@@ -55,8 +56,16 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setTotalTicks(maxTick);
+    return maxTick;
   }, [midiData]);
+
+  useEffect(() => {
+    setTotalTicks(computeTotalTicks());
+  }, [computeTotalTicks]);
+
+  const refreshTotalTicks = useCallback(() => {
+    setTotalTicks(computeTotalTicks());
+  }, [computeTotalTicks]);
 
   const setPlayheadTick = useCallback(
     (tick: number) => {
@@ -142,6 +151,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         pause,
         togglePlay,
         setPlayheadTick,
+        refreshTotalTicks,
       }}
     >
       {children}

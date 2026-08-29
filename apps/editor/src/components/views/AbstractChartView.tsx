@@ -119,8 +119,17 @@ export abstract class AbstractChartView<T> {
 
   public setCameraTick(_tick: number): void {}
 
+  /** Current playback cursor position, in MIDI ticks, if this view supports drawing it. */
+  public setPlayheadTick(_tick: number): void {}
+
   /** Notified whenever the view's camera position or zoom changes, if supported. */
   public onCameraChange: (() => void) | null = null;
+
+  /** Notified whenever notes are added or removed, if supported. */
+  public onNotesChanged: (() => void) | null = null;
+
+  /** Notified when the user clicks (without dragging) to seek to a tick, if supported. */
+  public onSeekRequest: ((tick: number) => void) | null = null;
 
   public abstract getTrackNotes(midi: Midi, trackIndex: number): T[];
 }
