@@ -36,7 +36,7 @@ import {
 } from "./visibility";
 import { SelectionContext } from "./selection";
 import { PointerButton, PointerContext } from "./pointer";
-import { getScrollDevice } from "../../../util/scroll";
+import { getScrollGesture } from "../../../util/scroll";
 
 const noteColor = 0x5d9cec;
 const noteSelectedColor = 0xff0000;
@@ -643,13 +643,16 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const mouseY = event.clientY - bounds.top;
     const delta = new Point(mouseX, mouseY);
 
-    const scrollDevice = getScrollDevice(event);
-    switch (scrollDevice) {
-      case "mouse":
+    const scrollGesture = getScrollGesture(event);
+    switch (scrollGesture) {
+      case "mouse-zoom":
         this.handleMouseScroll(event, delta);
         break;
-      case "trackpad":
+      case "trackpad-pan":
         this.handleTrackPad(event, delta);
+        break;
+      case "trackpad-pinch":
+        this.zoomAtCursor(this.getZoomFactor(-event.deltaY), delta);
         break;
     }
   };
@@ -658,19 +661,29 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     event: WheelEvent,
     delta: Point,
   ): void => {
-    const zoomFactor = Math.exp(-event.deltaY * ZoomSensitivity);
-
-    if (event.ctrlKey) {
-      this.zoomVertical(zoomFactor, delta.y - HeaderHeight);
-      return;
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+      this.zoomHorizontal(this.getZoomFactor(-event.deltaX), delta.x);
+    } else {
+      this.zoomVertical(
+        this.getZoomFactor(-event.deltaY),
+        delta.y - HeaderHeight,
+      );
     }
-
-    this.zoomHorizontal(zoomFactor, delta.x);
   };
 
   private readonly handleTrackPad = (event: WheelEvent, delta: Point): void => {
-    return;
+    const zoomFactor = this.getZoomFactor(-delta.y);
+    if (event.altKey) {
+      this.zoomHorizontal(zoomFactor, delta.x);
+    } else {
+      this.pan(delta.x, delta.y);
+      this.render();
+    }
   };
+
+  private getZoomFactor(value: number): number {
+    return Math.exp(value * ZoomSensitivity);
+  }
 
   protected override toScreenSpace(value: Point): Point;
   protected override toScreenSpace(value: Rectangle): Rectangle;
@@ -1384,6 +1397,31 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     const newPixelsPerTick = this.getPixelsPerTick();
     this.camera.x = Math.max(0, anchorTick - anchorX / newPixelsPerTick);
+    this.render();
+  }
+
+  private zoomAtCursor(zoomFactor: number, cursor: Point): void {
+    const rollX = cursor.x - this.keyboardWidth;
+    const anchorX = Math.max(0, rollX);
+    const anchorY = cursor.y - HeaderHeight;
+    const oldPixelsPerTick = this.getPixelsPerTick();
+    const oldPixelsPerSemitone = this.camera.v;
+    const anchorTick = this.camera.x + anchorX / oldPixelsPerTick;
+    const anchorPitch = this.camera.y - anchorY / oldPixelsPerSemitone;
+
+    this.camera.h = clamp(
+      this.camera.h * zoomFactor,
+      MinimumPixelsPerQuarter,
+      MaximumPixelsPerQuarter,
+    );
+    this.camera.v = clamp(
+      this.camera.v * zoomFactor,
+      MinimumPixelsPerSemitone,
+      MaximumPixelsPerSemitone,
+    );
+
+    this.camera.x = Math.max(0, anchorTick - anchorX / this.getPixelsPerTick());
+    this.camera.y = clamp(anchorPitch + anchorY / this.camera.v, 0, 127);
     this.render();
   }
 
