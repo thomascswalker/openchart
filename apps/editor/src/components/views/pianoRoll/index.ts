@@ -36,6 +36,7 @@ import {
 } from "./visibility";
 import { SelectionContext } from "./selection";
 import { PointerButton, PointerContext } from "./pointer";
+import { getScrollDevice } from "../../../util/scroll";
 
 const noteColor = 0x5d9cec;
 const noteSelectedColor = 0xff0000;
@@ -640,15 +641,35 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const bounds = this.canvas.getBoundingClientRect();
     const mouseX = event.clientX - bounds.left;
     const mouseY = event.clientY - bounds.top;
+    const delta = new Point(mouseX, mouseY);
 
+    const scrollDevice = getScrollDevice(event);
+    switch (scrollDevice) {
+      case "mouse":
+        this.handleMouseScroll(event, delta);
+        break;
+      case "trackpad":
+        this.handleTrackPad(event, delta);
+        break;
+    }
+  };
+
+  private readonly handleMouseScroll = (
+    event: WheelEvent,
+    delta: Point,
+  ): void => {
     const zoomFactor = Math.exp(-event.deltaY * ZoomSensitivity);
 
     if (event.ctrlKey) {
-      this.zoomVertical(zoomFactor, mouseY - HeaderHeight);
+      this.zoomVertical(zoomFactor, delta.y - HeaderHeight);
       return;
     }
 
-    this.zoomHorizontal(zoomFactor, mouseX);
+    this.zoomHorizontal(zoomFactor, delta.x);
+  };
+
+  private readonly handleTrackPad = (event: WheelEvent, delta: Point): void => {
+    return;
   };
 
   protected override toScreenSpace(value: Point): Point;

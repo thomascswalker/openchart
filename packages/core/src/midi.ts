@@ -619,6 +619,10 @@ class Midi {
   header: MidiHeader;
   tracks: MidiTrack[];
 
+  public get trackCount(): number {
+    return this.tracks.length;
+  }
+
   constructor(data: Uint8Array | undefined = undefined) {
     this.header = new MidiHeader();
     this.tracks = [];
@@ -815,9 +819,7 @@ class Midi {
     return match ? track.removeEvent(match.event) : false;
   }
 
-  public toBuffer(): Uint8Array {
-    const trackCount = this.tracks.length;
-
+  private checkWriteable() {
     if (
       !Number.isInteger(this.header.format) ||
       this.header.format < 0 ||
@@ -826,11 +828,11 @@ class Midi {
       throw new RangeError("MIDI format must be 0, 1, or 2");
     }
 
-    if (this.header.format === MidiFormat.Single && trackCount !== 1) {
+    if (this.header.format === MidiFormat.Single && this.trackCount !== 1) {
       throw new Error("Format 0 MIDI files must contain exactly one track");
     }
 
-    if (trackCount === 0) {
+    if (this.trackCount === 0) {
       throw new Error("A MIDI file must contain at least one track");
     }
 
@@ -841,25 +843,37 @@ class Midi {
     ) {
       throw new RangeError("MIDI division must fit in the lower 15 bits");
     }
+  }
+
+  public toBuffer(): Uint8Array {
+    this.checkWriteable();
 
     const division = this.header.isSMPTE
       ? 0x8000 | this.header.division
       : this.header.division;
 
     const header = new Uint8Array(14);
-
     writeAscii(header, 0, "MThd");
     writeUInt32BE(header, 4, 6);
     writeUInt16BE(header, 8, this.header.format);
-    writeUInt16BE(header, 10, trackCount);
+    writeUInt16BE(header, 10, this.trackCount);
     writeUInt16BE(header, 12, division);
 
-    this.header.trackCount = trackCount;
+    this.header.trackCount = this.trackCount;
 
     return concatBytes([
       header,
       ...this.tracks.map((track) => track.toBuffer()),
     ]);
+  }
+
+  public toString(): string {
+    this.checkWriteable();
+
+    let header = "";
+    header += "[Header]\n";
+
+    return header;
   }
 }
 
