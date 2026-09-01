@@ -24,6 +24,7 @@ import {
   writeUInt32BE,
 } from "./util.js";
 import { headerParser, trackParser } from "./parsers.js";
+import * as ini from "ini";
 
 interface MidiNote {
   note: number;
@@ -60,6 +61,18 @@ export function getMidiEventType(
     return "sysex";
   }
   return "unknown";
+}
+
+export function getMidiEventProps(status: number): string[] {
+  const common = ["deltaTime", "status"];
+  if (status < 0xff) {
+    return common.concat("channel", "messageType", "data1", "data2");
+  } else if (status === 0xff) {
+    return common.concat("type", "length", "data");
+  } else if (status === 0xf0 || status === 0xf7) {
+    return common.concat("length", "data");
+  }
+  return common;
 }
 
 class MidiTrack {
@@ -887,51 +900,88 @@ class Midi {
     ]);
   }
 
-  public toString(): string {
+  public toIni(): string {
     this.checkWriteable();
 
-    const division = this.header.isSMPTE
-      ? 0x8000 | this.header.division
-      : this.header.division;
+    const headerString = ini.stringify(this.header, { section: "header" });
 
-    let header = "[Header]\n";
-    header += `Format=${this.header.format}\n`;
-    header += `TrackCount=${this.trackCount}\n`;
-    header += `Division=${division}\n`;
+    const dump = (e: any): string => {
+      return Object.values(e)
+        .map((o: any): string => {
+          switch (typeof o) {
+            case "string":
+              return `"${o}"`;
+            case "object":
+              return dump(o);
+          }
+          return String(o);
+        })
+        .join(" ");
+    };
 
-    let tracks = "[Tracks]\n";
-    this.tracks.forEach((t: MidiTrack, i: number) => {
-      let track = [`[Tracks.${i}]`];
-      track.push(`Name=${t.name}`);
-      track.push(`[Tracks.${i}.Events]`);
-
-      const dumpEvent = (o: any): string => {
-        switch (typeof o) {
-          case "object":
-            const nonNull = Object.values(o).reduce((acc: any[], v: any) => {
-              if (v !== undefined && v !== null) {
-                acc.push(dumpEvent(v));
-              }
-              return acc;
-            }, []);
-            return nonNull.map((v) => String(v)).join(" ");
-          case "string":
-            return `"${o}"`;
-          default:
-            return String(o);
-        }
+    const tracks = this.tracks.map((track) => {
+      return {
+        name: track.name,
+        e: track.events.map((e) => dump(e)),
       };
+    });
+    const tracksString = ini.stringify(tracks, { section: "tracks" });
 
-      t.events.forEach((e) => {
-        const event = [];
-        event.push(dumpEvent(e));
+    return [headerString, tracksString].join("\n");
+  }
 
-        track = track.concat(dumpEvent(e));
+  public static fromIni(content: string): Midi {
+    const obj = ini.parse(content);
+
+    const iniHeader = obj.header;
+    (Object.entries(iniHeader) as string[][]).forEach(([key, value]): void => {
+      if (value === "true" || value === "false") {
+        iniHeader[key] = value === "true";
+        return;
+      }
+      try {
+        iniHeader[key] = Number(value);
+      } catch {
+        return;
+      }
+    });
+    const midi = new Midi();
+    midi.header = new MidiHeader();
+    Object.assign(midi.header, iniHeader);
+
+    const iniTracks: { name: string; e: string[] }[] = obj.tracks;
+    console.log(iniTracks);
+    Object.values(iniTracks).map((o) => {
+      const track = new MidiTrack();
+      track.name = o.name;
+      if (o.e === undefined) {
+        return [];
+      }
+      track.events = o.e.map((e) => {
+        const rawValues = e.split(" ").map((v) => {
+          try {
+            return Number(v);
+          } catch {
+            return v;
+          }
+        });
+        const props = getMidiEventProps(rawValues[0] as number);
+        console.log(props);
+        // const event = Object.fromEntries(
+        //   e.split(" ").map((v, i) => [`prop${i}`, v]),
+        // );
+        // switch (getMidiEventType(event.status)) {
+        //   default:
+        //     break;
+        // }
+
+        return {} as MidiEvent;
       });
-      tracks += track.join("\n") + "\n";
+
+      midi.tracks.push(track);
     });
 
-    return header + tracks + "\n";
+    return new Midi();
   }
 }
 

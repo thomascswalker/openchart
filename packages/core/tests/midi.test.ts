@@ -68,16 +68,16 @@ test("write ascii file", async () => {
   midi.addTrack();
   // Write the MIDI to a file
   const outPath = "./test-write-ascii.ini";
-  const outData = midi.toString();
+  const outData = midi.toIni();
   fs.writeFileSync(outPath, outData);
 
   // Re-read the file we just wrote
-  // const reInContent = fs.readFileSync(outPath);
-  // const writtenMidi = new Midi(reInContent);
+  const reInContent = fs.readFileSync(outPath);
+  const writtenMidi = Midi.fromIni(reInContent.toString());
   // expect(writtenMidi).toBeDefined();
 
   // Delete the file
-  fs.unlinkSync(outPath);
+  // fs.unlinkSync(outPath);
 });
 
 test("setNotePitch mutates pitch and invalidates note cache", () => {
