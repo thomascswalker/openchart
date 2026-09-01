@@ -5,8 +5,9 @@
   "main": "index.ts",
   "private": true,
   "scripts": {
+    "help": "turbo --help",
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --ui=stream --log-file=app-output.log --cache=local:r,remote:r",
     "lint": "turbo run lint",
     "format": "prettier --write .",
     "test": "turbo run test",
@@ -26,6 +27,9 @@
     "url": "https://github.com/thomascswalker/midiview/issues"
   },
   "homepage": "https://github.com/thomascswalker/midiview#readme",
+  "dependencies": {
+    "pixi.js": "^8.20.1"
+  },
   "devDependencies": {
     "@types/node": "^26.3.0",
     "@types/wicg-file-system-access": "^2023.10.7",
@@ -43,8 +47,5 @@
   "workspaces": [
     "packages/*",
     "apps/*"
-  ],
-  "dependencies": {
-    "pixi.js": "^8.20.1"
-  }
+  ]
 }

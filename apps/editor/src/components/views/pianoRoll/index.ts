@@ -37,6 +37,7 @@ import {
 import { SelectionContext } from "./selection";
 import { PointerButton, PointerContext } from "./pointer";
 import { getScrollGesture } from "../../../util/scroll";
+import { logger } from "../../../util/logging";
 
 const noteColor = 0x5d9cec;
 const noteSelectedColor = 0xff0000;
@@ -580,7 +581,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const tick = this.snapTickToNearest(
         this.tickAtScreenX(this.pendingCreateStart.x),
       );
-      console.log("DEBUG seek", tick, !!this.onSeekRequest);
       this.onSeekRequest?.(tick);
       this.pendingCreateStart = null;
     }
@@ -641,18 +641,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const bounds = this.canvas.getBoundingClientRect();
     const mouseX = event.clientX - bounds.left;
     const mouseY = event.clientY - bounds.top;
-    const delta = new Point(mouseX, mouseY);
+    const pos = new Point(mouseX, mouseY);
+    const delta = new Point(-event.deltaX, -event.deltaY);
 
     const scrollGesture = getScrollGesture(event);
     switch (scrollGesture) {
       case "mouse-zoom":
-        this.handleMouseScroll(event, delta);
+        this.handleMouseScroll(event, pos);
         break;
       case "trackpad-pan":
         this.handleTrackPad(event, delta);
         break;
       case "trackpad-pinch":
-        this.zoomAtCursor(this.getZoomFactor(-event.deltaY), delta);
+        this.zoomAtCursor(this.getZoomFactor(-event.deltaY * 4), pos);
         break;
     }
   };
