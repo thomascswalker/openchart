@@ -2,6 +2,7 @@ import path from "path";
 import { Midi, MidiTrack } from "../src/midi.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
+import { MetaType, MidiMetaEvent, TextMetaPayload } from "../src/types.js";
 
 test("is constructed", () => {
   const midi = new Midi();
@@ -51,6 +52,29 @@ test("write file", async () => {
   const content = fs.readFileSync(outPath);
   const writtenMidi = new Midi(content);
   expect(writtenMidi).toBeDefined();
+
+  // Delete the file
+  fs.unlinkSync(outPath);
+});
+
+test("write ascii file", async () => {
+  const { default: testData } = await import("./data.json");
+
+  const currentDir = path.dirname(new URL(import.meta.url).pathname);
+  const midiPath = path.join(currentDir, testData.filename);
+  const inContent = fs.readFileSync(midiPath);
+  const midi = new Midi(inContent);
+
+  midi.addTrack();
+  // Write the MIDI to a file
+  const outPath = "./test-write-ascii.ini";
+  const outData = midi.toString();
+  fs.writeFileSync(outPath, outData);
+
+  // Re-read the file we just wrote
+  // const reInContent = fs.readFileSync(outPath);
+  // const writtenMidi = new Midi(reInContent);
+  // expect(writtenMidi).toBeDefined();
 
   // Delete the file
   fs.unlinkSync(outPath);

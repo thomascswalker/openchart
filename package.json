@@ -7,7 +7,7 @@
   "scripts": {
     "help": "turbo --help",
     "build": "turbo run build",
-    "dev": "turbo run dev --ui=stream --log-file=app-output.log --cache=local:r,remote:r",
+    "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write .",
     "test": "turbo run test",

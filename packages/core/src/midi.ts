@@ -8,6 +8,7 @@ import {
   MidiEvent,
   MidiFormat,
   MidiMetaEvent,
+  MidiSysExEvent,
   TempoChange,
   TempoMetaPayload,
   TextMetaPayload,
@@ -48,6 +49,19 @@ export interface GetNotesOptions {
   };
 }
 
+export function getMidiEventType(
+  status: number,
+): "channel" | "meta" | "sysex" | "unknown" {
+  if (status < 0xff) {
+    return "channel";
+  } else if (status === 0xff) {
+    return "meta";
+  } else if (status === 0xf0 || status === 0xf7) {
+    return "sysex";
+  }
+  return "unknown";
+}
+
 class MidiTrack {
   format: MidiFormat = 0;
   name: string = "";
@@ -70,6 +84,12 @@ class MidiTrack {
     return this.events.filter(
       (event) => event.status === 0xff,
     ) as MidiMetaEvent[];
+  }
+
+  public getSysExEvents(): MidiSysExEvent[] {
+    return this.events.filter(
+      (event) => event.status === 0xf0 || event.status === 0xf7,
+    ) as MidiSysExEvent[];
   }
 
   public getNoteEvents(): MidiChannelEvent[] {
@@ -870,10 +890,48 @@ class Midi {
   public toString(): string {
     this.checkWriteable();
 
-    let header = "";
-    header += "[Header]\n";
+    const division = this.header.isSMPTE
+      ? 0x8000 | this.header.division
+      : this.header.division;
 
-    return header;
+    let header = "[Header]\n";
+    header += `Format=${this.header.format}\n`;
+    header += `TrackCount=${this.trackCount}\n`;
+    header += `Division=${division}\n`;
+
+    let tracks = "[Tracks]\n";
+    this.tracks.forEach((t: MidiTrack, i: number) => {
+      let track = [`[Tracks.${i}]`];
+      track.push(`Name=${t.name}`);
+      track.push(`[Tracks.${i}.Events]`);
+
+      const dumpEvent = (o: any): string => {
+        switch (typeof o) {
+          case "object":
+            const nonNull = Object.values(o).reduce((acc: any[], v: any) => {
+              if (v !== undefined && v !== null) {
+                acc.push(dumpEvent(v));
+              }
+              return acc;
+            }, []);
+            return nonNull.map((v) => String(v)).join(" ");
+          case "string":
+            return `"${o}"`;
+          default:
+            return String(o);
+        }
+      };
+
+      t.events.forEach((e) => {
+        const event = [];
+        event.push(dumpEvent(e));
+
+        track = track.concat(dumpEvent(e));
+      });
+      tracks += track.join("\n") + "\n";
+    });
+
+    return header + tracks + "\n";
   }
 }
 
