@@ -67,12 +67,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     setTotalTicks(computeTotalTicks());
   }, [computeTotalTicks]);
 
-  const setPlayheadTick = useCallback(
-    (tick: number) => {
-      setPlayheadTickState(Math.max(0, Math.min(tick, totalTicks)));
-    },
-    [totalTicks],
-  );
+  const setPlayheadTick = useCallback((tick: number) => {
+    setPlayheadTickState(Math.max(0, tick));
+  }, []);
 
   const pause = useCallback(() => {
     setIsPlaying(false);

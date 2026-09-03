@@ -229,6 +229,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
     this.canvas.addEventListener("pointercancel", this.handlePointerUp);
+    window.addEventListener("pointerup", this.handlePointerUp);
     this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     this.canvas.addEventListener("auxclick", this.handleAuxClick);
   }
@@ -246,6 +247,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.canvas.removeEventListener("wheel", this.handleWheel);
       this.canvas.removeEventListener("auxclick", this.handleAuxClick);
     }
+
+    window.removeEventListener("pointerup", this.handlePointerUp);
 
     this.canvas = null;
     this.pointer.id = null;
