@@ -1,4 +1,4 @@
-import { EditorProvider } from "./Context";
+import { EditorProvider } from "./EditorContext";
 import { PlaybackProvider } from "./PlaybackContext";
 import { Workspace } from "./Workspace";
 import { Toolbar } from "./Toolbar";

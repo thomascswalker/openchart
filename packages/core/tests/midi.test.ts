@@ -2,6 +2,7 @@ import path from "path";
 import { Midi, MidiTrack } from "../src/midi.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
+import { MetaType, MidiMetaEvent, TextMetaPayload } from "../src/types.js";
 
 test("is constructed", () => {
   const midi = new Midi();

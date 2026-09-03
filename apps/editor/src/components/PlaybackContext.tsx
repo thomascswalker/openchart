@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useEditor } from "./Context";
+import { useEditor } from "./EditorContext";
 
 interface PlaybackContextType {
   isPlaying: boolean;

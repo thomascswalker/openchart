@@ -8,6 +8,7 @@ import {
   MidiEvent,
   MidiFormat,
   MidiMetaEvent,
+  MidiSysExEvent,
   TempoChange,
   TempoMetaPayload,
   TextMetaPayload,
@@ -17,12 +18,46 @@ import {
 } from "./types.js";
 import {
   concatBytes,
+  decodeMetaPayload,
   encodeMidiEvent,
+  encodeMetaPayload,
+  isTwoByteMessage,
   writeAscii,
   writeUInt16BE,
   writeUInt32BE,
 } from "./util.js";
 import { headerParser, trackParser } from "./parsers.js";
+import * as ini from "ini";
+
+function encodeBase64(bytes: Uint8Array): string {
+  return bytes.length === 0 ? "-" : Buffer.from(bytes).toString("base64url");
+}
+
+function decodeBase64(value: string): Uint8Array {
+  if (value === "-") {
+    return new Uint8Array(0);
+  }
+
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error(`Invalid base64 MIDI payload: ${value}`);
+  }
+
+  return new Uint8Array(Buffer.from(value, "base64url"));
+}
+
+function parseInteger(value: string, field: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${field} must be a non-negative integer`);
+  }
+
+  const result = Number(value);
+
+  if (!Number.isSafeInteger(result)) {
+    throw new Error(`${field} must be a safe integer`);
+  }
+
+  return result;
+}
 
 interface MidiNote {
   note: number;
@@ -48,6 +83,31 @@ export interface GetNotesOptions {
   };
 }
 
+export function getMidiEventType(
+  status: number,
+): "channel" | "meta" | "sysex" | "unknown" {
+  if (status < 0xff) {
+    return "channel";
+  } else if (status === 0xff) {
+    return "meta";
+  } else if (status === 0xf0 || status === 0xf7) {
+    return "sysex";
+  }
+  return "unknown";
+}
+
+export function getMidiEventProps(status: number): string[] {
+  const common = ["deltaTime", "status"];
+  if (status < 0xff) {
+    return common.concat("channel", "messageType", "data1", "data2");
+  } else if (status === 0xff) {
+    return common.concat("type", "length", "data");
+  } else if (status === 0xf0 || status === 0xf7) {
+    return common.concat("length", "data");
+  }
+  return common;
+}
+
 class MidiTrack {
   format: MidiFormat = 0;
   name: string = "";
@@ -70,6 +130,12 @@ class MidiTrack {
     return this.events.filter(
       (event) => event.status === 0xff,
     ) as MidiMetaEvent[];
+  }
+
+  public getSysExEvents(): MidiSysExEvent[] {
+    return this.events.filter(
+      (event) => event.status === 0xf0 || event.status === 0xf7,
+    ) as MidiSysExEvent[];
   }
 
   public getNoteEvents(): MidiChannelEvent[] {
@@ -619,6 +685,10 @@ class Midi {
   header: MidiHeader;
   tracks: MidiTrack[];
 
+  public get trackCount(): number {
+    return this.tracks.length;
+  }
+
   constructor(data: Uint8Array | undefined = undefined) {
     this.header = new MidiHeader();
     this.tracks = [];
@@ -815,9 +885,7 @@ class Midi {
     return match ? track.removeEvent(match.event) : false;
   }
 
-  public toBuffer(): Uint8Array {
-    const trackCount = this.tracks.length;
-
+  private checkWriteable() {
     if (
       !Number.isInteger(this.header.format) ||
       this.header.format < 0 ||
@@ -826,11 +894,11 @@ class Midi {
       throw new RangeError("MIDI format must be 0, 1, or 2");
     }
 
-    if (this.header.format === MidiFormat.Single && trackCount !== 1) {
+    if (this.header.format === MidiFormat.Single && this.trackCount !== 1) {
       throw new Error("Format 0 MIDI files must contain exactly one track");
     }
 
-    if (trackCount === 0) {
+    if (this.trackCount === 0) {
       throw new Error("A MIDI file must contain at least one track");
     }
 
@@ -841,25 +909,176 @@ class Midi {
     ) {
       throw new RangeError("MIDI division must fit in the lower 15 bits");
     }
+  }
+
+  public toBuffer(): Uint8Array {
+    this.checkWriteable();
 
     const division = this.header.isSMPTE
       ? 0x8000 | this.header.division
       : this.header.division;
 
     const header = new Uint8Array(14);
-
     writeAscii(header, 0, "MThd");
     writeUInt32BE(header, 4, 6);
     writeUInt16BE(header, 8, this.header.format);
-    writeUInt16BE(header, 10, trackCount);
+    writeUInt16BE(header, 10, this.trackCount);
     writeUInt16BE(header, 12, division);
 
-    this.header.trackCount = trackCount;
+    this.header.trackCount = this.trackCount;
 
     return concatBytes([
       header,
       ...this.tracks.map((track) => track.toBuffer()),
     ]);
+  }
+
+  public toIni(): string {
+    this.checkWriteable();
+
+    this.header.trackCount = this.trackCount;
+
+    const headerString = ini.stringify(this.header, { section: "header" });
+
+    const serializeEvent = (event: MidiEvent): string => {
+      if (event.status === 0xff) {
+        const metaEvent = event as MidiMetaEvent;
+        return [
+          event.deltaTime,
+          event.status,
+          metaEvent.type,
+          encodeBase64(encodeMetaPayload(metaEvent.type, metaEvent.data)),
+        ].join(" ");
+      }
+
+      if (event.status === 0xf0 || event.status === 0xf7) {
+        return [
+          event.deltaTime,
+          event.status,
+          encodeBase64((event as MidiSysExEvent).data),
+        ].join(" ");
+      }
+
+      const channelEvent = event as MidiChannelEvent;
+      const status =
+        event.status >= 0x80 && event.status < 0xf0
+          ? event.status
+          : channelEvent.messageType | (channelEvent.channel & 0x0f);
+      const values = [event.deltaTime, status, channelEvent.data1];
+
+      if (isTwoByteMessage(status)) {
+        values.push(channelEvent.data2 ?? 0);
+      }
+
+      return values.join(" ");
+    };
+
+    const tracks = this.tracks.map((track) => {
+      return {
+        name: track.name,
+        e: track.events.map(serializeEvent),
+      };
+    });
+    const tracksString = ini.stringify(tracks, { section: "tracks" });
+
+    return [headerString, tracksString].join("\n");
+  }
+
+  public static fromIni(content: string): Midi {
+    const obj = ini.parse(content) as {
+      header?: Record<string, string>;
+      tracks?: Record<string, { name?: string; e?: string | string[] }>;
+    };
+    const iniHeader = obj.header;
+
+    if (!iniHeader) {
+      throw new Error("INI MIDI data is missing a header section");
+    }
+
+    const midi = new Midi();
+    midi.header = {
+      format: parseInteger(
+        iniHeader.format ?? "",
+        "header format",
+      ) as MidiFormat,
+      trackCount: parseInteger(iniHeader.trackCount ?? "", "header trackCount"),
+      division: parseInteger(iniHeader.division ?? "", "header division"),
+      isSMPTE: iniHeader.isSMPTE === "true",
+    };
+
+    const parseEvent = (record: string): MidiEvent => {
+      const values = record.trim().split(/\s+/);
+      const deltaTime = parseInteger(values[0] ?? "", "event deltaTime");
+      const status = parseInteger(values[1] ?? "", "event status");
+
+      if (status >= 0x80 && status < 0xf0) {
+        const messageType = status & 0xf0;
+        const expectedLength = isTwoByteMessage(status) ? 4 : 3;
+
+        if (values.length !== expectedLength) {
+          throw new Error(
+            `Channel event status ${status} has an invalid field count`,
+          );
+        }
+
+        const channelEvent: MidiChannelEvent = {
+          deltaTime,
+          status,
+          channel: status & 0x0f,
+          messageType: messageType as ChannelMessage,
+          data1: parseInteger(values[2], "channel event data1"),
+        };
+
+        if (isTwoByteMessage(status)) {
+          channelEvent.data2 = parseInteger(values[3], "channel event data2");
+        }
+
+        return channelEvent;
+      }
+
+      if (status === 0xff) {
+        if (values.length !== 4) {
+          throw new Error("Meta event has an invalid field count");
+        }
+
+        const type = parseInteger(values[2], "meta event type");
+        const bytes = decodeBase64(values[3]);
+        return {
+          deltaTime,
+          status: 0xff,
+          type: type as MetaType,
+          length: bytes.length,
+          data: decodeMetaPayload(type, bytes),
+        };
+      }
+
+      if (status === 0xf0 || status === 0xf7) {
+        if (values.length !== 3) {
+          throw new Error("SysEx event has an invalid field count");
+        }
+
+        const data = decodeBase64(values[2]);
+        return { deltaTime, status, length: data.length, data };
+      }
+
+      throw new Error(`Invalid MIDI event status: ${status}`);
+    };
+
+    for (const trackData of Object.values(obj.tracks ?? {})) {
+      const track = new MidiTrack(trackData.name ?? "");
+      const records = trackData.e === undefined ? [] : [trackData.e].flat();
+      track.format = midi.header.format;
+      track.events = records.map(parseEvent);
+      midi.tracks.push(track);
+    }
+
+    if (midi.header.trackCount !== midi.trackCount) {
+      throw new Error(
+        "INI MIDI header trackCount does not match the track sections",
+      );
+    }
+
+    return midi;
   }
 }
 

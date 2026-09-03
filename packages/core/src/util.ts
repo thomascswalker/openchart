@@ -6,8 +6,6 @@ import {
   DefaultMetaPayload,
   MetaType,
   MidiSysExEvent,
-  MidiChannelEvent,
-  ChannelMessage,
   TempoChange,
 } from "./types.js";
 
@@ -235,6 +233,85 @@ export function encodeMetaPayload(
       throw new Error(
         `Cannot serialize unsupported MIDI meta-event type 0x${type.toString(16)}`,
       );
+  }
+}
+
+/** Decodes raw MIDI meta-event bytes into the payload shape used by this library. */
+export function decodeMetaPayload(
+  type: number,
+  bytes: Uint8Array,
+): MidiMetaPayload {
+  const requireLength = (expected: number): void => {
+    if (bytes.length !== expected) {
+      throw new Error(
+        `MIDI meta-event type 0x${type.toString(16)} requires ${expected} data bytes`,
+      );
+    }
+  };
+
+  switch (type) {
+    case MetaType.SequenceNumber:
+      requireLength(2);
+      return { sequenceNumber: (bytes[0] << 8) | bytes[1] };
+
+    case MetaType.TextEvent:
+    case MetaType.Copyright:
+    case MetaType.TrackName:
+    case MetaType.InstrumentName:
+    case MetaType.Lyric:
+    case MetaType.Marker:
+    case MetaType.CuePoint:
+    case 0x08:
+    case 0x09:
+      return { text: String.fromCharCode(...bytes) };
+
+    case 0x20:
+      requireLength(1);
+      return { channel: bytes[0] };
+
+    case 0x21:
+      requireLength(1);
+      return { port: bytes[0] };
+
+    case MetaType.EndOfTrack:
+      requireLength(0);
+      return {};
+
+    case MetaType.Tempo:
+      requireLength(3);
+      return {
+        microsecondsPerQuarterNote:
+          (bytes[0] << 16) | (bytes[1] << 8) | bytes[2],
+      };
+
+    case MetaType.SMPTEOffset:
+      requireLength(5);
+      return {
+        hr: bytes[0],
+        mn: bytes[1],
+        se: bytes[2],
+        fr: bytes[3],
+        ff: bytes[4],
+      };
+
+    case MetaType.TimeSignature:
+      requireLength(4);
+      return {
+        numerator: bytes[0],
+        denominator: bytes[1],
+        clocksPerClick: bytes[2],
+        thirtySecondNotesPerQuarter: bytes[3],
+      };
+
+    case 0x59:
+      requireLength(2);
+      return {
+        key: bytes[0] > 0x7f ? bytes[0] - 0x100 : bytes[0],
+        scale: bytes[1],
+      };
+
+    default:
+      return { bytes: new Uint8Array(bytes) };
   }
 }
 
