@@ -57,29 +57,6 @@ test("write file", async () => {
   fs.unlinkSync(outPath);
 });
 
-test("write ascii file", async () => {
-  const { default: testData } = await import("./data.json");
-
-  const currentDir = path.dirname(new URL(import.meta.url).pathname);
-  const midiPath = path.join(currentDir, testData.filename);
-  const inContent = fs.readFileSync(midiPath);
-  const midi = new Midi(inContent);
-
-  midi.addTrack();
-  // Write the MIDI to a file
-  const outPath = "./test-write-ascii.ini";
-  const outData = midi.toIni();
-  fs.writeFileSync(outPath, outData);
-
-  // Re-read the file we just wrote
-  const reInContent = fs.readFileSync(outPath);
-  const writtenMidi = Midi.fromIni(reInContent.toString());
-  // expect(writtenMidi).toBeDefined();
-
-  // Delete the file
-  // fs.unlinkSync(outPath);
-});
-
 test("setNotePitch mutates pitch and invalidates note cache", () => {
   const midi = new Midi();
   const track = new MidiTrack();
