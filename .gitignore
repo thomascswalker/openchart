@@ -25,3 +25,4 @@ Thumbs.db
 
 # Turborepo
 .turbo
+/apps/desktop/src-tauri/target

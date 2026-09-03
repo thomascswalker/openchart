@@ -1,0 +1,13 @@
+{
+  "name": "@midiedit/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npx tauri dev",
+    "build": "npx tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.3.0"
+  }
+}
