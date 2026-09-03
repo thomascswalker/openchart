@@ -25,4 +25,6 @@ Thumbs.db
 
 # Turborepo
 .turbo
-/apps/desktop/src-tauri/target
+
+# Tauri/Rust build outputs
+/apps/desktop/src-tauri/target/
