@@ -5,4 +5,10 @@ import { defineConfig } from "vite";
 export default defineConfig({
   base: "/midiview/",
   plugins: [react()],
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 250,
+    },
+  },
 });
