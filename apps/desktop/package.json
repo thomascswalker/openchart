@@ -7,6 +7,9 @@
     "dev": "npx tauri dev",
     "build": "npx tauri build"
   },
+  "dependencies": {
+    "@midiedit/editor": "0.0.0"
+  },
   "devDependencies": {
     "@tauri-apps/cli": "^2.3.0"
   }
