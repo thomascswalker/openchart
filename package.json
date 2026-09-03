@@ -7,6 +7,9 @@
   "scripts": {
     "help": "turbo --help",
     "build": "turbo run build",
+    "build:desktop": "turbo run build:desktop",
+    "desktop:dev": "npm run dev --workspace=@midiedit/desktop",
+    "desktop:build": "npm run build --workspace=@midiedit/desktop",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write .",

@@ -6,6 +6,11 @@
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"],
       "outputLogs": "full"
     },
+    "build:desktop": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "outputLogs": "full"
+    },
     "test": {
       "dependsOn": ["build"],
       "outputs": ["coverage/**"]

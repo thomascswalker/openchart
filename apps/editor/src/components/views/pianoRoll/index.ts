@@ -37,7 +37,6 @@ import {
 import { SelectionContext } from "./selection";
 import { PointerButton, PointerContext } from "./pointer";
 import { getScrollGesture } from "../../../util/scroll";
-import { logger } from "../../../util/logging";
 
 const noteColor = 0x5d9cec;
 const noteSelectedColor = 0xff0000;
