@@ -9,11 +9,18 @@ import {
   useState,
 } from "react";
 import { useEditor } from "./EditorContext";
+import type { Audio } from "ts-audio";
+
+type AudioPlayer = ReturnType<typeof Audio>;
 
 interface PlaybackContextType {
   isPlaying: boolean;
   playheadTick: number;
   totalTicks: number;
+
+  audio?: AudioPlayer;
+  setAudio: (newAudio: AudioPlayer) => void;
+
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
@@ -27,6 +34,7 @@ const PlaybackContext = createContext<PlaybackContextType | undefined>(
 
 export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const { midiData } = useEditor();
+  const [audio, setAudio] = useState<AudioPlayer>();
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playheadTick, setPlayheadTickState] = useState(0);
@@ -46,6 +54,12 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const animationRef = useRef<number | null>(null);
   const lastFrameMsRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      audio?.destroy();
+    };
+  }, [audio]);
 
   const computeTotalTicks = useCallback((): number => {
     let maxTick = 0;
@@ -73,6 +87,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const pause = useCallback(() => {
     setIsPlaying(false);
+    if (audio) {
+      audio.pause();
+    }
   }, []);
 
   const play = useCallback(() => {
@@ -86,14 +103,13 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsPlaying(true);
+    if (audio) {
+      audio.play();
+    }
   }, [totalTicks]);
 
   const togglePlay = useCallback(() => {
-    if (isPlaying) {
-      pause();
-    } else {
-      play();
-    }
+    isPlaying ? pause() : play();
   }, [isPlaying, pause, play]);
 
   useEffect(() => {
@@ -144,6 +160,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         isPlaying,
         playheadTick,
         totalTicks,
+        audio,
+        setAudio,
         play,
         pause,
         togglePlay,

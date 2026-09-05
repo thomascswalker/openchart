@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useEditor } from "./EditorContext";
-import { usePlayback } from "./PlaybackContext";
+import { useEditor } from "../context/EditorContext";
+import { usePlayback } from "../context/PlaybackContext";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";

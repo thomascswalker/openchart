@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChartView } from "./views/ChartViews";
-import { usePlayback } from "./PlaybackContext";
+import { usePlayback } from "../context/PlaybackContext";
 
 interface TimelineProps {
   chartView: ChartView | null;
