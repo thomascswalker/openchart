@@ -1,9 +1,7 @@
 name: Build Desktop Applications
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
 
@@ -14,7 +12,6 @@ jobs:
   build-linux:
     name: Build Linux bundles
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
 
     steps:
       - name: Checkout repository
@@ -76,7 +73,6 @@ jobs:
   build-windows:
     name: Build Windows bundles
     runs-on: windows-latest
-    if: github.event.pull_request.merged == true
 
     steps:
       - name: Checkout repository
@@ -140,10 +136,16 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: build-${{ github.event.pull_request.merge_commit_sha }}
-          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_TAG: build-${{ github.sha }}
+          MERGE_COMMIT: ${{ github.sha }}
         run: |
-          gh release create "$RELEASE_TAG" release-assets/* \
+          mapfile -d '' release_files < <(find release-assets -type f -print0)
+          if [[ "${#release_files[@]}" -eq 0 ]]; then
+            echo "No release artifacts were downloaded."
+            exit 1
+          fi
+
+          gh release create "$RELEASE_TAG" "${release_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$MERGE_COMMIT" \
             --title "MIDIView Desktop $RELEASE_TAG" \
