@@ -13,8 +13,10 @@
     "dev": "npm run dev:web",
     "dev:web": "turbo run dev --filter=@midiedit/editor",
     "dev:desktop": "npm run dev --workspace=@midiedit/desktop",
-    "lint": "turbo run lint",
+    "lint": "eslint --config eslint.config.js .",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm run format:check",
     "test": "turbo run test",
     "test:core": "turbo run test --filter=@midiedit/core",
     "test:views": "turbo run test --filter=@midiedit/views",
@@ -37,14 +39,18 @@
     "pixi.js": "^8.20.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@midiedit/core": "^1.0.0",
     "@types/ini": "^4.1.1",
     "@types/node": "^26.3.0",
     "@types/wicg-file-system-access": "^2023.10.7",
     "gh-pages": "^6.3.0",
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
     "prettier": "^3.9.6",
     "turbo": "latest",
-    "typescript": "^7.0.2"
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.67.0"
   },
   "devEngines": {
     "packageManager": {

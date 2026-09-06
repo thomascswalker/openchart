@@ -1,27 +1,10 @@
-import {
-  ChannelMessage,
-  Midi,
-  MidiNote,
-  MidiTrack,
-  type MidiChannelEvent,
-  GetNotesOptions,
-} from "@midiedit/core";
+import { Midi, MidiNote, MidiTrack } from "@midiedit/core";
 import {
   defaultConfig,
   InstrumentTrackViewConfig,
   SongViewConfig,
   TrackViewConfig,
 } from "./config.js";
-
-const OCTAVE = 12;
-
-const EASY_OFFSET = OCTAVE * 5;
-const MEDIUM_OFFSET = OCTAVE * 6;
-const HARD_OFFSET = OCTAVE * 7;
-const EXPERT_OFFSET = OCTAVE * 8;
-
-const GUITAR_NOTE_COUNT = 5;
-const DRUMS_NOTE_COUNT = 9;
 
 type Instrument = "LEAD GUITAR" | "RHYTHM GUITAR" | "DRUMS" | "VOCALS";
 enum InstrumentType {
