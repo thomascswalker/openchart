@@ -47,7 +47,8 @@ function DebugPanel({
     audioTotalTicks,
     audioFileName,
     isPlaying,
-    playheadTick,
+    canPlay,
+    playbackTick: playheadTick,
     totalTicks,
   } = usePlayback();
 
@@ -139,8 +140,10 @@ function DebugPanel({
       </section>
 
       <section className="debug-panel__section">
-        <h2>Tick info</h2>
+        <h2>Playback context</h2>
         <dl>
+          <dt>Can play</dt>
+          <dd>{canPlay ? "yes" : "no"}</dd>
           <dt>Current tick</dt>
           <dd>{formatNumber(playheadTick)}</dd>
           <dt>Maximum tick</dt>

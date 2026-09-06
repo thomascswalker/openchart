@@ -15,10 +15,12 @@ export function Timeline({ chartView }: TimelineProps) {
   const {
     isPlaying,
     canPlay,
-    playheadTick,
+    playbackTick,
     totalTicks,
     play,
     pause,
+    seekStart,
+    seekEnd,
     setPlayheadTick,
   } = usePlayback();
 
@@ -27,7 +29,7 @@ export function Timeline({ chartView }: TimelineProps) {
   const draggingRef = useRef(false);
 
   const redrawRef = useRef<() => void>(() => {});
-  const timelineTicks = Math.max(totalTicks, playheadTick);
+  const timelineTicks = Math.max(totalTicks, playbackTick);
 
   const tickToX = useCallback(
     (tick: number, width: number): number => {
@@ -77,14 +79,14 @@ export function Timeline({ chartView }: TimelineProps) {
       ctx.strokeRect(boxX + 0.5, 0.5, boxWidth - 1, height - 1);
     }
 
-    const playheadX = tickToX(playheadTick, width);
+    const playheadX = tickToX(playbackTick, width);
     ctx.strokeStyle = PLAYHEAD_COLOR;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(playheadX, 0);
     ctx.lineTo(playheadX, height);
     ctx.stroke();
-  }, [chartView, playheadTick, tickToX, timelineTicks]);
+  }, [chartView, playbackTick, tickToX, timelineTicks]);
 
   redrawRef.current = draw;
 
@@ -187,22 +189,29 @@ export function Timeline({ chartView }: TimelineProps) {
       <div className="timeline__controls">
         <button
           type="button"
-          onClick={play}
+          onClick={seekStart}
           disabled={!canPlay || isPlaying}
-          aria-label="Play"
+          aria-label="Jump to Beginning"
         >
-          ▶
+          ◀|
         </button>
         <button
           type="button"
-          onClick={pause}
-          disabled={!isPlaying}
-          aria-label="Pause"
+          onClick={isPlaying ? pause : play}
+          disabled={!canPlay || isPlaying}
+          aria-label="Play/Pause"
         >
-          ⏸
+          {isPlaying ? "⏸" : "▶"}
+        </button>
+        <button
+          type="button"
+          onClick={seekEnd}
+          disabled={!canPlay || isPlaying}
+          aria-label="Jump to End"
+        >
+          |▶
         </button>
       </div>
-
       <div ref={containerRef} className="timeline__track">
         <canvas
           ref={canvasRef}

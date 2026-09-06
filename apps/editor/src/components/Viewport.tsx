@@ -21,7 +21,7 @@ export const Viewport = () => {
   const { midiData, selectedTrackIndex } = useEditor();
   const {
     isPlaying,
-    playheadTick,
+    playbackTick: playheadTick,
     togglePlay,
     setPlayheadTick,
     refreshTotalTicks,
