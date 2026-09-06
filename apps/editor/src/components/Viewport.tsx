@@ -21,9 +21,9 @@ export const Viewport = () => {
   const { midiData, selectedTrackIndex } = useEditor();
   const {
     isPlaying,
-    playheadTick,
+    playbackTick: playheadTick,
     togglePlay,
-    setPlayheadTick,
+    setPlaybackTick: setPlayheadTick,
     refreshTotalTicks,
   } = usePlayback();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);

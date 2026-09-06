@@ -1,5 +1,6 @@
 import { Midi } from "@midiedit/core";
 import { createContext, useContext, useState } from "react";
+import type { ProviderProps } from "./shared";
 
 // Define the shape of our global state
 interface EditorContextType {
@@ -19,11 +20,9 @@ interface EditorContextType {
   setSelectedTrackIndex: (index: number | null) => void;
 }
 
-// Create the context with an undefined default value
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
-// Provide the context to the app component tree
-export function EditorProvider({ children }: { children: React.ReactNode }) {
+export function EditorProvider({ children }: ProviderProps) {
   const [midiData, setMidiData] = useState<Midi>(new Midi());
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
@@ -59,7 +58,6 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Custom hook to safely consume the Editor context
 export function useEditor() {
   const context = useContext(EditorContext);
   if (!context) {
