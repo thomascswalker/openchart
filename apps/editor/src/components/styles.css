@@ -94,6 +94,93 @@ button:disabled {
   min-height: 0;
 }
 
+.midi-workspace--debug {
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 4fr) 340px;
+}
+
+/* Docked developer-style diagnostics panel */
+
+.debug-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  border-left: 1px solid #3f4b4a;
+  background: #101315;
+  color: #d8e0df;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.debug-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.debug-panel h1 {
+  margin: 0;
+  color: #f0c674;
+  font:
+    700 16px system-ui,
+    sans-serif;
+}
+
+.debug-panel h2 {
+  margin: 0 0 10px;
+  color: #8bd5ca;
+  font:
+    700 11px system-ui,
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.debug-panel__section {
+  margin-bottom: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #30403f;
+}
+
+.debug-panel dl {
+  display: grid;
+  grid-template-columns: minmax(105px, 0.8fr) minmax(0, 1.2fr);
+  gap: 5px 10px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.debug-panel dt {
+  color: #81908e;
+}
+
+.debug-panel dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #e8efed;
+}
+
+.debug-panel .muted {
+  color: #81908e;
+  font-size: 11px;
+}
+
+.debug-panel .event-list {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10px;
+}
+
+.debug-panel .event-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid #202b2b;
+}
+
 /* Arrangement / track area */
 
 .arrangement {

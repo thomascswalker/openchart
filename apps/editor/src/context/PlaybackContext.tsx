@@ -15,11 +15,16 @@ type AudioPlayer = ReturnType<typeof Audio>;
 
 interface PlaybackContextType {
   isPlaying: boolean;
+  canPlay: boolean;
   playheadTick: number;
   totalTicks: number;
+  audioDurationMs: number;
+  audioTotalTicks: number;
+  audioFileName: string | null;
 
   audio?: AudioPlayer;
   setAudio: (newAudio: AudioPlayer) => void;
+  setAudioFileName: (name: string | null) => void;
 
   play: () => void;
   pause: () => void;
@@ -39,6 +44,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playheadTick, setPlayheadTickState] = useState(0);
   const [totalTicks, setTotalTicks] = useState(0);
+  const [midiTotalTicks, setMidiTotalTicks] = useState(0);
+  const [hasMidiNotes, setHasMidiNotes] = useState(false);
+  const [audioDurationMs, setAudioDurationMs] = useState(0);
+  const [audioFileName, setAudioFileName] = useState<string | null>(null);
 
   const ppqn = midiData?.header.division ?? 480;
   const tempoChanges: TempoChange[] = useMemo(
@@ -61,52 +70,117 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     };
   }, [audio]);
 
-  const computeTotalTicks = useCallback((): number => {
+  const computeMidiPlayback = useCallback(() => {
     let maxTick = 0;
+    let hasNotes = false;
 
     for (const track of midiData?.tracks ?? []) {
       for (const note of track.getNotes()) {
+        hasNotes = true;
         maxTick = Math.max(maxTick, note.end);
       }
     }
 
-    return maxTick;
+    return { hasNotes, totalTicks: Math.max(maxTick, hasNotes ? 1 : 0) };
   }, [midiData]);
 
   useEffect(() => {
-    setTotalTicks(computeTotalTicks());
-  }, [computeTotalTicks]);
+    const playback = computeMidiPlayback();
+    setMidiTotalTicks(playback.totalTicks);
+    setHasMidiNotes(playback.hasNotes);
+  }, [computeMidiPlayback]);
 
   const refreshTotalTicks = useCallback(() => {
-    setTotalTicks(computeTotalTicks());
-  }, [computeTotalTicks]);
+    const playback = computeMidiPlayback();
+    setMidiTotalTicks(playback.totalTicks);
+    setHasMidiNotes(playback.hasNotes);
+  }, [computeMidiPlayback]);
 
-  const setPlayheadTick = useCallback((tick: number) => {
-    setPlayheadTickState(Math.max(0, tick));
-  }, []);
+  const audioTotalTicks = useMemo(
+    () =>
+      audioDurationMs > 0 ? msToTicks(audioDurationMs, ppqn, tempoChanges) : 0,
+    [audioDurationMs, ppqn, tempoChanges],
+  );
+
+  useEffect(() => {
+    setTotalTicks(Math.max(midiTotalTicks, audioTotalTicks));
+  }, [audioTotalTicks, midiTotalTicks]);
+
+  useEffect(() => {
+    if (!audio) {
+      setAudioDurationMs(0);
+      return;
+    }
+
+    let isCurrent = true;
+    const updateDuration = () => {
+      if (isCurrent) {
+        setAudioDurationMs(audio.duration * 1_000);
+      }
+    };
+
+    audio.on("ready", updateDuration);
+    updateDuration();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [audio]);
+
+  useEffect(() => {
+    if (!audio) {
+      return;
+    }
+
+    let isCurrent = true;
+    const handleEnd = () => {
+      if (!isCurrent || !isPlaying) {
+        return;
+      }
+
+      audio.seek(0);
+      audio.play();
+    };
+
+    audio.on("end", handleEnd);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [audio, isPlaying]);
+
+  const canPlay = hasMidiNotes || audio !== undefined;
+
+  const setPlayheadTick = useCallback(
+    (tick: number) => {
+      const nextTick = Math.max(0, tick);
+      playheadTickRef.current = nextTick;
+      setPlayheadTickState(nextTick);
+
+      if (audio) {
+        audio.seek(ticksToMs(nextTick, ppqn, tempoChanges) / 1_000);
+      }
+    },
+    [audio, ppqn, tempoChanges],
+  );
 
   const pause = useCallback(() => {
     setIsPlaying(false);
     if (audio) {
       audio.pause();
     }
-  }, []);
+  }, [audio]);
 
   const play = useCallback(() => {
-    if (totalTicks <= 0) {
+    if (!canPlay) {
       return;
-    }
-
-    // Restart from the beginning once playback has reached the end.
-    if (playheadTickRef.current >= totalTicks) {
-      setPlayheadTickState(0);
     }
 
     setIsPlaying(true);
     if (audio) {
       audio.play();
     }
-  }, [totalTicks]);
+  }, [audio, canPlay]);
 
   const togglePlay = useCallback(() => {
     isPlaying ? pause() : play();
@@ -124,19 +198,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
       if (lastFrameMs !== null) {
         const elapsedMs = frameTimeMs - lastFrameMs;
-        const currentMs = ticksToMs(
-          playheadTickRef.current,
+        const nextTick = msToTicks(
+          ticksToMs(playheadTickRef.current, ppqn, tempoChanges) + elapsedMs,
           ppqn,
           tempoChanges,
         );
-        const nextTick = msToTicks(currentMs + elapsedMs, ppqn, tempoChanges);
-
-        if (nextTick >= totalTicks) {
-          playheadTickRef.current = totalTicks;
-          setPlayheadTickState(totalTicks);
-          setIsPlaying(false);
-          return;
-        }
 
         playheadTickRef.current = nextTick;
         setPlayheadTickState(nextTick);
@@ -152,16 +218,21 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, ppqn, tempoChanges, totalTicks]);
+  }, [audio, hasMidiNotes, isPlaying, ppqn, tempoChanges, totalTicks]);
 
   return (
     <PlaybackContext.Provider
       value={{
         isPlaying,
+        canPlay,
         playheadTick,
         totalTicks,
+        audioDurationMs,
+        audioTotalTicks,
+        audioFileName,
         audio,
         setAudio,
+        setAudioFileName,
         play,
         pause,
         togglePlay,

@@ -1,6 +1,6 @@
 import { Midi } from "@midiedit/core";
 import { Audio } from "ts-audio";
-import { useRef, type ChangeEvent, useEffect } from "react";
+import { useEffect, useRef, type ChangeEvent } from "react";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContext";
 
@@ -64,14 +64,19 @@ async function loadFile(
   onLoad({ file, data: await file.arrayBuffer(), handle });
 }
 
-export const Toolbar = () => {
+interface ToolbarProps {
+  debugVisible: boolean;
+  onDebugToggle: () => void;
+}
+
+export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
   const midiFileRef = useRef<HTMLInputElement>(null);
   const midiLoadRef = useRef(0);
 
   const audioFileRef = useRef<HTMLInputElement>(null);
   const audioLoadRef = useRef(0);
 
-  const { setAudio } = usePlayback();
+  const { setAudio, setAudioFileName } = usePlayback();
 
   const {
     midiData,
@@ -89,7 +94,8 @@ export const Toolbar = () => {
   };
 
   const handleAudioLoad = ({ file }: LoadedFile): void => {
-    setAudio(Audio({ file: URL.createObjectURL(file) }));
+    setAudio(Audio({ file: URL.createObjectURL(file), preload: true }));
+    setAudioFileName(file.name);
   };
 
   const triggerFileDialog = (
@@ -276,6 +282,14 @@ export const Toolbar = () => {
           }
         >
           Open Audio
+        </button>
+
+        <button
+          type="button"
+          onClick={onDebugToggle}
+          aria-pressed={debugVisible}
+        >
+          {debugVisible ? "Hide Debug" : "Debug"}
         </button>
       </div>
 

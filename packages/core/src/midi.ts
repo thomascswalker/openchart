@@ -550,14 +550,25 @@ class MidiTrack {
       noteOn: MidiChannelEvent;
     }
 
+    const isChannelEvent = (event: MidiEvent): event is MidiChannelEvent =>
+      event.status < 0xff;
+
     let currentTick = 0;
     const activeNotes = new Map<number, PendingNote[]>();
     const notes: MidiNote[] = [];
     let previousNote: MidiNote | undefined;
 
-    const noteEvents = this.getNoteEvents();
-    for (const event of noteEvents) {
+    for (const event of this.events) {
       currentTick += event.deltaTime;
+
+      if (
+        !isChannelEvent(event) ||
+        ![ChannelMessage.NoteOn, ChannelMessage.NoteOff].includes(
+          event.messageType,
+        )
+      ) {
+        continue;
+      }
 
       const pitch = event.data1;
       const velocity = event.data2 ?? 0;
