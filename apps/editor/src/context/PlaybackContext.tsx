@@ -183,7 +183,12 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   }, [audio, canPlay]);
 
   const togglePlay = useCallback(() => {
-    isPlaying ? pause() : play();
+    if (isPlaying) {
+      pause();
+      return;
+    }
+
+    play();
   }, [isPlaying, pause, play]);
 
   useEffect(() => {

@@ -1,5 +1,4 @@
 import { MAX_VARIABLE_LENGTH_VALUE } from "./constants.js";
-import { MidiTrack } from "./midi.js";
 import {
   MidiEvent,
   MidiMetaPayload,

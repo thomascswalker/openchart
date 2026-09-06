@@ -2,13 +2,7 @@ import path from "path";
 import { Midi, MidiTrack } from "../src/midi.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
-import {
-  ChannelMessage,
-  MetaType,
-  MidiChannelEvent,
-  MidiMetaEvent,
-  TextMetaPayload,
-} from "../src/types.js";
+import { ChannelMessage, MidiChannelEvent } from "../src/types.js";
 
 test("is constructed", () => {
   const midi = new Midi();

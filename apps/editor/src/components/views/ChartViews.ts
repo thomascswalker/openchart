@@ -1,6 +1,6 @@
 import { PianoRollView } from "./pianoRoll";
 
-export type ChartView = PianoRollView | any;
+export type ChartView = PianoRollView;
 export type ChartViewFactory = () => ChartView;
 
 export interface ChartViewDefinition {

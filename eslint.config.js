@@ -9,6 +9,7 @@ export default defineConfig([
     "**/build/**",
     "**/coverage/**",
     "**/target/**",
+    "apps/desktop/src-tauri/gen/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],
@@ -18,6 +19,13 @@ export default defineConfig([
         ...globals.browser,
         ...globals.node,
       },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
     },
   },
 ]);
