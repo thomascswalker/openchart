@@ -1,35 +1,19 @@
 import { createContext, useContext } from "react";
 import { useEditor } from "./EditorContext";
-import { type AudioPlayer, useAudioPlayer } from "./useAudioPlayback";
-import { useTimeline as useTimeline } from "./usePlaybackTimeline";
+import { type AudioPlayback, useAudioPlayer } from "../hooks/useAudioPlayer";
+import {
+  useTimeline as useTimeline,
+  type Timeline,
+} from "../hooks/useTimeline";
+import type { ProviderProps } from "./shared";
 
-interface PlaybackContextType {
-  isPlaying: boolean;
-  canPlay: boolean;
-  playbackTick: number;
-  totalTicks: number;
-  audioDurationMs: number;
-  audioTotalTicks: number;
-  audioFileName: string | null;
-
-  audio?: AudioPlayer;
-  setAudio: (newAudio: AudioPlayer) => void;
-  setAudioFileName: (name: string | null) => void;
-
-  play: () => void;
-  pause: () => void;
-  togglePlay: () => void;
-  seekStart: () => void;
-  seekEnd: () => void;
-  setPlayheadTick: (tick: number) => void;
-  refreshTotalTicks: () => void;
-}
+interface PlaybackContextType extends Timeline, AudioPlayback {}
 
 const PlaybackContext = createContext<PlaybackContextType | undefined>(
   undefined,
 );
 
-export function PlaybackProvider({ children }: { children: React.ReactNode }) {
+export function PlaybackProvider({ children }: ProviderProps) {
   const { midiData } = useEditor();
   const audioPlayer = useAudioPlayer();
   const timeline = useTimeline({ midiData, audioPlayer });
@@ -38,11 +22,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     <PlaybackContext.Provider
       value={{
         ...timeline,
-        audioDurationMs: audioPlayer.duration,
-        audioFileName: audioPlayer.fileName,
-        audio: audioPlayer.audio,
-        setAudio: audioPlayer.setAudio,
-        setAudioFileName: audioPlayer.setFileName,
+        ...audioPlayer,
       }}
     >
       {children}

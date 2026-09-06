@@ -44,12 +44,12 @@ function DebugPanel({
   const {
     audio,
     audioDurationMs,
-    audioTotalTicks,
+    totalAudioTicks: audioTotalTicks,
     audioFileName,
     isPlaying,
     canPlay,
     playbackTick: playheadTick,
-    totalTicks,
+    totalTimelineTicks: totalTicks,
   } = usePlayback();
 
   const tracks = midiData?.tracks ?? [];

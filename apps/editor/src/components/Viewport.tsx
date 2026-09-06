@@ -23,7 +23,7 @@ export const Viewport = () => {
     isPlaying,
     playbackTick: playheadTick,
     togglePlay,
-    setPlayheadTick,
+    setPlaybackTick: setPlayheadTick,
     refreshTotalTicks,
   } = usePlayback();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);

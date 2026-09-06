@@ -16,12 +16,12 @@ export function Timeline({ chartView }: TimelineProps) {
     isPlaying,
     canPlay,
     playbackTick,
-    totalTicks,
+    totalTimelineTicks: totalTicks,
     play,
     pause,
     seekStart,
     seekEnd,
-    setPlayheadTick,
+    setPlaybackTick: setPlayheadTick,
   } = usePlayback();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);

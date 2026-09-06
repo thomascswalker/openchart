@@ -5,20 +5,20 @@ import {
   type TempoChange,
 } from "@midiedit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AudioPlayback } from "./useAudioPlayback";
+import type { AudioPlayback } from "./useAudioPlayer";
 
-interface Timeline {
+export interface Timeline {
   isPlaying: boolean;
   canPlay: boolean;
   playbackTick: number;
-  totalTicks: number;
-  audioTotalTicks: number;
+  totalTimelineTicks: number;
+  totalAudioTicks: number;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
   seekStart: () => void;
   seekEnd: () => void;
-  setPlayheadTick: (tick: number) => void;
+  setPlaybackTick: (tick: number) => void;
   refreshTotalTicks: () => void;
 }
 
@@ -180,14 +180,14 @@ export function useTimeline({
     isPlaying,
     canPlay,
     playbackTick,
-    totalTicks,
-    audioTotalTicks,
+    totalTimelineTicks: totalTicks,
+    totalAudioTicks: audioTotalTicks,
     play,
     pause,
     togglePlay,
     seekStart,
     seekEnd,
-    setPlayheadTick,
+    setPlaybackTick: setPlayheadTick,
     refreshTotalTicks,
   };
 }
