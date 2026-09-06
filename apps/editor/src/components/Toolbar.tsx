@@ -1,6 +1,8 @@
 import { Midi } from "@midiedit/core";
-import { useRef, type ChangeEvent, useEffect } from "react";
-import { useEditor } from "./EditorContext";
+import { Audio } from "ts-audio";
+import { useEffect, useRef, type ChangeEvent } from "react";
+import { useEditor } from "../context/EditorContext";
+import { usePlayback } from "../context/PlaybackContext";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
@@ -8,6 +10,21 @@ const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
     accept: { "audio/midi": [".mid", ".midi"] },
   },
 ];
+
+const WAV_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
+  {
+    description: "WAV file",
+    accept: { "audio/wav": [".wav"] },
+  },
+];
+
+interface LoadedFile {
+  file: File;
+  data: ArrayBuffer;
+  handle: FileSystemFileHandle | null;
+}
+
+type FileLoadHandler = (loadedFile: LoadedFile) => void;
 
 // Browsers without the File System Access API fall back to input/download.
 const supportsFileSystemAccess =
@@ -39,9 +56,27 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-export const Toolbar = () => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const loadRequestRef = useRef(0);
+async function loadFile(
+  file: File,
+  handle: FileSystemFileHandle | null,
+  onLoad: FileLoadHandler,
+): Promise<void> {
+  onLoad({ file, data: await file.arrayBuffer(), handle });
+}
+
+interface ToolbarProps {
+  debugVisible: boolean;
+  onDebugToggle: () => void;
+}
+
+export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
+  const midiFileRef = useRef<HTMLInputElement>(null);
+  const midiLoadRef = useRef(0);
+
+  const audioFileRef = useRef<HTMLInputElement>(null);
+  const audioLoadRef = useRef(0);
+
+  const { setAudio, setAudioFileName } = usePlayback();
 
   const {
     midiData,
@@ -52,32 +87,43 @@ export const Toolbar = () => {
     setFileHandle,
   } = useEditor();
 
-  const triggerFileDialog = (): void => {
+  const handleMidiLoad = ({ file, data, handle }: LoadedFile): void => {
+    setFileName(file.name);
+    setMidiData(new Midi(new Uint8Array(data)));
+    setFileHandle(handle);
+  };
+
+  const handleAudioLoad = ({ file }: LoadedFile): void => {
+    setAudio(Audio({ file: URL.createObjectURL(file), preload: true }));
+    setAudioFileName(file.name);
+  };
+
+  const triggerFileDialog = (
+    types: FilePickerAcceptType[],
+    fallbackInput: React.RefObject<HTMLInputElement | null>,
+    onLoad: FileLoadHandler,
+  ): void => {
     if (supportsFileSystemAccess) {
       void (async () => {
         try {
           const [handle] = await window.showOpenFilePicker!({
-            types: MIDI_FILE_PICKER_TYPES,
+            types,
           });
           const file = await handle.getFile();
-          const data = await file.arrayBuffer();
-
-          setFileName(file.name);
-          setMidiData(new Midi(new Uint8Array(data)));
-          setFileHandle(handle);
+          await loadFile(file, handle, onLoad);
         } catch (error: unknown) {
           if (!isAbortError(error)) {
-            console.error("Failed to open MIDI file", error);
+            console.error("Failed to open file", error);
           }
         }
       })();
       return;
     }
 
-    fileInputRef.current?.click();
+    fallbackInput.current?.click();
   };
 
-  const handleFileLoad = (event: ChangeEvent<HTMLInputElement>): void => {
+  const handleMidiFileLoad = (event: ChangeEvent<HTMLInputElement>): void => {
     const files = event.target.files;
 
     if (!files || files.length === 0) {
@@ -85,28 +131,42 @@ export const Toolbar = () => {
     }
 
     const file = files[0];
-    const requestId = ++loadRequestRef.current;
+    const requestId = ++midiLoadRef.current;
 
-    void file
-      .arrayBuffer()
-      .then((data) => {
-        if (requestId !== loadRequestRef.current) {
-          return;
-        }
+    void loadFile(file, null, (loadedFile) => {
+      if (requestId !== midiLoadRef.current) {
+        return;
+      }
 
-        setFileName(file.name);
-        setMidiData(new Midi(new Uint8Array(data)));
-        // No handle available via <input type="file">, so there's no save path yet.
-        setFileHandle(null);
-      })
-      .catch((error: unknown) => {
-        if (requestId === loadRequestRef.current) {
-          console.error("Failed to load MIDI file", error);
-        }
-      });
+      handleMidiLoad(loadedFile);
+    }).catch((error: unknown) => {
+      if (requestId === midiLoadRef.current) {
+        console.error("Failed to load MIDI file", error);
+      }
+    });
   };
 
-  const handleSaveAs = (): void => {
+  const handleAudioFileLoad = (event: ChangeEvent<HTMLInputElement>): void => {
+    const files = event.target.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const requestId = ++audioLoadRef.current;
+
+    void loadFile(files[0], null, (loadedFile) => {
+      if (requestId === audioLoadRef.current) {
+        handleAudioLoad(loadedFile);
+      }
+    }).catch((error: unknown) => {
+      if (requestId === audioLoadRef.current) {
+        console.error("Failed to load audio file", error);
+      }
+    });
+  };
+
+  const handleMidiSaveAs = (): void => {
     if (!midiData) {
       return;
     }
@@ -139,13 +199,13 @@ export const Toolbar = () => {
     downloadBuffer(data, fileName ?? "untitled.mid");
   };
 
-  const handleSave = (): void => {
+  const handleMidiSave = (): void => {
     if (!midiData) {
       return;
     }
 
     if (!fileHandle) {
-      handleSaveAs();
+      handleMidiSaveAs();
       return;
     }
 
@@ -171,13 +231,13 @@ export const Toolbar = () => {
 
       if (key === "o") {
         event.preventDefault();
-        triggerFileDialog();
+        triggerFileDialog(MIDI_FILE_PICKER_TYPES, midiFileRef, handleMidiLoad);
       } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
-        handleSaveAs();
+        handleMidiSaveAs();
       } else if (key === "s") {
         event.preventDefault();
-        handleSave();
+        handleMidiSave();
       }
     };
 
@@ -190,16 +250,46 @@ export const Toolbar = () => {
   return (
     <header className="midi-toolbar">
       <div className="midi-toolbar__actions">
-        <button type="button" onClick={triggerFileDialog}>
+        <button
+          type="button"
+          onClick={() =>
+            triggerFileDialog(
+              MIDI_FILE_PICKER_TYPES,
+              midiFileRef,
+              handleMidiLoad,
+            )
+          }
+        >
           Open
         </button>
 
-        <button type="button" disabled={!midiData} onClick={handleSave}>
+        <button type="button" disabled={!midiData} onClick={handleMidiSave}>
           Save
         </button>
 
-        <button type="button" disabled={!midiData} onClick={handleSaveAs}>
+        <button type="button" disabled={!midiData} onClick={handleMidiSaveAs}>
           Save As
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            triggerFileDialog(
+              WAV_FILE_PICKER_TYPES,
+              audioFileRef,
+              handleAudioLoad,
+            )
+          }
+        >
+          Open Audio
+        </button>
+
+        <button
+          type="button"
+          onClick={onDebugToggle}
+          aria-pressed={debugVisible}
+        >
+          {debugVisible ? "Hide Debug" : "Debug"}
         </button>
       </div>
 
@@ -208,10 +298,18 @@ export const Toolbar = () => {
       </div>
 
       <input
-        ref={fileInputRef}
+        ref={midiFileRef}
         type="file"
         accept=".mid,.midi"
-        onChange={handleFileLoad}
+        onChange={handleMidiFileLoad}
+        hidden
+      />
+
+      <input
+        ref={audioFileRef}
+        type="file"
+        accept=".wav"
+        onChange={handleAudioFileLoad}
         hidden
       />
     </header>

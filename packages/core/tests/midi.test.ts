@@ -2,7 +2,13 @@ import path from "path";
 import { Midi, MidiTrack } from "../src/midi.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
-import { MetaType, MidiMetaEvent, TextMetaPayload } from "../src/types.js";
+import {
+  ChannelMessage,
+  MetaType,
+  MidiChannelEvent,
+  MidiMetaEvent,
+  TextMetaPayload,
+} from "../src/types.js";
 
 test("is constructed", () => {
   const midi = new Midi();
@@ -78,6 +84,38 @@ test("setNotePitch rejects out-of-range pitch", () => {
   const [note] = track.getNotes();
 
   expect(() => track.setNotePitch(note, 128)).toThrow(RangeError);
+});
+
+test("getNotes includes time elapsed by non-note events", () => {
+  const track = new MidiTrack();
+  track.events = [
+    {
+      deltaTime: 120,
+      status: 0x90,
+      channel: 0,
+      messageType: ChannelMessage.NoteOn,
+      data1: 60,
+      data2: 100,
+    } as MidiChannelEvent,
+    {
+      deltaTime: 120,
+      status: 0xb0,
+      channel: 0,
+      messageType: ChannelMessage.ControlChange,
+      data1: 64,
+      data2: 127,
+    } as MidiChannelEvent,
+    {
+      deltaTime: 120,
+      status: 0x80,
+      channel: 0,
+      messageType: ChannelMessage.NoteOff,
+      data1: 60,
+      data2: 0,
+    } as MidiChannelEvent,
+  ];
+
+  expect(track.getNotes()).toMatchObject([{ start: 120, end: 360 }]);
 });
 
 test("addTempoChange/removeTempoChangeAt", () => {

@@ -1,4 +1,4 @@
-import { useEditor } from "./EditorContext";
+import { useEditor } from "../context/EditorContext";
 import "./styles.css";
 
 export function TrackList() {
