@@ -1,6 +1,7 @@
 import { PianoRollView } from "./pianoRoll";
+import { HighwayView } from "./highway";
 
-export type ChartView = PianoRollView;
+export type ChartView = PianoRollView | HighwayView;
 export type ChartViewFactory = () => ChartView;
 
 export interface ChartViewDefinition {
@@ -17,6 +18,14 @@ export const CHART_VIEWS = [
 
     createRenderer: () => {
       return new PianoRollView();
+    },
+  },
+  {
+    id: "highway",
+    name: "Highway",
+
+    createRenderer: () => {
+      return new HighwayView();
     },
   },
 ];

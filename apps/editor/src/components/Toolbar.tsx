@@ -2,7 +2,7 @@ import { Midi } from "@midiedit/core";
 import { Audio } from "ts-audio";
 import { useEffect, useRef, type ChangeEvent } from "react";
 import { useEditor } from "../context/EditorContext";
-import { usePlayback } from "../context/PlaybackContext";
+import { usePlayback } from "../context/PlaybackContextStore";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {

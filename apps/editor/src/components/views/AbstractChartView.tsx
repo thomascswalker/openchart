@@ -1,9 +1,12 @@
 import type { Midi } from "@midiedit/core";
+import { Difficulty } from "@midiedit/views";
 import { Application, Point, Rectangle } from "pixi.js";
 
 export interface ChartViewState {
   midi: Midi | null;
   selectedTrackIndex: number | null;
+  selectedInstrument: string;
+  selectedDifficulty: Difficulty;
   snap: SnapSettings;
 }
 
@@ -11,6 +14,31 @@ export interface SnapSettings {
   enabled: boolean;
   /** Note-value denominator (4 == quarter note, 3 == triplet half note, etc). */
   denominator: number;
+}
+
+export interface CameraDebugState {
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  fieldOfView: number;
+}
+
+export interface CameraDebugView {
+  getCameraDebugState(): CameraDebugState | null;
+  applyCameraDebugState(state: CameraDebugState): boolean;
+  resetCameraDebugState(): boolean;
+}
+
+export function isCameraDebugView(view: unknown): view is CameraDebugView {
+  return (
+    typeof view === "object" &&
+    view !== null &&
+    "getCameraDebugState" in view &&
+    typeof view.getCameraDebugState === "function" &&
+    "applyCameraDebugState" in view &&
+    typeof view.applyCameraDebugState === "function" &&
+    "resetCameraDebugState" in view &&
+    typeof view.resetCameraDebugState === "function"
+  );
 }
 
 export abstract class AbstractChartView<T> {
@@ -23,17 +51,16 @@ export abstract class AbstractChartView<T> {
   protected state: ChartViewState = {
     midi: null,
     selectedTrackIndex: null,
+    selectedInstrument: "LEAD GUITAR",
+    selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
   };
 
   public async mount(host: HTMLElement): Promise<void> {
-    const app = new Application();
-
-    await app.init({
+    const app = new Application({
       width: this.width,
       height: this.height,
       background: "#151515",
-      preference: "webgl",
       antialias: true,
       autoStart: false,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
@@ -41,14 +68,14 @@ export abstract class AbstractChartView<T> {
     });
 
     if (this.destroyed) {
-      app.destroy({ removeView: true }, { children: true });
+      app.destroy(true, { children: true });
 
       return;
     }
 
     this.app = app;
 
-    host.replaceChildren(app.canvas);
+    host.replaceChildren(app.view as HTMLCanvasElement);
 
     this.onMounted(app);
     this.render();
@@ -80,11 +107,13 @@ export abstract class AbstractChartView<T> {
       return;
     }
 
-    this.app.destroy({ removeView: true }, { children: true });
+    this.app.destroy(true, { children: true });
     this.app = null;
   }
 
-  protected onMounted(_app: Application): void {}
+  protected onMounted(_app: Application): void {
+    void _app;
+  }
 
   protected abstract draw(app: Application): void;
 
@@ -117,10 +146,14 @@ export abstract class AbstractChartView<T> {
     return 0;
   }
 
-  public setCameraTick(_tick: number): void {}
+  public setCameraTick(_tick: number): void {
+    void _tick;
+  }
 
   /** Current playback cursor position, in MIDI ticks, if this view supports drawing it. */
-  public setPlayheadTick(_tick: number): void {}
+  public setPlayheadTick(_tick: number): void {
+    void _tick;
+  }
 
   /** Notified whenever the view's camera position or zoom changes, if supported. */
   public onCameraChange: (() => void) | null = null;

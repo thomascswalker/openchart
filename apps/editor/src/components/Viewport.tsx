@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
+import { Difficulty, SongView } from "@midiedit/views";
 import { useEditor } from "../context/EditorContext";
-import { usePlayback } from "../context/PlaybackContext";
+import { usePlayback } from "../context/PlaybackContextStore";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -17,8 +18,19 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-export const Viewport = () => {
-  const { midiData, selectedTrackIndex } = useEditor();
+interface ViewportProps {
+  onChartViewReady: (view: ChartView | null) => void;
+}
+
+export const Viewport = ({ onChartViewReady }: ViewportProps) => {
+  const {
+    midiData,
+    selectedTrackIndex,
+    selectedInstrument,
+    setSelectedInstrument,
+    selectedDifficulty,
+    setSelectedDifficulty,
+  } = useEditor();
   const {
     isPlaying,
     playbackTick: playheadTick,
@@ -33,9 +45,13 @@ export const Viewport = () => {
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
 
-  const handleChartViewReady = useCallback((view: ChartView | null) => {
-    setChartView(view);
-  }, []);
+  const handleChartViewReady = useCallback(
+    (view: ChartView | null) => {
+      setChartView(view);
+      onChartViewReady(view);
+    },
+    [onChartViewReady],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -119,6 +135,15 @@ export const Viewport = () => {
     midiData && selectedTrackIndex !== null
       ? midiData.tracks[selectedTrackIndex]
       : null;
+  const availableInstruments = midiData
+    ? new SongView(midiData)
+        .getInstrumentTrackViews()
+        .filter(
+          (instrument) =>
+            instrument.getChart(Difficulty.Expert).getLaneCount() === 5,
+        )
+    : [];
+  const isHighwayView = activeView.id === "highway";
 
   return (
     <section className="midi-view">
@@ -171,6 +196,40 @@ export const Viewport = () => {
               </option>
             ))}
           </select>
+
+          {isHighwayView && (
+            <>
+              <select
+                value={selectedInstrument}
+                onChange={(event) => {
+                  setSelectedInstrument(event.target.value);
+                }}
+              >
+                {availableInstruments.map((instrument) => (
+                  <option
+                    key={instrument.getName()}
+                    value={instrument.getName()}
+                  >
+                    {instrument.getName()}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedDifficulty}
+                onChange={(event) => {
+                  setSelectedDifficulty(
+                    Number(event.target.value) as Difficulty,
+                  );
+                }}
+              >
+                <option value={Difficulty.Easy}>Easy</option>
+                <option value={Difficulty.Medium}>Medium</option>
+                <option value={Difficulty.Hard}>Hard</option>
+                <option value={Difficulty.Expert}>Expert</option>
+              </select>
+            </>
+          )}
         </div>
       </div>
 
@@ -180,6 +239,8 @@ export const Viewport = () => {
           state={{
             midi: midiData,
             selectedTrackIndex,
+            selectedInstrument,
+            selectedDifficulty,
             snap: { enabled: snapEnabled, denominator: snapDenominator },
           }}
           onReady={handleChartViewReady}

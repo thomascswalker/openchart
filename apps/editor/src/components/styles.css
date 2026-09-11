@@ -162,14 +162,79 @@ button:disabled {
   color: #e8efed;
 }
 
+.debug-camera {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.debug-camera__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.debug-camera__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  color: #81908e;
+  font-size: 10px;
+}
+
+.debug-camera__field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 5px;
+  border: 1px solid #40504e;
+  border-radius: 2px;
+  background: #18201f;
+  color: #e8efed;
+  font:
+    11px Consolas,
+    "Courier New",
+    monospace;
+}
+
+.debug-camera__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.debug-camera__actions button {
+  padding: 4px 9px;
+  border: 1px solid #526966;
+  border-radius: 2px;
+  background: #263331;
+  color: #e8efed;
+  cursor: pointer;
+  font:
+    11px system-ui,
+    sans-serif;
+}
+
+.debug-camera__actions button:hover {
+  background: #344542;
+}
+
+.debug-camera__error {
+  margin: 0;
+  color: #f18f8f;
+  font-size: 10px;
+}
+
 .debug-panel .muted {
   color: #81908e;
   font-size: 11px;
 }
 
 .debug-panel .event-list {
-  max-height: 180px;
-  overflow: auto;
+  box-sizing: border-box;
+  height: 180px;
+  min-height: 0;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -189,6 +254,7 @@ button:disabled {
 
   min-height: 0;
 
+  background: #242424;
   border-bottom: 2px solid #555;
 }
 
@@ -220,7 +286,7 @@ button:disabled {
 
   overflow: auto;
 
-  background: #151515;
+  background: #242424;
 }
 
 .track-list--empty {

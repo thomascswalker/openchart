@@ -104,14 +104,24 @@ export function useTimeline({
     pauseAudio();
   }, [pauseAudio]);
 
+  useEffect(() => {
+    pause();
+    setPlaybackTick(0);
+    playheadTickRef.current = 0;
+  }, [midiData, audio, pause]);
+
   const play = useCallback(() => {
     if (!canPlay) {
       return;
     }
 
+    if (totalTicks > 0 && playheadTickRef.current >= totalTicks) {
+      setPlayheadTick(0);
+    }
+
     setIsPlaying(true);
     playAudio();
-  }, [canPlay, playAudio]);
+  }, [canPlay, playAudio, setPlayheadTick, totalTicks]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -138,9 +148,9 @@ export function useTimeline({
       return;
     }
 
-    seekAudio(0);
-    playAudio();
-  }, [audioEndCount, isPlaying, playAudio, seekAudio]);
+    pause();
+    setPlayheadTick(0);
+  }, [audioEndCount, isPlaying, pause, setPlayheadTick]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -149,19 +159,37 @@ export function useTimeline({
     }
 
     const step = (frameTimeMs: number): void => {
-      const lastFrameMs = lastFrameMsRef.current;
-      lastFrameMsRef.current = frameTimeMs;
+      if (audio) {
+        const audioTimeMs = audio.currentTime * 1_000;
+        const currentTick = msToTicks(audioTimeMs, ppqn, tempoChanges);
 
-      if (lastFrameMs !== null) {
-        const elapsedMs = frameTimeMs - lastFrameMs;
-        const nextTick = msToTicks(
-          ticksToMs(playheadTickRef.current, ppqn, tempoChanges) + elapsedMs,
-          ppqn,
-          tempoChanges,
-        );
+        playheadTickRef.current = currentTick;
+        setPlaybackTick(currentTick);
 
-        playheadTickRef.current = nextTick;
-        setPlaybackTick(nextTick);
+        if (totalTicks > 0 && currentTick >= totalTicks) {
+          pause();
+          return;
+        }
+      } else {
+        const lastFrameMs = lastFrameMsRef.current;
+        lastFrameMsRef.current = frameTimeMs;
+
+        if (lastFrameMs !== null) {
+          const elapsedMs = frameTimeMs - lastFrameMs;
+          const currentMs =
+            ticksToMs(playheadTickRef.current, ppqn, tempoChanges) + elapsedMs;
+          const nextTick = msToTicks(currentMs, ppqn, tempoChanges);
+
+          if (totalTicks > 0 && nextTick >= totalTicks) {
+            playheadTickRef.current = totalTicks;
+            setPlaybackTick(totalTicks);
+            pause();
+            return;
+          }
+
+          playheadTickRef.current = nextTick;
+          setPlaybackTick(nextTick);
+        }
       }
 
       animationRef.current = requestAnimationFrame(step);
@@ -174,7 +202,7 @@ export function useTimeline({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, ppqn, tempoChanges]);
+  }, [audio, isPlaying, pause, ppqn, tempoChanges, totalTicks]);
 
   return {
     isPlaying,

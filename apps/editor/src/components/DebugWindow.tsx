@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { useEditor } from "../context/EditorContext";
-import { usePlayback } from "../context/PlaybackContext";
+import { usePlayback } from "../context/PlaybackContextStore";
+import {
+  isCameraDebugView,
+  type CameraDebugState,
+} from "./views/AbstractChartView";
+import type { ChartView } from "./views/ChartViews";
 
 interface DebugWindowProps {
   onClose: () => void;
+  chartView: ChartView | null;
 }
 
 interface DebugEvent {
@@ -31,14 +37,146 @@ function trackMaxTick(track: {
   return timedEvents[timedEvents.length - 1]?.tick ?? 0;
 }
 
+type CameraDraft = {
+  positionX: string;
+  positionY: string;
+  positionZ: string;
+  rotationX: string;
+  rotationY: string;
+  rotationZ: string;
+  fieldOfView: string;
+};
+
+function cameraStateToDraft(state: CameraDebugState): CameraDraft {
+  return {
+    positionX: String(state.position.x),
+    positionY: String(state.position.y),
+    positionZ: String(state.position.z),
+    rotationX: String(state.rotation.x),
+    rotationY: String(state.rotation.y),
+    rotationZ: String(state.rotation.z),
+    fieldOfView: String(state.fieldOfView),
+  };
+}
+
+function cameraDraftToState(draft: CameraDraft): CameraDebugState | null {
+  const values = Object.fromEntries(
+    Object.entries(draft).map(([key, value]) => [key, Number(value)]),
+  ) as Record<keyof CameraDraft, number>;
+
+  if (Object.values(values).some((value) => !Number.isFinite(value))) {
+    return null;
+  }
+
+  return {
+    position: {
+      x: values.positionX,
+      y: values.positionY,
+      z: values.positionZ,
+    },
+    rotation: {
+      x: values.rotationX,
+      y: values.rotationY,
+      z: values.rotationZ,
+    },
+    fieldOfView: values.fieldOfView,
+  };
+}
+
+function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
+  const cameraView = isCameraDebugView(chartView) ? chartView : null;
+  const [draft, setDraft] = useState<CameraDraft | null>(() => {
+    const state = cameraView?.getCameraDebugState() ?? null;
+    return state ? cameraStateToDraft(state) : null;
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  if (!cameraView || !draft) {
+    return null;
+  }
+
+  const updateDraft = (field: keyof CameraDraft, value: string): void => {
+    setDraft((current) => (current ? { ...current, [field]: value } : current));
+    setError(null);
+  };
+
+  const handleApply = (): void => {
+    const state = cameraDraftToState(draft);
+    if (!state || !cameraView.applyCameraDebugState(state)) {
+      setError("Enter finite values and an FOV from 1 to 179.");
+      return;
+    }
+
+    setDraft(cameraStateToDraft(cameraView.getCameraDebugState() ?? state));
+    setError(null);
+  };
+
+  const handleReset = (): void => {
+    if (!cameraView.resetCameraDebugState()) {
+      setError("Camera is not mounted.");
+      return;
+    }
+
+    const state = cameraView.getCameraDebugState();
+    setDraft(state ? cameraStateToDraft(state) : null);
+    setError(null);
+  };
+
+  const fields: { key: keyof CameraDraft; label: string; step: string }[] = [
+    { key: "positionX", label: "Position X", step: "0.1" },
+    { key: "positionY", label: "Position Y", step: "0.1" },
+    { key: "positionZ", label: "Position Z", step: "0.1" },
+    { key: "rotationX", label: "Rotation X (deg)", step: "1" },
+    { key: "rotationY", label: "Rotation Y (deg)", step: "1" },
+    { key: "rotationZ", label: "Rotation Z (deg)", step: "1" },
+    { key: "fieldOfView", label: "FOV (deg)", step: "1" },
+  ];
+
+  return (
+    <section className="debug-panel__section">
+      <h2>Highway camera</h2>
+      <form
+        className="debug-camera"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleApply();
+        }}
+      >
+        <div className="debug-camera__grid">
+          {fields.map(({ key, label, step }) => (
+            <label key={key} className="debug-camera__field">
+              <span>{label}</span>
+              <input
+                type="number"
+                step={step}
+                value={draft[key]}
+                onChange={(event) => updateDraft(key, event.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+        <div className="debug-camera__actions">
+          <button type="submit">Apply</button>
+          <button type="button" onClick={handleReset}>
+            Reset
+          </button>
+        </div>
+        {error ? <p className="debug-camera__error">{error}</p> : null}
+      </form>
+    </section>
+  );
+}
+
 function DebugPanel({
   onClose,
   events,
   pressedKeys,
+  chartView,
 }: {
   onClose: () => void;
   events: DebugEvent[];
   pressedKeys: string[];
+  chartView: ChartView | null;
 }) {
   const { midiData, fileName, selectedTrackIndex } = useEditor();
   const {
@@ -180,11 +318,16 @@ function DebugPanel({
           )}
         </ul>
       </section>
+
+      <CameraDebugSection
+        key={chartView?.constructor.name ?? "no-camera"}
+        chartView={chartView}
+      />
     </aside>
   );
 }
 
-export function DebugWindow({ onClose }: DebugWindowProps) {
+export function DebugWindow({ onClose, chartView }: DebugWindowProps) {
   const [events, setEvents] = useState<DebugEvent[]>([]);
   const [pressedKeys, setPressedKeys] = useState<string[]>([]);
 
@@ -228,6 +371,11 @@ export function DebugWindow({ onClose }: DebugWindowProps) {
   }, []);
 
   return (
-    <DebugPanel onClose={onClose} events={events} pressedKeys={pressedKeys} />
+    <DebugPanel
+      onClose={onClose}
+      events={events}
+      pressedKeys={pressedKeys}
+      chartView={chartView}
+    />
   );
 }
