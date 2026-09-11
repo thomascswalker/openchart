@@ -214,23 +214,24 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.cursor,
     );
 
-    this.canvas = app.canvas;
+    const canvas = app.view as HTMLCanvasElement;
+    this.canvas = canvas;
 
-    this.canvas.style.touchAction = "none";
+    canvas.style.touchAction = "none";
     // Canvas elements aren't focusable (and won't receive keydown events)
     // unless they have a tabIndex and are explicitly focused.
-    this.canvas.tabIndex = 0;
-    this.canvas.addEventListener("keydown", this.handleKeyDown);
-    this.canvas.addEventListener("click", this.handleClick);
-    this.canvas.addEventListener("dblclick", this.handleDoubleClick);
-    this.canvas.addEventListener("contextmenu", this.handleContextMenu);
-    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
-    this.canvas.addEventListener("pointermove", this.handlePointerMove);
-    this.canvas.addEventListener("pointerup", this.handlePointerUp);
-    this.canvas.addEventListener("pointercancel", this.handlePointerUp);
+    canvas.tabIndex = 0;
+    canvas.addEventListener("keydown", this.handleKeyDown);
+    canvas.addEventListener("click", this.handleClick);
+    canvas.addEventListener("dblclick", this.handleDoubleClick);
+    canvas.addEventListener("contextmenu", this.handleContextMenu);
+    canvas.addEventListener("pointerdown", this.handlePointerDown);
+    canvas.addEventListener("pointermove", this.handlePointerMove);
+    canvas.addEventListener("pointerup", this.handlePointerUp);
+    canvas.addEventListener("pointercancel", this.handlePointerUp);
     window.addEventListener("pointerup", this.handlePointerUp);
-    this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
-    this.canvas.addEventListener("auxclick", this.handleAuxClick);
+    canvas.addEventListener("wheel", this.handleWheel, { passive: false });
+    canvas.addEventListener("auxclick", this.handleAuxClick);
   }
 
   public override destroy(): void {
@@ -1510,14 +1511,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const isBlackKey = BlackPitchClasses.has(pitchClass);
       const y = HeaderHeight + topOffset + row * rowHeight;
 
-      this.pitchRows
-        .rect(
-          this.keyboardWidth,
-          y,
-          Math.max(0, width - this.keyboardWidth),
-          rowHeight,
-        )
-        .fill(isBlackKey ? 0x181818 : 0x202020);
+      this.pitchRows.beginFill(isBlackKey ? 0x181818 : 0x202020);
+      this.pitchRows.drawRect(
+        this.keyboardWidth,
+        y,
+        Math.max(0, width - this.keyboardWidth),
+        rowHeight,
+      );
+      this.pitchRows.endFill();
     }
   }
 
@@ -1528,9 +1529,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
     const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
 
-    this.keyboard
-      .rect(0, HeaderHeight, this.keyboardWidth, rollHeight)
-      .fill(0xd6d6d6);
+    this.keyboard.beginFill(0xd6d6d6);
+    this.keyboard.drawRect(0, HeaderHeight, this.keyboardWidth, rollHeight);
+    this.keyboard.endFill();
 
     for (let row = 0; row < rowCount; row++) {
       const pitch = firstPitch - row;
@@ -1544,9 +1545,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const y = HeaderHeight + topOffset + row * rowHeight;
 
       if (isBlackKey) {
-        this.keyboard
-          .rect(0, y, this.keyboardWidth * 0.65, rowHeight)
-          .fill(0x272727);
+        this.keyboard.beginFill(0x272727);
+        this.keyboard.drawRect(0, y, this.keyboardWidth * 0.65, rowHeight);
+        this.keyboard.endFill();
       }
 
       this.keyboard
@@ -1554,18 +1555,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         .lineTo(this.keyboardWidth, y + rowHeight);
     }
 
-    this.keyboard.stroke({
-      color: 0x555555,
-      width: 1,
-    });
+    this.keyboard.lineStyle(1, 0x555555);
 
     this.keyboard
       .moveTo(this.keyboardWidth, HeaderHeight)
-      .lineTo(this.keyboardWidth, height)
-      .stroke({
-        color: 0x777777,
-        width: 1,
-      });
+      .lineTo(this.keyboardWidth, height);
+    this.keyboard.lineStyle(1, 0x777777);
   }
 
   private drawGrid(width: number, height: number): void {
@@ -1598,15 +1593,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       target.moveTo(x, HeaderHeight).lineTo(x, height);
     }
 
-    this.minorGrid.stroke({
-      color: 0x353535,
-      width: 1,
-    });
-
-    this.majorGrid.stroke({
-      color: 0x555555,
-      width: 2,
-    });
+    this.minorGrid.lineStyle(1, 0x353535);
+    this.majorGrid.lineStyle(2, 0x555555);
   }
 
   /**
@@ -1641,10 +1629,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.snapGrid.moveTo(x, HeaderHeight).lineTo(x, height);
     }
 
-    this.snapGrid.stroke({
-      color: 0x2a2a2a,
-      width: 1,
-    });
+    this.snapGrid.lineStyle(1, 0x2a2a2a);
   }
 
   /**
@@ -1755,10 +1740,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         : noneSelected
           ? false
           : this.selection.isSelected(n.note);
-      this.notes
-        .roundRect(n.x, n.y + 1, n.width, n.height, n.radius)
-        .fill(isSelected ? noteSelectedColor : noteColor)
-        .stroke(noteStrokeColor);
+      this.notes.lineStyle(noteStrokeColor.width, noteStrokeColor.color);
+      this.notes.beginFill(isSelected ? noteSelectedColor : noteColor);
+      this.notes.drawRoundedRect(n.x, n.y + 1, n.width, n.height, n.radius);
+      this.notes.endFill();
     });
 
     this.notes.position.set(
@@ -1769,34 +1754,35 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private drawSelectionBox() {
     if (this.selection.isSelecting) {
-      this.selectionBox
-        .rect(
-          this.selection.bounds!.x,
-          this.selection.bounds!.y,
-          this.selection.bounds!.width,
-          this.selection.bounds!.height,
-        )
-        .fill({ color: 0xffffff, alpha: 0.5 });
+      this.selectionBox.beginFill(0xffffff, 0.5);
+      this.selectionBox.drawRect(
+        this.selection.bounds!.x,
+        this.selection.bounds!.y,
+        this.selection.bounds!.width,
+        this.selection.bounds!.height,
+      );
+      this.selectionBox.endFill();
     }
   }
 
   private drawHeader(width: number): void {
+    this.header.beginFill(0x1c1c1c);
+    this.header.drawRect(0, 0, width, HeaderTempoLaneHeight);
+    this.header.endFill();
+    this.header.beginFill(0x181818);
+    this.header.drawRect(
+      0,
+      HeaderTempoLaneHeight,
+      width,
+      HeaderHeight - HeaderTempoLaneHeight,
+    );
+    this.header.endFill();
+    this.header.lineStyle(1, 0x3a3a3a);
     this.header
-      .rect(0, 0, width, HeaderTempoLaneHeight)
-      .fill(0x1c1c1c)
-      .rect(
-        0,
-        HeaderTempoLaneHeight,
-        width,
-        HeaderHeight - HeaderTempoLaneHeight,
-      )
-      .fill(0x181818)
       .moveTo(0, HeaderTempoLaneHeight)
-      .lineTo(width, HeaderTempoLaneHeight)
-      .stroke({ color: 0x3a3a3a, width: 1 })
-      .moveTo(0, HeaderHeight)
-      .lineTo(width, HeaderHeight)
-      .stroke({ color: 0x555555, width: 1 });
+      .lineTo(width, HeaderTempoLaneHeight);
+    this.header.lineStyle(1, 0x555555);
+    this.header.moveTo(0, HeaderHeight).lineTo(width, HeaderHeight);
 
     const pixelsPerTick = this.getPixelsPerTick();
     const visibleWidth = Math.max(0, width - this.keyboardWidth);
@@ -1813,20 +1799,18 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const x =
         this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
 
+      this.header.lineStyle(1, 0x888888);
       this.header
         .moveTo(x, HeaderTempoLaneHeight - 6)
-        .lineTo(x, HeaderTempoLaneHeight)
-        .stroke({ color: 0x888888, width: 1 });
+        .lineTo(x, HeaderTempoLaneHeight);
     }
 
     for (const change of timeSignatureMarkers) {
       const x =
         this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
 
-      this.header
-        .moveTo(x, HeaderHeight - 6)
-        .lineTo(x, HeaderHeight)
-        .stroke({ color: 0x888888, width: 1 });
+      this.header.lineStyle(1, 0x888888);
+      this.header.moveTo(x, HeaderHeight - 6).lineTo(x, HeaderHeight);
     }
 
     this.layoutHeaderLabels(
@@ -1862,10 +1846,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       let label = pool[index];
 
       if (!label) {
-        label = new Text({
-          text: "",
-          style: { fill: 0xcccccc, fontSize: 11 },
-        });
+        label = new Text("", { fill: 0xcccccc, fontSize: 11 });
         pool[index] = label;
         this.headerLabels.addChild(label);
       }
@@ -1891,10 +1872,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return;
     }
 
-    this.cursor
-      .moveTo(x, 0)
-      .lineTo(x, height)
-      .stroke({ color: 0xff0000, width: 2 });
+    this.cursor.lineStyle(2, 0xff0000).moveTo(x, 0).lineTo(x, height);
   }
 
   private clearMappedNotes(): void {

@@ -1,4 +1,5 @@
 import { Midi } from "@midiedit/core";
+import { Difficulty } from "@midiedit/views";
 import { createContext, useContext, useState } from "react";
 import type { ProviderProps } from "./shared";
 
@@ -18,6 +19,12 @@ interface EditorContextType {
 
   selectedTrackIndex: number | null;
   setSelectedTrackIndex: (index: number | null) => void;
+
+  selectedInstrument: string;
+  setSelectedInstrument: (instrument: string) => void;
+
+  selectedDifficulty: Difficulty;
+  setSelectedDifficulty: (difficulty: Difficulty) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -30,6 +37,10 @@ export function EditorProvider({ children }: ProviderProps) {
   );
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(
     null,
+  );
+  const [selectedInstrument, setSelectedInstrument] = useState("LEAD GUITAR");
+  const [selectedDifficulty, setSelectedDifficulty] = useState(
+    Difficulty.Expert,
   );
   const [trackCount, setTrackCount] = useState<number>(0);
 
@@ -49,6 +60,10 @@ export function EditorProvider({ children }: ProviderProps) {
         setFileHandle,
         selectedTrackIndex,
         setSelectedTrackIndex,
+        selectedInstrument,
+        setSelectedInstrument,
+        selectedDifficulty,
+        setSelectedDifficulty,
         trackCount,
         setTrackCount,
       }}

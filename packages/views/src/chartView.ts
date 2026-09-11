@@ -29,7 +29,7 @@ enum Note {
   Orange = 0x4,
 }
 
-class ChartView {
+export class ChartView {
   private track: TrackView;
   private midiTrack: MidiTrack | undefined;
   private difficulty: Difficulty;
@@ -92,6 +92,7 @@ class ChartView {
       return;
     }
 
+    this.getSong().attachTrack(this.midiTrack);
     const pitch = this.offset + note;
     const insertAt = this.midiTrack.getInsertionIndexAt(start);
     const previousTick = this.midiTrack.getAbsoluteTickAt(insertAt);
@@ -115,7 +116,43 @@ class ChartView {
       return false;
     }
 
+    this.getSong().attachTrack(this.midiTrack);
     return this.midiTrack.removeNote(note.noteOn, note.noteOff);
+  }
+
+  public moveNote(note: MidiNote, lane: Note, start: number): boolean {
+    if (
+      !this.midiTrack ||
+      !Number.isInteger(start) ||
+      start < 0 ||
+      lane < 0 ||
+      lane >= this.lanes ||
+      note.note < this.offset ||
+      note.note >= this.offset + this.lanes
+    ) {
+      return false;
+    }
+
+    this.getSong().attachTrack(this.midiTrack);
+    return (
+      this.midiTrack.setNoteStart(note, start) &&
+      this.midiTrack.setNotePitch(note, this.offset + lane)
+    );
+  }
+
+  public setNoteEnd(note: MidiNote, end: number): boolean {
+    if (
+      !this.midiTrack ||
+      !Number.isInteger(end) ||
+      end <= note.start ||
+      note.note < this.offset ||
+      note.note >= this.offset + this.lanes
+    ) {
+      return false;
+    }
+
+    this.getSong().attachTrack(this.midiTrack);
+    return this.midiTrack.setNoteDuration(note, end - note.start);
   }
 }
 
@@ -150,7 +187,7 @@ class TrackView {
 
 class GlobalTrackView extends TrackView {}
 
-class InstrumentTrackView extends TrackView {
+export class InstrumentTrackView extends TrackView {
   private config: InstrumentTrackViewConfig;
   private expert: ChartView;
   private hard: ChartView;
@@ -269,6 +306,16 @@ class SongView {
     instrument: string | Instrument,
   ): InstrumentTrackView | undefined {
     return this.instruments.find((v) => v.getName() === instrument);
+  }
+
+  public getInstrumentTrackViews(): readonly InstrumentTrackView[] {
+    return this.instruments;
+  }
+
+  public attachTrack(track: MidiTrack): void {
+    if (!this.midi.tracks.includes(track)) {
+      this.midi.tracks.push(track);
+    }
   }
 }
 

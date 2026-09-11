@@ -1,4 +1,5 @@
 import path from "path";
+import { fileURLToPath } from "url";
 import { ChannelMessage, Midi, MidiTrack } from "@midiedit/core";
 import { expect, describe, beforeAll, it } from "vitest";
 import { SongView, Difficulty, Note } from "../src/chartView.js";
@@ -11,7 +12,7 @@ describe("data.json", () => {
   beforeAll(async () => {
     const { default: testData } = await import("./data.json");
 
-    const currentDir = path.dirname(new URL(import.meta.url).pathname);
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
     const midiPath = path.join(currentDir, testData.filename);
     const content = fs.readFileSync(midiPath);
     midi = new Midi(content);
@@ -23,6 +24,9 @@ describe("data.json", () => {
   it("instrument parsing", async () => {
     const lead = song.getInstrumentTrackView("LEAD GUITAR")!;
     expect(lead).toBeDefined();
+    expect(
+      song.getInstrumentTrackViews().map((instrument) => instrument.getName()),
+    ).toEqual(["LEAD GUITAR", "RHYTHM GUITAR", "DRUMS", "VOCALS"]);
     expect(song.getInstrumentTrackView("RHYTHM GUITAR")).toBeDefined();
     expect(song.getInstrumentTrackView("DRUMS")).toBeDefined();
     expect(song.getInstrumentTrackView("VOCALS")).toBeDefined();
@@ -70,6 +74,37 @@ describe("data.json", () => {
     expect(chart.removeNote(notes[0])).toBe(true);
     expect(track.events).toHaveLength(0);
     expect(chart.getNotes()).toHaveLength(0);
+  });
+
+  it("moves and resizes notes within its configured chart lanes", () => {
+    const midi = new Midi();
+    const track = new MidiTrack("LEAD GUITAR");
+    midi.tracks = [track];
+
+    const chart = new SongView(midi)
+      .getInstrumentTrackView("LEAD GUITAR")!
+      .getChart(Difficulty.Expert);
+    chart.addNote(Note.Green, 480, 720);
+
+    const note = chart.getNotes()[0]!;
+    expect(chart.moveNote(note, Note.Orange, 960)).toBe(true);
+    expect(chart.setNoteEnd(note, 1_680)).toBe(true);
+    expect(
+      chart.getNotes().map((value) => [value.note, value.start, value.end]),
+    ).toEqual([[100, 960, 1_680]]);
+    expect(chart.moveNote(note, 5 as Note, 1_920)).toBe(false);
+    expect(chart.setNoteEnd(note, 960)).toBe(false);
+  });
+
+  it("adds a missing instrument track when its chart is first edited", () => {
+    const midi = new Midi();
+    const chart = new SongView(midi)
+      .getInstrumentTrackView("LEAD GUITAR")!
+      .getChart(Difficulty.Expert);
+
+    chart.addNote(Note.Green, 480, 720);
+
+    expect(midi.getTrack("LEAD GUITAR")?.getNotes()).toHaveLength(1);
   });
 
   it("keeps MidiTrack relative timing and ChartView absolute timing separate", () => {

@@ -92,6 +92,8 @@ export function ChartViewHost({
   }, [
     state.midi,
     state.selectedTrackIndex,
+    state.selectedInstrument,
+    state.selectedDifficulty,
     state.snap.enabled,
     state.snap.denominator,
   ]);
