@@ -3,6 +3,7 @@ import { Audio } from "ts-audio";
 import { useEffect, useRef, type ChangeEvent } from "react";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
+import { Button } from "./shared/Button";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
@@ -250,8 +251,8 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
   return (
     <header className="midi-toolbar">
       <div className="midi-toolbar__actions">
-        <button
-          type="button"
+        <Button
+          label="Open"
           onClick={() =>
             triggerFileDialog(
               MIDI_FILE_PICKER_TYPES,
@@ -259,9 +260,7 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
               handleMidiLoad,
             )
           }
-        >
-          Open
-        </button>
+        />
 
         <button type="button" disabled={!midiData} onClick={handleMidiSave}>
           Save
