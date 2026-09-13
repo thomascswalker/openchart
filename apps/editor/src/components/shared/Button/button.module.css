@@ -1,4 +1,4 @@
-button {
+.button {
   padding: var(--space-med);
   border: var(--border-primary);
   border-radius: var(--radius-small);
@@ -7,10 +7,10 @@ button {
   cursor: pointer;
 }
 
-button:hover:not(:disabled) {
+.button:hover:not(:disabled) {
   background: var(--neutral-70);
 }
 
-button:disabled {
+.button:disabled {
   cursor: default;
 }

@@ -280,6 +280,8 @@ button:disabled {
 /* Track list */
 
 .track-list {
+  display: flex;
+  flex-direction: column;
   flex: 1;
 
   min-height: 0;
@@ -293,6 +295,7 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px 16px;
 
   color: #777;
 }
@@ -300,7 +303,9 @@ button:disabled {
 /* Individual DAW-style track */
 
 .track-row {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 
   height: 72px;
 
@@ -324,6 +329,9 @@ button:disabled {
 .track-row__header {
   display: flex;
   align-items: center;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
 
   gap: 10px;
   padding: 0 12px;
@@ -356,6 +364,8 @@ button:disabled {
 }
 
 .track-row__name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 
   white-space: nowrap;
@@ -363,6 +373,87 @@ button:disabled {
 
   font-size: 13px;
   font-weight: 500;
+}
+
+.track-row__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 24px;
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  transition: all 0.15s ease-in-out;
+}
+
+.track-row__delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.track-row__delete:active {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Track preview (below lowest track / sticky bottom) */
+
+.track-row--preview {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+
+  background: #1d1d1d;
+  border-bottom: 1px dashed #3a3a3a;
+  border-top: 1px solid #333;
+  opacity: 0.75;
+
+  transition:
+    opacity 0.15s ease-in-out,
+    background-color 0.15s ease-in-out;
+}
+
+.track-row--preview:hover {
+  opacity: 1;
+  background: #252525;
+}
+
+.track-row--preview .track-row__header {
+  background: transparent;
+  border-right: 1px dashed #444;
+}
+
+.track-row__number--preview {
+  background: transparent;
+  border: 1px dashed #666;
+  color: #888;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.track-row--preview:hover .track-row__number--preview {
+  border-color: #aaa;
+  color: #fff;
+  background: #333;
+}
+
+.track-row__name--preview {
+  color: #888;
+  font-style: italic;
+}
+
+.track-row--preview:hover .track-row__name--preview {
+  color: #ddd;
 }
 
 .track-row__timeline {

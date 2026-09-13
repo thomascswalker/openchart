@@ -1,19 +1,30 @@
-import * as styles from "./button.module.css";
+import type { ReactNode } from "react";
+import classNames from "classnames";
+import styles from "./button.module.css";
 
 interface ButtonProps {
-  label?: string;
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  children: ReactNode;
+  className?: string;
+  title?: string;
 }
 
 const Button = ({
-  label = "",
   disabled = false,
   onClick = () => {},
+  children,
+  className,
+  title,
 }: ButtonProps) => {
   return (
-    <button style={styles.default} onClick={onClick} disabled={disabled}>
-      {label}
+    <button
+      className={classNames(styles.button, className)}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+    >
+      {children}
     </button>
   );
 };

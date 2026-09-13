@@ -1,0 +1,17 @@
+.section {
+  display: flex;
+  padding: var(--space-med);
+  gap: var(--space-med);
+}
+
+.section > * {
+  flex: 1;
+}
+
+.row {
+  flex-direction: row;
+}
+
+.column {
+  flex-direction: column;
+}

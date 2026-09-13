@@ -252,7 +252,6 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
     <header className="midi-toolbar">
       <div className="midi-toolbar__actions">
         <Button
-          label="Open"
           onClick={() =>
             triggerFileDialog(
               MIDI_FILE_PICKER_TYPES,
@@ -260,18 +259,19 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
               handleMidiLoad,
             )
           }
-        />
+        >
+          Open
+        </Button>
 
-        <button type="button" disabled={!midiData} onClick={handleMidiSave}>
+        <Button disabled={!midiData} onClick={handleMidiSave}>
           Save
-        </button>
+        </Button>
 
-        <button type="button" disabled={!midiData} onClick={handleMidiSaveAs}>
+        <Button disabled={!midiData} onClick={handleMidiSaveAs}>
           Save As
-        </button>
+        </Button>
 
-        <button
-          type="button"
+        <Button
           onClick={() =>
             triggerFileDialog(
               WAV_FILE_PICKER_TYPES,
@@ -281,15 +281,11 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
           }
         >
           Open Audio
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          onClick={onDebugToggle}
-          aria-pressed={debugVisible}
-        >
+        <Button onClick={onDebugToggle}>
           {debugVisible ? "Hide Debug" : "Debug"}
-        </button>
+        </Button>
       </div>
 
       <div className="midi-toolbar__file">
