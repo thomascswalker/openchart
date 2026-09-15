@@ -1,10 +1,12 @@
-import type {
-  Midi,
-  MidiChannelEvent,
-  MidiNote,
-  MidiTrack,
-  TempoChange,
-  TimeSignatureChange,
+import {
+  msToTicks,
+  ticksToMs,
+  type Midi,
+  type MidiChannelEvent,
+  type MidiNote,
+  type MidiTrack,
+  type TempoChange,
+  type TimeSignatureChange,
 } from "@midiedit/core";
 import { clamp } from "es-toolkit";
 import {
@@ -20,6 +22,8 @@ import {
   BlackPitchClasses,
   HeaderHeight,
   HeaderMarkerHitRadius,
+  HeaderMarkerLabelHeight,
+  HeaderMarkerLabelWidth,
   HeaderTempoLaneHeight,
   MaximumPixelsPerQuarter,
   MaximumPixelsPerSemitone,
@@ -54,6 +58,7 @@ interface NoteGeometry {
 interface NoteGeometryCache {
   track: MidiTrack;
   notes: PianoRollNote[];
+  tempoChanges: TempoChange[];
   tickWidth: number;
   rowHeight: number;
   width: number;
@@ -81,6 +86,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly cursor = new Graphics();
 
   private readonly headerLabels = new Container();
+  private readonly headerBoxes = new Container();
   private readonly tempoLabelPool: Text[] = [];
   private readonly timeSignatureLabelPool: Text[] = [];
 
@@ -121,6 +127,18 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   // Tracks hover position (independent of any button press) for paste anchoring.
   private readonly hoverPosition: Point = new Point(0, 0);
   private hasHovered = false;
+
+  // Tempo/time-signature marker currently under the mouse in the header, if any.
+  private hoveredHeaderMarker: {
+    lane: "tempo" | "timeSignature";
+    tick: number;
+  } | null = null;
+  private host: HTMLElement | null = null;
+  private headerEditInput: HTMLInputElement | null = null;
+  private headerDeleteButton: HTMLButtonElement | null = null;
+  private editingMarkerKey: string | null = null;
+  // Set right before an Escape-triggered blur so the blur handler skips its commit.
+  private suppressNextEditCommit = false;
 
   // True while right-drag erase (scrubbing across notes) is active.
   private erasing = false;
@@ -187,7 +205,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   /** Number of MIDI ticks currently visible horizontally in the piano roll. */
   public override getVisibleTickSpan(): number {
     const viewWidth = Math.max(1, this.lastWidth - this.keyboardWidth);
-    return viewWidth / this.getPixelsPerTick();
+    return this.tickAtScreenX(this.keyboardWidth + viewWidth) - this.camera.x;
   }
 
   public override setCameraTick(tick: number): void {
@@ -198,6 +216,20 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public override setPlayheadTick(tick: number): void {
     this.playheadTick = tick;
     this.render();
+  }
+
+  public override async mount(host: HTMLElement): Promise<void> {
+    await super.mount(host);
+
+    // In React StrictMode a superseded/aborted mount leaves `canvas` unset;
+    // skip attaching the edit input so we don't orphan a second copy of it.
+    if (!this.canvas) {
+      return;
+    }
+
+    this.host = host;
+    this.createHeaderEditInput();
+    this.createHeaderDeleteButton();
   }
 
   protected override onMounted(app: Application): void {
@@ -211,6 +243,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.selectionBox,
       this.header,
       this.headerLabels,
+      this.headerBoxes,
       this.cursor,
     );
 
@@ -223,12 +256,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     canvas.tabIndex = 0;
     canvas.addEventListener("keydown", this.handleKeyDown);
     canvas.addEventListener("click", this.handleClick);
-    canvas.addEventListener("dblclick", this.handleDoubleClick);
     canvas.addEventListener("contextmenu", this.handleContextMenu);
     canvas.addEventListener("pointerdown", this.handlePointerDown);
     canvas.addEventListener("pointermove", this.handlePointerMove);
     canvas.addEventListener("pointerup", this.handlePointerUp);
     canvas.addEventListener("pointercancel", this.handlePointerUp);
+    canvas.addEventListener("pointerleave", this.handlePointerLeave);
     window.addEventListener("pointerup", this.handlePointerUp);
     canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     canvas.addEventListener("auxclick", this.handleAuxClick);
@@ -238,12 +271,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (this.canvas) {
       this.canvas.removeEventListener("keydown", this.handleKeyDown);
       this.canvas.removeEventListener("click", this.handleClick);
-      this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
       this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);
       this.canvas.removeEventListener("pointercancel", this.handlePointerUp);
+      this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
       this.canvas.removeEventListener("wheel", this.handleWheel);
       this.canvas.removeEventListener("auxclick", this.handleAuxClick);
     }
@@ -254,6 +287,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.pointer.id = null;
     this.noteGeometryCache = null;
     this.clearMappedNotes();
+
+    this.headerEditInput?.remove();
+    this.headerEditInput = null;
+    this.headerDeleteButton?.remove();
+    this.headerDeleteButton = null;
+    this.host = null;
 
     super.destroy();
   }
@@ -400,7 +439,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     event.preventDefault();
 
     if (this.clickStart.y < HeaderHeight) {
-      this.handleHeaderClick(this.clickStart.x, this.clickStart.y);
+      this.handleHeaderClick(this.clickStart);
       return;
     }
 
@@ -409,17 +448,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.selection.notes = [hit];
       this.render();
     }
-  };
-
-  private readonly handleDoubleClick = (event: MouseEvent): void => {
-    const local = this.toCanvasLocal(event.clientX, event.clientY);
-
-    if (local.y >= HeaderHeight) {
-      return;
-    }
-
-    event.preventDefault();
-    this.editHeaderMarkerAt(local.x, local.y);
   };
 
   private readonly handleContextMenu = (event: MouseEvent): void => {
@@ -516,6 +544,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
             ? "move"
             : "";
       }
+      this.updateHeaderHover(local);
+      this.render();
       return;
     }
 
@@ -560,9 +590,30 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         break;
       }
       default:
+        // if (this.pointer.position.y < HeaderHeight) {
+
+        // }
         return;
     }
 
+    this.updateHeaderHover(this.pointer.position);
+
+    this.render();
+  };
+
+  private readonly handlePointerLeave = (event: PointerEvent): void => {
+    // The edit input/delete button sit directly atop the marker they act on,
+    // so moving onto either fires a canvas "pointerleave" with no mouse
+    // position change; that's not really leaving the header, so don't
+    // hide/clear on it.
+    if (
+      event.relatedTarget === this.headerEditInput ||
+      event.relatedTarget === this.headerDeleteButton
+    ) {
+      return;
+    }
+
+    this.updateHeaderHover(null);
     this.render();
   };
 
@@ -700,7 +751,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     // Calculate coordinates once to avoid repeating code
-    const screenX = value.x - this.camera.x * cache.tickWidth;
+    const screenX =
+      value.x - this.timelineUnitsAtTick(this.camera.x) * this.camera.h;
     const screenY = value.y + this.camera.y * cache.rowHeight + HeaderHeight;
 
     if (value instanceof Point) {
@@ -815,7 +867,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private tickAtScreenX(x: number): number {
-    return this.camera.x + (x - this.keyboardWidth) / this.getPixelsPerTick();
+    const timelineMs =
+      ticksToMs(this.camera.x, this.getPpqn(), this.tempoChanges) +
+      ((x - this.keyboardWidth) / this.camera.h) * 500;
+
+    return msToTicks(timelineMs, this.getPpqn(), this.tempoChanges);
   }
 
   private pitchAtScreenY(y: number): number {
@@ -1164,11 +1220,23 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
     // Pad the fitted range so notes aren't flush against the viewport edges.
     const padding = 1.2;
-    const tickSpan = Math.max(1, maxTick - minTick) * padding;
     const pitchSpan = Math.max(1, maxPitch - minPitch + 1) * padding;
 
+    const selectionStartMs = ticksToMs(
+      minTick,
+      this.getPpqn(),
+      this.tempoChanges,
+    );
+    const selectionEndMs = ticksToMs(
+      maxTick,
+      this.getPpqn(),
+      this.tempoChanges,
+    );
+    const timelineSpanMs =
+      Math.max(1, selectionEndMs - selectionStartMs) * padding;
+
     this.camera.h = clamp(
-      (viewWidth / tickSpan) * this.getPpqn(),
+      (viewWidth * 500) / timelineSpanMs,
       MinimumPixelsPerQuarter,
       MaximumPixelsPerQuarter,
     );
@@ -1178,10 +1246,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       MaximumPixelsPerSemitone,
     );
 
-    const pixelsPerTick = this.getPixelsPerTick();
+    const visibleTimelineSpanMs = (viewWidth / this.camera.h) * 500;
     this.camera.x = Math.max(
       0,
-      minTick - (viewWidth / pixelsPerTick - tickSpan) / 2,
+      msToTicks(
+        (selectionStartMs + selectionEndMs) / 2 - visibleTimelineSpanMs / 2,
+        this.getPpqn(),
+        this.tempoChanges,
+      ),
     );
     this.camera.y = clamp(
       maxPitch + 1 + (viewHeight / this.camera.v - pitchSpan) / 2,
@@ -1233,16 +1305,24 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private findTempoMarkerNear(x: number): TempoChange | null {
-    const pixelsPerTick = this.getPixelsPerTick();
     let closest: TempoChange | null = null;
-    let closestDistance = HeaderMarkerHitRadius;
+    let closestDistance = Infinity;
 
     for (const change of this.tempoChanges) {
-      const markerX =
-        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+      const markerX = this.screenXForTick(change.tick);
+
+      // Hit-test the marker's whole label, not just its exact tick pixel,
+      // since the label text is drawn to the right of that point.
+      if (
+        x < markerX - HeaderMarkerHitRadius ||
+        x > markerX + HeaderMarkerLabelWidth
+      ) {
+        continue;
+      }
+
       const distance = Math.abs(markerX - x);
 
-      if (distance <= closestDistance) {
+      if (distance < closestDistance) {
         closest = change;
         closestDistance = distance;
       }
@@ -1252,16 +1332,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private findTimeSignatureMarkerNear(x: number): TimeSignatureChange | null {
-    const pixelsPerTick = this.getPixelsPerTick();
     let closest: TimeSignatureChange | null = null;
-    let closestDistance = HeaderMarkerHitRadius;
+    let closestDistance = Infinity;
 
     for (const change of this.timeSignatureChanges) {
-      const markerX =
-        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+      const markerX = this.screenXForTick(change.tick);
+
+      if (
+        x < markerX - HeaderMarkerHitRadius ||
+        x > markerX + HeaderMarkerLabelWidth
+      ) {
+        continue;
+      }
+
       const distance = Math.abs(markerX - x);
 
-      if (distance <= closestDistance) {
+      if (distance < closestDistance) {
         closest = change;
         closestDistance = distance;
       }
@@ -1270,15 +1356,190 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return closest;
   }
 
-  private handleHeaderClick(x: number, y: number): void {
+  private updateHeaderHover(local: Point | null): void {
     const midi = this.state.midi;
-    const lane = this.headerLaneAt(y);
+    const lane = local ? this.headerLaneAt(local.y) : null;
+
+    const marker =
+      midi && lane
+        ? lane === "tempo"
+          ? this.findTempoMarkerNear(local!.x)
+          : this.findTimeSignatureMarkerNear(local!.x)
+        : null;
+
+    this.hoveredHeaderMarker = marker
+      ? { lane: lane!, tick: marker.tick }
+      : null;
+
+    this.syncHeaderEditControls();
+  }
+
+  private createHeaderEditInput(): void {
+    if (!this.host || this.headerEditInput) {
+      return;
+    }
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "piano-roll-header-input";
+    input.style.display = "none";
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        input.blur();
+      } else if (event.key === "Escape") {
+        this.suppressNextEditCommit = true;
+        input.blur();
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      if (this.suppressNextEditCommit) {
+        this.suppressNextEditCommit = false;
+      } else {
+        this.commitHeaderEditInput(input.value);
+      }
+
+      this.syncHeaderEditControls();
+    });
+
+    this.host.appendChild(input);
+    this.headerEditInput = input;
+  }
+
+  private createHeaderDeleteButton(): void {
+    if (!this.host || this.headerDeleteButton) {
+      return;
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "piano-roll-header-delete";
+    button.textContent = "\u00d7";
+    button.style.display = "none";
+
+    // Prevent the delete button from stealing focus (and thus blurring the
+    // edit input, which would commit before this click can delete it).
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", () => this.deleteHoveredMarker());
+
+    this.host.appendChild(button);
+    this.headerDeleteButton = button;
+  }
+
+  private deleteHoveredMarker(): void {
+    const midi = this.state.midi;
+    const marker = this.hoveredHeaderMarker;
+
+    if (!midi || !marker) {
+      return;
+    }
+
+    switch (marker.lane) {
+      case "tempo":
+        midi.removeTempoChangeAt(marker.tick);
+        break;
+      case "timeSignature":
+        midi.removeTimeSignatureChangeAt(marker.tick);
+        break;
+    }
+
+    this.hoveredHeaderMarker = null;
+    this.tempoCacheMidi = null;
+    this.syncHeaderEditControls();
+    this.render();
+  }
+
+  private commitHeaderEditInput(raw: string): void {
+    const marker = this.hoveredHeaderMarker;
+
+    if (!marker) {
+      return;
+    }
+
+    if (marker.lane === "tempo") {
+      this.commitTempoEdit(marker.tick, raw);
+    } else {
+      this.commitTimeSignatureEdit(marker.tick, raw);
+    }
+  }
+
+  private formatHeaderMarkerValue(marker: {
+    lane: "tempo" | "timeSignature";
+    tick: number;
+  }): string {
+    if (marker.lane === "tempo") {
+      const change = this.tempoChanges.find((c) => c.tick === marker.tick);
+      return change
+        ? String(Math.round(60_000_000 / change.microsecondsPerQuarterNote))
+        : "";
+    }
+
+    const change = this.timeSignatureChanges.find(
+      (c) => c.tick === marker.tick,
+    );
+    return change ? `${change.numerator}/${2 ** change.denominator}` : "";
+  }
+
+  private syncHeaderEditControls(): void {
+    const input = this.headerEditInput;
+    const deleteButton = this.headerDeleteButton;
+
+    if (!input || !deleteButton) {
+      return;
+    }
+
+    const marker = this.hoveredHeaderMarker;
+    const focused = document.activeElement === input;
+
+    if (!marker) {
+      if (!focused) {
+        input.style.display = "none";
+        deleteButton.style.display = "none";
+        this.editingMarkerKey = null;
+      }
+      return;
+    }
+
+    const x = this.screenXForTick(marker.tick);
+    const y = marker.lane === "tempo" ? 2 : HeaderTempoLaneHeight + 2;
+    const inputWidth = input.getBoundingClientRect().width || 48;
+
+    input.style.left = `${x}px`;
+    input.style.top = `${y}px`;
+    input.style.display = "block";
+
+    deleteButton.style.left = `${x + inputWidth + 2}px`;
+    deleteButton.style.top = `${y}px`;
+    deleteButton.style.display = "block";
+
+    const key = `${marker.lane}:${marker.tick}`;
+    if (key !== this.editingMarkerKey) {
+      this.editingMarkerKey = key;
+      input.value = this.formatHeaderMarkerValue(marker);
+    }
+  }
+
+  private handleHeaderClick(p: Point): void {
+    const midi = this.state.midi;
+    const lane = this.headerLaneAt(p.y);
 
     if (!midi || !lane) {
       return;
     }
 
-    const tick = this.snapTick(this.tickAtScreenX(x));
+    // Clicking an existing marker edits it via the hover input rather than
+    // stacking a duplicate marker on top of it.
+    const existing =
+      lane === "tempo"
+        ? this.findTempoMarkerNear(p.x)
+        : this.findTimeSignatureMarkerNear(p.x);
+
+    if (existing) {
+      return;
+    }
+
+    const tick = this.snapTick(this.tickAtScreenX(p.x));
 
     if (lane === "tempo") {
       midi.addTempoChange(tick, this.effectiveTempoAt(tick));
@@ -1288,6 +1549,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     this.tempoCacheMidi = null;
+    // this.syncHeaderEditControls();
     this.render();
   }
 
@@ -1315,71 +1577,59 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.render();
   }
 
-  private editHeaderMarkerAt(x: number, y: number): void {
+  private commitTempoEdit(tick: number, raw: string): void {
     const midi = this.state.midi;
-    const lane = this.headerLaneAt(y);
+    const parsed = Number(raw);
 
-    if (!midi || !lane) {
+    if (!midi || !Number.isFinite(parsed) || parsed <= 0) {
       return;
     }
 
-    if (lane === "tempo") {
-      const marker = this.findTempoMarkerNear(x);
-      if (!marker) {
-        return;
-      }
+    midi.removeTempoChangeAt(tick);
+    midi.addTempoChange(tick, Math.round(60_000_000 / parsed));
 
-      const bpm = Math.round(60_000_000 / marker.microsecondsPerQuarterNote);
-      const input = window.prompt("Tempo (BPM):", String(bpm));
-      const parsed = input !== null ? Number(input) : NaN;
+    this.tempoCacheMidi = null;
+    this.render();
+  }
 
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        return;
-      }
+  private commitTimeSignatureEdit(tick: number, raw: string): void {
+    const midi = this.state.midi;
+    const match = /^(\d+)\s*\/\s*(\d+)$/.exec(raw.trim());
 
-      midi.removeTempoChangeAt(marker.tick);
-      midi.addTempoChange(marker.tick, Math.round(60_000_000 / parsed));
-    } else {
-      const marker = this.findTimeSignatureMarkerNear(x);
-      if (!marker) {
-        return;
-      }
-
-      const input = window.prompt(
-        "Time signature (e.g. 3/4):",
-        `${marker.numerator}/${2 ** marker.denominator}`,
-      );
-
-      const match = input ? /^(\d+)\s*\/\s*(\d+)$/.exec(input.trim()) : null;
-
-      if (!match) {
-        return;
-      }
-
-      const numerator = Number(match[1]);
-      const denominatorValue = Number(match[2]);
-      const denominator = Math.round(Math.log2(denominatorValue));
-
-      if (
-        !Number.isInteger(numerator) ||
-        numerator <= 0 ||
-        2 ** denominator !== denominatorValue
-      ) {
-        return;
-      }
-
-      midi.removeTimeSignatureChangeAt(marker.tick);
-      midi.addTimeSignatureChange(marker.tick, numerator, denominator);
+    if (!midi || !match) {
+      return;
     }
+
+    const numerator = Number(match[1]);
+    const denominatorValue = Number(match[2]);
+    const denominator = Math.round(Math.log2(denominatorValue));
+
+    if (
+      !Number.isInteger(numerator) ||
+      numerator <= 0 ||
+      2 ** denominator !== denominatorValue
+    ) {
+      return;
+    }
+
+    midi.removeTimeSignatureChangeAt(tick);
+    midi.addTimeSignatureChange(tick, numerator, denominator);
 
     this.tempoCacheMidi = null;
     this.render();
   }
 
   private pan(dx: number, dy: number): void {
-    const pixelsPerTick = this.getPixelsPerTick();
-
-    this.camera.x -= dx / pixelsPerTick;
+    const cameraMs = ticksToMs(
+      this.camera.x,
+      this.getPpqn(),
+      this.tempoChanges,
+    );
+    this.camera.x = msToTicks(
+      cameraMs - (dx / this.camera.h) * 500,
+      this.getPpqn(),
+      this.tempoChanges,
+    );
     this.camera.y += dy / this.camera.v;
     this.camera.x = Math.max(0, this.camera.x);
     this.camera.y = clamp(this.camera.y, 0, 127);
@@ -1389,18 +1639,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const rollX = mouseX - this.keyboardWidth;
 
     const anchorX = Math.max(0, rollX);
-    const oldPixelsPerTick = this.getPixelsPerTick();
-
-    const anchorTick = this.camera.x + anchorX / oldPixelsPerTick;
-
+    const anchorTick = this.tickAtScreenX(this.keyboardWidth + anchorX);
+    const anchorMs = ticksToMs(anchorTick, this.getPpqn(), this.tempoChanges);
     this.camera.h = clamp(
       this.camera.h * zoomFactor,
       MinimumPixelsPerQuarter,
       MaximumPixelsPerQuarter,
     );
 
-    const newPixelsPerTick = this.getPixelsPerTick();
-    this.camera.x = Math.max(0, anchorTick - anchorX / newPixelsPerTick);
+    this.camera.x = Math.max(
+      0,
+      msToTicks(
+        anchorMs - (anchorX / this.camera.h) * 500,
+        this.getPpqn(),
+        this.tempoChanges,
+      ),
+    );
     this.render();
   }
 
@@ -1408,10 +1662,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const rollX = cursor.x - this.keyboardWidth;
     const anchorX = Math.max(0, rollX);
     const anchorY = cursor.y - HeaderHeight;
-    const oldPixelsPerTick = this.getPixelsPerTick();
     const oldPixelsPerSemitone = this.camera.v;
-    const anchorTick = this.camera.x + anchorX / oldPixelsPerTick;
     const anchorPitch = this.camera.y - anchorY / oldPixelsPerSemitone;
+    const anchorTick = this.tickAtScreenX(this.keyboardWidth + anchorX);
+    const anchorMs = ticksToMs(anchorTick, this.getPpqn(), this.tempoChanges);
 
     this.camera.h = clamp(
       this.camera.h * zoomFactor,
@@ -1424,7 +1678,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       MaximumPixelsPerSemitone,
     );
 
-    this.camera.x = Math.max(0, anchorTick - anchorX / this.getPixelsPerTick());
+    this.camera.x = Math.max(
+      0,
+      msToTicks(
+        anchorMs - (anchorX / this.camera.h) * 500,
+        this.getPpqn(),
+        this.tempoChanges,
+      ),
+    );
     this.camera.y = clamp(anchorPitch + anchorY / this.camera.v, 0, 127);
     this.render();
   }
@@ -1445,8 +1706,17 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.render();
   }
 
-  private getPixelsPerTick(): number {
-    return this.camera.h / this.getPpqn();
+  private timelineUnitsAtTick(tick: number): number {
+    return ticksToMs(tick, this.getPpqn(), this.tempoChanges) / 500;
+  }
+
+  private screenXForTick(tick: number): number {
+    return (
+      this.keyboardWidth +
+      (this.timelineUnitsAtTick(tick) -
+        this.timelineUnitsAtTick(this.camera.x)) *
+        this.camera.h
+    );
   }
 
   private toCanvasLocal(clientX: number, clientY: number): Point {
@@ -1579,18 +1849,22 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.minorGrid.moveTo(this.keyboardWidth, y).lineTo(width, y);
     }
 
-    const pixelsPerTick = this.getPixelsPerTick();
     const visibleWidth = Math.max(0, width - this.keyboardWidth);
     const visibleStart = this.camera.x;
-    const visibleEnd = this.camera.x + visibleWidth / pixelsPerTick;
+    const visibleEnd = msToTicks(
+      ticksToMs(visibleStart, this.getPpqn(), this.tempoChanges) +
+        (visibleWidth / this.camera.h) * 500,
+      this.getPpqn(),
+      this.tempoChanges,
+    );
 
-    this.drawSnapGrid(height, pixelsPerTick, visibleStart, visibleEnd);
+    this.drawSnapGrid(height, visibleStart, visibleEnd);
 
     for (const { tick, isMeasure } of this.iterateGridBeats(
       visibleStart,
       visibleEnd,
     )) {
-      const x = this.keyboardWidth + (tick - this.camera.x) * pixelsPerTick;
+      const x = this.screenXForTick(tick);
       const target = isMeasure ? this.majorGrid : this.minorGrid;
 
       target.moveTo(x, HeaderHeight).lineTo(x, height);
@@ -1603,7 +1877,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
    */
   private drawSnapGrid(
     height: number,
-    pixelsPerTick: number,
     visibleStart: number,
     visibleEnd: number,
   ): void {
@@ -1617,16 +1890,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
 
     // Skip when lines would be too dense to read.
-    if (ticksPerSnap * pixelsPerTick < 4) {
-      return;
-    }
-
     this.snapGrid.lineStyle(1, 0x2a2a2a);
 
     const firstTick = Math.floor(visibleStart / ticksPerSnap) * ticksPerSnap;
 
     for (let tick = firstTick; tick <= visibleEnd; tick += ticksPerSnap) {
-      const x = this.keyboardWidth + (tick - this.camera.x) * pixelsPerTick;
+      const x = this.screenXForTick(tick);
 
       this.snapGrid.moveTo(x, HeaderHeight).lineTo(x, height);
     }
@@ -1747,7 +2016,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     });
 
     this.notes.position.set(
-      -this.camera.x * tickWidth,
+      -this.timelineUnitsAtTick(this.camera.x) * this.camera.h,
       this.camera.y * rowHeight + HeaderHeight,
     );
   }
@@ -1766,6 +2035,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawHeader(width: number): void {
+    // Draw the main header rect
     this.header.beginFill(0x1c1c1c);
     this.header.drawRect(0, 0, width, HeaderTempoLaneHeight);
     this.header.endFill();
@@ -1784,48 +2054,38 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.header.lineStyle(1, 0x555555);
     this.header.moveTo(0, HeaderHeight).lineTo(width, HeaderHeight);
 
-    const pixelsPerTick = this.getPixelsPerTick();
+    // Compute visible range
     const visibleWidth = Math.max(0, width - this.keyboardWidth);
     const visibleStart = this.camera.x;
-    const visibleEnd = this.camera.x + visibleWidth / pixelsPerTick;
+    const visibleEnd = msToTicks(
+      ticksToMs(visibleStart, this.getPpqn(), this.tempoChanges) +
+        (visibleWidth / this.camera.h) * 500,
+      this.getPpqn(),
+      this.tempoChanges,
+    );
 
     const inView = (change: { tick: number }) =>
       change.tick >= visibleStart && change.tick <= visibleEnd;
 
+    // Filter markers to visible range
     const tempoMarkers = this.tempoChanges.filter(inView);
     const timeSignatureMarkers = this.timeSignatureChanges.filter(inView);
 
-    for (const change of tempoMarkers) {
-      const x =
-        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+    this.headerBoxes.removeChildren();
 
-      this.header.lineStyle(1, 0x888888);
-      this.header
-        .moveTo(x, HeaderTempoLaneHeight - 6)
-        .lineTo(x, HeaderTempoLaneHeight);
-    }
-
-    for (const change of timeSignatureMarkers) {
-      const x =
-        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
-
-      this.header.lineStyle(1, 0x888888);
-      this.header.moveTo(x, HeaderHeight - 6).lineTo(x, HeaderHeight);
-    }
-
-    this.layoutHeaderLabels(
+    // Draw tempo markers and text
+    this.drawMarkers(
+      "tempo",
       this.tempoLabelPool,
       tempoMarkers,
-      pixelsPerTick,
       2,
       (change) =>
         `\u266a=${Math.round(60_000_000 / change.microsecondsPerQuarterNote)}`,
     );
-
-    this.layoutHeaderLabels(
+    this.drawMarkers(
+      "timeSignature",
       this.timeSignatureLabelPool,
       timeSignatureMarkers,
-      pixelsPerTick,
       HeaderTempoLaneHeight + 2,
       (change) => `${change.numerator}/${2 ** change.denominator}`,
     );
@@ -1835,10 +2095,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
    * Positions pooled Text labels at each change's tick, reusing existing
    * Text instances (rather than recreating them) to avoid per-frame churn.
    */
-  private layoutHeaderLabels<T extends { tick: number }>(
+  private drawMarkers<T extends { tick: number }>(
+    lane: "tempo" | "timeSignature",
     pool: Text[],
     changes: T[],
-    pixelsPerTick: number,
     y: number,
     formatText: (change: T) => string,
   ): void {
@@ -1851,8 +2111,24 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         this.headerLabels.addChild(label);
       }
 
-      const x =
-        this.keyboardWidth + (change.tick - this.camera.x) * pixelsPerTick;
+      const x = this.screenXForTick(change.tick);
+
+      const isHovered =
+        this.hoveredHeaderMarker?.lane === lane &&
+        this.hoveredHeaderMarker.tick === change.tick;
+
+      if (isHovered) {
+        const highlight = new Graphics();
+        highlight.beginFill(0xff0000, 0.3);
+        highlight.drawRect(
+          x,
+          y,
+          HeaderMarkerLabelWidth,
+          HeaderMarkerLabelHeight,
+        );
+        highlight.endFill();
+        this.headerBoxes.addChild(highlight);
+      }
 
       label.text = formatText(change);
       label.position.set(x + 3, y);
@@ -1865,9 +2141,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   drawCursor(width: number, height: number) {
-    const pixelsPerTick = this.getPixelsPerTick();
-    const x =
-      this.keyboardWidth + (this.playheadTick - this.camera.x) * pixelsPerTick;
+    const x = this.screenXForTick(this.playheadTick);
     if (x < this.keyboardWidth || x >= width) {
       return;
     }
@@ -1900,6 +2174,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       !cache ||
       cache.track !== track ||
       cache.notes !== notes ||
+      cache.tempoChanges !== this.tempoChanges ||
       cache.tickWidth !== tickWidth ||
       cache.rowHeight !== rowHeight ||
       cache.width !== width ||
@@ -1908,12 +2183,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return true;
     }
 
-    const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
     const verticalRange = height / rowHeight;
+    const visibleEnd = this.tickAtScreenX(width);
 
     return !(
       this.camera.x >= cache.startTick &&
-      this.camera.x + horizontalRange <= cache.endTick &&
+      visibleEnd <= cache.endTick &&
       this.camera.y - verticalRange >= cache.minPitch &&
       this.camera.y <= cache.maxPitch
     );
@@ -1928,10 +2203,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     height: number,
     noteHeight: number,
   ): void {
-    const horizontalRange = Math.max(0, width - this.keyboardWidth) / tickWidth;
     const verticalRange = height / rowHeight;
-    const startTick = Math.max(0, this.camera.x - horizontalRange);
-    const endTick = this.camera.x + horizontalRange * 2;
+    const visibleWidth = Math.max(0, width - this.keyboardWidth);
+    const startTick = Math.max(
+      0,
+      this.tickAtScreenX(this.keyboardWidth - visibleWidth),
+    );
+    const endTick = this.tickAtScreenX(this.keyboardWidth + visibleWidth * 2);
     const minPitch = this.camera.y - verticalRange;
     const maxPitch = this.camera.y + verticalRange;
     const visibleRange = getVisibleNoteRange(
@@ -1951,9 +2229,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         continue;
       }
 
-      const x = this.keyboardWidth + note.tick * tickWidth;
+      const x =
+        this.keyboardWidth +
+        this.timelineUnitsAtTick(note.tick) * this.camera.h;
       const y = -note.pitch * rowHeight;
-      const noteWidth = Math.max(2, note.durationTicks * tickWidth);
+      const noteWidth = Math.max(
+        2,
+        this.screenXForTick(note.tick + note.durationTicks) -
+          this.screenXForTick(note.tick),
+      );
 
       geometry.push({
         x,
@@ -1968,6 +2252,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.noteGeometryCache = {
       track,
       notes: notes,
+      tempoChanges: this.tempoChanges,
       geometry,
       tickWidth,
       rowHeight,

@@ -579,6 +579,50 @@ button:disabled {
   height: 100%;
 }
 
+.piano-roll-header-input {
+  position: absolute;
+
+  width: 48px;
+  height: 16px;
+  padding: 0 3px;
+
+  font-size: 11px;
+  font-family: inherit;
+  line-height: 16px;
+  color: #eee;
+
+  background: #202020;
+  border: 1px solid #555;
+  border-radius: 2px;
+
+  z-index: 1;
+}
+
+.piano-roll-header-delete {
+  position: absolute;
+
+  width: 16px;
+  height: 16px;
+  padding: 0;
+
+  font-size: 11px;
+  font-family: inherit;
+  line-height: 14px;
+  text-align: center;
+  color: #eee;
+
+  background: #402020;
+  border: 1px solid #663333;
+  border-radius: 2px;
+  cursor: pointer;
+
+  z-index: 1;
+}
+
+.piano-roll-header-delete:hover {
+  background: #603030;
+}
+
 /* Timeline (minimap-style playhead + scrub bar) */
 
 .timeline {
