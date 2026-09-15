@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { type ChangeEvent } from "react";
 import styles from "./dropdown.module.css";
 import classNames from "classnames";
 

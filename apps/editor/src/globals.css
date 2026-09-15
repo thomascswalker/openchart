@@ -39,6 +39,11 @@
   --green-80: hsl(150, 90%, 20%);
   --green-90: hsl(150, 90%, 10%);
 
+  /* Sizing */
+  --size-large: 48px;
+  --size-med: 36px;
+  --size-small: 24px;
+
   /* Spacing */
   --space-large: 12px;
   --space-med: 8px;

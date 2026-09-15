@@ -1,10 +1,16 @@
 .select {
-  padding: var(--space-med);
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-family: inherit;
+  padding: 0.5rem 1rem;
+  line-height: 1.5;
   border: var(--border-primary);
   border-radius: var(--radius-small);
   background: var(--neutral-80);
   color: var(--white);
   cursor: pointer;
+  min-width: 100px;
+  min-height: var(--size-small);
 }
 
 .select:hover:not(:disabled) {
@@ -15,4 +21,20 @@
   cursor: default;
   color: var(--netural-90);
   background: var(--neutral-90);
+}
+
+select,
+::picker(select) {
+  appearance: base-select;
+  border: var(--border-primary);
+}
+
+option {
+  background: var(--neutral-80);
+  color: var(--white);
+  padding: var(--space-small);
+}
+
+option:hover {
+  background: var(--neutral-70);
 }
