@@ -1,9 +1,12 @@
 import { useEditor } from "../context/EditorContext";
+import { usePlayback } from "../context/PlaybackContextStore";
 import "./styles.css";
 
 export function TrackList() {
   const { midiData, selectedTrackIndex, setSelectedTrackIndex, setTrackCount } =
     useEditor();
+
+  const { refresh } = usePlayback();
 
   if (!midiData) {
     return (
@@ -22,18 +25,19 @@ export function TrackList() {
     setSelectedTrackIndex(newIndex);
   };
 
-  const handleDeleteTrack = (indexToDelete: number): void => {
-    const newLength = midiData.removeTrack(indexToDelete);
+  const handleDeleteTrack = (index: number): void => {
+    const newLength = midiData.removeTrack(index);
     setTrackCount(newLength);
     if (newLength === 0) {
       setSelectedTrackIndex(null);
     } else if (selectedTrackIndex !== null) {
-      if (selectedTrackIndex === indexToDelete) {
-        setSelectedTrackIndex(Math.min(indexToDelete, newLength - 1));
-      } else if (selectedTrackIndex > indexToDelete) {
+      if (selectedTrackIndex === index) {
+        setSelectedTrackIndex(Math.min(index, newLength - 1));
+      } else if (selectedTrackIndex > index) {
         setSelectedTrackIndex(selectedTrackIndex - 1);
       }
     }
+    refresh();
   };
 
   const trackCount = midiData.tracks.length;

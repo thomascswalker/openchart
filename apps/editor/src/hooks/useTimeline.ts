@@ -19,7 +19,7 @@ export interface Timeline {
   seekStart: () => void;
   seekEnd: () => void;
   setPlaybackTick: (tick: number) => void;
-  refreshTotalTicks: () => void;
+  refresh: () => void;
 }
 
 interface UseTimelineOptions {
@@ -39,10 +39,10 @@ export function useTimeline({
     pause: pauseAudio,
     seek: seekAudio,
   } = audioPlayer;
+  const [canPlay, setCanPlay] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTick, setPlaybackTick] = useState(0);
   const [midiTotalTicks, setMidiTotalTicks] = useState(0);
-  const [hasMidiNotes, setHasMidiNotes] = useState(false);
 
   const ppqn = midiData?.header.division ?? 480;
   const tempoChanges: TempoChange[] = useMemo(
@@ -71,25 +71,24 @@ export function useTimeline({
     return { hasNotes, totalTicks: Math.max(maxTick, hasNotes ? 1 : 0) };
   }, [midiData]);
 
-  const refreshTotalTicks = useCallback(() => {
+  const refresh = useCallback(() => {
     const playback = computeMidiPlayback();
     setMidiTotalTicks(playback.totalTicks);
-    setHasMidiNotes(playback.hasNotes);
+    setCanPlay(playback.hasNotes || audio !== undefined);
   }, [computeMidiPlayback]);
 
   useEffect(() => {
-    refreshTotalTicks();
-  }, [refreshTotalTicks]);
+    refresh();
+  }, [refresh]);
 
-  const audioTotalTicks = useMemo(
+  const totalAudioTicks = useMemo(
     () =>
       audioDurationMs > 0 ? msToTicks(audioDurationMs, ppqn, tempoChanges) : 0,
     [audioDurationMs, ppqn, tempoChanges],
   );
-  const totalTicks = Math.max(midiTotalTicks, audioTotalTicks);
-  const canPlay = hasMidiNotes || audio !== undefined;
+  const totalTimelineTicks = Math.max(midiTotalTicks, totalAudioTicks);
 
-  const setPlayheadTick = useCallback(
+  const handleSetPlaybackTick = useCallback(
     (tick: number) => {
       const nextTick = Math.max(0, tick);
       playheadTickRef.current = nextTick;
@@ -115,13 +114,16 @@ export function useTimeline({
       return;
     }
 
-    if (totalTicks > 0 && playheadTickRef.current >= totalTicks) {
-      setPlayheadTick(0);
+    if (
+      totalTimelineTicks > 0 &&
+      playheadTickRef.current >= totalTimelineTicks
+    ) {
+      handleSetPlaybackTick(0);
     }
 
     setIsPlaying(true);
     playAudio();
-  }, [canPlay, playAudio, setPlayheadTick, totalTicks]);
+  }, [canPlay, playAudio, handleSetPlaybackTick, totalTimelineTicks]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -133,15 +135,15 @@ export function useTimeline({
 
   const seekStart = useCallback(() => {
     if (!isPlaying) {
-      setPlayheadTick(0);
+      handleSetPlaybackTick(0);
     }
-  }, [isPlaying, setPlayheadTick]);
+  }, [isPlaying, handleSetPlaybackTick]);
 
   const seekEnd = useCallback(() => {
     if (!isPlaying) {
-      setPlayheadTick(midiTotalTicks);
+      handleSetPlaybackTick(midiTotalTicks);
     }
-  }, [isPlaying, midiTotalTicks, setPlayheadTick]);
+  }, [isPlaying, midiTotalTicks, handleSetPlaybackTick]);
 
   useEffect(() => {
     if (!isPlaying || audioEndCount === 0) {
@@ -149,8 +151,8 @@ export function useTimeline({
     }
 
     pause();
-    setPlayheadTick(0);
-  }, [audioEndCount, isPlaying, pause, setPlayheadTick]);
+    handleSetPlaybackTick(0);
+  }, [audioEndCount, isPlaying, pause, handleSetPlaybackTick]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -166,7 +168,7 @@ export function useTimeline({
         playheadTickRef.current = currentTick;
         setPlaybackTick(currentTick);
 
-        if (totalTicks > 0 && currentTick >= totalTicks) {
+        if (totalTimelineTicks > 0 && currentTick >= totalTimelineTicks) {
           pause();
           return;
         }
@@ -180,9 +182,9 @@ export function useTimeline({
             ticksToMs(playheadTickRef.current, ppqn, tempoChanges) + elapsedMs;
           const nextTick = msToTicks(currentMs, ppqn, tempoChanges);
 
-          if (totalTicks > 0 && nextTick >= totalTicks) {
-            playheadTickRef.current = totalTicks;
-            setPlaybackTick(totalTicks);
+          if (totalTimelineTicks > 0 && nextTick >= totalTimelineTicks) {
+            playheadTickRef.current = totalTimelineTicks;
+            setPlaybackTick(totalTimelineTicks);
             pause();
             return;
           }
@@ -202,20 +204,20 @@ export function useTimeline({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [audio, isPlaying, pause, ppqn, tempoChanges, totalTicks]);
+  }, [audio, isPlaying, pause, ppqn, tempoChanges, totalTimelineTicks]);
 
   return {
     isPlaying,
     canPlay,
     playbackTick,
-    totalTimelineTicks: totalTicks,
-    totalAudioTicks: audioTotalTicks,
+    totalTimelineTicks,
+    totalAudioTicks,
     play,
     pause,
     togglePlay,
     seekStart,
     seekEnd,
-    setPlaybackTick: setPlayheadTick,
-    refreshTotalTicks,
+    setPlaybackTick: handleSetPlaybackTick,
+    refresh,
   };
 }

@@ -35,7 +35,7 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     playbackTick: playheadTick,
     togglePlay,
     setPlaybackTick: setPlayheadTick,
-    refreshTotalTicks,
+    refresh: refreshTotalTicks,
   } = usePlayback();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
   const [snapEnabled, setSnapEnabled] = useState(true);

@@ -12,7 +12,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const options: Option[] = [
-  { label: "Guitar" },
+  { label: "Lead" },
+  { label: "Rhythm" },
   { label: "Drums" },
   { label: "Vocals" },
 ];
