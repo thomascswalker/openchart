@@ -1,5 +1,5 @@
 import type { Preview } from "@storybook/react-vite";
-// @ts-ignore
+// @ts-expect-error Force global .css styling
 import "../src/index.css";
 
 const preview: Preview = {
