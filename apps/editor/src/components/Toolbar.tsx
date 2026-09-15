@@ -1,8 +1,9 @@
 import { Midi } from "@midiedit/core";
 import { Audio } from "ts-audio";
-import { useEffect, useRef, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
+import { Button } from "./shared/Button";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
@@ -247,11 +248,14 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
     };
   });
 
+  const canSave = useMemo(() => {
+    return midiData !== null && midiData.trackCount !== 0;
+  }, [midiData, midiData?.trackCount]);
+
   return (
     <header className="midi-toolbar">
       <div className="midi-toolbar__actions">
-        <button
-          type="button"
+        <Button
           onClick={() =>
             triggerFileDialog(
               MIDI_FILE_PICKER_TYPES,
@@ -261,18 +265,17 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
           }
         >
           Open
-        </button>
+        </Button>
 
-        <button type="button" disabled={!midiData} onClick={handleMidiSave}>
+        <Button disabled={!canSave} onClick={handleMidiSave}>
           Save
-        </button>
+        </Button>
 
-        <button type="button" disabled={!midiData} onClick={handleMidiSaveAs}>
+        <Button disabled={!canSave} onClick={handleMidiSaveAs}>
           Save As
-        </button>
+        </Button>
 
-        <button
-          type="button"
+        <Button
           onClick={() =>
             triggerFileDialog(
               WAV_FILE_PICKER_TYPES,
@@ -282,15 +285,11 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
           }
         >
           Open Audio
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          onClick={onDebugToggle}
-          aria-pressed={debugVisible}
-        >
+        <Button onClick={onDebugToggle}>
           {debugVisible ? "Hide Debug" : "Debug"}
-        </button>
+        </Button>
       </div>
 
       <div className="midi-toolbar__file">

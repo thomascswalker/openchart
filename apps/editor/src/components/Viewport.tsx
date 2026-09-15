@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { Difficulty, SongView } from "@midiedit/views";
+import { Difficulty } from "@midiedit/views";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { Timeline } from "./Timeline";
@@ -27,7 +27,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     midiData,
     selectedTrackIndex,
     selectedInstrument,
-    setSelectedInstrument,
     selectedDifficulty,
     setSelectedDifficulty,
   } = useEditor();
@@ -36,7 +35,7 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     playbackTick: playheadTick,
     togglePlay,
     setPlaybackTick: setPlayheadTick,
-    refreshTotalTicks,
+    refresh: refreshTotalTicks,
   } = usePlayback();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
   const [snapEnabled, setSnapEnabled] = useState(true);
@@ -135,14 +134,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     midiData && selectedTrackIndex !== null
       ? midiData.tracks[selectedTrackIndex]
       : null;
-  const availableInstruments = midiData
-    ? new SongView(midiData)
-        .getInstrumentTrackViews()
-        .filter(
-          (instrument) =>
-            instrument.getChart(Difficulty.Expert).getLaneCount() === 5,
-        )
-    : [];
   const isHighwayView = activeView.id === "highway";
 
   return (
@@ -199,22 +190,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
 
           {isHighwayView && (
             <>
-              <select
-                value={selectedInstrument}
-                onChange={(event) => {
-                  setSelectedInstrument(event.target.value);
-                }}
-              >
-                {availableInstruments.map((instrument) => (
-                  <option
-                    key={instrument.getName()}
-                    value={instrument.getName()}
-                  >
-                    {instrument.getName()}
-                  </option>
-                ))}
-              </select>
-
               <select
                 value={selectedDifficulty}
                 onChange={(event) => {

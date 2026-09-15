@@ -1564,6 +1564,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   private drawGrid(width: number, height: number): void {
+    this.minorGrid.lineStyle(1, 0x353535);
+    this.majorGrid.lineStyle(2, 0x555555);
+
     const rowHeight = this.camera.v;
     const firstPitch = Math.ceil(this.camera.y);
     const topOffset = (this.camera.y - firstPitch) * rowHeight;
@@ -1592,9 +1595,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
       target.moveTo(x, HeaderHeight).lineTo(x, height);
     }
-
-    this.minorGrid.lineStyle(1, 0x353535);
-    this.majorGrid.lineStyle(2, 0x555555);
   }
 
   /**
@@ -1621,6 +1621,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return;
     }
 
+    this.snapGrid.lineStyle(1, 0x2a2a2a);
+
     const firstTick = Math.floor(visibleStart / ticksPerSnap) * ticksPerSnap;
 
     for (let tick = firstTick; tick <= visibleEnd; tick += ticksPerSnap) {
@@ -1628,8 +1630,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
       this.snapGrid.moveTo(x, HeaderHeight).lineTo(x, height);
     }
-
-    this.snapGrid.lineStyle(1, 0x2a2a2a);
   }
 
   /**

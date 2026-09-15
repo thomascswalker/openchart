@@ -16,12 +16,12 @@ export function Timeline({ chartView }: TimelineProps) {
     isPlaying,
     canPlay,
     playbackTick,
-    totalTimelineTicks: totalTicks,
+    totalTimelineTicks,
     play,
     pause,
     seekStart,
     seekEnd,
-    setPlaybackTick: setPlayheadTick,
+    setPlaybackTick,
   } = usePlayback();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,7 +29,7 @@ export function Timeline({ chartView }: TimelineProps) {
   const draggingRef = useRef(false);
 
   const redrawRef = useRef<() => void>(() => {});
-  const timelineTicks = Math.max(totalTicks, playbackTick);
+  const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
 
   const tickToX = useCallback(
     (tick: number, width: number): number => {
@@ -146,14 +146,14 @@ export function Timeline({ chartView }: TimelineProps) {
       const bounds = canvas.getBoundingClientRect();
       const tick = xToTick(clientX - bounds.left, bounds.width);
 
-      setPlayheadTick(tick);
+      setPlaybackTick(tick);
 
       if (chartView) {
         const visibleSpan = chartView.getVisibleTickSpan();
         chartView.setCameraTick(Math.max(0, tick - visibleSpan / 2));
       }
     },
-    [canPlay, chartView, setPlayheadTick, timelineTicks, xToTick],
+    [canPlay, chartView, setPlaybackTick, timelineTicks, xToTick],
   );
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
