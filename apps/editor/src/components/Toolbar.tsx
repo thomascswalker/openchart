@@ -1,6 +1,6 @@
 import { Midi } from "@midiedit/core";
 import { Audio } from "ts-audio";
-import { useEffect, useRef, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { Button } from "./shared/Button";
@@ -248,6 +248,10 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
     };
   });
 
+  const canSave = useMemo(() => {
+    return midiData !== null && midiData.trackCount !== 0;
+  }, [midiData, midiData?.trackCount]);
+
   return (
     <header className="midi-toolbar">
       <div className="midi-toolbar__actions">
@@ -263,11 +267,11 @@ export const Toolbar = ({ debugVisible, onDebugToggle }: ToolbarProps) => {
           Open
         </Button>
 
-        <Button disabled={!midiData} onClick={handleMidiSave}>
+        <Button disabled={!canSave} onClick={handleMidiSave}>
           Save
         </Button>
 
-        <Button disabled={!midiData} onClick={handleMidiSaveAs}>
+        <Button disabled={!canSave} onClick={handleMidiSaveAs}>
           Save As
         </Button>
 
