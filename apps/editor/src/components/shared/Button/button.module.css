@@ -13,4 +13,6 @@
 
 .button:disabled {
   cursor: default;
+  color: var(--netural-90);
+  background: var(--neutral-90);
 }

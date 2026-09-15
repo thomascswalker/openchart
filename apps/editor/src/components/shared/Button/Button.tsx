@@ -5,17 +5,17 @@ import styles from "./button.module.css";
 interface ButtonProps {
   disabled?: boolean;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  children: ReactNode;
   className?: string;
   title?: string;
+  children: ReactNode;
 }
 
 const Button = ({
   disabled = false,
   onClick = () => {},
-  children,
   className,
   title,
+  children,
 }: ButtonProps) => {
   return (
     <button
