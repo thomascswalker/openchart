@@ -270,6 +270,7 @@ button:disabled {
 
   background: #202020;
   border-bottom: 1px solid #444;
+  border-right: 1px solid #444;
 }
 
 .arrangement__metadata {
@@ -288,7 +289,8 @@ button:disabled {
 
   overflow: auto;
 
-  background: #242424;
+  background: #141414;
+  border-right: 1px solid #444;
 }
 
 .track-list--empty {
