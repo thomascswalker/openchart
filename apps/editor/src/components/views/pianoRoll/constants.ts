@@ -26,6 +26,18 @@ export const HeaderTempoLaneHeight = HeaderHeight / 2;
 export const HeaderMarkerHitRadius = 6;
 
 /**
+ * Width, in pixels, of a marker's label hit-box, extending rightward from
+ * its tick position (matching the drawn label so hover/click land on the
+ * visible text, not just the marker's exact tick pixel).
+ */
+export const HeaderMarkerLabelWidth = 50;
+
+/**
+ * Height, in pixels, of a marker's label hit-box.
+ */
+export const HeaderMarkerLabelHeight = 25;
+
+/**
  * Width, in pixels, of the draggable hit-region along a note's right edge
  * used to resize its duration.
  */
