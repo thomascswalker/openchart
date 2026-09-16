@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import classNames from "classnames";
 import styles from "./button.module.css";
-import type { Size } from "../props";
 
 interface ButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
   disabled?: boolean;
