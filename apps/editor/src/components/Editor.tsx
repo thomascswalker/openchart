@@ -6,6 +6,7 @@ import {
 } from "../commands/EditorCommand";
 import { Workspace } from "./Workspace";
 import { Menubar } from "./Menubar";
+import { AppSettingsDialog } from "./AppSettings";
 
 import "./styles.css";
 
@@ -35,25 +36,7 @@ const EditorShell = () => {
         debugVisible={debugVisible}
         onDebugClose={() => void dispatch("close-debug")}
       />
-      {settingsVisible ? (
-        <div className="settings-dialog-backdrop" role="presentation">
-          <section
-            className="settings-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-title"
-          >
-            <h2 id="settings-title">Settings</h2>
-            <p>Editor settings will appear here as they become available.</p>
-            <button
-              type="button"
-              onClick={() => void dispatch("close-settings")}
-            >
-              Close
-            </button>
-          </section>
-        </div>
-      ) : null}
+      {settingsVisible ? <AppSettingsDialog /> : null}
     </div>
   );
 };

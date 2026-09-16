@@ -1,28 +1,46 @@
 import type { ReactNode } from "react";
 import classNames from "classnames";
 import styles from "./button.module.css";
+import type { Size } from "../props";
 
-interface ButtonProps {
+interface ButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
   disabled?: boolean;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 const Button = ({
   disabled = false,
   onClick = () => {},
+  className,
   children,
+  ...props
 }: ButtonProps) => {
   return (
     <button
-      className={classNames(styles.button)}
+      className={
+        className
+          ? classNames(styles[className])
+          : classNames(styles["ui-button"])
+      }
       onClick={onClick}
       disabled={disabled}
+      {...props}
     >
       {children}
     </button>
   );
 };
 
-export { Button };
-export type { ButtonProps };
+interface CloseButtonProps extends ButtonProps {}
+
+const CloseButton = ({ children, onClick, ...props }: CloseButtonProps) => {
+  return (
+    <Button onClick={onClick} className="ui-button-close" {...props}>
+      X
+    </Button>
+  );
+};
+
+export { Button, CloseButton };
+export type { ButtonProps, CloseButtonProps };

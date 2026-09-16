@@ -38,7 +38,7 @@ const MENUS: MenuDefinition[] = [
   {
     id: "edit",
     label: "Edit",
-    items: [{ id: "settings", label: "Settings" }],
+    items: [{ id: "settings", label: "Settings", accelerator: "Ctrl/Cmd+," }],
   },
   {
     id: "audio",

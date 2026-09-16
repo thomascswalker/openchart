@@ -1,10 +1,10 @@
-.section {
+.ui-section {
   display: flex;
   padding: var(--space-med);
   gap: var(--space-med);
 }
 
-.section > * {
+.ui-section > * {
   flex: 1;
 }
 

@@ -426,14 +426,18 @@ export function EditorCommandProvider({
       }
 
       const key = event.key.toLowerCase();
-      const command =
-        key === "o"
-          ? "open"
-          : key === "s" && event.shiftKey
-            ? "save-as"
-            : key === "s"
-              ? "save"
-              : null;
+      let command: EditorCommandId | null = null;
+      switch (key) {
+        case ",":
+          command = "settings";
+          break;
+        case "o":
+          command = "open";
+          break;
+        case "s":
+          command = event.shiftKey ? "save-as" : "save";
+          break;
+      }
 
       if (!command) {
         return;

@@ -30,7 +30,7 @@ const Dropdown = ({
     return options.map((o) => <option>{o.label}</option>);
   };
 
-  const className = classNames(styles.select);
+  const className = classNames(styles["ui-select"]);
   return (
     <select onChange={handleOnChange} disabled={disabled} className={className}>
       {getOptions()}
