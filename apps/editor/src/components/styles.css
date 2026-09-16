@@ -60,11 +60,12 @@ button:disabled {
 
 .midi-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
 
-  height: 48px;
-  padding: 0 12px;
+  min-height: 48px;
+  padding: 5px 12px;
 
   flex-shrink: 0;
 
@@ -72,14 +73,149 @@ button:disabled {
   background: #242424;
 }
 
-.midi-toolbar__actions {
+.midi-toolbar__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.midi-toolbar__file {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.midi-toolbar__error {
+  margin: 3px 0 0 4px;
+  color: #ff9d9d;
+  font-size: 12px;
+}
+
+.midi-menubar {
+  min-width: 0;
+}
+
+.midi-menubar__menus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.midi-menubar__menu {
+  position: relative;
+}
+
+.midi-menubar__trigger,
+.midi-menubar__item {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #eee;
+  cursor: pointer;
+}
+
+.midi-menubar__trigger {
+  padding: 4px 10px;
+  background: transparent;
+}
+
+.midi-menubar__trigger:hover,
+.midi-menubar__trigger[aria-expanded="true"] {
+  background: #333;
+}
+
+.midi-menubar__trigger:focus-visible,
+.midi-menubar__item:focus-visible {
+  outline: 2px solid #8cc8ff;
+  outline-offset: 1px;
+}
+
+.midi-menubar__popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #2b2b2b;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 40%);
+}
+
+.midi-menubar__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 6px 9px;
+  text-align: left;
+  background: transparent;
+}
+
+.midi-menubar__item:hover:not(:disabled),
+.midi-menubar__item:focus-visible:not(:disabled) {
+  background: #3f3f3f;
+}
+
+.midi-menubar__accelerator {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.midi-secondary-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 4px 12px;
+  border-bottom: 1px solid #383838;
+  background: #1e1e1e;
+}
+
+.midi-secondary-toolbar__actions {
   display: flex;
   gap: 8px;
 }
 
-.midi-toolbar__file {
-  color: #aaa;
-  font-size: 13px;
+.midi-secondary-toolbar__hint {
+  color: #777;
+  font-size: 12px;
+}
+
+.settings-dialog-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 55%);
+}
+
+.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(420px, calc(100% - 32px));
+  padding: 20px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #242424;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 45%);
+  color: #eee;
+  text-align: left;
+}
+
+.settings-dialog h2 {
+  margin: 0;
+  color: #eee;
 }
 
 /* Main workspace */

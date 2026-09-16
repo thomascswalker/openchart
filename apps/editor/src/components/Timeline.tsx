@@ -186,7 +186,11 @@ export function Timeline({ chartView }: TimelineProps) {
 
   return (
     <div className="timeline">
-      <div className="timeline__controls">
+      <div
+        className="timeline__controls"
+        role="toolbar"
+        aria-label="Playback controls"
+      >
         <button
           type="button"
           onClick={seekStart}

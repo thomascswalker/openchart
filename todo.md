@@ -3,21 +3,13 @@
 ## General
 
 - Add metronome sound toggle.
-- Modify root menubar (open, save, save as, etc.) to be a proper menubar.
-  - File -> New | Open | Save | Save As... | Export
-  - Edit -> Settings
-- Add "automatic switch" for if the app is compiled for web or desktop (tauri) so that the root menubar is:
-  - Web: Top-level buttons (similar to now) which expand to a context menu (similar to lots of web applications).
-  - Desktop: Normal top-level menu bar like all desktop applications.
 
 ## Application settings
 
-- Popup modal dialog with tabs for groups of options
 - Application-wide settings include:
   - Setting the root audio discovery path: `Audio Path`
   - Setting the audio discovery regex for each instrument.
   - Default save mechanism (MIDI vs. Project).
-- Add `Export` option to main file menubar to export a MIDI file.
 
 ## Project + settings
 

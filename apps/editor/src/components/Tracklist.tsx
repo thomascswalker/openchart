@@ -1,5 +1,6 @@
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
+import { useEditorCommands } from "../commands/EditorCommand";
 import "./styles.css";
 
 export function TrackList() {
@@ -7,6 +8,7 @@ export function TrackList() {
     useEditor();
 
   const { refresh } = usePlayback();
+  const { markDirty } = useEditorCommands();
 
   if (!midiData) {
     return (
@@ -23,6 +25,7 @@ export function TrackList() {
     const newIndex = midiData.addTrack();
     setTrackCount(midiData.tracks.length);
     setSelectedTrackIndex(newIndex);
+    markDirty();
   };
 
   const handleDeleteTrack = (index: number): void => {
@@ -38,6 +41,7 @@ export function TrackList() {
       }
     }
     refresh();
+    markDirty();
   };
 
   const trackCount = midiData.tracks.length;

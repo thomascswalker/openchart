@@ -54,6 +54,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     invalidateTempoCache: () => {
       this.tempoCacheMidi = null;
+      this.onNotesChanged?.();
     },
   };
   private readonly editing = new NoteEditingController(
