@@ -31,9 +31,9 @@ const Button = ({
   );
 };
 
-interface CloseButtonProps extends ButtonProps {}
+type CloseButtonProps = ButtonProps;
 
-const CloseButton = ({ children, onClick, ...props }: CloseButtonProps) => {
+const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
   return (
     <Button onClick={onClick} className="ui-button-close" {...props}>
       x

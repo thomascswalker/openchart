@@ -10,6 +10,8 @@ export default defineConfig([
     "**/coverage/**",
     "**/target/**",
     "apps/desktop/src-tauri/gen/**",
+    // apps/editor has its own eslint.config.js (react-hooks, storybook, etc.)
+    "apps/editor/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],
