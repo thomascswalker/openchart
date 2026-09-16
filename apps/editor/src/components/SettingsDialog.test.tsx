@@ -101,10 +101,16 @@ describe("Application settings", () => {
     const leadRegex = container.querySelector<HTMLInputElement>(
       'input[value="lead"]',
     )!;
+    const songRegex = container.querySelector<HTMLInputElement>(
+      'input[value="song"]',
+    )!;
+    expect(songRegex.disabled).toBe(false);
     expect(leadRegex.disabled).toBe(true);
     act(() => multitrack.click());
+    expect(songRegex.disabled).toBe(true);
     expect(leadRegex.disabled).toBe(false);
     act(() => multitrack.click());
+    expect(songRegex.disabled).toBe(false);
     expect(leadRegex.disabled).toBe(true);
     const audioPath = container.querySelector<HTMLInputElement>(
       'input:not([type="checkbox"])',

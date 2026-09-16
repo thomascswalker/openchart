@@ -16,6 +16,7 @@ export interface ApplicationSettings {
     multitrack: boolean;
   };
   discovery: {
+    songRegex: string;
     leadRegex: string;
     rhythmRegex: string;
     bassRegex: string;
@@ -31,6 +32,7 @@ export const defaultApplicationSettings: ApplicationSettings = {
   version: APPLICATION_SETTINGS_VERSION,
   audio: { rootPath: "~", multitrack: false },
   discovery: {
+    songRegex: "song",
     leadRegex: "lead",
     rhythmRegex: "rhythm",
     bassRegex: "bass",
@@ -50,13 +52,16 @@ export function validateApplicationSettings(
   if (!settings.audio.rootPath.trim()) {
     errors.rootPath = "Audio Path is required.";
   }
-  if (settings.audio.multitrack) {
-    for (const [field, expression] of Object.entries(settings.discovery)) {
-      try {
-        new RegExp(expression);
-      } catch {
-        errors[field] = "Enter a valid regular expression.";
-      }
+  const discoveryFields = settings.audio.multitrack
+    ? Object.entries(settings.discovery).filter(
+        ([field]) => field !== "songRegex",
+      )
+    : [["songRegex", settings.discovery.songRegex] as const];
+  for (const [field, expression] of discoveryFields) {
+    try {
+      new RegExp(expression);
+    } catch {
+      errors[field] = "Enter a valid regular expression.";
     }
   }
   if (!["project", "midi"].includes(settings.saving.defaultSaveMode)) {
@@ -70,8 +75,18 @@ function readSettings(): ApplicationSettings {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return defaultApplicationSettings;
     const parsed = JSON.parse(stored) as ApplicationSettings;
-    return Object.keys(validateApplicationSettings(parsed)).length === 0
-      ? parsed
+    const merged: ApplicationSettings = {
+      ...defaultApplicationSettings,
+      ...parsed,
+      audio: { ...defaultApplicationSettings.audio, ...parsed.audio },
+      discovery: {
+        ...defaultApplicationSettings.discovery,
+        ...parsed.discovery,
+      },
+      saving: { ...defaultApplicationSettings.saving, ...parsed.saving },
+    };
+    return Object.keys(validateApplicationSettings(merged)).length === 0
+      ? merged
       : defaultApplicationSettings;
   } catch {
     return defaultApplicationSettings;

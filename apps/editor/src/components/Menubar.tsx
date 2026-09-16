@@ -41,14 +41,9 @@ const MENUS: MenuDefinition[] = [
     items: [{ id: "settings", label: "Settings", accelerator: "Ctrl/Cmd+," }],
   },
   {
-    id: "audio",
-    label: "Audio",
-    items: [{ id: "open-audio", label: "Load Audio" }],
-  },
-  {
     id: "window",
     label: "Window",
-    items: [{ id: "toggle-debug", label: "Debug Window" }],
+    items: [{ id: "toggle-debug", label: "Debugger..." }],
   },
 ];
 

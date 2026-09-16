@@ -104,6 +104,35 @@
   align-items: center;
 }
 
+.settings-dialog :global(.audio-discovery-field) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-dialog :global(.audio-discovery-field input) {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-dialog :global(.audio-discovery-status) {
+  flex: none;
+  font-weight: bold;
+}
+
+.settings-dialog :global(.audio-discovery-status--found) {
+  color: #4caf50;
+}
+
+.settings-dialog :global(.audio-discovery-status--missing) {
+  color: #f06060;
+}
+
+.settings-dialog :global(.audio-discovery-actions) {
+  display: flex;
+  gap: 8px;
+}
+
 .settings-dialog :global([role="alert"]) {
   margin: 0;
   color: #ff9d9d;

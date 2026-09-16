@@ -5,6 +5,7 @@ import {
   useApplicationSettings,
   validateApplicationSettings,
 } from "../context/ApplicationSettingsContext";
+import { matchesAudioFile } from "../util/audioDiscovery";
 import { Modal } from "./shared/Modal/Modal";
 
 type SettingsTab = string;
@@ -20,6 +21,13 @@ interface SettingsField {
 }
 
 const audioDiscoveryFields: SettingsField[] = [
+  {
+    id: "songRegex",
+    label: "Song regex",
+    control: "text",
+    path: "discovery.songRegex",
+    enabledWhen: (settings) => !settings.audio.multitrack,
+  },
   {
     id: "leadRegex",
     label: "Lead regex",
@@ -116,17 +124,33 @@ function setSettingValue(
 }
 
 const SettingsDialog = () => {
-  const { dispatch } = useEditorCommands();
+  const {
+    dispatch,
+    canExecute,
+    audioDirectoryName,
+    audioDirectorySupported,
+    listDiscoveredAudioFileNames,
+  } = useEditorCommands();
   const { settings, applySettings } = useApplicationSettings();
   const [selectedTab, setSelectedTab] = useState<SettingsTab>(tabs[0]);
   const [draft, setDraft] = useState<ApplicationSettings>(settings);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [audioFileNames, setAudioFileNames] = useState<string[] | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
     dialogRef.current?.focus();
   }, []);
+
+  const refreshAudioFileNames = (): void => {
+    void listDiscoveredAudioFileNames().then(setAudioFileNames);
+  };
+
+  useEffect(() => {
+    refreshAudioFileNames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.audio.rootPath, audioDirectoryName]);
 
   const close = (): void => void dispatch("close-settings");
   const selectTab = (tab: SettingsTab): void => {
@@ -246,6 +270,12 @@ const SettingsDialog = () => {
           {fields.map((field) => {
             const value = getSettingValue(draft, field.path);
             const enabled = field.enabledWhen?.(draft) ?? true;
+            const isDiscoveryField = field.path.startsWith("discovery.");
+            const isFound = isDiscoveryField
+              ? audioFileNames === null
+                ? null
+                : matchesAudioFile(audioFileNames, value as string)
+              : null;
             const update = (nextValue: string | boolean): void =>
               setDraft(setSettingValue(draft, field.path, nextValue));
             return (
@@ -262,13 +292,36 @@ const SettingsDialog = () => {
                   field.label
                 )}
                 {field.control === "text" ? (
-                  <input
-                    className="input"
-                    aria-invalid={!!errors[field.id]}
-                    value={value as string}
-                    disabled={!enabled}
-                    onChange={(event) => update(event.target.value)}
-                  />
+                  <div className="audio-discovery-field">
+                    <input
+                      className="input"
+                      aria-invalid={!!errors[field.id]}
+                      value={value as string}
+                      disabled={!enabled}
+                      onChange={(event) => update(event.target.value)}
+                    />
+                    {isDiscoveryField && isFound !== null ? (
+                      <span
+                        className={
+                          isFound
+                            ? "audio-discovery-status audio-discovery-status--found"
+                            : "audio-discovery-status audio-discovery-status--missing"
+                        }
+                        aria-label={
+                          isFound
+                            ? "Matching audio file found"
+                            : "No matching audio file found"
+                        }
+                        title={
+                          isFound
+                            ? "Matching audio file found"
+                            : "No matching audio file found"
+                        }
+                      >
+                        {isFound ? "\u2713" : "\u2717"}
+                      </span>
+                    ) : null}
+                  </div>
                 ) : null}
                 {field.control === "select" ? (
                   <select
@@ -291,6 +344,35 @@ const SettingsDialog = () => {
               </label>
             );
           })}
+          {selectedTab === "Audio" ? (
+            <div className="audio-discovery-actions">
+              {audioDirectorySupported ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void dispatch("select-audio-folder").then(
+                      refreshAudioFileNames,
+                    );
+                  }}
+                  disabled={!canExecute["select-audio-folder"]}
+                >
+                  {audioDirectoryName
+                    ? `Audio Folder: ${audioDirectoryName}`
+                    : "Select Audio Folder"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  refreshAudioFileNames();
+                  void dispatch("refresh-audio");
+                }}
+                disabled={!canExecute["refresh-audio"]}
+              >
+                Refresh Audio
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="settings-actions">
