@@ -12,10 +12,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install GLib and pkg-config dependencies
+      - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglib2.0-dev pkg-config
+          sudo apt-get install --no-install-recommends -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            rpm \
+            wget \ 
+            libglib2.0-dev \ 
+            pkg-config
 
       - name: Checkout repository
         uses: actions/checkout@v4
