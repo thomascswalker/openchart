@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Section } from "../Section";
-import { Button, CloseButton } from "../Button";
+import { CloseButton } from "../Button";
 
 import styles from "./modal.module.css";
 

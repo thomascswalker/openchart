@@ -37,7 +37,7 @@ interface CloseButtonProps extends ButtonProps {}
 const CloseButton = ({ children, onClick, ...props }: CloseButtonProps) => {
   return (
     <Button onClick={onClick} className="ui-button-close" {...props}>
-      X
+      x
     </Button>
   );
 };
