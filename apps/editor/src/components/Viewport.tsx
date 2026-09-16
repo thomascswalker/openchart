@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { Difficulty } from "@midiedit/views";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
+import { useEditorCommands } from "../commands/EditorCommand";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -37,6 +38,7 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     setPlaybackTick: setPlayheadTick,
     refresh: refreshTotalTicks,
   } = usePlayback();
+  const { markDirty } = useEditorCommands();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
@@ -89,12 +91,15 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
       return;
     }
 
-    chartView.onNotesChanged = refreshTotalTicks;
+    chartView.onNotesChanged = () => {
+      markDirty();
+      refreshTotalTicks();
+    };
 
     return () => {
       chartView.onNotesChanged = null;
     };
-  }, [chartView, refreshTotalTicks]);
+  }, [chartView, markDirty, refreshTotalTicks]);
 
   // A plain click (no drag) in the chart view seeks the playhead there.
   useEffect(() => {

@@ -108,6 +108,7 @@ export class NoteEditingController {
     }
 
     this.remapSelection(this.resizeSelectionKeep);
+    this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -153,6 +154,7 @@ export class NoteEditingController {
     }
 
     this.remapSelection(this.moveSelectionKeep);
+    this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -280,6 +282,7 @@ export class NoteEditingController {
       track.setNotePitch(note.midiNote, clamp(note.pitch + semitones, 0, 127));
     }
     this.remapSelection(keep);
+    this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -298,6 +301,7 @@ export class NoteEditingController {
       );
     }
     this.remapSelection(keep);
+    this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
