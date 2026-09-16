@@ -1,4 +1,13 @@
-import type { MidiNote } from "@midiedit/core";
+import type {
+  Midi,
+  MidiNote,
+  MidiTrack,
+  TempoChange,
+  TimeSignatureChange,
+} from "@midiedit/core";
+import type { ChartViewState } from "../AbstractChartView";
+import type { SelectionContext } from "./selection";
+import type { PointerContext } from "./pointer";
 
 export interface PianoRollNote {
   tick: number;
@@ -36,4 +45,25 @@ export interface PianoRollCamera {
    * Vertical zoom.
    */
   v: number;
+}
+
+/** The narrow dependency surface shared by the piano-roll controllers. */
+export interface PianoRollContext {
+  getState(): ChartViewState;
+  getMidi(): Midi | null;
+  getPpqn(): number;
+  getSelectedTrack(): MidiTrack | null;
+  getTrackNotes(midi: Midi, trackIndex: number): PianoRollNote[];
+  getCurrentNotes(): PianoRollNote[];
+  getTempoChanges(): TempoChange[];
+  getTimeSignatureChanges(): TimeSignatureChange[];
+  getCamera(): PianoRollCamera;
+  getKeyboardWidth(): number;
+  getViewport(): { width: number; height: number };
+  getPointerContext(): PointerContext;
+  getSelectionContext(): SelectionContext;
+  requestRender(): void;
+  notifyNotesChanged(): void;
+  requestSeek(tick: number): void;
+  invalidateTempoCache(): void;
 }
