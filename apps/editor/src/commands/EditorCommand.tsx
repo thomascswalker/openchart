@@ -42,7 +42,7 @@ export type EditorCommandId =
   | "close-settings";
 
 export interface ActiveDocument {
-  midiData: Midi;
+  midiData: Midi | null;
   fileName: string | null;
   fileHandle: FileSystemFileHandle | null;
 }
@@ -150,7 +150,7 @@ export function EditorCommandProvider({
     [fileHandle, fileName, midiData],
   );
 
-  const canSave = midiData.trackCount !== 0;
+  const canSave = midiData!.trackCount !== 0 || false;
   const canExecute = useMemo<CommandAvailability>(
     () => ({
       new: true,
@@ -297,7 +297,7 @@ export function EditorCommandProvider({
       throw new Error("There is no MIDI document to save.");
     }
 
-    const data = midiData.toBuffer();
+    const data = midiData!.toBuffer();
     const suggestedName = fileName ?? "untitled.mid";
 
     if (supportsFileSystemAccess()) {
@@ -328,7 +328,7 @@ export function EditorCommandProvider({
     }
 
     const writable = await fileHandle.createWritable();
-    await writable.write(toArrayBuffer(midiData.toBuffer()));
+    await writable.write(toArrayBuffer(midiData!.toBuffer()));
     await writable.close();
     setIsDirty(false);
   }, [canSave, fileHandle, midiData, saveAs]);
@@ -338,7 +338,7 @@ export function EditorCommandProvider({
       throw new Error("There is no MIDI document to export.");
     }
 
-    downloadBuffer(midiData.toBuffer(), fileName ?? "untitled.mid");
+    downloadBuffer(midiData!.toBuffer(), fileName ?? "untitled.mid");
   }, [canSave, fileName, midiData]);
 
   const dispatch = useCallback(
