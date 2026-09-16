@@ -184,6 +184,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   protected override toScreenSpace(
     value: Point | Rectangle,
   ): Point | Rectangle {
+    // @ts-expect-error Expected overload error
     return this.coordinates.toScreenSpace(value);
   }
 
