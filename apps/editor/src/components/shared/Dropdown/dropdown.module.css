@@ -1,4 +1,4 @@
-.select {
+.ui-select {
   box-sizing: border-box;
   font-size: 1rem;
   font-family: inherit;
@@ -13,18 +13,18 @@
   min-height: var(--size-small);
 }
 
-.select:hover:not(:disabled) {
+.ui-select:hover:not(:disabled) {
   background: var(--neutral-70);
 }
 
-.select:disabled {
+.ui-select:disabled {
   cursor: default;
   color: var(--netural-90);
   background: var(--neutral-90);
 }
 
-select,
-::picker(select) {
+ui-select,
+::picker(ui-select) {
   appearance: base-select;
   border: var(--border-primary);
 }

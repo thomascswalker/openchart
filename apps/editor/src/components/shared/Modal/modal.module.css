@@ -1,0 +1,144 @@
+.settings-dialog-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 55%);
+}
+
+.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(420px, calc(100% - 32px));
+  padding: 20px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #242424;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 45%);
+  color: #eee;
+  text-align: left;
+}
+
+.settings-dialog--fixed {
+  width: min(var(--modal-width), calc(100vw - (2 * var(--modal-margin))));
+  height: min(var(--modal-height), calc(100vh - (2 * var(--modal-margin))));
+}
+
+.settings-dialog h2 {
+  margin: 0;
+  color: #eee;
+}
+
+.settings-dialog :global(.settings-tabs),
+.settings-dialog :global(.settings-actions) {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-dialog :global(.settings-body) {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+
+.settings-dialog :global(.settings-tabs) {
+  flex-direction: column;
+  align-items: stretch;
+  padding-right: 12px;
+  border-right: 1px solid #4b4b4b;
+}
+
+.settings-dialog :global(.settings-tabs) button {
+  width: 100%;
+  text-align: left;
+}
+
+.settings-dialog :global(.settings-tabs) button[aria-selected="true"] {
+  border-color: #8cc8ff;
+  background: #3f5261;
+}
+
+.settings-dialog :global(.settings-panel) {
+  display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 12px;
+  min-width: 0;
+  overflow: auto;
+  padding-left: 16px;
+}
+
+.settings-dialog :global(.settings-panel label) {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  color: #ccc;
+  font-size: 13px;
+}
+
+.settings-dialog :global(.settings-panel input),
+.settings-dialog :global(.settings-panel select) {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #666;
+  border-radius: 3px;
+  background: #181818;
+  color: #eee;
+}
+
+.settings-dialog :global(.settings-panel input[type="checkbox"]) {
+  width: auto;
+}
+
+.settings-dialog :global(.settings-panel input.input:disabled) {
+  background: var(--neutral-80);
+  color: var(--neutral-50);
+  font-style: italic;
+}
+
+.settings-dialog :global(.settings-panel label:has(input[type="checkbox"])) {
+  display: flex;
+  align-items: center;
+}
+
+.settings-dialog :global(.audio-discovery-field) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-dialog :global(.audio-discovery-field input) {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-dialog :global(.audio-discovery-status) {
+  flex: none;
+  font-weight: bold;
+}
+
+.settings-dialog :global(.audio-discovery-status--found) {
+  color: #4caf50;
+}
+
+.settings-dialog :global(.audio-discovery-status--missing) {
+  color: #f06060;
+}
+
+.settings-dialog :global(.audio-discovery-actions) {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-dialog :global([role="alert"]) {
+  margin: 0;
+  color: #ff9d9d;
+  font-size: 12px;
+}
+
+.settings-dialog :global(.settings-actions) {
+  justify-content: flex-end;
+}

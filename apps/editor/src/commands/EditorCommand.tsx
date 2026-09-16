@@ -1,4 +1,5 @@
 import { Midi } from "@midiedit/core";
+import { isTauri } from "@tauri-apps/api/core";
 import { Audio } from "ts-audio";
 import {
   createContext,
@@ -12,8 +13,22 @@ import {
   type RefObject,
   type ReactNode,
 } from "react";
+import { useApplicationSettings } from "../context/ApplicationSettingsContext";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
+import {
+  discoverSongAudio,
+  discoverSongAudioFromHandle,
+  listAudioFileNames,
+  listAudioFileNamesFromHandle,
+} from "../util/audioDiscovery";
+import {
+  hasReadPermission,
+  loadAudioDirectoryHandle,
+  requestReadPermission,
+  saveAudioDirectoryHandle,
+  supportsDirectoryPicker,
+} from "../util/audioDirectoryHandle";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
@@ -37,6 +52,8 @@ export type EditorCommandId =
   | "export"
   | "settings"
   | "open-audio"
+  | "refresh-audio"
+  | "select-audio-folder"
   | "toggle-debug"
   | "close-debug"
   | "close-settings";
@@ -56,6 +73,9 @@ export interface EditorCommandContextValue {
   debugVisible: boolean;
   settingsVisible: boolean;
   canExecute: CommandAvailability;
+  audioDirectoryName: string | null;
+  audioDirectorySupported: boolean;
+  listDiscoveredAudioFileNames: () => Promise<string[] | null>;
   dispatch: (command: EditorCommandId) => Promise<void>;
   markDirty: () => void;
   clearError: () => void;
@@ -136,6 +156,7 @@ export function EditorCommandProvider({
     setFileHandle,
   } = useEditor();
   const { setAudio, setAudioFileName } = usePlayback();
+  const { settings } = useApplicationSettings();
   const midiFileRef = useRef<HTMLInputElement>(null);
   const audioFileRef = useRef<HTMLInputElement>(null);
   const midiLoadRef = useRef(0);
@@ -144,6 +165,13 @@ export function EditorCommandProvider({
   const [error, setError] = useState<string | null>(null);
   const [debugVisible, setDebugVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [audioDirectoryHandle, setAudioDirectoryHandle] =
+    useState<FileSystemDirectoryHandle | null>(null);
+  const audioDirectorySupported = supportsDirectoryPicker();
+
+  useEffect(() => {
+    void loadAudioDirectoryHandle().then(setAudioDirectoryHandle);
+  }, []);
 
   const activeDocument = useMemo<ActiveDocument>(
     () => ({ midiData, fileName, fileHandle }),
@@ -160,11 +188,20 @@ export function EditorCommandProvider({
       export: canSave,
       settings: true,
       "open-audio": true,
+      "refresh-audio": !settings.audio.multitrack,
+      "select-audio-folder":
+        audioDirectorySupported && !settings.audio.multitrack,
       "toggle-debug": true,
       "close-debug": debugVisible,
       "close-settings": settingsVisible,
     }),
-    [canSave, debugVisible, settingsVisible],
+    [
+      canSave,
+      debugVisible,
+      settingsVisible,
+      settings.audio.multitrack,
+      audioDirectorySupported,
+    ],
   );
 
   const markDirty = useCallback(() => {
@@ -213,6 +250,89 @@ export function EditorCommandProvider({
     },
     [setAudio, setAudioFileName],
   );
+
+  const discoverAudio = useCallback(
+    async (options?: { reportMissing?: boolean }): Promise<void> => {
+      if (settings.audio.multitrack) {
+        return;
+      }
+
+      try {
+        const discovered = isTauri()
+          ? await discoverSongAudio(
+              settings.audio.rootPath,
+              settings.discovery.songRegex,
+            )
+          : audioDirectoryHandle &&
+              (await hasReadPermission(audioDirectoryHandle))
+            ? await discoverSongAudioFromHandle(
+                audioDirectoryHandle,
+                settings.discovery.songRegex,
+              )
+            : null;
+
+        if (discovered) {
+          setAudio(Audio({ file: discovered.url, preload: true }));
+          setAudioFileName(discovered.name);
+          setError(null);
+        } else if (options?.reportMissing) {
+          setError("No matching audio file was found at the audio path.");
+        }
+      } catch (discoverError: unknown) {
+        if (options?.reportMissing) {
+          setError(
+            errorMessage(discoverError, "Failed to scan the audio path."),
+          );
+        } else {
+          console.warn("Automatic audio discovery failed:", discoverError);
+        }
+      }
+    },
+    [
+      audioDirectoryHandle,
+      setAudio,
+      setAudioFileName,
+      settings.audio.multitrack,
+      settings.audio.rootPath,
+      settings.discovery.songRegex,
+    ],
+  );
+
+  useEffect(() => {
+    // Async discovery; state is set after the awaited scan, not synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void discoverAudio();
+  }, [discoverAudio]);
+
+  const listDiscoveredAudioFileNames = useCallback(async (): Promise<
+    string[] | null
+  > => {
+    try {
+      if (isTauri()) {
+        return await listAudioFileNames(settings.audio.rootPath);
+      }
+      if (
+        audioDirectoryHandle &&
+        (await hasReadPermission(audioDirectoryHandle))
+      ) {
+        return await listAudioFileNamesFromHandle(audioDirectoryHandle);
+      }
+      return null;
+    } catch (listError: unknown) {
+      console.warn("Could not list audio files:", listError);
+      return null;
+    }
+  }, [audioDirectoryHandle, settings.audio.rootPath]);
+
+  const selectAudioFolder = useCallback(async (): Promise<void> => {
+    const handle = await window.showDirectoryPicker!({ mode: "read" });
+    const granted = await requestReadPermission(handle);
+    if (!granted) {
+      throw new Error("Permission to read the selected folder was denied.");
+    }
+    await saveAudioDirectoryHandle(handle);
+    setAudioDirectoryHandle(handle);
+  }, []);
 
   const openPicker = useCallback(
     (
@@ -382,6 +502,13 @@ export function EditorCommandProvider({
           case "open-audio":
             openPicker(WAV_FILE_PICKER_TYPES, audioFileRef, loadAudio);
             return;
+          case "refresh-audio":
+            await discoverAudio({ reportMissing: true });
+            return;
+          case "select-audio-folder":
+            await selectAudioFolder();
+            await discoverAudio({ reportMissing: true });
+            return;
           case "toggle-debug":
             setDebugVisible((visible) => !visible);
             return;
@@ -403,12 +530,14 @@ export function EditorCommandProvider({
     [
       canDiscardChanges,
       canExecute,
+      discoverAudio,
       exportMidi,
       loadAudio,
       loadMidi,
       openPicker,
       save,
       saveAs,
+      selectAudioFolder,
       setFileHandle,
       setFileName,
       setMidiData,
@@ -426,14 +555,18 @@ export function EditorCommandProvider({
       }
 
       const key = event.key.toLowerCase();
-      const command =
-        key === "o"
-          ? "open"
-          : key === "s" && event.shiftKey
-            ? "save-as"
-            : key === "s"
-              ? "save"
-              : null;
+      let command: EditorCommandId | null = null;
+      switch (key) {
+        case ",":
+          command = "settings";
+          break;
+        case "o":
+          command = "open";
+          break;
+        case "s":
+          command = event.shiftKey ? "save-as" : "save";
+          break;
+      }
 
       if (!command) {
         return;
@@ -455,18 +588,24 @@ export function EditorCommandProvider({
       debugVisible,
       settingsVisible,
       canExecute,
+      audioDirectoryName: audioDirectoryHandle?.name ?? null,
+      audioDirectorySupported,
+      listDiscoveredAudioFileNames,
       dispatch,
       markDirty,
       clearError,
     }),
     [
       activeDocument,
+      audioDirectoryHandle,
+      audioDirectorySupported,
       canExecute,
       clearError,
       debugVisible,
       dispatch,
       error,
       isDirty,
+      listDiscoveredAudioFileNames,
       markDirty,
       settingsVisible,
     ],

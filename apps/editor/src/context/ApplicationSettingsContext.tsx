@@ -1,0 +1,140 @@
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+export const APPLICATION_SETTINGS_VERSION = 1;
+const STORAGE_KEY = "midiedit.application-settings";
+
+export interface ApplicationSettings {
+  version: typeof APPLICATION_SETTINGS_VERSION;
+  audio: {
+    rootPath: string;
+    multitrack: boolean;
+  };
+  discovery: {
+    songRegex: string;
+    leadRegex: string;
+    rhythmRegex: string;
+    bassRegex: string;
+    drumsRegex: string;
+    vocalsRegex: string;
+  };
+  saving: {
+    defaultSaveMode: "project" | "midi";
+  };
+}
+
+export const defaultApplicationSettings: ApplicationSettings = {
+  version: APPLICATION_SETTINGS_VERSION,
+  audio: { rootPath: "~", multitrack: false },
+  discovery: {
+    songRegex: "song",
+    leadRegex: "lead",
+    rhythmRegex: "rhythm",
+    bassRegex: "bass",
+    drumsRegex: "drums",
+    vocalsRegex: "vocals",
+  },
+  saving: { defaultSaveMode: "project" },
+};
+
+export function validateApplicationSettings(
+  settings: ApplicationSettings,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (settings.version !== APPLICATION_SETTINGS_VERSION) {
+    errors.version = "Unsupported settings version.";
+  }
+  if (!settings.audio.rootPath.trim()) {
+    errors.rootPath = "Audio Path is required.";
+  }
+  const discoveryFields = settings.audio.multitrack
+    ? Object.entries(settings.discovery).filter(
+        ([field]) => field !== "songRegex",
+      )
+    : [["songRegex", settings.discovery.songRegex] as const];
+  for (const [field, expression] of discoveryFields) {
+    try {
+      new RegExp(expression);
+    } catch {
+      errors[field] = "Enter a valid regular expression.";
+    }
+  }
+  if (!["project", "midi"].includes(settings.saving.defaultSaveMode)) {
+    errors.defaultSaveMode = "Select a valid default save mode.";
+  }
+  return errors;
+}
+
+function readSettings(): ApplicationSettings {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return defaultApplicationSettings;
+    const parsed = JSON.parse(stored) as ApplicationSettings;
+    const merged: ApplicationSettings = {
+      ...defaultApplicationSettings,
+      ...parsed,
+      audio: { ...defaultApplicationSettings.audio, ...parsed.audio },
+      discovery: {
+        ...defaultApplicationSettings.discovery,
+        ...parsed.discovery,
+      },
+      saving: { ...defaultApplicationSettings.saving, ...parsed.saving },
+    };
+    return Object.keys(validateApplicationSettings(merged)).length === 0
+      ? merged
+      : defaultApplicationSettings;
+  } catch {
+    return defaultApplicationSettings;
+  }
+}
+
+interface ApplicationSettingsContextValue {
+  settings: ApplicationSettings;
+  applySettings: (settings: ApplicationSettings) => boolean;
+}
+
+const ApplicationSettingsContext = createContext<
+  ApplicationSettingsContextValue | undefined
+>(undefined);
+
+export function ApplicationSettingsProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [settings, setSettings] = useState<ApplicationSettings>(readSettings);
+  const value = useMemo<ApplicationSettingsContextValue>(
+    () => ({
+      settings,
+      applySettings: (nextSettings) => {
+        if (Object.keys(validateApplicationSettings(nextSettings)).length > 0) {
+          return false;
+        }
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSettings));
+        setSettings(nextSettings);
+        return true;
+      },
+    }),
+    [settings],
+  );
+  return (
+    <ApplicationSettingsContext.Provider value={value}>
+      {children}
+    </ApplicationSettingsContext.Provider>
+  );
+}
+
+export function useApplicationSettings(): ApplicationSettingsContextValue {
+  const context = useContext(ApplicationSettingsContext);
+  if (!context) {
+    throw new Error(
+      "useApplicationSettings must be used within an ApplicationSettingsProvider",
+    );
+  }
+  return context;
+}

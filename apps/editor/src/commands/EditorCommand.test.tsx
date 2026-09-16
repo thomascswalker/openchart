@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { EditorCommandProvider, useEditorCommands } from "./EditorCommand";
+import { ApplicationSettingsProvider } from "../context/ApplicationSettingsContext";
 import { EditorProvider } from "../context/EditorContext";
 import { PlaybackProvider } from "../context/PlaybackContext";
 
@@ -27,9 +28,11 @@ function renderCommands(): { container: HTMLDivElement; root: Root } {
     root.render(
       <EditorProvider>
         <PlaybackProvider>
-          <EditorCommandProvider>
-            <CommandEnablementProbe />
-          </EditorCommandProvider>
+          <ApplicationSettingsProvider>
+            <EditorCommandProvider>
+              <CommandEnablementProbe />
+            </EditorCommandProvider>
+          </ApplicationSettingsProvider>
         </PlaybackProvider>
       </EditorProvider>,
     ),

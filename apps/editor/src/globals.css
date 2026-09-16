@@ -60,8 +60,9 @@
   --border-primary: 1px solid var(--neutral-60);
 }
 
-.button,
-.select {
+.ui-button,
+.ui-select,
+.ui-box {
   box-sizing: border-box;
   font-size: 1rem;
   font-family: inherit;
@@ -72,6 +73,11 @@
   border-radius: var(--radius-small);
   background: var(--neutral-80);
   color: var(--white);
-  cursor: pointer;
   min-height: var(--size-small);
+}
+
+.text:disabled,
+.input:disabled {
+  background: var(--neutral-80);
+  color: var(--neutral-30);
 }

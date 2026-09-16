@@ -38,17 +38,12 @@ const MENUS: MenuDefinition[] = [
   {
     id: "edit",
     label: "Edit",
-    items: [{ id: "settings", label: "Settings" }],
-  },
-  {
-    id: "audio",
-    label: "Audio",
-    items: [{ id: "open-audio", label: "Load Audio" }],
+    items: [{ id: "settings", label: "Settings", accelerator: "Ctrl/Cmd+," }],
   },
   {
     id: "window",
     label: "Window",
-    items: [{ id: "toggle-debug", label: "Debug Window" }],
+    items: [{ id: "toggle-debug", label: "Debugger..." }],
   },
 ];
 
@@ -70,8 +65,28 @@ export function Menubar({
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [activeTrigger, setActiveTrigger] = useState(0);
   const menubarRef = useRef<HTMLDivElement>(null);
+  const focusFrameRef = useRef<number | null>(null);
+  const focusRequestRef = useRef(0);
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const itemRefs = useRef<Record<string, Array<HTMLButtonElement | null>>>({});
+
+  const scheduleFocus = (callback: () => void): void => {
+    focusRequestRef.current += 1;
+    const requestId = focusRequestRef.current;
+
+    if (focusFrameRef.current !== null) {
+      cancelAnimationFrame(focusFrameRef.current);
+    }
+
+    focusFrameRef.current = requestAnimationFrame(() => {
+      if (requestId !== focusRequestRef.current) {
+        return;
+      }
+
+      focusFrameRef.current = null;
+      callback();
+    });
+  };
 
   const focusTrigger = (menuIndex: number): void => {
     setActiveTrigger(menuIndex);
@@ -84,27 +99,39 @@ export function Menubar({
 
   const openMenuAt = (menuIndex: number, itemIndex = 0): void => {
     setOpenMenu(menus[menuIndex].id);
-    requestAnimationFrame(() => focusItem(menuIndex, itemIndex));
+    scheduleFocus(() => focusItem(menuIndex, itemIndex));
   };
 
   const closeMenu = (returnFocus = true): void => {
+    if (focusFrameRef.current !== null) {
+      cancelAnimationFrame(focusFrameRef.current);
+      focusFrameRef.current = null;
+    }
+    focusRequestRef.current += 1;
+
     const menuIndex = menus.findIndex((menu) => menu.id === openMenu);
     setOpenMenu(null);
     if (returnFocus && menuIndex >= 0) {
-      requestAnimationFrame(() => focusTrigger(menuIndex));
+      scheduleFocus(() => focusTrigger(menuIndex));
     }
   };
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
-      if (!menubarRef.current?.contains(event.target as Node)) {
+      const target = event.target;
+      if (!menubarRef.current?.contains(target as Node)) {
+        focusRequestRef.current += 1;
         closeMenu(false);
+
+        if (target instanceof HTMLElement) {
+          target.focus();
+        }
       }
     };
 
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  });
+  }, []);
 
   const moveTrigger = (currentIndex: number, delta: number): void => {
     const nextIndex = (currentIndex + delta + menus.length) % menus.length;

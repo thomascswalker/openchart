@@ -2,6 +2,7 @@ import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { useEditorCommands } from "../commands/EditorCommand";
 import "./styles.css";
+import { CloseButton } from "./shared/Button";
 
 export function TrackList() {
   const { midiData, selectedTrackIndex, setSelectedTrackIndex, setTrackCount } =
@@ -74,18 +75,12 @@ export function TrackList() {
                 <span className="track-row__name">
                   {track.name || `Track ${index + 1}`}
                 </span>
-                <button
-                  type="button"
-                  className="track-row__delete"
+                <CloseButton
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteTrack(index);
                   }}
-                  title={`Delete ${track.name || `Track ${index + 1}`}`}
-                  aria-label={`Delete ${track.name || `Track ${index + 1}`}`}
-                >
-                  ✕
-                </button>
+                />
               </div>
             </div>
           );
