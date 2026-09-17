@@ -57,6 +57,11 @@ export function useTimeline({
   );
   const playheadTickRef = useRef(playbackTick);
   playheadTickRef.current = playbackTick;
+  // Feedback settings can change while playback is active. Keep the current
+  // engine behind a ref so toggling a sound does not recreate the callbacks
+  // that own the timeline lifecycle and reset the document to tick zero.
+  const feedbackRef = useRef(feedback);
+  feedbackRef.current = feedback;
   const animationRef = useRef<number | null>(null);
   const lastFrameMsRef = useRef<number | null>(null);
 
@@ -97,16 +102,16 @@ export function useTimeline({
       playheadTickRef.current = nextTick;
       setPlaybackTick(nextTick);
       seekAudio(ticksToMs(nextTick, ppqn, tempoChanges) / 1_000);
-      feedback.seek(nextTick);
+      feedbackRef.current.seek(nextTick);
     },
-    [feedback, ppqn, seekAudio, tempoChanges],
+    [ppqn, seekAudio, tempoChanges],
   );
 
   const pause = useCallback(() => {
     setIsPlaying(false);
     pauseAudio();
-    feedback.stop();
-  }, [feedback, pauseAudio]);
+    feedbackRef.current.stop();
+  }, [pauseAudio]);
 
   useEffect(() => {
     pause();
@@ -127,9 +132,9 @@ export function useTimeline({
     }
 
     setIsPlaying(true);
-    feedback.start(playheadTickRef.current);
+    feedbackRef.current.start(playheadTickRef.current);
     playAudio();
-  }, [canPlay, feedback, playAudio, handleSetPlaybackTick, totalTimelineTicks]);
+  }, [canPlay, playAudio, handleSetPlaybackTick, totalTimelineTicks]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -173,7 +178,7 @@ export function useTimeline({
 
         playheadTickRef.current = currentTick;
         setPlaybackTick(currentTick);
-        feedback.updateTick(currentTick);
+        feedbackRef.current.updateTick(currentTick);
 
         if (totalTimelineTicks > 0 && currentTick >= totalTimelineTicks) {
           pause();
@@ -198,7 +203,7 @@ export function useTimeline({
 
           playheadTickRef.current = nextTick;
           setPlaybackTick(nextTick);
-          feedback.updateTick(nextTick);
+          feedbackRef.current.updateTick(nextTick);
         }
       }
 
@@ -212,7 +217,7 @@ export function useTimeline({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [audio, feedback, isPlaying, pause, ppqn, tempoChanges, totalTimelineTicks]);
+  }, [audio, isPlaying, pause, ppqn, tempoChanges, totalTimelineTicks]);
 
   return {
     isPlaying,

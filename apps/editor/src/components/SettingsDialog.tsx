@@ -158,7 +158,10 @@ function getSettingValue(
   path: SettingsField["path"],
 ): string | number | boolean {
   const [group, key] = path.split(".") as [
-    keyof Pick<ApplicationSettings, "audio" | "discovery" | "saving" | "feedback">,
+    keyof Pick<
+      ApplicationSettings,
+      "audio" | "discovery" | "saving" | "feedback"
+    >,
     string,
   ];
   return (settings[group] as Record<string, string | number | boolean>)[key];
@@ -170,7 +173,10 @@ function setSettingValue(
   value: string | number | boolean,
 ): ApplicationSettings {
   const [group, key] = path.split(".") as [
-    keyof Pick<ApplicationSettings, "audio" | "discovery" | "saving" | "feedback">,
+    keyof Pick<
+      ApplicationSettings,
+      "audio" | "discovery" | "saving" | "feedback"
+    >,
     string,
   ];
   return {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Midi, MidiNote } from "@midiedit/core";
 import { Difficulty, SongView } from "@midiedit/views";
 import type { ApplicationSettings } from "../context/ApplicationSettingsContext";
@@ -32,7 +32,10 @@ function notesForHighway(
 ): readonly MidiNote[] {
   if (!midi) return [];
   const song = new SongView(midi);
-  return song.getInstrumentTrackView(instrument)?.getChart(difficulty)?.getNotes() ?? [];
+  return (
+    song.getInstrumentTrackView(instrument)?.getChart(difficulty)?.getNotes() ??
+    []
+  );
 }
 
 export function usePlaybackFeedback({
@@ -56,6 +59,10 @@ export function usePlaybackFeedback({
   );
   const [clapEnabled, setClapEnabled] = useState(false);
   const [isHighwayActive, setIsHighwayActive] = useState(false);
+  const metronomeEnabledRef = useRef(metronomeEnabled);
+  metronomeEnabledRef.current = metronomeEnabled;
+  const clapEnabledRef = useRef(clapEnabled);
+  clapEnabledRef.current = clapEnabled;
 
   useEffect(() => {
     setMetronomeEnabled(settings.feedback.metronomeEnabled);
@@ -103,6 +110,26 @@ export function usePlaybackFeedback({
 
   useEffect(() => () => engine.dispose(), [engine]);
 
+  // Start/resume the context in the original M/N or menu gesture. This is
+  // important in embedded hosts such as the VSCode webview, where a later
+  // React effect is not considered user activation by autoplay policy.
+  const toggleMetronome = useCallback(() => {
+    const nextEnabled = !metronomeEnabledRef.current;
+    metronomeEnabledRef.current = nextEnabled;
+    if (nextEnabled) void engine.ensureStarted();
+    setMetronomeEnabled(nextEnabled);
+  }, [engine]);
+  const toggleClap = useCallback(() => {
+    const nextEnabled = !clapEnabledRef.current;
+    clapEnabledRef.current = nextEnabled;
+    if (nextEnabled) void engine.ensureStarted();
+    setClapEnabled(nextEnabled);
+  }, [engine]);
+  const setActiveView = useCallback(
+    (viewId: string) => setIsHighwayActive(viewId === "highway"),
+    [],
+  );
+
   return useMemo(
     () => ({
       start: (tick: number) => engine.start(tick),
@@ -111,11 +138,13 @@ export function usePlaybackFeedback({
       updateTick: (tick: number) => engine.updateTick(tick),
       isMetronomeEnabled: metronomeEnabled,
       isClapEnabled: clapEnabled,
-      toggleMetronome: () => setMetronomeEnabled((enabled) => !enabled),
-      toggleClap: () => setClapEnabled((enabled) => !enabled),
-      setActiveView: (viewId: string) =>
-        setIsHighwayActive(viewId === "highway"),
-      previewTrack: (trackIndex = selectedTrackIndex ?? 0, range?: PitchRange) => {
+      toggleMetronome,
+      toggleClap,
+      setActiveView,
+      previewTrack: (
+        trackIndex = selectedTrackIndex ?? 0,
+        range?: PitchRange,
+      ) => {
         const track = midiData?.tracks[trackIndex];
         if (!track) return;
         engine.previewTrack(
@@ -132,6 +161,15 @@ export function usePlaybackFeedback({
         engine.previewTrack(notes, range),
       stopPreview: () => engine.stopPreview(),
     }),
-    [clapEnabled, engine, midiData, metronomeEnabled, selectedTrackIndex],
+    [
+      clapEnabled,
+      engine,
+      midiData,
+      metronomeEnabled,
+      selectedTrackIndex,
+      setActiveView,
+      toggleClap,
+      toggleMetronome,
+    ],
   );
 }

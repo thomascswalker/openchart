@@ -324,7 +324,10 @@ export function Menubar({
                           handleItemKeyDown(event, menuIndex, itemIndex)
                         }
                       >
-                        <span>{checked ? "✓ " : ""}{item.label}</span>
+                        <span>
+                          {checked ? "✓ " : ""}
+                          {item.label}
+                        </span>
                         {item.accelerator ? (
                           <span className="midi-menubar__accelerator">
                             {item.accelerator}

@@ -18,9 +18,7 @@ function CommandEnablementProbe() {
       <span data-testid="dirty">{String(isDirty)}</span>
       <span data-testid="save-enabled">{String(canExecute.save)}</span>
       <span data-testid="export-enabled">{String(canExecute.export)}</span>
-      <span data-testid="metronome-enabled">
-        {String(isMetronomeEnabled)}
-      </span>
+      <span data-testid="metronome-enabled">{String(isMetronomeEnabled)}</span>
       <span data-testid="clap-enabled">{String(isClapEnabled)}</span>
     </>
   );
@@ -78,22 +76,22 @@ describe("EditorCommandProvider", () => {
 
   it("toggles playback feedback with M and N", () => {
     const { container, root } = renderCommands();
-    expect(container.querySelector('[data-testid="metronome-enabled"]')?.textContent).toBe(
-      "false",
-    );
-    expect(container.querySelector('[data-testid="clap-enabled"]')?.textContent).toBe(
-      "false",
-    );
+    expect(
+      container.querySelector('[data-testid="metronome-enabled"]')?.textContent,
+    ).toBe("false");
+    expect(
+      container.querySelector('[data-testid="clap-enabled"]')?.textContent,
+    ).toBe("false");
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "m" }));
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "n" }));
     });
-    expect(container.querySelector('[data-testid="metronome-enabled"]')?.textContent).toBe(
-      "true",
-    );
-    expect(container.querySelector('[data-testid="clap-enabled"]')?.textContent).toBe(
-      "true",
-    );
+    expect(
+      container.querySelector('[data-testid="metronome-enabled"]')?.textContent,
+    ).toBe("true");
+    expect(
+      container.querySelector('[data-testid="clap-enabled"]')?.textContent,
+    ).toBe("true");
     root.unmount();
     container.remove();
   });

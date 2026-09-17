@@ -113,7 +113,9 @@ export function beatCrossings(
       0,
       Math.ceil((segmentStart - change.tick - epsilon) / beatLength),
     );
-    const lastBeat = Math.floor((segmentEnd - change.tick + epsilon) / beatLength);
+    const lastBeat = Math.floor(
+      (segmentEnd - change.tick + epsilon) / beatLength,
+    );
 
     for (let beatIndex = firstBeat; beatIndex <= lastBeat; beatIndex++) {
       const tick = change.tick + beatIndex * beatLength;

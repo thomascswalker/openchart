@@ -4,9 +4,7 @@ import type { Timeline } from "../hooks/useTimeline";
 import type { PlaybackFeedback } from "../audio/usePlaybackFeedback";
 
 export interface PlaybackContextType
-  extends Timeline,
-    AudioPlayback,
-    PlaybackFeedback {
+  extends Timeline, AudioPlayback, PlaybackFeedback {
   audioDurationMs: number;
   audioFileName: string | null;
   setAudioFileName: (name: string | null) => void;

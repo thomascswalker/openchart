@@ -36,7 +36,8 @@ export class NoteCrossingTracker {
       const startsAtCurrentTick = state.firstUpdate && note.start === tick;
       const noteIdentity = note.noteOn;
       const crossing =
-        (startsAtCurrentTick || (note.start > state.lastTick && note.start <= tick)) &&
+        (startsAtCurrentTick ||
+          (note.start > state.lastTick && note.start <= tick)) &&
         !state.crossedNotes.has(noteIdentity);
       if (crossing) state.crossedNotes.add(noteIdentity);
       return crossing;
@@ -54,7 +55,7 @@ export class NoteCrossingTracker {
       crossedNotes: new WeakSet<object>(),
     });
   }
-  
+
   public has(key: string): boolean {
     return this.states.has(key);
   }

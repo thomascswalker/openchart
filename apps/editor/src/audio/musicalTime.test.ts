@@ -16,7 +16,7 @@ describe("musical playback positions", () => {
   it("crosses beats using tempo-aware look-ahead", () => {
     const endTick = tickWindowForLookAhead(900, 100, 480, tempoChanges);
     expect(endTick).toBe(997.5);
-    expect(beatCrossings(900, 960, 480,  timeSignatures)).toEqual([
+    expect(beatCrossings(900, 960, 480, timeSignatures)).toEqual([
       { tick: 960, measure: 0, beat: 2, isDownbeat: false },
     ]);
     expect(ticksToMs(endTick, 480, tempoChanges)).toBe(1_037.5);

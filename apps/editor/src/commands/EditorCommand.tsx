@@ -161,12 +161,8 @@ export function EditorCommandProvider({
     projectMetadata,
     setProjectMetadata,
   } = useEditor();
-  const {
-    setAudio,
-    setAudioFileName,
-    toggleMetronome,
-    toggleClap,
-  } = usePlayback();
+  const { setAudio, setAudioFileName, toggleMetronome, toggleClap } =
+    usePlayback();
   const { settings } = useApplicationSettings();
   const audioFileRef = useRef<HTMLInputElement>(null);
   const audioLoadRef = useRef(0);
@@ -662,11 +658,7 @@ export function EditorCommandProvider({
       if (!event.ctrlKey && !event.metaKey && !event.altKey) {
         const key = event.key.toLowerCase();
         const command: EditorCommandId | null =
-          key === "m"
-            ? "toggle-metronome"
-            : key === "n"
-              ? "toggle-clap"
-              : null;
+          key === "m" ? "toggle-metronome" : key === "n" ? "toggle-clap" : null;
         if (command) {
           event.preventDefault();
           void dispatch(command);
