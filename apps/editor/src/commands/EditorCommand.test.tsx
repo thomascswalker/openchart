@@ -5,9 +5,11 @@ import { EditorCommandProvider, useEditorCommands } from "./EditorCommand";
 import { ApplicationSettingsProvider } from "../context/ApplicationSettingsContext";
 import { EditorProvider } from "../context/EditorContext";
 import { PlaybackProvider } from "../context/PlaybackContext";
+import { usePlayback } from "../context/PlaybackContextStore";
 
 function CommandEnablementProbe() {
   const { canExecute, isDirty, markDirty } = useEditorCommands();
+  const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>
       <button type="button" onClick={markDirty}>
@@ -16,6 +18,10 @@ function CommandEnablementProbe() {
       <span data-testid="dirty">{String(isDirty)}</span>
       <span data-testid="save-enabled">{String(canExecute.save)}</span>
       <span data-testid="export-enabled">{String(canExecute.export)}</span>
+      <span data-testid="metronome-enabled">
+        {String(isMetronomeEnabled)}
+      </span>
+      <span data-testid="clap-enabled">{String(isClapEnabled)}</span>
     </>
   );
 }
@@ -27,13 +33,13 @@ function renderCommands(): { container: HTMLDivElement; root: Root } {
   act(() =>
     root.render(
       <EditorProvider>
-        <PlaybackProvider>
-          <ApplicationSettingsProvider>
+        <ApplicationSettingsProvider>
+          <PlaybackProvider>
             <EditorCommandProvider>
               <CommandEnablementProbe />
             </EditorCommandProvider>
-          </ApplicationSettingsProvider>
-        </PlaybackProvider>
+          </PlaybackProvider>
+        </ApplicationSettingsProvider>
       </EditorProvider>,
     ),
   );
@@ -64,6 +70,28 @@ describe("EditorCommandProvider", () => {
       container.querySelector<HTMLButtonElement>("button")?.click();
     });
     expect(container.querySelector('[data-testid="dirty"]')?.textContent).toBe(
+      "true",
+    );
+    root.unmount();
+    container.remove();
+  });
+
+  it("toggles playback feedback with M and N", () => {
+    const { container, root } = renderCommands();
+    expect(container.querySelector('[data-testid="metronome-enabled"]')?.textContent).toBe(
+      "false",
+    );
+    expect(container.querySelector('[data-testid="clap-enabled"]')?.textContent).toBe(
+      "false",
+    );
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "m" }));
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "n" }));
+    });
+    expect(container.querySelector('[data-testid="metronome-enabled"]')?.textContent).toBe(
+      "true",
+    );
+    expect(container.querySelector('[data-testid="clap-enabled"]')?.textContent).toBe(
       "true",
     );
     root.unmount();

@@ -1,8 +1,12 @@
 import { createContext, useContext } from "react";
 import type { AudioPlayback } from "../hooks/useAudioPlayer";
 import type { Timeline } from "../hooks/useTimeline";
+import type { PlaybackFeedback } from "../audio/usePlaybackFeedback";
 
-export interface PlaybackContextType extends Timeline, AudioPlayback {
+export interface PlaybackContextType
+  extends Timeline,
+    AudioPlayback,
+    PlaybackFeedback {
   audioDurationMs: number;
   audioFileName: string | null;
   setAudioFileName: (name: string | null) => void;

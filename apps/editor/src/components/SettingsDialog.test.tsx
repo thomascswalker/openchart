@@ -36,13 +36,13 @@ function renderSettings(): { container: HTMLDivElement; root: Root } {
   act(() =>
     root.render(
       <EditorProvider>
-        <PlaybackProvider>
-          <ApplicationSettingsProvider>
+        <ApplicationSettingsProvider>
+          <PlaybackProvider>
             <EditorCommandProvider>
               <SettingsTestShell />
             </EditorCommandProvider>
-          </ApplicationSettingsProvider>
-        </PlaybackProvider>
+          </PlaybackProvider>
+        </ApplicationSettingsProvider>
       </EditorProvider>,
     ),
   );
@@ -76,7 +76,11 @@ describe("Application settings", () => {
     const tabs = [
       ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
     ];
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["General", "Audio"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "General",
+      "Audio",
+      "Feedback",
+    ]);
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("button")].find(
         (button) => button.textContent === "Apply",

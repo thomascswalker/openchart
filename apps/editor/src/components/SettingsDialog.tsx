@@ -9,13 +9,13 @@ import { matchesAudioFile } from "../util/audioDiscovery";
 import { Modal } from "./shared/Modal/Modal";
 
 type SettingsTab = string;
-type SettingsControl = "text" | "checkbox" | "select";
+type SettingsControl = "text" | "number" | "checkbox" | "select";
 
 interface SettingsField {
   id: string;
   label: string;
   control: SettingsControl;
-  path: `${"audio" | "discovery" | "saving"}.${string}`;
+  path: `${"audio" | "discovery" | "saving" | "feedback"}.${string}`;
   options?: ReadonlyArray<{ label: string; value: string }>;
   enabledWhen?: (settings: ApplicationSettings) => boolean;
 }
@@ -93,6 +93,62 @@ const settingsSchema: Record<string, SettingsField[]> = {
     },
     ...audioDiscoveryFields,
   ],
+  Feedback: [
+    {
+      id: "metronomeEnabled",
+      label: "Enable metronome",
+      control: "checkbox",
+      path: "feedback.metronomeEnabled",
+    },
+    {
+      id: "metronomeVolume",
+      label: "Metronome volume",
+      control: "number",
+      path: "feedback.metronomeVolume",
+    },
+    {
+      id: "metronomeDownbeatSound",
+      label: "Downbeat sound",
+      control: "select",
+      path: "feedback.metronomeDownbeatSound",
+      options: [
+        { label: "Sine", value: "sine" },
+        { label: "Square", value: "square" },
+        { label: "Triangle", value: "triangle" },
+        { label: "Sawtooth", value: "sawtooth" },
+      ],
+    },
+    {
+      id: "metronomeBeatSound",
+      label: "Beat sound",
+      control: "select",
+      path: "feedback.metronomeBeatSound",
+      options: [
+        { label: "Sine", value: "sine" },
+        { label: "Square", value: "square" },
+        { label: "Triangle", value: "triangle" },
+        { label: "Sawtooth", value: "sawtooth" },
+      ],
+    },
+    {
+      id: "previewVolume",
+      label: "Piano preview volume",
+      control: "number",
+      path: "feedback.previewVolume",
+    },
+    {
+      id: "previewLowPitch",
+      label: "Preview lowest MIDI pitch",
+      control: "number",
+      path: "feedback.previewLowPitch",
+    },
+    {
+      id: "previewHighPitch",
+      label: "Preview highest MIDI pitch",
+      control: "number",
+      path: "feedback.previewHighPitch",
+    },
+  ],
 };
 
 const tabs = Object.keys(settingsSchema);
@@ -100,21 +156,21 @@ const tabs = Object.keys(settingsSchema);
 function getSettingValue(
   settings: ApplicationSettings,
   path: SettingsField["path"],
-): string | boolean {
+): string | number | boolean {
   const [group, key] = path.split(".") as [
-    keyof Pick<ApplicationSettings, "audio" | "discovery" | "saving">,
+    keyof Pick<ApplicationSettings, "audio" | "discovery" | "saving" | "feedback">,
     string,
   ];
-  return (settings[group] as Record<string, string | boolean>)[key];
+  return (settings[group] as Record<string, string | number | boolean>)[key];
 }
 
 function setSettingValue(
   settings: ApplicationSettings,
   path: SettingsField["path"],
-  value: string | boolean,
+  value: string | number | boolean,
 ): ApplicationSettings {
   const [group, key] = path.split(".") as [
-    keyof Pick<ApplicationSettings, "audio" | "discovery" | "saving">,
+    keyof Pick<ApplicationSettings, "audio" | "discovery" | "saving" | "feedback">,
     string,
   ];
   return {
@@ -276,7 +332,7 @@ const SettingsDialog = () => {
                 ? null
                 : matchesAudioFile(audioFileNames, value as string)
               : null;
-            const update = (nextValue: string | boolean): void =>
+            const update = (nextValue: string | number | boolean): void =>
               setDraft(setSettingValue(draft, field.path, nextValue));
             return (
               <label key={field.id}>
@@ -322,6 +378,16 @@ const SettingsDialog = () => {
                       </span>
                     ) : null}
                   </div>
+                ) : null}
+                {field.control === "number" ? (
+                  <input
+                    className="input"
+                    type="number"
+                    step="any"
+                    aria-invalid={!!errors[field.id]}
+                    value={value as number}
+                    onChange={(event) => update(Number(event.target.value))}
+                  />
                 ) : null}
                 {field.control === "select" ? (
                   <select

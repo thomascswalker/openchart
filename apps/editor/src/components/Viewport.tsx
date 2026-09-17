@@ -37,6 +37,8 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     togglePlay,
     setPlaybackTick: setPlayheadTick,
     refresh: refreshTotalTicks,
+    stopPreview,
+    setActiveView,
   } = usePlayback();
   const { markDirty } = useEditorCommands();
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
@@ -84,6 +86,13 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
   useEffect(() => {
     chartView?.setPlayheadTick(playheadTick);
   }, [chartView, playheadTick]);
+
+  // Preview voices belong to the piano-roll interaction mode, not to a chart
+  // renderer. Stop them whenever the active mode changes.
+  useEffect(() => {
+    setActiveView(activeViewId);
+    stopPreview();
+  }, [activeViewId, setActiveView, stopPreview]);
 
   // Recompute the playback range whenever notes are added or removed.
   useEffect(() => {

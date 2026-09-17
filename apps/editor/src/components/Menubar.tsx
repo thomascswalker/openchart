@@ -5,6 +5,7 @@ interface MenuItemDefinition {
   id: EditorCommandId;
   label: string;
   accelerator?: string;
+  checkable?: boolean;
 }
 
 interface MenuDefinition {
@@ -16,6 +17,7 @@ interface MenuDefinition {
 interface MenubarProps {
   menus?: MenuDefinition[];
   canExecute: (command: EditorCommandId) => boolean;
+  isChecked?: (command: EditorCommandId) => boolean;
   onCommand: (command: EditorCommandId) => void;
 }
 
@@ -47,6 +49,24 @@ const MENUS: MenuDefinition[] = [
     items: [],
   },
   {
+    id: "playback",
+    label: "Playback",
+    items: [
+      {
+        id: "toggle-metronome",
+        label: "Metronome",
+        accelerator: "M",
+        checkable: true,
+      },
+      {
+        id: "toggle-clap",
+        label: "Highway Clap",
+        accelerator: "N",
+        checkable: true,
+      },
+    ],
+  },
+  {
     id: "window",
     label: "Window",
     items: [{ id: "toggle-debug", label: "Debugger..." }],
@@ -66,6 +86,7 @@ function enabledItemIndexes(
 export function Menubar({
   menus = MENUS,
   canExecute,
+  isChecked,
   onCommand,
 }: MenubarProps) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -280,6 +301,7 @@ export function Menubar({
                 <div id={menuId} className="midi-menubar__popup" role="menu">
                   {menu.items.map((item, itemIndex) => {
                     const disabled = !canExecute(item.id);
+                    const checked = isChecked?.(item.id) ?? false;
                     return (
                       <button
                         ref={(element) => {
@@ -287,10 +309,11 @@ export function Menubar({
                         }}
                         key={item.id}
                         type="button"
-                        role="menuitem"
+                        role={item.checkable ? "menuitemcheckbox" : "menuitem"}
                         className="midi-menubar__item"
                         disabled={disabled}
                         aria-disabled={disabled}
+                        aria-checked={item.checkable ? checked : undefined}
                         data-command={item.id}
                         onClick={() => {
                           if (disabled) return;
@@ -301,7 +324,7 @@ export function Menubar({
                           handleItemKeyDown(event, menuIndex, itemIndex)
                         }
                       >
-                        <span>{item.label}</span>
+                        <span>{checked ? "✓ " : ""}{item.label}</span>
                         {item.accelerator ? (
                           <span className="midi-menubar__accelerator">
                             {item.accelerator}

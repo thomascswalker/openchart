@@ -60,7 +60,15 @@ const laneCount = laneColors.length;
 const poolSizePerLane = 128;
 const poolSizeBeatLines = 64;
 const visibleQuarterNotes = 16;
+
 const strikeLineZ = -3.5;
+const strikeLineScale = { x: 0.5, y: 0.012, z: 0.2 };
+const gemScale = {
+  x: 0.5,
+  y: strikeLineScale.z * 0.25,
+  z: strikeLineScale.z * 0.8,
+};
+
 const farBoardZ = -44;
 const nearBoardZ = 0.5;
 const laneMaterialColors = laneColors.map((color) => Color.fromHex(color));
@@ -448,7 +456,7 @@ export class HighwayView
       padMaterial.baseColor = laneMaterialColors[lane];
       const pad = Mesh3D.createCube(padMaterial);
       pad.position.set(this.getLaneX(lane), -0.035, strikeLineZ);
-      pad.scale.set(0.48, 0.012, 0.2);
+      pad.scale.set(strikeLineScale.x, strikeLineScale.y, strikeLineScale.z);
       this.scene.addChild(pad);
     }
   }
@@ -465,7 +473,7 @@ export class HighwayView
         material.unlit = true;
         material.baseColor = Color.fromHex(color);
         const mesh = Mesh3D.createCube(material);
-        mesh.scale.set(0.48, 0.16, 0.42);
+        mesh.scale.set(gemScale.x, gemScale.y, gemScale.z);
         mesh.visible = false;
         this.scene.addChild(mesh);
         pool.push({ mesh, material, selected: false });
@@ -507,7 +515,7 @@ export class HighwayView
     material.depthMask = false;
     material.baseColor = laneGhostColors[0];
     const mesh = Mesh3D.createCube(material);
-    mesh.scale.set(0.48, 0.16, 0.42);
+    mesh.scale.set(gemScale.x, gemScale.y, gemScale.z);
     mesh.visible = false;
     this.scene.addChild(mesh);
     this.ghostGemMesh = mesh;

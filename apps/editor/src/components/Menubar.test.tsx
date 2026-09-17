@@ -32,6 +32,7 @@ describe("Menubar", () => {
     expect(triggers.map((trigger) => trigger.textContent)).toEqual([
       "File",
       "Edit",
+      "Playback",
       "Window",
     ]);
     triggers[0].click();
@@ -45,6 +46,12 @@ describe("Menubar", () => {
         (button) => button.textContent?.trim(),
       ),
     ).toContain("Settings...Ctrl/Cmd+,");
+    triggers[2].click();
+    expect(
+      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+        (button) => button.textContent?.trim(),
+      ),
+    ).toEqual(["MetronomeM", "Highway ClapN"]);
     triggers[1].click();
     expect(
       container.querySelectorAll("[role=menu] [data-command]"),

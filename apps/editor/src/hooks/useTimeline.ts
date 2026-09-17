@@ -5,6 +5,7 @@ import {
   type TempoChange,
 } from "@midiedit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PlaybackFeedback } from "../audio/usePlaybackFeedback";
 import type { AudioPlayback } from "./useAudioPlayer";
 
 export interface Timeline {
@@ -25,11 +26,13 @@ export interface Timeline {
 interface UseTimelineOptions {
   midiData: Midi | null | undefined;
   audioPlayer: AudioPlayback;
+  feedback: PlaybackFeedback;
 }
 
 export function useTimeline({
   midiData,
   audioPlayer,
+  feedback,
 }: UseTimelineOptions): Timeline {
   const {
     audio,
@@ -94,14 +97,16 @@ export function useTimeline({
       playheadTickRef.current = nextTick;
       setPlaybackTick(nextTick);
       seekAudio(ticksToMs(nextTick, ppqn, tempoChanges) / 1_000);
+      feedback.seek(nextTick);
     },
-    [ppqn, seekAudio, tempoChanges],
+    [feedback, ppqn, seekAudio, tempoChanges],
   );
 
   const pause = useCallback(() => {
     setIsPlaying(false);
     pauseAudio();
-  }, [pauseAudio]);
+    feedback.stop();
+  }, [feedback, pauseAudio]);
 
   useEffect(() => {
     pause();
@@ -122,8 +127,9 @@ export function useTimeline({
     }
 
     setIsPlaying(true);
+    feedback.start(playheadTickRef.current);
     playAudio();
-  }, [canPlay, playAudio, handleSetPlaybackTick, totalTimelineTicks]);
+  }, [canPlay, feedback, playAudio, handleSetPlaybackTick, totalTimelineTicks]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -167,6 +173,7 @@ export function useTimeline({
 
         playheadTickRef.current = currentTick;
         setPlaybackTick(currentTick);
+        feedback.updateTick(currentTick);
 
         if (totalTimelineTicks > 0 && currentTick >= totalTimelineTicks) {
           pause();
@@ -191,6 +198,7 @@ export function useTimeline({
 
           playheadTickRef.current = nextTick;
           setPlaybackTick(nextTick);
+          feedback.updateTick(nextTick);
         }
       }
 
@@ -204,7 +212,7 @@ export function useTimeline({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [audio, isPlaying, pause, ppqn, tempoChanges, totalTimelineTicks]);
+  }, [audio, feedback, isPlaying, pause, ppqn, tempoChanges, totalTimelineTicks]);
 
   return {
     isPlaying,

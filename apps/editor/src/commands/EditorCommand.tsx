@@ -76,6 +76,8 @@ export type EditorCommandId =
   | "save"
   | "save-as"
   | "export"
+  | "toggle-metronome"
+  | "toggle-clap"
   | "project"
   | "settings"
   | "open-audio"
@@ -159,7 +161,12 @@ export function EditorCommandProvider({
     projectMetadata,
     setProjectMetadata,
   } = useEditor();
-  const { setAudio, setAudioFileName } = usePlayback();
+  const {
+    setAudio,
+    setAudioFileName,
+    toggleMetronome,
+    toggleClap,
+  } = usePlayback();
   const { settings } = useApplicationSettings();
   const audioFileRef = useRef<HTMLInputElement>(null);
   const audioLoadRef = useRef(0);
@@ -202,6 +209,8 @@ export function EditorCommandProvider({
       save: canSave,
       "save-as": canSave,
       export: canSave,
+      "toggle-metronome": true,
+      "toggle-clap": true,
       project: true,
       settings: true,
       "open-audio": true,
@@ -581,6 +590,12 @@ export function EditorCommandProvider({
           case "export":
             await exportMidi();
             return;
+          case "toggle-metronome":
+            toggleMetronome();
+            return;
+          case "toggle-clap":
+            toggleClap();
+            return;
           case "project":
             setProjectVisible(true);
             return;
@@ -633,12 +648,29 @@ export function EditorCommandProvider({
       setFileName,
       setMidiData,
       setProjectMetadata,
+      toggleClap,
+      toggleMetronome,
     ],
   );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || isTypingTarget(event.target)) {
+        return;
+      }
+
+      if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+        const key = event.key.toLowerCase();
+        const command: EditorCommandId | null =
+          key === "m"
+            ? "toggle-metronome"
+            : key === "n"
+              ? "toggle-clap"
+              : null;
+        if (command) {
+          event.preventDefault();
+          void dispatch(command);
+        }
         return;
       }
 
