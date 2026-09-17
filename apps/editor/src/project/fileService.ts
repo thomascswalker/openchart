@@ -96,15 +96,13 @@ export function openFile(types: FileType[]): Promise<OpenedFile | null> {
         resolve(null);
         return;
       }
-      void file
-        .arrayBuffer()
-        .then((buffer) =>
-          resolve({
-            name: file.name,
-            bytes: new Uint8Array(buffer),
-            handle: null,
-          }),
-        );
+      void file.arrayBuffer().then((buffer) =>
+        resolve({
+          name: file.name,
+          bytes: new Uint8Array(buffer),
+          handle: null,
+        }),
+      );
     };
     input.click();
   });
