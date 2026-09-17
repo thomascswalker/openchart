@@ -15,6 +15,18 @@ export interface ApplicationSettings {
     rootPath: string;
     multitrack: boolean;
   };
+  feedback: {
+    metronomeEnabled: boolean;
+    metronomeVolume: number;
+    metronomeDownbeatSound: OscillatorType;
+    metronomeBeatSound: OscillatorType;
+    previewVolume: number;
+    previewAttackMs: number;
+    previewReleaseMs: number;
+    previewMaxVoices: number;
+    previewLowPitch: number;
+    previewHighPitch: number;
+  };
   discovery: {
     songRegex: string;
     leadRegex: string;
@@ -31,6 +43,19 @@ export interface ApplicationSettings {
 export const defaultApplicationSettings: ApplicationSettings = {
   version: APPLICATION_SETTINGS_VERSION,
   audio: { rootPath: "~", multitrack: false },
+  feedback: {
+    metronomeEnabled: false,
+    metronomeVolume: 0.35,
+    metronomeDownbeatSound: "square",
+    metronomeBeatSound: "sine",
+    previewVolume: 0.25,
+    previewAttackMs: 8,
+    previewReleaseMs: 80,
+    previewMaxVoices: 8,
+    // Inclusive MIDI pitch bounds: C2 through C4.
+    previewLowPitch: 36,
+    previewHighPitch: 60,
+  },
   discovery: {
     songRegex: "song",
     leadRegex: "lead",
@@ -51,6 +76,49 @@ export function validateApplicationSettings(
   }
   if (!settings.audio.rootPath.trim()) {
     errors.rootPath = "Audio Path is required.";
+  }
+  if (
+    !Number.isFinite(settings.feedback.metronomeVolume) ||
+    settings.feedback.metronomeVolume < 0 ||
+    settings.feedback.metronomeVolume > 1
+  ) {
+    errors.metronomeVolume = "Metronome volume must be between 0 and 1.";
+  }
+  if (
+    !Number.isFinite(settings.feedback.previewVolume) ||
+    settings.feedback.previewVolume < 0 ||
+    settings.feedback.previewVolume > 1
+  ) {
+    errors.previewVolume = "Preview volume must be between 0 and 1.";
+  }
+  if (
+    !["sine", "square", "sawtooth", "triangle"].includes(
+      settings.feedback.metronomeDownbeatSound,
+    ) ||
+    !["sine", "square", "sawtooth", "triangle"].includes(
+      settings.feedback.metronomeBeatSound,
+    )
+  ) {
+    errors.metronomeDownbeatSound = "Choose a supported metronome sound.";
+    errors.metronomeBeatSound = "Choose a supported metronome sound.";
+  }
+  if (
+    !Number.isInteger(settings.feedback.previewMaxVoices) ||
+    settings.feedback.previewMaxVoices < 1
+  ) {
+    errors.previewMaxVoices = "Preview voice count must be at least 1.";
+  }
+  if (
+    !Number.isInteger(settings.feedback.previewLowPitch) ||
+    !Number.isInteger(settings.feedback.previewHighPitch) ||
+    settings.feedback.previewLowPitch < 0 ||
+    settings.feedback.previewHighPitch > 127 ||
+    settings.feedback.previewLowPitch > settings.feedback.previewHighPitch
+  ) {
+    errors.previewLowPitch =
+      "Preview pitch range must be inclusive MIDI pitches 0–127.";
+    errors.previewHighPitch =
+      "Preview pitch range must be inclusive MIDI pitches 0–127.";
   }
   const discoveryFields = settings.audio.multitrack
     ? Object.entries(settings.discovery).filter(
@@ -75,10 +143,16 @@ function readSettings(): ApplicationSettings {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return defaultApplicationSettings;
     const parsed = JSON.parse(stored) as ApplicationSettings;
+    const storedFeedback = Object.fromEntries(
+      Object.entries(parsed.feedback ?? {}).filter(
+        ([key]) => key !== "highwayClapEnabled" && key !== "highwayClapVolume",
+      ),
+    );
     const merged: ApplicationSettings = {
       ...defaultApplicationSettings,
       ...parsed,
       audio: { ...defaultApplicationSettings.audio, ...parsed.audio },
+      feedback: { ...defaultApplicationSettings.feedback, ...storedFeedback },
       discovery: {
         ...defaultApplicationSettings.discovery,
         ...parsed.discovery,

@@ -32,13 +32,13 @@ function renderProject(): { container: HTMLDivElement; root: Root } {
   act(() =>
     root.render(
       <EditorProvider>
-        <PlaybackProvider>
-          <ApplicationSettingsProvider>
+        <ApplicationSettingsProvider>
+          <PlaybackProvider>
             <EditorCommandProvider>
               <ProjectTestShell />
             </EditorCommandProvider>
-          </ApplicationSettingsProvider>
-        </PlaybackProvider>
+          </PlaybackProvider>
+        </ApplicationSettingsProvider>
       </EditorProvider>,
     ),
   );

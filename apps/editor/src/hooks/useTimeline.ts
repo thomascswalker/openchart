@@ -5,6 +5,7 @@ import {
   type TempoChange,
 } from "@midiedit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PlaybackFeedback } from "../audio/usePlaybackFeedback";
 import type { AudioPlayback } from "./useAudioPlayer";
 
 export interface Timeline {
@@ -25,11 +26,13 @@ export interface Timeline {
 interface UseTimelineOptions {
   midiData: Midi | null | undefined;
   audioPlayer: AudioPlayback;
+  feedback: PlaybackFeedback;
 }
 
 export function useTimeline({
   midiData,
   audioPlayer,
+  feedback,
 }: UseTimelineOptions): Timeline {
   const {
     audio,
@@ -54,6 +57,11 @@ export function useTimeline({
   );
   const playheadTickRef = useRef(playbackTick);
   playheadTickRef.current = playbackTick;
+  // Feedback settings can change while playback is active. Keep the current
+  // engine behind a ref so toggling a sound does not recreate the callbacks
+  // that own the timeline lifecycle and reset the document to tick zero.
+  const feedbackRef = useRef(feedback);
+  feedbackRef.current = feedback;
   const animationRef = useRef<number | null>(null);
   const lastFrameMsRef = useRef<number | null>(null);
 
@@ -94,6 +102,7 @@ export function useTimeline({
       playheadTickRef.current = nextTick;
       setPlaybackTick(nextTick);
       seekAudio(ticksToMs(nextTick, ppqn, tempoChanges) / 1_000);
+      feedbackRef.current.seek(nextTick);
     },
     [ppqn, seekAudio, tempoChanges],
   );
@@ -101,6 +110,7 @@ export function useTimeline({
   const pause = useCallback(() => {
     setIsPlaying(false);
     pauseAudio();
+    feedbackRef.current.stop();
   }, [pauseAudio]);
 
   useEffect(() => {
@@ -122,6 +132,7 @@ export function useTimeline({
     }
 
     setIsPlaying(true);
+    feedbackRef.current.start(playheadTickRef.current);
     playAudio();
   }, [canPlay, playAudio, handleSetPlaybackTick, totalTimelineTicks]);
 
@@ -167,6 +178,7 @@ export function useTimeline({
 
         playheadTickRef.current = currentTick;
         setPlaybackTick(currentTick);
+        feedbackRef.current.updateTick(currentTick);
 
         if (totalTimelineTicks > 0 && currentTick >= totalTimelineTicks) {
           pause();
@@ -191,6 +203,7 @@ export function useTimeline({
 
           playheadTickRef.current = nextTick;
           setPlaybackTick(nextTick);
+          feedbackRef.current.updateTick(nextTick);
         }
       }
 
