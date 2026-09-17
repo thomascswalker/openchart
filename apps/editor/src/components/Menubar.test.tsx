@@ -20,6 +20,39 @@ async function settle(): Promise<void> {
 }
 
 describe("Menubar", () => {
+  it("places Project and app Settings in File while leaving Edit empty", () => {
+    const { container, root } = render(
+      <Menubar canExecute={() => true} onCommand={() => {}} />,
+    );
+    const triggers = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"]',
+      ),
+    ];
+    expect(triggers.map((trigger) => trigger.textContent)).toEqual([
+      "File",
+      "Edit",
+      "Window",
+    ]);
+    triggers[0].click();
+    expect(
+      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+        (button) => button.textContent?.trim(),
+      ),
+    ).toContain("Project...");
+    expect(
+      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+        (button) => button.textContent?.trim(),
+      ),
+    ).toContain("Settings...Ctrl/Cmd+,");
+    triggers[1].click();
+    expect(
+      container.querySelectorAll("[role=menu] [data-command]"),
+    ).toHaveLength(0);
+    root.unmount();
+    container.remove();
+  });
+
   it("opens with the keyboard, skips disabled items, and returns focus on Escape", async () => {
     const onCommand = vi.fn();
     const { container, root } = render(

@@ -8,6 +8,7 @@ import {
 import { Workspace } from "./Workspace";
 import { Menubar } from "./Menubar";
 import { SettingsDialog } from "./SettingsDialog";
+import { ProjectDialog } from "./ProjectDialog";
 
 import "./styles.css";
 
@@ -26,8 +27,13 @@ const Editor = () => {
 };
 
 const EditorShell = () => {
-  const { debugVisible, settingsVisible, canExecute, dispatch } =
-    useEditorCommands();
+  const {
+    debugVisible,
+    projectVisible,
+    settingsVisible,
+    canExecute,
+    dispatch,
+  } = useEditorCommands();
 
   return (
     <div className="midi-editor">
@@ -39,6 +45,7 @@ const EditorShell = () => {
         debugVisible={debugVisible}
         onDebugClose={() => void dispatch("close-debug")}
       />
+      {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}
     </div>
   );

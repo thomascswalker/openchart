@@ -29,20 +29,34 @@ import {
 import { headerParser, trackParser } from "./parsers.js";
 import * as ini from "ini";
 
+/** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
+ * these deliberately do not depend on Node's Buffer global. */
 function encodeBase64(bytes: Uint8Array): string {
-  return bytes.length === 0 ? "-" : Buffer.from(bytes).toString("base64url");
+  if (bytes.length === 0) return "-";
+
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }
 
 function decodeBase64(value: string): Uint8Array {
-  if (value === "-") {
-    return new Uint8Array(0);
-  }
-
+  if (value === "-") return new Uint8Array(0);
   if (!/^[A-Za-z0-9_-]+$/.test(value)) {
     throw new Error(`Invalid base64 MIDI payload: ${value}`);
   }
 
-  return new Uint8Array(Buffer.from(value, "base64url"));
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  let binary: string;
+  try {
+    binary = atob(padded);
+  } catch {
+    throw new Error(`Invalid base64 MIDI payload: ${value}`);
+  }
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
 function parseInteger(value: string, field: string): number {

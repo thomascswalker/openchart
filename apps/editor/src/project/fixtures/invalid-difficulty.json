@@ -1,0 +1,26 @@
+{
+  "Version": 1,
+  "ID": "invalid-difficulty",
+  "Song": {
+    "Name": "",
+    "Artist": "",
+    "Album": "",
+    "Genre": "",
+    "Year": 0,
+    "AlbumTrack": 1,
+    "Cover": false,
+    "CoverArtist": "",
+    "VocalGender": ""
+  },
+  "Chart": { "Author": "", "PreviewStart": 0, "PreviewEnd": 0 },
+  "Difficulty": {
+    "Band": 8,
+    "LeadGuitar": 0,
+    "BassGuitar": 0,
+    "Drums": 0,
+    "ProDrums": 0,
+    "Vocals": 0,
+    "Harmony": 0
+  },
+  "Credits": { "Publisher": "", "Writer": "" }
+}

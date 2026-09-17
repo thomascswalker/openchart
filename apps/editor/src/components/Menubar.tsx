@@ -33,12 +33,18 @@ const MENUS: MenuDefinition[] = [
         accelerator: "Ctrl/Cmd+Shift+S",
       },
       { id: "export", label: "Export" },
+      { id: "project", label: "Project..." },
+      {
+        id: "settings",
+        label: "Settings...",
+        accelerator: "Ctrl/Cmd+,",
+      },
     ],
   },
   {
     id: "edit",
     label: "Edit",
-    items: [{ id: "settings", label: "Settings", accelerator: "Ctrl/Cmd+," }],
+    items: [],
   },
   {
     id: "window",
