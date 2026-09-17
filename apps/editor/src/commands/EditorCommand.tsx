@@ -29,12 +29,38 @@ import {
   saveAudioDirectoryHandle,
   supportsDirectoryPicker,
 } from "../util/audioDirectoryHandle";
+import { openFile, saveBytes } from "../project/fileService";
+import {
+  createProjectDocument,
+  deserializeProject,
+  exportMidi as exportProjectMidi,
+  serializeProject,
+  type ProjectDocument,
+} from "../project/projectService";
+import {
+  createProjectMetadata,
+  ProjectValidationError,
+  type ProjectValidationIssue,
+  validateProjectMetadata,
+} from "../project/projectMetadata";
 
 const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
     description: "MIDI file",
     accept: { "audio/midi": [".mid", ".midi"] },
   },
+];
+
+const PROJECT_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
+  {
+    description: "MIDI project",
+    accept: { "application/zip": [".midproject"] },
+  },
+];
+
+const OPEN_DOCUMENT_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
+  ...PROJECT_FILE_PICKER_TYPES,
+  ...MIDI_FILE_PICKER_TYPES,
 ];
 
 const WAV_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
@@ -50,18 +76,21 @@ export type EditorCommandId =
   | "save"
   | "save-as"
   | "export"
+  | "project"
   | "settings"
   | "open-audio"
   | "refresh-audio"
   | "select-audio-folder"
   | "toggle-debug"
   | "close-debug"
+  | "close-project"
   | "close-settings";
 
 export interface ActiveDocument {
   midiData: Midi | null;
   fileName: string | null;
   fileHandle: FileSystemFileHandle | null;
+  document: ProjectDocument | null;
 }
 
 export type CommandAvailability = Record<EditorCommandId, boolean>;
@@ -71,6 +100,7 @@ export interface EditorCommandContextValue {
   isDirty: boolean;
   error: string | null;
   debugVisible: boolean;
+  projectVisible: boolean;
   settingsVisible: boolean;
   canExecute: CommandAvailability;
   audioDirectoryName: string | null;
@@ -78,43 +108,15 @@ export interface EditorCommandContextValue {
   listDiscoveredAudioFileNames: () => Promise<string[] | null>;
   dispatch: (command: EditorCommandId) => Promise<void>;
   markDirty: () => void;
+  /** Applies validated project.json metadata without exposing archive details to UI. */
+  applyProjectMetadata: (
+    metadata: unknown,
+  ) => readonly ProjectValidationIssue[];
   clearError: () => void;
 }
 
 interface EditorCommandProviderProps {
   children: ReactNode;
-}
-
-interface LoadedFile {
-  file: File;
-  data: ArrayBuffer;
-  handle: FileSystemFileHandle | null;
-}
-
-function supportsFileSystemAccess(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.showOpenFilePicker === "function" &&
-    typeof window.showSaveFilePicker === "function"
-  );
-}
-
-function toArrayBuffer(data: Uint8Array): ArrayBuffer {
-  return data.buffer.slice(
-    data.byteOffset,
-    data.byteOffset + data.byteLength,
-  ) as ArrayBuffer;
-}
-
-function downloadBuffer(data: Uint8Array, name: string): void {
-  const url = URL.createObjectURL(
-    new Blob([toArrayBuffer(data)], { type: "audio/midi" }),
-  );
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 function isAbortError(error: unknown): boolean {
@@ -135,8 +137,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-function hasExtension(file: File, extensions: string[]): boolean {
-  const name = file.name.toLowerCase();
+function hasExtension(fileName: string, extensions: string[]): boolean {
+  const name = fileName.toLowerCase();
   return extensions.some((extension) => name.endsWith(extension));
 }
 
@@ -154,16 +156,17 @@ export function EditorCommandProvider({
     setFileName,
     fileHandle,
     setFileHandle,
+    projectMetadata,
+    setProjectMetadata,
   } = useEditor();
   const { setAudio, setAudioFileName } = usePlayback();
   const { settings } = useApplicationSettings();
-  const midiFileRef = useRef<HTMLInputElement>(null);
   const audioFileRef = useRef<HTMLInputElement>(null);
-  const midiLoadRef = useRef(0);
   const audioLoadRef = useRef(0);
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugVisible, setDebugVisible] = useState(false);
+  const [projectVisible, setProjectVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [audioDirectoryHandle, setAudioDirectoryHandle] =
     useState<FileSystemDirectoryHandle | null>(null);
@@ -173,9 +176,22 @@ export function EditorCommandProvider({
     void loadAudioDirectoryHandle().then(setAudioDirectoryHandle);
   }, []);
 
+  const projectDocument = useMemo<ProjectDocument | null>(
+    () =>
+      midiData
+        ? createProjectDocument(
+            midiData,
+            projectMetadata,
+            { fileName, fileHandle },
+            isDirty,
+          )
+        : null,
+    [fileHandle, fileName, isDirty, midiData, projectMetadata],
+  );
+
   const activeDocument = useMemo<ActiveDocument>(
-    () => ({ midiData, fileName, fileHandle }),
-    [fileHandle, fileName, midiData],
+    () => ({ midiData, fileName, fileHandle, document: projectDocument }),
+    [fileHandle, fileName, midiData, projectDocument],
   );
 
   const canSave = midiData!.trackCount !== 0 || false;
@@ -186,6 +202,7 @@ export function EditorCommandProvider({
       save: canSave,
       "save-as": canSave,
       export: canSave,
+      project: true,
       settings: true,
       "open-audio": true,
       "refresh-audio": !settings.audio.multitrack,
@@ -193,11 +210,13 @@ export function EditorCommandProvider({
         audioDirectorySupported && !settings.audio.multitrack,
       "toggle-debug": true,
       "close-debug": debugVisible,
+      "close-project": projectVisible,
       "close-settings": settingsVisible,
     }),
     [
       canSave,
       debugVisible,
+      projectVisible,
       settingsVisible,
       settings.audio.multitrack,
       audioDirectorySupported,
@@ -207,6 +226,35 @@ export function EditorCommandProvider({
   const markDirty = useCallback(() => {
     setIsDirty(true);
   }, []);
+
+  const applyProjectMetadata = useCallback(
+    (metadata: unknown): readonly ProjectValidationIssue[] => {
+      try {
+        setProjectMetadata(validateProjectMetadata(metadata));
+        setIsDirty(true);
+        setError(null);
+        return [];
+      } catch (validationError) {
+        const issues =
+          validationError instanceof ProjectValidationError
+            ? validationError.issues
+            : [
+                {
+                  path: "$",
+                  message: errorMessage(
+                    validationError,
+                    "Project metadata is invalid.",
+                  ),
+                },
+              ];
+        setError(
+          issues.map((item) => `${item.path}: ${item.message}`).join("\n"),
+        );
+        return issues;
+      }
+    },
+    [setProjectMetadata],
+  );
 
   const clearError = useCallback(() => {
     setError(null);
@@ -223,24 +271,33 @@ export function EditorCommandProvider({
   }, [isDirty]);
 
   const loadMidi = useCallback(
-    ({ file, data, handle }: LoadedFile): void => {
-      if (!hasExtension(file, [".mid", ".midi"])) {
+    ({
+      name,
+      bytes,
+      handle,
+    }: {
+      name: string;
+      bytes: Uint8Array;
+      handle: FileSystemFileHandle | null;
+    }): void => {
+      if (!hasExtension(name, [".mid", ".midi"])) {
         throw new Error("Choose a MIDI file (.mid or .midi).");
       }
 
-      const parsed = new Midi(new Uint8Array(data));
+      const parsed = new Midi(bytes);
       setMidiData(parsed);
-      setFileName(file.name);
+      setProjectMetadata(createProjectMetadata(name.replace(/\.midi?$/i, "")));
+      setFileName(name);
       setFileHandle(handle);
       setIsDirty(false);
       setError(null);
     },
-    [setFileHandle, setFileName, setMidiData],
+    [setFileHandle, setFileName, setMidiData, setProjectMetadata],
   );
 
   const loadAudio = useCallback(
-    ({ file }: LoadedFile): void => {
-      if (!hasExtension(file, [".wav"])) {
+    ({ file }: { file: File }): void => {
+      if (!hasExtension(file.name, [".wav"])) {
         throw new Error("Choose a WAV audio file (.wav).");
       }
 
@@ -334,56 +391,29 @@ export function EditorCommandProvider({
     setAudioDirectoryHandle(handle);
   }, []);
 
-  const openPicker = useCallback(
+  // Audio still needs the browser File object for ts-audio. Document files use
+  // the target-neutral project file service above.
+  const openAudioPicker = useCallback(
     (
       types: FilePickerAcceptType[],
       fallbackInput: RefObject<HTMLInputElement | null>,
-      onLoad: (loadedFile: LoadedFile) => void,
     ): void => {
-      if (supportsFileSystemAccess()) {
-        void (async () => {
-          try {
-            const [handle] = await window.showOpenFilePicker!({ types });
+      if (typeof window.showOpenFilePicker === "function") {
+        void window
+          .showOpenFilePicker({ types })
+          .then(async ([handle]) => {
             const file = await handle.getFile();
-            onLoad({ file, data: await file.arrayBuffer(), handle });
-          } catch (loadError: unknown) {
-            if (!isAbortError(loadError)) {
-              setError(errorMessage(loadError, "Failed to open file."));
-            }
-          }
-        })();
+            loadAudio({ file });
+          })
+          .catch((loadError: unknown) => {
+            if (!isAbortError(loadError))
+              setError(errorMessage(loadError, "Failed to open audio file."));
+          });
         return;
       }
-
       fallbackInput.current?.click();
     },
-    [],
-  );
-
-  const handleMidiFileLoad = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      const file = event.target.files?.[0];
-      event.target.value = "";
-      if (!file) {
-        return;
-      }
-
-      const requestId = ++midiLoadRef.current;
-      void file
-        .arrayBuffer()
-        .then((data) => {
-          if (requestId !== midiLoadRef.current) {
-            return;
-          }
-          loadMidi({ file, data, handle: null });
-        })
-        .catch((loadError: unknown) => {
-          if (requestId === midiLoadRef.current) {
-            setError(errorMessage(loadError, "Failed to open MIDI file."));
-          }
-        });
-    },
-    [loadMidi],
+    [loadAudio],
   );
 
   const handleAudioFileLoad = useCallback(
@@ -397,11 +427,11 @@ export function EditorCommandProvider({
       const requestId = ++audioLoadRef.current;
       void file
         .arrayBuffer()
-        .then((data) => {
+        .then(() => {
           if (requestId !== audioLoadRef.current) {
             return;
           }
-          loadAudio({ file, data, handle: null });
+          loadAudio({ file });
         })
         .catch((loadError: unknown) => {
           if (requestId === audioLoadRef.current) {
@@ -412,54 +442,108 @@ export function EditorCommandProvider({
     [loadAudio],
   );
 
-  const saveAs = useCallback(async (): Promise<void> => {
-    if (!canSave) {
-      throw new Error("There is no MIDI document to save.");
-    }
-
-    const data = midiData!.toBuffer();
-    const suggestedName = fileName ?? "untitled.mid";
-
-    if (supportsFileSystemAccess()) {
-      const handle = await window.showSaveFilePicker!({
-        types: MIDI_FILE_PICKER_TYPES,
-        suggestedName,
+  const loadProject = useCallback(
+    async ({
+      name,
+      bytes,
+      handle,
+    }: {
+      name: string;
+      bytes: Uint8Array;
+      handle: FileSystemFileHandle | null;
+    }): Promise<void> => {
+      const document = await deserializeProject(bytes, {
+        fileName: name,
+        fileHandle: handle,
       });
-      const writable = await handle.createWritable();
-      await writable.write(toArrayBuffer(data));
-      await writable.close();
+      setMidiData(document.midi);
+      setProjectMetadata(document.metadata);
+      setFileName(name);
       setFileHandle(handle);
-      setFileName(handle.name);
-    } else {
-      downloadBuffer(data, suggestedName);
-    }
+      setIsDirty(false);
+    },
+    [setFileHandle, setFileName, setMidiData, setProjectMetadata],
+  );
 
+  const saveAs = useCallback(async (): Promise<void> => {
+    if (!canSave || !projectDocument)
+      throw new Error("There is no MIDI document to save.");
+    const saveAsProject = settings.saving.defaultSaveMode === "project";
+    const exportResult = saveAsProject
+      ? null
+      : exportProjectMidi(projectDocument);
+    const suggestedName = saveAsProject
+      ? `${(fileName ?? projectMetadata.Song.Name ?? "untitled").replace(/\.(midproject|midi?)$/i, "")}.midproject`
+      : exportResult!.suggestedName;
+    const bytes = saveAsProject
+      ? await serializeProject(projectDocument)
+      : exportResult!.bytes;
+    const saved = await saveBytes(
+      bytes,
+      suggestedName,
+      saveAsProject ? PROJECT_FILE_PICKER_TYPES : MIDI_FILE_PICKER_TYPES,
+      saveAsProject ? "application/zip" : "audio/midi",
+    );
+    setFileHandle(saved.handle);
+    setFileName(saved.name);
     setIsDirty(false);
-  }, [canSave, fileName, midiData, setFileHandle, setFileName]);
+  }, [
+    canSave,
+    fileName,
+    projectDocument,
+    projectMetadata.Song.Name,
+    setFileHandle,
+    setFileName,
+    settings.saving.defaultSaveMode,
+  ]);
 
   const save = useCallback(async (): Promise<void> => {
-    if (!canSave) {
+    if (!canSave || !projectDocument)
       throw new Error("There is no MIDI document to save.");
-    }
-
     if (!fileHandle) {
       await saveAs();
       return;
     }
-
-    const writable = await fileHandle.createWritable();
-    await writable.write(toArrayBuffer(midiData!.toBuffer()));
-    await writable.close();
+    const saveAsMidi = hasExtension(fileName ?? fileHandle.name, [
+      ".mid",
+      ".midi",
+    ]);
+    const exportResult = saveAsMidi ? exportProjectMidi(projectDocument) : null;
+    const bytes = saveAsMidi
+      ? exportResult!.bytes
+      : await serializeProject(projectDocument);
+    const saved = await saveBytes(
+      bytes,
+      fileHandle.name,
+      saveAsMidi ? MIDI_FILE_PICKER_TYPES : PROJECT_FILE_PICKER_TYPES,
+      saveAsMidi ? "audio/midi" : "application/zip",
+      fileHandle,
+    );
+    setFileName(saved.name);
     setIsDirty(false);
-  }, [canSave, fileHandle, midiData, saveAs]);
+  }, [canSave, fileHandle, fileName, projectDocument, saveAs, setFileName]);
 
-  const exportMidi = useCallback((): void => {
-    if (!canSave) {
+  const exportMidi = useCallback(async (): Promise<void> => {
+    if (!canSave || !projectDocument)
       throw new Error("There is no MIDI document to export.");
-    }
+    const result = exportProjectMidi(projectDocument);
+    await saveBytes(
+      result.bytes,
+      result.suggestedName,
+      MIDI_FILE_PICKER_TYPES,
+      "audio/midi",
+    );
+  }, [canSave, projectDocument]);
 
-    downloadBuffer(midiData!.toBuffer(), fileName ?? "untitled.mid");
-  }, [canSave, fileName, midiData]);
+  const openDocument = useCallback(async (): Promise<void> => {
+    const opened = await openFile(OPEN_DOCUMENT_FILE_PICKER_TYPES);
+    if (!opened) return;
+    if (hasExtension(opened.name, [".midproject"])) {
+      await loadProject(opened);
+    } else {
+      loadMidi(opened);
+    }
+  }, [loadMidi, loadProject]);
 
   const dispatch = useCallback(
     async (command: EditorCommandId): Promise<void> => {
@@ -477,6 +561,7 @@ export function EditorCommandProvider({
               return;
             }
             setMidiData(new Midi());
+            setProjectMetadata(createProjectMetadata());
             setFileName(null);
             setFileHandle(null);
             setIsDirty(false);
@@ -485,7 +570,7 @@ export function EditorCommandProvider({
             if (!canDiscardChanges()) {
               return;
             }
-            openPicker(MIDI_FILE_PICKER_TYPES, midiFileRef, loadMidi);
+            await openDocument();
             return;
           case "save":
             await save();
@@ -494,13 +579,16 @@ export function EditorCommandProvider({
             await saveAs();
             return;
           case "export":
-            exportMidi();
+            await exportMidi();
+            return;
+          case "project":
+            setProjectVisible(true);
             return;
           case "settings":
             setSettingsVisible(true);
             return;
           case "open-audio":
-            openPicker(WAV_FILE_PICKER_TYPES, audioFileRef, loadAudio);
+            openAudioPicker(WAV_FILE_PICKER_TYPES, audioFileRef);
             return;
           case "refresh-audio":
             await discoverAudio({ reportMissing: true });
@@ -514,6 +602,9 @@ export function EditorCommandProvider({
             return;
           case "close-debug":
             setDebugVisible(false);
+            return;
+          case "close-project":
+            setProjectVisible(false);
             return;
           case "close-settings":
             setSettingsVisible(false);
@@ -533,14 +624,15 @@ export function EditorCommandProvider({
       discoverAudio,
       exportMidi,
       loadAudio,
-      loadMidi,
-      openPicker,
+      openAudioPicker,
+      openDocument,
       save,
       saveAs,
       selectAudioFolder,
       setFileHandle,
       setFileName,
       setMidiData,
+      setProjectMetadata,
     ],
   );
 
@@ -586,6 +678,7 @@ export function EditorCommandProvider({
       isDirty,
       error,
       debugVisible,
+      projectVisible,
       settingsVisible,
       canExecute,
       audioDirectoryName: audioDirectoryHandle?.name ?? null,
@@ -593,15 +686,18 @@ export function EditorCommandProvider({
       listDiscoveredAudioFileNames,
       dispatch,
       markDirty,
+      applyProjectMetadata,
       clearError,
     }),
     [
       activeDocument,
+      applyProjectMetadata,
       audioDirectoryHandle,
       audioDirectorySupported,
       canExecute,
       clearError,
       debugVisible,
+      projectVisible,
       dispatch,
       error,
       isDirty,
@@ -614,14 +710,6 @@ export function EditorCommandProvider({
   return (
     <EditorCommandContext.Provider value={value}>
       {children}
-      <input
-        ref={midiFileRef}
-        type="file"
-        accept=".mid,.midi"
-        onChange={handleMidiFileLoad}
-        hidden
-        aria-hidden="true"
-      />
       <input
         ref={audioFileRef}
         type="file"

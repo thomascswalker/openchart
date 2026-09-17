@@ -1,0 +1,26 @@
+{
+  "Version": 1,
+  "ID": "invalid-preview",
+  "Song": {
+    "Name": "",
+    "Artist": "",
+    "Album": "",
+    "Genre": "",
+    "Year": 0,
+    "AlbumTrack": 1,
+    "Cover": false,
+    "CoverArtist": "",
+    "VocalGender": ""
+  },
+  "Chart": { "Author": "", "PreviewStart": 10, "PreviewEnd": 5 },
+  "Difficulty": {
+    "Band": 0,
+    "LeadGuitar": 0,
+    "BassGuitar": 0,
+    "Drums": 0,
+    "ProDrums": 0,
+    "Vocals": 0,
+    "Harmony": 0
+  },
+  "Credits": { "Publisher": "", "Writer": "" }
+}

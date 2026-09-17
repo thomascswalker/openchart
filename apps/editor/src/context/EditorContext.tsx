@@ -1,6 +1,10 @@
 import { Midi } from "@midiedit/core";
 import { Difficulty } from "@midiedit/views";
 import { createContext, useContext, useState } from "react";
+import {
+  createProjectMetadata,
+  type ProjectMetadata,
+} from "../project/projectMetadata";
 import type { ProviderProps } from "./shared";
 
 // Define the shape of our global state
@@ -13,6 +17,9 @@ interface EditorContextType {
 
   fileHandle: FileSystemFileHandle | null;
   setFileHandle: (handle: FileSystemFileHandle | null) => void;
+
+  projectMetadata: ProjectMetadata;
+  setProjectMetadata: (metadata: ProjectMetadata) => void;
 
   trackCount: number;
   setTrackCount: (count: number) => void;
@@ -34,6 +41,9 @@ export function EditorProvider({ children }: ProviderProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
     null,
+  );
+  const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata>(() =>
+    createProjectMetadata(),
   );
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(
     null,
@@ -58,6 +68,8 @@ export function EditorProvider({ children }: ProviderProps) {
         setFileName,
         fileHandle,
         setFileHandle,
+        projectMetadata,
+        setProjectMetadata,
         selectedTrackIndex,
         setSelectedTrackIndex,
         selectedInstrument,

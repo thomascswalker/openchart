@@ -1,4 +1,10 @@
-export { ChannelMessage, MidiChannelEvent } from "./types.js";
+export {
+  ChannelMessage,
+  MetaType,
+  type MidiChannelEvent,
+  type MidiEvent,
+  type MidiMetaEvent,
+} from "./types.js";
 export {
   Midi,
   MidiFormat,
