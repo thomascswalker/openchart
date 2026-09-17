@@ -50,7 +50,7 @@ function migrateMetadata(value: unknown): ProjectMetadata {
     ]);
   }
   let migrated = { ...(value as Record<string, unknown>) };
-  const version = migrated.Version;
+  const version: number = migrated.Version as number;
   if (!Number.isInteger(version)) {
     throw new ProjectValidationError([
       { path: "$.Version", message: "must be an integer" },
@@ -125,7 +125,7 @@ export async function deserializeProject(
   const entries = readZip(bytes);
   const metadataBytes = requireEntry(entries, PROJECT_ARCHIVE_METADATA_ENTRY);
   const midiBytes = requireEntry(entries, PROJECT_ARCHIVE_MIDI_ENTRY);
-  let rawMetadata: unknown;
+  let rawMetadata: any;
   try {
     rawMetadata = JSON.parse(
       new TextDecoder("utf-8", { fatal: true }).decode(metadataBytes),

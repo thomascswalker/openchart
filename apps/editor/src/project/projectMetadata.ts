@@ -37,11 +37,12 @@ export interface ProjectValidationIssue {
 }
 
 export class ProjectValidationError extends Error {
-  public constructor(
-    public readonly issues: readonly ProjectValidationIssue[],
-  ) {
+  public readonly issues: readonly ProjectValidationIssue[];
+
+  public constructor(issues: readonly ProjectValidationIssue[]) {
     super(issues.map((issue) => `${issue.path}: ${issue.message}`).join("\n"));
     this.name = "ProjectValidationError";
+    this.issues = issues;
   }
 }
 
@@ -82,7 +83,7 @@ function integerAt(
     issue(issues, `${path}.${key}`, "must be an integer");
     return 0;
   }
-  return value;
+  return value as number;
 }
 
 function finiteAt(

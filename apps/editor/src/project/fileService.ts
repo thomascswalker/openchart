@@ -47,7 +47,7 @@ export function downloadBytes(
 export async function saveBytes(
   bytes: Uint8Array,
   suggestedName: string,
-  types: FileType[],
+  types: FilePickerAcceptType[],
   mimeType: string,
   existingHandle: FileSystemFileHandle | null = null,
 ): Promise<SavedFile> {
@@ -70,11 +70,11 @@ export async function saveBytes(
 
 /** Opens bytes through File System Access when available, otherwise a temporary
  * browser file input. React components never need to own the input element. */
-export function openFile(types: FileType[]): Promise<OpenedFile | null> {
+export function openFile(
+  types: FilePickerAcceptType[],
+): Promise<OpenedFile | null> {
   if (supportsFileSystemAccess()) {
-    return window.showOpenFilePicker!({
-      types: types as FilePickerAcceptType[],
-    }).then(async ([handle]) => {
+    return window.showOpenFilePicker!({ types }).then(async ([handle]) => {
       const file = await handle.getFile();
       return {
         name: file.name,
@@ -87,7 +87,7 @@ export function openFile(types: FileType[]): Promise<OpenedFile | null> {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = types
-      .flatMap((type) => Object.values(type.accept).flat())
+      .flatMap((type) => Object.values(type.accept!).flat())
       .join(",");
     input.onchange = () => {
       const file = input.files?.[0];

@@ -79,7 +79,7 @@ function updatePrimitive(
   key: string,
   value: Primitive,
 ): ProjectMetadata {
-  const next = structuredClone(metadata) as Record<string, unknown>;
+  const next = structuredClone(metadata) as Record<string, any>;
   if (section === "General") {
     next[key] = value;
   } else {

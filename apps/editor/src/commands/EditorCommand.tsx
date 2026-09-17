@@ -29,7 +29,7 @@ import {
   saveAudioDirectoryHandle,
   supportsDirectoryPicker,
 } from "../util/audioDirectoryHandle";
-import { openFile, saveBytes, type FileType } from "../project/fileService";
+import { openFile, saveBytes } from "../project/fileService";
 import {
   createProjectDocument,
   deserializeProject,
@@ -44,21 +44,21 @@ import {
   validateProjectMetadata,
 } from "../project/projectMetadata";
 
-const MIDI_FILE_PICKER_TYPES: FileType[] = [
+const MIDI_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
     description: "MIDI file",
     accept: { "audio/midi": [".mid", ".midi"] },
   },
 ];
 
-const PROJECT_FILE_PICKER_TYPES: FileType[] = [
+const PROJECT_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
     description: "MIDI project",
     accept: { "application/zip": [".midproject"] },
   },
 ];
 
-const OPEN_DOCUMENT_FILE_PICKER_TYPES: FileType[] = [
+const OPEN_DOCUMENT_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   ...PROJECT_FILE_PICKER_TYPES,
   ...MIDI_FILE_PICKER_TYPES,
 ];
