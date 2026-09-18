@@ -1,5 +1,6 @@
 import { PianoRollView } from "./pianoRoll";
 import { HighwayView } from "./highway";
+import { RenderAssetRegistry } from "../../rendering/RenderAssetRegistry";
 
 export type ChartView = PianoRollView | HighwayView;
 export type ChartViewFactory = () => ChartView;
@@ -10,6 +11,13 @@ export interface ChartViewDefinition {
 
   createRenderer: ChartViewFactory;
 }
+
+// The registry belongs to the editor application, not a single chart view.
+// Starting preload here lets switching views reuse the same immutable assets.
+export const applicationRenderAssets = new RenderAssetRegistry();
+void applicationRenderAssets.preloadHighway().catch((error) => {
+  console.error("Circular highway assets failed to preload", error);
+});
 
 export const CHART_VIEWS = [
   {
@@ -25,7 +33,7 @@ export const CHART_VIEWS = [
     name: "Highway",
 
     createRenderer: () => {
-      return new HighwayView();
+      return new HighwayView(applicationRenderAssets);
     },
   },
 ];
