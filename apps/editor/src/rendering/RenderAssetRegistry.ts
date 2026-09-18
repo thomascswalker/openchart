@@ -14,11 +14,11 @@ export interface HighwayAssetBundle {
 }
 
 export class RenderAssetLoadError extends Error {
-  public constructor(
-    message: string,
-    public readonly cause?: unknown,
-  ) {
+  public readonly cause?: any;
+
+  public constructor(message: string, cause?: any) {
     super(message);
+    this.cause = cause;
     this.name = "RenderAssetLoadError";
   }
 }

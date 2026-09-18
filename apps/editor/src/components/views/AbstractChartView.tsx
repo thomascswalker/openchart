@@ -167,6 +167,7 @@ export abstract class AbstractChartView<T> {
     if (typeof window !== "undefined" && window.requestAnimationFrame) {
       this.renderFrame = window.requestAnimationFrame(render);
     } else {
+      // @ts-expect-error Force coercion to number
       this.renderFrame = setTimeout(render, 0);
     }
   }
