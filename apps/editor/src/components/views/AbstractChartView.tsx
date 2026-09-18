@@ -28,6 +28,18 @@ export interface CameraDebugView {
   resetCameraDebugState(): boolean;
 }
 
+export interface NoteSizeDebugState {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface NoteSizeDebugView {
+  getNoteSizeDebugState(): NoteSizeDebugState | null;
+  applyNoteSizeDebugState(state: NoteSizeDebugState): boolean;
+  resetNoteSizeDebugState(): boolean;
+}
+
 export function isCameraDebugView(view: unknown): view is CameraDebugView {
   return (
     typeof view === "object" &&
@@ -38,6 +50,19 @@ export function isCameraDebugView(view: unknown): view is CameraDebugView {
     typeof view.applyCameraDebugState === "function" &&
     "resetCameraDebugState" in view &&
     typeof view.resetCameraDebugState === "function"
+  );
+}
+
+export function isNoteSizeDebugView(view: unknown): view is NoteSizeDebugView {
+  return (
+    typeof view === "object" &&
+    view !== null &&
+    "getNoteSizeDebugState" in view &&
+    typeof view.getNoteSizeDebugState === "function" &&
+    "applyNoteSizeDebugState" in view &&
+    typeof view.applyNoteSizeDebugState === "function" &&
+    "resetNoteSizeDebugState" in view &&
+    typeof view.resetNoteSizeDebugState === "function"
   );
 }
 

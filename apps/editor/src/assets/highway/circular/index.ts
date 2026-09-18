@@ -1,0 +1,22 @@
+import type { Texture } from "pixi.js";
+
+export const circularHighwayAssets = {
+  fretTopModel: new URL("./runtime/FretTop.glb", import.meta.url).href,
+  fretBaseModel: new URL("./runtime/FretBase.glb", import.meta.url).href,
+  noteModel: new URL("./runtime/Note.glb", import.meta.url).href,
+  fretTexture: new URL("./source/Fret.png", import.meta.url).href,
+  noteTexture: new URL("./source/Note.png", import.meta.url).href,
+  noteEmissionTexture: new URL("./source/NoteEmission.png", import.meta.url).href,
+  sustainTexture: new URL("./source/Sustain.png", import.meta.url).href,
+  sustainEmissionTexture: new URL("./source/SustainEmission.png", import.meta.url).href,
+} as const;
+
+export type CircularHighwayAssetUrls = typeof circularHighwayAssets;
+
+export interface CircularHighwayTextures {
+  fret: Texture;
+  note: Texture;
+  noteEmission: Texture;
+  sustain: Texture;
+  sustainEmission: Texture;
+}

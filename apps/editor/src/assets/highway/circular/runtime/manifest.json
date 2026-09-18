@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "authoritativeSource": "source/*.fbx and source/*.png",
+  "assets": [
+    {
+      "source": "FretTop.fbx",
+      "runtime": "FretTop.glb",
+      "sourceMeshCount": 1,
+      "sourceMaterialCount": 4,
+      "runtimeMeshCount": 1,
+      "runtimeMaterialCount": 1,
+      "vertexCount": 928,
+      "triangleCount": 478,
+      "textures": {
+        "baseColor": "Fret.png",
+        "emission": null
+      },
+      "coordinateSystem": {
+        "handedness": "right-handed",
+        "upAxis": "Y",
+        "forwardAxis": "-Z",
+        "unitScale": 1.0,
+        "pivot": "FBX object origin preserved"
+      }
+    },
+    {
+      "source": "FretBase.fbx",
+      "runtime": "FretBase.glb",
+      "sourceMeshCount": 1,
+      "sourceMaterialCount": 2,
+      "runtimeMeshCount": 1,
+      "runtimeMaterialCount": 1,
+      "vertexCount": 320,
+      "triangleCount": 188,
+      "textures": {
+        "baseColor": "Fret.png",
+        "emission": null
+      },
+      "coordinateSystem": {
+        "handedness": "right-handed",
+        "upAxis": "Y",
+        "forwardAxis": "-Z",
+        "unitScale": 1.0,
+        "pivot": "FBX object origin preserved"
+      }
+    },
+    {
+      "source": "Note.fbx",
+      "runtime": "Note.glb",
+      "sourceMeshCount": 1,
+      "sourceMaterialCount": 4,
+      "runtimeMeshCount": 1,
+      "runtimeMaterialCount": 1,
+      "vertexCount": 672,
+      "triangleCount": 350,
+      "textures": {
+        "baseColor": "Note.png",
+        "emission": "NoteEmission.png"
+      },
+      "coordinateSystem": {
+        "handedness": "right-handed",
+        "upAxis": "Y",
+        "forwardAxis": "-Z",
+        "unitScale": 1.0,
+        "pivot": "FBX object origin preserved"
+      }
+    }
+  ],
+  "checks": {
+    "preserveNormals": true,
+    "preserveUvs": true,
+    "replaceEmbeddedNoteTexture": {
+      "from": "Circle_Note_Texture.png",
+      "to": "Note.png"
+    },
+    "expectedRuntimeMeshCount": 1,
+    "expectedRuntimeMaterialCount": 1
+  }
+}
