@@ -11,6 +11,8 @@ describe("circular material state contract", () => {
       baseColor: expect.stringContaining("texture.rgb"),
       emission: expect.stringContaining("uEmissionIntensity"),
       alpha: expect.stringContaining("uAlpha"),
+      tint: expect.stringContaining("tinted"),
+      passed: expect.stringContaining("luminance"),
       selected: expect.stringContaining("uSelected"),
       ghost: expect.stringContaining("uGhost"),
       sustain: expect.stringContaining("solid uBaseColor"),

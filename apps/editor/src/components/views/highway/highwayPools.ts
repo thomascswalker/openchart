@@ -7,6 +7,9 @@ import {
   type ModelCalibration,
 } from "./highwayGeometry";
 
+export type PrimitiveMaterialRole = "tinted" | "neutral";
+type MaterialSource = Material | ((primitiveIndex: number) => Material);
+
 // pixi3d's Model.createInstance()/Mesh3D.createInstance() rely on the source
 // mesh remaining in the scene graph so its own render pass can batch its
 // InstancedMesh3D children, and on the source material supporting hardware
@@ -17,11 +20,13 @@ import {
 // their own draw call with the real material assigned up front.
 function cloneModelMeshes(
   template: Model,
-  material: Material,
+  material: MaterialSource,
 ): { object: Container3D; meshes: Mesh3D[] } {
   const object = new Container3D();
-  const meshes = meshesInModel(template).map((templateMesh) => {
-    const mesh = new Mesh3D(templateMesh.geometry, material);
+  const meshes = meshesInModel(template).map((templateMesh, index) => {
+    const meshMaterial =
+      typeof material === "function" ? material(index) : material;
+    const mesh = new Mesh3D(templateMesh.geometry, meshMaterial);
     object.addChild(mesh);
     return mesh;
   });
@@ -51,7 +56,7 @@ export function visiblePoolItems<T extends { start: number; end: number }>(
 
 export function createModelInstance(
   template: Model,
-  material: Material,
+  material: MaterialSource,
   calibration?: ModelCalibration,
 ): PooledNote {
   const { object, meshes } = cloneModelMeshes(template, material);
@@ -69,15 +74,27 @@ export function createNotePools(
   colors: Rgb[],
   poolSize: number,
   calibration: ModelCalibration,
+  primitiveRoles: readonly PrimitiveMaterialRole[] = [],
 ): PooledNote[][] {
   return colors.map((color) => {
     const pool: PooledNote[] = [];
     for (let i = 0; i < poolSize; i += 1) {
-      const note = createModelInstance(template, materialSet.note, calibration);
-      note.meshes.forEach((mesh) =>
+      const note = createModelInstance(
+        template,
+        (primitiveIndex) =>
+          primitiveRoles[primitiveIndex] === "tinted"
+            ? materialSet.noteColor
+            : materialSet.noteNeutral,
+        calibration,
+      );
+      note.meshes.forEach((mesh, primitiveIndex) =>
         setCircularMaterialState(mesh, {
           baseColor: color,
-          emissionColor: color,
+          emissionColor:
+            primitiveRoles[primitiveIndex] === "neutral"
+              ? ([1, 1, 1] as Rgb)
+              : color,
+          tint: primitiveRoles[primitiveIndex] !== "neutral",
         }),
       );
       scene.addChild(note.object);
@@ -93,14 +110,30 @@ export function createFretAssembly(
   baseTemplate: Model,
   material: Material,
   laneColor: Rgb,
+  topPrimitiveRoles: readonly PrimitiveMaterialRole[] = [],
+  neutralMaterial: Material = material,
+  basePrimitiveRoles: readonly PrimitiveMaterialRole[] = topPrimitiveRoles,
 ): Container3D {
   const assembly = new Container3D();
-  [baseTemplate, topTemplate].forEach((template) => {
-    const { object, meshes } = cloneModelMeshes(template, material);
-    meshes.forEach((mesh) =>
+  const parts: ReadonlyArray<{
+    template: Model;
+    primitiveRoles: readonly PrimitiveMaterialRole[];
+  }> = [
+    { template: baseTemplate, primitiveRoles: basePrimitiveRoles },
+    { template: topTemplate, primitiveRoles: topPrimitiveRoles },
+  ];
+  parts.forEach(({ template, primitiveRoles }) => {
+    const { object, meshes } = cloneModelMeshes(template, (primitiveIndex) =>
+      primitiveRoles[primitiveIndex] === "tinted" ? material : neutralMaterial,
+    );
+    meshes.forEach((mesh, primitiveIndex) =>
       setCircularMaterialState(mesh, {
         baseColor: laneColor,
-        emissionColor: laneColor,
+        emissionColor:
+          primitiveRoles[primitiveIndex] === "neutral"
+            ? ([1, 1, 1] as Rgb)
+            : laneColor,
+        tint: primitiveRoles[primitiveIndex] !== "neutral",
       }),
     );
     assembly.addChild(object);

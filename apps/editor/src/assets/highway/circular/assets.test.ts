@@ -8,7 +8,9 @@ describe("circular highway asset manifest", () => {
     expect(circularHighwayAssets.noteModel).toContain("Note.glb");
     expect(circularHighwayAssets.fretTexture).toContain("Fret.png");
     expect(circularHighwayAssets.noteTexture).toContain("Note.png");
-    expect(circularHighwayAssets.noteEmissionTexture).toContain("NoteEmission.png");
+    expect(circularHighwayAssets.noteEmissionTexture).toContain(
+      "NoteEmission.png",
+    );
     expect(circularHighwayAssets.sustainTexture).toContain("Sustain.png");
     expect(circularHighwayAssets.sustainEmissionTexture).toContain(
       "SustainEmission.png",

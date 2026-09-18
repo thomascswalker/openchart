@@ -212,7 +212,9 @@ function NoteSizeDebugSection({ chartView }: { chartView: ChartView | null }) {
       return;
     }
 
-    setDraft(noteSizeStateToDraft(noteSizeView.getNoteSizeDebugState() ?? state));
+    setDraft(
+      noteSizeStateToDraft(noteSizeView.getNoteSizeDebugState() ?? state),
+    );
     setError(null);
   };
 

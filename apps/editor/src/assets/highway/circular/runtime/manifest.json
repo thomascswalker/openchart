@@ -8,7 +8,31 @@
       "sourceMeshCount": 1,
       "sourceMaterialCount": 4,
       "runtimeMeshCount": 1,
-      "runtimeMaterialCount": 1,
+      "runtimeMaterialCount": 4,
+      "runtimePrimitiveCount": 4,
+      "sourceMaterials": [
+        {
+          "index": 0,
+          "name": "Note_Tap.034",
+          "role": "neutral"
+        },
+        {
+          "index": 1,
+          "name": "Note_Color_Yellow",
+          "role": "tinted"
+        },
+        {
+          "index": 2,
+          "name": "Note_Bottom.048",
+          "role": "neutral"
+        },
+        {
+          "index": 3,
+          "name": "Note_SIde.020",
+          "role": "neutral"
+        }
+      ],
+      "primitiveMaterialRoles": ["neutral", "tinted", "neutral", "neutral"],
       "vertexCount": 928,
       "triangleCount": 478,
       "textures": {
@@ -29,7 +53,21 @@
       "sourceMeshCount": 1,
       "sourceMaterialCount": 2,
       "runtimeMeshCount": 1,
-      "runtimeMaterialCount": 1,
+      "runtimeMaterialCount": 2,
+      "runtimePrimitiveCount": 2,
+      "sourceMaterials": [
+        {
+          "index": 0,
+          "name": "Note_Color_Yellow",
+          "role": "tinted"
+        },
+        {
+          "index": 1,
+          "name": "Note_Tap.034",
+          "role": "neutral"
+        }
+      ],
+      "primitiveMaterialRoles": ["tinted", "neutral"],
       "vertexCount": 320,
       "triangleCount": 188,
       "textures": {
@@ -50,7 +88,31 @@
       "sourceMeshCount": 1,
       "sourceMaterialCount": 4,
       "runtimeMeshCount": 1,
-      "runtimeMaterialCount": 1,
+      "runtimeMaterialCount": 4,
+      "runtimePrimitiveCount": 4,
+      "sourceMaterials": [
+        {
+          "index": 0,
+          "name": "Circular_Note_Top",
+          "role": "neutral"
+        },
+        {
+          "index": 1,
+          "name": "Circular_Note_Color",
+          "role": "tinted"
+        },
+        {
+          "index": 2,
+          "name": "Circular_Note_Indicator",
+          "role": "neutral"
+        },
+        {
+          "index": 3,
+          "name": "Circular_Note_Bottom",
+          "role": "neutral"
+        }
+      ],
+      "primitiveMaterialRoles": ["neutral", "tinted", "neutral", "neutral"],
       "vertexCount": 672,
       "triangleCount": 350,
       "textures": {
@@ -74,6 +136,10 @@
       "to": "Note.png"
     },
     "expectedRuntimeMeshCount": 1,
-    "expectedRuntimeMaterialCount": 1
+    "expectedRuntimePrimitiveCounts": {
+      "FretTop.glb": 4,
+      "FretBase.glb": 2,
+      "Note.glb": 4
+    }
   }
 }

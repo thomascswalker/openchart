@@ -108,7 +108,23 @@ def source_material_count(nodes: list[Node]) -> int:
     return sum(1 for node in walk(nodes) if node.name == "Material")
 
 
-def parse_geometry(path: Path) -> tuple[list[float], list[int], list[float], list[float], int]:
+def clean_material_name(value: str, fallback: str) -> str:
+    value = value.split("\x00", 1)[0].strip()
+    if value.endswith("Material"):
+        value = value[: -len("Material")].rstrip()
+    return value or fallback
+
+
+def parse_geometry(
+    path: Path,
+) -> tuple[
+    list[float],
+    dict[int, list[int]],
+    list[float],
+    list[float],
+    list[str],
+    int,
+]:
     data = path.read_bytes()
     if not data.startswith(b"Kaydara FBX Binary"):
         raise ValueError(f"{path.name} is not a binary FBX file")
@@ -136,22 +152,49 @@ def parse_geometry(path: Path) -> tuple[list[float], list[int], list[float], lis
     uvs = uv_node.properties[0]
     uv_indices = uv_index_node.properties[0]
 
+    material_layer = first_child(geometry, "LayerElementMaterial")
+    material_values_node = (
+        first_child(material_layer, "Materials") if material_layer else None
+    )
+    if material_values_node is None:
+        polygon_materials = [0]
+    else:
+        mapping_node = first_child(material_layer, "MappingInformationType")
+        reference_node = first_child(material_layer, "ReferenceInformationType")
+        mapping = mapping_node.properties[0] if mapping_node else ""
+        reference = reference_node.properties[0] if reference_node else ""
+        if mapping != "ByPolygon" or reference != "IndexToDirect":
+            raise ValueError(
+                f"{path.name} uses unsupported material mapping "
+                f"{mapping}/{reference}; expected ByPolygon/IndexToDirect"
+            )
+        polygon_materials = material_values_node.properties[0]
+
+    material_names = [
+        clean_material_name(node.properties[1], f"Material_{index}")
+        for index, node in enumerate(walk(nodes))
+        if node.name == "Material"
+    ]
+    if not material_names:
+        material_names = ["Material_0"]
+
     # FBX polygon indices terminate a face with the bitwise-complemented last
     # index.  Expand every polygon into a triangle fan while preserving the
     # per-polygon-vertex normal and UV streams.
     output_positions: list[float] = []
     output_normals: list[float] = []
     output_uvs: list[float] = []
-    output_indices: list[int] = []
-    polygon_corners: list[tuple[int, int, int]] = []
+    material_indices: dict[int, list[int]] = {}
     corner = 0
+    polygon_index = 0
     polygon: list[int] = []
 
     def flush_polygon() -> None:
-        nonlocal polygon, corner
+        nonlocal polygon, corner, polygon_index
         if len(polygon) < 3:
             corner += len(polygon)
             polygon = []
+            polygon_index += 1
             return
         base = len(output_positions) // 3
         for index in polygon:
@@ -160,9 +203,16 @@ def parse_geometry(path: Path) -> tuple[list[float], list[int], list[float], lis
             uv_index = uv_indices[corner]
             output_uvs.extend(uvs[uv_index * 2 : uv_index * 2 + 2])
             corner += 1
+        material_index = (
+            polygon_materials[polygon_index]
+            if polygon_index < len(polygon_materials)
+            else 0
+        )
+        indices = material_indices.setdefault(material_index, [])
         for index in range(1, len(polygon) - 1):
-            output_indices.extend((base, base + index, base + index + 1))
+            indices.extend((base, base + index, base + index + 1))
         polygon = []
+        polygon_index += 1
 
     for raw_index in polygon_indices:
         is_last = raw_index < 0
@@ -171,13 +221,14 @@ def parse_geometry(path: Path) -> tuple[list[float], list[int], list[float], lis
             flush_polygon()
     flush_polygon()
 
-    if not output_indices:
+    if not material_indices:
         raise ValueError(f"{path.name} produced no triangles")
     return (
         output_positions,
-        output_indices,
+        material_indices,
         output_normals,
         output_uvs,
+        material_names,
         source_material_count(nodes),
     )
 
@@ -188,12 +239,14 @@ def aligned(value: int, alignment: int = 4) -> int:
 
 def make_glb(
     positions: list[float],
-    indices: list[int],
+    material_indices: dict[int, list[int]],
     normals: list[float],
     uvs: list[float],
     base_texture: Path,
     emission_texture: Path | None,
     source_name: str,
+    material_names: list[str],
+    roles: list[str],
 ) -> bytes:
     binary = bytearray()
     buffer_views: list[dict[str, Any]] = []
@@ -227,32 +280,9 @@ def make_glb(
     position_accessor = add_float_accessor(positions, 3)
     normal_accessor = add_float_accessor(normals, 3)
     uv_accessor = add_float_accessor(uvs, 2)
-    index_view = append_buffer(struct.pack("<" + "I" * len(indices), *indices), 34963)
-    accessors.append(
-        {
-            "bufferView": index_view,
-            "componentType": 5125,
-            "count": len(indices),
-            "type": "SCALAR",
-            "min": [min(indices)],
-            "max": [max(indices)],
-        }
-    )
-    index_accessor = len(accessors) - 1
 
     images: list[dict[str, Any]] = []
     textures: list[dict[str, Any]] = []
-    material: dict[str, Any] = {
-        "name": f"{source_name}Circular",
-        "pbrMetallicRoughness": {
-            "baseColorTexture": {"index": 0},
-            "metallicFactor": 0.0,
-            "roughnessFactor": 0.8,
-        },
-        "alphaMode": "BLEND" if emission_texture else "OPAQUE",
-        "doubleSided": True,
-        "extras": {"sourceBaseColor": base_texture.name},
-    }
 
     def add_image(path: Path) -> int:
         view = append_buffer(path.read_bytes())
@@ -262,11 +292,73 @@ def make_glb(
         textures.append({"source": len(images) - 1})
         return len(images) - 1
 
-    add_image(base_texture)
+    base_texture_index = add_image(base_texture)
     if emission_texture is not None:
         emission_index = add_image(emission_texture)
-        material["emissiveTexture"] = {"index": emission_index}
-        material["emissiveFactor"] = [1.0, 1.0, 1.0]
+    else:
+        emission_index = None
+
+    materials: list[dict[str, Any]] = []
+    primitives: list[dict[str, Any]] = []
+    for source_material_index in sorted(material_indices):
+        indices = material_indices[source_material_index]
+        index_view = append_buffer(
+            struct.pack("<" + "I" * len(indices), *indices), 34963
+        )
+        accessors.append(
+            {
+                "bufferView": index_view,
+                "componentType": 5125,
+                "count": len(indices),
+                "type": "SCALAR",
+                "min": [min(indices)],
+                "max": [max(indices)],
+            }
+        )
+        role = (
+            roles[source_material_index]
+            if source_material_index < len(roles)
+            else "neutral"
+        )
+        material = {
+            "name": (
+                material_names[source_material_index]
+                if source_material_index < len(material_names)
+                else f"Material_{source_material_index}"
+            ),
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {"index": base_texture_index},
+                "metallicFactor": 0.0,
+                "roughnessFactor": 0.8,
+            },
+            "alphaMode": "BLEND" if emission_texture else "OPAQUE",
+            "doubleSided": True,
+            "extras": {
+                "sourceBaseColor": base_texture.name,
+                "sourceMaterialIndex": source_material_index,
+                "role": role,
+            },
+        }
+        if emission_index is not None:
+            material["emissiveTexture"] = {"index": emission_index}
+            material["emissiveFactor"] = [1.0, 1.0, 1.0]
+        material_index = len(materials)
+        materials.append(material)
+        primitives.append(
+            {
+                "attributes": {
+                    "POSITION": position_accessor,
+                    "NORMAL": normal_accessor,
+                    "TEXCOORD_0": uv_accessor,
+                },
+                "indices": len(accessors) - 1,
+                "material": material_index,
+                "extras": {
+                    "sourceMaterialIndex": source_material_index,
+                    "role": role,
+                },
+            }
+        )
 
     gltf = {
         "asset": {"version": "2.0", "generator": "midiview FBX preparation"},
@@ -276,20 +368,10 @@ def make_glb(
         "meshes": [
             {
                 "name": source_name,
-                "primitives": [
-                    {
-                        "attributes": {
-                            "POSITION": position_accessor,
-                            "NORMAL": normal_accessor,
-                            "TEXCOORD_0": uv_accessor,
-                        },
-                        "indices": index_accessor,
-                        "material": 0,
-                    }
-                ],
+                "primitives": primitives,
             }
         ],
-        "materials": [material],
+        "materials": materials,
         "textures": textures,
         "images": images,
         "buffers": [{"byteLength": len(binary)}],
@@ -304,6 +386,9 @@ def make_glb(
                 "unitScale": 1.0,
             },
             "preservedAttributes": ["POSITION", "NORMAL", "TEXCOORD_0"],
+            "primitiveMaterialRoles": [
+                primitive["extras"]["role"] for primitive in primitives
+            ],
         },
     }
     json_chunk = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
@@ -315,20 +400,65 @@ def make_glb(
     ) + json_chunk + struct.pack("<I4s", len(bin_chunk), b"BIN\0") + bin_chunk
 
 
-def convert_one(source: Path, runtime: Path, base: Path, emission: Path | None) -> dict[str, Any]:
-    positions, indices, normals, uvs, source_materials = parse_geometry(source)
+def convert_one(
+    source: Path,
+    runtime: Path,
+    base: Path,
+    emission: Path | None,
+    roles: list[str],
+) -> dict[str, Any]:
+    (
+        positions,
+        material_indices,
+        normals,
+        uvs,
+        material_names,
+        source_materials,
+    ) = parse_geometry(source)
+    if len(material_names) != len(roles):
+        raise ValueError(
+            f"{source.name} material role manifest has {len(roles)} entries "
+            f"for {len(material_names)} source materials"
+        )
+    missing_materials = set(range(len(material_names))) - set(material_indices)
+    if missing_materials:
+        raise ValueError(
+            f"{source.name} has source material slots without geometry: "
+            f"{sorted(missing_materials)}"
+        )
     runtime.write_bytes(
-        make_glb(positions, indices, normals, uvs, base, emission, source.stem)
+        make_glb(
+            positions,
+            material_indices,
+            normals,
+            uvs,
+            base,
+            emission,
+            source.stem,
+            material_names,
+            roles,
+        )
     )
+    primitive_material_indices = sorted(material_indices)
     return {
         "source": source.name,
         "runtime": runtime.name,
         "sourceMeshCount": 1,
         "sourceMaterialCount": source_materials,
         "runtimeMeshCount": 1,
-        "runtimeMaterialCount": 1,
+        "runtimeMaterialCount": len(primitive_material_indices),
+        "runtimePrimitiveCount": len(primitive_material_indices),
+        "sourceMaterials": [
+            {
+                "index": index,
+                "name": material_names[index],
+                "role": roles[index],
+            }
+            for index in primitive_material_indices
+        ],
+        "primitiveMaterialRoles": [roles[index] for index in primitive_material_indices],
         "vertexCount": len(positions) // 3,
-        "triangleCount": len(indices) // 3,
+        "triangleCount": sum(len(indices) for indices in material_indices.values()) // 3,
         "textures": {
             "baseColor": base.name,
             "emission": emission.name if emission else None,
@@ -357,18 +487,21 @@ def main() -> int:
                 runtime / "FretTop.glb",
                 source / "Fret.png",
                 None,
+                ["neutral", "tinted", "neutral", "neutral"],
             ),
             convert_one(
                 source / "FretBase.fbx",
                 runtime / "FretBase.glb",
                 source / "Fret.png",
                 None,
+                ["tinted", "neutral"],
             ),
             convert_one(
                 source / "Note.fbx",
                 runtime / "Note.glb",
                 source / "Note.png",
                 source / "NoteEmission.png",
+                ["neutral", "tinted", "neutral", "neutral"],
             ),
         ],
         "checks": {
@@ -379,7 +512,11 @@ def main() -> int:
                 "to": "Note.png",
             },
             "expectedRuntimeMeshCount": 1,
-            "expectedRuntimeMaterialCount": 1,
+            "expectedRuntimePrimitiveCounts": {
+                "FretTop.glb": 4,
+                "FretBase.glb": 2,
+                "Note.glb": 4,
+            },
         },
     }
     manifest_path = runtime / "manifest.json"

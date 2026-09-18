@@ -69,6 +69,7 @@ export function isNoteSizeDebugView(view: unknown): view is NoteSizeDebugView {
 export abstract class AbstractChartView<T> {
   private app: Application | null = null;
   private destroyed = false;
+  private renderFrame: number | null = null;
 
   private width = 1;
   private height = 1;
@@ -103,13 +104,13 @@ export abstract class AbstractChartView<T> {
     host.replaceChildren(app.view as HTMLCanvasElement);
 
     this.onMounted(app);
-    this.render();
+    this.requestRender();
   }
 
   public update(state: ChartViewState): void {
     this.state = state;
 
-    this.render();
+    this.requestRender();
   }
 
   public resize(width: number, height: number): void {
@@ -122,11 +123,20 @@ export abstract class AbstractChartView<T> {
 
     this.app.renderer.resize(width, height);
 
-    this.render();
+    this.requestRender();
   }
 
   public destroy(): void {
     this.destroyed = true;
+
+    if (this.renderFrame !== null) {
+      if (typeof window !== "undefined" && window.cancelAnimationFrame) {
+        window.cancelAnimationFrame(this.renderFrame);
+      } else {
+        clearTimeout(this.renderFrame);
+      }
+      this.renderFrame = null;
+    }
 
     if (!this.app) {
       return;
@@ -142,13 +152,28 @@ export abstract class AbstractChartView<T> {
 
   protected abstract draw(app: Application): void;
 
-  protected render(): void {
-    if (!this.app) {
+  /** Coalesce all state changes into one complete render per display frame. */
+  protected requestRender(): void {
+    if (!this.app || this.destroyed || this.renderFrame !== null) {
       return;
     }
 
-    this.draw(this.app);
-    this.app.render();
+    const render = (): void => {
+      this.renderFrame = null;
+      if (!this.app || this.destroyed) return;
+      this.draw(this.app);
+      this.app.render();
+    };
+    if (typeof window !== "undefined" && window.requestAnimationFrame) {
+      this.renderFrame = window.requestAnimationFrame(render);
+    } else {
+      this.renderFrame = setTimeout(render, 0);
+    }
+  }
+
+  /** Existing views call render(); keep that API while routing through the scheduler. */
+  protected render(): void {
+    this.requestRender();
   }
 
   protected toScreenSpace(value: Point): Point;

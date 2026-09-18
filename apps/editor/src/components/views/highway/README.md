@@ -13,18 +13,21 @@ The renderer is implemented in six stages:
    Base textures are lane-tinted; emission masks are multiplied by emission
    color/intensity; alpha is clipped at the transparent edge; selected and
    ghost states are uniforms rather than mesh replacement.
-3. `assets.ts`, `highwayGeometry.ts`, and `highwayPools.ts` own loading,
-   calibration, template creation, pooling, and cleanup.
+3. `RenderAssetRegistry` owns application-lifetime templates and textures;
+   views create only their own materials and pooled instances. The geometry
+   catalog keeps local transforms and depth layers in one place.
 4. `index.ts` keeps the existing tick-to-depth mapping and visible temporal
-   window while using imported fret assemblies and note instances. Sustains
-   remain procedural quads with the textured sustain material.
+   window while using imported fret assemblies and role-aware note instances.
+   Sustains remain procedural quads, are submitted before note heads, and keep
+   their passed segment for shader grayscale conversion.
 5. Interaction bounds are projected from the calibrated imported note bounds;
    the active ChartView, instrument/difficulty selection, and playback
    feedback path are unchanged. Asset loading is generation-safe across view
    destruction/recreation.
 6. Focused tests cover the manifest, material state contract, timing geometry,
-   sustain placement, note calibration/size controls, and visibility-window
-   pooling.
+   sustain placement, note calibration/size controls, keyed generic pooling,
+   and visibility-window pooling. `AbstractChartView` coalesces render
+   requests so playback and ghost movement produce at most one draw per frame.
 
 Run the asset preparation step from the repository root with:
 

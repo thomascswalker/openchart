@@ -1,6 +1,7 @@
 import { Container3D, Mesh3D, type Material, type Model } from "pixi3d/pixi7";
 import type { CircularMaterialSet, Rgb } from "./circularMaterials";
 import { setCircularMaterialState } from "./circularMaterials";
+import { HIGHWAY_GEOMETRY_CATALOG } from "./highwayGeometryCatalog";
 
 export interface ModelCalibration {
   noteModelScale: { x: number; y: number; z: number };
@@ -24,11 +25,11 @@ export interface WorldPosition {
 }
 
 export const DEFAULT_NOTE_CALIBRATION: ModelCalibration = {
-  noteModelScale: { x: 0.45, y: 0.45, z: 0.45 },
-  // Note.glb is authored as a circular XY-facing mesh. It should face the
-  // player, not lie flat on the XZ highway like the board surface.
-  noteModelRotation: { x: 90, y: 0, z: 0 },
-  noteModelOffset: { x: 0, y: 0.15, z: 0 },
+  noteModelScale: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.scale },
+  noteModelRotation: {
+    ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
+  },
+  noteModelOffset: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.position },
   width: 0.9,
   height: 0.9,
   depth: 0.21,
@@ -61,7 +62,7 @@ export function sustainWorldTransform(
   return {
     position: {
       x: laneX,
-      y: -0.09,
+      y: HIGHWAY_GEOMETRY_CATALOG.sustain.transform.position.y,
       z: (startZ + endZ) / 2,
     },
     scale: {
@@ -113,7 +114,9 @@ export function calibrationFromModel(model: Model): ModelCalibration {
   const scale = 1.0 / width;
   return {
     noteModelScale: { x: scale, y: scale, z: scale },
-    noteModelRotation: { x: 270, y: 0, z: 0 },
+    noteModelRotation: {
+      ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
+    },
     noteModelOffset: {
       x: -(bounds.min.x + bounds.max.x) * scale * 0.5,
       y: 0,
@@ -189,17 +192,32 @@ export function setModelState(
   model: Container3D,
   materialSet: CircularMaterialSet,
   color: Rgb,
-  state: { selected?: boolean; ghost?: boolean; alpha?: number },
+  state: {
+    selected?: boolean;
+    ghost?: boolean;
+    alpha?: number;
+    passed?: boolean;
+  },
 ): void {
   meshesInModel(model).forEach((mesh) => {
-    mesh.material = materialSet.note;
+    // Note primitives are assigned their role-specific material when the
+    // pooled instance is created. State updates only touch uniforms here.
+    if (!mesh.material) {
+      mesh.material = materialSet.noteColor;
+    }
+    const isNeutralPrimitive =
+      mesh.material === materialSet.noteNeutral ||
+      mesh.material === materialSet.noteGhostNeutral;
     setCircularMaterialState(mesh, {
       baseColor: color,
-      emissionColor: color,
+      emissionColor: isNeutralPrimitive ? ([1, 1, 1] as Rgb) : color,
       emissionIntensity: state.selected ? 1.7 : 1,
       alpha: state.alpha ?? 1,
       selected: state.selected ?? false,
       ghost: state.ghost ?? false,
+      passed: state.passed ?? false,
+      useStrikeLine: false,
+      strikeLineZ: -3.5,
     });
   });
 }
