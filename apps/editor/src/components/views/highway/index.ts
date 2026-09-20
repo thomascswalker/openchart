@@ -395,7 +395,12 @@ export class HighwayView
       assembly.traverse((object) => {
         const mesh = object as THREE.Mesh;
         mesh.geometry?.dispose();
-        mesh.material?.dispose();
+        const materials = Array.isArray(mesh.material)
+          ? mesh.material
+          : mesh.material
+            ? [mesh.material]
+            : [];
+        materials.forEach((material) => material.dispose());
       });
       assembly.removeFromParent();
     });

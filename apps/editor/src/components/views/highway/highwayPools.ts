@@ -170,13 +170,23 @@ export function destroyPooledObjects(
     object.removeFromParent();
     object.traverse((child) => {
       const mesh = child as THREE.Mesh;
-      mesh.material?.dispose();
+      const materials = Array.isArray(mesh.material)
+        ? mesh.material
+        : mesh.material
+          ? [mesh.material]
+          : [];
+      materials.forEach((material) => material.dispose());
     });
   });
   tails.flat().forEach(({ mesh }) => {
     mesh.removeFromParent();
     mesh.geometry.dispose();
-    mesh.material?.dispose();
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : mesh.material
+        ? [mesh.material]
+        : [];
+    materials.forEach((material) => material.dispose());
   });
 }
 
