@@ -286,6 +286,7 @@ export class PianoRollRenderer {
       color,
       transparent: opacity < 1,
       opacity,
+      side: THREE.DoubleSide,
       depthTest: false,
       depthWrite: false,
     });

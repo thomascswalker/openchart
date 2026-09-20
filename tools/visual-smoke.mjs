@@ -49,7 +49,8 @@ async function collectDiagnostics(canvas) {
       pixel: [...pixels],
       rendererPixel: element.dataset.threePixel ?? null,
       rendererContextType: element.dataset.threeContextType ?? null,
-      rendererContextAttributes: element.dataset.threeContextAttributes ?? null,
+      rendererContextAttributes:
+        element.dataset.threeContextAttributes ?? null,
       rendererGlError: element.dataset.threeGlError ?? null,
       sceneChildren: element.dataset.threeSceneChildren ?? null,
       renderCalls: element.dataset.threeRenderCalls ?? null,
@@ -73,7 +74,9 @@ async function captureCanvasAndInterface(page, canvas, name) {
     () => window.__threeFramebufferPng ?? null,
   );
   if (!rendererFramebuffer) {
-    throw new Error(`Renderer did not provide a framebuffer capture for ${name}`);
+    throw new Error(
+      `Renderer did not provide a framebuffer capture for ${name}`,
+    );
   }
   await writeFile(
     `${outputDirectory}/${name}-renderer-framebuffer.png`,
@@ -91,7 +94,7 @@ async function captureCanvasAndInterface(page, canvas, name) {
     image.className = element.className;
     image.style.cssText = element.style.cssText;
     element.replaceWith(image);
-  }, dataUrl);
+  }, rendererFramebuffer);
   await page.screenshot({
     path: `${outputDirectory}/${name}.png`,
     fullPage: true,
