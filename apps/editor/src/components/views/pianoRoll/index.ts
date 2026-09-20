@@ -23,8 +23,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly threeCamera = new THREE.OrthographicCamera(
     -0.5,
     0.5,
-    0.5,
     -0.5,
+    0.5,
     0.1,
     1000,
   );
@@ -147,7 +147,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   protected override onMounted(engine: ThreeRenderEngine): void {
     this.canvas = engine.canvas;
     this.input.attach(this.canvas);
-    this.threeCamera.up.set(0, -1, 0);
+    this.threeCamera.up.set(0, 1, 0);
   }
 
   public override destroy(): void {
@@ -166,8 +166,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.lastHeight = height;
     this.threeCamera.left = -width / 2;
     this.threeCamera.right = width / 2;
-    this.threeCamera.top = height / 2;
-    this.threeCamera.bottom = -height / 2;
+    this.threeCamera.top = -height / 2;
+    this.threeCamera.bottom = height / 2;
     this.threeCamera.position.set(width / 2, height / 2, 10);
     this.threeCamera.lookAt(width / 2, height / 2, 0);
     this.threeCamera.updateProjectionMatrix();
