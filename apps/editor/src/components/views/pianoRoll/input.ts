@@ -307,10 +307,7 @@ export class PianoRollInputController {
     event.preventDefault();
     if (!this.canvas) return;
     const bounds = this.canvas.getBoundingClientRect();
-    const pos = point(
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-    );
+    const pos = point(event.clientX - bounds.left, event.clientY - bounds.top);
     const delta = point(-event.deltaX, -event.deltaY);
     switch (getScrollGesture(event)) {
       case "mouse-zoom":
@@ -355,9 +352,12 @@ export class PianoRollInputController {
       height: pointer.position.y - this.clickStart.y,
     };
     for (const geo of this.geometry.geometry) {
-      const screenRect = this.coordinates.toScreenSpace(
-        { x: geo.x, y: geo.y, width: geo.width, height: geo.height },
-      );
+      const screenRect = this.coordinates.toScreenSpace({
+        x: geo.x,
+        y: geo.y,
+        width: geo.width,
+        height: geo.height,
+      });
       if (!selection.intersects(screenRect)) selection.delete(geo.note);
       else selection.add(geo.note);
     }

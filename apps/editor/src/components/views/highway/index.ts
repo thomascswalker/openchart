@@ -10,9 +10,7 @@ import {
 } from "../AbstractChartView";
 import type { ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
 import { RenderAssetRegistry } from "./assets";
-import {
-  circularHighwayPrimitiveRoles,
-} from "../../../assets/highway/circular";
+import { circularHighwayPrimitiveRoles } from "../../../assets/highway/circular";
 import {
   createCircularMaterialSet,
   rgbFromHex,
@@ -83,17 +81,19 @@ interface ScreenBounds {
 }
 
 function isValidCameraDebugState(state: CameraDebugState): boolean {
-  return [
-    state.position.x,
-    state.position.y,
-    state.position.z,
-    state.rotation.x,
-    state.rotation.y,
-    state.rotation.z,
-    state.fieldOfView,
-  ].every(Number.isFinite) &&
+  return (
+    [
+      state.position.x,
+      state.position.y,
+      state.position.z,
+      state.rotation.x,
+      state.rotation.y,
+      state.rotation.z,
+      state.fieldOfView,
+    ].every(Number.isFinite) &&
     state.fieldOfView >= minimumCameraFieldOfView &&
-    state.fieldOfView <= maximumCameraFieldOfView;
+    state.fieldOfView <= maximumCameraFieldOfView
+  );
 }
 
 function isValidNoteSizeDebugState(state: NoteSizeDebugState): boolean {
@@ -288,8 +288,9 @@ export class HighwayView
     const visibleNotes = chart
       .getNotes()
       .map((note) => ({ note, lane: note.note - chart.getOffset() }))
-      .filter(({ note, lane }) =>
-        note.end >= visibleStart &&
+      .filter(
+        ({ note, lane }) =>
+          note.end >= visibleStart &&
           note.start <= visibleEnd &&
           lane >= 0 &&
           lane < laneCount,
@@ -414,9 +415,11 @@ export class HighwayView
       this.songMidi = midi;
       this.song = new SongView(midi);
     }
-    return this.song
-      ?.getInstrumentTrackView(this.state.selectedInstrument)
-      ?.getChart(this.state.selectedDifficulty) ?? null;
+    return (
+      this.song
+        ?.getInstrumentTrackView(this.state.selectedInstrument)
+        ?.getChart(this.state.selectedDifficulty) ?? null
+    );
   }
 
   private async loadHighwayAssets(): Promise<void> {
@@ -865,11 +868,13 @@ export class HighwayView
     for (const xSign of [-1, 1]) {
       for (const ySign of [-1, 1]) {
         for (const zSign of [-1, 1]) {
-          corners.push(new THREE.Vector3(
-            position.x + xSign * calibration.width / 2,
-            position.y + ySign * Math.max(0.1, calibration.height / 2),
-            position.z + zSign * Math.max(0.05, calibration.depth / 2),
-          ));
+          corners.push(
+            new THREE.Vector3(
+              position.x + (xSign * calibration.width) / 2,
+              position.y + ySign * Math.max(0.1, calibration.height / 2),
+              position.z + zSign * Math.max(0.05, calibration.depth / 2),
+            ),
+          );
         }
       }
     }

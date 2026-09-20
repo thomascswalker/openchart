@@ -40,12 +40,14 @@ export const CIRCULAR_MATERIAL_MAPPING = {
   emission: "emissionTexture.rgb * uEmissionColor * uEmissionIntensity",
   alpha: "baseTexture.a * uAlpha with a 0.02 discard cutoff",
   tint: "only authored tinted primitives multiply their base texture by uBaseColor",
-  passed: "final composed colour is converted to luminance at/near the strike line",
+  passed:
+    "final composed colour is converted to luminance at/near the strike line",
   depth: "depth test enabled; opaque notes write depth; ghost/sustain do not",
   culling: "double-sided imported circular/fret surfaces",
   selected: "uSelected brightens the lane tint and emission",
   ghost: "uGhost mixes a neutral tint and reduces alpha",
-  sustain: "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
+  sustain:
+    "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
 } as const;
 
 const defaultState: CircularMaterialState = {
@@ -194,11 +196,7 @@ export function createCircularMaterialSet(
 ): CircularMaterialSet {
   const fretColor = createMaterial(textures.fret, textures.fret, false);
   const fretNeutral = createMaterial(textures.fret, textures.fret, false);
-  const noteColor = createMaterial(
-    textures.note,
-    textures.noteEmission,
-    false,
-  );
+  const noteColor = createMaterial(textures.note, textures.noteEmission, false);
   const noteNeutral = createMaterial(
     textures.note,
     textures.noteEmission,

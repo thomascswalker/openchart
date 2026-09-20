@@ -179,14 +179,12 @@ export class NoteGeometryCache {
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
-      const screenRect = coordinates.toScreenSpace(
-        {
-          x: geometry.x,
-          y: geometry.y,
-          width: geometry.width,
-          height: geometry.height,
-        },
-      );
+      const screenRect = coordinates.toScreenSpace({
+        x: geometry.x,
+        y: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+      });
       if (
         point.x >= screenRect.x &&
         point.x <= screenRect.x + screenRect.width &&
@@ -205,14 +203,12 @@ export class NoteGeometryCache {
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
-      const screenRect = coordinates.toScreenSpace(
-        {
-          x: geometry.x,
-          y: geometry.y,
-          width: geometry.width,
-          height: geometry.height,
-        },
-      );
+      const screenRect = coordinates.toScreenSpace({
+        x: geometry.x,
+        y: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+      });
       if (
         point.y < screenRect.y ||
         point.y > screenRect.y + screenRect.height

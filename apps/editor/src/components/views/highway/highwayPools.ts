@@ -9,8 +9,7 @@ import {
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
 type MaterialSource =
-  | THREE.Material
-  | ((primitiveIndex: number) => THREE.Material);
+  THREE.Material | ((primitiveIndex: number) => THREE.Material);
 
 function cloneModelMeshes(
   template: THREE.Object3D,
