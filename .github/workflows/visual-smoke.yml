@@ -39,7 +39,9 @@ jobs:
           echo $! > /tmp/midiview-preview.pid
 
       - name: Capture piano-roll and highway screenshots
-        run: node tools/visual-smoke.mjs
+        run: |
+          mkdir -p artifacts
+          node tools/visual-smoke.mjs
 
       - name: Upload interface screenshots
         if: always()
