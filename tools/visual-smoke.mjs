@@ -93,6 +93,9 @@ try {
     path: `${outputDirectory}/piano-roll.png`,
     fullPage: true,
   });
+  await canvas.screenshot({
+    path: `${outputDirectory}/piano-roll-canvas.png`,
+  });
 
   await page
     .locator(".midi-view__controls select")
@@ -115,6 +118,10 @@ try {
     path: `${outputDirectory}/highway.png`,
     fullPage: true,
   });
+  await page
+    .locator(".midi-view-host canvas")
+    .first()
+    .screenshot({ path: `${outputDirectory}/highway-canvas.png` });
 } finally {
   await browser.close();
 }
