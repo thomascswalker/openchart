@@ -56,7 +56,16 @@ export class ThreeRenderEngine {
 
   public render(scene: THREE.Scene, camera: THREE.Camera): void {
     if (!this.disposed) {
+      scene.updateMatrixWorld(true);
+      camera.updateMatrixWorld(true);
       this.renderer.render(scene, camera);
+      this.canvas.dataset.threeSceneChildren = String(scene.children.length);
+      this.canvas.dataset.threeRenderCalls = String(
+        this.renderer.info.render.calls,
+      );
+      this.canvas.dataset.threeRenderTriangles = String(
+        this.renderer.info.render.triangles,
+      );
     }
   }
 

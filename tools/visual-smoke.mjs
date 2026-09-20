@@ -38,6 +38,9 @@ async function collectDiagnostics(canvas) {
       drawingBufferHeight: gl.drawingBufferHeight,
       contextLost: gl.isContextLost(),
       pixel: [...pixels],
+      sceneChildren: element.dataset.threeSceneChildren ?? null,
+      renderCalls: element.dataset.threeRenderCalls ?? null,
+      renderTriangles: element.dataset.threeRenderTriangles ?? null,
       webgl: true,
     };
   });
