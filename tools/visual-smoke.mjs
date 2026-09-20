@@ -29,6 +29,7 @@ async function collectDiagnostics(canvas) {
       gl.UNSIGNED_BYTE,
       pixels,
     );
+    const attributes = gl.getContextAttributes();
     return {
       width: element.width,
       height: element.height,
@@ -37,6 +38,12 @@ async function collectDiagnostics(canvas) {
       drawingBufferWidth: gl.drawingBufferWidth,
       drawingBufferHeight: gl.drawingBufferHeight,
       contextLost: gl.isContextLost(),
+      contextAttributes: attributes
+        ? {
+            alpha: attributes.alpha,
+            preserveDrawingBuffer: attributes.preserveDrawingBuffer,
+          }
+        : null,
       pixel: [...pixels],
       sceneChildren: element.dataset.threeSceneChildren ?? null,
       renderCalls: element.dataset.threeRenderCalls ?? null,
@@ -78,14 +85,14 @@ try {
 
   const canvas = page.locator(".midi-view-host canvas").first();
   await canvas.waitFor({ state: "visible" });
-  await page.screenshot({
-    path: `${outputDirectory}/piano-roll.png`,
-    fullPage: true,
-  });
   await writeFile(
     `${outputDirectory}/piano-roll-diagnostics.json`,
     JSON.stringify(await collectDiagnostics(canvas), null, 2),
   );
+  await page.screenshot({
+    path: `${outputDirectory}/piano-roll.png`,
+    fullPage: true,
+  });
 
   await page
     .locator(".midi-view__controls select")
@@ -96,10 +103,6 @@ try {
     .locator(".midi-view-host canvas")
     .first()
     .waitFor({ state: "visible" });
-  await page.screenshot({
-    path: `${outputDirectory}/highway.png`,
-    fullPage: true,
-  });
   await writeFile(
     `${outputDirectory}/highway-diagnostics.json`,
     JSON.stringify(
@@ -108,6 +111,10 @@ try {
       2,
     ),
   );
+  await page.screenshot({
+    path: `${outputDirectory}/highway.png`,
+    fullPage: true,
+  });
 } finally {
   await browser.close();
 }
