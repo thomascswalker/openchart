@@ -67,6 +67,10 @@ export function ChartViewHost({
     resizeRenderer();
 
     void renderer.mount(host).then(() => {
+      // The host can report its placeholder size before the first layout pass.
+      // Measure again after the renderer inserts its canvas so the first real
+      // frame uses the viewport dimensions instead of a 1x1 drawing buffer.
+      resizeRenderer();
       renderer.update(latestStateRef.current);
       onReadyRef.current?.(renderer);
     });
