@@ -7,8 +7,10 @@ const outputDirectory = process.env.VISUAL_SMOKE_OUTPUT ?? "artifacts";
 
 async function collectDiagnostics(canvas) {
   return canvas.evaluate((element) => {
+    const contextType = element.dataset.threeContextType ?? "webgl2";
     const gl =
-      element.getContext("webgl2") ?? element.getContext("webgl");
+      element.getContext(contextType) ??
+      element.getContext(contextType === "webgl2" ? "webgl" : "webgl2");
     if (!gl) {
       return {
         width: element.width,
@@ -45,6 +47,10 @@ async function collectDiagnostics(canvas) {
           }
         : null,
       pixel: [...pixels],
+      rendererPixel: element.dataset.threePixel ?? null,
+      rendererContextType: element.dataset.threeContextType ?? null,
+      rendererContextAttributes: element.dataset.threeContextAttributes ?? null,
+      rendererGlError: element.dataset.threeGlError ?? null,
       sceneChildren: element.dataset.threeSceneChildren ?? null,
       renderCalls: element.dataset.threeRenderCalls ?? null,
       renderTriangles: element.dataset.threeRenderTriangles ?? null,

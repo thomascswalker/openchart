@@ -58,8 +58,29 @@ export class ThreeRenderEngine {
     if (!this.disposed) {
       scene.updateMatrixWorld(true);
       camera.updateMatrixWorld(true);
+      this.renderer.setRenderTarget(null);
+      this.renderer.clear(true, true, true);
       this.renderer.render(scene, camera);
+      const gl = this.renderer.getContext();
+      const pixels = new Uint8Array(4);
+      gl.readPixels(
+        Math.floor(gl.drawingBufferWidth / 2),
+        Math.floor(gl.drawingBufferHeight / 2),
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
       this.canvas.dataset.threeSceneChildren = String(scene.children.length);
+      this.canvas.dataset.threeContextType = this.renderer.capabilities.isWebGL2
+        ? "webgl2"
+        : "webgl";
+      this.canvas.dataset.threeContextAttributes = JSON.stringify(
+        gl.getContextAttributes(),
+      );
+      this.canvas.dataset.threePixel = JSON.stringify([...pixels]);
+      this.canvas.dataset.threeGlError = String(gl.getError());
       this.canvas.dataset.threeRenderCalls = String(
         this.renderer.info.render.calls,
       );
