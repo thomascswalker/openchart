@@ -71,7 +71,10 @@ async function captureCanvasAndInterface(page, canvas, name) {
   }
   await writeFile(
     `${outputDirectory}/${name}-renderer-framebuffer.png`,
-    Buffer.from(rendererFramebuffer.split(",", 2)[1], "base64"),
+    Buffer.from(
+      rendererFramebuffer.split(",", 2)[1],
+      "base64",
+    ),
   );
 
   // Headless Chromium's WebGL compositor can omit SwiftShader canvases from
