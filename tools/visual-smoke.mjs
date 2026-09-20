@@ -65,7 +65,10 @@ async function captureCanvasAndInterface(page, canvas, name) {
   if (!encoded) {
     throw new Error(`Canvas ${name} did not produce a PNG data URL`);
   }
-  await writeFile(`${outputDirectory}/${name}-canvas.png`, Buffer.from(encoded, "base64"));
+  await writeFile(
+    `${outputDirectory}/${name}-canvas.png`,
+    Buffer.from(encoded, "base64"),
+  );
 
   // Headless Chromium's WebGL compositor can omit SwiftShader canvases from
   // page screenshots. Replace only the captured canvas with its own pixels so

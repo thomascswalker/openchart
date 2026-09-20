@@ -143,7 +143,7 @@ export abstract class AbstractChartView<T> {
   }
 
   protected getEngineOptions(): ThreeRenderEngineOptions {
-    return { background: 0x151515, antialias: true, pixelRatioCap: 2 };
+    return { background: 0x151515, antialias: false, pixelRatioCap: 2 };
   }
 
   protected onMounted(_engine: ThreeRenderEngine): void {
