@@ -24,6 +24,7 @@ export class ThreeRenderEngine {
     this.renderer = new THREE.WebGLRenderer({
       antialias: options.antialias ?? true,
       alpha: false,
+      preserveDrawingBuffer: true,
       powerPreference: "high-performance",
     });
     this.canvas = this.renderer.domElement;
