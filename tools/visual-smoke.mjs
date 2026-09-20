@@ -61,15 +61,6 @@ async function collectDiagnostics(canvas) {
 }
 
 async function captureCanvasAndInterface(page, canvas, name) {
-  const dataUrl = await canvas.evaluate((element) => element.toDataURL());
-  const encoded = dataUrl.split(",", 2)[1];
-  if (!encoded) {
-    throw new Error(`Canvas ${name} did not produce a PNG data URL`);
-  }
-  await writeFile(
-    `${outputDirectory}/${name}-canvas.png`,
-    Buffer.from(encoded, "base64"),
-  );
   const rendererFramebuffer = await page.evaluate(
     () => window.__threeFramebufferPng ?? null,
   );

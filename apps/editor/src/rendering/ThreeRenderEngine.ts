@@ -24,7 +24,6 @@ export class ThreeRenderEngine {
     this.renderer = new THREE.WebGLRenderer({
       antialias: options.antialias ?? true,
       alpha: false,
-      preserveDrawingBuffer: true,
       powerPreference: "high-performance",
     });
     this.canvas = this.renderer.domElement;
@@ -58,9 +57,15 @@ export class ThreeRenderEngine {
     if (!this.disposed) {
       scene.updateMatrixWorld(true);
       camera.updateMatrixWorld(true);
+      const captureDiagnostics =
+        typeof window !== "undefined" &&
+        (window as Window & { __captureThreeFramebuffer?: boolean })
+          .__captureThreeFramebuffer;
       this.renderer.setRenderTarget(null);
-      this.renderer.clear(true, true, true);
       this.renderer.render(scene, camera);
+      if (!captureDiagnostics) {
+        return;
+      }
       this.renderer.setRenderTarget(null);
       const gl = this.renderer.getContext();
       const pixels = new Uint8Array(4);
@@ -84,46 +89,40 @@ export class ThreeRenderEngine {
       this.canvas.dataset.threeFramebuffer = String(
         gl.getParameter(gl.FRAMEBUFFER_BINDING),
       );
-      if (
-        typeof window !== "undefined" &&
-        (window as Window & { __captureThreeFramebuffer?: boolean })
-          .__captureThreeFramebuffer
-      ) {
-        const framebufferPixels = new Uint8Array(
-          gl.drawingBufferWidth * gl.drawingBufferHeight * 4,
-        );
-        gl.readPixels(
-          0,
-          0,
+      const framebufferPixels = new Uint8Array(
+        gl.drawingBufferWidth * gl.drawingBufferHeight * 4,
+      );
+      gl.readPixels(
+        0,
+        0,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        framebufferPixels,
+      );
+      const capture = document.createElement("canvas");
+      capture.width = gl.drawingBufferWidth;
+      capture.height = gl.drawingBufferHeight;
+      const captureContext = capture.getContext("2d");
+      if (captureContext) {
+        const image = captureContext.createImageData(
           gl.drawingBufferWidth,
           gl.drawingBufferHeight,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          framebufferPixels,
         );
-        const capture = document.createElement("canvas");
-        capture.width = gl.drawingBufferWidth;
-        capture.height = gl.drawingBufferHeight;
-        const captureContext = capture.getContext("2d");
-        if (captureContext) {
-          const image = captureContext.createImageData(
-            gl.drawingBufferWidth,
-            gl.drawingBufferHeight,
+        const rowLength = gl.drawingBufferWidth * 4;
+        for (let row = 0; row < gl.drawingBufferHeight; row += 1) {
+          const source = (gl.drawingBufferHeight - row - 1) * rowLength;
+          const target = row * rowLength;
+          image.data.set(
+            framebufferPixels.subarray(source, source + rowLength),
+            target,
           );
-          const rowLength = gl.drawingBufferWidth * 4;
-          for (let row = 0; row < gl.drawingBufferHeight; row += 1) {
-            const source = (gl.drawingBufferHeight - row - 1) * rowLength;
-            const target = row * rowLength;
-            image.data.set(
-              framebufferPixels.subarray(source, source + rowLength),
-              target,
-            );
-          }
-          captureContext.putImageData(image, 0, 0);
-          (
-            window as Window & { __threeFramebufferPng?: string }
-          ).__threeFramebufferPng = capture.toDataURL();
         }
+        captureContext.putImageData(image, 0, 0);
+        (
+          window as Window & { __threeFramebufferPng?: string }
+        ).__threeFramebufferPng = capture.toDataURL();
       }
       this.canvas.dataset.threeGlError = String(gl.getError());
       this.canvas.dataset.threeRenderCalls = String(
