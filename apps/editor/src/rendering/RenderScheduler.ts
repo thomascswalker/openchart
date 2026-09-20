@@ -4,8 +4,11 @@ export type RenderCallback = () => void;
 export class RenderScheduler {
   private frame: number | null = null;
   private disposed = false;
+  private readonly callback: RenderCallback;
 
-  public constructor(private readonly callback: RenderCallback) {}
+  public constructor(callback: RenderCallback) {
+    this.callback = callback;
+  }
 
   public request(): void {
     if (this.disposed || this.frame !== null) {
