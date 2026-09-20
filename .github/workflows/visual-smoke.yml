@@ -46,5 +46,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: threejs-interface-screenshots
-          path: artifacts/*.png
+          path: artifacts/*
           if-no-files-found: error

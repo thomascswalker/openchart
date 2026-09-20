@@ -1,8 +1,47 @@
+import { writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 
 const baseUrl =
   process.env.VISUAL_SMOKE_URL ?? "http://127.0.0.1:4173/midiview/";
 const outputDirectory = process.env.VISUAL_SMOKE_OUTPUT ?? "artifacts";
+
+async function collectDiagnostics(canvas) {
+  return canvas.evaluate((element) => {
+    const gl =
+      element.getContext("webgl2") ?? element.getContext("webgl");
+    if (!gl) {
+      return {
+        width: element.width,
+        height: element.height,
+        clientWidth: element.clientWidth,
+        clientHeight: element.clientHeight,
+        webgl: false,
+      };
+    }
+
+    const pixels = new Uint8Array(4);
+    gl.readPixels(
+      Math.floor(gl.drawingBufferWidth / 2),
+      Math.floor(gl.drawingBufferHeight / 2),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+    return {
+      width: element.width,
+      height: element.height,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+      drawingBufferWidth: gl.drawingBufferWidth,
+      drawingBufferHeight: gl.drawingBufferHeight,
+      contextLost: gl.isContextLost(),
+      pixel: [...pixels],
+      webgl: true,
+    };
+  });
+}
 
 const browser = await chromium.launch({
   headless: true,
@@ -40,6 +79,10 @@ try {
     path: `${outputDirectory}/piano-roll.png`,
     fullPage: true,
   });
+  await writeFile(
+    `${outputDirectory}/piano-roll-diagnostics.json`,
+    JSON.stringify(await collectDiagnostics(canvas), null, 2),
+  );
 
   await page
     .locator(".midi-view__controls select")
@@ -54,6 +97,14 @@ try {
     path: `${outputDirectory}/highway.png`,
     fullPage: true,
   });
+  await writeFile(
+    `${outputDirectory}/highway-diagnostics.json`,
+    JSON.stringify(
+      await collectDiagnostics(page.locator(".midi-view-host canvas").first()),
+      null,
+      2,
+    ),
+  );
 } finally {
   await browser.close();
 }
