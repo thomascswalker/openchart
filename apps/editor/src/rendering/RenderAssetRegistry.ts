@@ -32,7 +32,9 @@ export class RenderAssetRegistry {
 
   public preloadHighway(): Promise<HighwayAssetBundle> {
     if (this.disposed) {
-      return Promise.reject(new RenderAssetLoadError("Asset registry disposed"));
+      return Promise.reject(
+        new RenderAssetLoadError("Asset registry disposed"),
+      );
     }
     if (this.highwayPromise) return this.highwayPromise;
 
@@ -58,7 +60,10 @@ export class RenderAssetRegistry {
       .catch((cause) => {
         this.highwayPromise = null;
         if (cause instanceof RenderAssetLoadError) throw cause;
-        throw new RenderAssetLoadError("Unable to load circular highway assets", cause);
+        throw new RenderAssetLoadError(
+          "Unable to load circular highway assets",
+          cause,
+        );
       });
 
     return this.highwayPromise;
@@ -101,8 +106,16 @@ export class RenderAssetRegistry {
   private validatePrimitiveRoles(bundle: HighwayAssetBundle): void {
     const expected = [
       [bundle.note, circularHighwayPrimitiveRoles.note, "highway.note"],
-      [bundle.fretTop, circularHighwayPrimitiveRoles.fretTop, "highway.fretTop"],
-      [bundle.fretBase, circularHighwayPrimitiveRoles.fretBase, "highway.fretBase"],
+      [
+        bundle.fretTop,
+        circularHighwayPrimitiveRoles.fretTop,
+        "highway.fretTop",
+      ],
+      [
+        bundle.fretBase,
+        circularHighwayPrimitiveRoles.fretBase,
+        "highway.fretBase",
+      ],
     ] as const;
     for (const [model, roles, id] of expected) {
       const meshes = meshesInObject(model).length;

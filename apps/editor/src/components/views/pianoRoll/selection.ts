@@ -1,7 +1,4 @@
-import {
-  normalizeRect,
-  type CanvasRect,
-} from "../../../rendering/geometry";
+import { normalizeRect, type CanvasRect } from "../../../rendering/geometry";
 import type { PianoRollNote } from "./types";
 
 export class SelectionContext {

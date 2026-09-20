@@ -44,7 +44,7 @@ export class PianoRollRenderer {
     this.clearScene();
     this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, 10);
     this.addRect(0, HeaderHeight, width, height - HeaderHeight, 0x151515, 0);
-    this.drawPitchRows(height);
+    this.drawPitchRows(width, height);
     this.drawGrid(width, height);
     this.drawNotes(width, height);
     this.drawKeyboard(height);
@@ -64,7 +64,7 @@ export class PianoRollRenderer {
     );
   }
 
-  private drawPitchRows(height: number): void {
+  private drawPitchRows(width: number, height: number): void {
     const rowHeight = this.coordinates.getCamera().v;
     const rollHeight = Math.max(0, height - HeaderHeight);
     const camera = this.coordinates.getCamera();
@@ -131,7 +131,11 @@ export class PianoRollRenderer {
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
     const horizontal: THREE.Vector3[] = [];
-    for (let y = HeaderHeight + topOffset; y <= height + rowHeight; y += rowHeight) {
+    for (
+      let y = HeaderHeight + topOffset;
+      y <= height + rowHeight;
+      y += rowHeight
+    ) {
       horizontal.push(
         new THREE.Vector3(this.context.getKeyboardWidth(), y, 6),
         new THREE.Vector3(width, y, 6),
@@ -164,7 +168,11 @@ export class PianoRollRenderer {
     this.addLine(major, 0x555555, 2, 8);
   }
 
-  private drawSnapGrid(height: number, visibleStart: number, visibleEnd: number): void {
+  private drawSnapGrid(
+    height: number,
+    visibleStart: number,
+    visibleEnd: number,
+  ): void {
     if (!this.context.getState().snap.enabled) return;
     const ticksPerSnap = this.coordinates.getSnapTicks();
     if (!Number.isFinite(ticksPerSnap) || ticksPerSnap <= 0) return;
@@ -252,7 +260,15 @@ export class PianoRollRenderer {
   private drawSelectionBox(): void {
     const bounds = this.context.getSelectionContext().bounds;
     if (!bounds) return;
-    this.addRect(bounds.x, bounds.y, bounds.width, bounds.height, 0xffffff, 40, 0.5);
+    this.addRect(
+      bounds.x,
+      bounds.y,
+      bounds.width,
+      bounds.height,
+      0xffffff,
+      40,
+      0.5,
+    );
   }
 
   private addRect(

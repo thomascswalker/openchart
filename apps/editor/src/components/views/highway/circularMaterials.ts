@@ -141,14 +141,20 @@ function updateUniforms(mesh: THREE.Mesh, state: CircularMaterialState): void {
   if (!material?.uniforms) return;
   const uniforms = material.uniforms;
   if (uniforms.uBaseColor) uniforms.uBaseColor.value = state.baseColor;
-  if (uniforms.uEmissionColor) uniforms.uEmissionColor.value = state.emissionColor;
-  if (uniforms.uEmissionIntensity) uniforms.uEmissionIntensity.value = state.emissionIntensity;
+  if (uniforms.uEmissionColor) {
+    uniforms.uEmissionColor.value = state.emissionColor;
+  }
+  if (uniforms.uEmissionIntensity) {
+    uniforms.uEmissionIntensity.value = state.emissionIntensity;
+  }
   if (uniforms.uAlpha) uniforms.uAlpha.value = state.alpha;
   if (uniforms.uSelected) uniforms.uSelected.value = state.selected ? 1 : 0;
   if (uniforms.uGhost) uniforms.uGhost.value = state.ghost ? 1 : 0;
   if (uniforms.uTintEnabled) uniforms.uTintEnabled.value = state.tint ? 1 : 0;
   if (uniforms.uPassed) uniforms.uPassed.value = state.passed ? 1 : 0;
-  if (uniforms.uUseStrikeLine) uniforms.uUseStrikeLine.value = state.useStrikeLine ? 1 : 0;
+  if (uniforms.uUseStrikeLine) {
+    uniforms.uUseStrikeLine.value = state.useStrikeLine ? 1 : 0;
+  }
   if (uniforms.uStrikeLineZ) uniforms.uStrikeLineZ.value = state.strikeLineZ;
 }
 
@@ -188,10 +194,26 @@ export function createCircularMaterialSet(
 ): CircularMaterialSet {
   const fretColor = createMaterial(textures.fret, textures.fret, false);
   const fretNeutral = createMaterial(textures.fret, textures.fret, false);
-  const noteColor = createMaterial(textures.note, textures.noteEmission, false);
-  const noteNeutral = createMaterial(textures.note, textures.noteEmission, false);
-  const noteGhostColor = createMaterial(textures.note, textures.noteEmission, true);
-  const noteGhostNeutral = createMaterial(textures.note, textures.noteEmission, true);
+  const noteColor = createMaterial(
+    textures.note,
+    textures.noteEmission,
+    false,
+  );
+  const noteNeutral = createMaterial(
+    textures.note,
+    textures.noteEmission,
+    false,
+  );
+  const noteGhostColor = createMaterial(
+    textures.note,
+    textures.noteEmission,
+    true,
+  );
+  const noteGhostNeutral = createMaterial(
+    textures.note,
+    textures.noteEmission,
+    true,
+  );
   const sustain = createMaterial(
     textures.sustain,
     textures.sustainEmission,
@@ -207,9 +229,15 @@ export function createCircularMaterialSet(
     noteGhostNeutral,
     sustain,
     destroy() {
-      [fretColor, fretNeutral, noteColor, noteNeutral, noteGhostColor, noteGhostNeutral, sustain].forEach(
-        (material) => material.dispose(),
-      );
+      [
+        fretColor,
+        fretNeutral,
+        noteColor,
+        noteNeutral,
+        noteGhostColor,
+        noteGhostNeutral,
+        sustain,
+      ].forEach((material) => material.dispose());
     },
   };
 }

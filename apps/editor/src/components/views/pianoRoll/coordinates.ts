@@ -128,7 +128,9 @@ export class CoordinateSystem {
 
   public toScreenSpace(value: CanvasPoint): CanvasPoint;
   public toScreenSpace(value: CanvasRect): CanvasRect;
-  public toScreenSpace(value: CanvasPoint | CanvasRect): CanvasPoint | CanvasRect {
+  public toScreenSpace(
+    value: CanvasPoint | CanvasRect,
+  ): CanvasPoint | CanvasRect {
     const screenX =
       value.x - this.timelineUnitsAtTick(this.camera.x) * this.camera.h;
     const screenY = value.y + this.camera.y * this.camera.v + HeaderHeight;
@@ -137,7 +139,12 @@ export class CoordinateSystem {
       return { x: screenX, y: screenY };
     }
 
-    return { x: screenX, y: screenY, width: value.width, height: value.height };
+    return {
+      x: screenX,
+      y: screenY,
+      width: value.width,
+      height: value.height,
+    };
   }
 
   public pan(dx: number, dy: number): void {

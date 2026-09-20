@@ -26,14 +26,20 @@ export interface WorldPosition {
 
 export const DEFAULT_NOTE_CALIBRATION: ModelCalibration = {
   noteModelScale: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.scale },
-  noteModelRotation: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees },
+  noteModelRotation: {
+    ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
+  },
   noteModelOffset: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.position },
   width: 0.9,
   height: 0.9,
   depth: 0.21,
 };
 
-export const DEFAULT_NOTE_SCALE_MULTIPLIER: NoteScaleMultiplier = { x: 1, y: 1, z: 1 };
+export const DEFAULT_NOTE_SCALE_MULTIPLIER: NoteScaleMultiplier = {
+  x: 1,
+  y: 1,
+  z: 1,
+};
 
 export function noteWorldPosition(
   laneX: number,
@@ -78,8 +84,14 @@ export function calibrationFromModel(model: THREE.Object3D): ModelCalibration {
     const scale = 1 / width;
     return {
       noteModelScale: { x: scale, y: scale, z: scale },
-      noteModelRotation: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees },
-      noteModelOffset: { x: -center.x * scale, y: 0, z: -center.z * scale },
+      noteModelRotation: {
+        ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
+      },
+      noteModelOffset: {
+        x: -center.x * scale,
+        y: 0,
+        z: -center.z * scale,
+      },
       width: width * scale,
       height: height * scale,
       depth: depth * scale,

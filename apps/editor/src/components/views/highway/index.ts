@@ -10,7 +10,9 @@ import {
 } from "../AbstractChartView";
 import type { ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
 import { RenderAssetRegistry } from "./assets";
-import { circularHighwayPrimitiveRoles } from "../../../assets/highway/circular";
+import {
+  circularHighwayPrimitiveRoles,
+} from "../../../assets/highway/circular";
 import {
   createCircularMaterialSet,
   rgbFromHex,
@@ -96,7 +98,10 @@ function isValidCameraDebugState(state: CameraDebugState): boolean {
 
 function isValidNoteSizeDebugState(state: NoteSizeDebugState): boolean {
   return [state.x, state.y, state.z].every(
-    (value) => Number.isFinite(value) && value >= minimumNoteScale && value <= maximumNoteScale,
+    (value) =>
+      Number.isFinite(value) &&
+      value >= minimumNoteScale &&
+      value <= maximumNoteScale,
   );
 }
 
@@ -112,7 +117,10 @@ export class HighwayView
     64,
   );
   private readonly raycaster = new THREE.Raycaster();
-  private readonly boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.05);
+  private readonly boardPlane = new THREE.Plane(
+    new THREE.Vector3(0, 1, 0),
+    -0.05,
+  );
   private readonly hoverOutline = new THREE.LineLoop(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }),
@@ -125,7 +133,9 @@ export class HighwayView
   private readonly assetRegistry: RenderAssetRegistry;
   private readonly ownsAssetRegistry: boolean;
   private cameraDebugDefaults: CameraDebugState | null = null;
-  private noteSizeDebugState: NoteSizeDebugState = { ...DEFAULT_NOTE_SCALE_MULTIPLIER };
+  private noteSizeDebugState: NoteSizeDebugState = {
+    ...DEFAULT_NOTE_SCALE_MULTIPLIER,
+  };
   private cameraReady = false;
   private canvas: HTMLCanvasElement | null = null;
   private viewportWidth = 1;
@@ -221,7 +231,11 @@ export class HighwayView
 
   public applyCameraDebugState(state: CameraDebugState): boolean {
     if (!this.cameraReady || !isValidCameraDebugState(state)) return false;
-    this.threeCamera.position.set(state.position.x, state.position.y, state.position.z);
+    this.threeCamera.position.set(
+      state.position.x,
+      state.position.y,
+      state.position.z,
+    );
     this.threeCamera.rotation.set(
       THREE.MathUtils.degToRad(state.rotation.x),
       THREE.MathUtils.degToRad(state.rotation.y),
@@ -275,7 +289,10 @@ export class HighwayView
       .getNotes()
       .map((note) => ({ note, lane: note.note - chart.getOffset() }))
       .filter(({ note, lane }) =>
-        note.end >= visibleStart && note.start <= visibleEnd && lane >= 0 && lane < laneCount,
+        note.end >= visibleStart &&
+          note.start <= visibleEnd &&
+          lane >= 0 &&
+          lane < laneCount,
       );
 
     const usedTails = new Set<PooledTail>();
@@ -292,8 +309,16 @@ export class HighwayView
         this.getNoteZ(tailEnd),
       );
       const selected = note.noteOn === this.selectedNoteOn;
-      pooledTail.mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
-      pooledTail.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
+      pooledTail.mesh.position.set(
+        transform.position.x,
+        transform.position.y,
+        transform.position.z,
+      );
+      pooledTail.mesh.scale.set(
+        transform.scale.x,
+        transform.scale.y,
+        transform.scale.z,
+      );
       pooledTail.mesh.renderOrder = 10;
       pooledTail.mesh.visible = true;
       setCircularMaterialState(pooledTail.mesh, {
@@ -412,7 +437,12 @@ export class HighwayView
         ),
       );
       this.tailPools.push(
-        ...createSustainPool(this.threeScene, this.materialSet.sustain, laneRgbColors, poolSizePerLane),
+        ...createSustainPool(
+          this.threeScene,
+          this.materialSet.sustain,
+          laneRgbColors,
+          poolSizePerLane,
+        ),
       );
       this.fretAssemblies = laneRgbColors.map((color, lane) => {
         const assembly = createFretAssembly(
@@ -426,8 +456,16 @@ export class HighwayView
           circularHighwayPrimitiveRoles.fretBase,
         );
         const transform = HIGHWAY_GEOMETRY_CATALOG.fretTop.transform;
-        assembly.position.set(this.getLaneX(lane) + transform.position.x, transform.position.y, strikeLineZ);
-        assembly.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
+        assembly.position.set(
+          this.getLaneX(lane) + transform.position.x,
+          transform.position.y,
+          strikeLineZ,
+        );
+        assembly.scale.set(
+          transform.scale.x,
+          transform.scale.y,
+          transform.scale.z,
+        );
         return assembly;
       });
       this.ghostGem = createModelInstance(
@@ -502,7 +540,8 @@ export class HighwayView
   private drawBeatLines(): void {
     const ppqn = Math.max(1, this.getPpqn());
     const minTick = Math.max(0, this.playheadTick - Math.floor(ppqn * 2));
-    const maxTick = this.playheadTick + Math.ceil(ppqn * (visibleQuarterNotes + 2));
+    const maxTick =
+      this.playheadTick + Math.ceil(ppqn * (visibleQuarterNotes + 2));
     const startQuarterTick = Math.ceil(minTick / ppqn) * ppqn;
     let poolIndex = 0;
     for (let tick = startQuarterTick; tick <= maxTick; tick += ppqn) {
@@ -512,7 +551,9 @@ export class HighwayView
       if (!pooled) break;
       const q = Math.round(tick / ppqn);
       const thicknessZ = q % 4 === 0 ? 0.07 : q % 2 === 0 ? 0.045 : 0.025;
-      pooled.material.color.setHex(q % 4 === 0 ? 0xf1f5f9 : q % 2 === 0 ? 0x94a3b8 : 0x64748b);
+      pooled.material.color.setHex(
+        q % 4 === 0 ? 0xf1f5f9 : q % 2 === 0 ? 0x94a3b8 : 0x64748b,
+      );
       pooled.mesh.position.set(0, -0.065, z);
       pooled.mesh.scale.z = thicknessZ;
       pooled.mesh.visible = true;
@@ -522,27 +563,41 @@ export class HighwayView
     }
   }
 
-  private acquireGem(key: MidiChannelEvent, used: Set<PooledNote>): PooledNote | null {
+  private acquireGem(
+    key: MidiChannelEvent,
+    used: Set<PooledNote>,
+  ): PooledNote | null {
     const existing = this.gemBindings.get(key);
     if (existing) return existing;
     const bound = new Set(this.gemBindings.values());
-    const candidate = this.gemPools.flat().find((item) => !bound.has(item) && !used.has(item));
+    const candidate = this.gemPools
+      .flat()
+      .find((item) => !bound.has(item) && !used.has(item));
     if (!candidate) return null;
     this.gemBindings.set(key, candidate);
     return candidate;
   }
 
-  private acquireTail(key: MidiChannelEvent, used: Set<PooledTail>): PooledTail | null {
+  private acquireTail(
+    key: MidiChannelEvent,
+    used: Set<PooledTail>,
+  ): PooledTail | null {
     const existing = this.tailBindings.get(key);
     if (existing) return existing;
     const bound = new Set(this.tailBindings.values());
-    const candidate = this.tailPools.flat().find((item) => !bound.has(item) && !used.has(item));
+    const candidate = this.tailPools
+      .flat()
+      .find((item) => !bound.has(item) && !used.has(item));
     if (!candidate) return null;
     this.tailBindings.set(key, candidate);
     return candidate;
   }
 
-  private releaseUnusedBindings<T>(bindings: Map<MidiChannelEvent, T>, used: Set<T>, hide: (item: T) => void): void {
+  private releaseUnusedBindings<T>(
+    bindings: Map<MidiChannelEvent, T>,
+    used: Set<T>,
+    hide: (item: T) => void,
+  ): void {
     for (const [key, item] of bindings) {
       if (used.has(item)) continue;
       hide(item);
@@ -565,7 +620,9 @@ export class HighwayView
 
   private applyNoteCalibrationToInstances(): void {
     const calibration = this.getEffectiveNoteCalibration();
-    this.gemPools.flat().forEach(({ object }) => applyModelCalibration(object, calibration));
+    this.gemPools
+      .flat()
+      .forEach(({ object }) => applyModelCalibration(object, calibration));
     if (this.ghostGem) applyModelCalibration(this.ghostGem.object, calibration);
   }
 
@@ -609,7 +666,9 @@ export class HighwayView
     ].filter((value): value is THREE.Vector3 => value !== null);
     if (corners.length !== 4) return;
     this.hoverOutline.geometry.dispose();
-    this.hoverOutline.geometry = new THREE.BufferGeometry().setFromPoints(corners);
+    this.hoverOutline.geometry = new THREE.BufferGeometry().setFromPoints(
+      corners,
+    );
     this.hoverOutline.visible = true;
   }
 
@@ -622,7 +681,11 @@ export class HighwayView
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
     const durationTicks = Math.max(1, this.getSnapTicks());
-    chart.addNote(location.lane as Note, location.tick, location.tick + durationTicks);
+    chart.addNote(
+      location.lane as Note,
+      location.tick,
+      location.tick + durationTicks,
+    );
     this.onNotesChanged?.();
     this.render();
   };
@@ -676,13 +739,21 @@ export class HighwayView
     this.ghostNoteLocation = null;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
-    const note = chart?.getNotes().find((value) => value.noteOn === drag.noteOn);
+    const note = chart
+      ?.getNotes()
+      .find((value) => value.noteOn === drag.noteOn);
     if (!chart || !location || !note) return;
     const changed = drag.resizing
       ? chart.setNoteEnd(note, Math.max(note.start + 1, location.tick))
       : chart.moveNote(
           note,
-          Math.max(Note.Green, Math.min(Note.Orange, drag.initialLane + location.lane - drag.pointerLane)) as Note,
+          Math.max(
+            Note.Green,
+            Math.min(
+              Note.Orange,
+              drag.initialLane + location.lane - drag.pointerLane,
+            ),
+          ) as Note,
           this.snapTick(drag.initialTick + location.tick - drag.pointerTick),
         );
     drag.changed ||= changed;
@@ -706,7 +777,10 @@ export class HighwayView
 
   private readonly handleWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    const nextTick = Math.max(0, this.playheadTick + event.deltaY * this.getPpqn() * wheelTicksPerPixel);
+    const nextTick = Math.max(
+      0,
+      this.playheadTick + event.deltaY * this.getPpqn() * wheelTicksPerPixel,
+    );
     this.setPlayheadTick(nextTick);
     this.onSeekRequest?.(nextTick);
   };
@@ -740,8 +814,14 @@ export class HighwayView
       const lane = note.note - chart.getOffset();
       const gemBounds = this.getGemScreenBounds(note, lane);
       const tailBounds = this.getTailScreenBounds(note, lane);
-      if ((!gemBounds || !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
-          (!tailBounds || !this.containsScreenPoint(tailBounds, pointer.x, pointer.y))) continue;
+      if (
+        (!gemBounds ||
+          !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
+        (!tailBounds ||
+          !this.containsScreenPoint(tailBounds, pointer.x, pointer.y))
+      ) {
+        continue;
+      }
       const depth = note.start - this.playheadTick;
       if (depth < nearestDepth) {
         hit = note;
@@ -751,19 +831,36 @@ export class HighwayView
     return hit;
   }
 
-  private isTailEndHit(note: MidiNote, chart: ChartView, event: MouseEvent): boolean {
+  private isTailEndHit(
+    note: MidiNote,
+    chart: ChartView,
+    event: MouseEvent,
+  ): boolean {
     if (note.end <= note.start) return false;
     const pointer = this.getCanvasPoint(event);
     if (!pointer) return false;
-    const end = this.worldToScreen(new THREE.Vector3(this.getLaneX(note.note - chart.getOffset()), -0.04, this.getNoteZ(note.end)));
+    const end = this.worldToScreen(
+      new THREE.Vector3(
+        this.getLaneX(note.note - chart.getOffset()),
+        -0.04,
+        this.getNoteZ(note.end),
+      ),
+    );
     return end ? Math.hypot(pointer.x - end.x, pointer.y - end.y) <= 12 : false;
   }
 
-  private getGemScreenBounds(note: MidiNote, lane: number): ScreenBounds | null {
+  private getGemScreenBounds(
+    note: MidiNote,
+    lane: number,
+  ): ScreenBounds | null {
     if (lane < 0 || lane >= laneCount) return null;
     const distance = (note.start - this.playheadTick) / this.getPpqn();
     const calibration = this.getEffectiveNoteCalibration();
-    const position = noteWorldPosition(this.getLaneX(lane), strikeLineZ - distance * 3, calibration);
+    const position = noteWorldPosition(
+      this.getLaneX(lane),
+      strikeLineZ - distance * 3,
+      calibration,
+    );
     const corners: THREE.Vector3[] = [];
     for (const xSign of [-1, 1]) {
       for (const ySign of [-1, 1]) {
@@ -776,7 +873,9 @@ export class HighwayView
         }
       }
     }
-    const projected = corners.map((corner) => this.worldToScreen(corner)).filter((value): value is THREE.Vector2 => value !== null);
+    const projected = corners
+      .map((corner) => this.worldToScreen(corner))
+      .filter((value): value is THREE.Vector2 => value !== null);
     if (!projected.length) return null;
     return {
       left: Math.min(...projected.map((corner) => corner.x)),
@@ -786,7 +885,10 @@ export class HighwayView
     };
   }
 
-  private getTailScreenBounds(note: MidiNote, lane: number): ScreenBounds | null {
+  private getTailScreenBounds(
+    note: MidiNote,
+    lane: number,
+  ): ScreenBounds | null {
     if (lane < 0 || lane >= laneCount || note.end <= note.start) return null;
     const tailStart = Math.max(note.start, this.playheadTick);
     const tailEnd = Math.min(note.end, this.getTickAtDepth(farBoardZ));
@@ -797,7 +899,9 @@ export class HighwayView
       new THREE.Vector3(x + 0.16, -0.08, this.getNoteZ(tailStart)),
       new THREE.Vector3(x - 0.16, -0.01, this.getNoteZ(tailEnd)),
       new THREE.Vector3(x + 0.16, -0.08, this.getNoteZ(tailEnd)),
-    ].map((point) => this.worldToScreen(point)).filter((value): value is THREE.Vector2 => value !== null);
+    ]
+      .map((point) => this.worldToScreen(point))
+      .filter((value): value is THREE.Vector2 => value !== null);
     if (!points.length) return null;
     return {
       left: Math.min(...points.map((point) => point.x)),
@@ -817,7 +921,9 @@ export class HighwayView
     };
   }
 
-  private getChartLocation(event: MouseEvent): { lane: number; tick: number } | null {
+  private getChartLocation(
+    event: MouseEvent,
+  ): { lane: number; tick: number } | null {
     const point = this.getCanvasPoint(event);
     if (!point || !this.canvas) return null;
     const bounds = this.canvas.getBoundingClientRect();
@@ -828,8 +934,13 @@ export class HighwayView
     this.raycaster.setFromCamera(ndc, this.threeCamera);
     const hit = new THREE.Vector3();
     if (!this.raycaster.ray.intersectPlane(this.boardPlane, hit)) return null;
-    const lane = Math.max(0, Math.min(laneCount - 1, Math.floor((hit.x + 3) / (6 / laneCount))));
-    const tick = this.snapTick(this.playheadTick + ((strikeLineZ - hit.z) / 3) * this.getPpqn());
+    const lane = Math.max(
+      0,
+      Math.min(laneCount - 1, Math.floor((hit.x + 3) / (6 / laneCount))),
+    );
+    const tick = this.snapTick(
+      this.playheadTick + ((strikeLineZ - hit.z) / 3) * this.getPpqn(),
+    );
     return { lane, tick };
   }
 
@@ -855,8 +966,17 @@ export class HighwayView
     return this.raycaster.ray.intersectPlane(this.boardPlane, hit) ? hit : null;
   }
 
-  private containsScreenPoint(bounds: ScreenBounds, x: number, y: number): boolean {
-    return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+  private containsScreenPoint(
+    bounds: ScreenBounds,
+    x: number,
+    y: number,
+  ): boolean {
+    return (
+      x >= bounds.left &&
+      x <= bounds.right &&
+      y >= bounds.top &&
+      y <= bounds.bottom
+    );
   }
 
   private getLaneX(lane: number): number {
@@ -878,6 +998,8 @@ export class HighwayView
   private snapTick(tick: number): number {
     if (!this.state.snap.enabled) return Math.max(0, Math.round(tick));
     const snapTicks = this.getSnapTicks();
-    return snapTicks > 0 ? Math.max(0, Math.floor(tick / snapTicks) * snapTicks) : Math.max(0, Math.round(tick));
+    return snapTicks > 0
+      ? Math.max(0, Math.floor(tick / snapTicks) * snapTicks)
+      : Math.max(0, Math.round(tick));
   }
 }

@@ -180,7 +180,12 @@ export class NoteGeometryCache {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
       const screenRect = coordinates.toScreenSpace(
-        { x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height },
+        {
+          x: geometry.x,
+          y: geometry.y,
+          width: geometry.width,
+          height: geometry.height,
+        },
       );
       if (
         point.x >= screenRect.x &&
@@ -201,7 +206,12 @@ export class NoteGeometryCache {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
       const screenRect = coordinates.toScreenSpace(
-        { x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height },
+        {
+          x: geometry.x,
+          y: geometry.y,
+          width: geometry.width,
+          height: geometry.height,
+        },
       );
       if (
         point.y < screenRect.y ||

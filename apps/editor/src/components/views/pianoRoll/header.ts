@@ -227,7 +227,8 @@ export class HeaderController {
       label.textContent = formatText(change);
       label.style.left = `${x + 3}px`;
       label.style.top = `${y}px`;
-      label.style.display = x >= this.context.getKeyboardWidth() ? "block" : "none";
+      label.style.display =
+        x >= this.context.getKeyboardWidth() ? "block" : "none";
     });
 
     for (let index = changes.length; index < pool.length; index++) {

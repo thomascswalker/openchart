@@ -74,7 +74,12 @@ export function isNoteSizeDebugView(view: unknown): view is NoteSizeDebugView {
 
 export abstract class AbstractChartView<T> {
   private readonly defaultScene = new THREE.Scene();
-  private readonly defaultCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  private readonly defaultCamera = new THREE.PerspectiveCamera(
+    45,
+    1,
+    0.1,
+    100,
+  );
   private engine: ThreeRenderEngine | null = null;
   private scheduler: RenderScheduler | null = null;
   private destroyed = false;
@@ -170,7 +175,9 @@ export abstract class AbstractChartView<T> {
 
   protected toScreenSpace(value: CanvasPoint): CanvasPoint;
   protected toScreenSpace(value: CanvasRect): CanvasRect;
-  protected toScreenSpace(value: CanvasPoint | CanvasRect): CanvasPoint | CanvasRect {
+  protected toScreenSpace(
+    value: CanvasPoint | CanvasRect,
+  ): CanvasPoint | CanvasRect {
     return value;
   }
 

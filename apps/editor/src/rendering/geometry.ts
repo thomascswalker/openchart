@@ -14,12 +14,7 @@ export function point(x = 0, y = 0): CanvasPoint {
   return { x, y };
 }
 
-export function rect(
-  x = 0,
-  y = 0,
-  width = 0,
-  height = 0,
-): CanvasRect {
+export function rect(x = 0, y = 0, width = 0, height = 0): CanvasRect {
   return { x, y, width, height };
 }
 

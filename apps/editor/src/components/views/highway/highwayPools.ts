@@ -8,7 +8,9 @@ import {
 } from "./highwayGeometry";
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
-type MaterialSource = THREE.Material | ((primitiveIndex: number) => THREE.Material);
+type MaterialSource =
+  | THREE.Material
+  | ((primitiveIndex: number) => THREE.Material);
 
 function cloneModelMeshes(
   template: THREE.Object3D,
@@ -16,7 +18,8 @@ function cloneModelMeshes(
 ): { object: THREE.Group; meshes: THREE.Mesh[] } {
   const object = new THREE.Group();
   const meshes = meshesInModel(template).map((templateMesh, index) => {
-    const meshMaterial = typeof material === "function" ? material(index) : material;
+    const meshMaterial =
+      typeof material === "function" ? material(index) : material;
     const mesh = templateMesh.clone();
     mesh.material = meshMaterial;
     templateMesh.updateWorldMatrix(true, false);
@@ -139,7 +142,10 @@ export function createSustainPool(
   return colors.map((color) => {
     const pool: PooledTail[] = [];
     for (let index = 0; index < poolSize; index++) {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material.clone());
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 2),
+        material.clone(),
+      );
       mesh.rotation.x = THREE.MathUtils.degToRad(90);
       mesh.visible = false;
       setCircularMaterialState(mesh, {
