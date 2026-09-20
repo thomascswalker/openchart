@@ -59,6 +59,32 @@ async function collectDiagnostics(canvas) {
   });
 }
 
+async function captureCanvasAndInterface(page, canvas, name) {
+  const dataUrl = await canvas.evaluate((element) => element.toDataURL());
+  const encoded = dataUrl.split(",", 2)[1];
+  if (!encoded) {
+    throw new Error(`Canvas ${name} did not produce a PNG data URL`);
+  }
+  await writeFile(`${outputDirectory}/${name}-canvas.png`, Buffer.from(encoded, "base64"));
+
+  // Headless Chromium's WebGL compositor can omit SwiftShader canvases from
+  // page screenshots. Replace only the captured canvas with its own pixels so
+  // the interface screenshot still records exactly what Three rendered.
+  await canvas.evaluate((element, source) => {
+    const image = document.createElement("img");
+    image.src = source;
+    image.width = element.width;
+    image.height = element.height;
+    image.className = element.className;
+    image.style.cssText = element.style.cssText;
+    element.replaceWith(image);
+  }, dataUrl);
+  await page.screenshot({
+    path: `${outputDirectory}/${name}.png`,
+    fullPage: true,
+  });
+}
+
 const browser = await chromium.launch({
   headless: true,
   args: ["--enable-webgl", "--ignore-gpu-blocklist", "--use-gl=swiftshader"],
@@ -95,13 +121,7 @@ try {
     `${outputDirectory}/piano-roll-diagnostics.json`,
     JSON.stringify(await collectDiagnostics(canvas), null, 2),
   );
-  await page.screenshot({
-    path: `${outputDirectory}/piano-roll.png`,
-    fullPage: true,
-  });
-  await canvas.screenshot({
-    path: `${outputDirectory}/piano-roll-canvas.png`,
-  });
+  await captureCanvasAndInterface(page, canvas, "piano-roll");
 
   await page
     .locator(".midi-view__controls select")
@@ -120,14 +140,11 @@ try {
       2,
     ),
   );
-  await page.screenshot({
-    path: `${outputDirectory}/highway.png`,
-    fullPage: true,
-  });
-  await page
-    .locator(".midi-view-host canvas")
-    .first()
-    .screenshot({ path: `${outputDirectory}/highway-canvas.png` });
+  await captureCanvasAndInterface(
+    page,
+    page.locator(".midi-view-host canvas").first(),
+    "highway",
+  );
 } finally {
   await browser.close();
 }
