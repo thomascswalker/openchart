@@ -1,4 +1,4 @@
-import { Container3D, Mesh3D, Model, type Material } from "pixi3d/pixi7";
+import * as THREE from "three";
 import type { Rgb, CircularMaterialSet } from "./circularMaterials";
 import { setCircularMaterialState } from "./circularMaterials";
 import {
@@ -8,39 +8,34 @@ import {
 } from "./highwayGeometry";
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
-type MaterialSource = Material | ((primitiveIndex: number) => Material);
+type MaterialSource = THREE.Material | ((primitiveIndex: number) => THREE.Material);
 
-// pixi3d's Model.createInstance()/Mesh3D.createInstance() rely on the source
-// mesh remaining in the scene graph so its own render pass can batch its
-// InstancedMesh3D children, and on the source material supporting hardware
-// instancing (StandardMaterial only). Our custom, non-instanced shader
-// materials (and the fact that our fret/note templates are never added to
-// the scene) mean instances created that way never actually render. Instead,
-// build independent Mesh3D copies that reuse the template's geometry and get
-// their own draw call with the real material assigned up front.
 function cloneModelMeshes(
-  template: Model,
+  template: THREE.Object3D,
   material: MaterialSource,
-): { object: Container3D; meshes: Mesh3D[] } {
-  const object = new Container3D();
+): { object: THREE.Group; meshes: THREE.Mesh[] } {
+  const object = new THREE.Group();
   const meshes = meshesInModel(template).map((templateMesh, index) => {
-    const meshMaterial =
-      typeof material === "function" ? material(index) : material;
-    const mesh = new Mesh3D(templateMesh.geometry, meshMaterial);
-    object.addChild(mesh);
+    const meshMaterial = typeof material === "function" ? material(index) : material;
+    const mesh = templateMesh.clone();
+    mesh.material = meshMaterial;
+    templateMesh.updateWorldMatrix(true, false);
+    mesh.matrixAutoUpdate = false;
+    mesh.matrix.copy(templateMesh.matrixWorld);
+    object.add(mesh);
     return mesh;
   });
   return { object, meshes };
 }
 
 export interface PooledNote {
-  object: Container3D;
-  meshes: Mesh3D[];
+  object: THREE.Group;
+  meshes: THREE.Mesh[];
   selected: boolean;
 }
 
 export interface PooledTail {
-  mesh: Mesh3D;
+  mesh: THREE.Mesh;
 }
 
 export function visiblePoolItems<T extends { start: number; end: number }>(
@@ -55,21 +50,19 @@ export function visiblePoolItems<T extends { start: number; end: number }>(
 }
 
 export function createModelInstance(
-  template: Model,
+  template: THREE.Object3D,
   material: MaterialSource,
   calibration?: ModelCalibration,
 ): PooledNote {
   const { object, meshes } = cloneModelMeshes(template, material);
-  if (calibration) {
-    applyModelCalibration(object, calibration);
-  }
+  if (calibration) applyModelCalibration(object, calibration);
   object.visible = false;
   return { object, meshes, selected: false };
 }
 
 export function createNotePools(
-  scene: Container3D,
-  template: Model,
+  scene: THREE.Scene,
+  template: THREE.Object3D,
   materialSet: CircularMaterialSet,
   colors: Rgb[],
   poolSize: number,
@@ -78,26 +71,24 @@ export function createNotePools(
 ): PooledNote[][] {
   return colors.map((color) => {
     const pool: PooledNote[] = [];
-    for (let i = 0; i < poolSize; i += 1) {
+    for (let index = 0; index < poolSize; index++) {
       const note = createModelInstance(
         template,
         (primitiveIndex) =>
           primitiveRoles[primitiveIndex] === "tinted"
-            ? materialSet.noteColor
-            : materialSet.noteNeutral,
+            ? materialSet.noteColor.clone()
+            : materialSet.noteNeutral.clone(),
         calibration,
       );
       note.meshes.forEach((mesh, primitiveIndex) =>
         setCircularMaterialState(mesh, {
           baseColor: color,
           emissionColor:
-            primitiveRoles[primitiveIndex] === "neutral"
-              ? ([1, 1, 1] as Rgb)
-              : color,
+            primitiveRoles[primitiveIndex] === "neutral" ? [1, 1, 1] : color,
           tint: primitiveRoles[primitiveIndex] !== "neutral",
         }),
       );
-      scene.addChild(note.object);
+      scene.add(note.object);
       pool.push(note);
     }
     return pool;
@@ -105,61 +96,61 @@ export function createNotePools(
 }
 
 export function createFretAssembly(
-  scene: Container3D,
-  topTemplate: Model,
-  baseTemplate: Model,
-  material: Material,
+  scene: THREE.Scene,
+  topTemplate: THREE.Object3D,
+  baseTemplate: THREE.Object3D,
+  material: THREE.Material,
   laneColor: Rgb,
   topPrimitiveRoles: readonly PrimitiveMaterialRole[] = [],
-  neutralMaterial: Material = material,
+  neutralMaterial: THREE.Material = material,
   basePrimitiveRoles: readonly PrimitiveMaterialRole[] = topPrimitiveRoles,
-): Container3D {
-  const assembly = new Container3D();
-  const parts: ReadonlyArray<{
-    template: Model;
-    primitiveRoles: readonly PrimitiveMaterialRole[];
-  }> = [
+): THREE.Group {
+  const assembly = new THREE.Group();
+  const parts = [
     { template: baseTemplate, primitiveRoles: basePrimitiveRoles },
     { template: topTemplate, primitiveRoles: topPrimitiveRoles },
   ];
   parts.forEach(({ template, primitiveRoles }) => {
     const { object, meshes } = cloneModelMeshes(template, (primitiveIndex) =>
-      primitiveRoles[primitiveIndex] === "tinted" ? material : neutralMaterial,
+      primitiveRoles[primitiveIndex] === "tinted"
+        ? material.clone()
+        : neutralMaterial.clone(),
     );
     meshes.forEach((mesh, primitiveIndex) =>
       setCircularMaterialState(mesh, {
         baseColor: laneColor,
         emissionColor:
-          primitiveRoles[primitiveIndex] === "neutral"
-            ? ([1, 1, 1] as Rgb)
-            : laneColor,
+          primitiveRoles[primitiveIndex] === "neutral" ? [1, 1, 1] : laneColor,
         tint: primitiveRoles[primitiveIndex] !== "neutral",
       }),
     );
-    assembly.addChild(object);
+    assembly.add(object);
   });
-  scene.addChild(assembly);
+  scene.add(assembly);
   return assembly;
 }
 
 export function createSustainPool(
-  scene: Container3D,
-  material: Material,
+  scene: THREE.Scene,
+  material: THREE.Material,
   colors: Rgb[],
   poolSize: number,
 ): PooledTail[][] {
   return colors.map((color) => {
     const pool: PooledTail[] = [];
-    for (let i = 0; i < poolSize; i += 1) {
-      const mesh = Mesh3D.createQuad(material);
-      mesh.rotationQuaternion.setEulerAngles(90, 0, 0);
+    for (let index = 0; index < poolSize; index++) {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material.clone());
+      mesh.rotation.x = THREE.MathUtils.degToRad(90);
+      mesh.visible = false;
       setCircularMaterialState(mesh, {
         baseColor: color,
         emissionColor: color,
         alpha: 0.65,
+        tint: true,
+        useStrikeLine: true,
+        strikeLineZ: -3.5,
       });
-      mesh.visible = false;
-      scene.addChild(mesh);
+      scene.add(mesh);
       pool.push({ mesh });
     }
     return pool;
@@ -170,26 +161,20 @@ export function destroyPooledObjects(
   pools: PooledNote[][],
   tails: PooledTail[][],
 ): void {
-  pools.flat().forEach(({ object }) =>
-    object.destroy({
-      children: true,
-      geometry: false,
-      material: false,
-      texture: false,
-      baseTexture: false,
-    } as never),
-  );
-  tails.flat().forEach(({ mesh }) =>
-    mesh.destroy({
-      children: true,
-      geometry: true,
-      material: false,
-      texture: false,
-      baseTexture: false,
-    } as never),
-  );
+  pools.flat().forEach(({ object }) => {
+    object.removeFromParent();
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      mesh.material?.dispose();
+    });
+  });
+  tails.flat().forEach(({ mesh }) => {
+    mesh.removeFromParent();
+    mesh.geometry.dispose();
+    mesh.material?.dispose();
+  });
 }
 
-export function modelMeshesForBounds(pool: PooledNote): Mesh3D[] {
+export function modelMeshesForBounds(pool: PooledNote): THREE.Mesh[] {
   return pool.meshes.length ? pool.meshes : meshesInModel(pool.object);
 }

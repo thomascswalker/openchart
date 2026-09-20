@@ -1,6 +1,6 @@
 import type { MidiChannelEvent } from "@midiedit/core";
 import { clamp } from "es-toolkit";
-import type { Point } from "pixi.js";
+import type { CanvasPoint } from "../../../rendering/geometry";
 import type { CoordinateSystem } from "./coordinates";
 import type { PianoRollContext, PianoRollNote } from "./types";
 
@@ -87,7 +87,7 @@ export class NoteEditingController {
     );
   }
 
-  public updateResize(local: Point): void {
+  public updateResize(local: CanvasPoint): void {
     const track = this.context.getSelectedTrack();
     if (!track || !this.resizeAnchor) {
       return;
@@ -132,7 +132,7 @@ export class NoteEditingController {
     );
   }
 
-  public updateMove(local: Point): void {
+  public updateMove(local: CanvasPoint): void {
     const track = this.context.getSelectedTrack();
     if (!track || !this.moveAnchor) {
       return;
@@ -205,7 +205,7 @@ export class NoteEditingController {
     this.moveSelectionKeep = new Set();
   }
 
-  public beginCreate(local: Point): void {
+  public beginCreate(local: CanvasPoint): void {
     const track = this.context.getSelectedTrack();
     if (!track) {
       return;

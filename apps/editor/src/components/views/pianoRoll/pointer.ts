@@ -1,4 +1,4 @@
-import { Point } from "pixi.js";
+import { point, type CanvasPoint } from "../../../rendering/geometry";
 
 export const PointerButton = {
   None: -1,
@@ -14,5 +14,5 @@ export type PointerButton = (typeof PointerButton)[keyof typeof PointerButton];
 export class PointerContext {
   id: number | null = null;
   button: PointerButton | null = null;
-  position: Point = new Point(0, 0);
+  position: CanvasPoint = point();
 }

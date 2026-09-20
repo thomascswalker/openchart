@@ -1,22 +1,19 @@
-import { Rectangle } from "pixi.js";
+import {
+  normalizeRect,
+  type CanvasRect,
+} from "../../../rendering/geometry";
 import type { PianoRollNote } from "./types";
 
-function normalizeRectangle(rect: Rectangle): Rectangle {
-  const x = rect.width < 0 ? rect.x + rect.width : rect.x;
-  const y = rect.height < 0 ? rect.y + rect.height : rect.y;
-  return new Rectangle(x, y, Math.abs(rect.width), Math.abs(rect.height));
-}
-
 export class SelectionContext {
-  #bounds: Rectangle | null = null;
+  #bounds: CanvasRect | null = null;
   #notes: Set<PianoRollNote> = new Set();
 
-  public get bounds(): Rectangle | null {
+  public get bounds(): CanvasRect | null {
     return this.#bounds;
   }
 
-  public set bounds(value: Rectangle | null) {
-    this.#bounds = value !== null ? normalizeRectangle(value) : value;
+  public set bounds(value: CanvasRect | null) {
+    this.#bounds = value !== null ? normalizeRect(value) : value;
   }
 
   public get notes(): PianoRollNote[] {
@@ -40,11 +37,16 @@ export class SelectionContext {
     this.#notes.clear();
   }
 
-  public intersects(rect: Rectangle): boolean {
+  public intersects(rect: CanvasRect): boolean {
     if (this.#bounds === null) {
       return false;
     }
-    return this.#bounds.intersects(rect);
+    return (
+      this.#bounds.x < rect.x + rect.width &&
+      this.#bounds.x + this.#bounds.width > rect.x &&
+      this.#bounds.y < rect.y + rect.height &&
+      this.#bounds.y + this.#bounds.height > rect.y
+    );
   }
 
   public isSelected(note: PianoRollNote): boolean {

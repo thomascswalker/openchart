@@ -4,8 +4,10 @@ import type {
   TempoChange,
   TimeSignatureChange,
 } from "@midiedit/core";
-import { Application, Point, Rectangle } from "pixi.js";
+import * as THREE from "three";
 import { AbstractChartView } from "../AbstractChartView";
+import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
+import { type ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
 import { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import { PianoRollInputController } from "./input";
@@ -18,6 +20,14 @@ import { SelectionContext } from "./selection";
 import type { PianoRollCamera, PianoRollContext, PianoRollNote } from "./types";
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
+  private readonly threeCamera = new THREE.OrthographicCamera(
+    0,
+    1,
+    0,
+    1,
+    -100,
+    100,
+  );
   private readonly keyboardWidth = 64;
   private readonly camera: PianoRollCamera = { x: 0, y: 84, h: 120, v: 18 };
   private readonly pointer = new PointerContext();
@@ -126,10 +136,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.header.mount(host);
   }
 
-  protected override onMounted(app: Application): void {
-    app.stage.addChild(...this.renderer.getDisplayObjects());
-    this.canvas = app.view as HTMLCanvasElement;
+  protected override get renderScene(): THREE.Scene {
+    return this.renderer.getScene();
+  }
+
+  protected override get renderCamera(): THREE.Camera {
+    return this.threeCamera;
+  }
+
+  protected override onMounted(engine: ThreeRenderEngine): void {
+    this.canvas = engine.canvas;
     this.input.attach(this.canvas);
+    this.threeCamera.position.set(0, 0, 10);
+    this.threeCamera.lookAt(0, 0, 0);
   }
 
   public override destroy(): void {
@@ -138,14 +157,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.canvas = null;
     this.geometry.clear();
     this.noteData.clear();
+    this.renderer.dispose();
     super.destroy();
   }
 
-  protected override draw(app: Application): void {
-    const width = app.screen.width;
-    const height = app.screen.height;
+  protected override draw(engine: ThreeRenderEngine): void {
+    const { width, height } = engine.getSize();
     this.lastWidth = width;
     this.lastHeight = height;
+    this.threeCamera.left = 0;
+    this.threeCamera.right = width;
+    this.threeCamera.top = 0;
+    this.threeCamera.bottom = height;
+    this.threeCamera.updateProjectionMatrix();
     this.input.setViewport(width, height);
     this.updateTempoCache();
     this.renderer.draw(width, height, this.playheadTick);
@@ -180,12 +204,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.renderer.drawCursor(width, height, this.playheadTick);
   }
 
-  protected override toScreenSpace(value: Point): Point;
-  protected override toScreenSpace(value: Rectangle): Rectangle;
+  protected override toScreenSpace(value: CanvasPoint): CanvasPoint;
+  protected override toScreenSpace(value: CanvasRect): CanvasRect;
   protected override toScreenSpace(
-    value: Point | Rectangle,
-  ): Point | Rectangle {
-    // @ts-expect-error Expected overload error
+    value: CanvasPoint | CanvasRect,
+  ): CanvasPoint | CanvasRect {
     return this.coordinates.toScreenSpace(value);
   }
 

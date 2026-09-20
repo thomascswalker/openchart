@@ -31,11 +31,11 @@ describe("circular material state contract", () => {
     ]);
   });
 
-  it("uses Pixi3D MeshShader's geometry attribute names", () => {
+  it("uses Three.js shader attributes supplied by imported geometry", () => {
     expect(CIRCULAR_SHADER_ATTRIBUTES).toEqual({
-      position: "a_Position",
-      normal: "a_Normal",
-      uv: "a_UV1",
+      position: "position",
+      normal: "normal",
+      uv: "uv",
     });
   });
 });
