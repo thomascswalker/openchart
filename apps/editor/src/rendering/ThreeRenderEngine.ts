@@ -61,6 +61,7 @@ export class ThreeRenderEngine {
       this.renderer.setRenderTarget(null);
       this.renderer.clear(true, true, true);
       this.renderer.render(scene, camera);
+      this.renderer.setRenderTarget(null);
       const gl = this.renderer.getContext();
       const pixels = new Uint8Array(4);
       gl.readPixels(
@@ -80,6 +81,9 @@ export class ThreeRenderEngine {
         gl.getContextAttributes(),
       );
       this.canvas.dataset.threePixel = JSON.stringify([...pixels]);
+      this.canvas.dataset.threeFramebuffer = String(
+        gl.getParameter(gl.FRAMEBUFFER_BINDING),
+      );
       this.canvas.dataset.threeGlError = String(gl.getError());
       this.canvas.dataset.threeRenderCalls = String(
         this.renderer.info.render.calls,
