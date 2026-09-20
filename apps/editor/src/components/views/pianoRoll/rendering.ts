@@ -57,7 +57,7 @@ export class PianoRollRenderer {
     const x = this.coordinates.screenXForTick(playheadTick);
     if (x < this.context.getKeyboardWidth() || x >= width) return;
     this.addLine(
-      [new THREE.Vector3(x, 0, 20), new THREE.Vector3(x, height, 20)],
+      [new THREE.Vector3(x, 0, 0.9), new THREE.Vector3(x, height, 0.9)],
       0xff0000,
       2,
       30,
