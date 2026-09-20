@@ -69,6 +69,16 @@ async function captureCanvasAndInterface(page, canvas, name) {
     `${outputDirectory}/${name}-canvas.png`,
     Buffer.from(encoded, "base64"),
   );
+  const rendererFramebuffer = await page.evaluate(
+    () => window.__threeFramebufferPng ?? null,
+  );
+  if (!rendererFramebuffer) {
+    throw new Error(`Renderer did not provide a framebuffer capture for ${name}`);
+  }
+  await writeFile(
+    `${outputDirectory}/${name}-renderer-framebuffer.png`,
+    Buffer.from(rendererFramebuffer.split(",", 2)[1], "base64"),
+  );
 
   // Headless Chromium's WebGL compositor can omit SwiftShader canvases from
   // page screenshots. Replace only the captured canvas with its own pixels so
@@ -99,6 +109,7 @@ try {
     deviceScaleFactor: 1,
   });
   await page.addInitScript(() => {
+    window.__captureThreeFramebuffer = true;
     Object.defineProperty(window, "showOpenFilePicker", {
       configurable: true,
       value: undefined,

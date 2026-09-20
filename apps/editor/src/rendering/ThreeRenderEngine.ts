@@ -84,6 +84,47 @@ export class ThreeRenderEngine {
       this.canvas.dataset.threeFramebuffer = String(
         gl.getParameter(gl.FRAMEBUFFER_BINDING),
       );
+      if (
+        typeof window !== "undefined" &&
+        (window as Window & { __captureThreeFramebuffer?: boolean })
+          .__captureThreeFramebuffer
+      ) {
+        const framebufferPixels = new Uint8Array(
+          gl.drawingBufferWidth * gl.drawingBufferHeight * 4,
+        );
+        gl.readPixels(
+          0,
+          0,
+          gl.drawingBufferWidth,
+          gl.drawingBufferHeight,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          framebufferPixels,
+        );
+        const capture = document.createElement("canvas");
+        capture.width = gl.drawingBufferWidth;
+        capture.height = gl.drawingBufferHeight;
+        const captureContext = capture.getContext("2d");
+        if (captureContext) {
+          const image = captureContext.createImageData(
+            gl.drawingBufferWidth,
+            gl.drawingBufferHeight,
+          );
+          const rowLength = gl.drawingBufferWidth * 4;
+          for (let row = 0; row < gl.drawingBufferHeight; row += 1) {
+            const source = (gl.drawingBufferHeight - row - 1) * rowLength;
+            const target = row * rowLength;
+            image.data.set(
+              framebufferPixels.subarray(source, source + rowLength),
+              target,
+            );
+          }
+          captureContext.putImageData(image, 0, 0);
+          (
+            window as Window & { __threeFramebufferPng?: string }
+          ).__threeFramebufferPng = capture.toDataURL();
+        }
+      }
       this.canvas.dataset.threeGlError = String(gl.getError());
       this.canvas.dataset.threeRenderCalls = String(
         this.renderer.info.render.calls,
