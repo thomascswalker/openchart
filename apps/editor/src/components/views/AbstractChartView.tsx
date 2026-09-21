@@ -11,6 +11,8 @@ export interface ChartViewState {
   selectedInstrument: string;
   selectedDifficulty: Difficulty;
   snap: SnapSettings;
+  /** Note mutations are disabled while the shared transport is playing. */
+  isPlaying: boolean;
 }
 
 export interface SnapSettings {
@@ -85,6 +87,7 @@ export abstract class AbstractChartView<T> {
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
+    isPlaying: false,
   };
 
   public async mount(host: HTMLElement): Promise<void> {
@@ -114,6 +117,11 @@ export abstract class AbstractChartView<T> {
     this.state = state;
 
     this.requestRender();
+  }
+
+  /** Chart renderers use this instead of reaching into React playback state. */
+  protected get canEditNotes(): boolean {
+    return !this.state.isPlaying;
   }
 
   public resize(width: number, height: number): void {
