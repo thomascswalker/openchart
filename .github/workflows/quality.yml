@@ -48,5 +48,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build
-        run: npm run build
+      - name: Build application and Linux packages
+        run: |
+          npm run build -- --filter=!@midiedit/desktop
+          npm run build --workspace=@midiedit/desktop -- --bundles deb,rpm

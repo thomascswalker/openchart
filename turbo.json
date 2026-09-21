@@ -12,7 +12,7 @@
       "outputLogs": "full"
     },
     "test": {
-      "dependsOn": ["build"],
+      "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
     "check-types": {
