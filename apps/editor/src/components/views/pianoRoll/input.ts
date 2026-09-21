@@ -44,6 +44,12 @@ export class PianoRollInputController {
     this.header = header;
   }
 
+  public cancelNoteEditing(): void {
+    this.editing.cancelGesture();
+    this.pendingCreateStart = null;
+    this.erasing = false;
+  }
+
   public attach(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
     canvas.style.touchAction = "none";
