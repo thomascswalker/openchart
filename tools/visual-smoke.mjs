@@ -21,16 +21,6 @@ async function collectDiagnostics(canvas) {
       };
     }
 
-    const pixels = new Uint8Array(4);
-    gl.readPixels(
-      Math.floor(gl.drawingBufferWidth / 2),
-      Math.floor(gl.drawingBufferHeight / 2),
-      1,
-      1,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      pixels,
-    );
     const attributes = gl.getContextAttributes();
     return {
       width: element.width,
@@ -46,8 +36,9 @@ async function collectDiagnostics(canvas) {
             preserveDrawingBuffer: attributes.preserveDrawingBuffer,
           }
         : null,
-      pixel: [...pixels],
-      rendererPixel: element.dataset.threePixel ?? null,
+      rendererPixel: element.dataset.threePixel
+        ? JSON.parse(element.dataset.threePixel)
+        : null,
       rendererContextType: element.dataset.threeContextType ?? null,
       rendererContextAttributes:
         element.dataset.threeContextAttributes ?? null,
@@ -71,10 +62,7 @@ async function captureCanvasAndInterface(page, canvas, name) {
   }
   await writeFile(
     `${outputDirectory}/${name}-renderer-framebuffer.png`,
-    Buffer.from(
-      rendererFramebuffer.split(",", 2)[1],
-      "base64",
-    ),
+    Buffer.from(rendererFramebuffer.split(",", 2)[1], "base64"),
   );
 
   // Headless Chromium's WebGL compositor can omit SwiftShader canvases from
