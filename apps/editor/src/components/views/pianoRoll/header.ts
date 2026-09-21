@@ -42,9 +42,9 @@ export class HeaderController {
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
 
-  private readonly tempoLabelPool: HTMLDivElement[] = [];
-  private readonly timeSignatureLabelPool: HTMLDivElement[] = [];
-  private readonly highlightPool: HTMLDivElement[] = [];
+  private readonly tempoLabelInstance: HTMLDivElement[] = [];
+  private readonly timeSignatureLabelInstance: HTMLDivElement[] = [];
+  private readonly highlightInstance: HTMLDivElement[] = [];
   private hoveredMarker: { lane: HeaderLane; tick: number } | null = null;
   private host: HTMLElement | null = null;
   private editInput: HTMLInputElement | null = null;
@@ -66,12 +66,12 @@ export class HeaderController {
   public destroy(): void {
     this.editInput?.remove();
     this.deleteButton?.remove();
-    this.tempoLabelPool.forEach((label) => label.remove());
-    this.timeSignatureLabelPool.forEach((label) => label.remove());
-    this.highlightPool.forEach((highlight) => highlight.remove());
-    this.tempoLabelPool.length = 0;
-    this.timeSignatureLabelPool.length = 0;
-    this.highlightPool.length = 0;
+    this.tempoLabelInstance.forEach((label) => label.remove());
+    this.timeSignatureLabelInstance.forEach((label) => label.remove());
+    this.highlightInstance.forEach((highlight) => highlight.remove());
+    this.tempoLabelInstance.length = 0;
+    this.timeSignatureLabelInstance.length = 0;
+    this.highlightInstance.length = 0;
     this.editInput = null;
     this.deleteButton = null;
     this.host = null;
@@ -170,12 +170,12 @@ export class HeaderController {
     const inView = (change: { tick: number }) =>
       change.tick >= visibleStart && change.tick <= visibleEnd;
 
-    this.highlightPool.forEach((highlight) => {
+    this.highlightInstance.forEach((highlight) => {
       highlight.style.display = "none";
     });
     this.drawMarkers(
       "tempo",
-      this.tempoLabelPool,
+      this.tempoLabelInstance,
       this.context.getTempoChanges().filter(inView),
       2,
       (change) =>
@@ -183,7 +183,7 @@ export class HeaderController {
     );
     this.drawMarkers(
       "timeSignature",
-      this.timeSignatureLabelPool,
+      this.timeSignatureLabelInstance,
       this.context.getTimeSignatureChanges().filter(inView),
       HeaderTempoLaneHeight + 2,
       (change) => `${change.numerator}/${2 ** change.denominator}`,
@@ -193,13 +193,13 @@ export class HeaderController {
 
   private drawMarkers<T extends { tick: number }>(
     lane: HeaderLane,
-    pool: HTMLDivElement[],
+    instance: HTMLDivElement[],
     changes: T[],
     y: number,
     formatText: (change: T) => string,
   ): void {
     changes.forEach((change, index) => {
-      let label = pool[index];
+      let label = instance[index];
       if (!label) {
         label = document.createElement("div");
         label.style.position = "absolute";
@@ -207,7 +207,7 @@ export class HeaderController {
         label.style.font = "11px sans-serif";
         label.style.whiteSpace = "nowrap";
         label.style.pointerEvents = "none";
-        pool[index] = label;
+        instance[index] = label;
         this.host?.appendChild(label);
       }
 
@@ -230,19 +230,19 @@ export class HeaderController {
         x >= this.context.getKeyboardWidth() ? "block" : "none";
     });
 
-    for (let index = changes.length; index < pool.length; index++) {
-      pool[index].style.display = "none";
+    for (let index = changes.length; index < instance.length; index++) {
+      instance[index].style.display = "none";
     }
   }
 
   private getHighlight(index: number): HTMLDivElement {
-    let highlight = this.highlightPool[index];
+    let highlight = this.highlightInstance[index];
     if (!highlight) {
       highlight = document.createElement("div");
       highlight.style.position = "absolute";
       highlight.style.background = "rgba(255, 0, 0, 0.3)";
       highlight.style.pointerEvents = "none";
-      this.highlightPool[index] = highlight;
+      this.highlightInstance[index] = highlight;
       this.host?.appendChild(highlight);
     }
     return highlight;

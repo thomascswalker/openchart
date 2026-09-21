@@ -6,7 +6,7 @@ import {
   scaleNoteCalibration,
   noteWorldPosition,
   sustainWorldTransform,
-} from "./highwayGeometry";
+} from "./geometry";
 
 describe("circular highway geometry", () => {
   it("keeps note timing on the existing lane/depth mapping", () => {

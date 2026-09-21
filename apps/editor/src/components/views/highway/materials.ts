@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
-import texturedFragmentSource from "./shaders/textured.frag.glsl?raw";
-import texturedVertexSource from "./shaders/textured.vert.glsl?raw";
+import texturedFragmentSource from "./shaders/note.frag.glsl?raw";
+import texturedVertexSource from "./shaders/vert.glsl?raw";
 import type { TextureResource } from "../../../rendering/registry";
 
 export type Rgb = [number, number, number];
 
-export interface CircularMaterialState {
+export interface MaterialState {
   baseColor: Rgb;
   emissionColor: Rgb;
   emissionIntensity: number;
@@ -30,31 +30,7 @@ export interface MaterialSet {
   destroy(): void;
 }
 
-/** Imported GLTF attributes use Three.js' standard geometry attribute names. */
-export const CIRCULAR_SHADER_ATTRIBUTES = {
-  position: "position",
-  normal: "normal",
-  uv: "uv",
-} as const;
-
-export const CIRCULAR_MATERIAL_MAPPING = {
-  baseColor: "note/fret texture.rgb * uBaseColor; sustain: solid uBaseColor",
-  laneTint: "uBaseColor",
-  emission: "emissionTexture.rgb * uEmissionColor * uEmissionIntensity",
-  alpha: "baseTexture.a * uAlpha with a 0.02 discard cutoff",
-  tint: "only authored tinted primitives multiply their base texture by uBaseColor",
-  passed:
-    "final composed colour is converted to luminance at/near the strike line",
-  depth: "depth test enabled; opaque notes write depth; ghost/sustain do not",
-  culling: "double-sided imported circular/fret surfaces",
-  selected: "uSelected brightens the lane tint and emission",
-  ghost: "uGhost mixes a neutral tint and reduces alpha",
-  sustain:
-    "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
-  center: "uPreserveWhiteCenter keeps the original note texture center",
-} as const;
-
-const defaultState: CircularMaterialState = {
+const defaultState: MaterialState = {
   baseColor: [1, 1, 1],
   emissionColor: [1, 1, 1],
   emissionIntensity: 1,
@@ -67,7 +43,7 @@ const defaultState: CircularMaterialState = {
   strikeLineZ: -3.5,
 };
 
-const stateByMaterial = new WeakMap<THREE.Material, CircularMaterialState>();
+const stateByMaterial = new WeakMap<THREE.Material, MaterialState>();
 
 export function rgbFromHex(hex: number): Rgb {
   return [
@@ -77,23 +53,21 @@ export function rgbFromHex(hex: number): Rgb {
   ];
 }
 
-export function setCircularMaterialState(
+export function setMaterialState(
   mesh: THREE.Mesh,
-  state: Partial<CircularMaterialState>,
+  state: Partial<MaterialState>,
 ): void {
   const materials = Array.isArray(mesh.material)
     ? mesh.material
     : mesh.material
       ? [mesh.material]
       : [];
-  materials.forEach((material) =>
-    setCircularMaterialStateForMaterial(material, state),
-  );
+  materials.forEach((material) => setMaterialStateForMaterial(material, state));
 }
 
-export function setCircularMaterialStateForMaterial(
+export function setMaterialStateForMaterial(
   material: THREE.Material,
-  state: Partial<CircularMaterialState>,
+  state: Partial<MaterialState>,
 ): void {
   const current = {
     ...defaultState,
@@ -104,10 +78,7 @@ export function setCircularMaterialStateForMaterial(
   updateUniforms(material, current);
 }
 
-function updateUniforms(
-  material: THREE.Material,
-  state: CircularMaterialState,
-): void {
+function updateUniforms(material: THREE.Material, state: MaterialState): void {
   const shaderMaterial = material as THREE.ShaderMaterial;
   if (!shaderMaterial?.uniforms) return;
   const uniforms = shaderMaterial.uniforms;
@@ -135,7 +106,6 @@ interface CreateMaterialOptions {
   transparent?: boolean;
   vert?: string;
   frag?: string;
-  preserveWhiteCenter?: boolean;
 }
 
 class MaterialManager {
@@ -149,7 +119,6 @@ class MaterialManager {
       transparent = false,
       vert = texturedVertexSource,
       frag = texturedFragmentSource,
-      preserveWhiteCenter = false,
     }: CreateMaterialOptions,
   ): THREE.ShaderMaterial {
     const material = new THREE.ShaderMaterial({
@@ -157,8 +126,8 @@ class MaterialManager {
       fragmentShader: frag,
       uniforms: {
         uBaseTexture: { value: color },
-        uEmissionTexture: { value: emission },
         uBaseColor: { value: [1, 1, 1] },
+        uEmissionTexture: { value: emission },
         uEmissionColor: { value: [1, 1, 1] },
         uEmissionIntensity: { value: 1 },
         uAlpha: { value: 1 },
@@ -168,7 +137,6 @@ class MaterialManager {
         uPassed: { value: 0 },
         uUseStrikeLine: { value: 0 },
         uStrikeLineZ: { value: -3.5 },
-        uPreserveWhiteCenter: { value: preserveWhiteCenter ? 1 : 0 },
       },
       transparent,
       depthTest: true,
@@ -195,12 +163,10 @@ export function createMaterialSet(
   const noteColor = manager.create("noteColor", {
     color: textures.note.value!,
     emission: textures.noteEmission.value!,
-    preserveWhiteCenter: true,
   });
   const noteNeutral = manager.create("noteNeutral", {
     color: textures.note.value!,
     emission: textures.noteEmission.value!,
-    preserveWhiteCenter: true,
   });
   const noteGhostColor = manager.create("noteGhostColor", {
     color: textures.note.value!,

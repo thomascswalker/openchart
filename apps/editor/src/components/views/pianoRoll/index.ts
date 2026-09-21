@@ -28,8 +28,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     0.1,
     1000,
   );
-  private readonly keyboardWidth = 64;
   private readonly camera: PianoRollCamera = { x: 0, y: 84, h: 120, v: 18 };
+
+  private readonly keyboardWidth = 64;
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
 
