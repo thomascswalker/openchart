@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     fileParallelism: false,
+    reporters: ["default", "hanging-process"],
+    teardownTimeout: 10_000,
     browser: {
       enabled: true,
       headless: true,
