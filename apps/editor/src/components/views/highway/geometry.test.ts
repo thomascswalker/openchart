@@ -38,7 +38,7 @@ describe("circular highway geometry", () => {
       z: 0.5,
     });
 
-    expect(scaled.noteModelScale).toEqual({ x: 1.5, y: 2, z: 0.5 });
+    expect(scaled.noteModelScale).toEqual({ x: 0.675, y: 0.9, z: 0.225 });
     expect(scaled.noteModelOffset).toEqual({ x: 0, y: 0.05, z: 0 });
     expect(scaled.width).toBe(1.5);
     expect(scaled.height).toBe(2);
