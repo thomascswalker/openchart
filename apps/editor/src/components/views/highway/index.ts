@@ -161,6 +161,23 @@ export class HighwayView
     this.ownsAssetRegistry = !registry;
   }
 
+  public override update(state: import("../AbstractChartView").ChartViewState): void {
+    const playbackStarted = !this.state.isPlaying && state.isPlaying;
+    super.update(state);
+    if (!playbackStarted) {
+      return;
+    }
+
+    if (this.drag && this.canvas?.hasPointerCapture(this.drag.pointerId)) {
+      this.canvas.releasePointerCapture(this.drag.pointerId);
+    }
+    this.drag = null;
+    this.ghostNoteLocation = null;
+    this.hoveredNoteOn = null;
+    this.hoverOutline.visible = false;
+    this.suppressNextClick = false;
+  }
+
   protected override get renderScene(): THREE.Scene {
     return this.threeScene;
   }
@@ -696,6 +713,10 @@ export class HighwayView
   }
 
   private readonly handleClick = (event: MouseEvent): void => {
+    if (!this.canEditNotes) {
+      this.suppressNextClick = false;
+      return;
+    }
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
       return;
@@ -703,18 +724,16 @@ export class HighwayView
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
-    const durationTicks = Math.max(1, this.getSnapTicks());
-    chart.addNote(
-      location.lane as Note,
-      location.tick,
-      location.tick + durationTicks,
-    );
+    chart.addNote(location.lane as Note, location.tick, location.tick + 1);
     this.onNotesChanged?.();
     this.render();
   };
 
   private readonly handleContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
+    if (!this.canEditNotes) {
+      return;
+    }
     const chart = this.getCurrentChart();
     const note = chart ? this.getNoteAt(chart, event) : undefined;
     if (!chart || !note || !chart.removeNote(note)) return;
@@ -724,7 +743,7 @@ export class HighwayView
   };
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (event.button !== 0) return;
+    if (!this.canEditNotes || event.button !== 0) return;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
@@ -802,7 +821,7 @@ export class HighwayView
     event.preventDefault();
     const nextTick = Math.max(
       0,
-      this.playheadTick + event.deltaY * this.getPpqn() * wheelTicksPerPixel,
+      this.playheadTick - event.deltaY * this.getPpqn() * wheelTicksPerPixel,
     );
     this.setPlayheadTick(nextTick);
     this.onSeekRequest?.(nextTick);
@@ -819,6 +838,10 @@ export class HighwayView
   }
 
   private updateGhostLocation(event: PointerEvent): void {
+    if (!this.canEditNotes) {
+      this.ghostNoteLocation = null;
+      return;
+    }
     const chart = this.getCurrentChart();
     this.ghostNoteLocation = chart ? this.getChartLocation(event) : null;
     this.render();
