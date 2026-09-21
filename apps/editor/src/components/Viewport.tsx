@@ -9,6 +9,7 @@ import { CHART_VIEWS } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
 import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { SnapDenominators } from "./views/pianoRoll/constants";
+import Toolbar from "./views/Toolbar";
 
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
@@ -246,6 +247,7 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
         </div>
       </div>
 
+      <Toolbar />
       <div className="midi-view__body">
         <ChartViewHost
           createRenderer={activeView.createRenderer}

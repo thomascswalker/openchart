@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import svgr from "vite-plugin-svgr";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,7 +11,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: isDesktop ? "./" : "/midiview/",
-    plugins: [react()],
+    plugins: [react(), svgr()],
     server: {
       watch: {
         usePolling: true,
