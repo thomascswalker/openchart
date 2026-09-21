@@ -20,7 +20,7 @@ async function settle(): Promise<void> {
 }
 
 describe("Menubar", () => {
-  it("places Project and app Settings in File while leaving Edit empty", async () => {
+  it("puts Project and Settings in File and leaves Edit empty", async () => {
     const { container, root } = render(
       <Menubar canExecute={() => true} onCommand={() => {}} />,
     );
