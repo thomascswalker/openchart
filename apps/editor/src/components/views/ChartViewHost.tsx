@@ -20,6 +20,7 @@ export function ChartViewHost({
 
   const viewRef = useRef<ChartView | null>(null);
   const latestStateRef = useRef(state);
+  latestStateRef.current = state;
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -38,6 +39,7 @@ export function ChartViewHost({
     }
 
     const renderer = createRenderer();
+    let disposed = false;
 
     viewRef.current = renderer;
     lastSizeRef.current = null;
@@ -67,6 +69,10 @@ export function ChartViewHost({
     resizeRenderer();
 
     void renderer.mount(host).then(() => {
+      if (disposed || viewRef.current !== renderer) {
+        return;
+      }
+
       // The host can report its placeholder size before the first layout pass.
       // Measure again after the renderer inserts its canvas so the first real
       // frame uses the viewport dimensions instead of a 1x1 drawing buffer.
@@ -76,6 +82,7 @@ export function ChartViewHost({
     });
 
     return () => {
+      disposed = true;
       resizeObserver.disconnect();
 
       if (viewRef.current === renderer) {
@@ -100,6 +107,7 @@ export function ChartViewHost({
     state.selectedDifficulty,
     state.snap.enabled,
     state.snap.denominator,
+    state.isPlaying,
   ]);
 
   return <div ref={hostRef} className="midi-view-host" />;

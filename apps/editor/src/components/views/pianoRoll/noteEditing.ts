@@ -38,7 +38,6 @@ export class NoteEditingController {
   private resizeAnchor: PianoRollNote | null = null;
   private resizeAnchorInitialEnd = 0;
   private resizeTargets: ResizeTarget[] = [];
-  private lastResizeDelta = 0;
   private resizeSelectionKeep = new Set<MidiChannelEvent>();
 
   private creating = false;
@@ -50,6 +49,10 @@ export class NoteEditingController {
   private moveSelectionKeep = new Set<MidiChannelEvent>();
 
   private clipboard: ClipboardNote[] = [];
+
+  private get isNoteEditingLocked(): boolean {
+    return this.context.getState().isPlaying;
+  }
 
   public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
     this.context = context;
@@ -69,6 +72,9 @@ export class NoteEditingController {
   }
 
   public beginResize(anchor: PianoRollNote): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const selection = this.context.getSelectionContext();
     const targets =
       selection.isSelected(anchor) && selection.size > 0
@@ -88,6 +94,9 @@ export class NoteEditingController {
   }
 
   public updateResize(local: CanvasPoint): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     if (!track || !this.resizeAnchor) {
       return;
@@ -98,7 +107,6 @@ export class NoteEditingController {
     );
     const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
     const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
-    this.lastResizeDelta = delta;
 
     for (const { note, initialDuration } of this.resizeTargets) {
       track.setNoteDuration(
@@ -113,6 +121,9 @@ export class NoteEditingController {
   }
 
   public beginMove(anchor: PianoRollNote): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const selection = this.context.getSelectionContext();
     if (!selection.isSelected(anchor) || selection.size === 0) {
       selection.notes = [anchor];
@@ -133,6 +144,9 @@ export class NoteEditingController {
   }
 
   public updateMove(local: CanvasPoint): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     if (!track || !this.moveAnchor) {
       return;
@@ -159,33 +173,15 @@ export class NoteEditingController {
   }
 
   public finishGesture(): void {
-    const track = this.context.getSelectedTrack();
-    const target = this.resizeTargets[0];
-    if (this.creating && track && target) {
-      const currentDuration = Math.max(
-        1,
-        target.initialDuration + this.lastResizeDelta,
-      );
-      const state = this.context.getState();
-      const minDuration = Math.max(
-        1,
-        Math.round(
-          state.snap.enabled
-            ? this.coordinates.getSnapTicks()
-            : this.context.getPpqn(),
-        ),
-      );
-      if (currentDuration < minDuration) {
-        track.setNoteDuration(target.note.midiNote, minDuration);
-        this.remapSelection(this.resizeSelectionKeep);
-      }
+    if (this.isNoteEditingLocked) {
+      this.cancelGesture();
+      return;
     }
 
     this.creating = false;
     this.resizing = false;
     this.resizeAnchor = null;
     this.resizeTargets = [];
-    this.lastResizeDelta = 0;
     this.resizeSelectionKeep = new Set();
     this.moving = false;
     this.moveAnchor = null;
@@ -206,6 +202,9 @@ export class NoteEditingController {
   }
 
   public beginCreate(local: CanvasPoint): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     if (!track) {
       return;
@@ -238,6 +237,9 @@ export class NoteEditingController {
   }
 
   public eraseNote(note: PianoRollNote): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     if (!track) {
       return;
@@ -256,6 +258,9 @@ export class NoteEditingController {
   }
 
   public deleteSelection(): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
     if (!track || selection.size === 0) {
@@ -271,6 +276,9 @@ export class NoteEditingController {
   }
 
   public transposeSelection(semitones: number): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
     if (!track || selection.size === 0) {
@@ -287,6 +295,9 @@ export class NoteEditingController {
   }
 
   public moveSelectionTicks(deltaTicks: number): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
     if (!track || selection.size === 0) {
@@ -322,6 +333,9 @@ export class NoteEditingController {
   }
 
   public cutSelection(): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
     if (!track || selection.size === 0) {
@@ -338,6 +352,9 @@ export class NoteEditingController {
   }
 
   public pasteClipboard(anchorX: number, hasHovered: boolean): void {
+    if (this.isNoteEditingLocked) {
+      return;
+    }
     const track = this.context.getSelectedTrack();
     if (!track || this.clipboard.length === 0) {
       return;
