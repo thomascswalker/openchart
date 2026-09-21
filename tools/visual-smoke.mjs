@@ -52,6 +52,43 @@ async function collectDiagnostics(canvas) {
   });
 }
 
+async function collectStableHostDiagnostics(canvas, name) {
+  const diagnostics = await canvas.evaluate(async (element) => {
+    const host = element.closest(".midi-view-host");
+    if (!(host instanceof HTMLElement)) return null;
+
+    const bounds = [];
+    for (let sample = 0; sample < 12; sample += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const rectangle = host.getBoundingClientRect();
+      bounds.push({ width: rectangle.width, height: rectangle.height });
+    }
+
+    return {
+      inlinePosition: host.style.position,
+      computedPosition: getComputedStyle(host).position,
+      bounds,
+    };
+  });
+  if (!diagnostics) throw new Error(`Missing view host for ${name}`);
+  if (diagnostics.inlinePosition !== "") {
+    throw new Error(`${name} set an inline host position`);
+  }
+  if (diagnostics.computedPosition !== "absolute") {
+    throw new Error(`${name} host is not absolutely positioned`);
+  }
+
+  const widths = diagnostics.bounds.map(({ width }) => width);
+  const heights = diagnostics.bounds.map(({ height }) => height);
+  if (Math.max(...widths) - Math.min(...widths) > 0.25) {
+    throw new Error(`${name} host width did not stabilize`);
+  }
+  if (Math.max(...heights) - Math.min(...heights) > 0.25) {
+    throw new Error(`${name} host height did not stabilize`);
+  }
+  return diagnostics;
+}
+
 async function captureCanvasAndInterface(page, canvas, name) {
   const rendererFramebuffer = await page.evaluate(
     () => window.__threeFramebufferPng ?? null,
@@ -117,11 +154,14 @@ try {
 
   const canvas = page.locator(".midi-view-host canvas").first();
   await canvas.waitFor({ state: "visible" });
+  const pianoRollDiagnostics = {
+    ...(await collectDiagnostics(canvas)),
+    host: await collectStableHostDiagnostics(canvas, "Piano roll"),
+  };
   await writeFile(
     `${outputDirectory}/piano-roll-diagnostics.json`,
-    JSON.stringify(await collectDiagnostics(canvas), null, 2),
+    JSON.stringify(pianoRollDiagnostics, null, 2),
   );
-  const pianoRollDiagnostics = await collectDiagnostics(canvas);
   if (Number(pianoRollDiagnostics.visibleNotes) <= 0) {
     throw new Error("Piano roll rendered no visible notes");
   }
@@ -149,7 +189,10 @@ try {
     );
   });
   await page.waitForTimeout(250);
-  const highwayDiagnostics = await collectDiagnostics(highwayCanvas);
+  const highwayDiagnostics = {
+    ...(await collectDiagnostics(highwayCanvas)),
+    host: await collectStableHostDiagnostics(highwayCanvas, "Highway"),
+  };
   await writeFile(
     `${outputDirectory}/highway-diagnostics.json`,
     JSON.stringify(highwayDiagnostics, null, 2),

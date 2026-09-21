@@ -159,7 +159,6 @@ export class HeaderController {
 
   public draw(width: number): void {
     if (!this.host) return;
-    this.host.style.position ||= "relative";
     this.host.style.background = "#1c1c1c";
     this.host.style.borderBottom = "1px solid #555";
 
