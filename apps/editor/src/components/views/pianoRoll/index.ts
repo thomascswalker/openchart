@@ -113,6 +113,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return this.selection;
   }
 
+  public override update(state: import("../AbstractChartView").ChartViewState): void {
+    const playbackStarted = !this.state.isPlaying && state.isPlaying;
+    super.update(state);
+    if (playbackStarted) {
+      this.input.cancelNoteEditing();
+    }
+  }
+
   public override getCameraTick(): number {
     return this.camera.x;
   }
