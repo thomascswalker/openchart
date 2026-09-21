@@ -180,19 +180,6 @@ export class NoteEditingController {
       return;
     }
 
-    const track = this.context.getSelectedTrack();
-    const target = this.resizeTargets[0];
-    if (this.creating && track && target) {
-      const currentDuration = Math.max(
-        1,
-        target.initialDuration + this.lastResizeDelta,
-      );
-      if (currentDuration < 1) {
-        track.setNoteDuration(target.note.midiNote, 1);
-        this.remapSelection(this.resizeSelectionKeep);
-      }
-    }
-
     this.creating = false;
     this.resizing = false;
     this.resizeAnchor = null;
