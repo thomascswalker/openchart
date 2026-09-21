@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { Difficulty } from "@midiedit/views";
+import { Difficulty, InstrumentType } from "@midiedit/views";
 import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { useEditorCommands } from "../commands/EditorCommand";
@@ -30,6 +30,8 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     selectedInstrument,
     selectedDifficulty,
     setSelectedDifficulty,
+    selectedInstrument,
+    setSelectedInstrument,
   } = useEditor();
   const {
     isPlaying,
@@ -48,12 +50,32 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
 
+  const keepPlayheadVisible = useCallback((view: ChartView): void => {
+    const visibleSpan = view.getVisibleTickSpan();
+    if (visibleSpan <= 0) {
+      return;
+    }
+
+    const cameraTick = view.getCameraTick();
+    const followMargin = visibleSpan * 0.1;
+    if (
+      playheadTick < cameraTick + followMargin ||
+      playheadTick > cameraTick + visibleSpan - followMargin
+    ) {
+      view.setCameraTick(Math.max(0, playheadTick - followMargin));
+    }
+  }, [playheadTick]);
+
   const handleChartViewReady = useCallback(
     (view: ChartView | null) => {
+      if (view) {
+        view.setPlayheadTick(playheadTick);
+        keepPlayheadVisible(view);
+      }
       setChartView(view);
       onChartViewReady(view);
     },
-    [onChartViewReady],
+    [keepPlayheadVisible, onChartViewReady, playheadTick],
   );
 
   useEffect(() => {
@@ -125,21 +147,10 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
 
   // While playing, keep the playhead in view by following it with the camera.
   useEffect(() => {
-    if (!isPlaying || !chartView) {
-      return;
+    if (isPlaying && chartView) {
+      keepPlayheadVisible(chartView);
     }
-
-    const visibleSpan = chartView.getVisibleTickSpan();
-    const cameraTick = chartView.getCameraTick();
-    const followMargin = visibleSpan * 0.1;
-
-    if (
-      playheadTick < cameraTick + followMargin ||
-      playheadTick > cameraTick + visibleSpan - followMargin
-    ) {
-      chartView.setCameraTick(Math.max(0, playheadTick - followMargin));
-    }
-  }, [isPlaying, playheadTick, chartView]);
+  }, [isPlaying, chartView, keepPlayheadVisible]);
 
   const activeView =
     CHART_VIEWS.find((view) => view.id === activeViewId) ?? CHART_VIEWS[0];
@@ -205,6 +216,21 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
           {isHighwayView && (
             <>
               <select
+                aria-label="Instrument"
+                value={selectedInstrument}
+                onChange={(event) => {
+                  setSelectedInstrument(event.target.value);
+                }}
+              >
+                {Object.values(InstrumentType).map((instrument) => (
+                  <option key={instrument} value={instrument}>
+                    {instrument}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Difficulty"
                 value={selectedDifficulty}
                 onChange={(event) => {
                   setSelectedDifficulty(
@@ -231,6 +257,7 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
             selectedInstrument,
             selectedDifficulty,
             snap: { enabled: snapEnabled, denominator: snapDenominator },
+            isPlaying,
           }}
           onReady={handleChartViewReady}
         />
