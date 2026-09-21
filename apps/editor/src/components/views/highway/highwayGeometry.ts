@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Rgb, CircularMaterialSet } from "./circularMaterials";
+import type { Rgb, MaterialSet } from "./circularMaterials";
 import { setCircularMaterialStateForMaterial } from "./circularMaterials";
 import { HIGHWAY_GEOMETRY_CATALOG } from "./highwayGeometryCatalog";
 
@@ -160,7 +160,7 @@ export function applyModelCalibration(
 
 export function setModelState(
   model: THREE.Object3D,
-  materialSet: CircularMaterialSet,
+  materialSet: MaterialSet,
   color: Rgb,
   state: {
     selected?: boolean;
@@ -174,7 +174,7 @@ export function setModelState(
       ? mesh.material
       : mesh.material
         ? [mesh.material]
-        : [materialSet.noteColor];
+        : [materialSet.noteTinted];
     materials.forEach((material) => {
       const shaderMaterial = material as THREE.ShaderMaterial;
       const isNeutralPrimitive =

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {
   setCircularMaterialState,
   setCircularMaterialStateForMaterial,
-  type CircularMaterialSet,
+  type MaterialSet,
   type CircularMaterialState,
   type Rgb,
 } from "./circularMaterials";
@@ -76,7 +76,7 @@ export function createModelInstance(
 export function createNotePools(
   scene: THREE.Scene,
   template: THREE.Object3D,
-  materialSet: CircularMaterialSet,
+  materialSet: MaterialSet,
   colors: Rgb[],
   poolSize: number,
   calibration: ModelCalibration,
@@ -89,8 +89,8 @@ export function createNotePools(
         template,
         (primitiveIndex) =>
           primitiveRoles[primitiveIndex] === "tinted"
-            ? materialSet.noteColor.clone()
-            : materialSet.noteNeutral.clone(),
+            ? materialSet.noteTinted.clone()
+            : materialSet.noteGrayscale.clone(),
         calibration,
       );
       applyPrimitiveMaterialStates(note.meshes, primitiveRoles, (role) => ({

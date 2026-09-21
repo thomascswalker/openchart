@@ -1,63 +1,108 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import * as resources from "./resources.json";
 
-export const assets = {
-  /* Fret */
-  fretTopMesh: new URL("../assets/fret/FretTop.glb", import.meta.url).href,
-  fretBaseMesh: new URL("../assets/fret/FretBase.glb", import.meta.url).href,
-  fretColor: new URL("../assets/fret/Fret.png", import.meta.url).href,
+const gltfLoader = new GLTFLoader();
+const textureLoader = new THREE.TextureLoader();
+const assetUrls = import.meta.glob("../assets/**/*", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 
-  /* Note */
-  noteMesh: new URL("../assets/note/Note.glb", import.meta.url).href,
-  noteColor: new URL("../assets/note/Note.png", import.meta.url).href,
-  noteEmission: new URL("../assets/note/NoteEmission.png", import.meta.url)
-    .href,
-
-  /* Sustain */
-  sustainColor: new URL("../assets/note/Sustain.png", import.meta.url).href,
-  sustainEmission: new URL(
-    "../assets/note/SustainEmission.png",
-    import.meta.url,
-  ).href,
-} as const;
-
-export type AssetUrls = typeof assets;
-
-export const materialIds = {
-  note: [
-    "Circular_Note_Top",
-    "Circular_Note_Color",
-    "Circular_Note_Indicator",
-    "Circular_Note_Bottom",
-  ],
-  fretTop: [
-    "Note_Tap.034",
-    "Note_Color_Yellow",
-    "Note_Bottom.048",
-    "Note_SIde.020",
-  ],
-  fretBase: ["Note_Color_Yellow", "Note_Tap.034"],
-} as const;
-
-export interface Textures {
-  fret: THREE.Texture;
-  note: THREE.Texture;
-  noteEmission: THREE.Texture;
-  sustain: THREE.Texture;
-  sustainEmission: THREE.Texture;
+function assetUrl(path: string): string {
+  const url = assetUrls[`../assets/${path}`];
+  if (!url) {
+    throw new AssetLoadError(`Asset not found: ${path}`);
+  }
+  return url;
 }
 
-export const primitiveRoles = {
-  note: ["neutral", "tinted", "neutral", "neutral"],
-  fretTop: ["neutral", "tinted", "neutral", "neutral"],
-  fretBase: ["tinted", "neutral"],
-} as const;
+type ResourceType = "mesh" | "texture";
 
-export interface Bundle {
-  fretTop: THREE.Group;
-  fretBase: THREE.Group;
-  note: THREE.Group;
-  textures: Textures;
+interface MeshDef {
+  type: ResourceType;
+  path: string;
+  materialIds: string[];
+}
+
+interface TextureDef {
+  type: ResourceType;
+  path: string;
+}
+
+abstract class Resource<T> {
+  protected path: string;
+  protected _value?: T;
+
+  constructor(path: string) {
+    this.path = path;
+  }
+
+  public get value(): T | undefined {
+    return this._value;
+  }
+
+  public get url(): string {
+    return assetUrl(this.path);
+  }
+
+  public abstract load(): Promise<T>;
+  public abstract release(): void;
+}
+
+export class MeshResource extends Resource<THREE.Group> {
+  constructor(path: string) {
+    super(path);
+  }
+
+  public get meshes(): THREE.Mesh[] {
+    const meshes: THREE.Mesh[] = [];
+    this._value?.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        meshes.push(object);
+      }
+    });
+    return meshes;
+  }
+
+  public async load(): Promise<THREE.Group> {
+    const gltf = await gltfLoader.loadAsync(this.url);
+    this._value = gltf.scene;
+    return Promise.resolve(this._value);
+  }
+
+  public release(): void {
+    this._value?.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      mesh.geometry?.dispose();
+      const materials = Array.isArray(mesh.material)
+        ? mesh.material
+        : mesh.material
+          ? [mesh.material]
+          : [];
+      materials.forEach((material) => material.dispose());
+    });
+  }
+}
+
+export class TextureResource extends Resource<THREE.Texture> {
+  constructor(path: string) {
+    super(path);
+  }
+
+  public async load(): Promise<THREE.Texture> {
+    this._value = await textureLoader.loadAsync(this.url);
+    if (!this._value) {
+      return Promise.reject("Unable to load texture.");
+    }
+    this._value.colorSpace = THREE.SRGBColorSpace;
+    return this._value;
+  }
+
+  public release(): void {
+    this._value?.dispose();
+  }
 }
 
 export class AssetLoadError extends Error {
@@ -70,154 +115,87 @@ export class AssetLoadError extends Error {
   }
 }
 
-export class AssetRegistry {
-  private readonly loader = new GLTFLoader();
-
-  private bundle: Bundle | null = null;
+export class ResourceRegistry {
+  private resources: Record<string, MeshResource | TextureResource> = {};
   private isLoaded = false;
-  private disposed = false;
+  private isDisposed = false;
 
-  public async loadAssets(): Promise<Bundle> {
-    if (this.disposed) {
-      return Promise.reject(new AssetLoadError("Asset registry disposed"));
+  public async loadResources(): Promise<void> {
+    if (this.isDisposed) {
+      return Promise.reject(new AssetLoadError("Resource registry disposed"));
     }
 
-    if (this.isLoaded && this.bundle !== null) {
-      return Promise.resolve(this.bundle);
+    if (this.isLoaded) {
+      return Promise.resolve();
     }
 
-    try {
-      const [fretTop, fretBase, note, textures] = await Promise.all([
-        this.loadModel(assets.fretTopMesh, materialIds.fretTop),
-        this.loadModel(assets.fretBaseMesh, materialIds.fretBase),
-        this.loadModel(assets.noteMesh, materialIds.note),
-        this.loadTextures(),
-      ]);
-      if (this.disposed) {
-        disposeObject(fretTop);
-        disposeObject(fretBase);
-        disposeObject(note);
-        Object.values(textures).forEach((texture) => texture.dispose());
-        throw new AssetLoadError("Asset registry disposed during load");
+    this.resources = {};
+
+    const loads = Object.entries(resources).map(([key, value]) => {
+      switch (value["type"]) {
+        case "mesh":
+          const meshDef = value as MeshDef;
+          const meshResource = new MeshResource(meshDef.path);
+          this.resources[key] = meshResource;
+          return meshResource.load();
+        case "texture":
+          const textureDef = value as TextureDef;
+          const textureResource = new TextureResource(textureDef.path);
+          this.resources[key] = textureResource;
+          return textureResource.load();
       }
-      const bundle = { fretTop, fretBase, note, textures };
-      this.validatePrimitiveRoles(bundle);
-      this.bundle = bundle;
-      this.isLoaded = true;
-      return Promise.resolve(bundle);
-    } catch (cause) {
-      this.isLoaded = false;
-      if (cause instanceof AssetLoadError) {
-        throw cause;
-      }
-      throw new AssetLoadError(
-        "Unable to load circular highway assets",
-        String(cause),
-      );
-    }
+    });
+    await Promise.all(loads);
+    this.isLoaded = true;
   }
 
   public dispose(): void {
-    if (this.disposed) {
+    if (this.isDisposed) {
       return;
     }
-    this.disposed = true;
-    const bundle = this.bundle;
-    this.bundle = null;
+
+    this.isDisposed = true;
     this.isLoaded = false;
-    if (!bundle) {
-      return;
+    Object.values(this.resources).forEach((resource) => resource.release());
+  }
+
+  public get meshes(): Record<string, MeshResource> {
+    return {
+      fretTop: this.resources.fretTopMesh as MeshResource,
+      fretBase: this.resources.fretBaseMesh as MeshResource,
+      note: this.resources.noteMesh as MeshResource,
+    };
+  }
+
+  public get textures(): Record<string, TextureResource> {
+    return {
+      fret: this.resources.fretColor as TextureResource,
+      note: this.resources.noteColor as TextureResource,
+      noteEmission: this.resources.noteEmission as TextureResource,
+      sustain: this.resources.sustainColor as TextureResource,
+      sustainEmission: this.resources.sustainEmission as TextureResource,
+    };
+  }
+
+  public getMesh(name: string): MeshResource | undefined {
+    const resource = this.resources[name];
+    if (resource instanceof MeshResource) {
+      return resource;
     }
-    disposeObject(bundle.fretTop);
-    disposeObject(bundle.fretBase);
-    disposeObject(bundle.note);
-    Object.values(bundle.textures).forEach((texture) => texture.dispose());
+    throw new Error(`Resource ${name} is not a mesh.`);
   }
 
-  private async loadModel(
-    url: string,
-    expectedMaterials: readonly string[],
-  ): Promise<THREE.Group> {
-    const gltf = await this.loader.loadAsync(url);
-    const meshes = meshesInObject(gltf.scene);
-    const materials = meshes.flatMap((mesh) =>
-      Array.isArray(mesh.material) ? mesh.material : [mesh.material],
-    );
-    if (materials.length !== expectedMaterials.length) {
-      throw new AssetLoadError(
-        `${url} has ${materials.length} material slots; expected ${expectedMaterials.length}`,
-      );
+  public getTexture(name: string): TextureResource | undefined {
+    const resource = this.resources[name];
+    if (resource instanceof TextureResource) {
+      return resource;
     }
-    materials.forEach((material, index) => {
-      const expectedMaterial = expectedMaterials[index];
-      if (!material || !matchesMaterialName(material.name, expectedMaterial)) {
-        throw new AssetLoadError(
-          `${url} primitive ${index} material ${material?.name ?? "missing"} does not match ${expectedMaterial}`,
-        );
-      }
-      material.name = expectedMaterial;
-    });
-    return gltf.scene;
-  }
-
-  private async loadTextures(): Promise<Textures> {
-    const loader = new THREE.TextureLoader();
-    const [fret, note, noteEmission, sustain, sustainEmission] =
-      await Promise.all([
-        loader.loadAsync(assets.fretColor),
-        loader.loadAsync(assets.noteColor),
-        loader.loadAsync(assets.noteEmission),
-        loader.loadAsync(assets.sustainColor),
-        loader.loadAsync(assets.sustainEmission),
-      ]);
-    [fret, note, noteEmission, sustain, sustainEmission].forEach((texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-    });
-    return { fret, note, noteEmission, sustain, sustainEmission };
-  }
-
-  private validatePrimitiveRoles(bundle: Bundle): void {
-    const expected = [
-      [bundle.note, primitiveRoles.note, "highway.note"],
-      [bundle.fretTop, primitiveRoles.fretTop, "highway.fretTop"],
-      [bundle.fretBase, primitiveRoles.fretBase, "highway.fretBase"],
-    ] as const;
-    for (const [model, roles, id] of expected) {
-      const materials = meshesInObject(model).flatMap((mesh) =>
-        Array.isArray(mesh.material) ? mesh.material : [mesh.material],
-      );
-      if (materials.length > 0 && materials.length !== roles.length) {
-        throw new AssetLoadError(
-          `${id} material slot count ${materials.length} does not match manifest role count ${roles.length}`,
-        );
-      }
-    }
+    throw new Error(`Resource ${name} is not a texture.`);
   }
 }
 
-function matchesMaterialName(actual: string, expected: string): boolean {
-  if (actual === expected) return true;
-  const suffix = actual.slice(expected.length);
-  return suffix.startsWith(".") && /^\.\d+$/.test(suffix);
-}
-
-export function meshesInObject(root: THREE.Object3D): THREE.Mesh[] {
-  const meshes: THREE.Mesh[] = [];
-  root.traverse((object) => {
-    if (object instanceof THREE.Mesh) meshes.push(object);
-  });
-  return meshes;
-}
-
-function disposeObject(root: THREE.Object3D): void {
-  root.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    mesh.geometry?.dispose();
-    const materials = Array.isArray(mesh.material)
-      ? mesh.material
-      : mesh.material
-        ? [mesh.material]
-        : [];
-    materials.forEach((material) => material.dispose());
-  });
-}
+export const primitiveRoles = {
+  note: ["neutral", "tinted", "neutral", "neutral"],
+  fretTop: ["neutral", "tinted", "neutral", "neutral"],
+  fretBase: ["tinted", "neutral"],
+} as const;

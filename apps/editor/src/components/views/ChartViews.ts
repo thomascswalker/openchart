@@ -1,6 +1,6 @@
 import { PianoRollView } from "./pianoRoll";
 import { HighwayView } from "./highway";
-import { AssetRegistry } from "../../rendering/registry";
+import { ResourceRegistry } from "../../rendering/registry";
 
 export type ChartView = PianoRollView | HighwayView;
 export type ChartViewFactory = () => ChartView;
@@ -14,8 +14,8 @@ export interface ChartViewDefinition {
 
 // The registry belongs to the editor application, not a single chart view.
 // Starting preload here lets switching views reuse the same immutable assets.
-export const applicationRenderAssets = new AssetRegistry();
-void applicationRenderAssets.loadAssets().catch((error) => {
+export const applicationRenderAssets = new ResourceRegistry();
+void applicationRenderAssets.loadResources().catch((error) => {
   console.error("Circular highway assets failed to preload", error);
 });
 

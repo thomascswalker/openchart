@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import type { Textures } from "../../../assets";
 import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
 import texturedFragmentSource from "./shaders/textured.frag.glsl?raw";
 import texturedVertexSource from "./shaders/textured.vert.glsl?raw";
+import type { TextureResource } from "../../../rendering/registry";
 
 export type Rgb = [number, number, number];
 
@@ -19,13 +19,13 @@ export interface CircularMaterialState {
   strikeLineZ: number;
 }
 
-export interface CircularMaterialSet {
-  fretColor: THREE.ShaderMaterial;
-  fretNeutral: THREE.ShaderMaterial;
-  noteColor: THREE.ShaderMaterial;
-  noteNeutral: THREE.ShaderMaterial;
-  noteGhostColor: THREE.ShaderMaterial;
-  noteGhostNeutral: THREE.ShaderMaterial;
+export interface MaterialSet {
+  fretTinted: THREE.ShaderMaterial;
+  fretGrayscale: THREE.ShaderMaterial;
+  noteTinted: THREE.ShaderMaterial;
+  noteGrayscale: THREE.ShaderMaterial;
+  noteGhostTinted: THREE.ShaderMaterial;
+  noteGhostGrayscale: THREE.ShaderMaterial;
   sustain: THREE.ShaderMaterial;
   destroy(): void;
 }
@@ -129,92 +129,107 @@ function updateUniforms(
   if (uniforms.uStrikeLineZ) uniforms.uStrikeLineZ.value = state.strikeLineZ;
 }
 
-function createMaterial(
-  baseTexture: THREE.Texture,
-  emissionTexture: THREE.Texture,
-  transparent: boolean,
-  fragmentShader = texturedFragmentSource,
-  preserveWhiteCenter = false,
-): THREE.ShaderMaterial {
-  const material = new THREE.ShaderMaterial({
-    vertexShader: texturedVertexSource,
-    fragmentShader,
-    uniforms: {
-      uBaseTexture: { value: baseTexture },
-      uEmissionTexture: { value: emissionTexture },
-      uBaseColor: { value: [1, 1, 1] },
-      uEmissionColor: { value: [1, 1, 1] },
-      uEmissionIntensity: { value: 1 },
-      uAlpha: { value: 1 },
-      uSelected: { value: 0 },
-      uGhost: { value: 0 },
-      uTintEnabled: { value: 1 },
-      uPassed: { value: 0 },
-      uUseStrikeLine: { value: 0 },
-      uStrikeLineZ: { value: -3.5 },
-      uPreserveWhiteCenter: { value: preserveWhiteCenter ? 1 : 0 },
-    },
-    transparent,
-    depthTest: true,
-    depthWrite: !transparent,
-    side: THREE.DoubleSide,
-  });
-  return material;
+interface CreateMaterialOptions {
+  color: THREE.Texture;
+  emission?: THREE.Texture;
+  transparent?: boolean;
+  vert?: string;
+  frag?: string;
+  preserveWhiteCenter?: boolean;
 }
 
-export function createCircularMaterialSet(
-  textures: Textures,
-): CircularMaterialSet {
-  const fretColor = createMaterial(textures.fret, textures.fret, false);
-  const fretNeutral = createMaterial(textures.fret, textures.fret, false);
-  const noteColor = createMaterial(
-    textures.note,
-    textures.noteEmission,
-    false,
-    texturedFragmentSource,
-    true,
-  );
-  const noteNeutral = createMaterial(
-    textures.note,
-    textures.noteEmission,
-    false,
-    texturedFragmentSource,
-    true,
-  );
-  const noteGhostColor = createMaterial(
-    textures.note,
-    textures.noteEmission,
-    true,
-  );
-  const noteGhostNeutral = createMaterial(
-    textures.note,
-    textures.noteEmission,
-    true,
-  );
-  const sustain = createMaterial(
-    textures.sustain,
-    textures.sustainEmission,
-    true,
-    solidFragmentSource,
-  );
+class MaterialManager {
+  materials: Record<string, THREE.ShaderMaterial> = {};
+
+  public create(
+    name: string,
+    {
+      color,
+      emission,
+      transparent = false,
+      vert = texturedVertexSource,
+      frag = texturedFragmentSource,
+      preserveWhiteCenter = false,
+    }: CreateMaterialOptions,
+  ): THREE.ShaderMaterial {
+    const material = new THREE.ShaderMaterial({
+      vertexShader: vert,
+      fragmentShader: frag,
+      uniforms: {
+        uBaseTexture: { value: color },
+        uEmissionTexture: { value: emission },
+        uBaseColor: { value: [1, 1, 1] },
+        uEmissionColor: { value: [1, 1, 1] },
+        uEmissionIntensity: { value: 1 },
+        uAlpha: { value: 1 },
+        uSelected: { value: 0 },
+        uGhost: { value: 0 },
+        uTintEnabled: { value: 1 },
+        uPassed: { value: 0 },
+        uUseStrikeLine: { value: 0 },
+        uStrikeLineZ: { value: -3.5 },
+        uPreserveWhiteCenter: { value: preserveWhiteCenter ? 1 : 0 },
+      },
+      transparent,
+      depthTest: true,
+      depthWrite: !transparent,
+      side: THREE.DoubleSide,
+    });
+    this.materials[name] = material;
+    return material;
+  }
+}
+
+export function createMaterialSet(
+  textures: Record<string, TextureResource>,
+): MaterialSet {
+  const manager = new MaterialManager();
+  const fretColor = manager.create("fretColor", {
+    color: textures.fret.value!,
+    emission: textures.fret.value!,
+  });
+  const fretNeutral = manager.create("fretNeutral", {
+    color: textures.fret.value!,
+    emission: textures.fret.value!,
+  });
+  const noteColor = manager.create("noteColor", {
+    color: textures.note.value!,
+    emission: textures.noteEmission.value!,
+    preserveWhiteCenter: true,
+  });
+  const noteNeutral = manager.create("noteNeutral", {
+    color: textures.note.value!,
+    emission: textures.noteEmission.value!,
+    preserveWhiteCenter: true,
+  });
+  const noteGhostColor = manager.create("noteGhostColor", {
+    color: textures.note.value!,
+    emission: textures.noteEmission.value!,
+    transparent: true,
+  });
+  const noteGhostNeutral = manager.create("noteGhostNeutral", {
+    color: textures.note.value!,
+    emission: textures.noteEmission.value!,
+    transparent: true,
+  });
+  const sustain = manager.create("sustain", {
+    color: textures.sustain.value!,
+    emission: textures.sustainEmission.value!,
+    transparent: true,
+    frag: solidFragmentSource,
+  });
   return {
-    fretColor,
-    fretNeutral,
-    noteColor,
-    noteNeutral,
-    noteGhostColor,
-    noteGhostNeutral,
+    fretTinted: fretColor,
+    fretGrayscale: fretNeutral,
+    noteTinted: noteColor,
+    noteGrayscale: noteNeutral,
+    noteGhostTinted: noteGhostColor,
+    noteGhostGrayscale: noteGhostNeutral,
     sustain,
     destroy() {
-      [
-        fretColor,
-        fretNeutral,
-        noteColor,
-        noteNeutral,
-        noteGhostColor,
-        noteGhostNeutral,
-        sustain,
-      ].forEach((material) => material.dispose());
+      Object.values(manager.materials).forEach((material) =>
+        material.dispose(),
+      );
     },
   };
 }

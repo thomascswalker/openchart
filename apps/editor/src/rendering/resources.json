@@ -1,0 +1,47 @@
+{
+  "fretTopMesh": {
+    "type": "mesh",
+    "path": "fret/FretTop.glb",
+    "materialIds": [
+      "Note_Tap.034",
+      "Note_Color_Yellow",
+      "Note_Bottom.048",
+      "Note_SIde.020"
+    ]
+  },
+  "fretBaseMesh": {
+    "type": "mesh",
+    "path": "fret/FretBase.glb",
+    "materialIds": ["Note_Color_Yellow", "Note_Tap.034"]
+  },
+  "noteMesh": {
+    "type": "mesh",
+    "path": "note/Note.glb",
+    "materialIds": [
+      "Circular_Note_Top",
+      "Circular_Note_Color",
+      "Circular_Note_Indicator",
+      "Circular_Note_Bottom"
+    ]
+  },
+  "fretColor": {
+    "type": "texture",
+    "path": "fret/Fret.png"
+  },
+  "noteColor": {
+    "type": "texture",
+    "path": "note/Note.png"
+  },
+  "noteEmission": {
+    "type": "texture",
+    "path": "note/NoteEmission.png"
+  },
+  "sustainColor": {
+    "type": "texture",
+    "path": "note/Sustain.png"
+  },
+  "sustainEmission": {
+    "type": "texture",
+    "path": "note/SustainEmission.png"
+  }
+}
