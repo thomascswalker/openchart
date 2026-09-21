@@ -1,4 +1,4 @@
-import type { Model } from "pixi3d/pixi7";
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import {
   calibrationFromModel,
@@ -12,7 +12,7 @@ describe("circular highway geometry", () => {
   it("keeps note timing on the existing lane/depth mapping", () => {
     expect(noteWorldPosition(-1.2, -3.5)).toEqual({
       x: -1.2,
-      y: 0.2,
+      y: 0.1,
       z: -3.5,
     });
   });
@@ -26,7 +26,7 @@ describe("circular highway geometry", () => {
 
   it("keeps a calibrated note width suitable for the strike-line fret", () => {
     expect(DEFAULT_NOTE_CALIBRATION.width).toBeGreaterThan(0);
-    expect(DEFAULT_NOTE_CALIBRATION.noteModelRotation.x).toBe(0);
+    expect(DEFAULT_NOTE_CALIBRATION.noteModelRotation.x).toBe(270);
     expect(DEFAULT_NOTE_CALIBRATION.height).toBeGreaterThan(
       DEFAULT_NOTE_CALIBRATION.depth,
     );
@@ -40,36 +40,33 @@ describe("circular highway geometry", () => {
     });
 
     expect(scaled.noteModelScale).toEqual({ x: 0.675, y: 0.9, z: 0.225 });
-    expect(scaled.noteModelOffset).toEqual({ x: 0, y: 0.15, z: 0 });
+    expect(scaled.noteModelOffset).toEqual({ x: 0, y: 0.05, z: 0 });
     expect(scaled.width).toBe(1.35);
     expect(scaled.height).toBe(1.8);
     expect(scaled.depth).toBe(0.105);
   });
 
   it("falls back when imported model bounds are unavailable", () => {
-    const model = {
-      getBoundingBox: () => {
-        throw new TypeError("missing transform root");
-      },
-    } as unknown as Model;
+    const model = new THREE.Group();
 
     expect(calibrationFromModel(model)).toEqual(DEFAULT_NOTE_CALIBRATION);
   });
 
   it("calibrates the generated note as a player-facing XY model", () => {
-    const model = {
-      getBoundingBox: () => ({
-        min: { x: -1, y: -1, z: -0.1 },
-        max: { x: 1, y: 1, z: 0.3 },
-      }),
-    } as unknown as Model;
+    const model = new THREE.Group();
+    model.add(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(2, 2, 0.4),
+        new THREE.MeshBasicMaterial(),
+      ),
+    );
 
     const calibration = calibrationFromModel(model);
 
-    expect(calibration.noteModelRotation).toEqual({ x: 0, y: 0, z: 0 });
-    expect(calibration.width).toBeCloseTo(0.9);
-    expect(calibration.height).toBeCloseTo(0.9);
-    expect(calibration.depth).toBeCloseTo(0.18);
-    expect(calibration.noteModelOffset.z).toBeCloseTo(-0.045);
+    expect(calibration.noteModelRotation).toEqual({ x: 270, y: 0, z: 0 });
+    expect(calibration.width).toBeCloseTo(1);
+    expect(calibration.height).toBeCloseTo(1);
+    expect(calibration.depth).toBeCloseTo(0.2);
+    expect(calibration.noteModelOffset.z).toBeCloseTo(0);
   });
 });

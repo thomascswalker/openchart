@@ -5,8 +5,13 @@ import { playwright } from "@vitest/browser-playwright";
 export default defineConfig({
   plugins: [react()],
   test: {
+    fileParallelism: false,
+    include: ["src/**/*.test.tsx"],
+    reporters: ["default", "hanging-process"],
+    teardownTimeout: 10_000,
     browser: {
       enabled: true,
+      headless: true,
       provider: playwright(),
       instances: [{ browser: "chromium" }],
     },

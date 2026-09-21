@@ -1,6 +1,12 @@
 import type { Midi } from "@midiedit/core";
 import { Difficulty } from "@midiedit/views";
-import { Application, Point, Rectangle } from "pixi.js";
+import * as THREE from "three";
+import { RenderScheduler } from "../../rendering/RenderScheduler";
+import {
+  ThreeRenderEngine,
+  type ThreeRenderEngineOptions,
+} from "../../rendering/ThreeRenderEngine";
+import type { CanvasPoint, CanvasRect } from "../../rendering/geometry";
 
 export interface ChartViewState {
   midi: Midi | null;
@@ -67,9 +73,11 @@ export function isNoteSizeDebugView(view: unknown): view is NoteSizeDebugView {
 }
 
 export abstract class AbstractChartView<T> {
-  private app: Application | null = null;
+  private readonly defaultScene = new THREE.Scene();
+  private readonly defaultCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  private engine: ThreeRenderEngine | null = null;
+  private scheduler: RenderScheduler | null = null;
   private destroyed = false;
-  private renderFrame: number | null = null;
 
   private width = 1;
   private height = 1;
@@ -83,27 +91,25 @@ export abstract class AbstractChartView<T> {
   };
 
   public async mount(host: HTMLElement): Promise<void> {
-    const app = new Application({
-      width: this.width,
-      height: this.height,
-      background: "#151515",
-      antialias: true,
-      autoStart: false,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
-      autoDensity: true,
+    if (this.destroyed) return;
+
+    const engine = new ThreeRenderEngine(this.getEngineOptions());
+    this.engine = engine;
+    this.scheduler = new RenderScheduler(() => {
+      if (!this.engine || this.destroyed) return;
+      this.draw(this.engine);
+      this.engine.render(this.renderScene, this.renderCamera);
     });
 
-    if (this.destroyed) {
-      app.destroy(true, { children: true });
+    host.replaceChildren(engine.canvas);
+    this.onMounted(engine);
+    engine.setSize(this.width, this.height);
 
-      return;
-    }
-
-    this.app = app;
-
-    host.replaceChildren(app.view as HTMLCanvasElement);
-
-    this.onMounted(app);
+    // Paint once synchronously so the viewport has a useful first frame even
+    // when the host is mounted between animation-frame callbacks. The
+    // scheduler still coalesces subsequent state and pointer updates.
+    this.draw(engine);
+    engine.render(this.renderScene, this.renderCamera);
     this.requestRender();
   }
 
@@ -117,11 +123,12 @@ export abstract class AbstractChartView<T> {
     this.width = width;
     this.height = height;
 
-    if (!this.app) {
+    if (!this.engine) {
       return;
     }
 
-    this.app.renderer.resize(width, height);
+    this.engine.setSize(width, height);
+    this.onResized(width, height);
 
     this.requestRender();
   }
@@ -129,47 +136,37 @@ export abstract class AbstractChartView<T> {
   public destroy(): void {
     this.destroyed = true;
 
-    if (this.renderFrame !== null) {
-      if (typeof window !== "undefined" && window.cancelAnimationFrame) {
-        window.cancelAnimationFrame(this.renderFrame);
-      } else {
-        clearTimeout(this.renderFrame);
-      }
-      this.renderFrame = null;
-    }
-
-    if (!this.app) {
-      return;
-    }
-
-    this.app.destroy(true, { children: true });
-    this.app = null;
+    this.scheduler?.dispose();
+    this.scheduler = null;
+    this.engine?.dispose();
+    this.engine = null;
   }
 
-  protected onMounted(_app: Application): void {
-    void _app;
+  protected getEngineOptions(): ThreeRenderEngineOptions {
+    return { background: 0x151515, antialias: false, pixelRatioCap: 2 };
   }
 
-  protected abstract draw(app: Application): void;
+  protected onMounted(_engine: ThreeRenderEngine): void {
+    void _engine;
+  }
+
+  protected onResized(_width: number, _height: number): void {
+    void _width;
+    void _height;
+  }
+
+  protected get renderScene(): THREE.Scene {
+    return this.defaultScene;
+  }
+
+  protected get renderCamera(): THREE.Camera {
+    return this.defaultCamera;
+  }
+  protected abstract draw(engine: ThreeRenderEngine): void;
 
   /** Coalesce all state changes into one complete render per display frame. */
   protected requestRender(): void {
-    if (!this.app || this.destroyed || this.renderFrame !== null) {
-      return;
-    }
-
-    const render = (): void => {
-      this.renderFrame = null;
-      if (!this.app || this.destroyed) return;
-      this.draw(this.app);
-      this.app.render();
-    };
-    if (typeof window !== "undefined" && window.requestAnimationFrame) {
-      this.renderFrame = window.requestAnimationFrame(render);
-    } else {
-      // @ts-expect-error Force coercion to number
-      this.renderFrame = setTimeout(render, 0);
-    }
+    this.scheduler?.request();
   }
 
   /** Existing views call render(); keep that API while routing through the scheduler. */
@@ -177,9 +174,11 @@ export abstract class AbstractChartView<T> {
     this.requestRender();
   }
 
-  protected toScreenSpace(value: Point): Point;
-  protected toScreenSpace(value: Rectangle): Rectangle;
-  protected toScreenSpace(value: Point | Rectangle): Point | Rectangle {
+  protected toScreenSpace(value: CanvasPoint): CanvasPoint;
+  protected toScreenSpace(value: CanvasRect): CanvasRect;
+  protected toScreenSpace(
+    value: CanvasPoint | CanvasRect,
+  ): CanvasPoint | CanvasRect {
     return value;
   }
 

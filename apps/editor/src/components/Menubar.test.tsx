@@ -20,7 +20,7 @@ async function settle(): Promise<void> {
 }
 
 describe("Menubar", () => {
-  it("places Project and app Settings in File while leaving Edit empty", () => {
+  it("puts Project and Settings in File and leaves Edit empty", async () => {
     const { container, root } = render(
       <Menubar canExecute={() => true} onCommand={() => {}} />,
     );
@@ -35,7 +35,8 @@ describe("Menubar", () => {
       "Playback",
       "Window",
     ]);
-    triggers[0].click();
+    act(() => triggers[0].click());
+    await settle();
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),
@@ -46,13 +47,15 @@ describe("Menubar", () => {
         (button) => button.textContent?.trim(),
       ),
     ).toContain("Settings...Ctrl/Cmd+,");
-    triggers[2].click();
+    act(() => triggers[2].click());
+    await settle();
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),
       ),
     ).toEqual(["MetronomeM", "Highway ClapN"]);
-    triggers[1].click();
+    act(() => triggers[1].click());
+    await settle();
     expect(
       container.querySelectorAll("[role=menu] [data-command]"),
     ).toHaveLength(0);
@@ -108,7 +111,9 @@ describe("Menubar", () => {
     const { container, root } = render(
       <>
         <Menubar canExecute={() => true} onCommand={() => {}} />
-        <button type="button">Outside</button>
+        <button type="button" data-testid="outside">
+          Outside
+        </button>
       </>,
     );
 
@@ -118,8 +123,9 @@ describe("Menubar", () => {
     fileTrigger.click();
     await settle();
     expect(container.querySelector('[role="menu"]')).not.toBeNull();
-    const outside =
-      container.querySelector<HTMLButtonElement>("button:last-child")!;
+    const outside = container.querySelector<HTMLButtonElement>(
+      '[data-testid="outside"]',
+    )!;
     outside.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     outside.click();
     await settle();

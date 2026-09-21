@@ -8,7 +8,7 @@ TypeScript libraries and applications for editing and reviewing MIDI files for r
 | ------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Package | `@midiedit/core`    | Core MIDI parsing (read/write) library.                                                                                                                                         |
 | Package | `@midiedit/views`   | MIDI view library providing non-owning "views" of MIDI data. These views provide an abstraction of the MIDI data in order to more easily interface with a specific MIDI schema. |
-| App     | `@midiedit/editor`  | React + Pixi.js web-based MIDI editor app.                                                                                                                                      |
+| App     | `@midiedit/editor`  | React + Three.js web-based MIDI editor app.                                                                                                                                     |
 | App     | `@midiedit/desktop` | Tauri v2 desktop container for `@midiedit/editor` across Windows, macOS, and Linux.                                                                                             |
 
 ## Prerequisites

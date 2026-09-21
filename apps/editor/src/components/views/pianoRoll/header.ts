@@ -1,5 +1,5 @@
 import type { TempoChange, TimeSignatureChange } from "@midiedit/core";
-import { Container, Graphics, Point, Text } from "pixi.js";
+import type { CanvasPoint } from "../../../rendering/geometry";
 import {
   HeaderHeight,
   HeaderMarkerHitRadius,
@@ -42,12 +42,9 @@ export class HeaderController {
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
 
-  public readonly graphics = new Graphics();
-  public readonly labels = new Container();
-  public readonly boxes = new Container();
-
-  private readonly tempoLabelPool: Text[] = [];
-  private readonly timeSignatureLabelPool: Text[] = [];
+  private readonly tempoLabelPool: HTMLDivElement[] = [];
+  private readonly timeSignatureLabelPool: HTMLDivElement[] = [];
+  private readonly highlightPool: HTMLDivElement[] = [];
   private hoveredMarker: { lane: HeaderLane; tick: number } | null = null;
   private host: HTMLElement | null = null;
   private editInput: HTMLInputElement | null = null;
@@ -69,15 +66,17 @@ export class HeaderController {
   public destroy(): void {
     this.editInput?.remove();
     this.deleteButton?.remove();
+    this.tempoLabelPool.forEach((label) => label.remove());
+    this.timeSignatureLabelPool.forEach((label) => label.remove());
+    this.highlightPool.forEach((highlight) => highlight.remove());
+    this.tempoLabelPool.length = 0;
+    this.timeSignatureLabelPool.length = 0;
+    this.highlightPool.length = 0;
     this.editInput = null;
     this.deleteButton = null;
     this.host = null;
     this.hoveredMarker = null;
     this.editingMarkerKey = null;
-  }
-
-  public getDisplayObjects(): [Graphics, Container, Container] {
-    return [this.graphics, this.labels, this.boxes];
   }
 
   public getEditInput(): HTMLInputElement | null {
@@ -95,7 +94,7 @@ export class HeaderController {
     return y < HeaderTempoLaneHeight ? "tempo" : "timeSignature";
   }
 
-  public updateHover(local: Point | null): void {
+  public updateHover(local: CanvasPoint | null): void {
     const lane = local ? this.laneAt(local.y) : null;
     const marker =
       lane && this.context.getMidi()
@@ -108,7 +107,7 @@ export class HeaderController {
     this.syncEditControls();
   }
 
-  public click(point: Point): void {
+  public click(point: CanvasPoint): void {
     const midi = this.context.getMidi();
     const lane = this.laneAt(point.y);
     if (!midi || !lane) {
@@ -159,23 +158,9 @@ export class HeaderController {
   }
 
   public draw(width: number): void {
-    this.graphics.beginFill(0x1c1c1c);
-    this.graphics.drawRect(0, 0, width, HeaderTempoLaneHeight);
-    this.graphics.endFill();
-    this.graphics.beginFill(0x181818);
-    this.graphics.drawRect(
-      0,
-      HeaderTempoLaneHeight,
-      width,
-      HeaderHeight - HeaderTempoLaneHeight,
-    );
-    this.graphics.endFill();
-    this.graphics.lineStyle(1, 0x3a3a3a);
-    this.graphics
-      .moveTo(0, HeaderTempoLaneHeight)
-      .lineTo(width, HeaderTempoLaneHeight);
-    this.graphics.lineStyle(1, 0x555555);
-    this.graphics.moveTo(0, HeaderHeight).lineTo(width, HeaderHeight);
+    if (!this.host) return;
+    this.host.style.background = "#1c1c1c";
+    this.host.style.borderBottom = "1px solid #555";
 
     const visibleWidth = Math.max(0, width - this.context.getKeyboardWidth());
     const visibleStart = this.coordinates.getCamera().x;
@@ -185,7 +170,9 @@ export class HeaderController {
     const inView = (change: { tick: number }) =>
       change.tick >= visibleStart && change.tick <= visibleEnd;
 
-    this.boxes.removeChildren();
+    this.highlightPool.forEach((highlight) => {
+      highlight.style.display = "none";
+    });
     this.drawMarkers(
       "tempo",
       this.tempoLabelPool,
@@ -206,7 +193,7 @@ export class HeaderController {
 
   private drawMarkers<T extends { tick: number }>(
     lane: HeaderLane,
-    pool: Text[],
+    pool: HTMLDivElement[],
     changes: T[],
     y: number,
     formatText: (change: T) => string,
@@ -214,9 +201,14 @@ export class HeaderController {
     changes.forEach((change, index) => {
       let label = pool[index];
       if (!label) {
-        label = new Text("", { fill: 0xcccccc, fontSize: 11 });
+        label = document.createElement("div");
+        label.style.position = "absolute";
+        label.style.color = "#ccc";
+        label.style.font = "11px sans-serif";
+        label.style.whiteSpace = "nowrap";
+        label.style.pointerEvents = "none";
         pool[index] = label;
-        this.labels.addChild(label);
+        this.host?.appendChild(label);
       }
 
       const x = this.coordinates.screenXForTick(change.tick);
@@ -224,25 +216,36 @@ export class HeaderController {
         this.hoveredMarker?.lane === lane &&
         this.hoveredMarker.tick === change.tick;
       if (isHovered) {
-        const highlight = new Graphics();
-        highlight.beginFill(0xff0000, 0.3);
-        highlight.drawRect(
-          x,
-          y,
-          HeaderMarkerLabelWidth,
-          HeaderMarkerLabelHeight,
-        );
-        highlight.endFill();
-        this.boxes.addChild(highlight);
+        const highlight = this.getHighlight(index);
+        highlight.style.display = "block";
+        highlight.style.left = `${x}px`;
+        highlight.style.top = `${y}px`;
+        highlight.style.width = `${HeaderMarkerLabelWidth}px`;
+        highlight.style.height = `${HeaderMarkerLabelHeight}px`;
       }
-      label.text = formatText(change);
-      label.position.set(x + 3, y);
-      label.visible = x >= this.context.getKeyboardWidth();
+      label.textContent = formatText(change);
+      label.style.left = `${x + 3}px`;
+      label.style.top = `${y}px`;
+      label.style.display =
+        x >= this.context.getKeyboardWidth() ? "block" : "none";
     });
 
     for (let index = changes.length; index < pool.length; index++) {
-      pool[index].visible = false;
+      pool[index].style.display = "none";
     }
+  }
+
+  private getHighlight(index: number): HTMLDivElement {
+    let highlight = this.highlightPool[index];
+    if (!highlight) {
+      highlight = document.createElement("div");
+      highlight.style.position = "absolute";
+      highlight.style.background = "rgba(255, 0, 0, 0.3)";
+      highlight.style.pointerEvents = "none";
+      this.highlightPool[index] = highlight;
+      this.host?.appendChild(highlight);
+    }
+    return highlight;
   }
 
   private findTempoMarkerNear(x: number): TempoChange | null {

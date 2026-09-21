@@ -670,7 +670,7 @@ button:disabled {
 /*
  * Renderer-neutral host.
  *
- * PixiJS, Three.js, SVG, Canvas2D, etc. can all mount themselves here.
+ * Three.js, SVG, Canvas2D, etc. can all mount themselves here.
  */
 .midi-view-host {
   position: absolute;

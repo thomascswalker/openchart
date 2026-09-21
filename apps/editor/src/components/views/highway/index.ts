@@ -1,15 +1,6 @@
 import type { Midi, MidiChannelEvent, MidiNote } from "@midiedit/core";
 import { ChartView, Note, SongView } from "@midiedit/views";
-import { Application, Graphics, type Renderer } from "pixi.js";
-import {
-  Camera,
-  Color,
-  Container3D,
-  LightingEnvironment,
-  Mesh3D,
-  Point3D,
-  StandardMaterial,
-} from "pixi3d/pixi7";
+import * as THREE from "three";
 import {
   AbstractChartView,
   type CameraDebugState,
@@ -17,6 +8,7 @@ import {
   type NoteSizeDebugState,
   type NoteSizeDebugView,
 } from "../AbstractChartView";
+import type { ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
 import { RenderAssetRegistry } from "./assets";
 import { circularHighwayPrimitiveRoles } from "../../../assets/highway/circular";
 import {
@@ -48,69 +40,26 @@ import {
 import { HIGHWAY_GEOMETRY_CATALOG } from "./highwayGeometryCatalog";
 
 const defaultCameraPosition = { x: 0, y: 7, z: 7 };
+const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };
 const defaultCameraFieldOfView = 45;
 const minimumCameraFieldOfView = 1;
 const maximumCameraFieldOfView = 179;
 const wheelTicksPerPixel = 1 / 100;
-
-function quaternionToEulerDegrees(x: number, y: number, z: number, w: number) {
-  const sinX = 2 * (w * x + y * z);
-  const cosX = 1 - 2 * (x * x + y * y);
-  const sinY = 2 * (w * y - z * x);
-  const sinZ = 2 * (w * z + x * y);
-  const cosZ = 1 - 2 * (y * y + z * z);
-
-  return {
-    x: (Math.atan2(sinX, cosX) * 180) / Math.PI,
-    y: (Math.asin(Math.max(-1, Math.min(1, sinY))) * 180) / Math.PI,
-    z: (Math.atan2(sinZ, cosZ) * 180) / Math.PI,
-  };
-}
-
-function isValidCameraDebugState(state: CameraDebugState): boolean {
-  const values = [
-    state.position.x,
-    state.position.y,
-    state.position.z,
-    state.rotation.x,
-    state.rotation.y,
-    state.rotation.z,
-    state.fieldOfView,
-  ];
-
-  return (
-    values.every(Number.isFinite) &&
-    state.fieldOfView >= minimumCameraFieldOfView &&
-    state.fieldOfView <= maximumCameraFieldOfView
-  );
-}
-
 const minimumNoteScale = 0.1;
 const maximumNoteScale = 10;
-
-function isValidNoteSizeDebugState(state: NoteSizeDebugState): boolean {
-  return [state.x, state.y, state.z].every(
-    (value) =>
-      Number.isFinite(value) &&
-      value >= minimumNoteScale &&
-      value <= maximumNoteScale,
-  );
-}
-
 const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];
 const laneCount = laneColors.length;
 const poolSizePerLane = 128;
 const poolSizeBeatLines = 64;
 const visibleQuarterNotes = 16;
-
 const strikeLineZ = -3.5;
 const farBoardZ = -44;
 const nearBoardZ = 0.5;
 const laneRgbColors = laneColors.map(rgbFromHex);
 
 interface PooledBeatLine {
-  mesh: Mesh3D;
-  material: StandardMaterial;
+  mesh: THREE.Mesh;
+  material: THREE.MeshBasicMaterial;
 }
 
 interface DragState {
@@ -131,46 +80,80 @@ interface ScreenBounds {
   bottom: number;
 }
 
+function isValidCameraDebugState(state: CameraDebugState): boolean {
+  return (
+    [
+      state.position.x,
+      state.position.y,
+      state.position.z,
+      state.rotation.x,
+      state.rotation.y,
+      state.rotation.z,
+      state.fieldOfView,
+    ].every(Number.isFinite) &&
+    state.fieldOfView >= minimumCameraFieldOfView &&
+    state.fieldOfView <= maximumCameraFieldOfView
+  );
+}
+
+function isValidNoteSizeDebugState(state: NoteSizeDebugState): boolean {
+  return [state.x, state.y, state.z].every(
+    (value) =>
+      Number.isFinite(value) &&
+      value >= minimumNoteScale &&
+      value <= maximumNoteScale,
+  );
+}
+
 export class HighwayView
   extends AbstractChartView<MidiNote>
   implements CameraDebugView, NoteSizeDebugView
 {
-  private camera: Camera | null = null;
-  private cameraDebugDefaultsQuaternion: {
-    x: number;
-    y: number;
-    z: number;
-    w: number;
-  } | null = null;
-  private cameraDebugDefaults: CameraDebugState | null = null;
-  private cameraDebugState: CameraDebugState | null = null;
-  private noteSizeDebugState: NoteSizeDebugState = {
-    ...DEFAULT_NOTE_SCALE_MULTIPLIER,
-  };
-  private lighting: LightingEnvironment | null = null;
-  private scene: Container3D | null = null;
-  private songMidi: Midi | null = null;
-  private song: SongView | null = null;
-  private playheadTick = 0;
-  private canvas: HTMLCanvasElement | null = null;
-  private selectedNoteOn: MidiChannelEvent | null = null;
-  private hoveredNoteOn: MidiChannelEvent | null = null;
-  private drag: DragState | null = null;
-  private suppressNextClick = false;
+  private readonly threeScene = new THREE.Scene();
+  private readonly threeCamera = new THREE.PerspectiveCamera(
+    defaultCameraFieldOfView,
+    1,
+    0.1,
+    64,
+  );
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly boardPlane = new THREE.Plane(
+    new THREE.Vector3(0, 1, 0),
+    -0.05,
+  );
+  private readonly hoverOutline = new THREE.LineLoop(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }),
+  );
   private readonly gemPools: PooledNote[][] = [];
   private readonly tailPools: PooledTail[][] = [];
   private readonly gemBindings = new Map<MidiChannelEvent, PooledNote>();
   private readonly tailBindings = new Map<MidiChannelEvent, PooledTail>();
   private readonly beatLinePool: PooledBeatLine[] = [];
-  private readonly hoverOutline = new Graphics();
-  private ghostGem: PooledNote | null = null;
-  private ghostNoteLocation: { lane: number; tick: number } | null = null;
   private readonly assetRegistry: RenderAssetRegistry;
   private readonly ownsAssetRegistry: boolean;
+  private cameraDebugDefaults: CameraDebugState | null = null;
+  private noteSizeDebugState: NoteSizeDebugState = {
+    ...DEFAULT_NOTE_SCALE_MULTIPLIER,
+  };
+  private cameraReady = false;
+  private canvas: HTMLCanvasElement | null = null;
+  private viewportWidth = 1;
+  private viewportHeight = 1;
+  private sceneReady = false;
+  private assetsReady = false;
+  private songMidi: Midi | null = null;
+  private song: SongView | null = null;
   private materialSet: CircularMaterialSet | null = null;
   private noteCalibration: ModelCalibration = DEFAULT_NOTE_CALIBRATION;
-  private fretAssemblies: Container3D[] = [];
-  private assetsReady = false;
+  private fretAssemblies: THREE.Group[] = [];
+  private ghostGem: PooledNote | null = null;
+  private ghostNoteLocation: { lane: number; tick: number } | null = null;
+  private playheadTick = 0;
+  private selectedNoteOn: MidiChannelEvent | null = null;
+  private hoveredNoteOn: MidiChannelEvent | null = null;
+  private drag: DragState | null = null;
+  private suppressNextClick = false;
 
   public constructor(assetRegistry?: RenderAssetRegistry) {
     super();
@@ -178,56 +161,35 @@ export class HighwayView
     this.ownsAssetRegistry = !assetRegistry;
   }
 
-  public override setPlayheadTick(tick: number): void {
-    this.playheadTick = Math.max(0, tick);
-    this.render();
+  protected override get renderScene(): THREE.Scene {
+    return this.threeScene;
   }
 
-  protected override onMounted(app: Application): void {
-    const renderer = app.renderer as unknown as Renderer;
-    this.lighting = new LightingEnvironment(renderer);
-    LightingEnvironment.main = this.lighting;
+  protected override get renderCamera(): THREE.Camera {
+    return this.threeCamera;
+  }
 
-    this.camera = new Camera(renderer);
-    this.camera.position.set(0, 7, 7);
-    this.camera.fieldOfView = 45;
-    this.camera.near = 0.1;
-    this.camera.far = 64;
-    this.camera.transform.lookAt(new Point3D(0, 0, -20));
-    const rotation = quaternionToEulerDegrees(
-      this.camera.rotationQuaternion.x,
-      this.camera.rotationQuaternion.y,
-      this.camera.rotationQuaternion.z,
-      this.camera.rotationQuaternion.w,
+  protected override onMounted(engine: ThreeRenderEngine): void {
+    this.canvas = engine.canvas;
+    this.threeCamera.position.set(
+      defaultCameraPosition.x,
+      defaultCameraPosition.y,
+      defaultCameraPosition.z,
     );
-    rotation.x = 200;
-    this.camera.rotationQuaternion.setEulerAngles(
-      rotation.x,
-      rotation.y,
-      rotation.z,
+    this.threeCamera.rotation.set(
+      defaultCameraRotation.x,
+      defaultCameraRotation.y,
+      defaultCameraRotation.z,
     );
-    this.cameraDebugDefaults = {
-      position: { ...defaultCameraPosition },
-      rotation,
-      fieldOfView: defaultCameraFieldOfView,
-    };
-    this.cameraDebugDefaultsQuaternion = {
-      x: this.camera.rotationQuaternion.x,
-      y: this.camera.rotationQuaternion.y,
-      z: this.camera.rotationQuaternion.z,
-      w: this.camera.rotationQuaternion.w,
-    };
-    this.cameraDebugState = structuredClone(this.cameraDebugDefaults);
-    Camera.main = this.camera;
-
-    this.scene = new Container3D();
-    app.stage.addChild(this.scene);
-    app.stage.addChild(this.hoverOutline);
+    this.threeCamera.lookAt(0, 0, -20);
+    this.cameraReady = true;
+    this.cameraDebugDefaults = this.getCameraDebugState();
+    this.threeScene.add(this.hoverOutline);
     this.createFretboard();
     this.createBeatLinePool();
+    this.sceneReady = true;
     void this.loadHighwayAssets();
 
-    this.canvas = app.view as HTMLCanvasElement;
     this.canvas.style.touchAction = "none";
     this.canvas.addEventListener("click", this.handleClick);
     this.canvas.addEventListener("contextmenu", this.handleContextMenu);
@@ -240,59 +202,63 @@ export class HighwayView
     window.addEventListener("pointerup", this.handlePointerUp);
   }
 
+  protected override onResized(width: number, height: number): void {
+    this.threeCamera.aspect = width / Math.max(1, height);
+    this.threeCamera.updateProjectionMatrix();
+  }
+
+  public override setPlayheadTick(tick: number): void {
+    this.playheadTick = Math.max(0, tick);
+    this.render();
+  }
+
   public getCameraDebugState(): CameraDebugState | null {
-    return this.cameraDebugState && structuredClone(this.cameraDebugState);
+    if (!this.cameraReady) return null;
+    return {
+      position: {
+        x: this.threeCamera.position.x,
+        y: this.threeCamera.position.y,
+        z: this.threeCamera.position.z,
+      },
+      rotation: {
+        x: THREE.MathUtils.radToDeg(this.threeCamera.rotation.x),
+        y: THREE.MathUtils.radToDeg(this.threeCamera.rotation.y),
+        z: THREE.MathUtils.radToDeg(this.threeCamera.rotation.z),
+      },
+      fieldOfView: this.threeCamera.fov,
+    };
   }
 
   public applyCameraDebugState(state: CameraDebugState): boolean {
-    if (!this.camera || !isValidCameraDebugState(state)) {
-      return false;
-    }
-
-    this.camera.position.set(
+    if (!this.cameraReady || !isValidCameraDebugState(state)) return false;
+    this.threeCamera.position.set(
       state.position.x,
       state.position.y,
       state.position.z,
     );
-    this.camera.rotationQuaternion.setEulerAngles(
-      state.rotation.x,
-      state.rotation.y,
-      state.rotation.z,
+    this.threeCamera.rotation.set(
+      THREE.MathUtils.degToRad(state.rotation.x),
+      THREE.MathUtils.degToRad(state.rotation.y),
+      THREE.MathUtils.degToRad(state.rotation.z),
     );
-    this.camera.fieldOfView = state.fieldOfView;
-    this.cameraDebugState = structuredClone(state);
+    this.threeCamera.fov = state.fieldOfView;
+    this.threeCamera.updateProjectionMatrix();
     this.render();
     return true;
   }
 
   public resetCameraDebugState(): boolean {
-    if (!this.cameraDebugDefaults || !this.cameraDebugDefaultsQuaternion) {
-      return false;
-    }
-
-    if (!this.applyCameraDebugState(this.cameraDebugDefaults)) {
-      return false;
-    }
-
-    this.camera?.rotationQuaternion.set(
-      this.cameraDebugDefaultsQuaternion.x,
-      this.cameraDebugDefaultsQuaternion.y,
-      this.cameraDebugDefaultsQuaternion.z,
-      this.cameraDebugDefaultsQuaternion.w,
-    );
-    this.render();
-    return true;
+    return this.cameraDebugDefaults
+      ? this.applyCameraDebugState(this.cameraDebugDefaults)
+      : false;
   }
 
   public getNoteSizeDebugState(): NoteSizeDebugState | null {
-    return this.scene ? structuredClone(this.noteSizeDebugState) : null;
+    return this.sceneReady ? structuredClone(this.noteSizeDebugState) : null;
   }
 
   public applyNoteSizeDebugState(state: NoteSizeDebugState): boolean {
-    if (!this.scene || !isValidNoteSizeDebugState(state)) {
-      return false;
-    }
-
+    if (!this.sceneReady || !isValidNoteSizeDebugState(state)) return false;
     this.noteSizeDebugState = structuredClone(state);
     this.applyNoteCalibrationToInstances();
     this.render();
@@ -303,29 +269,24 @@ export class HighwayView
     return this.applyNoteSizeDebugState({ ...DEFAULT_NOTE_SCALE_MULTIPLIER });
   }
 
-  protected override draw(): void {
+  protected override draw(engine: ThreeRenderEngine): void {
+    const { width, height } = engine.getSize();
+    this.viewportWidth = width;
+    this.viewportHeight = height;
+    this.threeCamera.aspect = width / Math.max(1, height);
+    this.threeCamera.updateProjectionMatrix();
     const midi = this.state.midi;
     const chart = midi ? this.getActiveChart(midi) : null;
-    if (!chart) {
-      this.hideAllGems();
-      this.hoverOutline.clear();
-      if (this.ghostGem) {
-        this.ghostGem.object.visible = false;
-      }
-      return;
-    }
-
-    if (!this.assetsReady) {
-      this.hideAllGems();
+    if (!chart || !this.assetsReady || !this.materialSet) {
+      this.threeScene.userData.visibleNotes = 0;
+      this.threeScene.userData.visibleSustains = 0;
+      this.hideAllObjects();
       return;
     }
 
     this.drawBeatLines();
-
     const visibleStart = this.getTickAtDepth(nearBoardZ);
     const visibleEnd = this.playheadTick + this.getPpqn() * visibleQuarterNotes;
-    const effectiveNoteCalibration = this.getEffectiveNoteCalibration();
-
     const visibleNotes = chart
       .getNotes()
       .map((note) => ({ note, lane: note.note - chart.getOffset() }))
@@ -337,48 +298,45 @@ export class HighwayView
           lane < laneCount,
       );
 
-    // Transparent sustain ribbons are submitted before note heads. The
-    // heads then write depth and occlude any ribbon underneath their surface.
     const usedTails = new Set<PooledTail>();
     for (const { note, lane } of visibleNotes) {
-      const tailStart = Math.max(note.start, this.getTickAtDepth(nearBoardZ));
+      const tailStart = Math.max(note.start, visibleStart);
       const tailEnd = Math.min(note.end, this.getTickAtDepth(farBoardZ));
-      if (tailEnd <= tailStart) {
-        continue;
-      }
+      if (tailEnd <= tailStart) continue;
       const pooledTail = this.acquireTail(note.noteOn, usedTails);
       if (!pooledTail) continue;
       usedTails.add(pooledTail);
-      const sustainTransform = sustainWorldTransform(
+      const transform = sustainWorldTransform(
         this.getLaneX(lane),
         this.getNoteZ(tailStart),
         this.getNoteZ(tailEnd),
       );
-      const tailSelected = note.noteOn === this.selectedNoteOn;
+      const selected = note.noteOn === this.selectedNoteOn;
+      pooledTail.mesh.position.set(
+        transform.position.x,
+        transform.position.y,
+        transform.position.z,
+      );
+      pooledTail.mesh.scale.set(
+        transform.scale.x,
+        transform.scale.y,
+        transform.scale.z,
+      );
+      pooledTail.mesh.renderOrder = 10;
+      pooledTail.mesh.visible = true;
       setCircularMaterialState(pooledTail.mesh, {
         baseColor: laneRgbColors[lane],
         emissionColor: laneRgbColors[lane],
-        emissionIntensity: tailSelected ? 1.7 : 1,
+        emissionIntensity: selected ? 1.7 : 1,
+        selected,
         alpha: 0.65,
-        selected: tailSelected,
-        ghost: false,
-        tint: true,
         passed: false,
         useStrikeLine: true,
         strikeLineZ,
       });
-      pooledTail.mesh.position.set(
-        sustainTransform.position.x,
-        sustainTransform.position.y,
-        sustainTransform.position.z,
-      );
-      pooledTail.mesh.scale.set(
-        sustainTransform.scale.x,
-        sustainTransform.scale.y,
-        sustainTransform.scale.z,
-      );
-      pooledTail.mesh.visible = true;
     }
+    this.threeScene.userData.visibleNotes = visibleNotes.length;
+    this.threeScene.userData.visibleSustains = usedTails.size;
 
     const usedGems = new Set<PooledNote>();
     for (const { note, lane } of visibleNotes) {
@@ -386,34 +344,27 @@ export class HighwayView
       if (!pooledGem) continue;
       usedGems.add(pooledGem);
       const distance = (note.start - this.playheadTick) / this.getPpqn();
-      const notePosition = noteWorldPosition(
+      const position = noteWorldPosition(
         this.getLaneX(lane),
         strikeLineZ - distance * 3,
-        effectiveNoteCalibration,
+        this.getEffectiveNoteCalibration(),
       );
-      pooledGem.object.position.set(
-        notePosition.x,
-        notePosition.y,
-        notePosition.z,
-      );
-      const selected = note.noteOn === this.selectedNoteOn;
-      pooledGem.selected = selected;
-      setModelState(pooledGem.object, this.materialSet!, laneRgbColors[lane], {
-        selected,
+      pooledGem.object.position.set(position.x, position.y, position.z);
+      pooledGem.object.renderOrder = 20;
+      pooledGem.object.visible = true;
+      pooledGem.selected = note.noteOn === this.selectedNoteOn;
+      setModelState(pooledGem.object, this.materialSet, laneRgbColors[lane], {
+        selected: pooledGem.selected,
         passed: note.start <= this.playheadTick + 0.001,
       });
-      pooledGem.object.visible = true;
     }
-
     this.releaseUnusedBindings(this.gemBindings, usedGems, (item) => {
       item.object.visible = false;
     });
     this.releaseUnusedBindings(this.tailBindings, usedTails, (item) => {
       item.mesh.visible = false;
     });
-
     this.drawGhostGem();
-
     this.drawHoverOutline(chart);
   }
 
@@ -433,57 +384,38 @@ export class HighwayView
     window.removeEventListener("pointerup", this.handlePointerUp);
     this.canvas = null;
     this.drag = null;
-    this.selectedNoteOn = null;
-    this.hoveredNoteOn = null;
-
     destroyPooledObjects(this.gemPools, this.tailPools);
     this.gemPools.length = 0;
     this.tailPools.length = 0;
     this.gemBindings.clear();
     this.tailBindings.clear();
     this.beatLinePool.forEach(({ mesh, material }) => {
-      mesh.destroy({ children: true });
-      material.destroy();
+      mesh.geometry.dispose();
+      material.dispose();
+      mesh.removeFromParent();
     });
     this.beatLinePool.length = 0;
-    this.ghostGem?.object.destroy({
-      children: true,
-      geometry: false,
-      material: false,
-      texture: false,
-      baseTexture: false,
-    } as never);
-    this.ghostGem = null;
-    this.fretAssemblies.forEach((assembly) =>
-      assembly.destroy({
-        children: true,
-        geometry: false,
-        material: false,
-        texture: false,
-        baseTexture: false,
-      } as never),
-    );
+    this.fretAssemblies.forEach((assembly) => {
+      assembly.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        const materials = Array.isArray(mesh.material)
+          ? mesh.material
+          : mesh.material
+            ? [mesh.material]
+            : [];
+        materials.forEach((material) => material.dispose());
+      });
+      assembly.removeFromParent();
+    });
     this.fretAssemblies.length = 0;
+    this.ghostGem = null;
     this.materialSet?.destroy();
     this.materialSet = null;
-    if (this.ownsAssetRegistry) {
-      this.assetRegistry.dispose();
-    }
+    if (this.ownsAssetRegistry) this.assetRegistry.dispose();
+    this.threeScene.clear();
     this.assetsReady = false;
-    this.ghostNoteLocation = null;
-    this.scene = null;
-
-    this.camera?.destroy();
-    this.camera = null;
-    this.cameraDebugDefaultsQuaternion = null;
-    this.cameraDebugDefaults = null;
-    this.cameraDebugState = null;
-    this.noteSizeDebugState = { ...DEFAULT_NOTE_SCALE_MULTIPLIER };
-    this.lighting?.destroy();
-    this.lighting = null;
-    this.song = null;
-    this.songMidi = null;
-
+    this.sceneReady = false;
     super.destroy();
   }
 
@@ -492,12 +424,158 @@ export class HighwayView
       this.songMidi = midi;
       this.song = new SongView(midi);
     }
-
     return (
       this.song
         ?.getInstrumentTrackView(this.state.selectedInstrument)
         ?.getChart(this.state.selectedDifficulty) ?? null
     );
+  }
+
+  private async loadHighwayAssets(): Promise<void> {
+    try {
+      const bundle = await this.assetRegistry.preloadHighway();
+      if (!this.sceneReady || !this.cameraReady) return;
+      this.materialSet = createCircularMaterialSet(bundle.textures);
+      this.noteCalibration = calibrationFromModel(bundle.note);
+      this.gemPools.push(
+        ...createNotePools(
+          this.threeScene,
+          bundle.note,
+          this.materialSet,
+          laneRgbColors,
+          poolSizePerLane,
+          this.getEffectiveNoteCalibration(),
+          circularHighwayPrimitiveRoles.note,
+        ),
+      );
+      this.tailPools.push(
+        ...createSustainPool(
+          this.threeScene,
+          this.materialSet.sustain,
+          laneRgbColors,
+          poolSizePerLane,
+        ),
+      );
+      this.fretAssemblies = laneRgbColors.map((color, lane) => {
+        const assembly = createFretAssembly(
+          this.threeScene,
+          bundle.fretTop,
+          bundle.fretBase,
+          this.materialSet!.fretColor,
+          color,
+          circularHighwayPrimitiveRoles.fretTop,
+          this.materialSet!.fretNeutral,
+          circularHighwayPrimitiveRoles.fretBase,
+        );
+        const transform = HIGHWAY_GEOMETRY_CATALOG.fretTop.transform;
+        assembly.position.set(
+          this.getLaneX(lane) + transform.position.x,
+          transform.position.y,
+          strikeLineZ,
+        );
+        assembly.scale.set(
+          transform.scale.x,
+          transform.scale.y,
+          transform.scale.z,
+        );
+        assembly.rotation.x = THREE.MathUtils.degToRad(
+          transform.rotationDegrees.x,
+        );
+        return assembly;
+      });
+      this.ghostGem = createModelInstance(
+        bundle.note,
+        (primitiveIndex) =>
+          (circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted"
+            ? this.materialSet!.noteGhostColor
+            : this.materialSet!.noteGhostNeutral
+          ).clone(),
+        this.getEffectiveNoteCalibration(),
+      );
+      this.ghostGem.meshes.forEach((mesh, primitiveIndex) =>
+        setCircularMaterialState(mesh, {
+          baseColor: laneRgbColors[0],
+          emissionColor:
+            circularHighwayPrimitiveRoles.note[primitiveIndex] === "neutral"
+              ? [1, 1, 1]
+              : laneRgbColors[0],
+          alpha: 0.35,
+          ghost: true,
+          tint: circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted",
+        }),
+      );
+      this.threeScene.add(this.ghostGem.object);
+      this.assetsReady = true;
+      this.render();
+    } catch (error) {
+      console.error("Circular highway assets failed to load", error);
+    }
+  }
+
+  private createFretboard(): void {
+    const boardCenterZ = (nearBoardZ + farBoardZ) / 2;
+    const boardDepth = nearBoardZ - farBoardZ;
+    const board = new THREE.Mesh(
+      new THREE.BoxGeometry(6.5, 0.3, boardDepth),
+      new THREE.MeshBasicMaterial({ color: 0x1f2937 }),
+    );
+    board.position.set(0, -0.25, boardCenterZ);
+    board.renderOrder = 0;
+    this.threeScene.add(board);
+
+    for (let lane = 0; lane <= laneCount; lane++) {
+      const divider = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.08, boardDepth),
+        new THREE.MeshBasicMaterial({ color: 0x64748b }),
+      );
+      divider.position.set(-3 + (6 * lane) / laneCount, -0.05, boardCenterZ);
+      divider.renderOrder = 2;
+      this.threeScene.add(divider);
+    }
+    const strike = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 0.03, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xf8fafc }),
+    );
+    strike.position.set(0, -0.04, strikeLineZ);
+    strike.renderOrder = 3;
+    this.threeScene.add(strike);
+  }
+
+  private createBeatLinePool(): void {
+    for (let index = 0; index < poolSizeBeatLines; index++) {
+      const material = new THREE.MeshBasicMaterial({ color: 0x64748b });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.016, 1), material);
+      mesh.visible = false;
+      mesh.renderOrder = 3;
+      this.threeScene.add(mesh);
+      this.beatLinePool.push({ mesh, material });
+    }
+  }
+
+  private drawBeatLines(): void {
+    const ppqn = Math.max(1, this.getPpqn());
+    const minTick = Math.max(0, this.playheadTick - Math.floor(ppqn * 2));
+    const maxTick =
+      this.playheadTick + Math.ceil(ppqn * (visibleQuarterNotes + 2));
+    const startQuarterTick = Math.ceil(minTick / ppqn) * ppqn;
+    let poolIndex = 0;
+    for (let tick = startQuarterTick; tick <= maxTick; tick += ppqn) {
+      const z = this.getNoteZ(tick);
+      if (z < farBoardZ || z > nearBoardZ) continue;
+      const pooled = this.beatLinePool[poolIndex++];
+      if (!pooled) break;
+      const q = Math.round(tick / ppqn);
+      const thicknessZ = q % 4 === 0 ? 0.07 : q % 2 === 0 ? 0.045 : 0.025;
+      pooled.material.color.setHex(
+        q % 4 === 0 ? 0xf1f5f9 : q % 2 === 0 ? 0x94a3b8 : 0x64748b,
+      );
+      pooled.mesh.position.set(0, -0.065, z);
+      pooled.mesh.scale.z = thicknessZ;
+      pooled.mesh.visible = true;
+    }
+    for (let index = poolIndex; index < this.beatLinePool.length; index++) {
+      this.beatLinePool[index].mesh.visible = false;
+    }
   }
 
   private acquireGem(
@@ -542,161 +620,13 @@ export class HighwayView
     }
   }
 
-  private createFretboard(): void {
-    if (!this.scene) {
-      return;
-    }
-
-    const boardCenterZ = (nearBoardZ + farBoardZ) / 2;
-    const boardHalfDepthZ = (nearBoardZ - farBoardZ) / 2;
-
-    const material = new StandardMaterial();
-    material.unlit = true;
-    material.baseColor = Color.fromHex(0x1f2937);
-    const board = Mesh3D.createCube(material);
-    const boardTransform = HIGHWAY_GEOMETRY_CATALOG.board.transform;
-    board.position.set(
-      boardTransform.position.x,
-      boardTransform.position.y,
-      boardCenterZ + boardTransform.position.z,
-    );
-    board.scale.set(
-      boardTransform.scale.x,
-      boardTransform.scale.y,
-      boardHalfDepthZ,
-    );
-    this.scene.addChild(board);
-
-    for (let lane = 0; lane <= laneCount; lane++) {
-      const dividerMaterial = new StandardMaterial();
-      dividerMaterial.unlit = true;
-      dividerMaterial.baseColor = Color.fromHex(0x64748b);
-      const divider = Mesh3D.createCube(dividerMaterial);
-      const dividerTransform = HIGHWAY_GEOMETRY_CATALOG.laneDivider.transform;
-      divider.position.set(
-        -3 + (6 * lane) / laneCount + dividerTransform.position.x,
-        dividerTransform.position.y,
-        boardCenterZ + dividerTransform.position.z,
-      );
-      divider.scale.set(
-        dividerTransform.scale.x,
-        dividerTransform.scale.y,
-        boardHalfDepthZ,
-      );
-      this.scene.addChild(divider);
-    }
-
-    const strikeLineMaterial = new StandardMaterial();
-    strikeLineMaterial.unlit = true;
-    strikeLineMaterial.baseColor = Color.fromHex(0xf8fafc);
-    const strikeLineBar = Mesh3D.createCube(strikeLineMaterial);
-    const strikeTransform = HIGHWAY_GEOMETRY_CATALOG.strikeline.transform;
-    strikeLineBar.position.set(
-      strikeTransform.position.x,
-      strikeTransform.position.y,
-      strikeLineZ + strikeTransform.position.z,
-    );
-    strikeLineBar.scale.set(
-      strikeTransform.scale.x,
-      strikeTransform.scale.y,
-      strikeTransform.scale.z,
-    );
-    this.scene.addChild(strikeLineBar);
-  }
-
-  private async loadHighwayAssets(): Promise<void> {
-    try {
-      const bundle = await this.assetRegistry.preloadHighway();
-      if (!this.scene || !this.camera) {
-        return;
-      }
-
-      const materialSet = createCircularMaterialSet(bundle.textures);
-      this.materialSet = materialSet;
-      // getBoundingBox() needs a transform root in Pixi3D. Parent the hidden
-      // template just long enough to calculate its imported bounds, then keep
-      // pooled instances as the only rendered note objects.
-      bundle.note.visible = false;
-      this.scene.addChild(bundle.note);
-      try {
-        this.noteCalibration = calibrationFromModel(bundle.note);
-      } finally {
-        this.scene.removeChild(bundle.note);
-      }
-      this.gemPools.push(
-        ...createNotePools(
-          this.scene,
-          bundle.note,
-          materialSet,
-          laneRgbColors,
-          poolSizePerLane,
-          this.getEffectiveNoteCalibration(),
-          circularHighwayPrimitiveRoles.note,
-        ),
-      );
-      this.tailPools.push(
-        ...createSustainPool(
-          this.scene,
-          materialSet.sustain,
-          laneRgbColors.map(
-            ([r, g, b]) => [r, g, b] as [number, number, number],
-          ),
-          poolSizePerLane,
-        ),
-      );
-      this.fretAssemblies = laneRgbColors.map((color, lane) => {
-        const assembly = createFretAssembly(
-          this.scene!,
-          bundle.fretTop,
-          bundle.fretBase,
-          materialSet.fretColor,
-          color,
-          circularHighwayPrimitiveRoles.fretTop,
-          materialSet.fretNeutral,
-          circularHighwayPrimitiveRoles.fretBase,
-        );
-        const topTransform = HIGHWAY_GEOMETRY_CATALOG.fretTop.transform;
-        assembly.position.set(
-          this.getLaneX(lane) + topTransform.position.x,
-          topTransform.position.y,
-          strikeLineZ + topTransform.position.z,
-        );
-        assembly.scale.set(
-          topTransform.scale.x,
-          topTransform.scale.y,
-          topTransform.scale.z,
-        );
-        return assembly;
-      });
-      this.ghostGem = createModelInstance(
-        bundle.note,
-        (primitiveIndex) =>
-          circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted"
-            ? materialSet.noteGhostColor
-            : materialSet.noteGhostNeutral,
-        this.getEffectiveNoteCalibration(),
-      );
-      this.ghostGem.meshes.forEach((mesh, primitiveIndex) =>
-        setCircularMaterialState(mesh, {
-          baseColor: laneRgbColors[0],
-          emissionColor:
-            circularHighwayPrimitiveRoles.note[primitiveIndex] === "neutral"
-              ? ([1, 1, 1] as [number, number, number])
-              : laneRgbColors[0],
-          alpha: 0.35,
-          ghost: true,
-          tint: circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted",
-        }),
-      );
-      this.scene.addChild(this.ghostGem.object);
-      this.assetsReady = true;
-      this.render();
-    } catch (error) {
-      // The board remains usable when an optional visual asset fails.  This is
-      // especially important in a Tauri webview where assets can be stale
-      // while a new bundle is being installed.
-      console.error("Circular highway assets failed to load", error);
-    }
+  private hideAllObjects(): void {
+    this.gemPools.flat().forEach(({ object }) => (object.visible = false));
+    this.tailPools.flat().forEach(({ mesh }) => (mesh.visible = false));
+    this.beatLinePool.forEach(({ mesh }) => (mesh.visible = false));
+    if (this.ghostGem) this.ghostGem.object.visible = false;
+    this.gemBindings.clear();
+    this.tailBindings.clear();
   }
 
   private getEffectiveNoteCalibration(): ModelCalibration {
@@ -705,109 +635,56 @@ export class HighwayView
 
   private applyNoteCalibrationToInstances(): void {
     const calibration = this.getEffectiveNoteCalibration();
-    this.gemPools.flat().forEach(({ object }) => {
-      applyModelCalibration(object, calibration);
-    });
-    if (this.ghostGem) {
-      applyModelCalibration(this.ghostGem.object, calibration);
-    }
+    this.gemPools
+      .flat()
+      .forEach(({ object }) => applyModelCalibration(object, calibration));
+    if (this.ghostGem) applyModelCalibration(this.ghostGem.object, calibration);
   }
 
-  private createBeatLinePool(): void {
-    if (!this.scene) {
+  private drawGhostGem(): void {
+    if (!this.ghostGem) return;
+    const location = this.ghostNoteLocation;
+    if (!location || this.drag) {
+      this.ghostGem.object.visible = false;
       return;
     }
+    const distance = (location.tick - this.playheadTick) / this.getPpqn();
+    const position = noteWorldPosition(
+      this.getLaneX(location.lane),
+      strikeLineZ - distance * 3,
+      this.getEffectiveNoteCalibration(),
+    );
+    this.ghostGem.object.position.set(position.x, position.y, position.z);
+    this.ghostGem.object.renderOrder = 30;
+    this.ghostGem.object.visible = true;
+  }
 
-    for (let index = 0; index < poolSizeBeatLines; index++) {
-      const material = new StandardMaterial();
-      material.unlit = true;
-      const mesh = Mesh3D.createCube(material);
-      mesh.visible = false;
-      this.scene.addChild(mesh);
-      this.beatLinePool.push({ mesh, material });
+  private drawHoverOutline(chart: ChartView): void {
+    const note = this.hoveredNoteOn
+      ? chart.getNotes().find((value) => value.noteOn === this.hoveredNoteOn)
+      : null;
+    if (!note) {
+      this.hoverOutline.visible = false;
+      return;
     }
-  }
-
-  private drawBeatLines(): void {
-    const ppqn = Math.max(1, this.getPpqn());
-
-    const minTick = Math.max(0, this.playheadTick - Math.floor(ppqn * 2));
-    const maxTick =
-      this.playheadTick + Math.ceil(ppqn * (visibleQuarterNotes + 2));
-    const startQuarterTick = Math.ceil(minTick / ppqn) * ppqn;
-
-    let poolIndex = 0;
-    for (let tick = startQuarterTick; tick <= maxTick; tick += ppqn) {
-      const z = this.getNoteZ(tick);
-      if (z < farBoardZ || z > nearBoardZ) {
-        continue;
-      }
-
-      const pooled = this.beatLinePool[poolIndex++];
-      if (!pooled) {
-        break;
-      }
-
-      const q = Math.round(tick / ppqn);
-      let thicknessZ = 0.025;
-      let colorHex = 0x64748b;
-
-      if (q % 4 === 0) {
-        thicknessZ = 0.07;
-        colorHex = 0xf1f5f9;
-      } else if (q % 2 === 0) {
-        thicknessZ = 0.045;
-        colorHex = 0x94a3b8;
-      }
-
-      pooled.material.baseColor = Color.fromHex(colorHex);
-      const beatTransform = HIGHWAY_GEOMETRY_CATALOG.beatLine.transform;
-      pooled.mesh.position.set(
-        beatTransform.position.x,
-        beatTransform.position.y,
-        z + beatTransform.position.z,
-      );
-      pooled.mesh.scale.set(
-        beatTransform.scale.x,
-        beatTransform.scale.y,
-        thicknessZ,
-      );
-      pooled.mesh.visible = true;
+    const lane = note.note - chart.getOffset();
+    const bounds = this.getGemScreenBounds(note, lane);
+    if (!bounds) {
+      this.hoverOutline.visible = false;
+      return;
     }
-
-    for (let i = poolIndex; i < this.beatLinePool.length; i++) {
-      this.beatLinePool[i].mesh.visible = false;
-    }
-  }
-
-  private hideAllGems(): void {
-    this.gemPools.forEach((pool) => {
-      pool.forEach(({ object }) => {
-        object.visible = false;
-      });
-    });
-    this.tailPools.forEach((pool) => {
-      pool.forEach(({ mesh }) => {
-        mesh.visible = false;
-      });
-    });
-    this.beatLinePool.forEach(({ mesh }) => {
-      mesh.visible = false;
-    });
-    this.gemBindings.clear();
-    this.tailBindings.clear();
-  }
-
-  private getLaneX(lane: number): number {
-    return -2.4 + (4.8 * lane) / (laneCount - 1);
-  }
-
-  private getNoteZ(tick: number): number {
-    return strikeLineZ - ((tick - this.playheadTick) / this.getPpqn()) * 3;
-  }
-
-  private getTickAtDepth(z: number): number {
-    return this.playheadTick + ((strikeLineZ - z) / 3) * this.getPpqn();
+    const corners = [
+      this.screenToWorld(bounds.left, bounds.top),
+      this.screenToWorld(bounds.right, bounds.top),
+      this.screenToWorld(bounds.right, bounds.bottom),
+      this.screenToWorld(bounds.left, bounds.bottom),
+    ].filter((value): value is THREE.Vector3 => value !== null);
+    if (corners.length !== 4) return;
+    this.hoverOutline.geometry.dispose();
+    this.hoverOutline.geometry = new THREE.BufferGeometry().setFromPoints(
+      corners,
+    );
+    this.hoverOutline.visible = true;
   }
 
   private readonly handleClick = (event: MouseEvent): void => {
@@ -815,13 +692,9 @@ export class HighwayView
       this.suppressNextClick = false;
       return;
     }
-
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
-    if (!chart || !location) {
-      return;
-    }
-
+    if (!chart || !location) return;
     const durationTicks = Math.max(1, this.getSnapTicks());
     chart.addNote(
       location.lane as Note,
@@ -834,43 +707,25 @@ export class HighwayView
 
   private readonly handleContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
-
     const chart = this.getCurrentChart();
-    const location = this.getChartLocation(event);
-    if (!chart || !location) {
-      return;
-    }
-
-    const matchingNote = this.getNoteAt(chart, event);
-    if (!matchingNote || !chart.removeNote(matchingNote)) {
-      return;
-    }
-
-    if (matchingNote.noteOn === this.selectedNoteOn) {
-      this.selectedNoteOn = null;
-    }
+    const note = chart ? this.getNoteAt(chart, event) : undefined;
+    if (!chart || !note || !chart.removeNote(note)) return;
+    if (note.noteOn === this.selectedNoteOn) this.selectedNoteOn = null;
     this.onNotesChanged?.();
     this.render();
   };
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (event.button !== 0) {
-      return;
-    }
-
+    if (event.button !== 0) return;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
-    if (!chart || !location) {
-      return;
-    }
-
+    if (!chart || !location) return;
     const note = this.getNoteAt(chart, event);
     if (!note) {
       this.selectedNoteOn = null;
       this.render();
       return;
     }
-
     event.preventDefault();
     this.suppressNextClick = true;
     this.selectedNoteOn = note.noteOn;
@@ -896,17 +751,13 @@ export class HighwayView
       this.updateGhostLocation(event);
       return;
     }
-
     this.ghostNoteLocation = null;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     const note = chart
       ?.getNotes()
       .find((value) => value.noteOn === drag.noteOn);
-    if (!chart || !location || !note) {
-      return;
-    }
-
+    if (!chart || !location || !note) return;
     const changed = drag.resizing
       ? chart.setNoteEnd(note, Math.max(note.start + 1, location.tick))
       : chart.moveNote(
@@ -921,46 +772,49 @@ export class HighwayView
           this.snapTick(drag.initialTick + location.tick - drag.pointerTick),
         );
     drag.changed ||= changed;
-    if (changed) {
-      this.render();
-    }
+    if (changed) this.render();
   };
 
   private readonly handlePointerLeave = (): void => {
-    if (this.hoveredNoteOn) {
-      this.hoveredNoteOn = null;
-      this.hoverOutline.clear();
-    }
-    if (this.ghostNoteLocation) {
-      this.ghostNoteLocation = null;
-      this.render();
-    }
+    this.hoveredNoteOn = null;
+    this.ghostNoteLocation = null;
+    this.hoverOutline.visible = false;
+    this.render();
   };
 
   private readonly handlePointerUp = (event: PointerEvent): void => {
     const drag = this.drag;
-    if (!drag || drag.pointerId !== event.pointerId) {
-      return;
-    }
-
+    if (!drag || drag.pointerId !== event.pointerId) return;
     this.canvas?.releasePointerCapture(event.pointerId);
     this.drag = null;
-    if (drag.changed) {
-      this.onNotesChanged?.();
-    }
+    if (drag.changed) this.onNotesChanged?.();
   };
 
   private readonly handleWheel = (event: WheelEvent): void => {
     event.preventDefault();
-
-    const ppqn = this.getPpqn();
     const nextTick = Math.max(
       0,
-      this.playheadTick + event.deltaY * ppqn * wheelTicksPerPixel,
+      this.playheadTick + event.deltaY * this.getPpqn() * wheelTicksPerPixel,
     );
     this.setPlayheadTick(nextTick);
     this.onSeekRequest?.(nextTick);
   };
+
+  private updateHoveredNote(event: PointerEvent): void {
+    const chart = this.getCurrentChart();
+    const note = chart ? this.getNoteAt(chart, event) : undefined;
+    const next = note?.noteOn ?? null;
+    if (next === this.hoveredNoteOn) return;
+    this.hoveredNoteOn = next;
+    if (this.canvas) this.canvas.style.cursor = note ? "pointer" : "default";
+    this.render();
+  }
+
+  private updateGhostLocation(event: PointerEvent): void {
+    const chart = this.getCurrentChart();
+    this.ghostNoteLocation = chart ? this.getChartLocation(event) : null;
+    this.render();
+  }
 
   private getCurrentChart(): ChartView | null {
     return this.state.midi ? this.getActiveChart(this.state.midi) : null;
@@ -968,12 +822,9 @@ export class HighwayView
 
   private getNoteAt(chart: ChartView, event: MouseEvent): MidiNote | undefined {
     const pointer = this.getCanvasPoint(event);
-    if (!pointer) {
-      return undefined;
-    }
-
+    if (!pointer) return undefined;
     let hit: MidiNote | undefined;
-    let nearestDepth = Number.POSITIVE_INFINITY;
+    let nearestDepth = Infinity;
     for (const note of chart.getNotes()) {
       const lane = note.note - chart.getOffset();
       const gemBounds = this.getGemScreenBounds(note, lane);
@@ -986,14 +837,12 @@ export class HighwayView
       ) {
         continue;
       }
-
       const depth = note.start - this.playheadTick;
       if (depth < nearestDepth) {
         hit = note;
         nearestDepth = depth;
       }
     }
-
     return hit;
   }
 
@@ -1002,122 +851,24 @@ export class HighwayView
     chart: ChartView,
     event: MouseEvent,
   ): boolean {
-    if (!this.camera || note.end <= note.start) {
-      return false;
-    }
-
+    if (note.end <= note.start) return false;
     const pointer = this.getCanvasPoint(event);
-    if (!pointer) {
-      return false;
-    }
-
-    const lane = note.note - chart.getOffset();
-    const end = this.camera.worldToScreen(
-      this.getLaneX(lane),
-      -0.04,
-      this.getNoteZ(note.end),
+    if (!pointer) return false;
+    const end = this.worldToScreen(
+      new THREE.Vector3(
+        this.getLaneX(note.note - chart.getOffset()),
+        -0.04,
+        this.getNoteZ(note.end),
+      ),
     );
-    const radius = 12;
-    return Math.hypot(pointer.x - end.x, pointer.y - end.y) <= radius;
-  }
-
-  private updateHoveredNote(event: PointerEvent): void {
-    const chart = this.getCurrentChart();
-    const note = chart ? this.getNoteAt(chart, event) : undefined;
-    const hoveredNoteOn = note?.noteOn ?? null;
-    if (hoveredNoteOn === this.hoveredNoteOn) {
-      return;
-    }
-
-    this.hoveredNoteOn = hoveredNoteOn;
-    this.canvas!.style.cursor = note ? "pointer" : "default";
-    this.render();
-  }
-
-  private updateGhostLocation(event: PointerEvent): void {
-    const chart = this.getCurrentChart();
-    const location = chart ? this.getChartLocation(event) : null;
-    const previous = this.ghostNoteLocation;
-    if (
-      previous &&
-      location &&
-      previous.lane === location.lane &&
-      previous.tick === location.tick
-    ) {
-      return;
-    }
-
-    this.ghostNoteLocation = location;
-    this.render();
-  }
-
-  private drawGhostGem(): void {
-    const ghost = this.ghostGem;
-    if (!ghost || !this.materialSet) {
-      return;
-    }
-
-    const location = this.ghostNoteLocation;
-    if (!location || this.drag) {
-      ghost.object.visible = false;
-      return;
-    }
-
-    const distance = (location.tick - this.playheadTick) / this.getPpqn();
-    const position = noteWorldPosition(
-      this.getLaneX(location.lane),
-      strikeLineZ - distance * 3,
-      this.getEffectiveNoteCalibration(),
-    );
-    ghost.object.position.set(position.x, position.y, position.z);
-    setModelState(
-      ghost.object,
-      this.materialSet,
-      laneRgbColors[location.lane],
-      {
-        alpha: 0.35,
-        ghost: true,
-      },
-    );
-    ghost.object.visible = true;
-  }
-
-  private drawHoverOutline(chart: ChartView): void {
-    this.hoverOutline.clear();
-    if (!this.hoveredNoteOn) {
-      return;
-    }
-
-    const note = chart
-      .getNotes()
-      .find((value) => value.noteOn === this.hoveredNoteOn);
-    if (!note) {
-      return;
-    }
-
-    const lane = note.note - chart.getOffset();
-    const bounds = this.getGemScreenBounds(note, lane);
-    if (!bounds) {
-      return;
-    }
-
-    this.hoverOutline.lineStyle(2, 0xffffff);
-    this.hoverOutline.drawRect(
-      bounds.left,
-      bounds.top,
-      bounds.right - bounds.left,
-      bounds.bottom - bounds.top,
-    );
+    return end ? Math.hypot(pointer.x - end.x, pointer.y - end.y) <= 12 : false;
   }
 
   private getGemScreenBounds(
     note: MidiNote,
     lane: number,
   ): ScreenBounds | null {
-    if (!this.camera || lane < 0 || lane >= laneCount) {
-      return null;
-    }
-
+    if (lane < 0 || lane >= laneCount) return null;
     const distance = (note.start - this.playheadTick) / this.getPpqn();
     const calibration = this.getEffectiveNoteCalibration();
     const position = noteWorldPosition(
@@ -1125,26 +876,29 @@ export class HighwayView
       strikeLineZ - distance * 3,
       calibration,
     );
-    const halfWidth = calibration.width / 2;
-    const halfHeight = Math.max(0.1, calibration.height / 2);
-    const halfDepth = Math.max(0.05, calibration.depth / 2);
-    const projectedCorners = [-1, 1].flatMap((xSign) =>
-      [-1, 1].flatMap((ySign) =>
-        [-1, 1].map((zSign) =>
-          this.camera!.worldToScreen(
-            position.x + xSign * halfWidth,
-            position.y + ySign * halfHeight,
-            position.z + zSign * halfDepth,
-          ),
-        ),
-      ),
-    );
-
+    const corners: THREE.Vector3[] = [];
+    for (const xSign of [-1, 1]) {
+      for (const ySign of [-1, 1]) {
+        for (const zSign of [-1, 1]) {
+          corners.push(
+            new THREE.Vector3(
+              position.x + (xSign * calibration.width) / 2,
+              position.y + ySign * Math.max(0.1, calibration.height / 2),
+              position.z + zSign * Math.max(0.05, calibration.depth / 2),
+            ),
+          );
+        }
+      }
+    }
+    const projected = corners
+      .map((corner) => this.worldToScreen(corner))
+      .filter((value): value is THREE.Vector2 => value !== null);
+    if (!projected.length) return null;
     return {
-      left: Math.min(...projectedCorners.map((corner) => corner.x)),
-      right: Math.max(...projectedCorners.map((corner) => corner.x)),
-      top: Math.min(...projectedCorners.map((corner) => corner.y)),
-      bottom: Math.max(...projectedCorners.map((corner) => corner.y)),
+      left: Math.min(...projected.map((corner) => corner.x)),
+      right: Math.max(...projected.map((corner) => corner.x)),
+      top: Math.min(...projected.map((corner) => corner.y)),
+      bottom: Math.max(...projected.map((corner) => corner.y)),
     };
   }
 
@@ -1152,49 +906,81 @@ export class HighwayView
     note: MidiNote,
     lane: number,
   ): ScreenBounds | null {
-    if (
-      !this.camera ||
-      lane < 0 ||
-      lane >= laneCount ||
-      note.end <= note.start
-    ) {
-      return null;
-    }
-
+    if (lane < 0 || lane >= laneCount || note.end <= note.start) return null;
     const tailStart = Math.max(note.start, this.playheadTick);
     const tailEnd = Math.min(note.end, this.getTickAtDepth(farBoardZ));
-    if (tailEnd <= tailStart) {
-      return null;
-    }
-
+    if (tailEnd <= tailStart) return null;
     const x = this.getLaneX(lane);
-    const startLeft = this.camera.worldToScreen(
-      x - 0.16,
-      -0.01,
-      this.getNoteZ(tailStart),
-    );
-    const startRight = this.camera.worldToScreen(
-      x + 0.16,
-      -0.08,
-      this.getNoteZ(tailStart),
-    );
-    const endLeft = this.camera.worldToScreen(
-      x - 0.16,
-      -0.01,
-      this.getNoteZ(tailEnd),
-    );
-    const endRight = this.camera.worldToScreen(
-      x + 0.16,
-      -0.08,
-      this.getNoteZ(tailEnd),
-    );
-
+    const points = [
+      new THREE.Vector3(x - 0.16, -0.01, this.getNoteZ(tailStart)),
+      new THREE.Vector3(x + 0.16, -0.08, this.getNoteZ(tailStart)),
+      new THREE.Vector3(x - 0.16, -0.01, this.getNoteZ(tailEnd)),
+      new THREE.Vector3(x + 0.16, -0.08, this.getNoteZ(tailEnd)),
+    ]
+      .map((point) => this.worldToScreen(point))
+      .filter((value): value is THREE.Vector2 => value !== null);
+    if (!points.length) return null;
     return {
-      left: Math.min(startLeft.x, startRight.x, endLeft.x, endRight.x),
-      right: Math.max(startLeft.x, startRight.x, endLeft.x, endRight.x),
-      top: Math.min(startLeft.y, startRight.y, endLeft.y, endRight.y),
-      bottom: Math.max(startLeft.y, startRight.y, endLeft.y, endRight.y),
+      left: Math.min(...points.map((point) => point.x)),
+      right: Math.max(...points.map((point) => point.x)),
+      top: Math.min(...points.map((point) => point.y)),
+      bottom: Math.max(...points.map((point) => point.y)),
     };
+  }
+
+  private getCanvasPoint(event: MouseEvent): { x: number; y: number } | null {
+    if (!this.canvas) return null;
+    const bounds = this.canvas.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) return null;
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * this.viewportWidth,
+      y: ((event.clientY - bounds.top) / bounds.height) * this.viewportHeight,
+    };
+  }
+
+  private getChartLocation(
+    event: MouseEvent,
+  ): { lane: number; tick: number } | null {
+    const point = this.getCanvasPoint(event);
+    if (!point || !this.canvas) return null;
+    const bounds = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+      -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(ndc, this.threeCamera);
+    const hit = new THREE.Vector3();
+    if (!this.raycaster.ray.intersectPlane(this.boardPlane, hit)) return null;
+    const lane = Math.max(
+      0,
+      Math.min(laneCount - 1, Math.floor((hit.x + 3) / (6 / laneCount))),
+    );
+    const tick = this.snapTick(
+      this.playheadTick + ((strikeLineZ - hit.z) / 3) * this.getPpqn(),
+    );
+    return { lane, tick };
+  }
+
+  private worldToScreen(position: THREE.Vector3): THREE.Vector2 | null {
+    if (!this.canvas) return null;
+    const projected = position.clone().project(this.threeCamera);
+    return new THREE.Vector2(
+      (projected.x + 1) * 0.5 * this.viewportWidth,
+      (1 - projected.y) * 0.5 * this.viewportHeight,
+    );
+  }
+
+  private screenToWorld(x: number, y: number): THREE.Vector3 | null {
+    if (!this.canvas) return null;
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(
+        (x / this.viewportWidth) * 2 - 1,
+        -(y / this.viewportHeight) * 2 + 1,
+      ),
+      this.threeCamera,
+    );
+    const hit = new THREE.Vector3();
+    return this.raycaster.ray.intersectPlane(this.boardPlane, hit) ? hit : null;
   }
 
   private containsScreenPoint(
@@ -1210,59 +996,16 @@ export class HighwayView
     );
   }
 
-  private getCanvasPoint(event: MouseEvent): { x: number; y: number } | null {
-    if (!this.canvas || !this.camera) {
-      return null;
-    }
-
-    const bounds = this.canvas.getBoundingClientRect();
-    if (bounds.width <= 0 || bounds.height <= 0) {
-      return null;
-    }
-
-    const screen = this.camera.renderer.screen;
-    return {
-      x: ((event.clientX - bounds.left) / bounds.width) * screen.width,
-      y: ((event.clientY - bounds.top) / bounds.height) * screen.height,
-    };
+  private getLaneX(lane: number): number {
+    return -2.4 + (4.8 * lane) / (laneCount - 1);
   }
 
-  private getChartLocation(
-    event: MouseEvent,
-  ): { lane: number; tick: number } | null {
-    if (!this.canvas || !this.camera) {
-      return null;
-    }
+  private getNoteZ(tick: number): number {
+    return strikeLineZ - ((tick - this.playheadTick) / this.getPpqn()) * 3;
+  }
 
-    const bounds = this.canvas.getBoundingClientRect();
-    if (bounds.width <= 0 || bounds.height <= 0) {
-      return null;
-    }
-
-    const ray = this.camera.screenToRay(
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-      { width: bounds.width, height: bounds.height },
-    );
-    if (!ray || Math.abs(ray.direction.y) < Number.EPSILON) {
-      return null;
-    }
-
-    const distance = (0.05 - ray.origin.y) / ray.direction.y;
-    if (distance < 0) {
-      return null;
-    }
-
-    const point = ray.getPoint(distance);
-    const lane = Math.max(
-      0,
-      Math.min(laneCount - 1, Math.floor((point.x + 3) / (6 / laneCount))),
-    );
-    const tick = this.snapTick(
-      this.playheadTick + ((strikeLineZ - point.z) / 3) * this.getPpqn(),
-    );
-
-    return { lane, tick };
+  private getTickAtDepth(z: number): number {
+    return this.playheadTick + ((strikeLineZ - z) / 3) * this.getPpqn();
   }
 
   private getSnapTicks(): number {
@@ -1270,11 +1013,10 @@ export class HighwayView
   }
 
   private snapTick(tick: number): number {
-    if (!this.state.snap.enabled) {
-      return Math.max(0, Math.round(tick));
-    }
-
+    if (!this.state.snap.enabled) return Math.max(0, Math.round(tick));
     const snapTicks = this.getSnapTicks();
-    return Math.max(0, Math.floor(tick / snapTicks) * snapTicks);
+    return snapTicks > 0
+      ? Math.max(0, Math.floor(tick / snapTicks) * snapTicks)
+      : Math.max(0, Math.round(tick));
   }
 }

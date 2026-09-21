@@ -1,7 +1,7 @@
 import type { TempoChange } from "@midiedit/core";
 import { msToTicks, ticksToMs } from "@midiedit/core";
 import { clamp } from "es-toolkit";
-import { Point, Rectangle } from "pixi.js";
+import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import {
   HeaderHeight,
   MaximumPixelsPerQuarter,
@@ -126,18 +126,25 @@ export class CoordinateSystem {
     );
   }
 
-  public toScreenSpace(value: Point): Point;
-  public toScreenSpace(value: Rectangle): Rectangle;
-  public toScreenSpace(value: Point | Rectangle): Point | Rectangle {
+  public toScreenSpace(value: CanvasPoint): CanvasPoint;
+  public toScreenSpace(value: CanvasRect): CanvasRect;
+  public toScreenSpace(
+    value: CanvasPoint | CanvasRect,
+  ): CanvasPoint | CanvasRect {
     const screenX =
       value.x - this.timelineUnitsAtTick(this.camera.x) * this.camera.h;
     const screenY = value.y + this.camera.y * this.camera.v + HeaderHeight;
 
-    if (value instanceof Point) {
-      return new Point(screenX, screenY);
+    if (!("width" in value)) {
+      return { x: screenX, y: screenY };
     }
 
-    return new Rectangle(screenX, screenY, value.width, value.height);
+    return {
+      x: screenX,
+      y: screenY,
+      width: value.width,
+      height: value.height,
+    };
   }
 
   public pan(dx: number, dy: number): void {
@@ -181,7 +188,7 @@ export class CoordinateSystem {
     );
   }
 
-  public zoomAtCursor(zoomFactor: number, cursor: Point): void {
+  public zoomAtCursor(zoomFactor: number, cursor: CanvasPoint): void {
     const rollX = cursor.x - this.keyboardWidth;
     const anchorX = Math.max(0, rollX);
     const anchorY = cursor.y - HeaderHeight;

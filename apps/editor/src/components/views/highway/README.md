@@ -8,8 +8,8 @@ The renderer is implemented in six stages:
    geometry, material, UV, normal, coordinate-system, and pivot checks.
    Runtime code loads those checked-in GLBs directly; conversion is never run
    by Vite, the browser, or the Tauri webview.
-2. `circularMaterials.ts` ports the YARG Circular material inputs to a
-   Pixi3D `Material.from(vertexSource, fragmentSource, updateUniforms)` shader.
+2. `circularMaterials.ts` ports the YARG Circular material inputs to Three.js
+   `ShaderMaterial` shaders.
    Base textures are lane-tinted; emission masks are multiplied by emission
    color/intensity; alpha is clipped at the transparent edge; selected and
    ghost states are uniforms rather than mesh replacement.

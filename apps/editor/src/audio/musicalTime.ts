@@ -105,7 +105,7 @@ export function beatCrossings(
     const change = normalized[index];
     const nextChange = normalized[index + 1]?.tick ?? Number.POSITIVE_INFINITY;
     const segmentStart = Math.max(change.tick, fromTick);
-    const segmentEnd = Math.min(nextChange - epsilon, toTick);
+    const segmentEnd = Math.min(nextChange, toTick);
     if (segmentStart > segmentEnd) continue;
 
     const beatLength = ticksPerBeat(ppqn, change);
@@ -113,9 +113,10 @@ export function beatCrossings(
       0,
       Math.ceil((segmentStart - change.tick - epsilon) / beatLength),
     );
-    const lastBeat = Math.floor(
-      (segmentEnd - change.tick + epsilon) / beatLength,
-    );
+    const lastBeat =
+      Number.isFinite(nextChange) && segmentEnd >= nextChange
+        ? Math.ceil((nextChange - change.tick) / beatLength) - 1
+        : Math.floor((segmentEnd - change.tick + epsilon) / beatLength);
 
     for (let beatIndex = firstBeat; beatIndex <= lastBeat; beatIndex++) {
       const tick = change.tick + beatIndex * beatLength;

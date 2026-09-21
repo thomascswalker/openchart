@@ -1,5 +1,5 @@
 import type { MidiTrack, TempoChange } from "@midiedit/core";
-import { Point, Rectangle } from "pixi.js";
+import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import { NoteResizeHandleWidth } from "./constants";
 import type { PianoRollNote } from "./types";
 import type { PianoRollNoteIndex } from "./visibility";
@@ -20,7 +20,7 @@ export interface NoteGeometryCoordinates {
   tickAtScreenX(x: number): number;
   screenXForTick(tick: number): number;
   timelineUnitsAtTick(tick: number): number;
-  toScreenSpace(value: Rectangle): Rectangle;
+  toScreenSpace(value: CanvasRect): CanvasRect;
 }
 
 interface GeometryCache {
@@ -174,15 +174,23 @@ export class NoteGeometryCache {
   }
 
   public hitTest(
-    point: Point,
+    point: CanvasPoint,
     coordinates: NoteGeometryCoordinates,
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
-      const screenRect = coordinates.toScreenSpace(
-        new Rectangle(geometry.x, geometry.y, geometry.width, geometry.height),
-      );
-      if (screenRect.contains(point.x, point.y)) {
+      const screenRect = coordinates.toScreenSpace({
+        x: geometry.x,
+        y: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+      });
+      if (
+        point.x >= screenRect.x &&
+        point.x <= screenRect.x + screenRect.width &&
+        point.y >= screenRect.y &&
+        point.y <= screenRect.y + screenRect.height
+      ) {
         return geometry.note;
       }
     }
@@ -190,14 +198,17 @@ export class NoteGeometryCache {
   }
 
   public hitTestEdge(
-    point: Point,
+    point: CanvasPoint,
     coordinates: NoteGeometryCoordinates,
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
-      const screenRect = coordinates.toScreenSpace(
-        new Rectangle(geometry.x, geometry.y, geometry.width, geometry.height),
-      );
+      const screenRect = coordinates.toScreenSpace({
+        x: geometry.x,
+        y: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+      });
       if (
         point.y < screenRect.y ||
         point.y > screenRect.y + screenRect.height

@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.unit.config.ts && vitest run --config vitest.config.ts src/commands/EditorCommand.test.tsx && vitest run --config vitest.config.ts src/components/Menubar.test.tsx && vitest run --config vitest.config.ts src/components/ProjectDialog.test.tsx && vitest run --config vitest.config.ts src/components/SettingsDialog.test.tsx",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
@@ -24,10 +24,9 @@
     "classnames": "^2.5.1",
     "es-toolkit": "^1.51.0",
     "pino": "^10.3.1",
-    "pixi.js": "^7.4.3",
-    "pixi3d": "^2.5.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "three": "^0.180.0",
     "ts-audio": "^0.8.1"
   },
   "devDependencies": {
@@ -40,6 +39,7 @@
     "@storybook/react-vite": "^10.6.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^6.1.0",
     "@vitest/browser-playwright": "^4.1.11",
     "@vitest/coverage-v8": "^4.1.11",

@@ -1,4 +1,4 @@
-import { Point, Rectangle } from "pixi.js";
+import { point, type CanvasPoint } from "../../../rendering/geometry";
 import { getScrollGesture } from "../../../util/scroll";
 import { HeaderHeight } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
@@ -21,11 +21,11 @@ export class PianoRollInputController {
 
   private canvas: HTMLCanvasElement | null = null;
   private clickButton: number | null = null;
-  private readonly clickStart = new Point(0, 0);
-  private readonly hoverPosition = new Point(0, 0);
+  private readonly clickStart = point();
+  private readonly hoverPosition = point();
   private hasHovered = false;
   private erasing = false;
-  private pendingCreateStart: Point | null = null;
+  private pendingCreateStart: CanvasPoint | null = null;
   private lastWidth = 1;
   private lastHeight = 1;
   private static readonly clickMovementThreshold = 4;
@@ -188,7 +188,7 @@ export class PianoRollInputController {
     pointer.button = event.button as PointerButtonType;
     const local = this.toCanvasLocal(event.clientX, event.clientY);
     this.clickButton = event.button;
-    this.clickStart.copyFrom(local);
+    Object.assign(this.clickStart, local);
     this.canvas?.focus();
     if (event.button === PointerButton.Right) {
       if (local.y < HeaderHeight) this.header.rightClick(local.x, local.y);
@@ -198,12 +198,12 @@ export class PianoRollInputController {
         if (hit) this.editing.eraseNote(hit);
       } else {
         this.erasing = false;
-        this.context.getSelectionContext().bounds = new Rectangle(
-          local.x,
-          local.y,
-          1,
-          1,
-        );
+        this.context.getSelectionContext().bounds = {
+          x: local.x,
+          y: local.y,
+          width: 1,
+          height: 1,
+        };
       }
     } else if (event.button === PointerButton.Left && local.y >= HeaderHeight) {
       const edgeHit = this.hitTestNoteEdge(local);
@@ -211,16 +211,16 @@ export class PianoRollInputController {
       else {
         const bodyHit = this.hitTestNote(local);
         if (bodyHit) this.editing.beginMove(bodyHit);
-        else this.pendingCreateStart = new Point(local.x, local.y);
+        else this.pendingCreateStart = { x: local.x, y: local.y };
       }
     }
-    pointer.position.copyFrom(local);
+    Object.assign(pointer.position, local);
     this.canvas?.setPointerCapture(event.pointerId);
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
     const local = this.toCanvasLocal(event.clientX, event.clientY);
-    this.hoverPosition.copyFrom(local);
+    Object.assign(this.hoverPosition, local);
     this.hasHovered = true;
     const pointer = this.context.getPointerContext();
     if (pointer.id === null || event.pointerId !== pointer.id) {
@@ -237,7 +237,7 @@ export class PianoRollInputController {
     }
     const dx = local.x - pointer.position.x;
     const dy = local.y - pointer.position.y;
-    pointer.position.copyFrom(local);
+    Object.assign(pointer.position, local);
     if (pointer.button === PointerButton.Right) {
       if (this.erasing) {
         const hit = this.hitTestNote(local);
@@ -307,11 +307,8 @@ export class PianoRollInputController {
     event.preventDefault();
     if (!this.canvas) return;
     const bounds = this.canvas.getBoundingClientRect();
-    const pos = new Point(
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-    );
-    const delta = new Point(-event.deltaX, -event.deltaY);
+    const pos = point(event.clientX - bounds.left, event.clientY - bounds.top);
+    const delta = point(-event.deltaX, -event.deltaY);
     switch (getScrollGesture(event)) {
       case "mouse-zoom":
         if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
@@ -348,32 +345,35 @@ export class PianoRollInputController {
     const selection = this.context.getSelectionContext();
     const pointer = this.context.getPointerContext();
     if (selection.bounds === null) return;
-    selection.bounds = new Rectangle(
-      this.clickStart.x,
-      this.clickStart.y,
-      pointer.position.x - this.clickStart.x,
-      pointer.position.y - this.clickStart.y,
-    );
+    selection.bounds = {
+      x: this.clickStart.x,
+      y: this.clickStart.y,
+      width: pointer.position.x - this.clickStart.x,
+      height: pointer.position.y - this.clickStart.y,
+    };
     for (const geo of this.geometry.geometry) {
-      const screenRect = this.coordinates.toScreenSpace(
-        new Rectangle(geo.x, geo.y, geo.width, geo.height),
-      );
+      const screenRect = this.coordinates.toScreenSpace({
+        x: geo.x,
+        y: geo.y,
+        width: geo.width,
+        height: geo.height,
+      });
       if (!selection.intersects(screenRect)) selection.delete(geo.note);
       else selection.add(geo.note);
     }
   }
 
-  private hitTestNote(point: Point): PianoRollNote | null {
+  private hitTestNote(point: CanvasPoint): PianoRollNote | null {
     return this.geometry.hitTest(point, this.coordinates);
   }
 
-  private hitTestNoteEdge(point: Point): PianoRollNote | null {
+  private hitTestNoteEdge(point: CanvasPoint): PianoRollNote | null {
     return this.geometry.hitTestEdge(point, this.coordinates);
   }
 
-  private toCanvasLocal(clientX: number, clientY: number): Point {
-    if (!this.canvas) return new Point(clientX, clientY);
+  private toCanvasLocal(clientX: number, clientY: number): CanvasPoint {
+    if (!this.canvas) return point(clientX, clientY);
     const bounds = this.canvas.getBoundingClientRect();
-    return new Point(clientX - bounds.left, clientY - bounds.top);
+    return point(clientX - bounds.left, clientY - bounds.top);
   }
 }

@@ -1,0 +1,209 @@
+import { writeFile } from "node:fs/promises";
+import { chromium } from "playwright";
+
+const baseUrl =
+  process.env.VISUAL_SMOKE_URL ?? "http://127.0.0.1:4173/midiview/";
+const outputDirectory = process.env.VISUAL_SMOKE_OUTPUT ?? "artifacts";
+
+async function collectDiagnostics(canvas) {
+  return canvas.evaluate((element) => {
+    const contextType = element.dataset.threeContextType ?? "webgl2";
+    const gl =
+      element.getContext(contextType) ??
+      element.getContext(contextType === "webgl2" ? "webgl" : "webgl2");
+    if (!gl) {
+      return {
+        width: element.width,
+        height: element.height,
+        clientWidth: element.clientWidth,
+        clientHeight: element.clientHeight,
+        webgl: false,
+      };
+    }
+
+    const attributes = gl.getContextAttributes();
+    return {
+      width: element.width,
+      height: element.height,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+      drawingBufferWidth: gl.drawingBufferWidth,
+      drawingBufferHeight: gl.drawingBufferHeight,
+      contextLost: gl.isContextLost(),
+      contextAttributes: attributes
+        ? {
+            alpha: attributes.alpha,
+            preserveDrawingBuffer: attributes.preserveDrawingBuffer,
+          }
+        : null,
+      rendererPixel: element.dataset.threePixel
+        ? JSON.parse(element.dataset.threePixel)
+        : null,
+      rendererContextType: element.dataset.threeContextType ?? null,
+      rendererContextAttributes: element.dataset.threeContextAttributes ?? null,
+      rendererGlError: element.dataset.threeGlError ?? null,
+      sceneChildren: element.dataset.threeSceneChildren ?? null,
+      visibleNotes: element.dataset.threeVisibleNotes ?? null,
+      visibleSustains: element.dataset.threeVisibleSustains ?? null,
+      renderCalls: element.dataset.threeRenderCalls ?? null,
+      renderTriangles: element.dataset.threeRenderTriangles ?? null,
+      webgl: true,
+    };
+  });
+}
+
+async function collectStableHostDiagnostics(canvas, name) {
+  const diagnostics = await canvas.evaluate(async (element) => {
+    const host = element.closest(".midi-view-host");
+    if (!(host instanceof HTMLElement)) return null;
+
+    const bounds = [];
+    for (let sample = 0; sample < 12; sample += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const rectangle = host.getBoundingClientRect();
+      bounds.push({ width: rectangle.width, height: rectangle.height });
+    }
+
+    return {
+      inlinePosition: host.style.position,
+      computedPosition: getComputedStyle(host).position,
+      bounds,
+    };
+  });
+  if (!diagnostics) throw new Error(`Missing view host for ${name}`);
+  if (diagnostics.inlinePosition !== "") {
+    throw new Error(`${name} set an inline host position`);
+  }
+  if (diagnostics.computedPosition !== "absolute") {
+    throw new Error(`${name} host is not absolutely positioned`);
+  }
+
+  const widths = diagnostics.bounds.map(({ width }) => width);
+  const heights = diagnostics.bounds.map(({ height }) => height);
+  if (Math.max(...widths) - Math.min(...widths) > 0.25) {
+    throw new Error(`${name} host width did not stabilize`);
+  }
+  if (Math.max(...heights) - Math.min(...heights) > 0.25) {
+    throw new Error(`${name} host height did not stabilize`);
+  }
+  return diagnostics;
+}
+
+async function captureCanvasAndInterface(page, canvas, name) {
+  const rendererFramebuffer = await page.evaluate(
+    () => window.__threeFramebufferPng ?? null,
+  );
+  if (!rendererFramebuffer) {
+    throw new Error(
+      `Renderer did not provide a framebuffer capture for ${name}`,
+    );
+  }
+  await writeFile(
+    `${outputDirectory}/${name}-renderer-framebuffer.png`,
+    Buffer.from(rendererFramebuffer.split(",", 2)[1], "base64"),
+  );
+
+  // Headless Chromium's WebGL compositor can omit SwiftShader canvases from
+  // page screenshots. Replace only the captured canvas with its own pixels so
+  // the interface screenshot still records exactly what Three rendered.
+  await canvas.evaluate((element, source) => {
+    const image = document.createElement("img");
+    image.src = source;
+    image.width = element.width;
+    image.height = element.height;
+    image.className = element.className;
+    image.style.cssText = element.style.cssText;
+    element.replaceWith(image);
+  }, rendererFramebuffer);
+  await page.screenshot({
+    path: `${outputDirectory}/${name}.png`,
+    fullPage: true,
+  });
+}
+
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--enable-webgl", "--ignore-gpu-blocklist", "--use-gl=swiftshader"],
+});
+
+try {
+  const page = await browser.newPage({
+    viewport: { width: 1500, height: 800 },
+    deviceScaleFactor: 1,
+  });
+  await page.addInitScript(() => {
+    window.__captureThreeFramebuffer = true;
+    Object.defineProperty(window, "showOpenFilePicker", {
+      configurable: true,
+      value: undefined,
+    });
+  });
+  await page.goto(baseUrl, { waitUntil: "networkidle" });
+
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("menuitem", { name: "File" }).click();
+  await page.locator('[data-command="open"]').click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles("packages/views/tests/song.mid");
+  await page
+    .locator(".track-row")
+    .filter({ hasText: "LEAD GUITAR" })
+    .first()
+    .click();
+  await page.waitForTimeout(500);
+
+  const canvas = page.locator(".midi-view-host canvas").first();
+  await canvas.waitFor({ state: "visible" });
+  const pianoRollDiagnostics = {
+    ...(await collectDiagnostics(canvas)),
+    host: await collectStableHostDiagnostics(canvas, "Piano roll"),
+  };
+  await writeFile(
+    `${outputDirectory}/piano-roll-diagnostics.json`,
+    JSON.stringify(pianoRollDiagnostics, null, 2),
+  );
+  if (Number(pianoRollDiagnostics.visibleNotes) <= 0) {
+    throw new Error("Piano roll rendered no visible notes");
+  }
+  await captureCanvasAndInterface(page, canvas, "piano-roll");
+
+  await page
+    .locator(".midi-view__controls select")
+    .nth(1)
+    .selectOption("highway");
+  await page.waitForTimeout(1500);
+  await page
+    .locator(".midi-view-host canvas")
+    .first()
+    .waitFor({ state: "visible" });
+  const highwayCanvas = page.locator(".midi-view-host canvas").first();
+  await highwayCanvas.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    element.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        button: 0,
+        clientX: bounds.left + bounds.width / 2,
+        clientY: bounds.top + bounds.height / 2,
+      }),
+    );
+  });
+  await page.waitForTimeout(250);
+  const highwayDiagnostics = {
+    ...(await collectDiagnostics(highwayCanvas)),
+    host: await collectStableHostDiagnostics(highwayCanvas, "Highway"),
+  };
+  await writeFile(
+    `${outputDirectory}/highway-diagnostics.json`,
+    JSON.stringify(highwayDiagnostics, null, 2),
+  );
+  if (Number(highwayDiagnostics.visibleNotes) <= 0) {
+    throw new Error("Highway rendered no visible notes");
+  }
+  if (Number(highwayDiagnostics.visibleSustains) <= 0) {
+    throw new Error("Highway rendered no visible sustains");
+  }
+  await captureCanvasAndInterface(page, highwayCanvas, "highway");
+} finally {
+  await browser.close();
+}

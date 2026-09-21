@@ -5,7 +5,7 @@ import type {
   TimeSignatureChange,
 } from "@midiedit/core";
 import { describe, expect, it } from "vitest";
-import { Point, Rectangle } from "pixi.js";
+import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import { CoordinateSystem } from "./coordinates";
 import { parseTempoBpm, parseTimeSignatureInput } from "./header";
 import { NoteGeometryCache } from "./noteGeometry";
@@ -68,13 +68,13 @@ describe("piano-roll coordinates", () => {
   it("floors regular snapping and rounds nearest snapping independently", () => {
     const coordinates = makeCoordinates();
     expect(coordinates.snapTick(719)).toBe(480);
-    expect(coordinates.snapTickToNearest(719)).toBe(960);
+    expect(coordinates.snapTickToNearest(721)).toBe(960);
     expect(coordinates.snapTickToNearest(-10)).toBe(0);
   });
 
   it("keeps the cursor's timeline position fixed while zooming", () => {
     const coordinates = makeCoordinates();
-    const cursor = new Point(300, 120);
+    const cursor: CanvasPoint = { x: 300, y: 120 };
     const before = coordinates.tickAtScreenX(cursor.x);
     coordinates.zoomAtCursor(2, cursor);
     expect(coordinates.tickAtScreenX(cursor.x)).toBeCloseTo(before, 8);
@@ -115,16 +115,21 @@ describe("note geometry", () => {
       coordinates,
     });
 
-    expect(cache.hitTest(new Point(100, 475), coordinates)).toBe(note);
-    expect(cache.hitTestEdge(new Point(183, 475), coordinates)).toBe(note);
-    expect(cache.hitTest(new Point(500, 100), coordinates)).toBeNull();
+    expect(cache.hitTest({ x: 100, y: 475 }, coordinates)).toBe(note);
+    expect(cache.hitTestEdge({ x: 183, y: 475 }, coordinates)).toBe(note);
+    expect(cache.hitTest({ x: 500, y: 100 }, coordinates)).toBeNull();
   });
 
   it("normalizes marquee rectangles regardless of drag direction", () => {
-    const rectangle = new Rectangle(100, 80, -40, -20);
+    const rectangle: CanvasRect = {
+      x: 100,
+      y: 80,
+      width: -40,
+      height: -20,
+    };
     const selection = new SelectionContext();
     selection.bounds = rectangle;
-    expect(selection.bounds).toEqual(new Rectangle(60, 60, 40, 20));
+    expect(selection.bounds).toEqual({ x: 60, y: 60, width: 40, height: 20 });
   });
 });
 

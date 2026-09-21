@@ -1,6 +1,8 @@
-import { BLEND_MODES, Texture } from "pixi.js";
-import { Camera, Color, Material, type Mesh3D } from "pixi3d/pixi7";
+import * as THREE from "three";
 import type { CircularHighwayTextures } from "../../../assets/highway/circular";
+import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
+import texturedFragmentSource from "./shaders/textured.frag.glsl?raw";
+import texturedVertexSource from "./shaders/textured.vert.glsl?raw";
 
 export type Rgb = [number, number, number];
 
@@ -18,22 +20,29 @@ export interface CircularMaterialState {
 }
 
 export interface CircularMaterialSet {
-  fretColor: Material;
-  fretNeutral: Material;
-  noteColor: Material;
-  noteNeutral: Material;
-  noteGhostColor: Material;
-  noteGhostNeutral: Material;
-  sustain: Material;
+  fretColor: THREE.ShaderMaterial;
+  fretNeutral: THREE.ShaderMaterial;
+  noteColor: THREE.ShaderMaterial;
+  noteNeutral: THREE.ShaderMaterial;
+  noteGhostColor: THREE.ShaderMaterial;
+  noteGhostNeutral: THREE.ShaderMaterial;
+  sustain: THREE.ShaderMaterial;
   destroy(): void;
 }
 
+/** Imported GLTF attributes use Three.js' standard geometry attribute names. */
+export const CIRCULAR_SHADER_ATTRIBUTES = {
+  position: "position",
+  normal: "normal",
+  uv: "uv",
+} as const;
+
 export const CIRCULAR_MATERIAL_MAPPING = {
-  baseColor: "note/fret: texture.rgb * uBaseColor; sustain: solid uBaseColor",
+  baseColor: "note/fret texture.rgb * uBaseColor; sustain: solid uBaseColor",
   laneTint: "uBaseColor",
   emission: "emissionTexture.rgb * uEmissionColor * uEmissionIntensity",
   alpha: "baseTexture.a * uAlpha with a 0.02 discard cutoff",
-  tint: "only primitives marked tinted multiply their base texture by uBaseColor",
+  tint: "only authored tinted primitives multiply their base texture by uBaseColor",
   passed:
     "final composed colour is converted to luminance at/near the strike line",
   depth: "depth test enabled; opaque notes write depth; ghost/sustain do not",
@@ -41,7 +50,8 @@ export const CIRCULAR_MATERIAL_MAPPING = {
   selected: "uSelected brightens the lane tint and emission",
   ghost: "uGhost mixes a neutral tint and reduces alpha",
   sustain:
-    "solid uBaseColor; the generated quad UVs don't map cleanly to Sustain.png",
+    "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
+  center: "uPreserveWhiteCenter keeps the original note texture center",
 } as const;
 
 const defaultState: CircularMaterialState = {
@@ -57,160 +67,98 @@ const defaultState: CircularMaterialState = {
   strikeLineZ: -3.5,
 };
 
-export const CIRCULAR_SHADER_ATTRIBUTES = {
-  position: "a_Position",
-  normal: "a_Normal",
-  uv: "a_UV1",
-} as const;
-
-const meshStates = new WeakMap<object, CircularMaterialState>();
-
-/**
- * Port map for the YARG Circular gameplay note material:
- *
- * - Base-color mask: `Fret.png`/`Note.png` is sampled and multiplied by the
- *   lane colour.
- * - Emission mask: the `*Emission.png` texture is sampled independently and
- *   multiplied by emission colour and intensity.
- * - Alpha: source alpha is multiplied by `uAlpha`; ghost notes additionally
- *   use the YARG-style reduced opacity. Fragments below the cutoff are
- *   discarded so the transparent edge does not write a hard rectangle.
- * - State: `uSelected` brightens the selected lane tint and `uGhost` mixes in
- *   a neutral tint while lowering opacity.
- * - Depth/order: normal notes depth-test and write depth; the shared material
- *   keeps depth testing enabled while transparent sustain/ghost states disable
- *   depth writes and render after the opaque board.
- * - Culling: circular note and fret surfaces are double-sided because their
- *   imported FBX winding is viewed from both the approach and strike angles.
- * - Sustains: solid `uBaseColor`, not textured — the generated quad/ribbon
- *   UVs don't map cleanly onto `Sustain.png`.
- *
- * The source reference is YARG's Circular note material directory:
- * https://github.com/YARC-Official/YARG/tree/master/Assets/Art/Materials/Gameplay/Notes
- */
-
-const vertexSource = `
-attribute vec3 ${CIRCULAR_SHADER_ATTRIBUTES.position};
-attribute vec3 ${CIRCULAR_SHADER_ATTRIBUTES.normal};
-attribute vec2 ${CIRCULAR_SHADER_ATTRIBUTES.uv};
-uniform mat4 uModel;
-uniform mat4 uViewProjection;
-varying vec2 vUv;
-varying vec3 vNormal;
-varying float vWorldZ;
-void main(void) {
-  vUv = ${CIRCULAR_SHADER_ATTRIBUTES.uv};
-  vec4 worldPosition = uModel * vec4(${CIRCULAR_SHADER_ATTRIBUTES.position}, 1.0);
-  vWorldZ = worldPosition.z;
-  vNormal = mat3(uModel) * ${CIRCULAR_SHADER_ATTRIBUTES.normal};
-  gl_Position = uViewProjection * worldPosition;
-}
-`;
-
-const fragmentSource = `
-precision mediump float;
-uniform sampler2D uBaseTexture;
-uniform sampler2D uEmissionTexture;
-uniform vec3 uBaseColor;
-uniform vec3 uEmissionColor;
-uniform float uEmissionIntensity;
-uniform float uAlpha;
-uniform float uSelected;
-uniform float uGhost;
-uniform float uTintEnabled;
-uniform float uPassed;
-uniform float uUseStrikeLine;
-uniform float uStrikeLineZ;
-varying vec2 vUv;
-varying vec3 vNormal;
-varying float vWorldZ;
-void main(void) {
-  vec4 baseSample = texture2D(uBaseTexture, vUv);
-  vec3 laneTint = mix(uBaseColor, vec3(1.0), uSelected * 0.35);
-  vec3 ghostTint = mix(laneTint, vec3(0.82, 0.88, 1.0), uGhost);
-  vec3 emission = texture2D(uEmissionTexture, vUv).rgb
-    * uEmissionColor * uEmissionIntensity;
-  float alpha = baseSample.a * uAlpha * (1.0 - uGhost * 0.55);
-  if (alpha < 0.02) discard;
-  vec3 composed = baseSample.rgb * mix(vec3(1.0), ghostTint, uTintEnabled) + emission;
-  float passed = max(uPassed, step(uStrikeLineZ, vWorldZ) * uUseStrikeLine);
-  float luminance = dot(composed, vec3(0.2126, 0.7152, 0.0722));
-  gl_FragColor = vec4(mix(composed, vec3(luminance), passed), alpha);
-}
-`;
-
-const solidFragmentSource = `
-precision mediump float;
-uniform vec3 uBaseColor;
-uniform float uAlpha;
-uniform float uSelected;
-uniform float uGhost;
-uniform float uPassed;
-uniform float uUseStrikeLine;
-uniform float uStrikeLineZ;
-varying float vWorldZ;
-void main(void) {
-  vec3 laneTint = mix(uBaseColor, vec3(1.0), uSelected * 0.35);
-  vec3 ghostTint = mix(laneTint, vec3(0.82, 0.88, 1.0), uGhost);
-  float alpha = uAlpha * (1.0 - uGhost * 0.55);
-  if (alpha < 0.02) discard;
-  float passed = max(uPassed, step(uStrikeLineZ, vWorldZ) * uUseStrikeLine);
-  float luminance = dot(ghostTint, vec3(0.2126, 0.7152, 0.0722));
-  gl_FragColor = vec4(mix(ghostTint, vec3(luminance), passed), alpha);
-}
-`;
+const stateByMaterial = new WeakMap<THREE.Material, CircularMaterialState>();
 
 export function rgbFromHex(hex: number): Rgb {
-  const color = Color.fromHex(hex);
-  return [color.r, color.g, color.b];
+  return [
+    ((hex >> 16) & 0xff) / 0xff,
+    ((hex >> 8) & 0xff) / 0xff,
+    (hex & 0xff) / 0xff,
+  ];
 }
 
 export function setCircularMaterialState(
-  mesh: Mesh3D,
+  mesh: THREE.Mesh,
   state: Partial<CircularMaterialState>,
 ): void {
-  meshStates.set(mesh, {
+  const materials = Array.isArray(mesh.material)
+    ? mesh.material
+    : mesh.material
+      ? [mesh.material]
+      : [];
+  materials.forEach((material) =>
+    setCircularMaterialStateForMaterial(material, state),
+  );
+}
+
+export function setCircularMaterialStateForMaterial(
+  material: THREE.Material,
+  state: Partial<CircularMaterialState>,
+): void {
+  const current = {
     ...defaultState,
-    ...meshStates.get(mesh),
+    ...stateByMaterial.get(material),
     ...state,
-  });
+  };
+  stateByMaterial.set(material, current);
+  updateUniforms(material, current);
+}
+
+function updateUniforms(
+  material: THREE.Material,
+  state: CircularMaterialState,
+): void {
+  const shaderMaterial = material as THREE.ShaderMaterial;
+  if (!shaderMaterial?.uniforms) return;
+  const uniforms = shaderMaterial.uniforms;
+  if (uniforms.uBaseColor) uniforms.uBaseColor.value = state.baseColor;
+  if (uniforms.uEmissionColor) {
+    uniforms.uEmissionColor.value = state.emissionColor;
+  }
+  if (uniforms.uEmissionIntensity) {
+    uniforms.uEmissionIntensity.value = state.emissionIntensity;
+  }
+  if (uniforms.uAlpha) uniforms.uAlpha.value = state.alpha;
+  if (uniforms.uSelected) uniforms.uSelected.value = state.selected ? 1 : 0;
+  if (uniforms.uGhost) uniforms.uGhost.value = state.ghost ? 1 : 0;
+  if (uniforms.uTintEnabled) uniforms.uTintEnabled.value = state.tint ? 1 : 0;
+  if (uniforms.uPassed) uniforms.uPassed.value = state.passed ? 1 : 0;
+  if (uniforms.uUseStrikeLine) {
+    uniforms.uUseStrikeLine.value = state.useStrikeLine ? 1 : 0;
+  }
+  if (uniforms.uStrikeLineZ) uniforms.uStrikeLineZ.value = state.strikeLineZ;
 }
 
 function createMaterial(
-  baseTexture: Texture,
-  emissionTexture: Texture,
+  baseTexture: THREE.Texture,
+  emissionTexture: THREE.Texture,
   transparent: boolean,
-  fragment = fragmentSource,
-): Material {
-  const material = Material.from(vertexSource, fragment, (mesh, shader) => {
-    const state = meshStates.get(mesh) ?? defaultState;
-    shader.uniforms.uModel = mesh.worldTransform.array;
-    shader.uniforms.uViewProjection = Camera.main.viewProjection.array;
-    shader.uniforms.uBaseColor = state.baseColor;
-    shader.uniforms.uAlpha = state.alpha;
-    shader.uniforms.uSelected = state.selected ? 1 : 0;
-    shader.uniforms.uGhost = state.ghost ? 1 : 0;
-    shader.uniforms.uTintEnabled = state.tint ? 1 : 0;
-    shader.uniforms.uPassed = state.passed ? 1 : 0;
-    shader.uniforms.uUseStrikeLine = state.useStrikeLine ? 1 : 0;
-    shader.uniforms.uStrikeLineZ = state.strikeLineZ;
-    if (fragment === fragmentSource) {
-      shader.uniforms.uBaseTexture = baseTexture;
-      shader.uniforms.uEmissionTexture = emissionTexture;
-      shader.uniforms.uEmissionColor = state.emissionColor;
-      shader.uniforms.uEmissionIntensity = state.emissionIntensity;
-    }
+  fragmentShader = texturedFragmentSource,
+  preserveWhiteCenter = false,
+): THREE.ShaderMaterial {
+  const material = new THREE.ShaderMaterial({
+    vertexShader: texturedVertexSource,
+    fragmentShader,
+    uniforms: {
+      uBaseTexture: { value: baseTexture },
+      uEmissionTexture: { value: emissionTexture },
+      uBaseColor: { value: [1, 1, 1] },
+      uEmissionColor: { value: [1, 1, 1] },
+      uEmissionIntensity: { value: 1 },
+      uAlpha: { value: 1 },
+      uSelected: { value: 0 },
+      uGhost: { value: 0 },
+      uTintEnabled: { value: 1 },
+      uPassed: { value: 0 },
+      uUseStrikeLine: { value: 0 },
+      uStrikeLineZ: { value: -3.5 },
+      uPreserveWhiteCenter: { value: preserveWhiteCenter ? 1 : 0 },
+    },
+    transparent,
+    depthTest: true,
+    depthWrite: !transparent,
+    side: THREE.DoubleSide,
   });
-  material.doubleSided = true;
-  material.depthMask = !transparent;
-  material.blendMode = BLEND_MODES.NORMAL;
-  if (transparent) {
-    (material as unknown as { renderSortType: string }).renderSortType =
-      "transparent";
-  } else {
-    (material as unknown as { renderSortType: string }).renderSortType =
-      "opaque";
-  }
   return material;
 }
 
@@ -219,11 +167,19 @@ export function createCircularMaterialSet(
 ): CircularMaterialSet {
   const fretColor = createMaterial(textures.fret, textures.fret, false);
   const fretNeutral = createMaterial(textures.fret, textures.fret, false);
-  const noteColor = createMaterial(textures.note, textures.noteEmission, false);
+  const noteColor = createMaterial(
+    textures.note,
+    textures.noteEmission,
+    false,
+    texturedFragmentSource,
+    true,
+  );
   const noteNeutral = createMaterial(
     textures.note,
     textures.noteEmission,
     false,
+    texturedFragmentSource,
+    true,
   );
   const noteGhostColor = createMaterial(
     textures.note,
@@ -235,8 +191,6 @@ export function createCircularMaterialSet(
     textures.noteEmission,
     true,
   );
-  // Sustains stay solid-colored: the generated quad UVs don't map cleanly
-  // onto Sustain.png.
   const sustain = createMaterial(
     textures.sustain,
     textures.sustainEmission,
@@ -252,13 +206,15 @@ export function createCircularMaterialSet(
     noteGhostNeutral,
     sustain,
     destroy() {
-      fretColor.destroy();
-      fretNeutral.destroy();
-      noteColor.destroy();
-      noteNeutral.destroy();
-      noteGhostColor.destroy();
-      noteGhostNeutral.destroy();
-      sustain.destroy();
+      [
+        fretColor,
+        fretNeutral,
+        noteColor,
+        noteNeutral,
+        noteGhostColor,
+        noteGhostNeutral,
+        sustain,
+      ].forEach((material) => material.dispose());
     },
   };
 }

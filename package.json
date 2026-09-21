@@ -38,8 +38,7 @@
   },
   "homepage": "https://github.com/thomascswalker/midiview#readme",
   "dependencies": {
-    "ini": "^7.0.0",
-    "pixi.js": "^8.20.1"
+    "ini": "^7.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
