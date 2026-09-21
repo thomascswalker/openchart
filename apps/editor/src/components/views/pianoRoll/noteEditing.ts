@@ -38,7 +38,6 @@ export class NoteEditingController {
   private resizeAnchor: PianoRollNote | null = null;
   private resizeAnchorInitialEnd = 0;
   private resizeTargets: ResizeTarget[] = [];
-  private lastResizeDelta = 0;
   private resizeSelectionKeep = new Set<MidiChannelEvent>();
 
   private creating = false;
@@ -108,7 +107,6 @@ export class NoteEditingController {
     );
     const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
     const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
-    this.lastResizeDelta = delta;
 
     for (const { note, initialDuration } of this.resizeTargets) {
       track.setNoteDuration(
@@ -184,7 +182,6 @@ export class NoteEditingController {
     this.resizing = false;
     this.resizeAnchor = null;
     this.resizeTargets = [];
-    this.lastResizeDelta = 0;
     this.resizeSelectionKeep = new Set();
     this.moving = false;
     this.moveAnchor = null;
