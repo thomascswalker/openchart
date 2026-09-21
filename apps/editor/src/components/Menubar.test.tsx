@@ -111,7 +111,9 @@ describe("Menubar", () => {
     const { container, root } = render(
       <>
         <Menubar canExecute={() => true} onCommand={() => {}} />
-        <button type="button" data-testid="outside">Outside</button>
+        <button type="button" data-testid="outside">
+          Outside
+        </button>
       </>,
     );
 
