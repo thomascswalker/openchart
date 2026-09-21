@@ -1,16 +1,12 @@
 import * as THREE from "three";
 
-export interface ThreeRenderEngineOptions {
+export interface EngineOptions {
   background?: number;
   antialias?: boolean;
   pixelRatioCap?: number;
 }
 
-/**
- * Owns the Three renderer and its canvas. Views own scenes and cameras, while
- * this class owns renderer configuration, resize, render, and GPU teardown.
- */
-export class ThreeRenderEngine {
+export class Engine {
   public readonly renderer: THREE.WebGLRenderer;
   public readonly canvas: HTMLCanvasElement;
 
@@ -19,7 +15,7 @@ export class ThreeRenderEngine {
   private readonly pixelRatioCap: number;
   private disposed = false;
 
-  public constructor(options: ThreeRenderEngineOptions = {}) {
+  public constructor(options: EngineOptions = {}) {
     this.pixelRatioCap = options.pixelRatioCap ?? 2;
     this.renderer = new THREE.WebGLRenderer({
       antialias: options.antialias ?? true,

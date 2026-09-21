@@ -8,9 +8,9 @@ import {
   type NoteSizeDebugState,
   type NoteSizeDebugView,
 } from "../AbstractChartView";
-import type { ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
+import type { Engine } from "../../../rendering/engine";
 import { RenderAssetRegistry } from "./assets";
-import { circularHighwayPrimitiveRoles } from "../../../assets/highway/circular";
+import { primitiveRoles } from "../../../assets/meshes";
 import {
   createCircularMaterialSet,
   rgbFromHex,
@@ -169,7 +169,7 @@ export class HighwayView
     return this.threeCamera;
   }
 
-  protected override onMounted(engine: ThreeRenderEngine): void {
+  protected override onMounted(engine: Engine): void {
     this.canvas = engine.canvas;
     this.threeCamera.position.set(
       defaultCameraPosition.x,
@@ -269,7 +269,7 @@ export class HighwayView
     return this.applyNoteSizeDebugState({ ...DEFAULT_NOTE_SCALE_MULTIPLIER });
   }
 
-  protected override draw(engine: ThreeRenderEngine): void {
+  protected override draw(engine: Engine): void {
     const { width, height } = engine.getSize();
     this.viewportWidth = width;
     this.viewportHeight = height;
@@ -433,7 +433,7 @@ export class HighwayView
 
   private async loadHighwayAssets(): Promise<void> {
     try {
-      const bundle = await this.assetRegistry.preloadHighway();
+      const bundle = await this.assetRegistry.loadAssets();
       if (!this.sceneReady || !this.cameraReady) return;
       this.materialSet = createCircularMaterialSet(bundle.textures);
       this.noteCalibration = calibrationFromModel(bundle.note);
@@ -445,7 +445,7 @@ export class HighwayView
           laneRgbColors,
           poolSizePerLane,
           this.getEffectiveNoteCalibration(),
-          circularHighwayPrimitiveRoles.note,
+          primitiveRoles.note,
         ),
       );
       this.tailPools.push(
@@ -463,9 +463,9 @@ export class HighwayView
           bundle.fretBase,
           this.materialSet!.fretColor,
           color,
-          circularHighwayPrimitiveRoles.fretTop,
+          primitiveRoles.fretTop,
           this.materialSet!.fretNeutral,
-          circularHighwayPrimitiveRoles.fretBase,
+          primitiveRoles.fretBase,
         );
         const transform = HIGHWAY_GEOMETRY_CATALOG.fretTop.transform;
         assembly.position.set(
@@ -486,7 +486,7 @@ export class HighwayView
       this.ghostGem = createModelInstance(
         bundle.note,
         (primitiveIndex) =>
-          (circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted"
+          (primitiveRoles.note[primitiveIndex] === "tinted"
             ? this.materialSet!.noteGhostColor
             : this.materialSet!.noteGhostNeutral
           ).clone(),
@@ -496,12 +496,12 @@ export class HighwayView
         setCircularMaterialState(mesh, {
           baseColor: laneRgbColors[0],
           emissionColor:
-            circularHighwayPrimitiveRoles.note[primitiveIndex] === "neutral"
+            primitiveRoles.note[primitiveIndex] === "neutral"
               ? [1, 1, 1]
               : laneRgbColors[0],
           alpha: 0.35,
           ghost: true,
-          tint: circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted",
+          tint: primitiveRoles.note[primitiveIndex] === "tinted",
         }),
       );
       this.threeScene.add(this.ghostGem.object);

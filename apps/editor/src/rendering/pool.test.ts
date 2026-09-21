@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GeometryPool } from "./GeometryPool";
+import { GeometryPool } from "./pool";
 
 describe("GeometryPool", () => {
   it("keeps logical keys bound while growing lazily", () => {

@@ -1,5 +1,5 @@
 export {
-  RenderAssetRegistry,
-  RenderAssetLoadError,
-} from "../../../rendering/RenderAssetRegistry";
-export type { HighwayAssetBundle } from "../../../rendering/RenderAssetRegistry";
+  AssetRegistry as RenderAssetRegistry,
+  AssetLoadError as RenderAssetLoadError,
+} from "../../../rendering/registry";
+export type { AssetBundle as HighwayAssetBundle } from "../../../rendering/registry";

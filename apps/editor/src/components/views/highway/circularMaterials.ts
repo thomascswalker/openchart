@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { CircularHighwayTextures } from "../../../assets/highway/circular";
+import type { Textures } from "../../../assets/meshes";
 import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
 import texturedFragmentSource from "./shaders/textured.frag.glsl?raw";
 import texturedVertexSource from "./shaders/textured.vert.glsl?raw";
@@ -163,7 +163,7 @@ function createMaterial(
 }
 
 export function createCircularMaterialSet(
-  textures: CircularHighwayTextures,
+  textures: Textures,
 ): CircularMaterialSet {
   const fretColor = createMaterial(textures.fret, textures.fret, false);
   const fretNeutral = createMaterial(textures.fret, textures.fret, false);

@@ -5,7 +5,6 @@ export interface GeometryPoolOptions<T> {
   cap?: number;
 }
 
-/** Stable logical-key pool used by scene renderers at frame boundaries. */
 export class GeometryPool<T> {
   private readonly active = new Map<string, { item: T; frameId: number }>();
   private readonly free: T[] = [];
@@ -42,20 +41,26 @@ export class GeometryPool<T> {
 
   public prewarm(count: number): void {
     for (let index = this.free.length; index < count; index += 1) {
-      if (this.createdCount >= this.options.cap) break;
+      if (this.createdCount >= this.options.cap) {
+        break;
+      }
       this.free.push(this.createItem());
     }
   }
 
   public acquire(logicalKey: string, frameId = 0): T | null {
-    if (this.destroyed) return null;
+    if (this.destroyed) {
+      return null;
+    }
     const current = this.active.get(logicalKey);
     if (current) {
       current.frameId = frameId;
       return current.item;
     }
     const item = this.free.pop() ?? this.tryCreate();
-    if (item === null) return null;
+    if (item === null) {
+      return null;
+    }
     this.active.set(logicalKey, { item, frameId });
     this._highWaterMark = Math.max(this._highWaterMark, this.active.size);
     return item;
@@ -63,7 +68,9 @@ export class GeometryPool<T> {
 
   public release(logicalKey: string): boolean {
     const entry = this.active.get(logicalKey);
-    if (!entry) return false;
+    if (!entry) {
+      return false;
+    }
     this.active.delete(logicalKey);
     this.resetItem(entry.item);
     this.free.push(entry.item);
@@ -72,15 +79,23 @@ export class GeometryPool<T> {
 
   public releaseUnused(frameId: number): void {
     for (const [key, entry] of this.active) {
-      if (entry.frameId !== frameId) this.release(key);
+      if (entry.frameId !== frameId) {
+        this.release(key);
+      }
     }
   }
 
   public destroy(): void {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
     this.destroyed = true;
-    for (const entry of this.active.values()) this.destroyItem(entry.item);
-    for (const item of this.free) this.destroyItem(item);
+    for (const entry of this.active.values()) {
+      this.destroyItem(entry.item);
+    }
+    for (const item of this.free) {
+      this.destroyItem(item);
+    }
     this.active.clear();
     this.free.length = 0;
   }
@@ -91,7 +106,9 @@ export class GeometryPool<T> {
   }
 
   private tryCreate(): T | null {
-    if (this.createdCount >= this.options.cap) return null;
+    if (this.createdCount >= this.options.cap) {
+      return null;
+    }
     return this.createItem();
   }
 

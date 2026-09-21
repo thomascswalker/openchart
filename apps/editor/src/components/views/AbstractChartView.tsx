@@ -1,11 +1,8 @@
 import type { Midi } from "@midiedit/core";
 import { Difficulty } from "@midiedit/views";
 import * as THREE from "three";
-import { RenderScheduler } from "../../rendering/RenderScheduler";
-import {
-  ThreeRenderEngine,
-  type ThreeRenderEngineOptions,
-} from "../../rendering/ThreeRenderEngine";
+import { RenderScheduler } from "../../rendering/scheduler";
+import { Engine, type EngineOptions } from "../../rendering/engine";
 import type { CanvasPoint, CanvasRect } from "../../rendering/geometry";
 
 export interface ChartViewState {
@@ -75,7 +72,7 @@ export function isNoteSizeDebugView(view: unknown): view is NoteSizeDebugView {
 export abstract class AbstractChartView<T> {
   private readonly defaultScene = new THREE.Scene();
   private readonly defaultCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  private engine: ThreeRenderEngine | null = null;
+  private engine: Engine | null = null;
   private scheduler: RenderScheduler | null = null;
   private destroyed = false;
 
@@ -93,7 +90,7 @@ export abstract class AbstractChartView<T> {
   public async mount(host: HTMLElement): Promise<void> {
     if (this.destroyed) return;
 
-    const engine = new ThreeRenderEngine(this.getEngineOptions());
+    const engine = new Engine(this.getEngineOptions());
     this.engine = engine;
     this.scheduler = new RenderScheduler(() => {
       if (!this.engine || this.destroyed) return;
@@ -142,11 +139,11 @@ export abstract class AbstractChartView<T> {
     this.engine = null;
   }
 
-  protected getEngineOptions(): ThreeRenderEngineOptions {
+  protected getEngineOptions(): EngineOptions {
     return { background: 0x151515, antialias: false, pixelRatioCap: 2 };
   }
 
-  protected onMounted(_engine: ThreeRenderEngine): void {
+  protected onMounted(_engine: Engine): void {
     void _engine;
   }
 
@@ -162,7 +159,7 @@ export abstract class AbstractChartView<T> {
   protected get renderCamera(): THREE.Camera {
     return this.defaultCamera;
   }
-  protected abstract draw(engine: ThreeRenderEngine): void;
+  protected abstract draw(engine: Engine): void;
 
   /** Coalesce all state changes into one complete render per display frame. */
   protected requestRender(): void {
