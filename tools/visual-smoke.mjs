@@ -40,8 +40,7 @@ async function collectDiagnostics(canvas) {
         ? JSON.parse(element.dataset.threePixel)
         : null,
       rendererContextType: element.dataset.threeContextType ?? null,
-      rendererContextAttributes:
-        element.dataset.threeContextAttributes ?? null,
+      rendererContextAttributes: element.dataset.threeContextAttributes ?? null,
       rendererGlError: element.dataset.threeGlError ?? null,
       sceneChildren: element.dataset.threeSceneChildren ?? null,
       renderCalls: element.dataset.threeRenderCalls ?? null,
