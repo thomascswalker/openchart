@@ -31,7 +31,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     selectedInstrument,
     selectedDifficulty,
     setSelectedDifficulty,
-    selectedInstrument,
     setSelectedInstrument,
   } = useEditor();
   const {
@@ -51,16 +50,19 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
 
-  const keepPlayheadVisible = useCallback((view: ChartView): void => {
-    const cameraTick = getCameraTickForPlayhead(
-      playheadTick,
-      view.getCameraTick(),
-      view.getVisibleTickSpan(),
-    );
-    if (cameraTick !== null) {
-      view.setCameraTick(cameraTick);
-    }
-  }, [playheadTick]);
+  const keepPlayheadVisible = useCallback(
+    (view: ChartView): void => {
+      const cameraTick = getCameraTickForPlayhead(
+        playheadTick,
+        view.getCameraTick(),
+        view.getVisibleTickSpan(),
+      );
+      if (cameraTick !== null) {
+        view.setCameraTick(cameraTick);
+      }
+    },
+    [playheadTick],
+  );
 
   const handleChartViewReady = useCallback(
     (view: ChartView | null) => {
