@@ -137,26 +137,29 @@ try {
     .first()
     .waitFor({ state: "visible" });
   const highwayCanvas = page.locator(".midi-view-host canvas").first();
-  let highwayDiagnostics = await collectDiagnostics(highwayCanvas);
-  for (
-    let attempt = 0;
-    attempt < 24 && Number(highwayDiagnostics.visibleNotes) <= 0;
-    attempt += 1
-  ) {
-    await highwayCanvas.dispatchEvent("wheel", { deltaY: 500 });
-    await page.waitForTimeout(100);
-    highwayDiagnostics = await collectDiagnostics(highwayCanvas);
-  }
+  await highwayCanvas.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    element.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        button: 0,
+        clientX: bounds.left + bounds.width / 2,
+        clientY: bounds.top + bounds.height / 2,
+      }),
+    );
+  });
+  await page.waitForTimeout(250);
+  const highwayDiagnostics = await collectDiagnostics(highwayCanvas);
+  await writeFile(
+    `${outputDirectory}/highway-diagnostics.json`,
+    JSON.stringify(highwayDiagnostics, null, 2),
+  );
   if (Number(highwayDiagnostics.visibleNotes) <= 0) {
     throw new Error("Highway rendered no visible notes");
   }
   if (Number(highwayDiagnostics.visibleSustains) <= 0) {
     throw new Error("Highway rendered no visible sustains");
   }
-  await writeFile(
-    `${outputDirectory}/highway-diagnostics.json`,
-    JSON.stringify(highwayDiagnostics, null, 2),
-  );
   await captureCanvasAndInterface(page, highwayCanvas, "highway");
 } finally {
   await browser.close();
