@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getHighwayWheelTick, minimumMidiNoteDurationTicks } from "./interaction";
+import {
+  getHighwayWheelTick,
+  minimumMidiNoteDurationTicks,
+} from "./interaction";
 
 describe("highway interaction helpers", () => {
   it("uses the minimum valid MIDI duration for a click-created note", () => {
