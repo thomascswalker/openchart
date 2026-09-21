@@ -41,7 +41,9 @@ jobs:
       - name: Capture piano-roll and highway screenshots
         run: |
           mkdir -p artifacts
+          npx prettier --write tools/visual-smoke.mjs
           node tools/visual-smoke.mjs
+          cp tools/visual-smoke.mjs artifacts/visual-smoke-formatted.mjs
 
       - name: Upload interface screenshots
         if: always()
