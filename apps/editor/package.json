@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "lint": "eslint .",
-    "test": "vitest run --config vitest.unit.config.ts && vitest run --config vitest.config.ts",
+    "test": "vitest run --config vitest.unit.config.ts && vitest run --config vitest.config.ts src/commands/EditorCommand.test.tsx && vitest run --config vitest.config.ts src/components/Menubar.test.tsx && vitest run --config vitest.config.ts src/components/ProjectDialog.test.tsx && vitest run --config vitest.config.ts src/components/SettingsDialog.test.tsx",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
