@@ -4,6 +4,7 @@ import * as THREE from "three";
 import {
   AbstractChartView,
   type CameraDebugState,
+  type ChartViewState,
   type CameraDebugView,
   type NoteSizeDebugState,
   type NoteSizeDebugView,
@@ -161,7 +162,7 @@ export class HighwayView
     this.ownsAssetRegistry = !registry;
   }
 
-  public override update(state: import("../AbstractChartView").ChartViewState): void {
+  public override update(state: ChartViewState): void {
     const playbackStarted = !this.state.isPlaying && state.isPlaying;
     super.update(state);
     if (!playbackStarted) {
