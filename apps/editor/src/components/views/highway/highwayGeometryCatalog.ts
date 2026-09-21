@@ -109,9 +109,9 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<
   fretTop: {
     id: "fretTop",
     transform: {
-      position: { x: 0, y: -0.035, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: { x: 0.5, y: 0.5, z: 0.5 },
+      position: { x: 0, y: 0.1, z: 0 },
+      rotationDegrees: { x: -90, y: 0, z: 0 },
+      scale: { x: 0.5, y: 0.5, z: 0.1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.note,
     renderPass: "note",
@@ -119,8 +119,8 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<
   fretBase: {
     id: "fretBase",
     transform: {
-      position: { x: 0, y: -0.035, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
+      position: { x: 0, y: 5, z: 0 },
+      rotationDegrees: { x: 90, y: 0, z: 0 },
       scale: { x: 0.5, y: 0.5, z: 0.5 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.note,

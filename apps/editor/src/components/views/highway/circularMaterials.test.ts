@@ -16,6 +16,7 @@ describe("circular material state contract", () => {
       selected: expect.stringContaining("uSelected"),
       ghost: expect.stringContaining("uGhost"),
       sustain: expect.stringContaining("solid uBaseColor"),
+      center: expect.stringContaining("uPreserveWhiteCenter"),
     });
   });
 

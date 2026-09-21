@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import type { CircularHighwayTextures } from "../../../assets/highway/circular";
+import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
+import texturedFragmentSource from "./shaders/textured.frag.glsl?raw";
+import texturedVertexSource from "./shaders/textured.vert.glsl?raw";
 
 export type Rgb = [number, number, number];
 
@@ -48,6 +51,7 @@ export const CIRCULAR_MATERIAL_MAPPING = {
   ghost: "uGhost mixes a neutral tint and reduces alpha",
   sustain:
     "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
+  center: "uPreserveWhiteCenter keeps the original note texture center",
 } as const;
 
 const defaultState: CircularMaterialState = {
@@ -63,66 +67,7 @@ const defaultState: CircularMaterialState = {
   strikeLineZ: -3.5,
 };
 
-const texturedVertexSource = `
-varying vec2 vUv;
-varying float vWorldZ;
-void main() {
-  vUv = uv;
-  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-  vWorldZ = worldPosition.z;
-  gl_Position = projectionMatrix * viewMatrix * worldPosition;
-}`;
-
-const texturedFragmentSource = `
-precision mediump float;
-uniform sampler2D uBaseTexture;
-uniform sampler2D uEmissionTexture;
-uniform vec3 uBaseColor;
-uniform vec3 uEmissionColor;
-uniform float uEmissionIntensity;
-uniform float uAlpha;
-uniform float uSelected;
-uniform float uGhost;
-uniform float uTintEnabled;
-uniform float uPassed;
-uniform float uUseStrikeLine;
-uniform float uStrikeLineZ;
-varying vec2 vUv;
-varying float vWorldZ;
-void main() {
-  vec4 baseSample = texture2D(uBaseTexture, vUv);
-  vec3 laneTint = mix(uBaseColor, vec3(1.0), uSelected * 0.35);
-  vec3 ghostTint = mix(laneTint, vec3(0.82, 0.88, 1.0), uGhost);
-  vec3 emission = texture2D(uEmissionTexture, vUv).rgb * uEmissionColor * uEmissionIntensity;
-  float alpha = baseSample.a * uAlpha * (1.0 - uGhost * 0.55);
-  if (alpha < 0.02) discard;
-  vec3 composed = baseSample.rgb * mix(vec3(1.0), ghostTint, uTintEnabled) + emission;
-  float passed = max(uPassed, step(uStrikeLineZ, vWorldZ) * uUseStrikeLine);
-  float luminance = dot(composed, vec3(0.2126, 0.7152, 0.0722));
-  gl_FragColor = vec4(mix(composed, vec3(luminance), passed), alpha);
-}`;
-
-const solidFragmentSource = `
-precision mediump float;
-uniform vec3 uBaseColor;
-uniform float uAlpha;
-uniform float uSelected;
-uniform float uGhost;
-uniform float uPassed;
-uniform float uUseStrikeLine;
-uniform float uStrikeLineZ;
-varying float vWorldZ;
-void main() {
-  vec3 laneTint = mix(uBaseColor, vec3(1.0), uSelected * 0.35);
-  vec3 ghostTint = mix(laneTint, vec3(0.82, 0.88, 1.0), uGhost);
-  float alpha = uAlpha * (1.0 - uGhost * 0.55);
-  if (alpha < 0.02) discard;
-  float passed = max(uPassed, step(uStrikeLineZ, vWorldZ) * uUseStrikeLine);
-  float luminance = dot(ghostTint, vec3(0.2126, 0.7152, 0.0722));
-  gl_FragColor = vec4(mix(ghostTint, vec3(luminance), passed), alpha);
-}`;
-
-const stateByMesh = new WeakMap<THREE.Mesh, CircularMaterialState>();
+const stateByMaterial = new WeakMap<THREE.Material, CircularMaterialState>();
 
 export function rgbFromHex(hex: number): Rgb {
   return [
@@ -136,15 +81,36 @@ export function setCircularMaterialState(
   mesh: THREE.Mesh,
   state: Partial<CircularMaterialState>,
 ): void {
-  const current = { ...defaultState, ...stateByMesh.get(mesh), ...state };
-  stateByMesh.set(mesh, current);
-  updateUniforms(mesh, current);
+  const materials = Array.isArray(mesh.material)
+    ? mesh.material
+    : mesh.material
+      ? [mesh.material]
+      : [];
+  materials.forEach((material) =>
+    setCircularMaterialStateForMaterial(material, state),
+  );
 }
 
-function updateUniforms(mesh: THREE.Mesh, state: CircularMaterialState): void {
-  const material = mesh.material as THREE.ShaderMaterial;
-  if (!material?.uniforms) return;
-  const uniforms = material.uniforms;
+export function setCircularMaterialStateForMaterial(
+  material: THREE.Material,
+  state: Partial<CircularMaterialState>,
+): void {
+  const current = {
+    ...defaultState,
+    ...stateByMaterial.get(material),
+    ...state,
+  };
+  stateByMaterial.set(material, current);
+  updateUniforms(material, current);
+}
+
+function updateUniforms(
+  material: THREE.Material,
+  state: CircularMaterialState,
+): void {
+  const shaderMaterial = material as THREE.ShaderMaterial;
+  if (!shaderMaterial?.uniforms) return;
+  const uniforms = shaderMaterial.uniforms;
   if (uniforms.uBaseColor) uniforms.uBaseColor.value = state.baseColor;
   if (uniforms.uEmissionColor) {
     uniforms.uEmissionColor.value = state.emissionColor;
@@ -168,6 +134,7 @@ function createMaterial(
   emissionTexture: THREE.Texture,
   transparent: boolean,
   fragmentShader = texturedFragmentSource,
+  preserveWhiteCenter = false,
 ): THREE.ShaderMaterial {
   const material = new THREE.ShaderMaterial({
     vertexShader: texturedVertexSource,
@@ -185,6 +152,7 @@ function createMaterial(
       uPassed: { value: 0 },
       uUseStrikeLine: { value: 0 },
       uStrikeLineZ: { value: -3.5 },
+      uPreserveWhiteCenter: { value: preserveWhiteCenter ? 1 : 0 },
     },
     transparent,
     depthTest: true,
@@ -199,11 +167,19 @@ export function createCircularMaterialSet(
 ): CircularMaterialSet {
   const fretColor = createMaterial(textures.fret, textures.fret, false);
   const fretNeutral = createMaterial(textures.fret, textures.fret, false);
-  const noteColor = createMaterial(textures.note, textures.noteEmission, false);
+  const noteColor = createMaterial(
+    textures.note,
+    textures.noteEmission,
+    false,
+    texturedFragmentSource,
+    true,
+  );
   const noteNeutral = createMaterial(
     textures.note,
     textures.noteEmission,
     false,
+    texturedFragmentSource,
+    true,
   );
   const noteGhostColor = createMaterial(
     textures.note,

@@ -17,6 +17,22 @@ export const circularHighwayAssets = {
 
 export type CircularHighwayAssetUrls = typeof circularHighwayAssets;
 
+export const circularHighwayMaterialAssignments = {
+  note: [
+    "Circular_Note_Top",
+    "Circular_Note_Color",
+    "Circular_Note_Indicator",
+    "Circular_Note_Bottom",
+  ],
+  fretTop: [
+    "Note_Tap.034",
+    "Note_Color_Yellow",
+    "Note_Bottom.048",
+    "Note_SIde.020",
+  ],
+  fretBase: ["Note_Color_Yellow", "Note_Tap.034"],
+} as const;
+
 export interface CircularHighwayTextures {
   fret: THREE.Texture;
   note: THREE.Texture;

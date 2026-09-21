@@ -1,6 +1,11 @@
 import * as THREE from "three";
-import type { Rgb, CircularMaterialSet } from "./circularMaterials";
-import { setCircularMaterialState } from "./circularMaterials";
+import {
+  setCircularMaterialState,
+  setCircularMaterialStateForMaterial,
+  type CircularMaterialSet,
+  type CircularMaterialState,
+  type Rgb,
+} from "./circularMaterials";
 import {
   applyModelCalibration,
   meshesInModel,
@@ -16,11 +21,17 @@ function cloneModelMeshes(
   material: MaterialSource,
 ): { object: THREE.Group; meshes: THREE.Mesh[] } {
   const object = new THREE.Group();
-  const meshes = meshesInModel(template).map((templateMesh, index) => {
-    const meshMaterial =
-      typeof material === "function" ? material(index) : material;
+  let primitiveIndex = 0;
+  const meshes = meshesInModel(template).map((templateMesh) => {
+    const templateMaterials = Array.isArray(templateMesh.material)
+      ? templateMesh.material
+      : [templateMesh.material];
+    const meshMaterials = templateMaterials.map(() =>
+      typeof material === "function" ? material(primitiveIndex++) : material,
+    );
     const mesh = templateMesh.clone();
-    mesh.material = meshMaterial;
+    mesh.material =
+      meshMaterials.length === 1 ? meshMaterials[0] : meshMaterials;
     templateMesh.updateWorldMatrix(true, false);
     mesh.matrixAutoUpdate = false;
     mesh.matrix.copy(templateMesh.matrixWorld);
@@ -82,14 +93,11 @@ export function createNotePools(
             : materialSet.noteNeutral.clone(),
         calibration,
       );
-      note.meshes.forEach((mesh, primitiveIndex) =>
-        setCircularMaterialState(mesh, {
-          baseColor: color,
-          emissionColor:
-            primitiveRoles[primitiveIndex] === "neutral" ? [1, 1, 1] : color,
-          tint: primitiveRoles[primitiveIndex] !== "neutral",
-        }),
-      );
+      applyPrimitiveMaterialStates(note.meshes, primitiveRoles, (role) => ({
+        baseColor: color,
+        emissionColor: role === "neutral" ? [1, 1, 1] : color,
+        tint: role === "tinted",
+      }));
       scene.add(note.object);
       pool.push(note);
     }
@@ -118,18 +126,34 @@ export function createFretAssembly(
         ? material.clone()
         : neutralMaterial.clone(),
     );
-    meshes.forEach((mesh, primitiveIndex) =>
-      setCircularMaterialState(mesh, {
-        baseColor: laneColor,
-        emissionColor:
-          primitiveRoles[primitiveIndex] === "neutral" ? [1, 1, 1] : laneColor,
-        tint: primitiveRoles[primitiveIndex] !== "neutral",
-      }),
-    );
+    applyPrimitiveMaterialStates(meshes, primitiveRoles, (role) => ({
+      baseColor: laneColor,
+      emissionColor: role === "neutral" ? [1, 1, 1] : laneColor,
+      tint: role === "tinted",
+    }));
     assembly.add(object);
   });
   scene.add(assembly);
   return assembly;
+}
+
+function applyPrimitiveMaterialStates(
+  meshes: THREE.Mesh[],
+  primitiveRoles: readonly PrimitiveMaterialRole[],
+  stateForRole: (role: PrimitiveMaterialRole) => Partial<CircularMaterialState>,
+): void {
+  let primitiveIndex = 0;
+  meshes.forEach((mesh) => {
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : mesh.material
+        ? [mesh.material]
+        : [];
+    materials.forEach((material) => {
+      const role = primitiveRoles[primitiveIndex++] ?? "neutral";
+      setCircularMaterialStateForMaterial(material, stateForRole(role));
+    });
+  });
 }
 
 export function createSustainPool(

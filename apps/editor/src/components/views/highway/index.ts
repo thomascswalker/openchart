@@ -478,6 +478,9 @@ export class HighwayView
           transform.scale.y,
           transform.scale.z,
         );
+        assembly.rotation.x = THREE.MathUtils.degToRad(
+          transform.rotationDegrees.x,
+        );
         return assembly;
       });
       this.ghostGem = createModelInstance(

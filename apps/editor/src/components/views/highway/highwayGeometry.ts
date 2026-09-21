@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Rgb, CircularMaterialSet } from "./circularMaterials";
-import { setCircularMaterialState } from "./circularMaterials";
+import { setCircularMaterialStateForMaterial } from "./circularMaterials";
 import { HIGHWAY_GEOMETRY_CATALOG } from "./highwayGeometryCatalog";
 
 export interface ModelCalibration {
@@ -170,21 +170,27 @@ export function setModelState(
   },
 ): void {
   meshesInModel(model).forEach((mesh) => {
-    if (!mesh.material) mesh.material = materialSet.noteColor;
-    const isNeutralPrimitive =
-      mesh.material === materialSet.noteNeutral ||
-      mesh.material === materialSet.noteGhostNeutral;
-    setCircularMaterialState(mesh, {
-      baseColor: color,
-      emissionColor: isNeutralPrimitive ? [1, 1, 1] : color,
-      emissionIntensity: state.selected ? 1.7 : 1,
-      alpha: state.alpha ?? 1,
-      selected: state.selected ?? false,
-      ghost: state.ghost ?? false,
-      passed: state.passed ?? false,
-      tint: !isNeutralPrimitive,
-      useStrikeLine: false,
-      strikeLineZ: -3.5,
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : mesh.material
+        ? [mesh.material]
+        : [materialSet.noteColor];
+    materials.forEach((material) => {
+      const shaderMaterial = material as THREE.ShaderMaterial;
+      const isNeutralPrimitive =
+        shaderMaterial.uniforms?.uTintEnabled?.value === 0;
+      setCircularMaterialStateForMaterial(material, {
+        baseColor: color,
+        emissionColor: isNeutralPrimitive ? [1, 1, 1] : color,
+        emissionIntensity: state.selected ? 1.7 : 1,
+        alpha: state.alpha ?? 1,
+        selected: state.selected ?? false,
+        ghost: state.ghost ?? false,
+        passed: state.passed ?? false,
+        tint: !isNeutralPrimitive,
+        useStrikeLine: false,
+        strikeLineZ: -3.5,
+      });
     });
   });
 }

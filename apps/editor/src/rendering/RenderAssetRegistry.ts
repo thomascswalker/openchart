@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import {
   circularHighwayAssets,
+  circularHighwayMaterialAssignments,
   circularHighwayPrimitiveRoles,
   type CircularHighwayTextures,
 } from "../assets/highway/circular";
@@ -39,9 +40,18 @@ export class RenderAssetRegistry {
     if (this.highwayPromise) return this.highwayPromise;
 
     this.highwayPromise = Promise.all([
-      this.loadModel(circularHighwayAssets.fretTopModel),
-      this.loadModel(circularHighwayAssets.fretBaseModel),
-      this.loadModel(circularHighwayAssets.noteModel),
+      this.loadModel(
+        circularHighwayAssets.fretTopModel,
+        circularHighwayMaterialAssignments.fretTop,
+      ),
+      this.loadModel(
+        circularHighwayAssets.fretBaseModel,
+        circularHighwayMaterialAssignments.fretBase,
+      ),
+      this.loadModel(
+        circularHighwayAssets.noteModel,
+        circularHighwayMaterialAssignments.note,
+      ),
       this.loadTextures(),
     ])
       .then(([fretTop, fretBase, note, textures]) => {
@@ -82,8 +92,29 @@ export class RenderAssetRegistry {
     Object.values(bundle.textures).forEach((texture) => texture.dispose());
   }
 
-  private async loadModel(url: string): Promise<THREE.Group> {
+  private async loadModel(
+    url: string,
+    expectedMaterials: readonly string[],
+  ): Promise<THREE.Group> {
     const gltf = await this.loader.loadAsync(url);
+    const meshes = meshesInObject(gltf.scene);
+    const materials = meshes.flatMap((mesh) =>
+      Array.isArray(mesh.material) ? mesh.material : [mesh.material],
+    );
+    if (materials.length !== expectedMaterials.length) {
+      throw new RenderAssetLoadError(
+        `${url} has ${materials.length} material slots; expected ${expectedMaterials.length}`,
+      );
+    }
+    materials.forEach((material, index) => {
+      const expectedMaterial = expectedMaterials[index];
+      if (!material || !matchesMaterialName(material.name, expectedMaterial)) {
+        throw new RenderAssetLoadError(
+          `${url} primitive ${index} material ${material?.name ?? "missing"} does not match ${expectedMaterial}`,
+        );
+      }
+      material.name = expectedMaterial;
+    });
     return gltf.scene;
   }
 
@@ -118,14 +149,22 @@ export class RenderAssetRegistry {
       ],
     ] as const;
     for (const [model, roles, id] of expected) {
-      const meshes = meshesInObject(model).length;
-      if (meshes > 0 && meshes !== roles.length) {
+      const materials = meshesInObject(model).flatMap((mesh) =>
+        Array.isArray(mesh.material) ? mesh.material : [mesh.material],
+      );
+      if (materials.length > 0 && materials.length !== roles.length) {
         throw new RenderAssetLoadError(
-          `${id} primitive count ${meshes} does not match manifest role count ${roles.length}`,
+          `${id} material slot count ${materials.length} does not match manifest role count ${roles.length}`,
         );
       }
     }
   }
+}
+
+function matchesMaterialName(actual: string, expected: string): boolean {
+  if (actual === expected) return true;
+  const suffix = actual.slice(expected.length);
+  return suffix.startsWith(".") && /^\.\d+$/.test(suffix);
 }
 
 export function meshesInObject(root: THREE.Object3D): THREE.Mesh[] {
