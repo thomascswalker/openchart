@@ -6,7 +6,7 @@ import {
   scaleNoteCalibration,
   noteWorldPosition,
   sustainWorldTransform,
-} from "./highwayGeometry";
+} from "./geometry";
 
 describe("circular highway geometry", () => {
   it("keeps note timing on the existing lane/depth mapping", () => {
@@ -24,12 +24,11 @@ describe("circular highway geometry", () => {
     });
   });
 
-  it("keeps a calibrated note width suitable for the strike-line fret", () => {
+  it("uses a normalized note calibration for the strike-line fret", () => {
     expect(DEFAULT_NOTE_CALIBRATION.width).toBeGreaterThan(0);
     expect(DEFAULT_NOTE_CALIBRATION.noteModelRotation.x).toBe(270);
-    expect(DEFAULT_NOTE_CALIBRATION.height).toBeGreaterThan(
-      DEFAULT_NOTE_CALIBRATION.depth,
-    );
+    expect(DEFAULT_NOTE_CALIBRATION.height).toBe(1);
+    expect(DEFAULT_NOTE_CALIBRATION.depth).toBe(1);
   });
 
   it("applies debug scale multipliers to model size and hit-test dimensions", () => {
@@ -41,9 +40,9 @@ describe("circular highway geometry", () => {
 
     expect(scaled.noteModelScale).toEqual({ x: 0.675, y: 0.9, z: 0.225 });
     expect(scaled.noteModelOffset).toEqual({ x: 0, y: 0.05, z: 0 });
-    expect(scaled.width).toBe(1.35);
-    expect(scaled.height).toBe(1.8);
-    expect(scaled.depth).toBe(0.105);
+    expect(scaled.width).toBe(1.5);
+    expect(scaled.height).toBe(2);
+    expect(scaled.depth).toBe(0.5);
   });
 
   it("falls back when imported model bounds are unavailable", () => {

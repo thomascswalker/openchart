@@ -1,6 +1,5 @@
 export type RenderCallback = () => void;
 
-/** Coalesces invalidations into one render callback per display frame. */
 export class RenderScheduler {
   private frame: number | null = null;
   private disposed = false;

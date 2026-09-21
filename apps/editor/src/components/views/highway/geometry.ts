@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import type { Rgb, CircularMaterialSet } from "./circularMaterials";
-import { setCircularMaterialStateForMaterial } from "./circularMaterials";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./highwayGeometryCatalog";
+import type { Rgb, MaterialSet } from "./materials";
+import { setMaterialStateForMaterial } from "./materials";
+import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
 
 export interface ModelCalibration {
   noteModelScale: { x: number; y: number; z: number };
@@ -30,9 +30,9 @@ export const DEFAULT_NOTE_CALIBRATION: ModelCalibration = {
     ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
   },
   noteModelOffset: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.position },
-  width: 0.9,
-  height: 0.9,
-  depth: 0.21,
+  width: 1,
+  height: 1,
+  depth: 1,
 };
 
 export const DEFAULT_NOTE_SCALE_MULTIPLIER: NoteScaleMultiplier = {
@@ -73,11 +73,15 @@ export function calibrationFromModel(model: THREE.Object3D): ModelCalibration {
   try {
     model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model);
-    if (box.isEmpty()) return DEFAULT_NOTE_CALIBRATION;
+    if (box.isEmpty()) {
+      return DEFAULT_NOTE_CALIBRATION;
+    }
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const values = [...size.toArray(), ...center.toArray()];
-    if (!values.every(Number.isFinite)) return DEFAULT_NOTE_CALIBRATION;
+    if (!values.every(Number.isFinite)) {
+      return DEFAULT_NOTE_CALIBRATION;
+    }
     const width = Math.max(0.001, size.x);
     const height = Math.max(0.001, size.y);
     const depth = Math.max(0.001, size.z);
@@ -160,7 +164,7 @@ export function applyModelCalibration(
 
 export function setModelState(
   model: THREE.Object3D,
-  materialSet: CircularMaterialSet,
+  materialSet: MaterialSet,
   color: Rgb,
   state: {
     selected?: boolean;
@@ -174,15 +178,15 @@ export function setModelState(
       ? mesh.material
       : mesh.material
         ? [mesh.material]
-        : [materialSet.noteColor];
+        : [materialSet.noteTinted];
     materials.forEach((material) => {
       const shaderMaterial = material as THREE.ShaderMaterial;
       const isNeutralPrimitive =
         shaderMaterial.uniforms?.uTintEnabled?.value === 0;
-      setCircularMaterialStateForMaterial(material, {
+      setMaterialStateForMaterial(material, {
         baseColor: color,
-        emissionColor: isNeutralPrimitive ? [1, 1, 1] : color,
-        emissionIntensity: state.selected ? 1.7 : 1,
+        emissionColor: color,
+        emissionIntensity: state.selected ? 1 : 1,
         alpha: state.alpha ?? 1,
         selected: state.selected ?? false,
         ghost: state.ghost ?? false,

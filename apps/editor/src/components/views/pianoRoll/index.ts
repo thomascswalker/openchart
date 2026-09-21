@@ -7,7 +7,7 @@ import type {
 import * as THREE from "three";
 import { AbstractChartView } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
-import { type ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
+import { type Engine } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import { PianoRollInputController } from "./input";
@@ -28,8 +28,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     0.1,
     1000,
   );
-  private readonly keyboardWidth = 64;
   private readonly camera: PianoRollCamera = { x: 0, y: 84, h: 120, v: 18 };
+
+  private readonly keyboardWidth = 64;
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
 
@@ -144,7 +145,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return this.threeCamera;
   }
 
-  protected override onMounted(engine: ThreeRenderEngine): void {
+  protected override onMounted(engine: Engine): void {
     this.canvas = engine.canvas;
     this.input.attach(this.canvas);
     this.threeCamera.rotation.set(0, 0, 0);
@@ -160,7 +161,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     super.destroy();
   }
 
-  protected override draw(engine: ThreeRenderEngine): void {
+  protected override draw(engine: Engine): void {
     const { width, height } = engine.getSize();
     this.lastWidth = width;
     this.lastHeight = height;

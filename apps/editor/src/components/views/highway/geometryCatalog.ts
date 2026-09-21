@@ -4,7 +4,7 @@ export interface Transform3D {
   scale: { x: number; y: number; z: number };
 }
 
-export type HighwayGeometryId =
+export type GeometryId =
   | "board"
   | "laneDivider"
   | "beatLine"
@@ -15,8 +15,8 @@ export type HighwayGeometryId =
   | "fretBase"
   | "ghost";
 
-export interface GeometryCatalogEntry {
-  id: HighwayGeometryId;
+export interface GeometryEntry {
+  id: GeometryId;
   transform: Transform3D;
   layer: number;
   renderPass: "opaque" | "sustain" | "note" | "overlay";
@@ -32,10 +32,7 @@ export const HIGHWAY_DEPTH_LAYERS = {
   overlay: 0.02,
 } as const;
 
-export const HIGHWAY_GEOMETRY_CATALOG: Record<
-  HighwayGeometryId,
-  GeometryCatalogEntry
-> = {
+export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
   board: {
     id: "board",
     transform: {
@@ -128,7 +125,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<
   },
 };
 
-export function geometryTransform(id: HighwayGeometryId): Transform3D {
+export function geometryTransform(id: GeometryId): Transform3D {
   const source = HIGHWAY_GEOMETRY_CATALOG[id].transform;
   return {
     position: { ...source.position },

@@ -1,9 +1,27 @@
 import { describe, expect, it } from "vitest";
-import {
-  CIRCULAR_MATERIAL_MAPPING,
-  CIRCULAR_SHADER_ATTRIBUTES,
-  rgbFromHex,
-} from "./circularMaterials";
+import { rgbFromHex } from "./materials";
+
+export const CIRCULAR_SHADER_ATTRIBUTES = {
+  position: "position",
+  normal: "normal",
+  uv: "uv",
+} as const;
+
+export const CIRCULAR_MATERIAL_MAPPING = {
+  baseColor: "note/fret texture.rgb * uBaseColor; sustain: solid uBaseColor",
+  laneTint: "uBaseColor",
+  emission: "emissionTexture.rgb * uEmissionColor * uEmissionIntensity",
+  alpha: "baseTexture.a * uAlpha with a 0.02 discard cutoff",
+  tint: "only authored tinted primitives multiply their base texture by uBaseColor",
+  passed:
+    "final composed colour is converted to luminance at/near the strike line",
+  depth: "depth test enabled; opaque notes write depth; ghost/sustain do not",
+  culling: "double-sided imported circular/fret surfaces",
+  selected: "uSelected brightens the lane tint and emission",
+  ghost: "uGhost mixes a neutral tint and reduces alpha",
+  sustain:
+    "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
+} as const;
 
 describe("circular material state contract", () => {
   it("documents all shader state required by the highway", () => {

@@ -33,11 +33,13 @@
   },
   "homepage": "https://github.com/thomascswalker/midiview#readme",
   "dependencies": {
-    "typescript": "^7.0.2",
-    "@types/node": "^26.3.0",
-    "binary-parser": "^2.3.0"
+    "binary-parser": "^2.3.0",
+    "ini": "^7.0.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.11"
+    "@types/node": "^26.3.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "@types/ini": "^4.1.1"
   }
 }

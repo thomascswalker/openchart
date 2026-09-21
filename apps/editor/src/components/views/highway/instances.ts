@@ -1,16 +1,16 @@
 import * as THREE from "three";
 import {
-  setCircularMaterialState,
-  setCircularMaterialStateForMaterial,
-  type CircularMaterialSet,
-  type CircularMaterialState,
+  setMaterialState,
+  setMaterialStateForMaterial,
+  type MaterialSet,
+  type MaterialState,
   type Rgb,
-} from "./circularMaterials";
+} from "./materials";
 import {
   applyModelCalibration,
   meshesInModel,
   type ModelCalibration,
-} from "./highwayGeometry";
+} from "./geometry";
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
 type MaterialSource =
@@ -41,56 +41,56 @@ function cloneModelMeshes(
   return { object, meshes };
 }
 
-export interface PooledNote {
+export interface InstancedNote {
   object: THREE.Group;
   meshes: THREE.Mesh[];
   selected: boolean;
 }
 
-export interface PooledTail {
+export interface InstancedTail {
   mesh: THREE.Mesh;
 }
 
-export function visiblePoolItems<T extends { start: number; end: number }>(
+export function visibleInstanceItems<T extends { start: number; end: number }>(
   items: readonly T[],
   visibleStart: number,
   visibleEnd: number,
-  poolSize: number,
+  instanceSize: number,
 ): T[] {
   return items
     .filter((item) => item.end >= visibleStart && item.start <= visibleEnd)
-    .slice(0, poolSize);
+    .slice(0, instanceSize);
 }
 
 export function createModelInstance(
   template: THREE.Object3D,
   material: MaterialSource,
   calibration?: ModelCalibration,
-): PooledNote {
+): InstancedNote {
   const { object, meshes } = cloneModelMeshes(template, material);
   if (calibration) applyModelCalibration(object, calibration);
   object.visible = false;
   return { object, meshes, selected: false };
 }
 
-export function createNotePools(
+export function createNoteInstances(
   scene: THREE.Scene,
   template: THREE.Object3D,
-  materialSet: CircularMaterialSet,
+  materialSet: MaterialSet,
   colors: Rgb[],
-  poolSize: number,
+  instanceSize: number,
   calibration: ModelCalibration,
   primitiveRoles: readonly PrimitiveMaterialRole[] = [],
-): PooledNote[][] {
+): InstancedNote[][] {
   return colors.map((color) => {
-    const pool: PooledNote[] = [];
-    for (let index = 0; index < poolSize; index++) {
+    const instance: InstancedNote[] = [];
+    for (let index = 0; index < instanceSize; index++) {
       const note = createModelInstance(
         template,
         (primitiveIndex) =>
           primitiveRoles[primitiveIndex] === "tinted"
-            ? materialSet.noteColor.clone()
-            : materialSet.noteNeutral.clone(),
+            ? materialSet.noteTinted.clone()
+            : materialSet.noteGrayscale.clone(),
         calibration,
       );
       applyPrimitiveMaterialStates(note.meshes, primitiveRoles, (role) => ({
@@ -99,9 +99,9 @@ export function createNotePools(
         tint: role === "tinted",
       }));
       scene.add(note.object);
-      pool.push(note);
+      instance.push(note);
     }
-    return pool;
+    return instance;
   });
 }
 
@@ -128,7 +128,7 @@ export function createFretAssembly(
     );
     applyPrimitiveMaterialStates(meshes, primitiveRoles, (role) => ({
       baseColor: laneColor,
-      emissionColor: role === "neutral" ? [1, 1, 1] : laneColor,
+      emissionColor: laneColor,
       tint: role === "tinted",
     }));
     assembly.add(object);
@@ -140,7 +140,7 @@ export function createFretAssembly(
 function applyPrimitiveMaterialStates(
   meshes: THREE.Mesh[],
   primitiveRoles: readonly PrimitiveMaterialRole[],
-  stateForRole: (role: PrimitiveMaterialRole) => Partial<CircularMaterialState>,
+  stateForRole: (role: PrimitiveMaterialRole) => Partial<MaterialState>,
 ): void {
   let primitiveIndex = 0;
   meshes.forEach((mesh) => {
@@ -151,27 +151,27 @@ function applyPrimitiveMaterialStates(
         : [];
     materials.forEach((material) => {
       const role = primitiveRoles[primitiveIndex++] ?? "neutral";
-      setCircularMaterialStateForMaterial(material, stateForRole(role));
+      setMaterialStateForMaterial(material, stateForRole(role));
     });
   });
 }
 
-export function createSustainPool(
+export function createSustainInstance(
   scene: THREE.Scene,
   material: THREE.Material,
   colors: Rgb[],
-  poolSize: number,
-): PooledTail[][] {
+  instanceSize: number,
+): InstancedTail[][] {
   return colors.map((color) => {
-    const pool: PooledTail[] = [];
-    for (let index = 0; index < poolSize; index++) {
+    const instance: InstancedTail[] = [];
+    for (let index = 0; index < instanceSize; index++) {
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(2, 2),
         material.clone(),
       );
       mesh.rotation.x = THREE.MathUtils.degToRad(90);
       mesh.visible = false;
-      setCircularMaterialState(mesh, {
+      setMaterialState(mesh, {
         baseColor: color,
         emissionColor: color,
         alpha: 0.65,
@@ -180,17 +180,17 @@ export function createSustainPool(
         strikeLineZ: -3.5,
       });
       scene.add(mesh);
-      pool.push({ mesh });
+      instance.push({ mesh });
     }
-    return pool;
+    return instance;
   });
 }
 
-export function destroyPooledObjects(
-  pools: PooledNote[][],
-  tails: PooledTail[][],
+export function destroyInstancedObjects(
+  instances: InstancedNote[][],
+  tails: InstancedTail[][],
 ): void {
-  pools.flat().forEach(({ object }) => {
+  instances.flat().forEach(({ object }) => {
     object.removeFromParent();
     object.traverse((child) => {
       const mesh = child as THREE.Mesh;
@@ -214,6 +214,8 @@ export function destroyPooledObjects(
   });
 }
 
-export function modelMeshesForBounds(pool: PooledNote): THREE.Mesh[] {
-  return pool.meshes.length ? pool.meshes : meshesInModel(pool.object);
+export function modelMeshesForBounds(instance: InstancedNote): THREE.Mesh[] {
+  return instance.meshes.length
+    ? instance.meshes
+    : meshesInModel(instance.object);
 }

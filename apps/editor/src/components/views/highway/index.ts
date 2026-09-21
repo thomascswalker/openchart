@@ -8,15 +8,15 @@ import {
   type NoteSizeDebugState,
   type NoteSizeDebugView,
 } from "../AbstractChartView";
-import type { ThreeRenderEngine } from "../../../rendering/ThreeRenderEngine";
-import { RenderAssetRegistry } from "./assets";
-import { circularHighwayPrimitiveRoles } from "../../../assets/highway/circular";
+import type { Engine } from "../../../rendering/engine";
+import { ResourceRegistry } from "./assets";
+import { primitiveRoles } from "../../../rendering/registry";
 import {
-  createCircularMaterialSet,
+  createMaterialSet as createMaterialSet,
   rgbFromHex,
-  setCircularMaterialState,
-  type CircularMaterialSet,
-} from "./circularMaterials";
+  setMaterialState,
+  type MaterialSet,
+} from "./materials";
 import {
   calibrationFromModel,
   DEFAULT_NOTE_CALIBRATION,
@@ -27,17 +27,17 @@ import {
   setModelState,
   sustainWorldTransform,
   type ModelCalibration,
-} from "./highwayGeometry";
+} from "./geometry";
 import {
   createModelInstance,
-  createNotePools,
+  createNoteInstances,
   createFretAssembly,
-  createSustainPool,
-  destroyPooledObjects,
-  type PooledNote,
-  type PooledTail,
-} from "./highwayPools";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./highwayGeometryCatalog";
+  createSustainInstance,
+  destroyInstancedObjects,
+  type InstancedNote,
+  type InstancedTail,
+} from "./instances";
+import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
 
 const defaultCameraPosition = { x: 0, y: 7, z: 7 };
 const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };
@@ -49,15 +49,15 @@ const minimumNoteScale = 0.1;
 const maximumNoteScale = 10;
 const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];
 const laneCount = laneColors.length;
-const poolSizePerLane = 128;
-const poolSizeBeatLines = 64;
+const instanceSizePerLane = 128;
+const instanceSizeBeatLines = 64;
 const visibleQuarterNotes = 16;
 const strikeLineZ = -3.5;
 const farBoardZ = -44;
 const nearBoardZ = 0.5;
 const laneRgbColors = laneColors.map(rgbFromHex);
 
-interface PooledBeatLine {
+interface InstancedBeatLine {
   mesh: THREE.Mesh;
   material: THREE.MeshBasicMaterial;
 }
@@ -125,12 +125,12 @@ export class HighwayView
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }),
   );
-  private readonly gemPools: PooledNote[][] = [];
-  private readonly tailPools: PooledTail[][] = [];
-  private readonly gemBindings = new Map<MidiChannelEvent, PooledNote>();
-  private readonly tailBindings = new Map<MidiChannelEvent, PooledTail>();
-  private readonly beatLinePool: PooledBeatLine[] = [];
-  private readonly assetRegistry: RenderAssetRegistry;
+  private readonly gemInstances: InstancedNote[][] = [];
+  private readonly tailInstances: InstancedTail[][] = [];
+  private readonly gemBindings = new Map<MidiChannelEvent, InstancedNote>();
+  private readonly tailBindings = new Map<MidiChannelEvent, InstancedTail>();
+  private readonly beatLineInstance: InstancedBeatLine[] = [];
+  private readonly assetRegistry: ResourceRegistry;
   private readonly ownsAssetRegistry: boolean;
   private cameraDebugDefaults: CameraDebugState | null = null;
   private noteSizeDebugState: NoteSizeDebugState = {
@@ -144,10 +144,10 @@ export class HighwayView
   private assetsReady = false;
   private songMidi: Midi | null = null;
   private song: SongView | null = null;
-  private materialSet: CircularMaterialSet | null = null;
+  private materials: MaterialSet | null = null;
   private noteCalibration: ModelCalibration = DEFAULT_NOTE_CALIBRATION;
   private fretAssemblies: THREE.Group[] = [];
-  private ghostGem: PooledNote | null = null;
+  private ghostGem: InstancedNote | null = null;
   private ghostNoteLocation: { lane: number; tick: number } | null = null;
   private playheadTick = 0;
   private selectedNoteOn: MidiChannelEvent | null = null;
@@ -155,10 +155,10 @@ export class HighwayView
   private drag: DragState | null = null;
   private suppressNextClick = false;
 
-  public constructor(assetRegistry?: RenderAssetRegistry) {
+  public constructor(registry?: ResourceRegistry) {
     super();
-    this.assetRegistry = assetRegistry ?? new RenderAssetRegistry();
-    this.ownsAssetRegistry = !assetRegistry;
+    this.assetRegistry = registry ?? new ResourceRegistry();
+    this.ownsAssetRegistry = !registry;
   }
 
   protected override get renderScene(): THREE.Scene {
@@ -169,7 +169,7 @@ export class HighwayView
     return this.threeCamera;
   }
 
-  protected override onMounted(engine: ThreeRenderEngine): void {
+  protected override onMounted(engine: Engine): void {
     this.canvas = engine.canvas;
     this.threeCamera.position.set(
       defaultCameraPosition.x,
@@ -186,9 +186,9 @@ export class HighwayView
     this.cameraDebugDefaults = this.getCameraDebugState();
     this.threeScene.add(this.hoverOutline);
     this.createFretboard();
-    this.createBeatLinePool();
+    this.createBeatLineInstance();
     this.sceneReady = true;
-    void this.loadHighwayAssets();
+    void this.loadResources();
 
     this.canvas.style.touchAction = "none";
     this.canvas.addEventListener("click", this.handleClick);
@@ -269,7 +269,7 @@ export class HighwayView
     return this.applyNoteSizeDebugState({ ...DEFAULT_NOTE_SCALE_MULTIPLIER });
   }
 
-  protected override draw(engine: ThreeRenderEngine): void {
+  protected override draw(engine: Engine): void {
     const { width, height } = engine.getSize();
     this.viewportWidth = width;
     this.viewportHeight = height;
@@ -277,7 +277,7 @@ export class HighwayView
     this.threeCamera.updateProjectionMatrix();
     const midi = this.state.midi;
     const chart = midi ? this.getActiveChart(midi) : null;
-    if (!chart || !this.assetsReady || !this.materialSet) {
+    if (!chart || !this.assetsReady || !this.materials) {
       this.threeScene.userData.visibleNotes = 0;
       this.threeScene.userData.visibleSustains = 0;
       this.hideAllObjects();
@@ -298,33 +298,33 @@ export class HighwayView
           lane < laneCount,
       );
 
-    const usedTails = new Set<PooledTail>();
+    const usedTails = new Set<InstancedTail>();
     for (const { note, lane } of visibleNotes) {
       const tailStart = Math.max(note.start, visibleStart);
       const tailEnd = Math.min(note.end, this.getTickAtDepth(farBoardZ));
       if (tailEnd <= tailStart) continue;
-      const pooledTail = this.acquireTail(note.noteOn, usedTails);
-      if (!pooledTail) continue;
-      usedTails.add(pooledTail);
+      const instancedTail = this.acquireTail(note.noteOn, usedTails);
+      if (!instancedTail) continue;
+      usedTails.add(instancedTail);
       const transform = sustainWorldTransform(
         this.getLaneX(lane),
         this.getNoteZ(tailStart),
         this.getNoteZ(tailEnd),
       );
       const selected = note.noteOn === this.selectedNoteOn;
-      pooledTail.mesh.position.set(
+      instancedTail.mesh.position.set(
         transform.position.x,
         transform.position.y,
         transform.position.z,
       );
-      pooledTail.mesh.scale.set(
+      instancedTail.mesh.scale.set(
         transform.scale.x,
         transform.scale.y,
         transform.scale.z,
       );
-      pooledTail.mesh.renderOrder = 10;
-      pooledTail.mesh.visible = true;
-      setCircularMaterialState(pooledTail.mesh, {
+      instancedTail.mesh.renderOrder = 10;
+      instancedTail.mesh.visible = true;
+      setMaterialState(instancedTail.mesh, {
         baseColor: laneRgbColors[lane],
         emissionColor: laneRgbColors[lane],
         emissionIntensity: selected ? 1.7 : 1,
@@ -338,23 +338,23 @@ export class HighwayView
     this.threeScene.userData.visibleNotes = visibleNotes.length;
     this.threeScene.userData.visibleSustains = usedTails.size;
 
-    const usedGems = new Set<PooledNote>();
+    const usedGems = new Set<InstancedNote>();
     for (const { note, lane } of visibleNotes) {
-      const pooledGem = this.acquireGem(note.noteOn, usedGems);
-      if (!pooledGem) continue;
-      usedGems.add(pooledGem);
+      const instancedGem = this.acquireGem(note.noteOn, usedGems);
+      if (!instancedGem) continue;
+      usedGems.add(instancedGem);
       const distance = (note.start - this.playheadTick) / this.getPpqn();
       const position = noteWorldPosition(
         this.getLaneX(lane),
         strikeLineZ - distance * 3,
         this.getEffectiveNoteCalibration(),
       );
-      pooledGem.object.position.set(position.x, position.y, position.z);
-      pooledGem.object.renderOrder = 20;
-      pooledGem.object.visible = true;
-      pooledGem.selected = note.noteOn === this.selectedNoteOn;
-      setModelState(pooledGem.object, this.materialSet, laneRgbColors[lane], {
-        selected: pooledGem.selected,
+      instancedGem.object.position.set(position.x, position.y, position.z);
+      instancedGem.object.renderOrder = 20;
+      instancedGem.object.visible = true;
+      instancedGem.selected = note.noteOn === this.selectedNoteOn;
+      setModelState(instancedGem.object, this.materials, laneRgbColors[lane], {
+        selected: instancedGem.selected,
         passed: note.start <= this.playheadTick + 0.001,
       });
     }
@@ -384,17 +384,17 @@ export class HighwayView
     window.removeEventListener("pointerup", this.handlePointerUp);
     this.canvas = null;
     this.drag = null;
-    destroyPooledObjects(this.gemPools, this.tailPools);
-    this.gemPools.length = 0;
-    this.tailPools.length = 0;
+    destroyInstancedObjects(this.gemInstances, this.tailInstances);
+    this.gemInstances.length = 0;
+    this.tailInstances.length = 0;
     this.gemBindings.clear();
     this.tailBindings.clear();
-    this.beatLinePool.forEach(({ mesh, material }) => {
+    this.beatLineInstance.forEach(({ mesh, material }) => {
       mesh.geometry.dispose();
       material.dispose();
       mesh.removeFromParent();
     });
-    this.beatLinePool.length = 0;
+    this.beatLineInstance.length = 0;
     this.fretAssemblies.forEach((assembly) => {
       assembly.traverse((object) => {
         const mesh = object as THREE.Mesh;
@@ -410,8 +410,8 @@ export class HighwayView
     });
     this.fretAssemblies.length = 0;
     this.ghostGem = null;
-    this.materialSet?.destroy();
-    this.materialSet = null;
+    this.materials?.destroy();
+    this.materials = null;
     if (this.ownsAssetRegistry) this.assetRegistry.dispose();
     this.threeScene.clear();
     this.assetsReady = false;
@@ -431,41 +431,45 @@ export class HighwayView
     );
   }
 
-  private async loadHighwayAssets(): Promise<void> {
+  private async loadResources(): Promise<void> {
     try {
-      const bundle = await this.assetRegistry.preloadHighway();
-      if (!this.sceneReady || !this.cameraReady) return;
-      this.materialSet = createCircularMaterialSet(bundle.textures);
-      this.noteCalibration = calibrationFromModel(bundle.note);
-      this.gemPools.push(
-        ...createNotePools(
+      await this.assetRegistry.loadResources();
+      if (!this.sceneReady || !this.cameraReady) {
+        return;
+      }
+      this.materials = createMaterialSet(this.assetRegistry.textures);
+
+      const { note, fretTop, fretBase } = this.assetRegistry.meshes;
+      this.noteCalibration = calibrationFromModel(note.value!);
+      this.gemInstances.push(
+        ...createNoteInstances(
           this.threeScene,
-          bundle.note,
-          this.materialSet,
+          note.value!,
+          this.materials,
           laneRgbColors,
-          poolSizePerLane,
+          instanceSizePerLane,
           this.getEffectiveNoteCalibration(),
-          circularHighwayPrimitiveRoles.note,
+          primitiveRoles.note,
         ),
       );
-      this.tailPools.push(
-        ...createSustainPool(
+      this.tailInstances.push(
+        ...createSustainInstance(
           this.threeScene,
-          this.materialSet.sustain,
+          this.materials.sustain,
           laneRgbColors,
-          poolSizePerLane,
+          instanceSizePerLane,
         ),
       );
       this.fretAssemblies = laneRgbColors.map((color, lane) => {
         const assembly = createFretAssembly(
           this.threeScene,
-          bundle.fretTop,
-          bundle.fretBase,
-          this.materialSet!.fretColor,
+          fretTop.value!,
+          fretBase.value!,
+          this.materials!.fretTinted,
           color,
-          circularHighwayPrimitiveRoles.fretTop,
-          this.materialSet!.fretNeutral,
-          circularHighwayPrimitiveRoles.fretBase,
+          primitiveRoles.fretTop,
+          this.materials!.fretGrayscale,
+          primitiveRoles.fretBase,
         );
         const transform = HIGHWAY_GEOMETRY_CATALOG.fretTop.transform;
         assembly.position.set(
@@ -484,24 +488,24 @@ export class HighwayView
         return assembly;
       });
       this.ghostGem = createModelInstance(
-        bundle.note,
+        note.value!,
         (primitiveIndex) =>
-          (circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted"
-            ? this.materialSet!.noteGhostColor
-            : this.materialSet!.noteGhostNeutral
+          (primitiveRoles.note[primitiveIndex] === "tinted"
+            ? this.materials!.noteGhostTinted
+            : this.materials!.noteGhostGrayscale
           ).clone(),
         this.getEffectiveNoteCalibration(),
       );
       this.ghostGem.meshes.forEach((mesh, primitiveIndex) =>
-        setCircularMaterialState(mesh, {
+        setMaterialState(mesh, {
           baseColor: laneRgbColors[0],
           emissionColor:
-            circularHighwayPrimitiveRoles.note[primitiveIndex] === "neutral"
+            primitiveRoles.note[primitiveIndex] === "neutral"
               ? [1, 1, 1]
               : laneRgbColors[0],
           alpha: 0.35,
           ghost: true,
-          tint: circularHighwayPrimitiveRoles.note[primitiveIndex] === "tinted",
+          tint: primitiveRoles.note[primitiveIndex] === "tinted",
         }),
       );
       this.threeScene.add(this.ghostGem.object);
@@ -541,14 +545,14 @@ export class HighwayView
     this.threeScene.add(strike);
   }
 
-  private createBeatLinePool(): void {
-    for (let index = 0; index < poolSizeBeatLines; index++) {
+  private createBeatLineInstance(): void {
+    for (let index = 0; index < instanceSizeBeatLines; index++) {
       const material = new THREE.MeshBasicMaterial({ color: 0x64748b });
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.016, 1), material);
       mesh.visible = false;
       mesh.renderOrder = 3;
       this.threeScene.add(mesh);
-      this.beatLinePool.push({ mesh, material });
+      this.beatLineInstance.push({ mesh, material });
     }
   }
 
@@ -558,34 +562,38 @@ export class HighwayView
     const maxTick =
       this.playheadTick + Math.ceil(ppqn * (visibleQuarterNotes + 2));
     const startQuarterTick = Math.ceil(minTick / ppqn) * ppqn;
-    let poolIndex = 0;
+    let instanceIndex = 0;
     for (let tick = startQuarterTick; tick <= maxTick; tick += ppqn) {
       const z = this.getNoteZ(tick);
       if (z < farBoardZ || z > nearBoardZ) continue;
-      const pooled = this.beatLinePool[poolIndex++];
-      if (!pooled) break;
+      const instanced = this.beatLineInstance[instanceIndex++];
+      if (!instanced) break;
       const q = Math.round(tick / ppqn);
       const thicknessZ = q % 4 === 0 ? 0.07 : q % 2 === 0 ? 0.045 : 0.025;
-      pooled.material.color.setHex(
+      instanced.material.color.setHex(
         q % 4 === 0 ? 0xf1f5f9 : q % 2 === 0 ? 0x94a3b8 : 0x64748b,
       );
-      pooled.mesh.position.set(0, -0.065, z);
-      pooled.mesh.scale.z = thicknessZ;
-      pooled.mesh.visible = true;
+      instanced.mesh.position.set(0, -0.065, z);
+      instanced.mesh.scale.z = thicknessZ;
+      instanced.mesh.visible = true;
     }
-    for (let index = poolIndex; index < this.beatLinePool.length; index++) {
-      this.beatLinePool[index].mesh.visible = false;
+    for (
+      let index = instanceIndex;
+      index < this.beatLineInstance.length;
+      index++
+    ) {
+      this.beatLineInstance[index].mesh.visible = false;
     }
   }
 
   private acquireGem(
     key: MidiChannelEvent,
-    used: Set<PooledNote>,
-  ): PooledNote | null {
+    used: Set<InstancedNote>,
+  ): InstancedNote | null {
     const existing = this.gemBindings.get(key);
     if (existing) return existing;
     const bound = new Set(this.gemBindings.values());
-    const candidate = this.gemPools
+    const candidate = this.gemInstances
       .flat()
       .find((item) => !bound.has(item) && !used.has(item));
     if (!candidate) return null;
@@ -595,12 +603,12 @@ export class HighwayView
 
   private acquireTail(
     key: MidiChannelEvent,
-    used: Set<PooledTail>,
-  ): PooledTail | null {
+    used: Set<InstancedTail>,
+  ): InstancedTail | null {
     const existing = this.tailBindings.get(key);
     if (existing) return existing;
     const bound = new Set(this.tailBindings.values());
-    const candidate = this.tailPools
+    const candidate = this.tailInstances
       .flat()
       .find((item) => !bound.has(item) && !used.has(item));
     if (!candidate) return null;
@@ -621,9 +629,9 @@ export class HighwayView
   }
 
   private hideAllObjects(): void {
-    this.gemPools.flat().forEach(({ object }) => (object.visible = false));
-    this.tailPools.flat().forEach(({ mesh }) => (mesh.visible = false));
-    this.beatLinePool.forEach(({ mesh }) => (mesh.visible = false));
+    this.gemInstances.flat().forEach(({ object }) => (object.visible = false));
+    this.tailInstances.flat().forEach(({ mesh }) => (mesh.visible = false));
+    this.beatLineInstance.forEach(({ mesh }) => (mesh.visible = false));
     if (this.ghostGem) this.ghostGem.object.visible = false;
     this.gemBindings.clear();
     this.tailBindings.clear();
@@ -635,7 +643,7 @@ export class HighwayView
 
   private applyNoteCalibrationToInstances(): void {
     const calibration = this.getEffectiveNoteCalibration();
-    this.gemPools
+    this.gemInstances
       .flat()
       .forEach(({ object }) => applyModelCalibration(object, calibration));
     if (this.ghostGem) applyModelCalibration(this.ghostGem.object, calibration);
