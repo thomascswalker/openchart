@@ -1,13 +1,59 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import {
-  assets,
-  materialAssignments,
-  primitiveRoles,
-  type Textures,
-} from "../assets/meshes";
 
-export interface AssetBundle {
+export const assets = {
+  /* Fret */
+  fretTopMesh: new URL("../assets/fret/FretTop.glb", import.meta.url).href,
+  fretBaseMesh: new URL("../assets/fret/FretBase.glb", import.meta.url).href,
+  fretColor: new URL("../assets/fret/Fret.png", import.meta.url).href,
+
+  /* Note */
+  noteMesh: new URL("../assets/note/Note.glb", import.meta.url).href,
+  noteColor: new URL("../assets/note/Note.png", import.meta.url).href,
+  noteEmission: new URL("../assets/note/NoteEmission.png", import.meta.url)
+    .href,
+
+  /* Sustain */
+  sustainColor: new URL("../assets/note/Sustain.png", import.meta.url).href,
+  sustainEmission: new URL(
+    "../assets/note/SustainEmission.png",
+    import.meta.url,
+  ).href,
+} as const;
+
+export type AssetUrls = typeof assets;
+
+export const materialIds = {
+  note: [
+    "Circular_Note_Top",
+    "Circular_Note_Color",
+    "Circular_Note_Indicator",
+    "Circular_Note_Bottom",
+  ],
+  fretTop: [
+    "Note_Tap.034",
+    "Note_Color_Yellow",
+    "Note_Bottom.048",
+    "Note_SIde.020",
+  ],
+  fretBase: ["Note_Color_Yellow", "Note_Tap.034"],
+} as const;
+
+export interface Textures {
+  fret: THREE.Texture;
+  note: THREE.Texture;
+  noteEmission: THREE.Texture;
+  sustain: THREE.Texture;
+  sustainEmission: THREE.Texture;
+}
+
+export const primitiveRoles = {
+  note: ["neutral", "tinted", "neutral", "neutral"],
+  fretTop: ["neutral", "tinted", "neutral", "neutral"],
+  fretBase: ["tinted", "neutral"],
+} as const;
+
+export interface Bundle {
   fretTop: THREE.Group;
   fretBase: THREE.Group;
   note: THREE.Group;
@@ -27,23 +73,24 @@ export class AssetLoadError extends Error {
 export class AssetRegistry {
   private readonly loader = new GLTFLoader();
 
-  private bundle: AssetBundle | null = null;
+  private bundle: Bundle | null = null;
   private isLoaded = false;
   private disposed = false;
 
-  public async loadAssets(): Promise<AssetBundle> {
+  public async loadAssets(): Promise<Bundle> {
     if (this.disposed) {
       return Promise.reject(new AssetLoadError("Asset registry disposed"));
     }
-    if (this.isLoaded) {
+
+    if (this.isLoaded && this.bundle !== null) {
       return Promise.resolve(this.bundle);
     }
 
     try {
       const [fretTop, fretBase, note, textures] = await Promise.all([
-        this.loadModel(assets.fretTopMesh, materialAssignments.fretTop),
-        this.loadModel(assets.fretBaseMesh, materialAssignments.fretBase),
-        this.loadModel(assets.noteMesh, materialAssignments.note),
+        this.loadModel(assets.fretTopMesh, materialIds.fretTop),
+        this.loadModel(assets.fretBaseMesh, materialIds.fretBase),
+        this.loadModel(assets.noteMesh, materialIds.note),
         this.loadTextures(),
       ]);
       if (this.disposed) {
@@ -129,7 +176,7 @@ export class AssetRegistry {
     return { fret, note, noteEmission, sustain, sustainEmission };
   }
 
-  private validatePrimitiveRoles(bundle: AssetBundle): void {
+  private validatePrimitiveRoles(bundle: Bundle): void {
     const expected = [
       [bundle.note, primitiveRoles.note, "highway.note"],
       [bundle.fretTop, primitiveRoles.fretTop, "highway.fretTop"],

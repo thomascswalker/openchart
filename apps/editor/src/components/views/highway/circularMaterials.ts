@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Textures } from "../../../assets/meshes";
+import type { Textures } from "../../../assets";
 import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
 import texturedFragmentSource from "./shaders/textured.frag.glsl?raw";
 import texturedVertexSource from "./shaders/textured.vert.glsl?raw";

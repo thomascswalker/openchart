@@ -10,7 +10,7 @@ import {
 } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import { RenderAssetRegistry } from "./assets";
-import { primitiveRoles } from "../../../assets/meshes";
+import { primitiveRoles } from "../../../rendering/registry";
 import {
   createCircularMaterialSet,
   rgbFromHex,
