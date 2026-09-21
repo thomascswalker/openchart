@@ -7,6 +7,7 @@ import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
+import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { SnapDenominators } from "./views/pianoRoll/constants";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -51,18 +52,13 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
   togglePlayRef.current = togglePlay;
 
   const keepPlayheadVisible = useCallback((view: ChartView): void => {
-    const visibleSpan = view.getVisibleTickSpan();
-    if (visibleSpan <= 0) {
-      return;
-    }
-
-    const cameraTick = view.getCameraTick();
-    const followMargin = visibleSpan * 0.1;
-    if (
-      playheadTick < cameraTick + followMargin ||
-      playheadTick > cameraTick + visibleSpan - followMargin
-    ) {
-      view.setCameraTick(Math.max(0, playheadTick - followMargin));
+    const cameraTick = getCameraTickForPlayhead(
+      playheadTick,
+      view.getCameraTick(),
+      view.getVisibleTickSpan(),
+    );
+    if (cameraTick !== null) {
+      view.setCameraTick(cameraTick);
     }
   }, [playheadTick]);
 
