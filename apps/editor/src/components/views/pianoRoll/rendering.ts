@@ -348,7 +348,7 @@ export function* iterateGridBeats(
     const firstBeat = Math.floor((rangeStart - segment.tick) / beatTicks);
     for (let beat = firstBeat; ; beat++) {
       const tick = segment.tick + beat * beatTicks;
-      if (tick > rangeEnd) break;
+      if (tick > rangeEnd || tick >= segmentEnd) break;
       yield { tick, isMeasure: beat % segment.numerator === 0 };
     }
   }

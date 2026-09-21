@@ -125,8 +125,11 @@ void main() {
 const stateByMesh = new WeakMap<THREE.Mesh, CircularMaterialState>();
 
 export function rgbFromHex(hex: number): Rgb {
-  const color = new THREE.Color(hex);
-  return [color.r, color.g, color.b];
+  return [
+    ((hex >> 16) & 0xff) / 0xff,
+    ((hex >> 8) & 0xff) / 0xff,
+    (hex & 0xff) / 0xff,
+  ];
 }
 
 export function setCircularMaterialState(

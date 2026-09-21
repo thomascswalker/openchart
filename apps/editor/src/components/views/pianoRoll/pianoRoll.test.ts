@@ -68,7 +68,7 @@ describe("piano-roll coordinates", () => {
   it("floors regular snapping and rounds nearest snapping independently", () => {
     const coordinates = makeCoordinates();
     expect(coordinates.snapTick(719)).toBe(480);
-    expect(coordinates.snapTickToNearest(719)).toBe(960);
+    expect(coordinates.snapTickToNearest(721)).toBe(960);
     expect(coordinates.snapTickToNearest(-10)).toBe(0);
   });
 

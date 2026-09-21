@@ -57,7 +57,7 @@ export function sustainWorldTransform(
   laneX: number,
   startZ: number,
   endZ: number,
-  laneWidth = 0.25,
+  laneWidth = HIGHWAY_GEOMETRY_CATALOG.sustain.transform.scale.x,
 ): { position: WorldPosition; scale: WorldPosition } {
   return {
     position: {

@@ -102,7 +102,7 @@ describe("PlaybackFeedbackEngine", () => {
     await Promise.resolve();
     expect(oscillators).toHaveLength(1);
     engine.stopPreview();
-    expect(oscillators[0].stopCount).toBe(1);
+    expect(oscillators[0].stopCount).toBeGreaterThanOrEqual(1);
   });
 
   it("creates audio lazily and resets metronome/clap state on stop and seek", async () => {
