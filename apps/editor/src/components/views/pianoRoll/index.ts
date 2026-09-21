@@ -5,7 +5,7 @@ import type {
   TimeSignatureChange,
 } from "@midiedit/core";
 import * as THREE from "three";
-import { AbstractChartView } from "../AbstractChartView";
+import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
 import { type Engine } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
@@ -113,7 +113,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return this.selection;
   }
 
-  public override update(state: import("../AbstractChartView").ChartViewState): void {
+  public override update(state: ChartViewState): void {
     const playbackStarted = !this.state.isPlaying && state.isPlaying;
     super.update(state);
     if (playbackStarted) {
