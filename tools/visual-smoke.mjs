@@ -43,6 +43,8 @@ async function collectDiagnostics(canvas) {
       rendererContextAttributes: element.dataset.threeContextAttributes ?? null,
       rendererGlError: element.dataset.threeGlError ?? null,
       sceneChildren: element.dataset.threeSceneChildren ?? null,
+      visibleNotes: element.dataset.threeVisibleNotes ?? null,
+      visibleSustains: element.dataset.threeVisibleSustains ?? null,
       renderCalls: element.dataset.threeRenderCalls ?? null,
       renderTriangles: element.dataset.threeRenderTriangles ?? null,
       webgl: true,
@@ -119,6 +121,10 @@ try {
     `${outputDirectory}/piano-roll-diagnostics.json`,
     JSON.stringify(await collectDiagnostics(canvas), null, 2),
   );
+  const pianoRollDiagnostics = await collectDiagnostics(canvas);
+  if (Number(pianoRollDiagnostics.visibleNotes) <= 0) {
+    throw new Error("Piano roll rendered no visible notes");
+  }
   await captureCanvasAndInterface(page, canvas, "piano-roll");
 
   await page
@@ -130,17 +136,31 @@ try {
     .locator(".midi-view-host canvas")
     .first()
     .waitFor({ state: "visible" });
+  const highwayCanvas = page.locator(".midi-view-host canvas").first();
+  await highwayCanvas.hover();
+  let highwayDiagnostics = await collectDiagnostics(highwayCanvas);
+  for (
+    let attempt = 0;
+    attempt < 24 && Number(highwayDiagnostics.visibleNotes) <= 0;
+    attempt += 1
+  ) {
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(100);
+    highwayDiagnostics = await collectDiagnostics(highwayCanvas);
+  }
+  if (Number(highwayDiagnostics.visibleNotes) <= 0) {
+    throw new Error("Highway rendered no visible notes");
+  }
+  if (Number(highwayDiagnostics.visibleSustains) <= 0) {
+    throw new Error("Highway rendered no visible sustains");
+  }
   await writeFile(
     `${outputDirectory}/highway-diagnostics.json`,
-    JSON.stringify(
-      await collectDiagnostics(page.locator(".midi-view-host canvas").first()),
-      null,
-      2,
-    ),
+    JSON.stringify(highwayDiagnostics, null, 2),
   );
   await captureCanvasAndInterface(
     page,
-    page.locator(".midi-view-host canvas").first(),
+    highwayCanvas,
     "highway",
   );
 } finally {

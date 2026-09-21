@@ -79,6 +79,12 @@ export class ThreeRenderEngine {
         pixels,
       );
       this.canvas.dataset.threeSceneChildren = String(scene.children.length);
+      this.canvas.dataset.threeVisibleNotes = String(
+        scene.userData.visibleNotes ?? 0,
+      );
+      this.canvas.dataset.threeVisibleSustains = String(
+        scene.userData.visibleSustains ?? 0,
+      );
       this.canvas.dataset.threeContextType = this.renderer.capabilities.isWebGL2
         ? "webgl2"
         : "webgl";

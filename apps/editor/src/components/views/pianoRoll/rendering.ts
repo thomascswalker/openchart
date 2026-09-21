@@ -194,6 +194,8 @@ export class PianoRollRenderer {
     if (!midi || !track) {
       this.geometry.clear();
       this.noteData.clear();
+      this.scene.userData.visibleNotes = 0;
+      this.scene.userData.visibleSustains = 0;
       return;
     }
     const camera = this.coordinates.getCamera();
@@ -234,6 +236,8 @@ export class PianoRollRenderer {
     const selection = this.context.getSelectionContext();
     const allSelected = selection.size > 0 && selection.size >= notes.length;
     const noneSelected = selection.size === 0;
+    this.scene.userData.visibleNotes = this.geometry.geometry.length;
+    this.scene.userData.visibleSustains = 0;
     for (const geometry of this.geometry.geometry) {
       const isSelected = allSelected
         ? true

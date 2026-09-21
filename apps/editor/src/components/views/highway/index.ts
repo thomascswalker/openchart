@@ -278,6 +278,8 @@ export class HighwayView
     const midi = this.state.midi;
     const chart = midi ? this.getActiveChart(midi) : null;
     if (!chart || !this.assetsReady || !this.materialSet) {
+      this.threeScene.userData.visibleNotes = 0;
+      this.threeScene.userData.visibleSustains = 0;
       this.hideAllObjects();
       return;
     }
@@ -333,6 +335,8 @@ export class HighwayView
         strikeLineZ,
       });
     }
+    this.threeScene.userData.visibleNotes = visibleNotes.length;
+    this.threeScene.userData.visibleSustains = usedTails.size;
 
     const usedGems = new Set<PooledNote>();
     for (const { note, lane } of visibleNotes) {
