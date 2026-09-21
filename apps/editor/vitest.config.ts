@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     fileParallelism: false,
+    include: ["src/**/*.test.tsx"],
     reporters: ["default", "hanging-process"],
     teardownTimeout: 10_000,
     browser: {

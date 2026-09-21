@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.unit.config.ts && vitest run --config vitest.config.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
