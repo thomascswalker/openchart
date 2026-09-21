@@ -22,8 +22,7 @@
     "test:views": "turbo run test --filter=@midiedit/views",
     "deploy:editor": "turbo run build --filter=@midiedit/editor^... && npm run deploy --workspace=@midiedit/editor",
     "storybook": "turbo run storybook --filter=@midiedit/editor",
-    "build-storybook": "turbo run build-storybook --filter=@midiedit/editor",
-    "prepare:highway-assets": "python3 tools/highway/prepare-highway-assets.py"
+    "build-storybook": "turbo run build-storybook --filter=@midiedit/editor"
   },
   "repository": {
     "type": "git",
