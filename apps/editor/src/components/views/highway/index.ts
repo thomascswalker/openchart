@@ -39,6 +39,10 @@ import {
   type InstancedTail,
 } from "./instances";
 import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
+import {
+  getHighwayWheelTick,
+  minimumMidiNoteDurationTicks,
+} from "./interaction";
 
 const defaultCameraPosition = { x: 0, y: 7, z: 7 };
 const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };
@@ -725,7 +729,11 @@ export class HighwayView
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
-    chart.addNote(location.lane as Note, location.tick, location.tick + 1);
+    chart.addNote(
+      location.lane as Note,
+      location.tick,
+      location.tick + minimumMidiNoteDurationTicks,
+    );
     this.onNotesChanged?.();
     this.render();
   };
@@ -820,9 +828,11 @@ export class HighwayView
 
   private readonly handleWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    const nextTick = Math.max(
-      0,
-      this.playheadTick - event.deltaY * this.getPpqn() * wheelTicksPerPixel,
+    const nextTick = getHighwayWheelTick(
+      this.playheadTick,
+      event.deltaY,
+      this.getPpqn(),
+      wheelTicksPerPixel,
     );
     this.setPlayheadTick(nextTick);
     this.onSeekRequest?.(nextTick);
