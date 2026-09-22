@@ -34,4 +34,12 @@ Object.entries(svgModules).forEach(([path, module]) => {
   Icons[`${componentName}Icon`] = makeIcon(module.default);
 });
 
-export const { CursorIcon, EraserIcon, NoteIcon, PencilIcon } = Icons;
+export const {
+  CursorIcon,
+  EraserIcon,
+  NoteIcon,
+  PencilIcon,
+  MagnetIcon,
+  PianoIcon,
+  Highway3dIcon,
+} = Icons;

@@ -3,13 +3,16 @@ import { Section } from "../shared/Section";
 import {
   CursorIcon,
   EraserIcon,
+  Highway3dIcon,
+  MagnetIcon,
   NoteIcon,
   PencilIcon,
+  PianoIcon,
 } from "../shared/Icon/Icon";
 
 const Toolbar = () => {
   return (
-    <Section padding="0" gap="0">
+    <Section padding="0px" gap="0px">
       <Button maxWidth={40} maxHeight={40} borderRadius={0}>
         <CursorIcon />
       </Button>
@@ -21,6 +24,15 @@ const Toolbar = () => {
       </Button>
       <Button maxWidth={40} maxHeight={40} borderRadius={0}>
         <PencilIcon />
+      </Button>
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <MagnetIcon />
+      </Button>{" "}
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <PianoIcon />
+      </Button>{" "}
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <Highway3dIcon />
       </Button>
     </Section>
   );

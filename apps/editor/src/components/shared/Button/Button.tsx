@@ -1,54 +1,32 @@
 import type { ReactNode } from "react";
 import classNames from "classnames";
+import { space, color, layout, compose, border } from "styled-system";
+import type {
+  SpaceProps,
+  ColorProps,
+  LayoutProps,
+  BorderProps,
+} from "styled-system";
 import styles from "./button.module.css";
-import type { StyleProps } from "../props";
 
-interface ButtonProps
-  extends React.HTMLAttributes<HTMLButtonElement>, StyleProps {
+interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   disabled?: boolean;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  className?: string;
   children?: ReactNode;
 }
+
+const systemStyles = compose(space, color, layout, border);
 
 const Button = ({
   disabled = false,
   onClick = () => {},
   className,
   children,
-  style,
-  /* layout */
-  maxWidth,
-  minWidth,
-  maxHeight,
-  minHeight,
-  flexDirection,
-  /* align */
-  alignItems,
-  justifyContent,
-  alignSelf,
-  justifyItems,
-  textAlign,
-  gap,
-  /* style */
-  borderRadius,
-  /* other */
   ...props
 }: ButtonProps) => {
-  const combined = {
-    maxWidth,
-    minWidth,
-    maxHeight,
-    minHeight,
-    flexDirection,
-    alignItems,
-    justifyContent,
-    alignSelf,
-    justifyItems,
-    textAlign,
-    gap,
-    borderRadius,
-    ...style,
-  };
+  const style = systemStyles(props);
+
   return (
     <button
       className={
@@ -58,8 +36,7 @@ const Button = ({
       }
       onClick={onClick}
       disabled={disabled}
-      style={combined}
-      {...props}
+      style={style}
     >
       {children}
     </button>
