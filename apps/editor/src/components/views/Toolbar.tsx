@@ -1,21 +1,26 @@
-import type { ComponentType, SVGProps } from "react";
 import { Button } from "../shared/Button";
 import { Section } from "../shared/Section";
-import Cursor from "../../assets/cursor.svg?react";
-
-interface IconProps {
-  svg: ComponentType<SVGProps<SVGSVGElement>>;
-}
-
-const Icon = ({ svg: Svg }: IconProps) => {
-  return <Svg width={24} height={24} />;
-};
+import {
+  CursorIcon,
+  EraserIcon,
+  NoteIcon,
+  PencilIcon,
+} from "../shared/Icon/Icon";
 
 const Toolbar = () => {
   return (
-    <Section padding="0px">
-      <Button>
-        <Icon svg={Cursor} />
+    <Section padding="0" gap="0">
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <CursorIcon />
+      </Button>
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <EraserIcon />
+      </Button>
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <NoteIcon />
+      </Button>
+      <Button maxWidth={40} maxHeight={40} borderRadius={0}>
+        <PencilIcon />
       </Button>
     </Section>
   );

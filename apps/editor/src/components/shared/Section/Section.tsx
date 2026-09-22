@@ -9,12 +9,14 @@ interface SectionProps extends HTMLAttributes<HTMLElement> {
   children?: ReactNode;
   padding?: string;
   margin?: string;
+  gap?: string;
 }
 
 const Section = ({
   direction = "row",
   padding,
   margin,
+  gap,
   role,
   className,
   style,
@@ -33,6 +35,7 @@ const Section = ({
         ...style,
         ...(padding === undefined ? {} : { padding }),
         ...(margin === undefined ? {} : { margin }),
+        ...(gap === undefined ? {} : { gap }),
       }}
       role={role}
       {...props}
