@@ -1,3 +1,16 @@
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0px;
+
+  border-radius: 0px;
+}
+
 .ui-button:hover:not(:disabled) {
   background: var(--neutral-70);
 }
@@ -8,14 +21,25 @@
   background: var(--neutral-90);
 }
 
+.ui-button-active {
+  background: var(--secondary);
+}
+
+.ui-button-active:hover:not(:disabled) {
+  background: var(--secondary-hover);
+}
+
 .ui-button-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 
+  min-width: 24px;
+  min-height: 24px;
   max-width: 24px;
   max-height: 24px;
-  padding: 4px;
+  padding: 0px;
 
   border: 1px solid transparent;
   border-radius: 4px;
