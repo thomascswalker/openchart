@@ -199,19 +199,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
             ))}
           </select>
 
-          <select
-            value={activeViewId}
-            onChange={(event) => {
-              setActiveViewId(event.target.value);
-            }}
-          >
-            {CHART_VIEWS.map((view) => (
-              <option key={view.id} value={view.id}>
-                {view.name}
-              </option>
-            ))}
-          </select>
-
           {isHighwayView && (
             <>
               <select
@@ -247,7 +234,10 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
         </div>
       </div>
 
-      <Toolbar />
+      <Toolbar
+        activeViewId={activeViewId}
+        onActiveViewChange={setActiveViewId}
+      />
       <div className="midi-view__body">
         <ChartViewHost
           createRenderer={activeView.createRenderer}
