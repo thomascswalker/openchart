@@ -148,7 +148,7 @@ export class PianoRollRenderer {
     const visibleEnd = this.coordinates.tickAtScreenX(
       this.context.getKeyboardWidth() + visibleWidth,
     );
-    this.drawSnapGrid(height, visibleStart, visibleEnd);
+    // this.drawSnapGrid(height, visibleStart, visibleEnd);
     const vertical: THREE.Vector3[] = [];
     const major: THREE.Vector3[] = [];
     for (const { tick, isMeasure } of iterateGridBeats(
@@ -173,7 +173,9 @@ export class PianoRollRenderer {
     visibleStart: number,
     visibleEnd: number,
   ): void {
-    if (!this.context.getState().snap.enabled) return;
+    if (!this.context.getState().snap.enabled) {
+      return;
+    }
     const ticksPerSnap = this.coordinates.getSnapTicks();
     if (!Number.isFinite(ticksPerSnap) || ticksPerSnap <= 0) return;
     const lines: THREE.Vector3[] = [];

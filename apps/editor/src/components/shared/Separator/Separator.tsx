@@ -1,6 +1,6 @@
 import type { Orientation } from "../props";
 
-const DEFAULT_THICKNESS = 2;
+const DEFAULT_THICKNESS = 1;
 
 interface SeparatorProps {
   orientation?: Orientation;

@@ -21,6 +21,14 @@
   background: var(--neutral-90);
 }
 
+.ui-button-active {
+  background: var(--secondary);
+}
+
+.ui-button-active:hover:not(:disabled) {
+  background: var(--secondary-hover);
+}
+
 .ui-button-close {
   display: inline-flex;
   align-items: center;

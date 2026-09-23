@@ -8,7 +8,6 @@ import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
 import { getCameraTickForPlayhead } from "./views/viewNavigation";
-import { SnapDenominators } from "./views/pianoRoll/constants";
 import Toolbar from "./views/Toolbar";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -33,6 +32,9 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     selectedDifficulty,
     setSelectedDifficulty,
     setSelectedInstrument,
+    activeViewId,
+    snapEnabled,
+    snapDenominator,
   } = useEditor();
   const {
     isPlaying,
@@ -44,9 +46,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
     setActiveView,
   } = usePlayback();
   const { markDirty } = useEditorCommands();
-  const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
-  const [snapEnabled, setSnapEnabled] = useState(true);
-  const [snapDenominator, setSnapDenominator] = useState(4);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
@@ -94,7 +93,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
       }
 
       event.preventDefault();
-      setSnapEnabled((enabled) => !enabled);
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -174,31 +172,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
         </div>
 
         <div className="midi-view__controls">
-          <label className="midi-view__snap">
-            <input
-              type="checkbox"
-              checked={snapEnabled}
-              onChange={(event) => {
-                setSnapEnabled(event.target.checked);
-              }}
-            />
-            Snap
-          </label>
-
-          <select
-            value={snapDenominator}
-            disabled={!snapEnabled}
-            onChange={(event) => {
-              setSnapDenominator(Number(event.target.value));
-            }}
-          >
-            {SnapDenominators.map((denominator) => (
-              <option key={denominator} value={denominator}>
-                1/{denominator}
-              </option>
-            ))}
-          </select>
-
           {isHighwayView && (
             <>
               <select
@@ -234,10 +207,7 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
         </div>
       </div>
 
-      <Toolbar
-        activeViewId={activeViewId}
-        onActiveViewChange={setActiveViewId}
-      />
+      <Toolbar />
       <div className="midi-view__body">
         <ChartViewHost
           createRenderer={activeView.createRenderer}

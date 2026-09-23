@@ -39,6 +39,11 @@
   --green-80: hsl(150, 90%, 20%);
   --green-90: hsl(150, 90%, 10%);
 
+  --primary: var(--neutral-80);
+  --primary-hover: var(--neutral-70);
+  --secondary: var(--blue-40);
+  --secondary-hover: var(--blue-30);
+
   /* Sizing */
   --size-large: 48px;
   --size-med: 24px;

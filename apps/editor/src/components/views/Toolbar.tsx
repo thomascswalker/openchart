@@ -1,66 +1,78 @@
-import { Button } from "../shared/Button";
+import { Button, type ButtonProps } from "../shared/Button";
 import { Section } from "../shared/Section";
 import {
-  CursorIcon,
-  EraserIcon,
   Highway3dIcon,
   MagnetIcon,
-  NoteIcon,
-  PencilIcon,
   PianoIcon,
+  type IconProps,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
+import { useEditor } from "../../context/EditorContext";
+import { SnapDenominators } from "../views/pianoRoll/constants";
 
-interface ToolbarProps {
-  activeViewId: string;
-  onActiveViewChange: (id: string) => void;
+interface ToolButtonProps extends ButtonProps {
+  Icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
 }
 
-const Toolbar = ({ activeViewId, onActiveViewChange }: ToolbarProps) => {
-  const activeBorder = "solid 1px #ff0000";
+const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
+  return (
+    <Button maxWidth={40} maxHeight={40} borderRadius={4} {...rest}>
+      <Icon />
+      {children}
+    </Button>
+  );
+};
+
+interface ToolbarProps {}
+
+const Toolbar = ({}: ToolbarProps) => {
+  const {
+    activeViewId,
+    setActiveViewId,
+    snapEnabled,
+    setSnapEnabled,
+    snapDenominator,
+    setSnapDenominator,
+  } = useEditor();
 
   return (
     <Section padding="4px" gap="4px">
       {/* View Selection */}
 
-      <Button
-        maxWidth={40}
-        maxHeight={40}
-        borderRadius={0}
-        border={activeViewId === "piano-roll" ? activeBorder : "none"}
-        onClick={() => onActiveViewChange("piano-roll")}
-      >
-        <PianoIcon />
-      </Button>
-      <Button
-        maxWidth={40}
-        maxHeight={40}
-        borderRadius={0}
-        border={activeViewId === "highway" ? activeBorder : "none"}
-        onClick={() => onActiveViewChange("highway")}
-      >
-        <Highway3dIcon />
-      </Button>
+      <ToolButton
+        Icon={PianoIcon}
+        active={activeViewId === "piano-roll"}
+        onClick={() => setActiveViewId("piano-roll")}
+      />
+      <ToolButton
+        Icon={Highway3dIcon}
+        active={activeViewId === "highway"}
+        onClick={() => setActiveViewId("highway")}
+      />
 
       <VerticalSeparator />
 
       {/* Tools */}
 
-      <Button maxWidth={40} maxHeight={40} borderRadius={0} border={"none"}>
-        <CursorIcon />
-      </Button>
-      <Button maxWidth={40} maxHeight={40} borderRadius={0} border={"none"}>
-        <EraserIcon />
-      </Button>
-      <Button maxWidth={40} maxHeight={40} borderRadius={0} border={"none"}>
-        <NoteIcon />
-      </Button>
-      <Button maxWidth={40} maxHeight={40} borderRadius={0} border={"none"}>
-        <PencilIcon />
-      </Button>
-      <Button maxWidth={40} maxHeight={40} borderRadius={0} border={"none"}>
-        <MagnetIcon />
-      </Button>
+      <ToolButton
+        Icon={MagnetIcon}
+        active={snapEnabled}
+        onClick={() => setSnapEnabled(!snapEnabled)}
+      />
+      <select
+        value={snapDenominator}
+        disabled={!snapEnabled}
+        onChange={(event) => {
+          setSnapDenominator(Number(event.target.value));
+        }}
+        style={{ maxWidth: "60px" }}
+      >
+        {SnapDenominators.map((denominator) => (
+          <option key={denominator} value={denominator}>
+            1/{denominator}
+          </option>
+        ))}
+      </select>
     </Section>
   );
 };

@@ -5,7 +5,7 @@ const svgModules = import.meta.glob("../../../assets/*.svg", {
   eager: true,
 }) as Record<string, { default: ComponentType<SVGProps<SVGSVGElement>> }>;
 
-interface IconProps {
+export interface IconProps {
   svg: ComponentType<SVGProps<SVGSVGElement>>;
   width?: number;
   height?: number;

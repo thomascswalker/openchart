@@ -5,6 +5,7 @@ import {
   createProjectMetadata,
   type ProjectMetadata,
 } from "../project/projectMetadata";
+import { CHART_VIEWS } from "../components/views/ChartViews";
 import type { ProviderProps } from "./shared";
 
 // Define the shape of our global state
@@ -32,6 +33,15 @@ interface EditorContextType {
 
   selectedDifficulty: Difficulty;
   setSelectedDifficulty: (difficulty: Difficulty) => void;
+
+  activeViewId: string;
+  setActiveViewId: (id: string) => void;
+
+  snapEnabled: boolean;
+  setSnapEnabled: (enabled: boolean) => void;
+
+  snapDenominator: number;
+  setSnapDenominator: (denominator: number) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -53,6 +63,9 @@ export function EditorProvider({ children }: ProviderProps) {
     Difficulty.Expert,
   );
   const [trackCount, setTrackCount] = useState<number>(0);
+  const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [snapDenominator, setSnapDenominator] = useState(4);
 
   const handleMidiDataChanged = (data: Midi) => {
     setMidiData(data);
@@ -78,6 +91,12 @@ export function EditorProvider({ children }: ProviderProps) {
         setSelectedDifficulty,
         trackCount,
         setTrackCount,
+        activeViewId,
+        setActiveViewId,
+        snapEnabled,
+        setSnapEnabled,
+        snapDenominator,
+        setSnapDenominator,
       }}
     >
       {children}

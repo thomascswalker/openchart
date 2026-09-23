@@ -11,6 +11,7 @@ import styles from "./button.module.css";
 
 interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   disabled?: boolean;
+  active?: boolean;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   className?: string;
   children?: ReactNode;
@@ -20,6 +21,7 @@ const systemStyles = compose(space, color, layout, border);
 
 const Button = ({
   disabled = false,
+  active = false,
   onClick = () => {},
   className,
   children,
@@ -29,13 +31,13 @@ const Button = ({
 
   return (
     <button
-      className={
-        className
-          ? classNames(styles[className])
-          : classNames(styles["ui-button"])
-      }
+      className={classNames(
+        className ? styles[className] : styles["ui-button"],
+        active && styles["ui-button-active"],
+      )}
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={active}
       style={style}
     >
       {children}
