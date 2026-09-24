@@ -14,6 +14,7 @@ export interface ApplicationSettings {
   audio: {
     rootPath: string;
     multitrack: boolean;
+    mode: "single" | "multitrack";
   };
   feedback: {
     metronomeEnabled: boolean;
@@ -34,6 +35,9 @@ export interface ApplicationSettings {
     bassRegex: string;
     drumsRegex: string;
     vocalsRegex: string;
+    harmoniesRegex: string;
+    synthRegex: string;
+    otherRegex: string;
   };
   saving: {
     defaultSaveMode: "project" | "midi";
@@ -42,7 +46,7 @@ export interface ApplicationSettings {
 
 export const defaultApplicationSettings: ApplicationSettings = {
   version: APPLICATION_SETTINGS_VERSION,
-  audio: { rootPath: "~", multitrack: false },
+  audio: { rootPath: "~", multitrack: false, mode: "single" },
   feedback: {
     metronomeEnabled: false,
     metronomeVolume: 0.35,
@@ -63,6 +67,9 @@ export const defaultApplicationSettings: ApplicationSettings = {
     bassRegex: "bass",
     drumsRegex: "drums",
     vocalsRegex: "vocals",
+    harmoniesRegex: "harmonies",
+    synthRegex: "synth",
+    otherRegex: "other",
   },
   saving: { defaultSaveMode: "project" },
 };
@@ -76,6 +83,9 @@ export function validateApplicationSettings(
   }
   if (!settings.audio.rootPath.trim()) {
     errors.rootPath = "Audio Path is required.";
+  }
+  if (settings.audio.mode !== undefined && settings.audio.mode !== "single" && settings.audio.mode !== "multitrack") {
+    errors.audioMode = "Choose a supported audio mode.";
   }
   if (
     !Number.isFinite(settings.feedback.metronomeVolume) ||
@@ -148,7 +158,7 @@ function readSettings(): ApplicationSettings {
         ([key]) => key !== "highwayClapEnabled" && key !== "highwayClapVolume",
       ),
     );
-    const merged: ApplicationSettings = {
+  const merged: ApplicationSettings = {
       ...defaultApplicationSettings,
       ...parsed,
       audio: { ...defaultApplicationSettings.audio, ...parsed.audio },
@@ -159,6 +169,7 @@ function readSettings(): ApplicationSettings {
       },
       saving: { ...defaultApplicationSettings.saving, ...parsed.saving },
     };
+    merged.audio.mode = merged.audio.multitrack ? "multitrack" : "single";
     return Object.keys(validateApplicationSettings(merged)).length === 0
       ? merged
       : defaultApplicationSettings;

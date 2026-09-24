@@ -8,6 +8,40 @@ import {
 import { CHART_VIEWS } from "../components/views/ChartViews";
 import type { ProviderProps } from "./shared";
 
+export type ViewportKind = "piano-roll" | "highway";
+
+export interface ViewportCameraState {
+  tick: number;
+  pianoRoll?: unknown;
+  highway?: unknown;
+}
+
+export interface ViewportSession {
+  id: string;
+  view: ViewportKind;
+  trackKey: string;
+  instrument: string;
+  difficulty: Difficulty;
+  camera: ViewportCameraState;
+}
+
+const DEFAULT_VIEWPORT_ID = "viewport-1";
+const DEFAULT_TRACK_KEY = "lead-guitar";
+
+function createViewportSession(
+  id: string,
+  view: ViewportKind = "piano-roll",
+): ViewportSession {
+  return {
+    id,
+    view,
+    trackKey: DEFAULT_TRACK_KEY,
+    instrument: "LEAD GUITAR",
+    difficulty: Difficulty.Expert,
+    camera: { tick: 0 },
+  };
+}
+
 // Define the shape of our global state
 interface EditorContextType {
   midiData: Midi | null;
@@ -42,12 +76,25 @@ interface EditorContextType {
 
   snapDenominator: number;
   setSnapDenominator: (denominator: number) => void;
+
+  viewportSessions: readonly ViewportSession[];
+  activeViewportId: string;
+  maxViewportCount: number;
+  setMaxViewportCount: (count: number) => void;
+  addViewport: (view?: ViewportKind) => string | null;
+  closeViewport: (id: string) => boolean;
+  focusViewport: (id: string) => void;
+  updateViewport: (
+    id: string,
+    update: Partial<Omit<ViewportSession, "id">>,
+  ) => void;
+  getViewport: (id: string) => ViewportSession | undefined;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: ProviderProps) {
-  const [midiData, setMidiData] = useState<Midi>(new Midi());
+  const [midiData, setMidiData] = useState<Midi | null>(new Midi());
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
     null,
@@ -64,12 +111,80 @@ export function EditorProvider({ children }: ProviderProps) {
   );
   const [trackCount, setTrackCount] = useState<number>(0);
   const [activeViewId, setActiveViewId] = useState(CHART_VIEWS[0].id);
+  const [viewportSessions, setViewportSessions] = useState<ViewportSession[]>([
+    createViewportSession(DEFAULT_VIEWPORT_ID),
+  ]);
+  const [activeViewportId, setActiveViewportId] =
+    useState(DEFAULT_VIEWPORT_ID);
+  const [maxViewportCount, setMaxViewportCountState] = useState(4);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
 
   const handleMidiDataChanged = (data: Midi) => {
     setMidiData(data);
     setTrackCount(data.tracks.length);
+  };
+
+  const setMaxViewportCount = (count: number): void => {
+    const next = Math.max(1, Math.min(4, Math.floor(count)));
+    setMaxViewportCountState(next);
+    setViewportSessions((sessions) => {
+      const remaining = sessions.slice(0, next);
+      if (!remaining.some((session) => session.id === activeViewportId)) {
+        setActiveViewportId(remaining[0]?.id ?? DEFAULT_VIEWPORT_ID);
+      }
+      return remaining;
+    });
+  };
+
+  const addViewport = (view: ViewportKind = "piano-roll"): string | null => {
+    let created: string | null = null;
+    setViewportSessions((sessions) => {
+      if (sessions.length >= maxViewportCount) return sessions;
+      created = `viewport-${Date.now()}-${sessions.length + 1}`;
+      return [...sessions, createViewportSession(created, view)];
+    });
+    if (created) setActiveViewportId(created);
+    return created;
+  };
+
+  const closeViewport = (id: string): boolean => {
+    let closed = false;
+    setViewportSessions((sessions) => {
+      if (sessions.length <= 1 || !sessions.some((session) => session.id === id)) {
+        return sessions;
+      }
+      closed = true;
+      const remaining = sessions.filter((session) => session.id !== id);
+      if (activeViewportId === id) setActiveViewportId(remaining[0].id);
+      return remaining;
+    });
+    return closed;
+  };
+
+  const focusViewport = (id: string): void => {
+    setActiveViewportId(id);
+    const session = viewportSessions.find((item) => item.id === id);
+    if (session) setActiveViewId(session.view);
+  };
+
+  const updateViewport = (
+    id: string,
+    update: Partial<Omit<ViewportSession, "id">>,
+  ): void => {
+    setViewportSessions((sessions) =>
+      sessions.map((session) =>
+        session.id === id
+          ? {
+              ...session,
+              ...update,
+              camera: update.camera
+                ? { ...session.camera, ...update.camera }
+                : session.camera,
+            }
+          : session,
+      ),
+    );
   };
 
   return (
@@ -97,6 +212,15 @@ export function EditorProvider({ children }: ProviderProps) {
         setSnapEnabled,
         snapDenominator,
         setSnapDenominator,
+        viewportSessions,
+        activeViewportId,
+        maxViewportCount,
+        setMaxViewportCount,
+        addViewport,
+        closeViewport,
+        focusViewport,
+        updateViewport,
+        getViewport: (id) => viewportSessions.find((item) => item.id === id),
       }}
     >
       {children}

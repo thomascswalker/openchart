@@ -1,113 +1,69 @@
+import { SongView } from "@midiedit/views";
 import { useEditor } from "../context/EditorContext";
-import { usePlayback } from "../context/PlaybackContextStore";
-import { useEditorCommands } from "../commands/EditorCommand";
 import "./styles.css";
-import { CloseButton } from "./shared/Button";
 
-export function TrackList() {
-  const { midiData, selectedTrackIndex, setSelectedTrackIndex, setTrackCount } =
-    useEditor();
+interface TrackListProps {
+  viewportId: string;
+}
 
-  const { refresh } = usePlayback();
-  const { markDirty } = useEditorCommands();
+/** Config-driven track projection used by piano-roll panels. */
+export function TrackList({ viewportId }: TrackListProps) {
+  const { midiData, viewportSessions, updateViewport, focusViewport } = useEditor();
+  const session = viewportSessions.find((item) => item.id === viewportId);
+  const songView = midiData ? new SongView(midiData) : null;
+  const allDescriptors = songView?.getTrackDescriptors() ?? [];
+  const descriptors = allDescriptors.filter((item) => item.visible && item.name !== "CHART HEADER");
+  const configuredNames = new Set(allDescriptors.map((item) => item.name));
+  const unmapped = midiData?.tracks.filter((track) => !configuredNames.has(track.name)) ?? [];
 
-  if (!midiData) {
-    return (
-      <section className="arrangement">
-        <div className="arrangement__header">
-          <strong>Tracks</strong>
-        </div>
-        <div className="track-list track-list--empty">No MIDI file loaded.</div>
-      </section>
-    );
-  }
-
-  const handleAddTrack = (): void => {
-    const newIndex = midiData.addTrack();
-    setTrackCount(midiData.tracks.length);
-    setSelectedTrackIndex(newIndex);
-    markDirty();
-  };
-
-  const handleDeleteTrack = (index: number): void => {
-    const newLength = midiData.removeTrack(index);
-    setTrackCount(newLength);
-    if (newLength === 0) {
-      setSelectedTrackIndex(null);
-    } else if (selectedTrackIndex !== null) {
-      if (selectedTrackIndex === index) {
-        setSelectedTrackIndex(Math.min(index, newLength - 1));
-      } else if (selectedTrackIndex > index) {
-        setSelectedTrackIndex(selectedTrackIndex - 1);
-      }
-    }
-    refresh();
-    markDirty();
-  };
-
-  const trackCount = midiData.tracks.length;
+  if (!session) return null;
 
   return (
-    <section className="arrangement">
+    <aside className="arrangement piano-roll-track-list" aria-label="Configured tracks">
       <div className="arrangement__header">
         <strong>Tracks</strong>
-        <span className="arrangement__metadata">
-          {trackCount} {trackCount === 1 ? "track" : "tracks"}
-        </span>
+        <span className="arrangement__metadata">{descriptors.length + unmapped.length}</span>
       </div>
-
       <div className="track-list">
-        {midiData.tracks.map((track, index) => {
-          const selected = selectedTrackIndex === index;
-
+        {descriptors.map((descriptor, index) => {
+          const selected = session.trackKey === descriptor.key;
           return (
-            <div
-              key={index}
-              className={
-                selected ? "track-row track-row--selected" : "track-row"
-              }
+            <button
+              type="button"
+              key={descriptor.key}
+              className={selected ? "track-row track-row--selected" : "track-row"}
               onClick={() => {
-                setSelectedTrackIndex(index);
+                focusViewport(viewportId);
+                updateViewport(viewportId, { trackKey: descriptor.key, instrument: descriptor.name });
               }}
+              aria-pressed={selected}
             >
-              <div className="track-row__header">
+              <span className="track-row__header">
                 <span className="track-row__number">{index + 1}</span>
-                <span className="track-row__name">
-                  {track.name || `Track ${index + 1}`}
-                </span>
-                <CloseButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteTrack(index);
-                  }}
-                />
-              </div>
-            </div>
+                <span className="track-row__name">{descriptor.name}</span>
+              </span>
+            </button>
           );
         })}
-        <div
-          className="track-row track-row--preview"
-          onClick={handleAddTrack}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleAddTrack();
-            }
-          }}
-          title="Add Track"
-        >
-          <div className="track-row__header">
-            <span className="track-row__number track-row__number--preview">
-              +
+        {unmapped.map((track, index) => (
+          <button
+            type="button"
+            key={`unmapped-${index}`}
+            className="track-row"
+            onClick={() => {
+              focusViewport(viewportId);
+              updateViewport(viewportId, { trackKey: `unmapped-${index}`, instrument: track.name });
+            }}
+            aria-label={`Unmapped track ${track.name || index + 1}`}
+          >
+            <span className="track-row__header">
+              <span className="track-row__number">?</span>
+              <span className="track-row__name">{track.name || `Track ${index + 1}`} (Other)</span>
             </span>
-            <span className="track-row__name track-row__name--preview">
-              Add Track
-            </span>
-          </div>
-        </div>
+          </button>
+        ))}
+        {!descriptors.length && !unmapped.length ? <div className="track-list--empty">No MIDI file loaded.</div> : null}
       </div>
-    </section>
+    </aside>
   );
 }

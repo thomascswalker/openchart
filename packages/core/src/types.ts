@@ -122,6 +122,24 @@ export interface TimedMidiEvent {
   order: number;
 }
 
+/** Stable identity for an event within a track. Object identity remains the
+ * source of truth; this id is only used by editors and serialized UI state. */
+export type MidiEventId = string;
+
+export type TextMetaType =
+  | MetaType.TextEvent
+  | MetaType.Copyright
+  | MetaType.TrackName
+  | MetaType.InstrumentName
+  | MetaType.Lyric
+  | MetaType.Marker
+  | MetaType.CuePoint;
+
+export interface TextMidiEvent extends MidiMetaEvent {
+  type: TextMetaType;
+  data: TextMetaPayload;
+}
+
 export interface Marker {
   hovered?: boolean;
   selected?: boolean;

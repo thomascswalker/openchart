@@ -1,17 +1,31 @@
 import { Midi, MidiNote, MidiTrack } from "@midiedit/core";
 import {
   defaultConfig,
+  describeTrack,
   InstrumentTrackViewConfig,
   SongViewConfig,
+  TrackDescriptor,
   TrackViewConfig,
 } from "./config.js";
 
-type Instrument = "LEAD GUITAR" | "RHYTHM GUITAR" | "DRUMS" | "VOCALS";
+type Instrument =
+  | "LEAD GUITAR"
+  | "RHYTHM GUITAR"
+  | "BASS"
+  | "DRUMS"
+  | "VOCALS"
+  | "HARMONIES"
+  | "SYNTH"
+  | "OTHER";
 enum InstrumentType {
   Lead = "LEAD GUITAR",
   Groove = "RHYTHM GUITAR",
+  Bass = "BASS",
   Drums = "DRUMS",
   Vocals = "VOCALS",
+  Harmonies = "HARMONIES",
+  Synth = "SYNTH",
+  Other = "OTHER",
 }
 
 enum Difficulty {
@@ -73,25 +87,23 @@ export class ChartView {
   public getNotes(): MidiNote[] {
     const low = this.offset;
     const high = this.offset + this.lanes;
-    if (!this.midiTrack) {
-      throw new Error("MIDI Track is invalid!");
-    }
-    return this.midiTrack?.getNotes({ pitch: { low, high } }) || [];
+    return this.midiTrack?.getNotes({ pitch: { low, high } }) ?? [];
   }
 
   public addNote(note: Note, start: number, end: number = 0): void {
     if (
-      !this.midiTrack ||
       !Number.isInteger(start) ||
       !Number.isInteger(end) ||
       start < 0 ||
-      end <= start ||
+      (end !== 0 && end < start) ||
       note < 0 ||
       note >= this.lanes
     ) {
       return;
     }
 
+    this.midiTrack ??= this.getSong().ensureMidiTrack(this.track.getKey());
+    if (!this.midiTrack) return;
     this.getSong().attachTrack(this.midiTrack);
     const pitch = this.offset + note;
     const insertAt = this.midiTrack.getInsertionIndexAt(start);
@@ -102,7 +114,7 @@ export class ChartView {
       pitch,
       startDelta,
       100,
-      (end > 0 ? end : 240) - start,
+      Math.max(1, (end > start ? end : start + 1) - start),
       insertAt,
     );
   }
@@ -158,12 +170,12 @@ export class ChartView {
 
 class TrackView {
   protected song: SongView;
-  protected track: MidiTrack;
+  protected track: MidiTrack | undefined;
   protected validator: (track: MidiTrack) => boolean;
 
   constructor(
     song: SongView,
-    midiTrack: MidiTrack,
+    midiTrack: MidiTrack | undefined,
     validator: (midiTrack: MidiTrack) => boolean = () => {
       return true;
     },
@@ -174,14 +186,23 @@ class TrackView {
   }
 
   public isValid(): boolean {
-    if (typeof this.track === "undefined") {
-      return false;
-    }
-    return this.validator(this.track);
+    return this.track !== undefined && this.validator(this.track);
   }
 
   public getSong(): SongView {
     return this.song;
+  }
+
+  public getKey(): string {
+    return describeTrack({
+      name: this.track?.name || "",
+      type: "global",
+      notes: {},
+    }).key;
+  }
+
+  public getMidiTrack(): MidiTrack | undefined {
+    return this.track;
   }
 }
 
@@ -196,7 +217,7 @@ export class InstrumentTrackView extends TrackView {
 
   constructor(
     song: SongView,
-    midiTrack: MidiTrack,
+    midiTrack: MidiTrack | undefined,
     config: InstrumentTrackViewConfig,
     validator: (midiTrack: MidiTrack) => boolean = () => {
       return true;
@@ -209,34 +230,42 @@ export class InstrumentTrackView extends TrackView {
       this,
       this.track,
       Difficulty.Expert,
-      config.offsets.expert,
+      config.offsets?.expert || 0,
       config.noteCount,
     );
     this.hard = new ChartView(
       this,
       this.track,
       Difficulty.Hard,
-      config.offsets.hard,
+      config.offsets?.hard || 0,
       config.noteCount,
     );
     this.medium = new ChartView(
       this,
       this.track,
       Difficulty.Medium,
-      config.offsets.medium,
+      config.offsets?.medium || 0,
       config.noteCount,
     );
     this.easy = new ChartView(
       this,
       this.track,
       Difficulty.Easy,
-      config.offsets.easy,
+      config.offsets?.easy || 0,
       config.noteCount,
     );
   }
 
   public getName(): string {
-    return this.track.name;
+    return this.config.name;
+  }
+
+  public override getKey(): string {
+    return describeTrack(this.config).key;
+  }
+
+  public getMidiTrack(): MidiTrack | undefined {
+    return this.track;
   }
 
   public getChart(difficulty: Difficulty) {
@@ -273,13 +302,7 @@ class SongView {
   public sync(): void {
     this.instruments = [];
     this.config.tracks.forEach((def: TrackViewConfig) => {
-      // Attempt to find the existing MIDI track
-      let midiTrack = this.midi.getTrack(def.name);
-
-      // If it doesn't exist, make a new one
-      if (!midiTrack) {
-        midiTrack = new MidiTrack(def.name);
-      }
+      const midiTrack = this.midi.getTrack(def.name);
 
       // Initialize the respective track view for the MIDI track
       switch (def.type) {
@@ -305,7 +328,9 @@ class SongView {
   public getInstrumentTrackView(
     instrument: string | Instrument,
   ): InstrumentTrackView | undefined {
-    return this.instruments.find((v) => v.getName() === instrument);
+    return this.instruments.find(
+      (v) => v.getName() === instrument || v.getKey() === instrument,
+    );
   }
 
   public getInstrumentTrackViews(): readonly InstrumentTrackView[] {
@@ -316,6 +341,44 @@ class SongView {
     if (!this.midi.tracks.includes(track)) {
       this.midi.tracks.push(track);
     }
+  }
+
+  public getTrackDescriptors(): readonly TrackDescriptor[] {
+    return this.config.tracks.map(describeTrack);
+  }
+
+  public getVisibleTrackDescriptors(): readonly TrackDescriptor[] {
+    return this.getTrackDescriptors().filter(
+      (descriptor) => descriptor.visible && descriptor.name !== "CHART HEADER",
+    );
+  }
+
+  public getMidiTrack(
+    descriptor: string | TrackDescriptor,
+  ): MidiTrack | undefined {
+    const key = typeof descriptor === "string" ? descriptor : descriptor.key;
+    const config = this.getTrackDescriptors().find((item) => item.key === key);
+    return config ? this.midi.getTrack(config.name) : undefined;
+  }
+
+  /** Materialize a configured track only for an intentional edit. */
+  public ensureMidiTrack(key: string): MidiTrack | undefined {
+    const descriptor = this.getTrackDescriptors().find(
+      (item) => item.key === key,
+    );
+    if (!descriptor || descriptor.name === "CHART HEADER") return undefined;
+    const existing = this.midi.getTrack(descriptor.name);
+    if (existing) return existing;
+    const track = new MidiTrack(descriptor.name);
+    track.format = this.midi.header.format;
+    this.midi.tracks.push(track);
+    this.sync();
+    return this.midi.getTrack(descriptor.name);
+  }
+
+  public getUnmappedMidiTracks(): readonly MidiTrack[] {
+    const names = new Set(this.getTrackDescriptors().map((item) => item.name));
+    return this.midi.tracks.filter((track) => !names.has(track.name));
   }
 }
 

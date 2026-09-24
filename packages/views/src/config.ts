@@ -7,7 +7,14 @@ const TrackViewTypeSchema = z.union([
   z.literal("instrument"),
 ]);
 
-const BaseTrackViewConfigSchema = z.object({
+const TrackIdentitySchema = z.object({
+  key: z.string().min(1).optional(),
+  visible: z.boolean().optional(),
+  editable: z.boolean().optional(),
+  role: z.string().optional(),
+});
+
+const BaseTrackViewConfigSchema = TrackIdentitySchema.extend({
   name: z.string(),
   type: TrackViewTypeSchema,
   noteCount: z.optional(z.number().int()),
@@ -18,13 +25,15 @@ const GlobalViewConfigSchema = BaseTrackViewConfigSchema.extend({
 });
 
 const InstrumentTrackViewConfigSchema = BaseTrackViewConfigSchema.extend({
-  offsets: z.object({
-    expert: z.number().int(),
-    hard: z.number().int(),
-    medium: z.number().int(),
-    easy: z.number().int(),
-  }),
-  noteCount: z.number().int(),
+  offsets: z.optional(
+    z.object({
+      expert: z.number().int().default(96),
+      hard: z.number().int().default(84),
+      medium: z.number().int().default(72),
+      easy: z.number().int().default(60),
+    }),
+  ),
+  noteCount: z.number().int().default(5),
   notes: z.record(z.string(), z.number()),
 });
 const TrackViewConfigSchema = z.union([
@@ -44,11 +53,40 @@ export type InstrumentTrackViewConfig = z.infer<
 export type TrackViewConfig = z.infer<typeof TrackViewConfigSchema>;
 export type SongViewConfig = z.infer<typeof SongViewConfigSchema>;
 
+export interface TrackDescriptor {
+  key: string;
+  name: string;
+  type: "global" | "animation" | "instrument";
+  visible: boolean;
+  editable: boolean;
+  role?: string;
+  config: TrackViewConfig;
+}
+
+export function trackKeyForName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function describeTrack(config: TrackViewConfig): TrackDescriptor {
+  return {
+    key: config.key ?? trackKeyForName(config.name),
+    name: config.name,
+    type: config.type,
+    visible: config.visible ?? config.name !== "CHART HEADER",
+    editable: config.editable ?? config.type === "instrument",
+    role: config.role,
+    config,
+  };
+}
+
 export function loadConfig(content: string): SongViewConfig | undefined {
   const data = JSON.parse(content);
   try {
-    SongViewConfigSchema.parse(data);
-    return data as SongViewConfig;
+    return SongViewConfigSchema.parse(data) as SongViewConfig;
   } catch (e) {
     console.error(`Failed to parse config: ${e}`);
     return undefined;

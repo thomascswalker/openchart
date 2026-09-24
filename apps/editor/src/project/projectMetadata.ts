@@ -29,6 +29,16 @@ export interface ProjectMetadata {
     Harmony: number;
   };
   Credits: { Publisher: string; Writer: string };
+  /** Portable audio references only; browser File objects and object URLs are
+   * intentionally kept out of project archives. */
+  Audio?: {
+    Mode: "single" | "multitrack";
+    Sources: Partial<Record<"single" | "lead" | "rhythm" | "bass" | "drums" | "vocals" | "harmonies" | "synth" | "other", {
+      FileName: string;
+      Enabled: boolean;
+      Volume: number;
+    }>>;
+  };
 }
 
 export interface ProjectValidationIssue {
@@ -196,8 +206,32 @@ export function validateProjectMetadata(value: unknown): ProjectMetadata {
     Writer: stringAt(credits, "Writer", "$.Credits", issues),
   };
 
+  let Audio: ProjectMetadata["Audio"];
+  if (value.Audio !== undefined) {
+    const audio = objectAt(value, "Audio", "$", issues);
+    const mode = audio.Mode;
+    if (mode !== "single" && mode !== "multitrack") {
+      issue(issues, "$.Audio.Mode", "must be single or multitrack");
+    }
+    const sources = objectAt(audio, "Sources", "$.Audio", issues);
+    const normalized: NonNullable<ProjectMetadata["Audio"]>["Sources"] = {};
+    for (const [role, raw] of Object.entries(sources)) {
+      if (!isRecord(raw)) {
+        issue(issues, `$.Audio.Sources.${role}`, "must be an object");
+        continue;
+      }
+      const fileName = stringAt(raw, "FileName", `$.Audio.Sources.${role}`, issues);
+      const enabled = raw.Enabled;
+      const volume = raw.Volume;
+      if (typeof enabled !== "boolean") issue(issues, `$.Audio.Sources.${role}.Enabled`, "must be a boolean");
+      if (typeof volume !== "number" || volume < 0 || volume > 1) issue(issues, `$.Audio.Sources.${role}.Volume`, "must be between 0 and 1");
+      (normalized as Record<string, unknown>)[role] = { FileName: fileName, Enabled: enabled === true, Volume: typeof volume === "number" ? volume : 1 };
+    }
+    Audio = { Mode: mode === "multitrack" ? "multitrack" : "single", Sources: normalized };
+  }
+
   if (issues.length > 0) throw new ProjectValidationError(issues);
-  return { Version: version, ID: id, Song, Chart, Difficulty, Credits };
+  return { Version: version, ID: id, Song, Chart, Difficulty, Credits, ...(Audio ? { Audio } : {}) };
 }
 
 function generateProjectId(): string {

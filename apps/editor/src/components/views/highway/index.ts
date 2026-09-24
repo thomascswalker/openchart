@@ -1,4 +1,5 @@
 import type { Midi, MidiChannelEvent, MidiNote } from "@midiedit/core";
+import { findSection } from "@midiedit/views";
 import { ChartView, Note, SongView } from "@midiedit/views";
 import * as THREE from "three";
 import {
@@ -69,7 +70,9 @@ interface InstancedBeatLine {
 
 interface DragState {
   pointerId: number;
+  button: 0 | 2;
   noteOn: MidiChannelEvent;
+  noteOns: MidiChannelEvent[];
   initialLane: number;
   initialTick: number;
   pointerLane: number;
@@ -193,6 +196,7 @@ export class HighwayView
 
   protected override onMounted(engine: Engine): void {
     this.canvas = engine.canvas;
+    this.canvas.tabIndex = 0;
     this.threeCamera.position.set(
       defaultCameraPosition.x,
       defaultCameraPosition.y,
@@ -214,6 +218,7 @@ export class HighwayView
 
     this.canvas.style.touchAction = "none";
     this.canvas.addEventListener("click", this.handleClick);
+    this.canvas.addEventListener("keydown", this.handleKeyDown);
     this.canvas.addEventListener("contextmenu", this.handleContextMenu);
     this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
@@ -396,6 +401,7 @@ export class HighwayView
 
   public override destroy(): void {
     this.canvas?.removeEventListener("click", this.handleClick);
+    this.canvas?.removeEventListener("keydown", this.handleKeyDown);
     this.canvas?.removeEventListener("contextmenu", this.handleContextMenu);
     this.canvas?.removeEventListener("wheel", this.handleWheel);
     this.canvas?.removeEventListener("pointerdown", this.handlePointerDown);
@@ -740,19 +746,12 @@ export class HighwayView
 
   private readonly handleContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
-    if (!this.canEditNotes) {
-      return;
-    }
-    const chart = this.getCurrentChart();
-    const note = chart ? this.getNoteAt(chart, event) : undefined;
-    if (!chart || !note || !chart.removeNote(note)) return;
-    if (note.noteOn === this.selectedNoteOn) this.selectedNoteOn = null;
-    this.onNotesChanged?.();
-    this.render();
+    this.canvas?.focus();
   };
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (!this.canEditNotes || event.button !== 0) return;
+    if (!this.canEditNotes || (event.button !== 0 && event.button !== 2))
+      return;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
@@ -763,12 +762,18 @@ export class HighwayView
       return;
     }
     event.preventDefault();
+    this.canvas?.focus();
     this.suppressNextClick = true;
     this.selectedNoteOn = note.noteOn;
     this.ghostNoteLocation = null;
     this.drag = {
       pointerId: event.pointerId,
+      button: event.button as 0 | 2,
       noteOn: note.noteOn,
+      noteOns: chart
+        .getNotes()
+        .filter((candidate) => candidate.start === note.start)
+        .map((candidate) => candidate.noteOn),
       initialLane: note.note - chart.getOffset(),
       initialTick: note.start,
       pointerLane: location.lane,
@@ -794,19 +799,39 @@ export class HighwayView
       ?.getNotes()
       .find((value) => value.noteOn === drag.noteOn);
     if (!chart || !location || !note) return;
-    const changed = drag.resizing
-      ? chart.setNoteEnd(note, Math.max(note.start + 1, location.tick))
-      : chart.moveNote(
-          note,
-          Math.max(
-            Note.Green,
-            Math.min(
-              Note.Orange,
-              drag.initialLane + location.lane - drag.pointerLane,
-            ),
-          ) as Note,
-          this.snapTick(drag.initialTick + location.tick - drag.pointerTick),
-        );
+    const targetTick = this.snapTick(
+      drag.initialTick + location.tick - drag.pointerTick,
+    );
+    const targetLane = Math.max(
+      Note.Green,
+      Math.min(
+        Note.Orange,
+        drag.initialLane + location.lane - drag.pointerLane,
+      ),
+    ) as Note;
+    const notes = chart
+      .getNotes()
+      .filter((candidate) => drag.noteOns.includes(candidate.noteOn));
+    let changed = false;
+    for (const candidate of notes) {
+      const candidateLane = Math.max(
+        Note.Green,
+        Math.min(
+          Note.Orange,
+          candidate.note - chart.getOffset() + location.lane - drag.pointerLane,
+        ),
+      ) as Note;
+      changed = drag.resizing
+        ? chart.setNoteEnd(
+            candidate,
+            Math.max(candidate.start + 1, location.tick),
+          ) || changed
+        : chart.moveNote(
+            candidate,
+            drag.noteOn === candidate.noteOn ? targetLane : candidateLane,
+            this.snapTick(candidate.start + targetTick - drag.initialTick),
+          ) || changed;
+    }
     drag.changed ||= changed;
     if (changed) this.render();
   };
@@ -830,12 +855,74 @@ export class HighwayView
     event.preventDefault();
     const nextTick = getHighwayWheelTick(
       this.playheadTick,
-      event.deltaY,
+      -event.deltaY,
       this.getPpqn(),
       wheelTicksPerPixel,
     );
     this.setPlayheadTick(nextTick);
     this.onSeekRequest?.(nextTick);
+  };
+
+  private readonly handleKeyDown = (event: KeyboardEvent): void => {
+    if (
+      !this.canEditNotes ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.target !== this.canvas
+    )
+      return;
+    const chart = this.getCurrentChart();
+    if (!chart) return;
+    const snap = this.getSnapTicks();
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      this.onSeekRequest?.(
+        Math.max(
+          0,
+          this.playheadTick + (event.key === "ArrowUp" ? snap : -snap),
+        ),
+      );
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const next =
+        event.key === "ArrowLeft"
+          ? Math.max(1, this.state.snap.denominator / 2)
+          : Math.min(64, this.state.snap.denominator * 2);
+      this.state.snap.denominator = next;
+      this.render();
+      return;
+    }
+    if (/^[1-5]$/.test(event.key)) {
+      event.preventDefault();
+      const lane = Number(event.key) - 1;
+      const note = chart
+        .getNotes()
+        .find(
+          (candidate) =>
+            candidate.start === this.playheadTick &&
+            candidate.note - chart.getOffset() === lane,
+        );
+      if (note) chart.removeNote(note);
+      else
+        chart.addNote(
+          lane as Note,
+          this.playheadTick,
+          this.playheadTick + minimumMidiNoteDurationTicks,
+        );
+      this.onNotesChanged?.();
+      this.render();
+      return;
+    }
+    if (event.key === "[" || event.key === "]") {
+      const track = chart.getTrack().getMidiTrack();
+      const section = track
+        ? findSection(track, this.playheadTick, event.key === "]" ? 1 : -1)
+        : null;
+      if (section) this.onSeekRequest?.(section.tick);
+    }
   };
 
   private updateHoveredNote(event: PointerEvent): void {

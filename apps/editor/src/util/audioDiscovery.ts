@@ -10,6 +10,10 @@ export interface DiscoveredAudio {
   name: string;
 }
 
+export type AudioRole = "lead" | "rhythm" | "bass" | "drums" | "vocals" | "harmonies" | "synth" | "other";
+export type RoleRegexes = Record<AudioRole, string>;
+export type DiscoveredAudioByRole = Partial<Record<AudioRole, DiscoveredAudio>>;
+
 async function resolveRootPath(rootPath: string): Promise<string> {
   const trimmed = rootPath.trim();
   if (
@@ -180,4 +184,67 @@ export async function discoverSongAudioFromHandle(
   }
 
   return null;
+}
+
+function findRoleMatches(names: string[], regex: string): string[] {
+  try {
+    const pattern = new RegExp(regex, "i");
+    return names.filter((name) => pattern.test(name));
+  } catch {
+    return [];
+  }
+}
+
+/** Returns role matches and ambiguity information without silently choosing a
+ * file when more than one role candidate exists. */
+export function classifyAudioRoles(
+  names: string[],
+  regexes: RoleRegexes,
+): { matches: DiscoveredAudioByRole; ambiguous: Partial<Record<AudioRole, string[]>> } {
+  const matches: DiscoveredAudioByRole = {};
+  const ambiguous: Partial<Record<AudioRole, string[]>> = {};
+  for (const role of Object.keys(regexes) as AudioRole[]) {
+    const candidates = findRoleMatches(names, regexes[role]);
+    if (candidates.length === 1) matches[role] = { path: candidates[0], url: candidates[0], name: candidates[0] };
+    else if (candidates.length > 1) ambiguous[role] = candidates;
+  }
+  return { matches, ambiguous };
+}
+
+export async function discoverMultitrackAudioFromHandle(
+  handle: FileSystemDirectoryHandle,
+  regexes: RoleRegexes,
+): Promise<{ matches: DiscoveredAudioByRole; missing: AudioRole[]; ambiguous: Partial<Record<AudioRole, string[]>> }> {
+  const names = await listAudioFileNamesFromHandle(handle);
+  const classified = classifyAudioRoles(names, regexes);
+  const missing = (Object.keys(regexes) as AudioRole[]).filter((role) => !classified.matches[role] && !classified.ambiguous[role]);
+  for (const role of Object.keys(classified.matches) as AudioRole[]) {
+    const match = classified.matches[role];
+    if (!match) continue;
+    const entry = await handle.getFileHandle(match.name);
+    const file = await entry.getFile();
+    match.url = URL.createObjectURL(file);
+  }
+  return { ...classified, missing };
+}
+
+export async function discoverMultitrackAudio(
+  rootPath: string,
+  regexes: RoleRegexes,
+): Promise<{ matches: DiscoveredAudioByRole; missing: AudioRole[]; ambiguous: Partial<Record<AudioRole, string[]>> } | null> {
+  if (!isTauri()) return null;
+  const names = await listAudioFileNames(rootPath);
+  if (!names) return null;
+  const classified = classifyAudioRoles(names, regexes);
+  const missing = (Object.keys(regexes) as AudioRole[]).filter((role) => !classified.matches[role] && !classified.ambiguous[role]);
+  const resolvedRoot = await resolveRootPath(rootPath);
+  for (const role of Object.keys(classified.matches) as AudioRole[]) {
+    const match = classified.matches[role];
+    if (match) {
+      const fullPath = await join(resolvedRoot, match.name);
+      match.path = fullPath;
+      match.url = convertFileSrc(fullPath);
+    }
+  }
+  return { ...classified, missing };
 }

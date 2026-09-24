@@ -6,18 +6,26 @@
     {
       "name": "CHART HEADER",
       "type": "global",
+      "key": "chart-header",
+      "visible": false,
+      "editable": false,
       "notes": {},
       "events": {}
     },
     {
       "name": "GLOBAL",
       "type": "global",
+      "key": "global",
+      "visible": true,
+      "editable": false,
       "notes": {},
       "events": {}
     },
     {
       "name": "LEAD GUITAR",
       "type": "instrument",
+      "key": "lead-guitar",
+      "role": "lead",
       "noteCount": 5,
       "offsets": {
         "expert": 96,
@@ -67,6 +75,8 @@
     {
       "name": "RHYTHM GUITAR",
       "type": "instrument",
+      "key": "rhythm-guitar",
+      "role": "rhythm",
       "noteCount": 5,
       "offsets": {
         "expert": 96,
@@ -116,6 +126,8 @@
     {
       "name": "DRUMS",
       "type": "instrument",
+      "key": "drums",
+      "role": "drums",
       "noteCount": 9,
       "offsets": {
         "expert": 96,
@@ -172,16 +184,26 @@
     {
       "name": "VOCALS",
       "type": "instrument",
+      "key": "vocals",
+      "role": "vocals",
+      "noteCount": 5,
+      "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
       "notes": {}
     },
     {
       "name": "FOUR PAD",
-      "type": "instrument",
+      "type": "global",
+      "key": "four-pad",
+      "visible": false,
+      "editable": false,
       "notes": {}
     },
     {
       "name": "FIVE PAD",
-      "type": "instrument",
+      "type": "global",
+      "key": "five-pad",
+      "visible": false,
+      "editable": false,
       "notes": {}
     }
   ]
