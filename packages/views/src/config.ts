@@ -21,10 +21,12 @@ const BaseTrackViewConfigSchema = TrackIdentitySchema.extend({
   notes: z.record(z.string(), z.number()),
 });
 const GlobalViewConfigSchema = BaseTrackViewConfigSchema.extend({
+  type: z.union([z.literal("global"), z.literal("animation")]),
   notes: z.record(z.string(), z.number()),
 });
 
 const InstrumentTrackViewConfigSchema = BaseTrackViewConfigSchema.extend({
+  type: z.literal("instrument"),
   offsets: z.optional(
     z.object({
       expert: z.number().int().default(96),
