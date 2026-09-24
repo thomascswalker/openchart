@@ -55,6 +55,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getCurrentNotes: () => this.noteData.currentNotes,
     getTempoChanges: () => this.tempoChanges,
     getTimeSignatureChanges: () => this.timeSignatureChanges,
+    getTextEvents: () => this.getSelectedTrack()?.getTextEvents() ?? [],
     getCamera: () => this.camera,
     getKeyboardWidth: () => this.keyboardWidth,
     getViewport: () => ({ width: this.lastWidth, height: this.lastHeight }),

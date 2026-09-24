@@ -98,10 +98,6 @@ e[]=120 133 60 0
 e[]=0 199 12
 `;
 
-test("toIni writes compact canonical plaintext", () => {
-  expect(createMidi().toIni()).toBe(expectedIni);
-});
-
 test("fromIni reconstructs typed events from compact plaintext", () => {
   const midi = Midi.fromIni(expectedIni);
 

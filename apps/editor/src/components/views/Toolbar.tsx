@@ -23,17 +23,21 @@ const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
   );
 };
 
-interface ToolbarProps {}
+interface ToolbarProps {
+  activeViewId?: "piano-roll" | "highway";
+  onViewChange?: (view: "piano-roll" | "highway") => void;
+}
 
-const Toolbar = ({}: ToolbarProps) => {
+const Toolbar = ({ activeViewId: panelView, onViewChange }: ToolbarProps) => {
   const {
-    activeViewId,
+    activeViewId: globalView,
     setActiveViewId,
     snapEnabled,
     setSnapEnabled,
     snapDenominator,
     setSnapDenominator,
   } = useEditor();
+  const activeViewId = panelView ?? globalView;
 
   return (
     <Section padding="4px" gap="4px">
@@ -42,12 +46,18 @@ const Toolbar = ({}: ToolbarProps) => {
       <ToolButton
         Icon={PianoIcon}
         active={activeViewId === "piano-roll"}
-        onClick={() => setActiveViewId("piano-roll")}
+        onClick={() => {
+          if (onViewChange) onViewChange("piano-roll");
+          else setActiveViewId("piano-roll");
+        }}
       />
       <ToolButton
         Icon={Highway3dIcon}
         active={activeViewId === "highway"}
-        onClick={() => setActiveViewId("highway")}
+        onClick={() => {
+          if (onViewChange) onViewChange("highway");
+          else setActiveViewId("highway");
+        }}
       />
 
       <VerticalSeparator />

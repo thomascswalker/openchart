@@ -19,6 +19,8 @@ import { usePlayback } from "../context/PlaybackContextStore";
 import {
   discoverSongAudio,
   discoverSongAudioFromHandle,
+  discoverMultitrackAudio,
+  discoverMultitrackAudioFromHandle,
   listAudioFileNames,
   listAudioFileNamesFromHandle,
 } from "../util/audioDiscovery";
@@ -161,11 +163,17 @@ export function EditorCommandProvider({
     projectMetadata,
     setProjectMetadata,
   } = useEditor();
-  const { setAudio, setAudioFileName, toggleMetronome, toggleClap } =
-    usePlayback();
+  const {
+    setAudio,
+    setAudioSource,
+    setAudioFileName,
+    toggleMetronome,
+    toggleClap,
+  } = usePlayback();
   const { settings } = useApplicationSettings();
   const audioFileRef = useRef<HTMLInputElement>(null);
   const audioLoadRef = useRef(0);
+  const audioUrlRef = useRef<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugVisible, setDebugVisible] = useState(false);
@@ -306,16 +314,66 @@ export function EditorCommandProvider({
         throw new Error("Choose a WAV audio file (.wav).");
       }
 
-      setAudio(Audio({ file: URL.createObjectURL(file), preload: true }));
+      const url = URL.createObjectURL(file);
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = url;
+      const player = Audio({ file: url, preload: true });
+      setAudio(player);
+      setAudioSource(
+        { role: "single", fileName: file.name, url, enabled: true, volume: 1 },
+        player,
+      );
       setAudioFileName(file.name);
       setError(null);
     },
-    [setAudio, setAudioFileName],
+    [setAudio, setAudioFileName, setAudioSource],
   );
 
   const discoverAudio = useCallback(
     async (options?: { reportMissing?: boolean }): Promise<void> => {
       if (settings.audio.multitrack) {
+        const regexes = {
+          lead: settings.discovery.leadRegex,
+          rhythm: settings.discovery.rhythmRegex,
+          bass: settings.discovery.bassRegex,
+          drums: settings.discovery.drumsRegex,
+          vocals: settings.discovery.vocalsRegex,
+          harmonies: settings.discovery.harmoniesRegex,
+          synth: settings.discovery.synthRegex,
+          other: settings.discovery.otherRegex,
+        } as const;
+        const discovered = isTauri()
+          ? await discoverMultitrackAudio(settings.audio.rootPath, regexes)
+          : audioDirectoryHandle &&
+              (await hasReadPermission(audioDirectoryHandle))
+            ? await discoverMultitrackAudioFromHandle(
+                audioDirectoryHandle,
+                regexes,
+              )
+            : null;
+        if (discovered) {
+          for (const [role, source] of Object.entries(discovered.matches)) {
+            if (source)
+              setAudioSource({
+                role: role as keyof typeof regexes,
+                fileName: source.name,
+                url: source.url,
+                enabled: true,
+                volume: 1,
+              });
+          }
+          const ambiguous = Object.entries(discovered.ambiguous).filter(
+            ([, names]) => names?.length,
+          );
+          if (
+            options?.reportMissing &&
+            (discovered.missing.length || ambiguous.length)
+          ) {
+            setError(
+              `Audio roles unresolved: ${[...discovered.missing, ...ambiguous.map(([role]) => role)].join(", ")}`,
+            );
+          }
+        }
         return;
       }
 
@@ -334,7 +392,18 @@ export function EditorCommandProvider({
             : null;
 
         if (discovered) {
-          setAudio(Audio({ file: discovered.url, preload: true }));
+          const player = Audio({ file: discovered.url, preload: true });
+          setAudio(player);
+          setAudioSource(
+            {
+              role: "single",
+              fileName: discovered.name,
+              url: discovered.url,
+              enabled: true,
+              volume: 1,
+            },
+            player,
+          );
           setAudioFileName(discovered.name);
           setError(null);
         } else if (options?.reportMissing) {
@@ -353,10 +422,19 @@ export function EditorCommandProvider({
     [
       audioDirectoryHandle,
       setAudio,
+      setAudioSource,
       setAudioFileName,
       settings.audio.multitrack,
       settings.audio.rootPath,
       settings.discovery.songRegex,
+      settings.discovery.leadRegex,
+      settings.discovery.rhythmRegex,
+      settings.discovery.bassRegex,
+      settings.discovery.drumsRegex,
+      settings.discovery.vocalsRegex,
+      settings.discovery.harmoniesRegex,
+      settings.discovery.synthRegex,
+      settings.discovery.otherRegex,
     ],
   );
 

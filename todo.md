@@ -1,150 +1,5 @@
 # TODO
 
-## General
-
-- Add metronome sound toggle.
-
-## Application settings
-
-- Application-wide settings include:
-  - Setting the root audio discovery path: `Audio Path`
-  - Setting the audio discovery regex for each instrument.
-  - Default save mechanism (MIDI vs. Project).
-
-## Project + settings
-
-- Modify primary saving/loading mechanism to save/load a .midproject file which is essentially a .zip containing the MIDI file and a project config file (JSON).
-- A project config file has the following schema:
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Music Track Metaschema",
-  "type": "object",
-  "required": ["Version", "ID", "Song", "Chart", "Difficulty", "Credits"],
-  "properties": {
-    "Version": {
-      "type": "integer"
-    },
-    "ID": {
-      "type": "string"
-    },
-    "Song": {
-      "type": "object",
-      "required": [
-        "Name",
-        "Artist",
-        "Album",
-        "Genre",
-        "Year",
-        "AlbumTrack",
-        "Cover",
-        "CoverArtist",
-        "VocalGender"
-      ],
-      "properties": {
-        "Name": {
-          "type": "string"
-        },
-        "Artist": {
-          "type": "string"
-        },
-        "Album": {
-          "type": "string"
-        },
-        "Genre": {
-          "type": "string"
-        },
-        "Year": {
-          "type": "integer"
-        },
-        "AlbumTrack": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "Cover": {
-          "type": "boolean"
-        },
-        "CoverArtist": {
-          "type": "string"
-        },
-        "VocalGender": {
-          "type": "string"
-        }
-      }
-    },
-    "Chart": {
-      "type": "object",
-      "required": ["Author", "PreviewStart", "PreviewEnd"],
-      "properties": {
-        "Author": {
-          "type": "string"
-        },
-        "PreviewStart": {
-          "type": "number",
-          "minimum": 0
-        },
-        "PreviewEnd": {
-          "type": "number",
-          "minimum": 0
-        }
-      }
-    },
-    "Difficulty": {
-      "type": "object",
-      "required": [
-        "Band",
-        "LeadGuitar",
-        "BassGuitar",
-        "Drums",
-        "ProDrums",
-        "Vocals",
-        "Harmony"
-      ],
-      "properties": {
-        "Band": {
-          "type": "integer"
-        },
-        "LeadGuitar": {
-          "type": "integer"
-        },
-        "BassGuitar": {
-          "type": "integer"
-        },
-        "Drums": {
-          "type": "integer"
-        },
-        "ProDrums": {
-          "type": "integer"
-        },
-        "Vocals": {
-          "type": "integer"
-        },
-        "Harmony": {
-          "type": "integer"
-        }
-      }
-    },
-    "Credits": {
-      "type": "object",
-      "required": ["Publisher", "Writer"],
-      "properties": {
-        "Publisher": {
-          "type": "string"
-        },
-        "Writer": {
-          "type": "string"
-        }
-      }
-    }
-  }
-}
-```
-
-## Audio discovery
-
-- Add root audio path to automatically load audio tracks.
-
 ## Multitrack audio
 
 - Add toggle between single WAV track or multitrack audio.
@@ -152,27 +7,27 @@
 
 ## General Bugs
 
-- Changing from piano roll to highway and back doesn't automatically load the current notes (full midi track in piano roll and instrument/difficulty in highway). You need to switch tracks then back.
-- Switching from highway to piano roll doesn't maintain the camera position in the piano roll respective to the current cursor location.
+- Do not show the main MIDI header chunk as a track.
+- Instead of arbitrarily being able to add any number of tracks with different names, conform the track list to specifically read from the config track list (`packages/views/configs/default.json`).
 
 ## Docking/multiple viewports
 
 - Allow side-by-side dockable viewports of any combination of piano roll or highway. Highways can be different instruments/difficulties. Allow up to 4 (customizable limit) viewports. Allow closing of a viewport with an X button, but if there's only one viewport it's maximized and cannot be closed.
-- Devise a plan for how the tracklist should be present (or not) if there's multiple highway views present. Perhaps have a number on the tracklist item indicating which viewport it's associated with?
+
+## Piano Roll
+
+- Text events
+- Move events
+- Bug where you need to keep the mouse on top of the event element in order to actually apply the edit. If you click a tempo event for instance, type in a new tempo value, and then move the mouse off _then_ press Enter, it won't actually apply.
+- Move the track list into the piano roll view, to the left of the piano note visuals. Remove Track List header UI element.
 
 ## Highway
 
-- Highway view only shows Lead Guitar track.
-- Highway "flickers" when playing/scrolling/placing notes.
-- You should not be able to edit notes while playing the track.
-- Scroll direction in the highway is inverted.
-- Default note placement should have no length (minimum MIDI note length).
-- Move snap/interval, difficulty options to toolbar immediately below the View header bar.
-- Separate monolithic highway/index.ts into separate files (similar to pianoRoll/index.ts).
-- Add clap sound toggle for notes which cross the hit line (cursor).
-
-## Piano roll
-
-- Move snap/interval options to toolbar immediately below the View header bar.
-- Add pitch output toggle of simple MIDI sound for either all notes in the track or a selected range of notes (e.g. C2 -> C4).
-- Add "text event" marker row/editing.
+- Hide track list
+- Remove Instrument/Difficulty select dropdown and replace with buttons along the Toolbar (mutually exclusive, similar to the Piano Roll/Highway switch buttons in the Toolbar).
+- Starpower phrases
+- Force Strum/HOPO/Tap phrases
+- Improve sustain editing. Right-click and hold/drag to move. If the note is a chord, extend all notes of the chord. Right-click on a sustain to 'trim' it at that location.
+- Multi note editing (marquee select, move, delete)
+- Jump to next/previous section (text event `[section X]`)
+- Keyboard editing (1-5 for note place/remove, up/down arrow keys to move forward/backward, right/left to change snap interval).

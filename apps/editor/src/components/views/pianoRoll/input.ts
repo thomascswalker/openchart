@@ -213,12 +213,18 @@ export class PianoRollInputController {
       }
     } else if (event.button === PointerButton.Left && local.y >= HeaderHeight) {
       const edgeHit = this.hitTestNoteEdge(local);
-      if (edgeHit) this.editing.beginResize(edgeHit);
-      else {
+      if (edgeHit) {
+        this.editing.beginResize(edgeHit);
+      } else {
         const bodyHit = this.hitTestNote(local);
-        if (bodyHit) this.editing.beginMove(bodyHit);
-        else this.pendingCreateStart = { x: local.x, y: local.y };
+        if (bodyHit) {
+          this.editing.beginMove(bodyHit);
+        } else {
+          this.pendingCreateStart = { x: local.x, y: local.y };
+        }
       }
+    } else if (event.button === PointerButton.Left) {
+      this.header.beginDrag(local);
     }
     Object.assign(pointer.position, local);
     this.canvas?.setPointerCapture(event.pointerId);
@@ -250,7 +256,8 @@ export class PianoRollInputController {
         if (hit) this.editing.eraseNote(hit);
       } else this.updateSelection();
     } else if (pointer.button === PointerButton.Left) {
-      if (this.editing.isResizing) this.editing.updateResize(local);
+      if (local.y < HeaderHeight) this.header.updateDrag(local);
+      else if (this.editing.isResizing) this.editing.updateResize(local);
       else if (this.editing.isMoving) this.editing.updateMove(local);
       else if (this.pendingCreateStart) {
         if (
@@ -300,6 +307,7 @@ export class PianoRollInputController {
       this.pendingCreateStart = null;
     }
     this.editing.finishGesture();
+    this.header.endDrag();
     const selection = this.context.getSelectionContext();
     if (selection.bounds !== null) selection.bounds = null;
     this.context.requestRender();

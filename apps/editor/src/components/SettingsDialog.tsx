@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useEditorCommands } from "../commands/EditorCommand";
+import { Audio } from "ts-audio";
+import { AUDIO_ROLES } from "../hooks/useAudioPlayer";
 import {
   type ApplicationSettings,
   useApplicationSettings,
   validateApplicationSettings,
 } from "../context/ApplicationSettingsContext";
+import { usePlayback } from "../context/PlaybackContextStore";
+import { useEditor } from "../context/EditorContext";
 import { matchesAudioFile } from "../util/audioDiscovery";
 import { Modal } from "./shared/Modal/Modal";
 
@@ -61,6 +65,27 @@ const audioDiscoveryFields: SettingsField[] = [
     label: "Vocals regex",
     control: "text",
     path: "discovery.vocalsRegex",
+    enabledWhen: (settings) => settings.audio.multitrack,
+  },
+  {
+    id: "harmoniesRegex",
+    label: "Harmonies regex",
+    control: "text",
+    path: "discovery.harmoniesRegex",
+    enabledWhen: (settings) => settings.audio.multitrack,
+  },
+  {
+    id: "synthRegex",
+    label: "Synth regex",
+    control: "text",
+    path: "discovery.synthRegex",
+    enabledWhen: (settings) => settings.audio.multitrack,
+  },
+  {
+    id: "otherRegex",
+    label: "Other regex",
+    control: "text",
+    path: "discovery.otherRegex",
     enabledWhen: (settings) => settings.audio.multitrack,
   },
 ];
@@ -192,7 +217,16 @@ const SettingsDialog = () => {
     audioDirectoryName,
     audioDirectorySupported,
     listDiscoveredAudioFileNames,
+    markDirty,
   } = useEditorCommands();
+  const {
+    sources,
+    setAudioSource,
+    clearAudioSource,
+    setSourceEnabled,
+    setSourceVolume,
+  } = usePlayback();
+  const { projectMetadata, setProjectMetadata } = useEditor();
   const { settings, applySettings } = useApplicationSettings();
   const [selectedTab, setSelectedTab] = useState<SettingsTab>(tabs[0]);
   const [draft, setDraft] = useState<ApplicationSettings>(settings);
@@ -284,6 +318,30 @@ const SettingsDialog = () => {
   const save = (): void => {
     if (apply()) close();
   };
+  const syncPortableAudio = (
+    role: string,
+    source: { fileName: string; enabled: boolean; volume: number } | null,
+  ): void => {
+    const current = projectMetadata.Audio ?? {
+      Mode: draft.audio.multitrack ? "multitrack" : "single",
+      Sources: {},
+    };
+    const sources = { ...current.Sources };
+    if (source)
+      sources[role as keyof typeof sources] = {
+        FileName: source.fileName,
+        Enabled: source.enabled,
+        Volume: source.volume,
+      };
+    else delete sources[role as keyof typeof sources];
+    setProjectMetadata({
+      ...projectMetadata,
+      Audio: {
+        Mode: draft.audio.multitrack ? "multitrack" : "single",
+        Sources: sources,
+      },
+    });
+  };
   const fields = settingsSchema[selectedTab] ?? [];
   const isDirty = JSON.stringify(draft) !== JSON.stringify(settings);
 
@@ -338,8 +396,13 @@ const SettingsDialog = () => {
                 ? null
                 : matchesAudioFile(audioFileNames, value as string)
               : null;
-            const update = (nextValue: string | number | boolean): void =>
-              setDraft(setSettingValue(draft, field.path, nextValue));
+            const update = (nextValue: string | number | boolean): void => {
+              const next = setSettingValue(draft, field.path, nextValue);
+              if (field.id === "multitrack") {
+                next.audio.mode = nextValue ? "multitrack" : "single";
+              }
+              setDraft(next);
+            };
             return (
               <label key={field.id}>
                 {field.control === "checkbox" ? (
@@ -417,33 +480,126 @@ const SettingsDialog = () => {
             );
           })}
           {selectedTab === "Audio" ? (
-            <div className="audio-discovery-actions">
-              {audioDirectorySupported ? (
+            <>
+              <div
+                className="audio-role-sources"
+                aria-label="Multitrack WAV sources"
+              >
+                {AUDIO_ROLES.map((role) => {
+                  const source = sources.get(role);
+                  return (
+                    <div className="audio-role-source" key={role}>
+                      <strong>{role}</strong>
+                      <span>{source?.fileName ?? "No file selected"}</span>
+                      <input
+                        type="file"
+                        accept=".wav,audio/wav"
+                        aria-label={`Choose ${role} WAV`}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (!file) return;
+                          const url = URL.createObjectURL(file);
+                          const player = Audio({ file: url, preload: true });
+                          setAudioSource(
+                            {
+                              role,
+                              fileName: file.name,
+                              url,
+                              enabled: true,
+                              volume: 1,
+                            },
+                            player,
+                          );
+                          syncPortableAudio(role, {
+                            fileName: file.name,
+                            enabled: true,
+                            volume: 1,
+                          });
+                          markDirty();
+                        }}
+                      />
+                      {source ? (
+                        <>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={source.enabled}
+                              onChange={(event) => {
+                                const enabled = event.target.checked;
+                                setSourceEnabled(role, enabled);
+                                syncPortableAudio(role, {
+                                  fileName: source.fileName ?? "",
+                                  enabled,
+                                  volume: source.volume,
+                                });
+                                markDirty();
+                              }}
+                            />{" "}
+                            Enabled
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={source.volume}
+                            aria-label={`${role} volume`}
+                            onChange={(event) => {
+                              const volume = Number(event.target.value);
+                              setSourceVolume(role, volume);
+                              syncPortableAudio(role, {
+                                fileName: source.fileName ?? "",
+                                enabled: source.enabled,
+                                volume,
+                              });
+                              markDirty();
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              clearAudioSource(role);
+                              syncPortableAudio(role, null);
+                              markDirty();
+                            }}
+                          >
+                            Clear
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="audio-discovery-actions">
+                {audioDirectorySupported ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void dispatch("select-audio-folder").then(
+                        refreshAudioFileNames,
+                      );
+                    }}
+                    disabled={!canExecute["select-audio-folder"]}
+                  >
+                    {audioDirectoryName
+                      ? `Audio Folder: ${audioDirectoryName}`
+                      : "Select Audio Folder"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {
-                    void dispatch("select-audio-folder").then(
-                      refreshAudioFileNames,
-                    );
+                    refreshAudioFileNames();
+                    void dispatch("refresh-audio");
                   }}
-                  disabled={!canExecute["select-audio-folder"]}
+                  disabled={!canExecute["refresh-audio"]}
                 >
-                  {audioDirectoryName
-                    ? `Audio Folder: ${audioDirectoryName}`
-                    : "Select Audio Folder"}
+                  Refresh Audio
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  refreshAudioFileNames();
-                  void dispatch("refresh-audio");
-                }}
-                disabled={!canExecute["refresh-audio"]}
-              >
-                Refresh Audio
-              </button>
-            </div>
+              </div>
+            </>
           ) : null}
         </div>
       </div>

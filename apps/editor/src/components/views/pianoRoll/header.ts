@@ -1,4 +1,9 @@
-import type { TempoChange, TimeSignatureChange } from "@midiedit/core";
+import {
+  MetaType,
+  type TempoChange,
+  type TextMidiEvent,
+  type TimeSignatureChange,
+} from "@midiedit/core";
 import type { CanvasPoint } from "../../../rendering/geometry";
 import {
   HeaderHeight,
@@ -10,7 +15,7 @@ import {
 import type { CoordinateSystem } from "./coordinates";
 import type { PianoRollContext } from "./types";
 
-type HeaderLane = "tempo" | "timeSignature";
+type HeaderLane = "tempo" | "timeSignature" | "text";
 
 export function parseTempoBpm(raw: string): number | null {
   const parsed = Number(raw);
@@ -44,13 +49,15 @@ export class HeaderController {
 
   private readonly tempoLabelInstance: HTMLDivElement[] = [];
   private readonly timeSignatureLabelInstance: HTMLDivElement[] = [];
+  private readonly textLabelInstance: HTMLDivElement[] = [];
   private readonly highlightInstance: HTMLDivElement[] = [];
   private hoveredMarker: { lane: HeaderLane; tick: number } | null = null;
   private host: HTMLElement | null = null;
   private editInput: HTMLInputElement | null = null;
   private deleteButton: HTMLButtonElement | null = null;
   private editingMarkerKey: string | null = null;
-  private suppressNextEditCommit = false;
+  private editingMarker: { lane: HeaderLane; tick: number } | null = null;
+  private draggingText: TextMidiEvent | null = null;
 
   public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
     this.context = context;
@@ -68,15 +75,18 @@ export class HeaderController {
     this.deleteButton?.remove();
     this.tempoLabelInstance.forEach((label) => label.remove());
     this.timeSignatureLabelInstance.forEach((label) => label.remove());
+    this.textLabelInstance.forEach((label) => label.remove());
     this.highlightInstance.forEach((highlight) => highlight.remove());
     this.tempoLabelInstance.length = 0;
     this.timeSignatureLabelInstance.length = 0;
+    this.textLabelInstance.length = 0;
     this.highlightInstance.length = 0;
     this.editInput = null;
     this.deleteButton = null;
     this.host = null;
     this.hoveredMarker = null;
     this.editingMarkerKey = null;
+    this.editingMarker = null;
   }
 
   public getEditInput(): HTMLInputElement | null {
@@ -91,7 +101,11 @@ export class HeaderController {
     if (y < 0 || y >= HeaderHeight) {
       return null;
     }
-    return y < HeaderTempoLaneHeight ? "tempo" : "timeSignature";
+    return y < HeaderTempoLaneHeight
+      ? "tempo"
+      : y < HeaderHeight - 10
+        ? "timeSignature"
+        : "text";
   }
 
   public updateHover(local: CanvasPoint | null): void {
@@ -100,7 +114,9 @@ export class HeaderController {
       lane && this.context.getMidi()
         ? lane === "tempo"
           ? this.findTempoMarkerNear(local!.x)
-          : this.findTimeSignatureMarkerNear(local!.x)
+          : lane === "timeSignature"
+            ? this.findTimeSignatureMarkerNear(local!.x)
+            : this.findTextMarkerNear(local!.x)
         : null;
 
     this.hoveredMarker = marker ? { lane: lane!, tick: marker.tick } : null;
@@ -108,6 +124,7 @@ export class HeaderController {
   }
 
   public click(point: CanvasPoint): void {
+    if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
     const lane = this.laneAt(point.y);
     if (!midi || !lane) {
@@ -117,7 +134,9 @@ export class HeaderController {
     const existing =
       lane === "tempo"
         ? this.findTempoMarkerNear(point.x)
-        : this.findTimeSignatureMarkerNear(point.x);
+        : lane === "timeSignature"
+          ? this.findTimeSignatureMarkerNear(point.x)
+          : this.findTextMarkerNear(point.x);
     if (existing) {
       return;
     }
@@ -127,15 +146,22 @@ export class HeaderController {
     );
     if (lane === "tempo") {
       midi.addTempoChange(tick, this.effectiveTempoAt(tick));
-    } else {
+    } else if (lane === "timeSignature") {
       const current = this.effectiveTimeSignatureAt(tick);
       midi.addTimeSignatureChange(tick, current.numerator, current.denominator);
+    } else {
+      const track = this.context.getSelectedTrack();
+      if (track) {
+        track.addTextEvent(MetaType.Marker, tick, "[section New]");
+        this.context.notifyNotesChanged();
+      }
     }
     this.context.invalidateTempoCache();
     this.context.requestRender();
   }
 
   public rightClick(x: number, y: number): void {
+    if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
     const lane = this.laneAt(y);
     if (!midi || !lane) {
@@ -145,16 +171,43 @@ export class HeaderController {
     const marker =
       lane === "tempo"
         ? this.findTempoMarkerNear(x)
-        : this.findTimeSignatureMarkerNear(x);
+        : lane === "timeSignature"
+          ? this.findTimeSignatureMarkerNear(x)
+          : this.findTextMarkerNear(x);
     if (marker) {
       if (lane === "tempo") {
         midi.removeTempoChangeAt(marker.tick);
-      } else {
+      } else if (lane === "timeSignature") {
         midi.removeTimeSignatureChangeAt(marker.tick);
+      } else {
+        const text = this.findTextMarkerNear(x);
+        if (text) this.context.getSelectedTrack()?.removeEvent(text.event);
       }
     }
     this.context.invalidateTempoCache();
     this.context.requestRender();
+  }
+
+  public beginDrag(point: CanvasPoint): void {
+    if (this.context.getState().isPlaying || this.laneAt(point.y) !== "text")
+      return;
+    this.draggingText = this.findTextMarkerNear(point.x)?.event ?? null;
+  }
+
+  public updateDrag(point: CanvasPoint): void {
+    if (!this.draggingText || this.context.getState().isPlaying) return;
+    const tick = this.coordinates.snapTickToNearest(
+      this.coordinates.tickAtScreenX(point.x),
+    );
+    const track = this.context.getSelectedTrack();
+    if (track?.moveEvent(this.draggingText, tick)) {
+      this.context.notifyNotesChanged();
+      this.context.requestRender();
+    }
+  }
+
+  public endDrag(): void {
+    this.draggingText = null;
   }
 
   public draw(width: number): void {
@@ -187,6 +240,13 @@ export class HeaderController {
       this.context.getTimeSignatureChanges().filter(inView),
       HeaderTempoLaneHeight + 2,
       (change) => `${change.numerator}/${2 ** change.denominator}`,
+    );
+    this.drawMarkers(
+      "text",
+      this.textLabelInstance,
+      this.context.getTextEvents().filter(inView),
+      HeaderHeight - 12,
+      (change) => change.event.data.text,
     );
     this.syncEditControls();
   }
@@ -256,6 +316,15 @@ export class HeaderController {
     return this.findMarkerNear(this.context.getTimeSignatureChanges(), x);
   }
 
+  private findTextMarkerNear(
+    x: number,
+  ): { tick: number; event: TextMidiEvent } | null {
+    return this.findMarkerNear(this.context.getTextEvents(), x) as {
+      tick: number;
+      event: TextMidiEvent;
+    } | null;
+  }
+
   private findMarkerNear<T extends { tick: number }>(
     changes: T[],
     x: number,
@@ -310,16 +379,28 @@ export class HeaderController {
     input.type = "text";
     input.className = "piano-roll-header-input";
     input.style.display = "none";
+    input.addEventListener("focus", () => {
+      if (!this.editingMarker && this.hoveredMarker) {
+        this.editingMarker = { ...this.hoveredMarker };
+      }
+    });
+    input.addEventListener("click", () => {
+      if (this.hoveredMarker) this.editingMarker = { ...this.hoveredMarker };
+    });
     input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") input.blur();
-      else if (event.key === "Escape") {
-        this.suppressNextEditCommit = true;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.commitEdit(input.value);
         input.blur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        this.editingMarker = null;
+        input.blur();
+        this.syncEditControls();
       }
     });
     input.addEventListener("blur", () => {
-      if (this.suppressNextEditCommit) this.suppressNextEditCommit = false;
-      else this.commitEdit(input.value);
+      if (this.editingMarker) this.commitEdit(input.value);
       this.syncEditControls();
     });
     this.host.appendChild(input);
@@ -340,11 +421,19 @@ export class HeaderController {
   }
 
   private deleteHoveredMarker(): void {
+    if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
     const marker = this.hoveredMarker;
     if (!midi || !marker) return;
     if (marker.lane === "tempo") midi.removeTempoChangeAt(marker.tick);
-    else midi.removeTimeSignatureChangeAt(marker.tick);
+    else if (marker.lane === "timeSignature")
+      midi.removeTimeSignatureChangeAt(marker.tick);
+    else {
+      const text = this.findTextMarkerNear(
+        this.coordinates.screenXForTick(marker.tick),
+      );
+      if (text) this.context.getSelectedTrack()?.removeEvent(text.event);
+    }
     this.hoveredMarker = null;
     this.context.invalidateTempoCache();
     this.syncEditControls();
@@ -352,15 +441,16 @@ export class HeaderController {
   }
 
   private commitEdit(raw: string): void {
+    if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
-    const marker = this.hoveredMarker;
+    const marker = this.editingMarker ?? this.hoveredMarker;
     if (!midi || !marker) return;
     if (marker.lane === "tempo") {
       const parsed = parseTempoBpm(raw);
       if (parsed === null) return;
       midi.removeTempoChangeAt(marker.tick);
       midi.addTempoChange(marker.tick, Math.round(60_000_000 / parsed));
-    } else {
+    } else if (marker.lane === "timeSignature") {
       const parsed = parseTimeSignatureInput(raw);
       if (parsed === null) return;
       midi.removeTimeSignatureChangeAt(marker.tick);
@@ -369,7 +459,14 @@ export class HeaderController {
         parsed.numerator,
         parsed.denominator,
       );
+    } else {
+      const text = this.findTextMarkerNear(
+        this.coordinates.screenXForTick(marker.tick),
+      );
+      if (text)
+        this.context.getSelectedTrack()?.updateTextEvent(text.event, raw);
     }
+    this.editingMarker = null;
     this.context.invalidateTempoCache();
     this.context.requestRender();
   }
@@ -386,6 +483,12 @@ export class HeaderController {
         ? String(Math.round(60_000_000 / change.microsecondsPerQuarterNote))
         : "";
     }
+    if (marker.lane === "text") {
+      return (
+        this.findTextMarkerNear(this.coordinates.screenXForTick(marker.tick))
+          ?.event.data.text ?? ""
+      );
+    }
     const change = this.context
       .getTimeSignatureChanges()
       .find((candidate) => candidate.tick === marker.tick);
@@ -396,7 +499,7 @@ export class HeaderController {
     const input = this.editInput;
     const deleteButton = this.deleteButton;
     if (!input || !deleteButton) return;
-    const marker = this.hoveredMarker;
+    const marker = this.editingMarker ?? this.hoveredMarker;
     const focused = document.activeElement === input;
     if (!marker) {
       if (!focused) {
@@ -407,7 +510,12 @@ export class HeaderController {
       return;
     }
     const x = this.coordinates.screenXForTick(marker.tick);
-    const y = marker.lane === "tempo" ? 2 : HeaderTempoLaneHeight + 2;
+    const y =
+      marker.lane === "tempo"
+        ? 2
+        : marker.lane === "timeSignature"
+          ? HeaderTempoLaneHeight + 2
+          : HeaderHeight - 12;
     const inputWidth = input.getBoundingClientRect().width || 48;
     input.style.left = `${x}px`;
     input.style.top = `${y}px`;
@@ -419,6 +527,10 @@ export class HeaderController {
     if (key !== this.editingMarkerKey) {
       this.editingMarkerKey = key;
       input.value = this.formatMarkerValue(marker);
+    }
+    if (this.editingMarker && document.activeElement !== input) {
+      input.focus();
+      input.select();
     }
   }
 }

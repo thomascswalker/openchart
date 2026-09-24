@@ -2,6 +2,8 @@ import type {
   Midi,
   MidiNote,
   MidiTrack,
+  TimedMidiEvent,
+  TextMidiEvent,
   TempoChange,
   TimeSignatureChange,
 } from "@midiedit/core";
@@ -22,6 +24,8 @@ export interface ActiveNote {
   tick: number;
   velocity: number;
 }
+
+export type PianoRollTextEvent = TimedMidiEvent & { event: TextMidiEvent };
 
 export interface PianoRollCamera {
   /**
@@ -57,6 +61,7 @@ export interface PianoRollContext {
   getCurrentNotes(): PianoRollNote[];
   getTempoChanges(): TempoChange[];
   getTimeSignatureChanges(): TimeSignatureChange[];
+  getTextEvents(): PianoRollTextEvent[];
   getCamera(): PianoRollCamera;
   getKeyboardWidth(): number;
   getViewport(): { width: number; height: number };

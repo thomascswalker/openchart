@@ -1,6 +1,5 @@
 // https://midimusic.github.io/tech/midispec.html
 
-import { Parser } from "binary-parser/dist/binary_parser.js";
 import {
   ChannelMessage,
   MetaType,
@@ -9,12 +8,15 @@ import {
   MidiFormat,
   MidiMetaEvent,
   MidiSysExEvent,
+  MidiEventId,
   TempoChange,
   TempoMetaPayload,
   TextMetaPayload,
   TimedMidiEvent,
   TimeSignatureChange,
   TimeSignatureMetaPayload,
+  TextMidiEvent,
+  TextMetaType,
 } from "./types.js";
 import {
   concatBytes,
@@ -26,7 +28,7 @@ import {
   writeUInt16BE,
   writeUInt32BE,
 } from "./util.js";
-import { headerParser, trackParser } from "./parsers.js";
+import { trackParser } from "./parsers.js";
 import * as ini from "ini";
 
 /** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
@@ -83,6 +85,18 @@ interface MidiNote {
   previous?: MidiNote;
 }
 
+function isTextMetaType(type: number): type is TextMetaType {
+  return [
+    MetaType.TextEvent,
+    MetaType.Copyright,
+    MetaType.TrackName,
+    MetaType.InstrumentName,
+    MetaType.Lyric,
+    MetaType.Marker,
+    MetaType.CuePoint,
+  ].includes(type as MetaType);
+}
+
 class MidiHeader {
   format: MidiFormat = 1;
   trackCount: number = 0;
@@ -129,6 +143,8 @@ class MidiTrack {
 
   private noteCache: MidiNote[] | null = null;
   private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
+  private readonly eventIds = new WeakMap<object, MidiEventId>();
+  private nextEventId = 1;
 
   public constructor(name: string = "") {
     this.name = name;
@@ -182,6 +198,95 @@ class MidiTrack {
     });
   }
 
+  public getEventId(event: MidiEvent): MidiEventId {
+    let id = this.eventIds.get(event);
+    if (!id) {
+      id = `event-${this.nextEventId++}`;
+      this.eventIds.set(event, id);
+    }
+    return id;
+  }
+
+  public getEventById(id: MidiEventId): MidiEvent | undefined {
+    return this.events.find((event) => this.getEventId(event) === id);
+  }
+
+  public insertEventAt(tick: number, event: MidiEvent): MidiEventId {
+    this.insertEventsAt([{ tick, event }]);
+    return this.getEventId(event);
+  }
+
+  public updateEventAt(id: MidiEventId, patch: Partial<MidiEvent>): boolean {
+    const event = this.getEventById(id);
+    return event ? this.updateEvent(event, patch) : false;
+  }
+
+  public moveEventById(id: MidiEventId, tick: number): boolean {
+    const event = this.getEventById(id);
+    return event ? this.moveEvent(event, tick) : false;
+  }
+
+  public getTextEvents(): Array<TimedMidiEvent & { event: TextMidiEvent }> {
+    return this.getTimedEvents().filter(
+      (timed): timed is TimedMidiEvent & { event: TextMidiEvent } =>
+        timed.event.status === 0xff &&
+        isTextMetaType((timed.event as MidiMetaEvent).type),
+    );
+  }
+
+  /** Creates a text-bearing meta event at an absolute tick. */
+  public addTextEvent(
+    type: TextMetaType,
+    tick: number,
+    text: string,
+  ): TextMidiEvent {
+    if (!Number.isInteger(tick) || tick < 0) {
+      throw new RangeError("tick must be a non-negative integer");
+    }
+    if (!text.trim()) {
+      throw new Error("Text events must contain text");
+    }
+    const event: TextMidiEvent = {
+      deltaTime: 0,
+      status: 0xff,
+      type,
+      length: text.length,
+      data: { text },
+    };
+    this.insertEventsAt([{ tick, event }]);
+    return event;
+  }
+
+  public updateTextEvent(event: TextMidiEvent, text: string): boolean {
+    if (!this.events.includes(event) || !text.trim()) return false;
+    event.data.text = text;
+    event.length = text.length;
+    this.invalidateCaches();
+    return true;
+  }
+
+  /** Moves any event while preserving absolute ordering and delta times. */
+  public moveEvent(event: MidiEvent, tick: number): boolean {
+    if (!this.events.includes(event)) return false;
+    if (!Number.isInteger(tick) || tick < 0) {
+      throw new RangeError("tick must be a non-negative integer");
+    }
+    const timedEvents = this.getTimedEvents();
+    const timed = timedEvents.find((item) => item.event === event);
+    if (!timed) return false;
+    timed.tick = tick;
+    timed.order = Number.MAX_SAFE_INTEGER;
+    this.replaceTimedEvents(this.keepEndOfTrackLast(timedEvents));
+    return true;
+  }
+
+  public updateEvent(event: MidiEvent, patch: Partial<MidiEvent>): boolean {
+    if (!this.events.includes(event)) return false;
+    Object.assign(event, patch);
+    this.invalidateCaches();
+    return true;
+  }
+
   private isEndOfTrack(event: MidiEvent): event is MidiMetaEvent {
     return (
       event.status === 0xff &&
@@ -209,8 +314,25 @@ class MidiTrack {
       ...timedEvents.map(({ event }) => event),
     );
 
+    this.invalidateCaches();
+  }
+
+  private invalidateCaches(): void {
     this.noteCache = null;
     this.noteCacheByPitch = null;
+  }
+
+  private keepEndOfTrackLast(events: TimedMidiEvent[]): TimedMidiEvent[] {
+    const finalTick = events
+      .filter(({ event }) => !this.isEndOfTrack(event))
+      .reduce((maximum, item) => Math.max(maximum, item.tick), 0);
+    for (const item of events) {
+      if (this.isEndOfTrack(item.event)) {
+        item.tick = Math.max(item.tick, finalTick);
+        item.order = Number.MAX_SAFE_INTEGER;
+      }
+    }
+    return events.sort((a, b) => a.tick - b.tick || a.order - b.order);
   }
 
   public getAbsoluteTickAt(eventIndex: number): number {
@@ -556,6 +678,11 @@ class MidiTrack {
     return true;
   }
 
+  public removeEventById(id: MidiEventId): boolean {
+    const event = this.getEventById(id);
+    return event ? this.removeEvent(event) : false;
+  }
+
   private buildNoteCache(): void {
     interface PendingNote {
       pitch: number;
@@ -724,29 +851,59 @@ class Midi {
   }
 
   private parse(data: Uint8Array): void {
-    const midiParser = new Parser()
-      .useContextVars()
-      .nest("header", {
-        type: headerParser,
-      })
-      .array("tracks", {
-        type: trackParser,
-        length: function (this: any) {
-          return this.header.trackCount;
-        },
-      });
+    // Ensure at least the main file header exists
+    if (data.length < 14) {
+      throw new Error("MIDI file is truncated");
+    }
 
-    const result = midiParser.parse(data);
+    // Data reader
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
-    this.header.format = result.header.format;
-    this.header.trackCount = result.header.trackCount;
-    this.header.division = result.header.ppqn;
-    this.header.isSMPTE = Boolean(result.header.isSMPTE);
+    // Validate file header
+    const magic = String.fromCharCode(...data.subarray(0, 4));
+    const headerLength = view.getUint32(4);
+    if (magic !== "MThd" || headerLength !== 6) {
+      throw new Error("Invalid MIDI header chunk");
+    }
+    this.header.format = view.getUint16(8) as MidiFormat;
+    const declaredTrackCount = view.getUint16(10);
+    const division = view.getUint16(12);
+    this.header.division = division & 0x7fff;
+    this.header.isSMPTE = (division & 0x8000) !== 0;
 
-    this.tracks = result.tracks.map((parsedTrack: any) => {
+    // Parse tracks
+    const parsedTracks: any[] = [];
+    let offset = 14;
+    while (offset < data.length) {
+      if (data.length - offset < 8) {
+        throw new Error("MIDI track chunk header is truncated");
+      }
+      const trackMagic = String.fromCharCode(
+        ...data.subarray(offset, offset + 4),
+      );
+      const length = view.getUint32(offset + 4);
+      const chunkEnd = offset + 8 + length;
+      if (trackMagic !== "MTrk") {
+        throw new Error(`Invalid MIDI track chunk '${trackMagic}'`);
+      }
+      if (chunkEnd > data.length) {
+        throw new Error("MIDI track chunk is truncated");
+      }
+      parsedTracks.push(trackParser.parse(data.subarray(offset, chunkEnd)));
+      offset = chunkEnd;
+    }
+
+    if (parsedTracks.length === 0 && declaredTrackCount > 0) {
+      throw new Error("MIDI header declares tracks but contains none");
+    }
+    // The actual chunks are authoritative for the in-memory document. This
+    // also makes a later write repair stale header track-count metadata.
+    this.header.trackCount = parsedTracks.length;
+
+    this.tracks = parsedTracks.map((parsedTrack: any) => {
       const track = new MidiTrack();
 
-      track.format = result.header.format;
+      track.format = this.header.format;
       track.events = parsedTrack.events as MidiEvent[];
 
       const trackNameEvent = track
@@ -769,11 +926,13 @@ class Midi {
     const index = this.tracks.length;
     const track = new MidiTrack(`Track ${index}`);
     this.tracks.push(track);
+    this.header.trackCount = this.tracks.length;
     return index;
   }
 
   public removeTrack(index: number): number {
     this.tracks.splice(index, 1);
+    this.header.trackCount = this.tracks.length;
     return this.tracks.length;
   }
 

@@ -1,4 +1,3 @@
-import path from "path";
 import { Midi, MidiTrack } from "../src/midi.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
@@ -12,8 +11,7 @@ test("is constructed", () => {
 test("read file", async () => {
   const { default: testData } = await import("./data.json");
 
-  const currentDir = path.dirname(new URL(import.meta.url).pathname);
-  const midiPath = path.join(currentDir, testData.filename);
+  const midiPath = new URL(testData.filename, import.meta.url);
   const content = fs.readFileSync(midiPath);
   const midi = new Midi(content);
 
