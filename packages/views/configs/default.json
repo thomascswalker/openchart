@@ -1,11 +1,19 @@
 {
   "name": "Default",
   "ppqn": 480,
+  "tempoTrack": "GLOBAL",
   "tracks": [
+    {
+      "name": "CHART HEADER",
+      "type": "global",
+      "notes": {},
+      "events": {}
+    },
     {
       "name": "GLOBAL",
       "type": "global",
-      "notes": {}
+      "notes": {},
+      "events": {}
     },
     {
       "name": "LEAD GUITAR",
@@ -164,12 +172,16 @@
     {
       "name": "VOCALS",
       "type": "instrument",
-      "offsets": {
-        "expert": 96,
-        "hard": 84,
-        "medium": 72,
-        "easy": 60
-      },
+      "notes": {}
+    },
+    {
+      "name": "FOUR PAD",
+      "type": "instrument",
+      "notes": {}
+    },
+    {
+      "name": "FIVE PAD",
+      "type": "instrument",
       "notes": {}
     }
   ]
