@@ -14,19 +14,32 @@ import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 
 function isTypingTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement &&
-    (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable);
+  return (
+    target instanceof HTMLElement &&
+    (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+      target.isContentEditable)
+  );
 }
 
-function trackIndexForSession(midi: Midi, session: ViewportSession): number | null {
+function trackIndexForSession(
+  midi: Midi,
+  session: ViewportSession,
+): number | null {
   if (session.trackKey.startsWith("unmapped-")) {
-    const names = new Set(["CHART HEADER", ...new SongView(midi).getTrackDescriptors().map((descriptor) => descriptor.name)]);
+    const names = new Set([
+      "CHART HEADER",
+      ...new SongView(midi)
+        .getTrackDescriptors()
+        .map((descriptor) => descriptor.name),
+    ]);
     const tracks = midi.tracks.filter((track) => !names.has(track.name));
     const index = Number(session.trackKey.slice("unmapped-".length));
     const selected = tracks[index];
     return selected ? midi.tracks.indexOf(selected) : null;
   }
-  const index = midi.tracks.findIndex((track) => track.name === session.instrument);
+  const index = midi.tracks.findIndex(
+    (track) => track.name === session.instrument,
+  );
   return index >= 0 ? index : null;
 }
 
@@ -35,26 +48,41 @@ interface ViewportProps {
 }
 
 export const Viewport = ({ onChartViewReady }: ViewportProps) => {
-  const { viewportSessions, activeViewportId, maxViewportCount, addViewport } = useEditor();
+  const { viewportSessions, activeViewportId, maxViewportCount, addViewport } =
+    useEditor();
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
       <div className="viewport-manager__toolbar">
         <strong>Viewports</strong>
-        <span>{viewportSessions.length}/{maxViewportCount}</span>
-        <button type="button" onClick={() => addViewport("piano-roll")} disabled={viewportSessions.length >= maxViewportCount}>
+        <span>
+          {viewportSessions.length}/{maxViewportCount}
+        </span>
+        <button
+          type="button"
+          onClick={() => addViewport("piano-roll")}
+          disabled={viewportSessions.length >= maxViewportCount}
+        >
           + Piano Roll
         </button>
-        <button type="button" onClick={() => addViewport("highway")} disabled={viewportSessions.length >= maxViewportCount}>
+        <button
+          type="button"
+          onClick={() => addViewport("highway")}
+          disabled={viewportSessions.length >= maxViewportCount}
+        >
           + Highway
         </button>
       </div>
-      <div className={`viewport-grid viewport-grid--${viewportSessions.length}`}>
+      <div
+        className={`viewport-grid viewport-grid--${viewportSessions.length}`}
+      >
         {viewportSessions.map((session) => (
           <ViewportPanel
             key={session.id}
             session={session}
             active={session.id === activeViewportId}
-            onChartViewReady={session.id === activeViewportId ? onChartViewReady : () => {}}
+            onChartViewReady={
+              session.id === activeViewportId ? onChartViewReady : () => {}
+            }
           />
         ))}
       </div>
@@ -62,7 +90,11 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
   );
 };
 
-function ViewportPanel({ session, active, onChartViewReady }: {
+function ViewportPanel({
+  session,
+  active,
+  onChartViewReady,
+}: {
   session: ViewportSession;
   active: boolean;
   onChartViewReady: (view: ChartView | null) => void;
@@ -76,34 +108,61 @@ function ViewportPanel({ session, active, onChartViewReady }: {
     snapEnabled,
     snapDenominator,
   } = useEditor();
-  const { isPlaying, playbackTick: playheadTick, setPlaybackTick, refresh: refreshTotalTicks, stopPreview, setActiveView, togglePlay } = usePlayback();
+  const {
+    isPlaying,
+    playbackTick: playheadTick,
+    setPlaybackTick,
+    refresh: refreshTotalTicks,
+    stopPreview,
+    setActiveView,
+    togglePlay,
+  } = usePlayback();
   const { markDirty } = useEditorCommands();
   const chartViewRef = useRef<ChartView | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
-  const activeView = CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
-  const selectedTrackIndex = midiData ? trackIndexForSession(midiData, session) : null;
+  const activeView =
+    CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
+  const selectedTrackIndex = midiData
+    ? trackIndexForSession(midiData, session)
+    : null;
 
-  const keepPlayheadVisible = useCallback((view: ChartView) => {
-    const cameraTick = getCameraTickForPlayhead(playheadTick, view.getCameraTick(), view.getVisibleTickSpan());
-    if (cameraTick !== null) view.setCameraTick(cameraTick);
-  }, [playheadTick]);
+  const keepPlayheadVisible = useCallback(
+    (view: ChartView) => {
+      const cameraTick = getCameraTickForPlayhead(
+        playheadTick,
+        view.getCameraTick(),
+        view.getVisibleTickSpan(),
+      );
+      if (cameraTick !== null) view.setCameraTick(cameraTick);
+    },
+    [playheadTick],
+  );
 
-  const handleReady = useCallback((view: ChartView | null) => {
-    chartViewRef.current = view;
-    setChartView(view);
-    if (view) {
-      view.setPlayheadTick(playheadTick);
-      if (session.camera.tick) view.setCameraTick(session.camera.tick);
-      keepPlayheadVisible(view);
-    }
-    onChartViewReady(view);
-  }, [keepPlayheadVisible, onChartViewReady, playheadTick, session.camera.tick]);
+  const handleReady = useCallback(
+    (view: ChartView | null) => {
+      chartViewRef.current = view;
+      setChartView(view);
+      if (view) {
+        view.setPlayheadTick(playheadTick);
+        if (session.camera.tick) view.setCameraTick(session.camera.tick);
+        keepPlayheadVisible(view);
+      }
+      onChartViewReady(view);
+    },
+    [keepPlayheadVisible, onChartViewReady, playheadTick, session.camera.tick],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) return;
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        isTypingTarget(event.target)
+      )
+        return;
       if (event.code === "Space" && active) {
         event.preventDefault();
         togglePlayRef.current();
@@ -126,18 +185,29 @@ function ViewportPanel({ session, active, onChartViewReady }: {
   useEffect(() => {
     const view = chartViewRef.current;
     if (!view) return;
-    view.onNotesChanged = () => { markDirty(); refreshTotalTicks(); };
+    view.onNotesChanged = () => {
+      markDirty();
+      refreshTotalTicks();
+    };
     view.onSeekRequest = setPlaybackTick;
-    view.onCameraChange = () => updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
+    view.onCameraChange = () =>
+      updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
     return () => {
       view.onNotesChanged = null;
       view.onSeekRequest = null;
       view.onCameraChange = null;
     };
-  }, [markDirty, refreshTotalTicks, session.id, setPlaybackTick, updateViewport]);
+  }, [
+    markDirty,
+    refreshTotalTicks,
+    session.id,
+    setPlaybackTick,
+    updateViewport,
+  ]);
 
   useEffect(() => {
-    if (isPlaying && chartViewRef.current) keepPlayheadVisible(chartViewRef.current);
+    if (isPlaying && chartViewRef.current)
+      keepPlayheadVisible(chartViewRef.current);
   }, [isPlaying, keepPlayheadVisible]);
 
   const setView = (view: ViewportSession["view"]) => {
@@ -146,39 +216,104 @@ function ViewportPanel({ session, active, onChartViewReady }: {
   };
 
   return (
-    <article className={`viewport-panel${active ? " viewport-panel--active" : ""}`} onPointerDown={() => focusViewport(session.id)}>
+    <article
+      className={`viewport-panel${active ? " viewport-panel--active" : ""}`}
+      onPointerDown={() => focusViewport(session.id)}
+    >
       <header className="viewport-panel__header">
         <strong>{activeView.name}</strong>
         <span>{session.instrument}</span>
         <div className="viewport-panel__actions">
-          <button type="button" aria-pressed={session.view === "piano-roll"} onClick={() => setView("piano-roll")}>Piano Roll</button>
-          <button type="button" aria-pressed={session.view === "highway"} onClick={() => setView("highway")}>Highway</button>
-          <button type="button" aria-label="Close viewport" onClick={() => closeViewport(session.id)} disabled={viewportSessions.length <= 1}>×</button>
+          <button
+            type="button"
+            aria-pressed={session.view === "piano-roll"}
+            onClick={() => setView("piano-roll")}
+          >
+            Piano Roll
+          </button>
+          <button
+            type="button"
+            aria-pressed={session.view === "highway"}
+            onClick={() => setView("highway")}
+          >
+            Highway
+          </button>
+          <button
+            type="button"
+            aria-label="Close viewport"
+            onClick={() => closeViewport(session.id)}
+            disabled={viewportSessions.length <= 1}
+          >
+            ×
+          </button>
         </div>
       </header>
       <div className="viewport-panel__controls">
         <Toolbar activeViewId={session.view} onViewChange={setView} />
         {session.view === "highway" ? (
-          <div className="highway-toolbar" role="toolbar" aria-label="Highway chart selection">
+          <div
+            className="highway-toolbar"
+            role="toolbar"
+            aria-label="Highway chart selection"
+          >
             <div role="group" aria-label="Instrument">
               {Object.values(InstrumentType).map((instrument) => (
-                <button key={instrument} type="button" disabled={!!midiData && !new SongView(midiData).getInstrumentTrackView(instrument)} aria-pressed={session.instrument === instrument} onClick={() => updateViewport(session.id, { instrument, trackKey: instrument.toLowerCase().replaceAll(" ", "-") })}>{instrument}</button>
+                <button
+                  key={instrument}
+                  type="button"
+                  disabled={
+                    !!midiData &&
+                    !new SongView(midiData).getInstrumentTrackView(instrument)
+                  }
+                  aria-pressed={session.instrument === instrument}
+                  onClick={() =>
+                    updateViewport(session.id, {
+                      instrument,
+                      trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
+                    })
+                  }
+                >
+                  {instrument}
+                </button>
               ))}
             </div>
             <div role="group" aria-label="Difficulty">
-              {([Difficulty.Easy, Difficulty.Medium, Difficulty.Hard, Difficulty.Expert] as const).map((difficulty) => (
-                <button key={difficulty} type="button" aria-pressed={session.difficulty === difficulty} onClick={() => updateViewport(session.id, { difficulty })}>{Difficulty[difficulty]}</button>
+              {(
+                [
+                  Difficulty.Easy,
+                  Difficulty.Medium,
+                  Difficulty.Hard,
+                  Difficulty.Expert,
+                ] as const
+              ).map((difficulty) => (
+                <button
+                  key={difficulty}
+                  type="button"
+                  aria-pressed={session.difficulty === difficulty}
+                  onClick={() => updateViewport(session.id, { difficulty })}
+                >
+                  {Difficulty[difficulty]}
+                </button>
               ))}
             </div>
           </div>
         ) : null}
       </div>
       <div className="viewport-panel__body">
-        {session.view === "piano-roll" ? <TrackList viewportId={session.id} /> : null}
+        {session.view === "piano-roll" ? (
+          <TrackList viewportId={session.id} />
+        ) : null}
         <div className="viewport-panel__renderer">
           <ChartViewHost
             createRenderer={activeView.createRenderer}
-            state={{ midi: midiData, selectedTrackIndex, selectedInstrument: session.instrument, selectedDifficulty: session.difficulty, snap: { enabled: snapEnabled, denominator: snapDenominator }, isPlaying }}
+            state={{
+              midi: midiData,
+              selectedTrackIndex,
+              selectedInstrument: session.instrument,
+              selectedDifficulty: session.difficulty,
+              snap: { enabled: snapEnabled, denominator: snapDenominator },
+              isPlaying,
+            }}
             onReady={handleReady}
           />
         </div>

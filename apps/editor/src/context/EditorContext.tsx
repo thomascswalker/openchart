@@ -114,8 +114,7 @@ export function EditorProvider({ children }: ProviderProps) {
   const [viewportSessions, setViewportSessions] = useState<ViewportSession[]>([
     createViewportSession(DEFAULT_VIEWPORT_ID),
   ]);
-  const [activeViewportId, setActiveViewportId] =
-    useState(DEFAULT_VIEWPORT_ID);
+  const [activeViewportId, setActiveViewportId] = useState(DEFAULT_VIEWPORT_ID);
   const [maxViewportCount, setMaxViewportCountState] = useState(4);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
@@ -151,7 +150,10 @@ export function EditorProvider({ children }: ProviderProps) {
   const closeViewport = (id: string): boolean => {
     let closed = false;
     setViewportSessions((sessions) => {
-      if (sessions.length <= 1 || !sessions.some((session) => session.id === id)) {
+      if (
+        sessions.length <= 1 ||
+        !sessions.some((session) => session.id === id)
+      ) {
         return sessions;
       }
       closed = true;

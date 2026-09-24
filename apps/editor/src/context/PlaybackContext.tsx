@@ -8,15 +8,16 @@ import type { ProviderProps } from "./shared";
 import { PlaybackContext } from "./PlaybackContextStore";
 
 export function PlaybackProvider({ children }: ProviderProps) {
-  const {
-    midiData,
-    viewportSessions,
-    activeViewportId,
-  } = useEditor();
-  const activeViewport = viewportSessions.find((session) => session.id === activeViewportId);
-  const selectedTrackIndex = activeViewport && midiData
-    ? midiData.tracks.findIndex((track) => track.name === activeViewport.instrument)
-    : null;
+  const { midiData, viewportSessions, activeViewportId } = useEditor();
+  const activeViewport = viewportSessions.find(
+    (session) => session.id === activeViewportId,
+  );
+  const selectedTrackIndex =
+    activeViewport && midiData
+      ? midiData.tracks.findIndex(
+          (track) => track.name === activeViewport.instrument,
+        )
+      : null;
   const { settings } = useApplicationSettings();
   const audioPlayer = useAudioPlayer();
   const feedback = usePlaybackFeedback({

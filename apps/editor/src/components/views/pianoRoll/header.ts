@@ -1,4 +1,9 @@
-import { MetaType, type TempoChange, type TextMidiEvent, type TimeSignatureChange } from "@midiedit/core";
+import {
+  MetaType,
+  type TempoChange,
+  type TextMidiEvent,
+  type TimeSignatureChange,
+} from "@midiedit/core";
 import type { CanvasPoint } from "../../../rendering/geometry";
 import {
   HeaderHeight,
@@ -96,7 +101,11 @@ export class HeaderController {
     if (y < 0 || y >= HeaderHeight) {
       return null;
     }
-    return y < HeaderTempoLaneHeight ? "tempo" : y < HeaderHeight - 10 ? "timeSignature" : "text";
+    return y < HeaderTempoLaneHeight
+      ? "tempo"
+      : y < HeaderHeight - 10
+        ? "timeSignature"
+        : "text";
   }
 
   public updateHover(local: CanvasPoint | null): void {
@@ -180,13 +189,16 @@ export class HeaderController {
   }
 
   public beginDrag(point: CanvasPoint): void {
-    if (this.context.getState().isPlaying || this.laneAt(point.y) !== "text") return;
+    if (this.context.getState().isPlaying || this.laneAt(point.y) !== "text")
+      return;
     this.draggingText = this.findTextMarkerNear(point.x)?.event ?? null;
   }
 
   public updateDrag(point: CanvasPoint): void {
     if (!this.draggingText || this.context.getState().isPlaying) return;
-    const tick = this.coordinates.snapTickToNearest(this.coordinates.tickAtScreenX(point.x));
+    const tick = this.coordinates.snapTickToNearest(
+      this.coordinates.tickAtScreenX(point.x),
+    );
     const track = this.context.getSelectedTrack();
     if (track?.moveEvent(this.draggingText, tick)) {
       this.context.notifyNotesChanged();
@@ -304,7 +316,9 @@ export class HeaderController {
     return this.findMarkerNear(this.context.getTimeSignatureChanges(), x);
   }
 
-  private findTextMarkerNear(x: number): { tick: number; event: TextMidiEvent } | null {
+  private findTextMarkerNear(
+    x: number,
+  ): { tick: number; event: TextMidiEvent } | null {
     return this.findMarkerNear(this.context.getTextEvents(), x) as {
       tick: number;
       event: TextMidiEvent;
@@ -412,9 +426,12 @@ export class HeaderController {
     const marker = this.hoveredMarker;
     if (!midi || !marker) return;
     if (marker.lane === "tempo") midi.removeTempoChangeAt(marker.tick);
-    else if (marker.lane === "timeSignature") midi.removeTimeSignatureChangeAt(marker.tick);
+    else if (marker.lane === "timeSignature")
+      midi.removeTimeSignatureChangeAt(marker.tick);
     else {
-      const text = this.findTextMarkerNear(this.coordinates.screenXForTick(marker.tick));
+      const text = this.findTextMarkerNear(
+        this.coordinates.screenXForTick(marker.tick),
+      );
       if (text) this.context.getSelectedTrack()?.removeEvent(text.event);
     }
     this.hoveredMarker = null;
@@ -443,8 +460,11 @@ export class HeaderController {
         parsed.denominator,
       );
     } else {
-      const text = this.findTextMarkerNear(this.coordinates.screenXForTick(marker.tick));
-      if (text) this.context.getSelectedTrack()?.updateTextEvent(text.event, raw);
+      const text = this.findTextMarkerNear(
+        this.coordinates.screenXForTick(marker.tick),
+      );
+      if (text)
+        this.context.getSelectedTrack()?.updateTextEvent(text.event, raw);
     }
     this.editingMarker = null;
     this.context.invalidateTempoCache();
@@ -464,7 +484,10 @@ export class HeaderController {
         : "";
     }
     if (marker.lane === "text") {
-      return this.findTextMarkerNear(this.coordinates.screenXForTick(marker.tick))?.event.data.text ?? "";
+      return (
+        this.findTextMarkerNear(this.coordinates.screenXForTick(marker.tick))
+          ?.event.data.text ?? ""
+      );
     }
     const change = this.context
       .getTimeSignatureChanges()
@@ -487,7 +510,12 @@ export class HeaderController {
       return;
     }
     const x = this.coordinates.screenXForTick(marker.tick);
-    const y = marker.lane === "tempo" ? 2 : marker.lane === "timeSignature" ? HeaderTempoLaneHeight + 2 : HeaderHeight - 12;
+    const y =
+      marker.lane === "tempo"
+        ? 2
+        : marker.lane === "timeSignature"
+          ? HeaderTempoLaneHeight + 2
+          : HeaderHeight - 12;
     const inputWidth = input.getBoundingClientRect().width || 48;
     input.style.left = `${x}px`;
     input.style.top = `${y}px`;

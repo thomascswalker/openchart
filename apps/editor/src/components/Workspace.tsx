@@ -12,9 +12,13 @@ export const Workspace = ({ debugVisible, onDebugClose }: WorkspaceProps) => {
   const [chartView, setChartView] = useState<ChartView | null>(null);
 
   return (
-    <div className={`midi-workspace${debugVisible ? " midi-workspace--debug" : ""}`}>
+    <div
+      className={`midi-workspace${debugVisible ? " midi-workspace--debug" : ""}`}
+    >
       <Viewport onChartViewReady={setChartView} />
-      {debugVisible ? <DebugWindow onClose={onDebugClose} chartView={chartView} /> : null}
+      {debugVisible ? (
+        <DebugWindow onClose={onDebugClose} chartView={chartView} />
+      ) : null}
     </div>
   );
 };

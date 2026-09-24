@@ -163,8 +163,13 @@ export function EditorCommandProvider({
     projectMetadata,
     setProjectMetadata,
   } = useEditor();
-  const { setAudio, setAudioSource, setAudioFileName, toggleMetronome, toggleClap } =
-    usePlayback();
+  const {
+    setAudio,
+    setAudioSource,
+    setAudioFileName,
+    toggleMetronome,
+    toggleClap,
+  } = usePlayback();
   const { settings } = useApplicationSettings();
   const audioFileRef = useRef<HTMLInputElement>(null);
   const audioLoadRef = useRef(0);
@@ -314,7 +319,10 @@ export function EditorCommandProvider({
       audioUrlRef.current = url;
       const player = Audio({ file: url, preload: true });
       setAudio(player);
-      setAudioSource({ role: "single", fileName: file.name, url, enabled: true, volume: 1 }, player);
+      setAudioSource(
+        { role: "single", fileName: file.name, url, enabled: true, volume: 1 },
+        player,
+      );
       setAudioFileName(file.name);
       setError(null);
     },
@@ -336,16 +344,34 @@ export function EditorCommandProvider({
         } as const;
         const discovered = isTauri()
           ? await discoverMultitrackAudio(settings.audio.rootPath, regexes)
-          : audioDirectoryHandle && (await hasReadPermission(audioDirectoryHandle))
-            ? await discoverMultitrackAudioFromHandle(audioDirectoryHandle, regexes)
+          : audioDirectoryHandle &&
+              (await hasReadPermission(audioDirectoryHandle))
+            ? await discoverMultitrackAudioFromHandle(
+                audioDirectoryHandle,
+                regexes,
+              )
             : null;
         if (discovered) {
           for (const [role, source] of Object.entries(discovered.matches)) {
-            if (source) setAudioSource({ role: role as keyof typeof regexes, fileName: source.name, url: source.url, enabled: true, volume: 1 });
+            if (source)
+              setAudioSource({
+                role: role as keyof typeof regexes,
+                fileName: source.name,
+                url: source.url,
+                enabled: true,
+                volume: 1,
+              });
           }
-          const ambiguous = Object.entries(discovered.ambiguous).filter(([, names]) => names?.length);
-          if (options?.reportMissing && (discovered.missing.length || ambiguous.length)) {
-            setError(`Audio roles unresolved: ${[...discovered.missing, ...ambiguous.map(([role]) => role)].join(", ")}`);
+          const ambiguous = Object.entries(discovered.ambiguous).filter(
+            ([, names]) => names?.length,
+          );
+          if (
+            options?.reportMissing &&
+            (discovered.missing.length || ambiguous.length)
+          ) {
+            setError(
+              `Audio roles unresolved: ${[...discovered.missing, ...ambiguous.map(([role]) => role)].join(", ")}`,
+            );
           }
         }
         return;
@@ -368,7 +394,16 @@ export function EditorCommandProvider({
         if (discovered) {
           const player = Audio({ file: discovered.url, preload: true });
           setAudio(player);
-          setAudioSource({ role: "single", fileName: discovered.name, url: discovered.url, enabled: true, volume: 1 }, player);
+          setAudioSource(
+            {
+              role: "single",
+              fileName: discovered.name,
+              url: discovered.url,
+              enabled: true,
+              volume: 1,
+            },
+            player,
+          );
           setAudioFileName(discovered.name);
           setError(null);
         } else if (options?.reportMissing) {

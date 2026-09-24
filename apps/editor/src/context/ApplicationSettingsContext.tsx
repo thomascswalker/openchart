@@ -84,7 +84,11 @@ export function validateApplicationSettings(
   if (!settings.audio.rootPath.trim()) {
     errors.rootPath = "Audio Path is required.";
   }
-  if (settings.audio.mode !== undefined && settings.audio.mode !== "single" && settings.audio.mode !== "multitrack") {
+  if (
+    settings.audio.mode !== undefined &&
+    settings.audio.mode !== "single" &&
+    settings.audio.mode !== "multitrack"
+  ) {
     errors.audioMode = "Choose a supported audio mode.";
   }
   if (
@@ -158,7 +162,7 @@ function readSettings(): ApplicationSettings {
         ([key]) => key !== "highwayClapEnabled" && key !== "highwayClapVolume",
       ),
     );
-  const merged: ApplicationSettings = {
+    const merged: ApplicationSettings = {
       ...defaultApplicationSettings,
       ...parsed,
       audio: { ...defaultApplicationSettings.audio, ...parsed.audio },
