@@ -166,6 +166,7 @@ const trackEventParser = new Parser()
   });
 
 export const trackParser = new Parser()
+  .useContextVars()
   .string("magic", {
     length: 4,
     encoding: "ascii",

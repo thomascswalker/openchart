@@ -12,8 +12,7 @@ test("is constructed", () => {
 test("read file", async () => {
   const { default: testData } = await import("./data.json");
 
-  const currentDir = path.dirname(new URL(import.meta.url).pathname);
-  const midiPath = path.join(currentDir, testData.filename);
+  const midiPath = new URL(testData.filename, import.meta.url);
   const content = fs.readFileSync(midiPath);
   const midi = new Midi(content);
 

@@ -851,10 +851,15 @@ class Midi {
   }
 
   private parse(data: Uint8Array): void {
-    // Parse the file/chunk envelope explicitly. The event parser is still
-    // shared, but chunk boundaries must not be inferred from the header count.
-    if (data.length < 14) throw new Error("MIDI file is truncated");
+    // Ensure at least the main file header exists
+    if (data.length < 14) {
+      throw new Error("MIDI file is truncated");
+    }
+
+    // Data reader
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+    // Validate file header
     const magic = String.fromCharCode(...data.subarray(0, 4));
     const headerLength = view.getUint32(4);
     if (magic !== "MThd" || headerLength !== 6) {
@@ -866,6 +871,7 @@ class Midi {
     this.header.division = division & 0x7fff;
     this.header.isSMPTE = (division & 0x8000) !== 0;
 
+    // Parse tracks
     const parsedTracks: any[] = [];
     let offset = 14;
     while (offset < data.length) {
