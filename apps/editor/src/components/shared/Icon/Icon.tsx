@@ -42,4 +42,8 @@ export const {
   MagnetIcon,
   PianoIcon,
   Highway3dIcon,
+  EasyIcon,
+  MediumIcon,
+  HardIcon,
+  ExpertIcon,
 } = Icons;

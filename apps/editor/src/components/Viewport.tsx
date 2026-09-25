@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
-import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
+import { SongView } from "@midiedit/views";
 import { useEditor, type ViewportSession } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { useEditorCommands } from "../commands/EditorCommand";
@@ -12,6 +12,7 @@ import type { ChartView } from "./views/ChartViews";
 import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
+import { CloseButton } from "./shared/Button/Button";
 
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
@@ -113,9 +114,9 @@ function ViewportPanel({
     playbackTick: playheadTick,
     setPlaybackTick,
     refresh: refreshTotalTicks,
-    stopPreview,
-    setActiveView,
     togglePlay,
+    setActiveView,
+    stopPreview,
   } = usePlayback();
   const { markDirty } = useEditorCommands();
   const chartViewRef = useRef<ChartView | null>(null);
@@ -177,12 +178,6 @@ function ViewportPanel({
   }, [playheadTick]);
 
   useEffect(() => {
-    if (!active) return;
-    setActiveView(session.view);
-    stopPreview();
-  }, [active, session.view, setActiveView, stopPreview]);
-
-  useEffect(() => {
     const view = chartViewRef.current;
     if (!view) return;
     view.onNotesChanged = () => {
@@ -210,6 +205,12 @@ function ViewportPanel({
       keepPlayheadVisible(chartViewRef.current);
   }, [isPlaying, keepPlayheadVisible]);
 
+  useEffect(() => {
+    if (!active) return;
+    setActiveView(session.view);
+    stopPreview();
+  }, [active, session.view, setActiveView, stopPreview]);
+
   const setView = (view: ViewportSession["view"]) => {
     focusViewport(session.id);
     updateViewport(session.id, { view, camera: { tick: playheadTick } });
@@ -221,84 +222,14 @@ function ViewportPanel({
       onPointerDown={() => focusViewport(session.id)}
     >
       <header className="viewport-panel__header">
-        <strong>{activeView.name}</strong>
-        <span>{session.instrument}</span>
         <div className="viewport-panel__actions">
-          <button
-            type="button"
-            aria-pressed={session.view === "piano-roll"}
-            onClick={() => setView("piano-roll")}
-          >
-            Piano Roll
-          </button>
-          <button
-            type="button"
-            aria-pressed={session.view === "highway"}
-            onClick={() => setView("highway")}
-          >
-            Highway
-          </button>
-          <button
-            type="button"
-            aria-label="Close viewport"
+          <CloseButton
             onClick={() => closeViewport(session.id)}
             disabled={viewportSessions.length <= 1}
-          >
-            ×
-          </button>
+          />
         </div>
       </header>
-      <div className="viewport-panel__controls">
-        <Toolbar activeViewId={session.view} onViewChange={setView} />
-        {session.view === "highway" ? (
-          <div
-            className="highway-toolbar"
-            role="toolbar"
-            aria-label="Highway chart selection"
-          >
-            <div role="group" aria-label="Instrument">
-              {Object.values(InstrumentType).map((instrument) => (
-                <button
-                  key={instrument}
-                  type="button"
-                  disabled={
-                    !!midiData &&
-                    !new SongView(midiData).getInstrumentTrackView(instrument)
-                  }
-                  aria-pressed={session.instrument === instrument}
-                  onClick={() =>
-                    updateViewport(session.id, {
-                      instrument,
-                      trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
-                    })
-                  }
-                >
-                  {instrument}
-                </button>
-              ))}
-            </div>
-            <div role="group" aria-label="Difficulty">
-              {(
-                [
-                  Difficulty.Easy,
-                  Difficulty.Medium,
-                  Difficulty.Hard,
-                  Difficulty.Expert,
-                ] as const
-              ).map((difficulty) => (
-                <button
-                  key={difficulty}
-                  type="button"
-                  aria-pressed={session.difficulty === difficulty}
-                  onClick={() => updateViewport(session.id, { difficulty })}
-                >
-                  {Difficulty[difficulty]}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </div>
+      <Toolbar session={session} onViewChange={setView} />
       <div className="viewport-panel__body">
         {session.view === "piano-roll" ? (
           <TrackList viewportId={session.id} />

@@ -8,6 +8,7 @@ import type {
   BorderProps,
 } from "styled-system";
 import styles from "./button.module.css";
+import type { IconProps } from "../Icon/Icon";
 
 interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   disabled?: boolean;
@@ -55,5 +56,18 @@ const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
   );
 };
 
-export { Button, CloseButton };
-export type { ButtonProps, CloseButtonProps };
+interface ToolButtonProps extends ButtonProps {
+  Icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
+}
+
+const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
+  return (
+    <Button maxWidth={40} maxHeight={40} borderRadius={4} {...rest}>
+      <Icon />
+      {children}
+    </Button>
+  );
+};
+
+export { Button, CloseButton, ToolButton };
+export type { ButtonProps, CloseButtonProps, ToolButtonProps };

@@ -1,69 +1,69 @@
-import { Button, type ButtonProps } from "../shared/Button";
 import { Section } from "../shared/Section";
 import {
+  EasyIcon,
+  ExpertIcon,
+  HardIcon,
   Highway3dIcon,
   MagnetIcon,
+  MediumIcon,
   PianoIcon,
-  type IconProps,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
-import { useEditor } from "../../context/EditorContext";
+import {
+  useEditor,
+  type ViewportKind,
+  type ViewportSession,
+} from "../../context/EditorContext";
 import { SnapDenominators } from "../views/pianoRoll/constants";
+import { ToolButton } from "../shared/Button/Button";
+import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
+import { Fragment } from "react";
 
-interface ToolButtonProps extends ButtonProps {
-  Icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
-}
-
-const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
-  return (
-    <Button maxWidth={40} maxHeight={40} borderRadius={4} {...rest}>
-      <Icon />
-      {children}
-    </Button>
-  );
-};
+const HighwayInstruments = [
+  InstrumentType.Lead,
+  InstrumentType.Bass,
+  InstrumentType.Drums,
+  InstrumentType.Vocals,
+];
 
 interface ToolbarProps {
-  activeViewId?: "piano-roll" | "highway";
-  onViewChange?: (view: "piano-roll" | "highway") => void;
+  session: ViewportSession;
+  onViewChange: (view: "piano-roll" | "highway") => void;
 }
 
-const Toolbar = ({ activeViewId: panelView, onViewChange }: ToolbarProps) => {
+const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
   const {
+    midiData,
     activeViewId: globalView,
-    setActiveViewId,
     snapEnabled,
     setSnapEnabled,
     snapDenominator,
     setSnapDenominator,
+    updateViewport,
   } = useEditor();
-  const activeViewId = panelView ?? globalView;
+  const activeViewId = session.view ?? globalView;
+
+  const handleViewChange = (kind: ViewportKind) => {
+    onViewChange(kind);
+  };
 
   return (
     <Section padding="4px" gap="4px">
       {/* View Selection */}
-
       <ToolButton
         Icon={PianoIcon}
         active={activeViewId === "piano-roll"}
-        onClick={() => {
-          if (onViewChange) onViewChange("piano-roll");
-          else setActiveViewId("piano-roll");
-        }}
+        onClick={() => handleViewChange("piano-roll")}
       />
       <ToolButton
         Icon={Highway3dIcon}
         active={activeViewId === "highway"}
-        onClick={() => {
-          if (onViewChange) onViewChange("highway");
-          else setActiveViewId("highway");
-        }}
+        onClick={() => handleViewChange("highway")}
       />
 
       <VerticalSeparator />
 
       {/* Tools */}
-
       <ToolButton
         Icon={MagnetIcon}
         active={snapEnabled}
@@ -83,6 +83,50 @@ const Toolbar = ({ activeViewId: panelView, onViewChange }: ToolbarProps) => {
           </option>
         ))}
       </select>
+
+      {activeViewId === "highway" && (
+        <Fragment>
+          <VerticalSeparator />
+
+          {Object.values(HighwayInstruments).map((instrument) => (
+            <ToolButton
+              key={instrument}
+              Icon={PianoIcon}
+              disabled={
+                !!midiData &&
+                !new SongView(midiData).getInstrumentTrackView(instrument)
+              }
+              active={session.instrument === instrument}
+              onClick={() =>
+                updateViewport(session.id, {
+                  instrument,
+                  trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
+                })
+              }
+            >
+              {instrument[0]}
+            </ToolButton>
+          ))}
+
+          <VerticalSeparator />
+
+          {(
+            [
+              [Difficulty.Easy, EasyIcon],
+              [Difficulty.Medium, MediumIcon],
+              [Difficulty.Hard, HardIcon],
+              [Difficulty.Expert, ExpertIcon],
+            ] as const
+          ).map(([difficulty, icon]) => (
+            <ToolButton
+              key={difficulty}
+              Icon={icon}
+              active={session.difficulty === difficulty}
+              onClick={() => updateViewport(session.id, { difficulty })}
+            ></ToolButton>
+          ))}
+        </Fragment>
+      )}
     </Section>
   );
 };
