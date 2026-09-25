@@ -207,6 +207,21 @@ export function useAudioPlayer(): AudioPlayback {
       .filter(([role]) => sources.get(role)?.enabled ?? true)
       .map(([, player]) => player);
 
+  const play = useCallback(() => {
+    activePlayers().forEach((player) => player.play());
+  }, [players, sources]);
+
+  const pause = useCallback(() => {
+    Array.from(players.values()).forEach((player) => player.pause());
+  }, [players]);
+
+  const seek = useCallback(
+    (seconds: number) => {
+      Array.from(players.values()).forEach((player) => player.seek(seconds));
+    },
+    [players],
+  );
+
   return {
     audio,
     players,
@@ -220,10 +235,8 @@ export function useAudioPlayer(): AudioPlayback {
     clearAudioSource,
     setSourceEnabled,
     setSourceVolume,
-    play: () => activePlayers().forEach((player) => player.play()),
-    pause: () =>
-      Array.from(players.values()).forEach((player) => player.pause()),
-    seek: (seconds) =>
-      Array.from(players.values()).forEach((player) => player.seek(seconds)),
+    play,
+    pause,
+    seek,
   };
 }
