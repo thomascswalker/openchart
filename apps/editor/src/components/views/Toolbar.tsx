@@ -1,12 +1,16 @@
 import { Section } from "../shared/Section";
 import {
+  BassIcon,
+  DrumsIcon,
   EasyIcon,
   ExpertIcon,
+  GuitarIcon,
   HardIcon,
   Highway3dIcon,
   MagnetIcon,
   MediumIcon,
   PianoIcon,
+  VocalsIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
 import {
@@ -19,12 +23,19 @@ import { ToolButton } from "../shared/Button/Button";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { Fragment } from "react";
 
-const HighwayInstruments = [
-  InstrumentType.Lead,
-  InstrumentType.Bass,
-  InstrumentType.Drums,
-  InstrumentType.Vocals,
-];
+const Instruments = [
+  [InstrumentType.Lead, GuitarIcon],
+  [InstrumentType.Groove, BassIcon],
+  [InstrumentType.Drums, DrumsIcon],
+  [InstrumentType.Vocals, VocalsIcon],
+] as const;
+
+const Difficulties = [
+  [Difficulty.Easy, EasyIcon],
+  [Difficulty.Medium, MediumIcon],
+  [Difficulty.Hard, HardIcon],
+  [Difficulty.Expert, ExpertIcon],
+] as const;
 
 interface ToolbarProps {
   session: ViewportSession;
@@ -48,7 +59,14 @@ const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
   };
 
   return (
-    <Section padding="4px" gap="4px">
+    <Section
+      padding="4px"
+      gap="4px"
+      style={{
+        backgroundColor: "#202020",
+        borderBottom: "var(--border-primary)",
+      }}
+    >
       {/* View Selection */}
       <ToolButton
         Icon={PianoIcon}
@@ -88,10 +106,10 @@ const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
         <Fragment>
           <VerticalSeparator />
 
-          {Object.values(HighwayInstruments).map((instrument) => (
+          {Object.values(Instruments).map(([instrument, icon]) => (
             <ToolButton
               key={instrument}
-              Icon={PianoIcon}
+              Icon={icon}
               disabled={
                 !!midiData &&
                 !new SongView(midiData).getInstrumentTrackView(instrument)
@@ -103,21 +121,12 @@ const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
                   trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
                 })
               }
-            >
-              {instrument[0]}
-            </ToolButton>
+            />
           ))}
 
           <VerticalSeparator />
 
-          {(
-            [
-              [Difficulty.Easy, EasyIcon],
-              [Difficulty.Medium, MediumIcon],
-              [Difficulty.Hard, HardIcon],
-              [Difficulty.Expert, ExpertIcon],
-            ] as const
-          ).map(([difficulty, icon]) => (
+          {Difficulties.map(([difficulty, icon]) => (
             <ToolButton
               key={difficulty}
               Icon={icon}
