@@ -61,8 +61,8 @@ const PROJECT_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
 ];
 
 const OPEN_DOCUMENT_FILE_PICKER_TYPES: FilePickerAcceptType[] = [
-  ...PROJECT_FILE_PICKER_TYPES,
   ...MIDI_FILE_PICKER_TYPES,
+  ...PROJECT_FILE_PICKER_TYPES,
 ];
 
 const WAV_FILE_PICKER_TYPES: FilePickerAcceptType[] = [

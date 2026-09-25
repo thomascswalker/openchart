@@ -59,7 +59,14 @@ const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
   };
 
   return (
-    <Section padding="4px" gap="4px">
+    <Section
+      padding="4px"
+      gap="4px"
+      style={{
+        backgroundColor: "#202020",
+        borderBottom: "var(--border-primary)",
+      }}
+    >
       {/* View Selection */}
       <ToolButton
         Icon={PianoIcon}
