@@ -46,4 +46,8 @@ export const {
   MediumIcon,
   HardIcon,
   ExpertIcon,
+  GuitarIcon,
+  BassIcon,
+  DrumsIcon,
+  VocalsIcon,
 } = Icons;
