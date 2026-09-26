@@ -36,6 +36,10 @@
     "type": "texture",
     "path": "note/NoteEmission.png"
   },
+  "noteEmissionMask": {
+    "type": "texture",
+    "path": "note/NoteEmissionMask.png"
+  },
   "sustainColor": {
     "type": "texture",
     "path": "note/Sustain.png"

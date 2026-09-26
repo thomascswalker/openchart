@@ -45,6 +45,14 @@ const defaultState: MaterialState = {
 
 const stateByMaterial = new WeakMap<THREE.Material, MaterialState>();
 
+// Default mask for materials that don't provide one: fully white so the emission tint applies everywhere, matching pre-mask behavior.
+const whiteMaskTexture = new THREE.DataTexture(
+  new Uint8Array([255, 255, 255, 255]),
+  1,
+  1,
+);
+whiteMaskTexture.needsUpdate = true;
+
 export function rgbFromHex(hex: number): Rgb {
   return [
     ((hex >> 16) & 0xff) / 0xff,
@@ -103,6 +111,7 @@ function updateUniforms(material: THREE.Material, state: MaterialState): void {
 interface CreateMaterialOptions {
   color: THREE.Texture;
   emission?: THREE.Texture;
+  emissionMask?: THREE.Texture;
   transparent?: boolean;
   vert?: string;
   frag?: string;
@@ -116,6 +125,7 @@ class MaterialManager {
     {
       color,
       emission,
+      emissionMask,
       transparent = false,
       vert = texturedVertexSource,
       frag = texturedFragmentSource,
@@ -128,6 +138,7 @@ class MaterialManager {
         uBaseTexture: { value: color },
         uBaseColor: { value: [1, 1, 1] },
         uEmissionTexture: { value: emission },
+        uEmissionMaskTexture: { value: emissionMask ?? whiteMaskTexture },
         uEmissionColor: { value: [1, 1, 1] },
         uEmissionIntensity: { value: 1 },
         uAlpha: { value: 1 },
@@ -162,20 +173,24 @@ export function createMaterialSet(
   });
   const noteColor = manager.create("noteColor", {
     color: textures.note.value!,
-    emission: textures.noteEmission.value!,
+    emission: textures.note.value!,
+    emissionMask: textures.noteEmissionMask.value!,
   });
   const noteNeutral = manager.create("noteNeutral", {
     color: textures.note.value!,
-    emission: textures.noteEmission.value!,
+    emission: textures.note.value!,
+    emissionMask: textures.noteEmissionMask.value!,
   });
   const noteGhostColor = manager.create("noteGhostColor", {
     color: textures.note.value!,
-    emission: textures.noteEmission.value!,
+    emission: textures.note.value!,
+    emissionMask: textures.noteEmissionMask.value!,
     transparent: true,
   });
   const noteGhostNeutral = manager.create("noteGhostNeutral", {
     color: textures.note.value!,
-    emission: textures.noteEmission.value!,
+    emission: textures.note.value!,
+    emissionMask: textures.noteEmissionMask.value!,
     transparent: true,
   });
   const sustain = manager.create("sustain", {

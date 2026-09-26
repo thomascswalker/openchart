@@ -172,6 +172,7 @@ export class ResourceRegistry {
       fret: this.resources.fretColor as TextureResource,
       note: this.resources.noteColor as TextureResource,
       noteEmission: this.resources.noteEmission as TextureResource,
+      noteEmissionMask: this.resources.noteEmissionMask as TextureResource,
       sustain: this.resources.sustainColor as TextureResource,
       sustainEmission: this.resources.sustainEmission as TextureResource,
     };
