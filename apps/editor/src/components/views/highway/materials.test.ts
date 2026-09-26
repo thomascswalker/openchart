@@ -10,7 +10,8 @@ export const CIRCULAR_SHADER_ATTRIBUTES = {
 export const CIRCULAR_MATERIAL_MAPPING = {
   baseColor: "note/fret texture.rgb * uBaseColor; sustain: solid uBaseColor",
   laneTint: "uBaseColor",
-  emission: "emissionTexture.rgb * uEmissionColor * uEmissionIntensity",
+  emission:
+    "emissionTexture.rgb * mix(1, uEmissionColor, emissionMaskTexture.r) * uEmissionIntensity",
   alpha: "baseTexture.a * uAlpha with a 0.02 discard cutoff",
   tint: "only authored tinted primitives multiply their base texture by uBaseColor",
   passed:

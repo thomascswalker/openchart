@@ -5,6 +5,7 @@ uniform vec3 uBaseColor;
 uniform vec3 uBaseIntensity;
 
 uniform sampler2D uEmissionTexture;
+uniform sampler2D uEmissionMaskTexture;
 uniform vec3 uEmissionColor;
 uniform float uEmissionIntensity;
 
@@ -15,19 +16,33 @@ uniform float uTintEnabled;
 
 varying vec2 vUv;
 
+// Leaves values below the knee untouched; compresses the excess above it toward 1.0 instead of hard-clipping.
+vec3 softKnee(vec3 color, float knee) {
+  vec3 excess = max(color - knee, 0.0);
+  return color - excess + excess / (1.0 + excess);
+}
+
 void main() {
+
   vec4 base = texture2D(uBaseTexture, vUv);
 
-  // Apply color tint and ghost effect
-  vec3 tint = mix(uBaseColor, vec3(1.0), uSelected);
-  vec3 ghost = mix(tint, vec3(1.0), uGhost);
+  // Apply selection/ghost effect
+  vec3 outColor = uBaseColor;
+  outColor = mix(outColor, vec3(1.0), uSelected);
+  outColor = mix(outColor, vec3(1.0), uGhost);
 
+  // Compute note color via emission
+  float emissionMask = texture2D(uEmissionMaskTexture, vUv).r;
+  vec3 emissionColor = mix(vec3(1.0), uEmissionColor, emissionMask);
   vec3 emission =
-    texture2D(uEmissionTexture, vUv).rgb * uEmissionColor * uEmissionIntensity;
+    texture2D(uEmissionTexture, vUv).rgb * emissionColor * uEmissionIntensity;
+  
   float alpha = base.a * uAlpha * (1.0 - uGhost * 0.55);
   if (alpha < 0.02) {
     discard;
   }
-  vec3 composed = base.rgb * mix(vec3(1.0), ghost, uTintEnabled) + emission;
-  gl_FragColor = vec4(composed, alpha);
+
+  // Apply emission
+  outColor = base.rgb * mix(vec3(1.0), outColor, uTintEnabled) + emission;
+  gl_FragColor = vec4(softKnee(outColor, 0.4), alpha);
 }
