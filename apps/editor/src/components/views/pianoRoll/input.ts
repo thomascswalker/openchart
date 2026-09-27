@@ -47,7 +47,9 @@ export class PianoRollInputController {
   public cancelNoteEditing(): void {
     this.editing.cancelGesture();
     this.pendingCreateStart = null;
+    if (this.erasing) this.context.endEdit();
     this.erasing = false;
+    this.header.endDrag();
   }
 
   public attach(canvas: HTMLCanvasElement): void {
@@ -87,8 +89,10 @@ export class PianoRollInputController {
     pointer.id = null;
     pointer.button = null;
     this.pendingCreateStart = null;
+    if (this.erasing) this.context.endEdit();
     this.erasing = false;
     this.editing.cancelGesture();
+    this.header.endDrag();
   }
 
   public setViewport(width: number, height: number): void {
@@ -213,6 +217,7 @@ export class PianoRollInputController {
       if (local.y < HeaderHeight) this.header.rightClick(local.x, local.y);
       else if (event.altKey) {
         this.erasing = true;
+        this.context.beginEdit();
         const hit = this.hitTestNote(local);
         if (hit) this.editing.eraseNote(hit);
       } else {
@@ -310,6 +315,7 @@ export class PianoRollInputController {
     }
     pointer.id = null;
     pointer.button = null;
+    const wasErasing = this.erasing;
     this.erasing = false;
     if (this.pendingCreateStart) {
       this.context.requestSeek(
@@ -321,6 +327,7 @@ export class PianoRollInputController {
     }
     this.editing.finishGesture();
     this.header.endDrag();
+    if (wasErasing) this.context.endEdit();
     const selection = this.context.getSelectionContext();
     if (selection.bounds !== null) selection.bounds = null;
     this.context.requestRender();

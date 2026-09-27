@@ -68,6 +68,8 @@ export interface PianoRollContext {
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;
   requestRender(): void;
+  beginEdit(): void;
+  endEdit(): void;
   notifyNotesChanged(): void;
   requestSeek(tick: number): void;
   invalidateTempoCache(): void;

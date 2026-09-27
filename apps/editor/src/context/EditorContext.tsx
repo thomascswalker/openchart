@@ -1,12 +1,13 @@
 import { Midi } from "@midiedit/core";
 import { Difficulty } from "@midiedit/views";
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import {
   createProjectMetadata,
   type ProjectMetadata,
 } from "../project/projectMetadata";
 import { CHART_VIEWS } from "../components/views/ChartViews";
 import type { ProviderProps } from "./shared";
+import { DEFAULT_HISTORY_CAPACITY, History } from "./History";
 
 export type ViewportKind = "piano-roll" | "highway";
 
@@ -46,6 +47,14 @@ function createViewportSession(
 interface EditorContextType {
   midiData: Midi | null;
   setMidiData: (data: Midi) => void;
+  canUndoMidi: boolean;
+  canRedoMidi: boolean;
+  beginMidiEdit: () => void;
+  recordMidiEdit: () => void;
+  endMidiEdit: () => void;
+  undoMidiEdit: () => void;
+  redoMidiEdit: () => void;
+  setHistoryCapacity: (capacity: number) => void;
 
   fileName: string | null;
   setFileName: (name: string | null) => void;
@@ -94,7 +103,13 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: ProviderProps) {
-  const [midiData, setMidiData] = useState<Midi | null>(new Midi());
+  const [history] = useState(() => {
+    const initialHistory = new History(DEFAULT_HISTORY_CAPACITY);
+    initialHistory.reset(new Midi());
+    return initialHistory;
+  });
+  const [, setHistoryRevision] = useState(0);
+  const [midiData, setMidiDataState] = useState<Midi | null>(() => new Midi());
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
     null,
@@ -119,10 +134,57 @@ export function EditorProvider({ children }: ProviderProps) {
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
 
-  const handleMidiDataChanged = (data: Midi) => {
-    setMidiData(data);
-    setTrackCount(data.tracks.length);
-  };
+  const handleMidiDataChanged = useCallback(
+    (data: Midi) => {
+      history.reset(data);
+      setMidiDataState(data);
+      setTrackCount(data.tracks.length);
+      setHistoryRevision((revision) => revision + 1);
+    },
+    [history],
+  );
+
+  const beginMidiEdit = useCallback((): void => {
+    history.beginTransaction();
+    setHistoryRevision((revision) => revision + 1);
+  }, [history]);
+
+  const recordMidiEdit = useCallback((): void => {
+    if (!midiData) return;
+    const inTransaction = history.isInTransaction;
+    history.recordEdit(midiData);
+    if (!inTransaction) setHistoryRevision((revision) => revision + 1);
+  }, [history, midiData]);
+
+  const endMidiEdit = useCallback((): void => {
+    if (!midiData) return;
+    history.endTransaction(midiData);
+    setHistoryRevision((revision) => revision + 1);
+  }, [history, midiData]);
+
+  const undoMidiEdit = useCallback((): void => {
+    const restored = history.undo();
+    if (!restored) return;
+    setMidiDataState(restored);
+    setTrackCount(restored.tracks.length);
+    setHistoryRevision((revision) => revision + 1);
+  }, [history]);
+
+  const redoMidiEdit = useCallback((): void => {
+    const restored = history.redo();
+    if (!restored) return;
+    setMidiDataState(restored);
+    setTrackCount(restored.tracks.length);
+    setHistoryRevision((revision) => revision + 1);
+  }, [history]);
+
+  const setHistoryCapacity = useCallback(
+    (capacity: number): void => {
+      history.setCapacity(capacity);
+      setHistoryRevision((revision) => revision + 1);
+    },
+    [history],
+  );
 
   const setMaxViewportCount = (count: number): void => {
     const next = Math.max(1, Math.min(4, Math.floor(count)));
@@ -202,6 +264,14 @@ export function EditorProvider({ children }: ProviderProps) {
       value={{
         midiData,
         setMidiData: handleMidiDataChanged,
+        canUndoMidi: history.canUndo,
+        canRedoMidi: history.canRedo,
+        beginMidiEdit,
+        recordMidiEdit,
+        endMidiEdit,
+        undoMidiEdit,
+        redoMidiEdit,
+        setHistoryCapacity,
         fileName,
         setFileName,
         fileHandle,

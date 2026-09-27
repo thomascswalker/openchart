@@ -62,11 +62,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
     requestRender: () => this.render(),
+    beginEdit: () => this.onEditStart?.(),
+    endEdit: () => this.onEditEnd?.(),
     notifyNotesChanged: () => this.onNotesChanged?.(),
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     invalidateTempoCache: () => {
       this.tempoCacheMidi = null;
-      this.onNotesChanged?.();
     },
   };
   private readonly editing = new NoteEditingController(

@@ -19,8 +19,11 @@ interface SettingsField {
   id: string;
   label: string;
   control: SettingsControl;
-  path: `${"audio" | "discovery" | "saving" | "feedback"}.${string}`;
+  path: `${"audio" | "discovery" | "saving" | "feedback" | "history"}.${string}`;
   options?: ReadonlyArray<{ label: string; value: string }>;
+  min?: number;
+  max?: number;
+  step?: number;
   enabledWhen?: (settings: ApplicationSettings) => boolean;
 }
 
@@ -101,6 +104,15 @@ const settingsSchema: Record<string, SettingsField[]> = {
         { label: "Project", value: "project" },
         { label: "MIDI", value: "midi" },
       ],
+    },
+    {
+      id: "historyCapacity",
+      label: "History capacity",
+      control: "number",
+      path: "history.capacity",
+      min: 1,
+      max: 1024,
+      step: 1,
     },
   ],
   Audio: [
@@ -185,7 +197,7 @@ function getSettingValue(
   const [group, key] = path.split(".") as [
     keyof Pick<
       ApplicationSettings,
-      "audio" | "discovery" | "saving" | "feedback"
+      "audio" | "discovery" | "saving" | "feedback" | "history"
     >,
     string,
   ];
@@ -200,7 +212,7 @@ function setSettingValue(
   const [group, key] = path.split(".") as [
     keyof Pick<
       ApplicationSettings,
-      "audio" | "discovery" | "saving" | "feedback"
+      "audio" | "discovery" | "saving" | "feedback" | "history"
     >,
     string,
   ];
@@ -452,7 +464,9 @@ const SettingsDialog = () => {
                   <input
                     className="input"
                     type="number"
-                    step="any"
+                    min={field.min}
+                    max={field.max}
+                    step={field.step ?? "any"}
                     aria-invalid={!!errors[field.id]}
                     value={value as number}
                     onChange={(event) => update(Number(event.target.value))}

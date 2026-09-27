@@ -10,6 +10,8 @@ export type EditorCommandId =
   | "save"
   | "saveAs"
   | "export"
+  | "undo"
+  | "redo"
   | "toggleMetronome"
   | "toggleClap"
   | "openProjectSettings"
@@ -37,6 +39,8 @@ export interface AudioCommandContext {
 
 export interface EditorCommandContext extends AudioCommandContext {
   midiData: Midi | null;
+  undoMidiEdit: () => void;
+  redoMidiEdit: () => void;
   projectDocument: ProjectDocument | null;
   projectMetadata: ProjectMetadata;
   fileName: string | null;

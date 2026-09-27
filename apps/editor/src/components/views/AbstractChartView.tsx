@@ -216,6 +216,10 @@ export abstract class AbstractChartView<T> {
   /** Notified whenever notes are added or removed, if supported. */
   public onNotesChanged: (() => void) | null = null;
 
+  /** Bracket continuous MIDI edits so a gesture becomes one history entry. */
+  public onEditStart: (() => void) | null = null;
+  public onEditEnd: (() => void) | null = null;
+
   /** Notified when the user clicks (without dragging) to seek to a tick, if supported. */
   public onSeekRequest: ((tick: number) => void) | null = null;
 

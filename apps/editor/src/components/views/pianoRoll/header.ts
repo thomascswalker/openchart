@@ -144,19 +144,25 @@ export class HeaderController {
     const tick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(point.x),
     );
+    let changed = false;
     if (lane === "tempo") {
       midi.addTempoChange(tick, this.effectiveTempoAt(tick));
+      changed = true;
     } else if (lane === "timeSignature") {
       const current = this.effectiveTimeSignatureAt(tick);
       midi.addTimeSignatureChange(tick, current.numerator, current.denominator);
+      changed = true;
     } else {
       const track = this.context.getSelectedTrack();
       if (track) {
         track.addTextEvent(MetaType.Marker, tick, "[section New]");
-        this.context.notifyNotesChanged();
+        changed = true;
       }
     }
-    this.context.invalidateTempoCache();
+    if (changed) {
+      this.context.invalidateTempoCache();
+      this.context.notifyNotesChanged();
+    }
     this.context.requestRender();
   }
 
@@ -174,17 +180,23 @@ export class HeaderController {
         : lane === "timeSignature"
           ? this.findTimeSignatureMarkerNear(x)
           : this.findTextMarkerNear(x);
+    let changed = false;
     if (marker) {
       if (lane === "tempo") {
-        midi.removeTempoChangeAt(marker.tick);
+        changed = midi.removeTempoChangeAt(marker.tick);
       } else if (lane === "timeSignature") {
-        midi.removeTimeSignatureChangeAt(marker.tick);
+        changed = midi.removeTimeSignatureChangeAt(marker.tick);
       } else {
         const text = this.findTextMarkerNear(x);
-        if (text) this.context.getSelectedTrack()?.removeEvent(text.event);
+        if (text)
+          changed =
+            this.context.getSelectedTrack()?.removeEvent(text.event) ?? false;
       }
     }
-    this.context.invalidateTempoCache();
+    if (changed) {
+      this.context.invalidateTempoCache();
+      this.context.notifyNotesChanged();
+    }
     this.context.requestRender();
   }
 
@@ -192,6 +204,7 @@ export class HeaderController {
     if (this.context.getState().isPlaying || this.laneAt(point.y) !== "text")
       return;
     this.draggingText = this.findTextMarkerNear(point.x)?.event ?? null;
+    if (this.draggingText) this.context.beginEdit();
   }
 
   public updateDrag(point: CanvasPoint): void {
@@ -207,7 +220,9 @@ export class HeaderController {
   }
 
   public endDrag(): void {
+    const hadDrag = this.draggingText !== null;
     this.draggingText = null;
+    if (hadDrag) this.context.endEdit();
   }
 
   public draw(width: number): void {
@@ -425,17 +440,24 @@ export class HeaderController {
     const midi = this.context.getMidi();
     const marker = this.hoveredMarker;
     if (!midi || !marker) return;
-    if (marker.lane === "tempo") midi.removeTempoChangeAt(marker.tick);
-    else if (marker.lane === "timeSignature")
-      midi.removeTimeSignatureChangeAt(marker.tick);
-    else {
+    let changed = false;
+    if (marker.lane === "tempo")
+      changed = midi.removeTempoChangeAt(marker.tick);
+    else if (marker.lane === "timeSignature") {
+      changed = midi.removeTimeSignatureChangeAt(marker.tick);
+    } else {
       const text = this.findTextMarkerNear(
         this.coordinates.screenXForTick(marker.tick),
       );
-      if (text) this.context.getSelectedTrack()?.removeEvent(text.event);
+      if (text)
+        changed =
+          this.context.getSelectedTrack()?.removeEvent(text.event) ?? false;
     }
     this.hoveredMarker = null;
-    this.context.invalidateTempoCache();
+    if (changed) {
+      this.context.invalidateTempoCache();
+      this.context.notifyNotesChanged();
+    }
     this.syncEditControls();
     this.context.requestRender();
   }
@@ -445,11 +467,13 @@ export class HeaderController {
     const midi = this.context.getMidi();
     const marker = this.editingMarker ?? this.hoveredMarker;
     if (!midi || !marker) return;
+    let changed = false;
     if (marker.lane === "tempo") {
       const parsed = parseTempoBpm(raw);
       if (parsed === null) return;
       midi.removeTempoChangeAt(marker.tick);
       midi.addTempoChange(marker.tick, Math.round(60_000_000 / parsed));
+      changed = true;
     } else if (marker.lane === "timeSignature") {
       const parsed = parseTimeSignatureInput(raw);
       if (parsed === null) return;
@@ -459,15 +483,21 @@ export class HeaderController {
         parsed.numerator,
         parsed.denominator,
       );
+      changed = true;
     } else {
       const text = this.findTextMarkerNear(
         this.coordinates.screenXForTick(marker.tick),
       );
       if (text)
-        this.context.getSelectedTrack()?.updateTextEvent(text.event, raw);
+        changed =
+          this.context.getSelectedTrack()?.updateTextEvent(text.event, raw) ??
+          false;
     }
     this.editingMarker = null;
-    this.context.invalidateTempoCache();
+    if (changed) {
+      this.context.invalidateTempoCache();
+      this.context.notifyNotesChanged();
+    }
     this.context.requestRender();
   }
 

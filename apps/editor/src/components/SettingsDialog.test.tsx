@@ -65,7 +65,58 @@ describe("Application settings", () => {
   it("has valid versioned defaults", () => {
     expect(defaultApplicationSettings.version).toBe(1);
     expect(defaultApplicationSettings.audio.rootPath).toBe("~");
+    expect(defaultApplicationSettings.history.capacity).toBe(256);
     expect(validateApplicationSettings(defaultApplicationSettings)).toEqual({});
+  });
+
+  it("validates the history capacity range", () => {
+    const settings = structuredClone(defaultApplicationSettings);
+    settings.history.capacity = 0;
+    expect(validateApplicationSettings(settings).historyCapacity).toBeDefined();
+    settings.history.capacity = 1025;
+    expect(validateApplicationSettings(settings).historyCapacity).toBeDefined();
+    settings.history.capacity = 1024;
+    expect(
+      validateApplicationSettings(settings).historyCapacity,
+    ).toBeUndefined();
+  });
+
+  it("shows and persists the bounded history capacity", () => {
+    const { container, root } = renderSettings();
+    const open = container.querySelector<HTMLButtonElement>("button")!;
+    act(() => open.click());
+
+    const capacity = container.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    )!;
+    expect(capacity.value).toBe("256");
+    expect(capacity.min).toBe("1");
+    expect(capacity.max).toBe("1024");
+    expect(capacity.step).toBe("1");
+
+    act(() => changeInput(capacity, "0"));
+    act(() =>
+      [...container.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent === "Apply")!
+        .click(),
+    );
+    expect(container.textContent).toContain(
+      "History capacity must be an integer from 1 to 1024.",
+    );
+
+    act(() => changeInput(capacity, "1024"));
+    act(() =>
+      [...container.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent === "Save")!
+        .click(),
+    );
+    act(() => open.click());
+    expect(
+      container.querySelector<HTMLInputElement>('input[type="number"]')?.value,
+    ).toBe("1024");
+
+    act(() => root.unmount());
+    container.remove();
   });
 
   it("navigates tabs, validates drafts, cancels, applies, and reopens current values", () => {

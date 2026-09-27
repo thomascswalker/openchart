@@ -8,6 +8,57 @@ test("is constructed", () => {
   expect(midi).toBeDefined();
 });
 
+test("clone preserves MIDI data and isolates mutable event payloads", () => {
+  const midi = new Midi();
+  const track = new MidiTrack("Lead");
+  midi.header.division = 960;
+  midi.tracks = [track];
+  track.addNote(60, 0, 100, 240);
+  track.addTextEvent(1, 480, "section");
+  track.events.push({
+    deltaTime: 0,
+    status: 0xf0,
+    length: 2,
+    data: new Uint8Array([1, 2]),
+  });
+
+  const cloned = midi.clone();
+
+  expect(cloned).not.toBe(midi);
+  expect(cloned.header).not.toBe(midi.header);
+  expect(cloned.header).toEqual(midi.header);
+  expect(cloned.tracks[0]).not.toBe(track);
+  expect(cloned.tracks[0].events).toEqual(track.events);
+  const clonedMeta = cloned.tracks[0].events.find(
+    (event) => event.status === 0xff,
+  )!;
+  const originalMeta = track.events.find((event) => event.status === 0xff)!;
+  const clonedSysEx = cloned.tracks[0].events.find(
+    (event) => event.status === 0xf0 || event.status === 0xf7,
+  )!;
+  const originalSysEx = track.events.find(
+    (event) => event.status === 0xf0 || event.status === 0xf7,
+  )!;
+  expect(clonedMeta).not.toBe(originalMeta);
+  expect(clonedSysEx).not.toBe(originalSysEx);
+
+  (clonedMeta as { data: { text: string } }).data.text = "changed";
+  (clonedSysEx as { data: Uint8Array }).data[0] = 9;
+  expect((originalMeta as { data: { text: string } }).data.text).toBe(
+    "section",
+  );
+  expect((originalSysEx as { data: Uint8Array }).data[0]).toBe(1);
+});
+
+test("clone preserves an empty MIDI document", () => {
+  const midi = new Midi();
+
+  const cloned = midi.clone();
+
+  expect(cloned.header).toEqual(midi.header);
+  expect(cloned.tracks).toEqual([]);
+});
+
 test("read file", async () => {
   const { default: testData } = await import("./data.json");
 
