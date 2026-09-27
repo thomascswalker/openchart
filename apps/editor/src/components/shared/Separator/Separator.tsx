@@ -1,4 +1,3 @@
-import { alignSelf } from "styled-system";
 import type { Orientation } from "../props";
 
 const DEFAULT_THICKNESS = 2;
