@@ -1,7 +1,9 @@
 import { Section } from "../shared/Section";
 import {
   BassIcon,
+  CursorIcon,
   DrumsIcon,
+  EraserIcon,
   EasyIcon,
   ExpertIcon,
   GuitarIcon,
@@ -9,6 +11,8 @@ import {
   Highway3dIcon,
   MagnetIcon,
   MediumIcon,
+  NoteIcon,
+  PencilIcon,
   PianoIcon,
   VocalsIcon,
 } from "../shared/Icon/Icon";
@@ -19,9 +23,15 @@ import {
   type ViewportSession,
 } from "../../context/EditorContext";
 import { SnapDenominators } from "../views/pianoRoll/constants";
-import { ToolButton } from "../shared/Button/Button";
-import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
+import { Button, ToolButton } from "../shared/Button/Button";
+import {
+  Difficulty,
+  InstrumentType,
+  SongView,
+  type EditablePhraseKind,
+} from "@midiedit/views";
 import { Fragment } from "react";
+import type { HighwayTool } from "./highway";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -40,9 +50,20 @@ const Difficulties = [
 interface ToolbarProps {
   session: ViewportSession;
   onViewChange: (view: "piano-roll" | "highway") => void;
+  phraseMode: EditablePhraseKind | null;
+  onPhraseModeChange: (mode: EditablePhraseKind | null) => void;
+  highwayTool: HighwayTool;
+  onHighwayToolChange: (tool: HighwayTool) => void;
 }
 
-const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
+const Toolbar = ({
+  session,
+  onViewChange,
+  phraseMode,
+  onPhraseModeChange,
+  highwayTool,
+  onHighwayToolChange,
+}: ToolbarProps) => {
   const {
     midiData,
     activeViewId: globalView,
@@ -106,6 +127,63 @@ const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
 
       {activeViewId === "highway" && (
         <Fragment>
+          <VerticalSeparator />
+
+          <ToolButton
+            Icon={NoteIcon}
+            title="Multi-tool: click to place, drag to select or move, right-drag to edit sustains, right-click to cut, Ctrl-click or both buttons to remove; Shift adds selection, Alt allows sustain overlap"
+            ariaLabel="Multi-tool"
+            active={highwayTool === "multi"}
+            onClick={() =>
+              onHighwayToolChange(highwayTool === "multi" ? "select" : "multi")
+            }
+          />
+          <ToolButton
+            Icon={CursorIcon}
+            title="Select, move, and edit sustains"
+            ariaLabel="Select, move, and edit sustains"
+            disabled={highwayTool === "multi"}
+            active={highwayTool === "select"}
+            onClick={() => onHighwayToolChange("select")}
+          />
+          <ToolButton
+            Icon={PencilIcon}
+            title="Place notes"
+            ariaLabel="Place notes"
+            disabled={highwayTool === "multi"}
+            active={highwayTool === "place"}
+            onClick={() => onHighwayToolChange("place")}
+          />
+          <ToolButton
+            Icon={EraserIcon}
+            title="Remove notes"
+            ariaLabel="Remove notes"
+            disabled={highwayTool === "multi"}
+            active={highwayTool === "remove"}
+            onClick={() => onHighwayToolChange("remove")}
+          />
+
+          <VerticalSeparator />
+
+          <Button
+            active={phraseMode === "starpower"}
+            onClick={() =>
+              onPhraseModeChange(
+                phraseMode === "starpower" ? null : "starpower",
+              )
+            }
+          >
+            Starpower
+          </Button>
+          <Button
+            active={phraseMode === "solo"}
+            onClick={() =>
+              onPhraseModeChange(phraseMode === "solo" ? null : "solo")
+            }
+          >
+            Solo
+          </Button>
+
           <VerticalSeparator />
 
           {Object.values(Instruments).map(([instrument, icon]) => (

@@ -4,12 +4,15 @@ import type {
   TempoChange,
   TimeSignatureChange,
 } from "@midiedit/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import { CoordinateSystem } from "./coordinates";
+import { HeaderHeight } from "./constants";
 import { parseTempoBpm, parseTimeSignatureInput } from "./header";
+import { PianoRollInputController } from "./input";
 import { NoteGeometryCache } from "./noteGeometry";
 import { remapNotesByIdentity } from "./noteEditing";
+import { PointerContext } from "./pointer";
 import { iterateGridBeats } from "./rendering";
 import { SelectionContext } from "./selection";
 import type { PianoRollNote } from "./types";
@@ -162,5 +165,83 @@ describe("selection identity", () => {
     expect(
       remapNotesByIdentity([first, second], new Set([secondEvent])),
     ).toEqual([second]);
+  });
+});
+
+describe("piano-roll note creation", () => {
+  it("seeks on an empty click and creates only after a minimal drag", () => {
+    const selection = new SelectionContext();
+    const pointer = new PointerContext();
+    const beginCreate = vi.fn();
+    const requestSeek = vi.fn();
+    const canvas = {
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      focus: vi.fn(),
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: () => false,
+    } as unknown as HTMLCanvasElement;
+    const input = new PianoRollInputController(
+      {
+        getPointerContext: () => pointer,
+        getSelectionContext: () => selection,
+        getState: () => ({ isPlaying: false }),
+        requestRender: vi.fn(),
+        requestSeek,
+      } as never,
+      {
+        tickAtScreenX: (x: number) => x,
+        snapTickToNearest: (tick: number) => tick,
+      } as never,
+      {
+        hitTest: () => null,
+        hitTestEdge: () => null,
+        geometry: [],
+      } as never,
+      {
+        beginCreate,
+        updateResize: vi.fn(),
+        finishGesture: vi.fn(),
+      } as never,
+      { endDrag: vi.fn(), updateHover: vi.fn() } as never,
+    );
+    const controller = input as unknown as {
+      canvas: HTMLCanvasElement | null;
+      handlePointerDown: (event: PointerEvent) => void;
+      handlePointerMove: (event: PointerEvent) => void;
+      handlePointerUp: (event: PointerEvent) => void;
+    };
+    controller.canvas = canvas;
+
+    controller.handlePointerDown({
+      button: 0,
+      pointerId: 1,
+      clientX: 100,
+      clientY: HeaderHeight + 20,
+      preventDefault: vi.fn(),
+    } as unknown as PointerEvent);
+    controller.handlePointerUp({ pointerId: 1 } as PointerEvent);
+
+    expect(requestSeek).toHaveBeenCalledWith(100);
+    expect(beginCreate).not.toHaveBeenCalled();
+
+    controller.handlePointerDown({
+      button: 0,
+      pointerId: 2,
+      clientX: 100,
+      clientY: HeaderHeight + 20,
+      preventDefault: vi.fn(),
+    } as unknown as PointerEvent);
+    controller.handlePointerMove({
+      pointerId: 2,
+      clientX: 105,
+      clientY: HeaderHeight + 20,
+    } as PointerEvent);
+    controller.handlePointerUp({ pointerId: 2 } as PointerEvent);
+
+    expect(beginCreate).toHaveBeenCalledWith({
+      x: 100,
+      y: HeaderHeight + 20,
+    });
+    expect(requestSeek).toHaveBeenCalledTimes(1);
   });
 });

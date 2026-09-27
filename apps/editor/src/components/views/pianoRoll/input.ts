@@ -96,6 +96,10 @@ export class PianoRollInputController {
     this.lastHeight = height;
   }
 
+  public pasteClipboard(): void {
+    this.editing.pasteClipboard(this.hoverPosition.x, this.hasHovered);
+  }
+
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
     const selection = this.context.getSelectionContext();
@@ -125,6 +129,15 @@ export class PianoRollInputController {
         event.preventDefault();
         selection.clear();
         this.context.requestRender();
+      } else if (key === "c") {
+        event.preventDefault();
+        this.editing.copySelection();
+      } else if (key === "x") {
+        event.preventDefault();
+        this.editing.cutSelection();
+      } else if (key === "v") {
+        event.preventDefault();
+        this.pasteClipboard();
       }
       return;
     }

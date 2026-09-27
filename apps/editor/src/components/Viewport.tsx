@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
-import { Difficulty, SongView } from "@midiedit/views";
+import { Difficulty, SongView, type EditablePhraseKind } from "@midiedit/views";
 import { useEditor, type ViewportSession } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { useEditorCommands } from "../hooks/useEditorCommands";
@@ -9,6 +9,7 @@ import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
+import { HighwayView, type HighwayTool } from "./views/highway";
 import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
@@ -95,6 +96,7 @@ function ViewportPanel({
     focusViewport,
     snapEnabled,
     snapDenominator,
+    setSnapDenominator,
   } = useEditor();
   const {
     isPlaying,
@@ -108,6 +110,8 @@ function ViewportPanel({
   const { markDirty } = useEditorCommands();
   const chartViewRef = useRef<ChartView | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
+  const [phraseMode, setPhraseMode] = useState<EditablePhraseKind | null>(null);
+  const [highwayTool, setHighwayTool] = useState<HighwayTool>("multi");
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
   const activeView =
@@ -172,20 +176,39 @@ function ViewportPanel({
       refreshTotalTicks();
     };
     view.onSeekRequest = setPlaybackTick;
+    view.onSnapDenominatorChange = setSnapDenominator;
     view.onCameraChange = () =>
       updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
     return () => {
       view.onNotesChanged = null;
       view.onSeekRequest = null;
+      view.onSnapDenominatorChange = null;
       view.onCameraChange = null;
     };
   }, [
     markDirty,
     refreshTotalTicks,
     session.id,
+    setSnapDenominator,
     setPlaybackTick,
     updateViewport,
   ]);
+
+  useEffect(() => {
+    if (chartView && "setPhraseMode" in chartView) {
+      chartView.setPhraseMode(phraseMode);
+    }
+  }, [chartView, phraseMode]);
+
+  useEffect(() => {
+    if (active) onChartViewReady(chartView);
+  }, [active, chartView, onChartViewReady]);
+
+  useEffect(() => {
+    if (chartView instanceof HighwayView) {
+      chartView.setTool(highwayTool);
+    }
+  }, [chartView, highwayTool]);
 
   useEffect(() => {
     if (isPlaying && chartViewRef.current)
@@ -231,7 +254,14 @@ function ViewportPanel({
           />
         </div>
       </header>
-      <Toolbar session={session} onViewChange={setView} />
+      <Toolbar
+        session={session}
+        onViewChange={setView}
+        phraseMode={phraseMode}
+        onPhraseModeChange={setPhraseMode}
+        highwayTool={highwayTool}
+        onHighwayToolChange={setHighwayTool}
+      />
       <div className="viewport-panel__body">
         {session.view === "piano-roll" ? (
           <TrackList viewportId={session.id} />

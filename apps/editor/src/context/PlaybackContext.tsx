@@ -8,7 +8,13 @@ import type { ProviderProps } from "./shared";
 import { PlaybackContext } from "./PlaybackContextStore";
 
 export function PlaybackProvider({ children }: ProviderProps) {
-  const { midiData, viewportSessions, activeViewportId } = useEditor();
+  const {
+    midiData,
+    viewportSessions,
+    activeViewportId,
+    snapEnabled,
+    snapDenominator,
+  } = useEditor();
   const activeViewport = viewportSessions.find(
     (session) => session.id === activeViewportId,
   );
@@ -27,7 +33,13 @@ export function PlaybackProvider({ children }: ProviderProps) {
     selectedDifficulty: activeViewport?.difficulty ?? Difficulty.Expert,
     selectedTrackIndex,
   });
-  const timeline = useTimeline({ midiData, audioPlayer, feedback });
+  const timeline = useTimeline({
+    midiData,
+    audioPlayer,
+    feedback,
+    snapEnabled,
+    snapDenominator,
+  });
 
   return (
     <PlaybackContext.Provider

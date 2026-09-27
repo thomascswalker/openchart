@@ -90,7 +90,12 @@ export class ChartView {
     return this.midiTrack?.getNotes({ pitch: { low, high } }) ?? [];
   }
 
-  public addNote(note: Note, start: number, end: number = 0): void {
+  public addNote(
+    note: Note,
+    start: number,
+    end: number = 0,
+    velocity: number = 100,
+  ): void {
     if (
       !Number.isInteger(start) ||
       !Number.isInteger(end) ||
@@ -113,7 +118,7 @@ export class ChartView {
     this.midiTrack.addNote(
       pitch,
       startDelta,
-      100,
+      velocity,
       Math.max(1, (end > start ? end : start + 1) - start),
       insertAt,
     );
