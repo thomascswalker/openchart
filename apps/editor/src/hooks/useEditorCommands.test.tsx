@@ -1,23 +1,38 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { describe, expect, it } from "vitest";
-import { EditorCommandProvider, useEditorCommands } from "./EditorCommand";
+import { describe, expect, it, vi } from "vitest";
+import { EditorCommandProvider, useEditorCommands } from "./useEditorCommands";
 import { ApplicationSettingsProvider } from "../context/ApplicationSettingsContext";
 import { EditorProvider } from "../context/EditorContext";
 import { PlaybackProvider } from "../context/PlaybackContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 
 function CommandEnablementProbe() {
-  const { canExecute, isDirty, markDirty } = useEditorCommands();
+  const { canExecute, debugVisible, dispatch, error, isDirty, markDirty } =
+    useEditorCommands();
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>
       <button type="button" onClick={markDirty}>
         Change document
       </button>
+      <button type="button" onClick={() => void dispatch("save")}>
+        Save
+      </button>
+      <button type="button" onClick={() => void dispatch("openDebugSettings")}>
+        Open debug
+      </button>
+      <button type="button" onClick={() => void dispatch("closeDebugSettings")}>
+        Close debug
+      </button>
+      <button type="button" onClick={() => void dispatch("new")}>
+        New document
+      </button>
       <span data-testid="dirty">{String(isDirty)}</span>
       <span data-testid="save-enabled">{String(canExecute.save)}</span>
       <span data-testid="export-enabled">{String(canExecute.export)}</span>
+      <span data-testid="debug-visible">{String(debugVisible)}</span>
+      <span data-testid="command-error">{error ?? ""}</span>
       <span data-testid="metronome-enabled">{String(isMetronomeEnabled)}</span>
       <span data-testid="clap-enabled">{String(isClapEnabled)}</span>
     </>
@@ -70,6 +85,52 @@ describe("EditorCommandProvider", () => {
     expect(container.querySelector('[data-testid="dirty"]')?.textContent).toBe(
       "true",
     );
+    root.unmount();
+    container.remove();
+  });
+
+  it("rejects unavailable commands and reports the dispatch error", () => {
+    const { container, root } = renderCommands();
+
+    act(() => {
+      container.querySelectorAll("button")[1].click();
+    });
+    expect(
+      container.querySelector('[data-testid="command-error"]')?.textContent,
+    ).toBe("This command is not available for the active document.");
+    root.unmount();
+    container.remove();
+  });
+
+  it("routes debug and new-document commands to their executors", () => {
+    const { container, root } = renderCommands();
+
+    act(() => {
+      container.querySelectorAll("button")[2].click();
+    });
+    expect(
+      container.querySelector('[data-testid="debug-visible"]')?.textContent,
+    ).toBe("true");
+
+    act(() => {
+      container.querySelectorAll("button")[3].click();
+    });
+    expect(
+      container.querySelector('[data-testid="debug-visible"]')?.textContent,
+    ).toBe("false");
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    act(() => {
+      container.querySelectorAll("button")[0].click();
+    });
+    act(() => {
+      container.querySelectorAll("button")[4].click();
+    });
+    expect(container.querySelector('[data-testid="dirty"]')?.textContent).toBe(
+      "false",
+    );
+    expect(confirm).toHaveBeenCalledOnce();
+    confirm.mockRestore();
     root.unmount();
     container.remove();
   });

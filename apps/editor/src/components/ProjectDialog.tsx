@@ -5,7 +5,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { useEditorCommands } from "../commands/EditorCommand";
+import { useEditorCommands } from "../hooks/useEditorCommands";
 import { useEditor } from "../context/EditorContext";
 import type {
   ProjectMetadata,
@@ -108,7 +108,7 @@ const ProjectDialog = () => {
     dialogRef.current?.focus();
   }, []);
 
-  const close = (): void => void dispatch("close-project");
+  const close = (): void => void dispatch("closeProjectSettings");
   const selectSection = (title: string): void => {
     setSelectedSection(title);
     setErrors({});

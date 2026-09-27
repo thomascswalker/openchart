@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   EditorCommandProvider,
   useEditorCommands,
-} from "../commands/EditorCommand";
+} from "../hooks/useEditorCommands";
 import {
   ApplicationSettingsProvider,
   defaultApplicationSettings,
@@ -20,7 +20,7 @@ function SettingsTestShell() {
   const { settings } = useApplicationSettings();
   return (
     <>
-      <button type="button" onClick={() => void dispatch("settings")}>
+      <button type="button" onClick={() => void dispatch("openSettings")}>
         Open settings
       </button>
       <output>{settings.audio.rootPath}</output>

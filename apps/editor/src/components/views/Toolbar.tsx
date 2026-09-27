@@ -60,11 +60,13 @@ const Toolbar = ({ session, onViewChange }: ToolbarProps) => {
 
   return (
     <Section
+      className="viewport-panel__toolbar"
       padding="4px"
       gap="4px"
       style={{
-        backgroundColor: "#202020",
+        backgroundColor: "var(--primary)",
         borderBottom: "var(--border-primary)",
+        scrollBehavior: "auto",
       }}
     >
       {/* View Selection */}

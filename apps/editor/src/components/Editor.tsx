@@ -4,7 +4,7 @@ import { ApplicationSettingsProvider } from "../context/ApplicationSettingsConte
 import {
   EditorCommandProvider,
   useEditorCommands,
-} from "../commands/EditorCommand";
+} from "../hooks/useEditorCommands";
 import { Workspace } from "./Workspace";
 import { Menubar } from "./Menubar";
 import { SettingsDialog } from "./SettingsDialog";
@@ -42,9 +42,9 @@ const EditorShell = () => {
       <Menubar
         canExecute={(command) => canExecute[command]}
         isChecked={(command) =>
-          command === "toggle-metronome"
+          command === "toggleMetronome"
             ? isMetronomeEnabled
-            : command === "toggle-clap"
+            : command === "toggleClap"
               ? isClapEnabled
               : false
         }
@@ -52,7 +52,7 @@ const EditorShell = () => {
       />
       <Workspace
         debugVisible={debugVisible}
-        onDebugClose={() => void dispatch("close-debug")}
+        onDebugClose={() => void dispatch("closeDebugSettings")}
       />
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}

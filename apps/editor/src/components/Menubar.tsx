@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { EditorCommandId } from "../commands/EditorCommand";
+import type { EditorCommandId } from "../hooks/useEditorCommands";
 
 interface MenuItemDefinition {
   id: EditorCommandId;
@@ -30,14 +30,14 @@ const MENUS: MenuDefinition[] = [
       { id: "open", label: "Open", accelerator: "Ctrl/Cmd+O" },
       { id: "save", label: "Save", accelerator: "Ctrl/Cmd+S" },
       {
-        id: "save-as",
+        id: "saveAs",
         label: "Save As…",
         accelerator: "Ctrl/Cmd+Shift+S",
       },
       { id: "export", label: "Export" },
-      { id: "project", label: "Project..." },
+      { id: "openProjectSettings", label: "Project..." },
       {
-        id: "settings",
+        id: "openSettings",
         label: "Settings...",
         accelerator: "Ctrl/Cmd+,",
       },
@@ -53,13 +53,13 @@ const MENUS: MenuDefinition[] = [
     label: "Playback",
     items: [
       {
-        id: "toggle-metronome",
+        id: "toggleMetronome",
         label: "Metronome",
         accelerator: "M",
         checkable: true,
       },
       {
-        id: "toggle-clap",
+        id: "toggleClap",
         label: "Highway Clap",
         accelerator: "N",
         checkable: true,
@@ -69,7 +69,10 @@ const MENUS: MenuDefinition[] = [
   {
     id: "window",
     label: "Window",
-    items: [{ id: "toggle-debug", label: "Debugger..." }],
+    items: [
+      { id: "openDebugSettings", label: "Debugger..." },
+      { id: "closeDebugSettings", label: "Close Debugger" },
+    ],
   },
 ];
 
