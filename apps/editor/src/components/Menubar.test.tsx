@@ -20,7 +20,7 @@ async function settle(): Promise<void> {
 }
 
 describe("Menubar", () => {
-  it("puts Project and Settings in File and leaves Edit empty", async () => {
+  it("puts Project and Settings in File and editing actions in Edit", async () => {
     const { container, root } = render(
       <Menubar canExecute={() => true} onCommand={() => {}} />,
     );
@@ -58,7 +58,12 @@ describe("Menubar", () => {
     await settle();
     expect(
       container.querySelectorAll("[role=menu] [data-command]"),
-    ).toHaveLength(0);
+    ).toHaveLength(3);
+    expect(
+      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+        (button) => button.textContent?.trim(),
+      ),
+    ).toEqual(["CutCtrl/Cmd+X", "CopyCtrl/Cmd+C", "PasteCtrl/Cmd+V"]);
     act(() => root.unmount());
     container.remove();
   });
@@ -109,6 +114,28 @@ describe("Menubar", () => {
     expect(container.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(fileTrigger);
     expect(onCommand).not.toHaveBeenCalled();
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("dispatches clipboard actions from the Edit menu", async () => {
+    const onCommand = vi.fn();
+    const { container, root } = render(
+      <Menubar canExecute={() => true} onCommand={onCommand} />,
+    );
+    const editTrigger = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"]',
+      ),
+    ][1];
+    act(() => editTrigger.click());
+    await settle();
+    const copy = container.querySelector<HTMLButtonElement>(
+      '[data-command="copy"]',
+    );
+    expect(copy).not.toBeNull();
+    act(() => copy?.click());
+    expect(onCommand).toHaveBeenCalledWith("copy");
     act(() => root.unmount());
     container.remove();
   });

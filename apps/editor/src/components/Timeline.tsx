@@ -202,7 +202,7 @@ export function Timeline({ chartView }: TimelineProps) {
         <button
           type="button"
           onClick={isPlaying ? pause : play}
-          disabled={!canPlay || isPlaying}
+          disabled={!canPlay}
           aria-label="Play/Pause"
         >
           {isPlaying ? "⏸" : "▶"}

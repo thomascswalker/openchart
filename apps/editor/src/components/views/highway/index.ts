@@ -1,5 +1,14 @@
 import type { Midi, MidiChannelEvent, MidiNote } from "@midiedit/core";
-import { findSection } from "@midiedit/views";
+import {
+  addNotePhrase,
+  extractSections,
+  findSection,
+  getNotePhrases,
+  getPhrasePitch,
+  type EditablePhraseKind,
+  type MidiNotePhrase,
+  updateNotePhrase,
+} from "@midiedit/views";
 import { ChartView, Note, SongView } from "@midiedit/views";
 import * as THREE from "three";
 import {
@@ -41,9 +50,15 @@ import {
 } from "./instances";
 import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
 import {
+  getHighwayDragTarget,
+  getHighwaySnapDenominator,
+  getHighwaySteppedTick,
+  getHighwaySustainEnd,
   getHighwayWheelTick,
+  getSustainCutTargets,
   minimumMidiNoteDurationTicks,
 } from "./interaction";
+import { SnapDenominators } from "../pianoRoll/constants";
 
 const defaultCameraPosition = { x: 0, y: 7, z: 7 };
 const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };
@@ -56,29 +71,77 @@ const maximumNoteScale = 10;
 const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];
 const laneCount = laneColors.length;
 const instanceSizePerLane = 128;
+const instanceSizePreviewSustainPerLane = 16;
 const instanceSizeBeatLines = 64;
+const instanceSizePhraseSpans = 128;
 const visibleQuarterNotes = 16;
 const strikeLineZ = -3.5;
 const farBoardZ = -44;
 const nearBoardZ = 0.5;
 const laneRgbColors = laneColors.map(rgbFromHex);
 
+export type HighwayTool = "multi" | "select" | "place" | "remove";
+
+interface HighwayClipboardNote {
+  relativeTick: number;
+  relativeLane: number;
+  durationTicks: number;
+  velocity: number;
+}
+
 interface InstancedBeatLine {
   mesh: THREE.Mesh;
   material: THREE.MeshBasicMaterial;
 }
 
+interface PhraseDragState {
+  pointerId: number;
+  kind: EditablePhraseKind;
+  startTick: number;
+  endTick: number;
+  pointerTick: number;
+  initialStartTick: number;
+  initialEndTick: number;
+  operation: "create" | "move" | "resize-start" | "resize-end";
+  note: MidiNote | null;
+}
+
+interface SectionMarkerInstance {
+  tick: number;
+  name: string;
+  line: THREE.Mesh;
+  label: THREE.Sprite;
+}
+
 interface DragState {
   pointerId: number;
   button: 0 | 2;
+  shiftKey: boolean;
+  moved: boolean;
+  sustainHit: MidiNote | null;
   noteOn: MidiChannelEvent;
   noteOns: MidiChannelEvent[];
+  targets: Array<{
+    noteOn: MidiChannelEvent;
+    initialTick: number;
+    initialLane: number;
+  }>;
   initialLane: number;
   initialTick: number;
   pointerLane: number;
   pointerTick: number;
   resizing: boolean;
   changed: boolean;
+}
+
+interface MarqueeDragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  additive: boolean;
+  moved: boolean;
 }
 
 interface ScreenBounds {
@@ -133,11 +196,51 @@ export class HighwayView
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }),
   );
+  private readonly marqueeOutline = new THREE.LineLoop(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 }),
+  );
   private readonly gemInstances: InstancedNote[][] = [];
   private readonly tailInstances: InstancedTail[][] = [];
+  private readonly previewTailInstances: InstancedTail[][] = [];
+  private readonly sustainCutPreviewLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-3, 0, 0),
+      new THREE.Vector3(3, 0, 0),
+    ]),
+    new THREE.LineDashedMaterial({
+      color: 0xffffff,
+      dashSize: 0.14,
+      gapSize: 0.12,
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+    }),
+  );
   private readonly gemBindings = new Map<MidiChannelEvent, InstancedNote>();
   private readonly tailBindings = new Map<MidiChannelEvent, InstancedTail>();
   private readonly beatLineInstance: InstancedBeatLine[] = [];
+  private readonly phraseSpanInstances: THREE.Mesh[] = [];
+  private readonly sectionMarkers: SectionMarkerInstance[] = [];
+  private readonly phraseSpanGeometry = new THREE.BoxGeometry(6, 0.018, 1);
+  private readonly starpowerMaterial = new THREE.MeshBasicMaterial({
+    color: 0xfacc15,
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+  });
+  private readonly soloMaterial = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+  });
+  private readonly selectedPhraseMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.48,
+    depthWrite: false,
+  });
   private readonly assetRegistry: ResourceRegistry;
   private readonly ownsAssetRegistry: boolean;
   private cameraDebugDefaults: CameraDebugState | null = null;
@@ -156,11 +259,22 @@ export class HighwayView
   private noteCalibration: ModelCalibration = DEFAULT_NOTE_CALIBRATION;
   private fretAssemblies: THREE.Group[] = [];
   private ghostGem: InstancedNote | null = null;
-  private ghostNoteLocation: { lane: number; tick: number } | null = null;
+  private ghostNoteLocation: {
+    lane: number;
+    tick: number;
+    shiftKey: boolean;
+    sustainHit: MidiNote | null;
+  } | null = null;
   private playheadTick = 0;
-  private selectedNoteOn: MidiChannelEvent | null = null;
+  private selectedNoteOns = new Set<MidiChannelEvent>();
+  private noteClipboard: HighwayClipboardNote[] = [];
+  private tool: HighwayTool = "multi";
   private hoveredNoteOn: MidiChannelEvent | null = null;
   private drag: DragState | null = null;
+  private marqueeDrag: MarqueeDragState | null = null;
+  private phraseMode: EditablePhraseKind | null = null;
+  private phraseDrag: PhraseDragState | null = null;
+  private selectedPhraseNoteOn: MidiChannelEvent | null = null;
   private suppressNextClick = false;
 
   public constructor(registry?: ResourceRegistry) {
@@ -179,7 +293,16 @@ export class HighwayView
     if (this.drag && this.canvas?.hasPointerCapture(this.drag.pointerId)) {
       this.canvas.releasePointerCapture(this.drag.pointerId);
     }
+    if (
+      this.phraseDrag &&
+      this.canvas?.hasPointerCapture(this.phraseDrag.pointerId)
+    ) {
+      this.canvas.releasePointerCapture(this.phraseDrag.pointerId);
+    }
     this.drag = null;
+    this.marqueeDrag = null;
+    this.phraseDrag = null;
+    this.marqueeOutline.visible = false;
     this.ghostNoteLocation = null;
     this.hoveredNoteOn = null;
     this.hoverOutline.visible = false;
@@ -211,8 +334,14 @@ export class HighwayView
     this.cameraReady = true;
     this.cameraDebugDefaults = this.getCameraDebugState();
     this.threeScene.add(this.hoverOutline);
+    this.threeScene.add(this.marqueeOutline);
+    this.sustainCutPreviewLine.computeLineDistances();
+    this.sustainCutPreviewLine.renderOrder = 15;
+    this.sustainCutPreviewLine.visible = false;
+    this.threeScene.add(this.sustainCutPreviewLine);
     this.createFretboard();
     this.createBeatLineInstance();
+    this.createPhraseSpanInstances();
     this.sceneReady = true;
     void this.loadResources();
 
@@ -227,6 +356,8 @@ export class HighwayView
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
     this.canvas.addEventListener("pointercancel", this.handlePointerUp);
     window.addEventListener("pointerup", this.handlePointerUp);
+    window.addEventListener("keydown", this.handleModifierKey);
+    window.addEventListener("keyup", this.handleModifierKey);
   }
 
   protected override onResized(width: number, height: number): void {
@@ -237,6 +368,107 @@ export class HighwayView
   public override setPlayheadTick(tick: number): void {
     this.playheadTick = Math.max(0, tick);
     this.render();
+  }
+
+  public setPhraseMode(mode: EditablePhraseKind | null): void {
+    this.phraseMode = mode;
+    if (!mode) this.selectedPhraseNoteOn = null;
+    this.updateCanvasCursor(this.hoveredNoteOn !== null);
+    this.render();
+  }
+
+  public setTool(tool: HighwayTool): void {
+    this.tool = tool;
+    this.updateCanvasCursor(this.hoveredNoteOn !== null);
+    this.render();
+  }
+
+  public canCopySelection(): boolean {
+    return (
+      this.getCurrentChart()
+        ?.getNotes()
+        .some((note) => this.selectedNoteOns.has(note.noteOn)) ?? false
+    );
+  }
+
+  public canCutSelection(): boolean {
+    return this.canEditNotes && this.canCopySelection();
+  }
+
+  public canPasteClipboard(): boolean {
+    return this.canEditNotes && this.noteClipboard.length > 0;
+  }
+
+  public copySelection(): void {
+    const chart = this.getCurrentChart();
+    const notes = (chart?.getNotes() ?? []).filter((note) =>
+      this.selectedNoteOns.has(note.noteOn),
+    );
+    if (notes.length === 0) return;
+    const firstTick = Math.min(...notes.map((note) => note.start));
+    const firstLane = Math.min(
+      ...notes.map((note) => note.note - (chart?.getOffset() ?? 0)),
+    );
+    const offset = chart?.getOffset() ?? 0;
+    this.noteClipboard = notes.map((note) => ({
+      relativeTick: note.start - firstTick,
+      relativeLane: note.note - offset - firstLane,
+      durationTicks: note.end - note.start,
+      velocity: note.velocity,
+    }));
+  }
+
+  public cutSelection(): void {
+    const chart = this.getCurrentChart();
+    if (!chart || !this.canCutSelection()) return;
+    this.copySelection();
+    let changed = false;
+    for (const note of chart.getNotes()) {
+      if (this.selectedNoteOns.has(note.noteOn)) {
+        changed = chart.removeNote(note) || changed;
+      }
+    }
+    this.selectedNoteOns.clear();
+    if (changed) this.onNotesChanged?.();
+    this.render();
+  }
+
+  public pasteClipboard(): void {
+    const chart = this.getCurrentChart();
+    if (!chart || !this.canPasteClipboard()) return;
+    const anchorTick = this.snapTick(
+      this.ghostNoteLocation?.tick ?? this.playheadTick,
+    );
+    const anchorLane = this.ghostNoteLocation?.lane ?? 0;
+    const originalNotes = new Set(chart.getNotes().map((note) => note.noteOn));
+    const pasted = new Set<MidiChannelEvent>();
+    for (const entry of this.noteClipboard) {
+      const lane = anchorLane + entry.relativeLane;
+      if (lane < 0 || lane >= laneCount) continue;
+      const start = Math.max(0, this.snapTick(anchorTick + entry.relativeTick));
+      chart.addNote(
+        lane as Note,
+        start,
+        start + entry.durationTicks,
+        entry.velocity,
+      );
+      const note = chart
+        .getNotes()
+        .find(
+          (candidate) =>
+            !originalNotes.has(candidate.noteOn) &&
+            !pasted.has(candidate.noteOn) &&
+            candidate.note === lane + chart.getOffset() &&
+            candidate.start === start &&
+            candidate.end === start + entry.durationTicks,
+        );
+      if (note) pasted.add(note.noteOn);
+    }
+    if (pasted.size > 0) {
+      this.selectedNoteOns = pasted;
+      this.onNotesChanged?.();
+      this.render();
+    }
   }
 
   public getCameraDebugState(): CameraDebugState | null {
@@ -304,7 +536,22 @@ export class HighwayView
     this.threeCamera.updateProjectionMatrix();
     const midi = this.state.midi;
     const chart = midi ? this.getActiveChart(midi) : null;
-    if (!chart || !this.assetsReady || !this.materials) {
+    if (!chart) {
+      this.threeScene.userData.visibleNotes = 0;
+      this.threeScene.userData.visibleSustains = 0;
+      this.hideAllObjects();
+      this.hidePhraseSpans();
+      this.hideSectionMarkers();
+      return;
+    }
+
+    const cutPreview = this.getSustainCutPreview(chart);
+    this.updateSustainCutPreviewLine(
+      cutPreview.size > 0 ? (this.ghostNoteLocation?.tick ?? null) : null,
+    );
+    this.drawPhraseSpans(chart);
+    this.drawSectionMarkers(chart);
+    if (!this.assetsReady || !this.materials) {
       this.threeScene.userData.visibleNotes = 0;
       this.threeScene.userData.visibleSustains = 0;
       this.hideAllObjects();
@@ -326,19 +573,26 @@ export class HighwayView
       );
 
     const usedTails = new Set<InstancedTail>();
+    const visibleTailEnd = this.getTickAtDepth(farBoardZ);
     for (const { note, lane } of visibleNotes) {
       const tailStart = Math.max(note.start, visibleStart);
-      const tailEnd = Math.min(note.end, this.getTickAtDepth(farBoardZ));
+      const tailEnd = Math.min(note.end, visibleTailEnd);
       if (tailEnd <= tailStart) continue;
+      const cutTick = cutPreview.has(note.noteOn)
+        ? (this.ghostNoteLocation?.tick ?? null)
+        : null;
+      const solidTailEnd =
+        cutTick === null ? tailEnd : Math.min(tailEnd, cutTick);
+      if (solidTailEnd <= tailStart) continue;
       const instancedTail = this.acquireTail(note.noteOn, usedTails);
       if (!instancedTail) continue;
       usedTails.add(instancedTail);
       const transform = sustainWorldTransform(
         this.getLaneX(lane),
         this.getNoteZ(tailStart),
-        this.getNoteZ(tailEnd),
+        this.getNoteZ(solidTailEnd),
       );
-      const selected = note.noteOn === this.selectedNoteOn;
+      const selected = this.selectedNoteOns.has(note.noteOn);
       instancedTail.mesh.position.set(
         transform.position.x,
         transform.position.y,
@@ -362,8 +616,14 @@ export class HighwayView
         strikeLineZ,
       });
     }
+    const previewSustains = this.drawSustainCutPreviewRemainders(
+      chart,
+      cutPreview,
+      visibleStart,
+      visibleTailEnd,
+    );
     this.threeScene.userData.visibleNotes = visibleNotes.length;
-    this.threeScene.userData.visibleSustains = usedTails.size;
+    this.threeScene.userData.visibleSustains = usedTails.size + previewSustains;
 
     const usedGems = new Set<InstancedNote>();
     for (const { note, lane } of visibleNotes) {
@@ -379,7 +639,7 @@ export class HighwayView
       instancedGem.object.position.set(position.x, position.y, position.z);
       instancedGem.object.renderOrder = 20;
       instancedGem.object.visible = true;
-      instancedGem.selected = note.noteOn === this.selectedNoteOn;
+      instancedGem.selected = this.selectedNoteOns.has(note.noteOn);
       setModelState(instancedGem.object, this.materials, laneRgbColors[lane], {
         selected: instancedGem.selected,
         passed: note.start <= this.playheadTick + 0.001,
@@ -410,11 +670,15 @@ export class HighwayView
     this.canvas?.removeEventListener("pointerup", this.handlePointerUp);
     this.canvas?.removeEventListener("pointercancel", this.handlePointerUp);
     window.removeEventListener("pointerup", this.handlePointerUp);
+    window.removeEventListener("keydown", this.handleModifierKey);
+    window.removeEventListener("keyup", this.handleModifierKey);
     this.canvas = null;
     this.drag = null;
     destroyInstancedObjects(this.gemInstances, this.tailInstances);
+    destroyInstancedObjects([], this.previewTailInstances);
     this.gemInstances.length = 0;
     this.tailInstances.length = 0;
+    this.previewTailInstances.length = 0;
     this.gemBindings.clear();
     this.tailBindings.clear();
     this.beatLineInstance.forEach(({ mesh, material }) => {
@@ -423,6 +687,16 @@ export class HighwayView
       mesh.removeFromParent();
     });
     this.beatLineInstance.length = 0;
+    this.phraseSpanInstances.forEach((mesh) => mesh.removeFromParent());
+    this.phraseSpanInstances.length = 0;
+    this.phraseSpanGeometry.dispose();
+    this.starpowerMaterial.dispose();
+    this.soloMaterial.dispose();
+    this.selectedPhraseMaterial.dispose();
+    this.marqueeOutline.geometry.dispose();
+    (this.marqueeOutline.material as THREE.Material).dispose();
+    this.sustainCutPreviewLine.geometry.dispose();
+    (this.sustainCutPreviewLine.material as THREE.Material).dispose();
     this.fretAssemblies.forEach((assembly) => {
       assembly.traverse((object) => {
         const mesh = object as THREE.Mesh;
@@ -438,6 +712,7 @@ export class HighwayView
     });
     this.fretAssemblies.length = 0;
     this.ghostGem = null;
+    this.disposeSectionMarkers();
     this.materials?.destroy();
     this.materials = null;
     if (this.ownsAssetRegistry) this.assetRegistry.dispose();
@@ -486,6 +761,14 @@ export class HighwayView
           this.materials.sustain,
           laneRgbColors,
           instanceSizePerLane,
+        ),
+      );
+      this.previewTailInstances.push(
+        ...createSustainInstance(
+          this.threeScene,
+          this.materials.sustain,
+          laneRgbColors,
+          instanceSizePreviewSustainPerLane,
         ),
       );
       this.fretAssemblies = laneRgbColors.map((color, lane) => {
@@ -584,6 +867,180 @@ export class HighwayView
     }
   }
 
+  private createPhraseSpanInstances(): void {
+    for (let index = 0; index < instanceSizePhraseSpans; index++) {
+      const mesh = new THREE.Mesh(
+        this.phraseSpanGeometry,
+        this.starpowerMaterial,
+      );
+      mesh.visible = false;
+      mesh.renderOrder = 4;
+      this.threeScene.add(mesh);
+      this.phraseSpanInstances.push(mesh);
+    }
+  }
+
+  private drawPhraseSpans(chart: ChartView): void {
+    const track = chart.getTrack().getMidiTrack();
+    const descriptor = chart
+      .getSong()
+      .getTrackDescriptors()
+      .find((item) => item.key === chart.getTrack().getKey());
+    if (!track || !descriptor) {
+      this.hidePhraseSpans();
+      return;
+    }
+
+    const visibleStart = Math.max(0, this.getTickAtDepth(nearBoardZ));
+    const visibleEnd = this.getTickAtDepth(farBoardZ);
+    const phrases: Array<{
+      start: number;
+      end: number;
+      kind: EditablePhraseKind;
+      noteOn: MidiChannelEvent | null;
+    }> = (["starpower", "solo"] as const).flatMap((kind) => {
+      const pitch = getPhrasePitch(descriptor, kind);
+      return pitch === null
+        ? []
+        : getNotePhrases(track, pitch, kind)
+            .filter(
+              (phrase) =>
+                phrase.end >= visibleStart && phrase.start <= visibleEnd,
+            )
+            .map(({ start, end, note }) => ({
+              start,
+              end,
+              kind,
+              noteOn: note.noteOn,
+            }));
+    });
+    if (this.phraseDrag) {
+      phrases.push({
+        kind: this.phraseDrag.kind,
+        start: Math.min(this.phraseDrag.startTick, this.phraseDrag.endTick),
+        end: Math.max(this.phraseDrag.startTick, this.phraseDrag.endTick),
+        noteOn: this.phraseDrag.note?.noteOn ?? null,
+      });
+    }
+
+    let index = 0;
+    for (const phrase of phrases) {
+      const mesh = this.phraseSpanInstances[index++];
+      if (!mesh) break;
+      const start = Math.max(visibleStart, phrase.start);
+      const end = Math.min(visibleEnd, phrase.end);
+      const startZ = this.getNoteZ(start);
+      const endZ = this.getNoteZ(end);
+      mesh.position.set(0, -0.045, (startZ + endZ) / 2);
+      mesh.scale.z = Math.max(0.03, Math.abs(startZ - endZ));
+      mesh.material =
+        phrase.noteOn === this.selectedPhraseNoteOn
+          ? this.selectedPhraseMaterial
+          : phrase.kind === "starpower"
+            ? this.starpowerMaterial
+            : this.soloMaterial;
+      mesh.visible = true;
+    }
+    for (; index < this.phraseSpanInstances.length; index++) {
+      this.phraseSpanInstances[index].visible = false;
+    }
+  }
+
+  private hidePhraseSpans(): void {
+    this.phraseSpanInstances.forEach((mesh) => (mesh.visible = false));
+  }
+
+  private drawSectionMarkers(chart: ChartView): void {
+    const track = chart.getTrack().getMidiTrack();
+    if (!track) {
+      this.hideSectionMarkers();
+      return;
+    }
+
+    const sections = extractSections(track);
+    const markersChanged =
+      sections.length !== this.sectionMarkers.length ||
+      sections.some(
+        (section, index) =>
+          section.tick !== this.sectionMarkers[index]?.tick ||
+          section.name !== this.sectionMarkers[index]?.name,
+      );
+    if (markersChanged) {
+      this.disposeSectionMarkers();
+      for (const section of sections) this.createSectionMarker(section);
+    }
+
+    const visibleStart = Math.max(0, this.getTickAtDepth(nearBoardZ));
+    const visibleEnd = this.getTickAtDepth(farBoardZ);
+    for (const marker of this.sectionMarkers) {
+      const visible = marker.tick >= visibleStart && marker.tick <= visibleEnd;
+      const z = this.getNoteZ(marker.tick);
+      marker.line.position.set(0, -0.035, z);
+      marker.label.position.set(-2.35, 0.2, z);
+      marker.line.visible = visible;
+      marker.label.visible = visible;
+    }
+  }
+
+  private createSectionMarker(section: { name: string; tick: number }): void {
+    const line = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 0.012, 0.035),
+      new THREE.MeshBasicMaterial({
+        color: 0xe2e8f0,
+        transparent: true,
+        opacity: 0.7,
+      }),
+    );
+    line.renderOrder = 5;
+    this.threeScene.add(line);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 64;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.fillStyle = "rgba(15, 23, 42, 0.88)";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#f8fafc";
+      context.font = "bold 26px sans-serif";
+      context.textBaseline = "middle";
+      context.fillText(section.name, 14, canvas.height / 2, canvas.width - 28);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const label = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+      }),
+    );
+    label.scale.set(3.2, 0.4, 1);
+    label.renderOrder = 6;
+    this.threeScene.add(label);
+    this.sectionMarkers.push({ ...section, line, label });
+  }
+
+  private hideSectionMarkers(): void {
+    this.sectionMarkers.forEach(({ line, label }) => {
+      line.visible = false;
+      label.visible = false;
+    });
+  }
+
+  private disposeSectionMarkers(): void {
+    this.sectionMarkers.forEach(({ line, label }) => {
+      line.geometry.dispose();
+      (line.material as THREE.Material).dispose();
+      const material = label.material as THREE.SpriteMaterial;
+      material.map?.dispose();
+      material.dispose();
+      line.removeFromParent();
+      label.removeFromParent();
+    });
+    this.sectionMarkers.length = 0;
+  }
+
   private drawBeatLines(): void {
     const ppqn = Math.max(1, this.getPpqn());
     const minTick = Math.max(0, this.playheadTick - Math.floor(ppqn * 2));
@@ -659,10 +1116,98 @@ export class HighwayView
   private hideAllObjects(): void {
     this.gemInstances.flat().forEach(({ object }) => (object.visible = false));
     this.tailInstances.flat().forEach(({ mesh }) => (mesh.visible = false));
+    this.previewTailInstances
+      .flat()
+      .forEach(({ mesh }) => (mesh.visible = false));
     this.beatLineInstance.forEach(({ mesh }) => (mesh.visible = false));
+    this.sustainCutPreviewLine.visible = false;
     if (this.ghostGem) this.ghostGem.object.visible = false;
     this.gemBindings.clear();
     this.tailBindings.clear();
+  }
+
+  private getSustainCutPreview(
+    chart: ChartView,
+  ): Map<MidiChannelEvent, MidiNote> {
+    const location = this.ghostNoteLocation;
+    if (!location || this.phraseMode || this.drag) {
+      return new Map();
+    }
+    const sameLanePlacement =
+      location.sustainHit !== null &&
+      location.sustainHit.note - chart.getOffset() === location.lane;
+    const targets = getSustainCutTargets(
+      chart.getNotes(),
+      location.tick,
+      location.shiftKey,
+      location.sustainHit?.noteOn ?? null,
+      sameLanePlacement,
+    );
+    return new Map(targets.map((note) => [note.noteOn, note]));
+  }
+
+  private updateSustainCutPreviewLine(tick: number | null): void {
+    if (tick === null) {
+      this.sustainCutPreviewLine.visible = false;
+      return;
+    }
+    this.sustainCutPreviewLine.position.set(0, -0.005, this.getNoteZ(tick));
+    this.sustainCutPreviewLine.visible = true;
+  }
+
+  private drawSustainCutPreviewRemainders(
+    chart: ChartView,
+    cutPreview: Map<MidiChannelEvent, MidiNote>,
+    visibleStart: number,
+    visibleEnd: number,
+  ): number {
+    this.previewTailInstances
+      .flat()
+      .forEach(({ mesh }) => (mesh.visible = false));
+    const usedByLane = Array<number>(laneCount).fill(0);
+    let used = 0;
+    const cutTick = this.ghostNoteLocation?.tick;
+    if (cutTick === undefined) return used;
+
+    for (const note of cutPreview.values()) {
+      const lane = note.note - chart.getOffset();
+      if (lane < 0 || lane >= laneCount) continue;
+      const start = Math.max(note.start, visibleStart, cutTick);
+      const end = Math.min(note.end, visibleEnd);
+      if (end <= start) continue;
+      const instance = this.previewTailInstances[lane]?.[usedByLane[lane]++];
+      if (!instance) continue;
+      const transform = sustainWorldTransform(
+        this.getLaneX(lane),
+        this.getNoteZ(start),
+        this.getNoteZ(end),
+      );
+      instance.mesh.position.set(
+        transform.position.x,
+        transform.position.y,
+        transform.position.z,
+      );
+      instance.mesh.scale.set(
+        transform.scale.x,
+        transform.scale.y,
+        transform.scale.z,
+      );
+      instance.mesh.renderOrder = 11;
+      instance.mesh.visible = true;
+      setMaterialState(instance.mesh, {
+        baseColor: laneRgbColors[lane],
+        emissionColor: laneRgbColors[lane],
+        emissionIntensity: 0.25,
+        alpha: 0.18,
+        ghost: true,
+        selected: false,
+        passed: false,
+        useStrikeLine: true,
+        strikeLineZ,
+      });
+      used++;
+    }
+    return used;
   }
 
   private getEffectiveNoteCalibration(): ModelCalibration {
@@ -724,6 +1269,7 @@ export class HighwayView
   }
 
   private readonly handleClick = (event: MouseEvent): void => {
+    if (event.button !== 0) return;
     if (!this.canEditNotes) {
       this.suppressNextClick = false;
       return;
@@ -732,13 +1278,15 @@ export class HighwayView
       this.suppressNextClick = false;
       return;
     }
+    if (this.tool !== "place" && this.tool !== "multi") return;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
-    chart.addNote(
+    this.placeNoteAt(
+      chart,
       location.lane as Note,
       location.tick,
-      location.tick + minimumMidiNoteDurationTicks,
+      event.shiftKey || event.altKey,
     );
     this.onNotesChanged?.();
     this.render();
@@ -755,30 +1303,183 @@ export class HighwayView
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
-    const note = this.getNoteAt(chart, event);
+    const sustainHit = this.getSustainAt(chart, event, location.tick) ?? null;
+    const note = sustainHit ?? this.getNoteAt(chart, event);
+    this.updateCanvasCursor(note !== undefined, event);
+    if (this.phraseMode && event.button === 0) {
+      event.preventDefault();
+      this.canvas?.focus();
+      this.suppressNextClick = true;
+      const existingPhrase = this.getPhraseAt(chart, event, this.phraseMode);
+      if (existingPhrase) {
+        const distanceToStart = Math.abs(location.tick - existingPhrase.start);
+        const distanceToEnd = Math.abs(location.tick - existingPhrase.end);
+        const edgeThreshold = this.getSnapTicks() * 2;
+        const operation =
+          Math.min(distanceToStart, distanceToEnd) > edgeThreshold
+            ? "move"
+            : distanceToStart <= distanceToEnd
+              ? "resize-start"
+              : "resize-end";
+        this.selectedPhraseNoteOn = existingPhrase.note.noteOn;
+        this.phraseDrag = {
+          pointerId: event.pointerId,
+          kind: this.phraseMode,
+          startTick: existingPhrase.start,
+          endTick: existingPhrase.end,
+          pointerTick: location.tick,
+          initialStartTick: existingPhrase.start,
+          initialEndTick: existingPhrase.end,
+          operation,
+          note: existingPhrase.note,
+        };
+      } else {
+        this.selectedPhraseNoteOn = null;
+        this.phraseDrag = {
+          pointerId: event.pointerId,
+          kind: this.phraseMode,
+          startTick: location.tick,
+          endTick: location.tick,
+          pointerTick: location.tick,
+          initialStartTick: location.tick,
+          initialEndTick: location.tick,
+          operation: "create",
+          note: null,
+        };
+      }
+      this.canvas?.setPointerCapture(event.pointerId);
+      this.render();
+      return;
+    }
+    if (this.tool === "multi" && event.buttons === 3 && note) {
+      event.preventDefault();
+      this.canvas?.focus();
+      this.suppressNextClick = true;
+      const drag = this.drag;
+      if (drag?.pointerId === event.pointerId) {
+        if (this.canvas?.hasPointerCapture(event.pointerId)) {
+          this.canvas.releasePointerCapture(event.pointerId);
+        }
+        this.drag = null;
+      }
+      if (chart.removeNote(note)) {
+        this.selectedNoteOns.delete(note.noteOn);
+        this.onNotesChanged?.();
+      }
+      this.render();
+      return;
+    }
+    if (
+      this.tool === "multi" &&
+      event.button === 0 &&
+      (event.ctrlKey || event.metaKey) &&
+      note
+    ) {
+      event.preventDefault();
+      this.canvas?.focus();
+      this.suppressNextClick = true;
+      if (chart.removeNote(note)) {
+        this.selectedNoteOns.delete(note.noteOn);
+        this.onNotesChanged?.();
+      }
+      this.render();
+      return;
+    }
+    if (this.tool === "place") return;
+    if (this.tool === "remove") {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      this.canvas?.focus();
+      this.suppressNextClick = true;
+      if (note && chart.removeNote(note)) {
+        this.selectedNoteOns.delete(note.noteOn);
+        this.onNotesChanged?.();
+      }
+      this.render();
+      return;
+    }
     if (!note) {
-      this.selectedNoteOn = null;
+      if (event.button !== 0) return;
+      if (this.tool === "multi" && (event.ctrlKey || event.metaKey)) {
+        this.suppressNextClick = true;
+      }
+      const point = this.getCanvasPoint(event);
+      if (!point) return;
+      this.canvas?.focus();
+      this.marqueeDrag = {
+        pointerId: event.pointerId,
+        startX: point.x,
+        startY: point.y,
+        currentX: point.x,
+        currentY: point.y,
+        additive: event.shiftKey || event.ctrlKey || event.metaKey,
+        moved: false,
+      };
+      this.suppressNextClick ||= this.tool !== "multi";
+      this.canvas?.setPointerCapture(event.pointerId);
+      this.marqueeOutline.visible = false;
       this.render();
       return;
     }
     event.preventDefault();
     this.canvas?.focus();
-    this.suppressNextClick = true;
-    this.selectedNoteOn = note.noteOn;
+    this.suppressNextClick = event.button === 0;
+    const chartNotes = chart.getNotes();
+    const chord = chartNotes.filter(
+      (candidate) => candidate.start === note.start,
+    );
+    const chordNoteOns = chord.map((candidate) => candidate.noteOn);
+    if (event.button === 0) {
+      if ((event.shiftKey || event.ctrlKey || event.metaKey) && !sustainHit) {
+        const shouldRemove = chordNoteOns.every((noteOn) =>
+          this.selectedNoteOns.has(noteOn),
+        );
+        chordNoteOns.forEach((noteOn) =>
+          shouldRemove
+            ? this.selectedNoteOns.delete(noteOn)
+            : this.selectedNoteOns.add(noteOn),
+        );
+        if (shouldRemove) {
+          this.render();
+          return;
+        }
+      } else if (
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !this.selectedNoteOns.has(note.noteOn)
+      ) {
+        this.selectedNoteOns = new Set(chordNoteOns);
+      }
+    } else {
+      this.selectedNoteOns = new Set(chordNoteOns);
+    }
     this.ghostNoteLocation = null;
+    const selectedTargets = chartNotes.filter((candidate) =>
+      this.selectedNoteOns.has(candidate.noteOn),
+    );
+    const resizeChord = event.button === 2;
+    const targets = (resizeChord ? chord : selectedTargets).map(
+      (candidate) => ({
+        noteOn: candidate.noteOn,
+        initialTick: candidate.start,
+        initialLane: candidate.note - chart.getOffset(),
+      }),
+    );
     this.drag = {
       pointerId: event.pointerId,
       button: event.button as 0 | 2,
+      shiftKey: event.shiftKey,
+      moved: false,
+      sustainHit,
       noteOn: note.noteOn,
-      noteOns: chart
-        .getNotes()
-        .filter((candidate) => candidate.start === note.start)
-        .map((candidate) => candidate.noteOn),
+      noteOns: targets.map((target) => target.noteOn),
+      targets,
       initialLane: note.note - chart.getOffset(),
       initialTick: note.start,
       pointerLane: location.lane,
       pointerTick: location.tick,
-      resizing: this.isTailEndHit(note, chart, event),
+      resizing: resizeChord,
       changed: false,
     };
     this.canvas?.setPointerCapture(event.pointerId);
@@ -786,6 +1487,57 @@ export class HighwayView
   };
 
   private readonly handlePointerMove = (event: PointerEvent): void => {
+    if (this.phraseDrag?.pointerId === event.pointerId) {
+      const location = this.getChartLocation(event);
+      if (location) {
+        const phraseDrag = this.phraseDrag;
+        if (phraseDrag.operation === "create") {
+          phraseDrag.endTick = location.tick;
+        } else if (phraseDrag.operation === "move") {
+          const start = this.snapTick(
+            phraseDrag.initialStartTick +
+              location.tick -
+              phraseDrag.pointerTick,
+          );
+          const duration =
+            phraseDrag.initialEndTick - phraseDrag.initialStartTick;
+          phraseDrag.startTick = start;
+          phraseDrag.endTick = start + duration;
+        } else if (phraseDrag.operation === "resize-start") {
+          phraseDrag.startTick = Math.min(
+            phraseDrag.initialEndTick - 1,
+            location.tick,
+          );
+        } else {
+          phraseDrag.endTick = Math.max(
+            phraseDrag.initialStartTick + 1,
+            location.tick,
+          );
+        }
+        this.render();
+      }
+      return;
+    }
+    if (this.marqueeDrag?.pointerId === event.pointerId) {
+      const point = this.getCanvasPoint(event);
+      if (point) {
+        const marquee = this.marqueeDrag;
+        marquee.currentX = point.x;
+        marquee.currentY = point.y;
+        marquee.moved ||=
+          Math.hypot(
+            marquee.currentX - marquee.startX,
+            marquee.currentY - marquee.startY,
+          ) >= 4;
+        if (marquee.moved) {
+          this.suppressNextClick = true;
+          this.updateMarqueeOutline(marquee);
+        }
+        this.render();
+      }
+      return;
+    }
+
     const drag = this.drag;
     if (!drag || drag.pointerId !== event.pointerId) {
       this.updateHoveredNote(event);
@@ -795,42 +1547,47 @@ export class HighwayView
     this.ghostNoteLocation = null;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
-    const note = chart
+    const anchor = chart
       ?.getNotes()
-      .find((value) => value.noteOn === drag.noteOn);
-    if (!chart || !location || !note) return;
-    const targetTick = this.snapTick(
-      drag.initialTick + location.tick - drag.pointerTick,
-    );
-    const targetLane = Math.max(
-      Note.Green,
-      Math.min(
-        Note.Orange,
-        drag.initialLane + location.lane - drag.pointerLane,
-      ),
-    ) as Note;
-    const notes = chart
-      .getNotes()
-      .filter((candidate) => drag.noteOns.includes(candidate.noteOn));
+      .find((note) => note.noteOn === drag.noteOn);
+    if (!chart || !location || !anchor) return;
+
+    drag.moved ||=
+      location.tick !== drag.pointerTick || location.lane !== drag.pointerLane;
+    const chartNotes = chart.getNotes();
+    const otherNoteStarts = chartNotes
+      .filter((note) => !drag.noteOns.includes(note.noteOn))
+      .map((note) => note.start);
     let changed = false;
-    for (const candidate of notes) {
-      const candidateLane = Math.max(
-        Note.Green,
-        Math.min(
-          Note.Orange,
-          candidate.note - chart.getOffset() + location.lane - drag.pointerLane,
-        ),
-      ) as Note;
-      changed = drag.resizing
-        ? chart.setNoteEnd(
-            candidate,
-            Math.max(candidate.start + 1, location.tick),
-          ) || changed
-        : chart.moveNote(
-            candidate,
-            drag.noteOn === candidate.noteOn ? targetLane : candidateLane,
-            this.snapTick(candidate.start + targetTick - drag.initialTick),
-          ) || changed;
+    for (const target of drag.targets) {
+      const candidate = chartNotes.find(
+        (note) => note.noteOn === target.noteOn,
+      );
+      if (!candidate) continue;
+      const dragTarget = getHighwayDragTarget(
+        target.initialTick,
+        target.initialLane,
+        location.tick - drag.pointerTick,
+        location.lane - drag.pointerLane,
+        this.getSnapTicks(),
+        this.state.snap.enabled,
+        laneCount,
+      );
+      if (drag.resizing) {
+        const nextEnd = getHighwaySustainEnd(
+          candidate.start,
+          location.tick,
+          otherNoteStarts,
+          event.shiftKey || event.altKey,
+        );
+        if (nextEnd !== candidate.end) {
+          changed = chart.setNoteEnd(candidate, nextEnd) || changed;
+        }
+      } else {
+        changed =
+          chart.moveNote(candidate, dragTarget.lane as Note, dragTarget.tick) ||
+          changed;
+      }
     }
     drag.changed ||= changed;
     if (changed) this.render();
@@ -840,15 +1597,115 @@ export class HighwayView
     this.hoveredNoteOn = null;
     this.ghostNoteLocation = null;
     this.hoverOutline.visible = false;
+    if (this.canvas) this.canvas.style.cursor = "default";
     this.render();
   };
 
   private readonly handlePointerUp = (event: PointerEvent): void => {
+    const marquee = this.marqueeDrag;
+    if (marquee?.pointerId === event.pointerId) {
+      this.canvas?.releasePointerCapture(event.pointerId);
+      this.marqueeDrag = null;
+      if (marquee.moved) {
+        const bounds: ScreenBounds = {
+          left: Math.min(marquee.startX, marquee.currentX),
+          right: Math.max(marquee.startX, marquee.currentX),
+          top: Math.min(marquee.startY, marquee.currentY),
+          bottom: Math.max(marquee.startY, marquee.currentY),
+        };
+        const chart = this.getCurrentChart();
+        const selected = new Set(
+          (chart?.getNotes() ?? [])
+            .filter((note) => {
+              const noteBounds = this.getGemScreenBounds(
+                note,
+                note.note - (chart?.getOffset() ?? 0),
+              );
+              return (
+                noteBounds !== null &&
+                noteBounds.right >= bounds.left &&
+                noteBounds.left <= bounds.right &&
+                noteBounds.bottom >= bounds.top &&
+                noteBounds.top <= bounds.bottom
+              );
+            })
+            .map((note) => note.noteOn),
+        );
+        this.selectedNoteOns = marquee.additive
+          ? new Set([...this.selectedNoteOns, ...selected])
+          : selected;
+      } else if (!marquee.additive) {
+        this.selectedNoteOns.clear();
+      }
+      this.marqueeOutline.visible = false;
+      this.render();
+      return;
+    }
+
+    const phraseDrag = this.phraseDrag;
+    if (phraseDrag?.pointerId === event.pointerId) {
+      this.canvas?.releasePointerCapture(event.pointerId);
+      this.phraseDrag = null;
+      const chart = this.getCurrentChart();
+      if (chart) {
+        const descriptor = chart
+          .getSong()
+          .getTrackDescriptors()
+          .find((item) => item.key === chart.getTrack().getKey());
+        const pitch = descriptor
+          ? getPhrasePitch(descriptor, phraseDrag.kind)
+          : null;
+        const track = chart
+          .getSong()
+          .ensureMidiTrack(chart.getTrack().getKey());
+        if (track && pitch !== null) {
+          const start = Math.min(phraseDrag.startTick, phraseDrag.endTick);
+          const end = Math.max(phraseDrag.startTick, phraseDrag.endTick);
+          const finalEnd = Math.max(start + 1, end);
+          const changed = phraseDrag.note
+            ? (start !== phraseDrag.initialStartTick ||
+                finalEnd !== phraseDrag.initialEndTick) &&
+              updateNotePhrase(track, phraseDrag.note, start, finalEnd)
+            : addNotePhrase(track, pitch, phraseDrag.kind, start, finalEnd) !==
+              null;
+          if (changed) this.onNotesChanged?.();
+        }
+      }
+      this.render();
+      return;
+    }
+
     const drag = this.drag;
     if (!drag || drag.pointerId !== event.pointerId) return;
     this.canvas?.releasePointerCapture(event.pointerId);
     this.drag = null;
-    if (drag.changed) this.onNotesChanged?.();
+    let changed = drag.changed;
+    if (!drag.moved && drag.sustainHit) {
+      const chart = this.getCurrentChart();
+      if (chart && drag.button === 0) {
+        const lane = drag.sustainHit.note - chart.getOffset();
+        this.placeNoteAt(
+          chart,
+          lane as Note,
+          drag.pointerTick,
+          drag.shiftKey || event.altKey,
+          drag.sustainHit,
+        );
+        changed = true;
+      } else if (chart) {
+        changed =
+          this.cutSustainsAtTick(
+            chart,
+            drag.pointerTick,
+            drag.shiftKey || event.altKey,
+            drag.sustainHit,
+          ) || changed;
+      }
+    }
+    if (changed) this.onNotesChanged?.();
+    if (drag.button === 2 && event.button === 2) {
+      this.suppressNextClick = false;
+    }
   };
 
   private readonly handleWheel = (event: WheelEvent): void => {
@@ -864,35 +1721,85 @@ export class HighwayView
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (
-      !this.canEditNotes ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey ||
-      event.target !== this.canvas
-    )
+    if (!this.canEditNotes || event.target !== this.canvas) return;
+    const key = event.key.toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+      if (key === "c") this.copySelection();
+      else if (key === "x") this.cutSelection();
+      else if (key === "v") this.pasteClipboard();
+      else return;
+      event.preventDefault();
       return;
+    }
+    if (event.ctrlKey || event.metaKey) return;
     const chart = this.getCurrentChart();
     if (!chart) return;
+    if (
+      event.altKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
+      event.preventDefault();
+      const track = chart.getTrack().getMidiTrack();
+      const section = track
+        ? findSection(
+            track,
+            this.playheadTick,
+            event.key === "ArrowUp" ? 1 : -1,
+          )
+        : null;
+      if (section) this.onSeekRequest?.(section.tick);
+      return;
+    }
+    if (event.altKey) return;
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      if (this.phraseMode) {
+        const track = chart.getTrack().getMidiTrack();
+        const phrase = track
+          ?.getNotes()
+          .find((note) => note.noteOn === this.selectedPhraseNoteOn);
+        const changed =
+          phrase && track
+            ? track.removeNote(phrase.noteOn, phrase.noteOff)
+            : false;
+        this.selectedPhraseNoteOn = null;
+        if (changed) this.onNotesChanged?.();
+        this.render();
+        return;
+      }
+      let changed = false;
+      const selectedNotes = chart
+        .getNotes()
+        .filter((note) => this.selectedNoteOns.has(note.noteOn));
+      for (const note of selectedNotes) {
+        changed = chart.removeNote(note) || changed;
+      }
+      this.selectedNoteOns.clear();
+      if (changed) this.onNotesChanged?.();
+      this.render();
+      return;
+    }
     const snap = this.getSnapTicks();
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
       this.onSeekRequest?.(
-        Math.max(
-          0,
-          this.playheadTick + (event.key === "ArrowUp" ? snap : -snap),
+        getHighwaySteppedTick(
+          this.playheadTick,
+          event.key === "ArrowUp" ? 1 : -1,
+          snap,
+          this.state.snap.enabled,
         ),
       );
       return;
     }
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
-      const next =
-        event.key === "ArrowLeft"
-          ? Math.max(1, this.state.snap.denominator / 2)
-          : Math.min(64, this.state.snap.denominator * 2);
-      this.state.snap.denominator = next;
-      this.render();
+      const next = getHighwaySnapDenominator(
+        this.state.snap.denominator,
+        event.key === "ArrowLeft" ? -1 : 1,
+        SnapDenominators,
+      );
+      this.onSnapDenominatorChange?.(next);
       return;
     }
     if (/^[1-5]$/.test(event.key)) {
@@ -907,10 +1814,11 @@ export class HighwayView
         );
       if (note) chart.removeNote(note);
       else
-        chart.addNote(
+        this.placeNoteAt(
+          chart,
           lane as Note,
           this.playheadTick,
-          this.playheadTick + minimumMidiNoteDurationTicks,
+          event.shiftKey,
         );
       this.onNotesChanged?.();
       this.render();
@@ -929,10 +1837,45 @@ export class HighwayView
     const chart = this.getCurrentChart();
     const note = chart ? this.getNoteAt(chart, event) : undefined;
     const next = note?.noteOn ?? null;
+    this.updateCanvasCursor(note !== undefined, event);
     if (next === this.hoveredNoteOn) return;
     this.hoveredNoteOn = next;
-    if (this.canvas) this.canvas.style.cursor = note ? "pointer" : "default";
     this.render();
+  }
+
+  private updateCanvasCursor(
+    hoveringNote: boolean,
+    event?: PointerEvent,
+  ): void {
+    if (!this.canvas) return;
+    if (!this.canEditNotes) {
+      this.canvas.style.cursor = "default";
+      return;
+    }
+    if (this.phraseMode) {
+      this.canvas.style.cursor = "crosshair";
+      return;
+    }
+    if (
+      hoveringNote &&
+      (this.tool === "multi" || this.tool === "select") &&
+      event?.buttons
+    ) {
+      this.canvas.style.cursor = event.buttons & 2 ? "ns-resize" : "grabbing";
+      return;
+    }
+    switch (this.tool) {
+      case "multi":
+      case "select":
+        this.canvas.style.cursor = hoveringNote ? "grab" : "crosshair";
+        break;
+      case "place":
+        this.canvas.style.cursor = "crosshair";
+        break;
+      case "remove":
+        this.canvas.style.cursor = hoveringNote ? "pointer" : "not-allowed";
+        break;
+    }
   }
 
   private updateGhostLocation(event: PointerEvent): void {
@@ -941,12 +1884,75 @@ export class HighwayView
       return;
     }
     const chart = this.getCurrentChart();
-    this.ghostNoteLocation = chart ? this.getChartLocation(event) : null;
+    const location = chart ? this.getChartLocation(event) : null;
+    this.ghostNoteLocation = location
+      ? {
+          ...location,
+          shiftKey: event.shiftKey || event.altKey,
+          sustainHit: this.getSustainAt(chart!, event, location.tick) ?? null,
+        }
+      : null;
     this.render();
   }
 
+  private readonly handleModifierKey = (event: KeyboardEvent): void => {
+    if (
+      (event.key !== "Shift" && event.key !== "Alt") ||
+      !this.ghostNoteLocation
+    )
+      return;
+    const allowSustainOverlap = event.shiftKey || event.altKey;
+    if (this.ghostNoteLocation.shiftKey === allowSustainOverlap) return;
+    this.ghostNoteLocation = {
+      ...this.ghostNoteLocation,
+      shiftKey: allowSustainOverlap,
+    };
+    this.render();
+  };
+
   private getCurrentChart(): ChartView | null {
     return this.state.midi ? this.getActiveChart(this.state.midi) : null;
+  }
+
+  private placeNoteAt(
+    chart: ChartView,
+    lane: Note,
+    tick: number,
+    shiftKey: boolean,
+    preferredSustain: MidiNote | null = null,
+  ): void {
+    const sameLanePlacement =
+      preferredSustain !== null &&
+      preferredSustain.note - chart.getOffset() === lane;
+    this.cutSustainsAtTick(
+      chart,
+      tick,
+      shiftKey,
+      preferredSustain,
+      sameLanePlacement,
+    );
+    chart.addNote(lane, tick, tick + minimumMidiNoteDurationTicks);
+  }
+
+  private cutSustainsAtTick(
+    chart: ChartView,
+    tick: number,
+    shiftKey: boolean,
+    preferredSustain: MidiNote | null = null,
+    sameLanePlacement = false,
+  ): boolean {
+    const targets = getSustainCutTargets(
+      chart.getNotes(),
+      tick,
+      shiftKey,
+      preferredSustain?.noteOn ?? null,
+      sameLanePlacement,
+    );
+    let changed = false;
+    for (const note of targets) {
+      changed = chart.setNoteEnd(note, tick) || changed;
+    }
+    return changed;
   }
 
   private getNoteAt(chart: ChartView, event: MouseEvent): MidiNote | undefined {
@@ -975,22 +1981,68 @@ export class HighwayView
     return hit;
   }
 
-  private isTailEndHit(
-    note: MidiNote,
+  private getSustainAt(
     chart: ChartView,
     event: MouseEvent,
-  ): boolean {
-    if (note.end <= note.start) return false;
+    tick: number,
+  ): MidiNote | undefined {
     const pointer = this.getCanvasPoint(event);
-    if (!pointer) return false;
-    const end = this.worldToScreen(
-      new THREE.Vector3(
-        this.getLaneX(note.note - chart.getOffset()),
-        -0.04,
-        this.getNoteZ(note.end),
-      ),
-    );
-    return end ? Math.hypot(pointer.x - end.x, pointer.y - end.y) <= 12 : false;
+    if (!pointer) return undefined;
+    let hit: MidiNote | undefined;
+    let nearestDepth = Infinity;
+    for (const note of chart.getNotes()) {
+      if (tick <= note.start || tick >= note.end) continue;
+      const bounds = this.getTailScreenBounds(
+        note,
+        note.note - chart.getOffset(),
+      );
+      if (!bounds || !this.containsScreenPoint(bounds, pointer.x, pointer.y)) {
+        continue;
+      }
+      const depth = note.start - this.playheadTick;
+      if (depth < nearestDepth) {
+        hit = note;
+        nearestDepth = depth;
+      }
+    }
+    return hit;
+  }
+
+  private getPhraseAt(
+    chart: ChartView,
+    event: MouseEvent,
+    kind: EditablePhraseKind,
+  ): MidiNotePhrase | undefined {
+    const point = this.getCanvasPoint(event);
+    const track = chart.getTrack().getMidiTrack();
+    const descriptor = chart
+      .getSong()
+      .getTrackDescriptors()
+      .find((item) => item.key === chart.getTrack().getKey());
+    const pitch = descriptor ? getPhrasePitch(descriptor, kind) : null;
+    if (!point || !track || pitch === null) return undefined;
+    return getNotePhrases(track, pitch, kind).find((phrase) => {
+      const bounds = this.getPhraseScreenBounds(phrase);
+      return bounds && this.containsScreenPoint(bounds, point.x, point.y);
+    });
+  }
+
+  private getPhraseScreenBounds(phrase: MidiNotePhrase): ScreenBounds | null {
+    const points = [
+      new THREE.Vector3(-3, -0.035, this.getNoteZ(phrase.start)),
+      new THREE.Vector3(3, -0.035, this.getNoteZ(phrase.start)),
+      new THREE.Vector3(-3, -0.035, this.getNoteZ(phrase.end)),
+      new THREE.Vector3(3, -0.035, this.getNoteZ(phrase.end)),
+    ]
+      .map((point) => this.worldToScreen(point))
+      .filter((value): value is THREE.Vector2 => value !== null);
+    if (points.length === 0) return null;
+    return {
+      left: Math.min(...points.map((point) => point.x)),
+      right: Math.max(...points.map((point) => point.x)),
+      top: Math.min(...points.map((point) => point.y)) - 8,
+      bottom: Math.max(...points.map((point) => point.y)) + 8,
+    };
   }
 
   private getGemScreenBounds(
@@ -1065,6 +2117,28 @@ export class HighwayView
       x: ((event.clientX - bounds.left) / bounds.width) * this.viewportWidth,
       y: ((event.clientY - bounds.top) / bounds.height) * this.viewportHeight,
     };
+  }
+
+  private updateMarqueeOutline(marquee: MarqueeDragState): void {
+    const left = Math.min(marquee.startX, marquee.currentX);
+    const right = Math.max(marquee.startX, marquee.currentX);
+    const top = Math.min(marquee.startY, marquee.currentY);
+    const bottom = Math.max(marquee.startY, marquee.currentY);
+    const corners = [
+      this.screenToWorld(left, top),
+      this.screenToWorld(right, top),
+      this.screenToWorld(right, bottom),
+      this.screenToWorld(left, bottom),
+    ].filter((value): value is THREE.Vector3 => value !== null);
+    if (corners.length !== 4) {
+      this.marqueeOutline.visible = false;
+      return;
+    }
+    this.marqueeOutline.geometry.dispose();
+    this.marqueeOutline.geometry = new THREE.BufferGeometry().setFromPoints(
+      corners,
+    );
+    this.marqueeOutline.visible = true;
   }
 
   private getChartLocation(

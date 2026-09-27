@@ -1,10 +1,94 @@
 import type { MidiMetaEvent, MidiNote, MidiTrack } from "@midiedit/core";
 import { MetaType } from "@midiedit/core";
+import type { TrackDescriptor } from "./config.js";
+
+export type EditablePhraseKind = "starpower" | "solo";
 
 export interface NotePhrase {
   start: number;
   end: number;
   kind: "starpower" | "solo" | "forced-strum" | "forced-hopo" | "forced-tap";
+}
+
+export interface MidiNotePhrase extends NotePhrase {
+  note: MidiNote;
+}
+
+export function getPhrasePitch(
+  descriptor: TrackDescriptor,
+  kind: EditablePhraseKind,
+): number | null {
+  const key = kind === "starpower" ? "power" : "solo";
+  const pitch = descriptor.config.notes[key];
+  return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 ? pitch : null;
+}
+
+export function getNotePhrases(
+  track: MidiTrack,
+  pitch: number,
+  kind: EditablePhraseKind,
+): MidiNotePhrase[] {
+  if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) return [];
+  return track
+    .getNotes({ pitch: { low: pitch, high: pitch + 1 } })
+    .map((note) => ({ start: note.start, end: note.end, kind, note }));
+}
+
+export function addNotePhrase(
+  track: MidiTrack,
+  pitch: number,
+  kind: EditablePhraseKind,
+  start: number,
+  end: number,
+): MidiNotePhrase | null {
+  if (
+    !Number.isInteger(pitch) ||
+    pitch < 0 ||
+    pitch > 127 ||
+    !Number.isInteger(start) ||
+    start < 0 ||
+    !Number.isInteger(end) ||
+    end <= start
+  ) {
+    return null;
+  }
+
+  const insertAt = track.getInsertionIndexAt(start);
+  const previousTick = track.getAbsoluteTickAt(insertAt);
+  const events = track.addNote(
+    pitch,
+    start - previousTick,
+    100,
+    end - start,
+    insertAt,
+  );
+  const note = track
+    .getNotes()
+    .find((candidate) => candidate.noteOn === events.noteOn);
+  return note ? { start: note.start, end: note.end, kind, note } : null;
+}
+
+export function updateNotePhrase(
+  track: MidiTrack,
+  note: MidiNote,
+  start: number,
+  end: number,
+): boolean {
+  if (
+    !Number.isInteger(start) ||
+    start < 0 ||
+    !Number.isInteger(end) ||
+    end <= start
+  ) {
+    return false;
+  }
+
+  if (!track.setNoteStart(note, start)) return false;
+  return track.setNoteDuration(note, end - start);
+}
+
+export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
+  return track.removeNote(note.noteOn, note.noteOff);
 }
 
 export function groupNotesAtTick(

@@ -13,6 +13,8 @@ import type { IconProps } from "../Icon/Icon";
 interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   disabled?: boolean;
   active?: boolean;
+  title?: string;
+  ariaLabel?: string;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   className?: string;
   children?: ReactNode;
@@ -23,6 +25,8 @@ const systemStyles = compose(space, color, layout, border);
 const Button = ({
   disabled = false,
   active = false,
+  title,
+  ariaLabel,
   onClick = () => {},
   className,
   children,
@@ -39,6 +43,8 @@ const Button = ({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
+      title={title}
+      aria-label={ariaLabel}
       style={style}
     >
       {children}

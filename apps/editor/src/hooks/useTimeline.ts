@@ -27,12 +27,28 @@ interface UseTimelineOptions {
   midiData: Midi | null | undefined;
   audioPlayer: AudioPlayback;
   feedback: PlaybackFeedback;
+  snapEnabled: boolean;
+  snapDenominator: number;
+}
+
+export function snapToPreviousTimelineBoundary(
+  tick: number,
+  ppqn: number,
+  denominator: number,
+  snapEnabled: boolean,
+): number {
+  const snapTicks = (ppqn * 4) / denominator;
+  return snapEnabled && snapTicks > 0
+    ? Math.max(0, Math.floor(tick / snapTicks) * snapTicks)
+    : Math.max(0, tick);
 }
 
 export function useTimeline({
   midiData,
   audioPlayer,
   feedback,
+  snapEnabled,
+  snapDenominator,
 }: UseTimelineOptions): Timeline {
   const {
     audio,
@@ -107,17 +123,31 @@ export function useTimeline({
     [ppqn, seekAudio, tempoChanges],
   );
 
-  const pause = useCallback(() => {
+  const stopPlayback = useCallback(() => {
     setIsPlaying(false);
     pauseAudio();
     feedbackRef.current.stop();
   }, [pauseAudio]);
 
+  const pause = useCallback(() => {
+    stopPlayback();
+    if (snapEnabled) {
+      handleSetPlaybackTick(
+        snapToPreviousTimelineBoundary(
+          playheadTickRef.current,
+          ppqn,
+          snapDenominator,
+          true,
+        ),
+      );
+    }
+  }, [handleSetPlaybackTick, ppqn, snapDenominator, snapEnabled, stopPlayback]);
+
   useEffect(() => {
-    pause();
+    stopPlayback();
     setPlaybackTick(0);
     playheadTickRef.current = 0;
-  }, [midiData, audio, pause]);
+  }, [midiData, audio, stopPlayback]);
 
   const play = useCallback(() => {
     if (!canPlay) {
@@ -161,9 +191,9 @@ export function useTimeline({
       return;
     }
 
-    pause();
+    stopPlayback();
     handleSetPlaybackTick(0);
-  }, [audioEndCount, isPlaying, pause, handleSetPlaybackTick]);
+  }, [audioEndCount, isPlaying, stopPlayback, handleSetPlaybackTick]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -181,7 +211,7 @@ export function useTimeline({
         feedbackRef.current.updateTick(currentTick);
 
         if (totalTimelineTicks > 0 && currentTick >= totalTimelineTicks) {
-          pause();
+          stopPlayback();
           return;
         }
       } else {
@@ -197,7 +227,7 @@ export function useTimeline({
           if (totalTimelineTicks > 0 && nextTick >= totalTimelineTicks) {
             playheadTickRef.current = totalTimelineTicks;
             setPlaybackTick(totalTimelineTicks);
-            pause();
+            stopPlayback();
             return;
           }
 
@@ -217,7 +247,7 @@ export function useTimeline({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [audio, isPlaying, pause, ppqn, tempoChanges, totalTimelineTicks]);
+  }, [audio, isPlaying, stopPlayback, ppqn, tempoChanges, totalTimelineTicks]);
 
   return {
     isPlaying,

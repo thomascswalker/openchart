@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { EditorCommandId } from "../hooks/useEditorCommands";
 
+export type MenuCommandId = EditorCommandId | "cut" | "copy" | "paste";
+
 interface MenuItemDefinition {
-  id: EditorCommandId;
+  id: MenuCommandId;
   label: string;
   accelerator?: string;
   checkable?: boolean;
@@ -16,9 +18,9 @@ interface MenuDefinition {
 
 interface MenubarProps {
   menus?: MenuDefinition[];
-  canExecute: (command: EditorCommandId) => boolean;
-  isChecked?: (command: EditorCommandId) => boolean;
-  onCommand: (command: EditorCommandId) => void;
+  canExecute: (command: MenuCommandId) => boolean;
+  isChecked?: (command: MenuCommandId) => boolean;
+  onCommand: (command: MenuCommandId) => void;
 }
 
 const MENUS: MenuDefinition[] = [
@@ -46,7 +48,11 @@ const MENUS: MenuDefinition[] = [
   {
     id: "edit",
     label: "Edit",
-    items: [],
+    items: [
+      { id: "cut", label: "Cut", accelerator: "Ctrl/Cmd+X" },
+      { id: "copy", label: "Copy", accelerator: "Ctrl/Cmd+C" },
+      { id: "paste", label: "Paste", accelerator: "Ctrl/Cmd+V" },
+    ],
   },
   {
     id: "playback",
@@ -78,7 +84,7 @@ const MENUS: MenuDefinition[] = [
 
 function enabledItemIndexes(
   items: MenuItemDefinition[],
-  canExecute: (command: EditorCommandId) => boolean,
+  canExecute: (command: MenuCommandId) => boolean,
 ): number[] {
   return items.reduce<number[]>((indexes, item, index) => {
     if (canExecute(item.id)) indexes.push(index);

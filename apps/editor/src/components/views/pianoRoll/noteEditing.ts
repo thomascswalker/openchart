@@ -332,6 +332,18 @@ export class NoteEditingController {
     }));
   }
 
+  public canCopySelection(): boolean {
+    return this.context.getSelectionContext().size > 0;
+  }
+
+  public canCutSelection(): boolean {
+    return !this.isNoteEditingLocked && this.canCopySelection();
+  }
+
+  public canPasteClipboard(): boolean {
+    return !this.isNoteEditingLocked && this.clipboard.length > 0;
+  }
+
   public cutSelection(): void {
     if (this.isNoteEditingLocked) {
       return;

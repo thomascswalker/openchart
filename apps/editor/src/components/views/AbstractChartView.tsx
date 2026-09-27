@@ -219,5 +219,8 @@ export abstract class AbstractChartView<T> {
   /** Notified when the user clicks (without dragging) to seek to a tick, if supported. */
   public onSeekRequest: ((tick: number) => void) | null = null;
 
+  /** Notified when the user changes the snap interval from a chart view. */
+  public onSnapDenominatorChange: ((denominator: number) => void) | null = null;
+
   public abstract getTrackNotes(midi: Midi, trackIndex: number): T[];
 }
