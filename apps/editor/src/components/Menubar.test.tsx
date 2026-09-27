@@ -59,7 +59,7 @@ describe("Menubar", () => {
     expect(
       container.querySelectorAll("[role=menu] [data-command]"),
     ).toHaveLength(0);
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 
@@ -75,19 +75,23 @@ describe("Menubar", () => {
     const fileTrigger = container.querySelector<HTMLButtonElement>(
       'button[role="menuitem"]',
     )!;
-    fileTrigger.click();
+    act(() => fileTrigger.click());
     await settle();
 
     expect(fileTrigger.getAttribute("aria-expanded")).toBe("true");
     expect(container.querySelector('[role="menu"]')).not.toBeNull();
     expect(document.activeElement?.textContent).toBe("New");
 
-    document.activeElement?.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    act(() =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      ),
     );
     expect(document.activeElement?.textContent).toContain("Open");
-    document.activeElement?.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    act(() =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      ),
     );
     await settle();
     const save = [
@@ -96,14 +100,16 @@ describe("Menubar", () => {
     expect(save.disabled).toBe(true);
     expect(document.activeElement?.textContent).toContain("Save As");
 
-    document.activeElement?.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    act(() =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      ),
     );
     await settle();
     expect(container.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(fileTrigger);
     expect(onCommand).not.toHaveBeenCalled();
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 
@@ -120,18 +126,20 @@ describe("Menubar", () => {
     const fileTrigger = container.querySelector<HTMLButtonElement>(
       'button[role="menuitem"]',
     )!;
-    fileTrigger.click();
+    act(() => fileTrigger.click());
     await settle();
     expect(container.querySelector('[role="menu"]')).not.toBeNull();
     const outside = container.querySelector<HTMLButtonElement>(
       '[data-testid="outside"]',
     )!;
-    outside.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-    outside.click();
+    act(() => {
+      outside.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      outside.click();
+    });
     await settle();
     expect(container.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(outside);
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 });

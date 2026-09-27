@@ -81,7 +81,7 @@ interface EditorContextType {
   activeViewportId: string;
   maxViewportCount: number;
   setMaxViewportCount: (count: number) => void;
-  addViewport: (view?: ViewportKind) => string | null;
+  addViewport: (view: ViewportKind, afterId?: string) => string | null;
   closeViewport: (id: string) => boolean;
   focusViewport: (id: string) => void;
   updateViewport: (
@@ -136,14 +136,22 @@ export function EditorProvider({ children }: ProviderProps) {
     });
   };
 
-  const addViewport = (view: ViewportKind = "piano-roll"): string | null => {
-    let created: string | null = null;
+  const addViewport = (view: ViewportKind, afterId?: string): string | null => {
+    if (viewportSessions.length >= maxViewportCount) return null;
+    const created = `viewport-${Date.now()}-${viewportSessions.length + 1}`;
     setViewportSessions((sessions) => {
       if (sessions.length >= maxViewportCount) return sessions;
-      created = `viewport-${Date.now()}-${sessions.length + 1}`;
-      return [...sessions, createViewportSession(created, view)];
+      const afterIndex = sessions.findIndex(
+        (session) => session.id === afterId,
+      );
+      const insertAt = afterIndex < 0 ? sessions.length : afterIndex + 1;
+      return [
+        ...sessions.slice(0, insertAt),
+        createViewportSession(created, view),
+        ...sessions.slice(insertAt),
+      ];
     });
-    if (created) setActiveViewportId(created);
+    setActiveViewportId(created);
     return created;
   };
 

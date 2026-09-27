@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
-import { SongView } from "@midiedit/views";
+import { Difficulty, SongView } from "@midiedit/views";
 import { useEditor, type ViewportSession } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
-import { useEditorCommands } from "../commands/EditorCommand";
+import { useEditorCommands } from "../hooks/useEditorCommands";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -49,8 +49,7 @@ interface ViewportProps {
 }
 
 export const Viewport = ({ onChartViewReady }: ViewportProps) => {
-  const { viewportSessions, activeViewportId, maxViewportCount, addViewport } =
-    useEditor();
+  const { viewportSessions, activeViewportId, maxViewportCount } = useEditor();
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
       <div className="viewport-manager__toolbar">
@@ -58,20 +57,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
         <span>
           {viewportSessions.length}/{maxViewportCount}
         </span>
-        <button
-          type="button"
-          onClick={() => addViewport("piano-roll")}
-          disabled={viewportSessions.length >= maxViewportCount}
-        >
-          + Piano Roll
-        </button>
-        <button
-          type="button"
-          onClick={() => addViewport("highway")}
-          disabled={viewportSessions.length >= maxViewportCount}
-        >
-          + Highway
-        </button>
       </div>
       <div
         className={`viewport-grid viewport-grid--${viewportSessions.length}`}
@@ -103,7 +88,9 @@ function ViewportPanel({
   const {
     midiData,
     viewportSessions,
+    maxViewportCount,
     updateViewport,
+    addViewport,
     closeViewport,
     focusViewport,
     snapEnabled,
@@ -222,7 +209,22 @@ function ViewportPanel({
       onPointerDown={() => focusViewport(session.id)}
     >
       <header className="viewport-panel__header">
+        <p className="viewport-panel__title">
+          {session.view === "piano-roll"
+            ? session.instrument
+            : `${session.instrument} - ${Difficulty[session.difficulty]}`}
+        </p>
         <div className="viewport-panel__actions">
+          <button
+            type="button"
+            className="viewport-panel__split"
+            title="Split to the right"
+            aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
+            onClick={() => addViewport(session.view, session.id)}
+            disabled={viewportSessions.length >= maxViewportCount}
+          >
+            Split
+          </button>
           <CloseButton
             onClick={() => closeViewport(session.id)}
             disabled={viewportSessions.length <= 1}

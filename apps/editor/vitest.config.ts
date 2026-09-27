@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     fileParallelism: false,
     include: ["src/**/*.test.tsx"],
+    setupFiles: ["./src/testSetup.ts"],
     reporters: ["default", "hanging-process"],
     teardownTimeout: 10_000,
     browser: {

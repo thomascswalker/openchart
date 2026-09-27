@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   EditorCommandProvider,
   useEditorCommands,
-} from "../commands/EditorCommand";
+} from "../hooks/useEditorCommands";
 import { ApplicationSettingsProvider } from "../context/ApplicationSettingsContext";
 import { EditorProvider, useEditor } from "../context/EditorContext";
 import { PlaybackProvider } from "../context/PlaybackContext";
@@ -16,7 +16,10 @@ function ProjectTestShell() {
   const { projectMetadata } = useEditor();
   return (
     <>
-      <button type="button" onClick={() => void dispatch("project")}>
+      <button
+        type="button"
+        onClick={() => void dispatch("openProjectSettings")}
+      >
         Open project
       </button>
       <output>{projectMetadata.Song.Name}</output>
@@ -91,7 +94,7 @@ describe("ProjectDialog", () => {
         ?.click(),
     );
     expect(container.querySelector("output")?.textContent).toBe("Updated song");
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 });

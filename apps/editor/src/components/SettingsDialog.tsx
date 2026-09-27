@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { useEditorCommands } from "../commands/EditorCommand";
+import { useEditorCommands } from "../hooks/useEditorCommands";
 import { Audio } from "ts-audio";
 import { AUDIO_ROLES } from "../hooks/useAudioPlayer";
 import {
@@ -248,7 +248,7 @@ const SettingsDialog = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.audio.rootPath, audioDirectoryName]);
 
-  const close = (): void => void dispatch("close-settings");
+  const close = (): void => void dispatch("closeSettings");
   const selectTab = (tab: SettingsTab): void => {
     setSelectedTab(tab);
     setErrors({});
@@ -577,11 +577,11 @@ const SettingsDialog = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      void dispatch("select-audio-folder").then(
+                      void dispatch("selectAudioFolder").then(
                         refreshAudioFileNames,
                       );
                     }}
-                    disabled={!canExecute["select-audio-folder"]}
+                    disabled={!canExecute.selectAudioFolder}
                   >
                     {audioDirectoryName
                       ? `Audio Folder: ${audioDirectoryName}`
@@ -592,9 +592,9 @@ const SettingsDialog = () => {
                   type="button"
                   onClick={() => {
                     refreshAudioFileNames();
-                    void dispatch("refresh-audio");
+                    void dispatch("refreshAudio");
                   }}
-                  disabled={!canExecute["refresh-audio"]}
+                  disabled={!canExecute.refreshAudio}
                 >
                   Refresh Audio
                 </button>

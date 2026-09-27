@@ -62,7 +62,13 @@ interface ToolButtonProps extends ButtonProps {
 
 const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
   return (
-    <Button maxWidth={40} maxHeight={40} borderRadius={4} {...rest}>
+    <Button
+      maxWidth={40}
+      maxHeight={40}
+      border="none"
+      borderRadius={4}
+      {...rest}
+    >
       <Icon />
       {children}
     </Button>
