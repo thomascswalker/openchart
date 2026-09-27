@@ -94,7 +94,7 @@ describe("ProjectDialog", () => {
         ?.click(),
     );
     expect(container.querySelector("output")?.textContent).toBe("Updated song");
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 });

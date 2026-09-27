@@ -185,7 +185,7 @@ describe("Application settings", () => {
       container.querySelector<HTMLInputElement>('input:not([type="checkbox"])')
         ?.value,
     ).toBe("D:/audio");
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 });

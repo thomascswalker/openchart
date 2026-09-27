@@ -69,7 +69,7 @@ describe("EditorCommandProvider", () => {
     expect(
       container.querySelector('[data-testid="export-enabled"]')?.textContent,
     ).toBe("false");
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 
@@ -85,7 +85,7 @@ describe("EditorCommandProvider", () => {
     expect(container.querySelector('[data-testid="dirty"]')?.textContent).toBe(
       "true",
     );
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 
@@ -98,7 +98,7 @@ describe("EditorCommandProvider", () => {
     expect(
       container.querySelector('[data-testid="command-error"]')?.textContent,
     ).toBe("This command is not available for the active document.");
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 
@@ -131,7 +131,7 @@ describe("EditorCommandProvider", () => {
     );
     expect(confirm).toHaveBeenCalledOnce();
     confirm.mockRestore();
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 
@@ -153,7 +153,7 @@ describe("EditorCommandProvider", () => {
     expect(
       container.querySelector('[data-testid="clap-enabled"]')?.textContent,
     ).toBe("true");
-    root.unmount();
+    act(() => root.unmount());
     container.remove();
   });
 });
