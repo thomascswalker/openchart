@@ -97,6 +97,9 @@ function ViewportPanel({
     snapEnabled,
     snapDenominator,
     setSnapDenominator,
+    beginMidiEdit,
+    recordMidiEdit,
+    endMidiEdit,
   } = useEditor();
   const {
     isPlaying,
@@ -172,21 +175,29 @@ function ViewportPanel({
     const view = chartViewRef.current;
     if (!view) return;
     view.onNotesChanged = () => {
+      recordMidiEdit();
       markDirty();
       refreshTotalTicks();
     };
+    view.onEditStart = beginMidiEdit;
+    view.onEditEnd = endMidiEdit;
     view.onSeekRequest = setPlaybackTick;
     view.onSnapDenominatorChange = setSnapDenominator;
     view.onCameraChange = () =>
       updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
     return () => {
       view.onNotesChanged = null;
+      view.onEditStart = null;
+      view.onEditEnd = null;
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
       view.onCameraChange = null;
     };
   }, [
     markDirty,
+    recordMidiEdit,
+    beginMidiEdit,
+    endMidiEdit,
     refreshTotalTicks,
     session.id,
     setSnapDenominator,

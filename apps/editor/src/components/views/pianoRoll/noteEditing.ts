@@ -39,6 +39,7 @@ export class NoteEditingController {
   private resizeAnchorInitialEnd = 0;
   private resizeTargets: ResizeTarget[] = [];
   private resizeSelectionKeep = new Set<MidiChannelEvent>();
+  private gestureTransactionOpen = false;
 
   private creating = false;
   private moving = false;
@@ -91,6 +92,7 @@ export class NoteEditingController {
     this.resizeSelectionKeep = new Set(
       selection.notes.map((note) => note.midiNote.noteOn),
     );
+    this.beginGestureTransaction();
   }
 
   public updateResize(local: CanvasPoint): void {
@@ -108,15 +110,17 @@ export class NoteEditingController {
     const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
     const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
 
+    let changed = false;
     for (const { note, initialDuration } of this.resizeTargets) {
-      track.setNoteDuration(
-        note.midiNote,
-        Math.max(1, initialDuration + delta),
-      );
+      changed =
+        track.setNoteDuration(
+          note.midiNote,
+          Math.max(1, initialDuration + delta),
+        ) || changed;
     }
 
     this.remapSelection(this.resizeSelectionKeep);
-    this.context.notifyNotesChanged();
+    if (changed) this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -141,6 +145,7 @@ export class NoteEditingController {
     this.moveSelectionKeep = new Set(
       selection.notes.map((note) => note.midiNote.noteOn),
     );
+    this.beginGestureTransaction();
   }
 
   public updateMove(local: CanvasPoint): void {
@@ -159,16 +164,22 @@ export class NoteEditingController {
     const tickDelta = newAnchorTick - this.moveAnchorInitialTick;
     const pitchDelta = newAnchorPitch - this.moveAnchorInitialPitch;
 
+    let changed = false;
     for (const { note, initialTick, initialPitch } of this.moveTargets) {
-      track.setNoteStart(note.midiNote, Math.max(0, initialTick + tickDelta));
-      track.setNotePitch(
-        note.midiNote,
-        clamp(initialPitch + pitchDelta, 0, 127),
-      );
+      changed =
+        track.setNoteStart(
+          note.midiNote,
+          Math.max(0, initialTick + tickDelta),
+        ) || changed;
+      changed =
+        track.setNotePitch(
+          note.midiNote,
+          clamp(initialPitch + pitchDelta, 0, 127),
+        ) || changed;
     }
 
     this.remapSelection(this.moveSelectionKeep);
-    this.context.notifyNotesChanged();
+    if (changed) this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -187,6 +198,7 @@ export class NoteEditingController {
     this.moveAnchor = null;
     this.moveTargets = [];
     this.moveSelectionKeep = new Set();
+    this.endGestureTransaction();
   }
 
   public cancelGesture(): void {
@@ -199,6 +211,7 @@ export class NoteEditingController {
     this.moveAnchor = null;
     this.moveTargets = [];
     this.moveSelectionKeep = new Set();
+    this.endGestureTransaction();
   }
 
   public beginCreate(local: CanvasPoint): void {
@@ -216,6 +229,7 @@ export class NoteEditingController {
     );
     const insertAt = track.getInsertionIndexAt(tick);
     const startDelta = tick - track.getAbsoluteTickAt(insertAt);
+    this.beginGestureTransaction();
     const { noteOn } = track.addNote(pitch, startDelta, 100, 1, insertAt);
     this.context.notifyNotesChanged();
     this.remapSelection(new Set([noteOn]));
@@ -234,6 +248,18 @@ export class NoteEditingController {
     ];
     this.resizeSelectionKeep = new Set([noteOn]);
     this.context.requestRender();
+  }
+
+  private beginGestureTransaction(): void {
+    if (this.gestureTransactionOpen) return;
+    this.gestureTransactionOpen = true;
+    this.context.beginEdit();
+  }
+
+  private endGestureTransaction(): void {
+    if (!this.gestureTransactionOpen) return;
+    this.gestureTransactionOpen = false;
+    this.context.endEdit();
   }
 
   public eraseNote(note: PianoRollNote): void {

@@ -150,6 +150,23 @@ class MidiTrack {
     this.name = name;
   }
 
+  public clone(): MidiTrack {
+    const track = new MidiTrack(this.name);
+    track.format = this.format;
+    track.events = this.events.map((event) => {
+      if (event.status === 0xff) {
+        const metaEvent = event as MidiMetaEvent;
+        return { ...metaEvent, data: structuredClone(metaEvent.data) };
+      }
+      if (event.status === 0xf0 || event.status === 0xf7) {
+        const sysExEvent = event as MidiSysExEvent;
+        return { ...sysExEvent, data: sysExEvent.data.slice() };
+      }
+      return { ...event };
+    });
+    return track;
+  }
+
   public getChannelEvents(): MidiChannelEvent[] {
     return this.events.filter(
       (event) => event.status < 0xff,
@@ -848,6 +865,13 @@ class Midi {
     if (data) {
       this.parse(data);
     }
+  }
+
+  public clone(): Midi {
+    const midi = new Midi();
+    midi.header = { ...this.header };
+    midi.tracks = this.tracks.map((track) => track.clone());
+    return midi;
   }
 
   private parse(data: Uint8Array): void {

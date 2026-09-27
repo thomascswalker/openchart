@@ -105,6 +105,14 @@ const commandExecutors: Record<EditorCommandId, EditorCommandCallback> = {
   save: executeSaveFile,
   saveAs: executeSaveFileAs,
   export: executeExportMidi,
+  undo: (context) => {
+    context.undoMidiEdit();
+    context.setIsDirty(true);
+  },
+  redo: (context) => {
+    context.redoMidiEdit();
+    context.setIsDirty(true);
+  },
   openAudio: executeOpenAudio,
   refreshAudio: executeRefreshAudio,
   selectAudioFolder: executeSelectAudioFolder,
@@ -128,6 +136,11 @@ export function EditorCommandProvider({
   const {
     midiData,
     setMidiData,
+    canUndoMidi,
+    canRedoMidi,
+    undoMidiEdit,
+    redoMidiEdit,
+    setHistoryCapacity,
     fileName,
     setFileName,
     fileHandle,
@@ -159,6 +172,10 @@ export function EditorCommandProvider({
     void loadAudioDirectoryHandle().then(setAudioDirectoryHandle);
   }, []);
 
+  useEffect(() => {
+    setHistoryCapacity(settings.history.capacity);
+  }, [setHistoryCapacity, settings.history.capacity]);
+
   const projectDocument = useMemo<ProjectDocument | null>(
     () =>
       midiData
@@ -185,6 +202,8 @@ export function EditorCommandProvider({
       save: canSave,
       saveAs: canSave,
       export: canSave,
+      undo: canUndoMidi,
+      redo: canRedoMidi,
       toggleMetronome: true,
       toggleClap: true,
       openProjectSettings: true,
@@ -199,6 +218,8 @@ export function EditorCommandProvider({
     }),
     [
       canSave,
+      canUndoMidi,
+      canRedoMidi,
       debugVisible,
       projectVisible,
       settingsVisible,
@@ -301,6 +322,8 @@ export function EditorCommandProvider({
       fileHandle,
       isDirty,
       setMidiData,
+      undoMidiEdit,
+      redoMidiEdit,
       setProjectMetadata,
       setFileName,
       setFileHandle,
@@ -322,6 +345,8 @@ export function EditorCommandProvider({
       setFileHandle,
       setFileName,
       setMidiData,
+      undoMidiEdit,
+      redoMidiEdit,
       setProjectMetadata,
       toggleClap,
       toggleMetronome,
@@ -383,9 +408,19 @@ export function EditorCommandProvider({
         case "s":
           command = event.shiftKey ? "saveAs" : "save";
           break;
+        case "z":
+          if (!event.shiftKey) command = "undo";
+          break;
+        case "y":
+          command = "redo";
+          break;
       }
 
       if (!command) {
+        return;
+      }
+
+      if ((command === "undo" || command === "redo") && !canExecute[command]) {
         return;
       }
 
@@ -395,7 +430,7 @@ export function EditorCommandProvider({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dispatch]);
+  }, [canExecute, dispatch]);
 
   const value = useMemo<EditorCommandContextValue>(
     () => ({

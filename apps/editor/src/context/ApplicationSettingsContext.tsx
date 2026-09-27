@@ -42,6 +42,9 @@ export interface ApplicationSettings {
   saving: {
     defaultSaveMode: "project" | "midi";
   };
+  history: {
+    capacity: number;
+  };
 }
 
 export const defaultApplicationSettings: ApplicationSettings = {
@@ -72,6 +75,7 @@ export const defaultApplicationSettings: ApplicationSettings = {
     otherRegex: "other",
   },
   saving: { defaultSaveMode: "project" },
+  history: { capacity: 256 },
 };
 
 export function validateApplicationSettings(
@@ -123,6 +127,14 @@ export function validateApplicationSettings(
     errors.previewMaxVoices = "Preview voice count must be at least 1.";
   }
   if (
+    !Number.isInteger(settings.history.capacity) ||
+    settings.history.capacity < 1 ||
+    settings.history.capacity > 1024
+  ) {
+    errors.historyCapacity =
+      "History capacity must be an integer from 1 to 1024.";
+  }
+  if (
     !Number.isInteger(settings.feedback.previewLowPitch) ||
     !Number.isInteger(settings.feedback.previewHighPitch) ||
     settings.feedback.previewLowPitch < 0 ||
@@ -172,6 +184,7 @@ function readSettings(): ApplicationSettings {
         ...parsed.discovery,
       },
       saving: { ...defaultApplicationSettings.saving, ...parsed.saving },
+      history: { ...defaultApplicationSettings.history, ...parsed.history },
     };
     merged.audio.mode = merged.audio.multitrack ? "multitrack" : "single";
     return Object.keys(validateApplicationSettings(merged)).length === 0
