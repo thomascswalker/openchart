@@ -21,7 +21,6 @@ import { HighwayPhraseEditingController } from "./phraseEditing";
 import type { DragState, GhostNoteLocation, MarqueeDragState } from "./types";
 import {
   farBoardZ,
-  laneCount,
   nearBoardZ,
   phraseAutoScrollEdgeMargin,
   phraseAutoScrollMaximumTicksPerFrame,
