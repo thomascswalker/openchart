@@ -1,0 +1,21 @@
+import { rgbFromHex } from "./materials";
+
+export const defaultCameraPosition = { x: 0, y: 7, z: 7 };
+export const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };
+export const defaultCameraFieldOfView = 45;
+export const minimumCameraFieldOfView = 1;
+export const maximumCameraFieldOfView = 179;
+export const wheelTicksPerPixel = 1 / 100;
+export const minimumNoteScale = 0.1;
+export const maximumNoteScale = 10;
+export const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];
+export const laneCount = laneColors.length;
+export const instanceSizePerLane = 128;
+export const instanceSizePreviewSustainPerLane = 16;
+export const instanceSizeBeatLines = 64;
+export const instanceSizePhraseSpans = 128;
+export const visibleQuarterNotes = 16;
+export const strikeLineZ = -3.5;
+export const farBoardZ = -44;
+export const nearBoardZ = 0.5;
+export const laneRgbColors = laneColors.map(rgbFromHex);
