@@ -83,8 +83,11 @@ export function updateNotePhrase(
     return false;
   }
 
+  const originalStart = note.start;
   if (!track.setNoteStart(note, start)) return false;
-  return track.setNoteDuration(note, end - start);
+  if (track.setNoteDuration(note, end - start)) return true;
+  track.setNoteStart(note, originalStart);
+  return false;
 }
 
 export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {

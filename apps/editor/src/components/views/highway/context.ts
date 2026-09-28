@@ -3,7 +3,11 @@ import type { ChartView } from "@midiedit/views";
 import type { ChartViewState } from "../AbstractChartView";
 import type { SelectionContext } from "./selection";
 import type { EditablePhraseKind } from "@midiedit/views";
-import type { GhostNoteLocation, MarqueeDragState } from "./types";
+import type {
+  GhostNoteLocation,
+  MarqueeDragState,
+  PhraseHoverState,
+} from "./types";
 import type { HighwayMode } from "./types";
 
 /** Narrow view services available to highway-specific collaborators. */
@@ -14,8 +18,11 @@ export interface HighwayContext {
   getCurrentChart(): ChartView | null;
   getViewport(): { width: number; height: number };
   getPlayheadTick(): number;
+  getCameraTick(): number;
+  setCameraTick(tick: number): void;
   getMode(): HighwayMode;
   getPhraseMode(): EditablePhraseKind | null;
+  getPhraseHoverState(): PhraseHoverState | null;
   getSelectionContext(): SelectionContext;
   getGhostNoteLocation(): GhostNoteLocation | null;
   getHoveredNoteOn(): MidiChannelEvent | null;

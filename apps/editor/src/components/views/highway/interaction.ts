@@ -1,12 +1,39 @@
 export const minimumMidiNoteDurationTicks = 1;
 
+export function getPhrasePointerAction(
+  phraseHit: boolean,
+  insidePhraseBand: boolean,
+  noteHit: boolean,
+): "edit-phrase" | "create-phrase" | "marquee" {
+  if (phraseHit) return "edit-phrase";
+  return insidePhraseBand && !noteHit ? "create-phrase" : "marquee";
+}
+
+export function getPhraseAutoScrollDelta(
+  pointerY: number,
+  viewportHeight: number,
+  operation: "resize-start" | "resize-end",
+  edgeMargin: number,
+  maximumTicks: number,
+): number {
+  if (viewportHeight <= 0 || edgeMargin <= 0 || maximumTicks <= 0) return 0;
+  const distance =
+    operation === "resize-end" ? pointerY : viewportHeight - pointerY;
+  if (distance >= edgeMargin) return 0;
+  const proximity = Math.max(
+    0,
+    Math.min(1, (edgeMargin - distance) / edgeMargin),
+  );
+  return (operation === "resize-end" ? 1 : -1) * maximumTicks * proximity;
+}
+
 export function getHighwayWheelTick(
-  playheadTick: number,
+  cameraTick: number,
   deltaY: number,
   ppqn: number,
   ticksPerPixel: number,
 ): number {
-  return Math.max(0, playheadTick - deltaY * ppqn * ticksPerPixel);
+  return Math.max(0, cameraTick - deltaY * ppqn * ticksPerPixel);
 }
 
 export function getHighwaySteppedTick(

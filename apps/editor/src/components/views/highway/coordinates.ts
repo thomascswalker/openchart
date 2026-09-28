@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
-import { laneCount, strikeLineZ } from "./constants";
+import { laneCount, nearBoardZ, strikeLineZ } from "./constants";
 
 type HighwayCoordinateContext = Pick<
   HighwayContext,
-  "getCanvas" | "getPlayheadTick" | "getPpqn" | "getState" | "getViewport"
+  "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
 >;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
@@ -14,7 +14,7 @@ export class HighwayCoordinateSystem {
   private readonly raycaster = new THREE.Raycaster();
   private readonly boardPlane = new THREE.Plane(
     new THREE.Vector3(0, 1, 0),
-    -0.05,
+    0.045,
   );
 
   public constructor(
@@ -40,6 +40,17 @@ export class HighwayCoordinateSystem {
   public getChartLocation(
     event: MouseEvent,
   ): { lane: number; tick: number } | null {
+    const hit = this.getWorldLocation(event);
+    if (!hit) return null;
+    const lane = Math.max(
+      0,
+      Math.min(laneCount - 1, Math.floor((hit.x + 3) / (6 / laneCount))),
+    );
+    const tick = this.snapTick(this.getTickAtDepth(hit.z));
+    return { lane, tick };
+  }
+
+  public getWorldLocation(event: MouseEvent): THREE.Vector3 | null {
     const canvas = this.context.getCanvas();
     if (!this.getCanvasPoint(event) || !canvas) return null;
     const bounds = canvas.getBoundingClientRect();
@@ -49,16 +60,7 @@ export class HighwayCoordinateSystem {
     );
     this.raycaster.setFromCamera(ndc, this.camera);
     const hit = new THREE.Vector3();
-    if (!this.raycaster.ray.intersectPlane(this.boardPlane, hit)) return null;
-    const lane = Math.max(
-      0,
-      Math.min(laneCount - 1, Math.floor((hit.x + 3) / (6 / laneCount))),
-    );
-    const tick = this.snapTick(
-      this.context.getPlayheadTick() +
-        ((strikeLineZ - hit.z) / 3) * this.context.getPpqn(),
-    );
-    return { lane, tick };
+    return this.raycaster.ray.intersectPlane(this.boardPlane, hit) ? hit : null;
   }
 
   public worldToScreen(position: THREE.Vector3): THREE.Vector2 | null {
@@ -90,17 +92,21 @@ export class HighwayCoordinateSystem {
   }
 
   public getNoteZ(tick: number): number {
-    return (
-      strikeLineZ -
-      ((tick - this.context.getPlayheadTick()) / this.context.getPpqn()) * 3
-    );
+    const strikeTick =
+      this.context.getCameraTick() +
+      ((strikeLineZ - nearBoardZ) / 3) * -this.context.getPpqn();
+    return strikeLineZ - ((tick - strikeTick) / this.context.getPpqn()) * 3;
   }
 
   public getTickAtDepth(z: number): number {
     return (
-      this.context.getPlayheadTick() +
-      ((strikeLineZ - z) / 3) * this.context.getPpqn()
+      this.context.getCameraTick() +
+      ((nearBoardZ - z) / 3) * this.context.getPpqn()
     );
+  }
+
+  public getCameraTickAtDepth(tick: number, z: number): number {
+    return tick - ((nearBoardZ - z) / 3) * this.context.getPpqn();
   }
 
   public getSnapTicks(): number {

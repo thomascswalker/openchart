@@ -6,6 +6,14 @@ export const defaultCameraFieldOfView = 45;
 export const minimumCameraFieldOfView = 1;
 export const maximumCameraFieldOfView = 179;
 export const wheelTicksPerPixel = 1 / 100;
+export const phraseAutoScrollEdgeMargin = 48;
+export const phraseAutoScrollMaximumTicksPerFrame = 96;
+export const phrasePlacementIndicatorColor = 0xff0000;
+export const phrasePlacementIndicatorThickness = 0.08;
+export const phraseStartBoundaryIndicatorColor = phrasePlacementIndicatorColor;
+export const phraseEndBoundaryIndicatorColor = phrasePlacementIndicatorColor;
+export const phraseBoundaryIndicatorThickness =
+  phrasePlacementIndicatorThickness;
 export const minimumNoteScale = 0.1;
 export const maximumNoteScale = 10;
 export const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];

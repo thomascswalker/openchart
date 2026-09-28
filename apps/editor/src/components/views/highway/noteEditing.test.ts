@@ -59,7 +59,7 @@ describe("HighwayNoteEditingController", () => {
     const coordinates = new HighwayCoordinateSystem(
       {
         getCanvas: () => null,
-        getPlayheadTick: () => 0,
+        getCameraTick: () => 0,
         getPpqn: () => 480,
         getState: () => state,
         getViewport: () => ({ width: 800, height: 600 }),

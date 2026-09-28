@@ -17,8 +17,12 @@ import {
   laneCount,
   laneRgbColors,
   nearBoardZ,
+  phraseBoundaryIndicatorThickness,
+  phraseEndBoundaryIndicatorColor,
+  phrasePlacementIndicatorColor,
+  phrasePlacementIndicatorThickness,
+  phraseStartBoundaryIndicatorColor,
   strikeLineZ,
-  visibleQuarterNotes,
 } from "./constants";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
@@ -67,6 +71,30 @@ interface SectionMarkerInstance {
   label: THREE.Sprite;
 }
 
+const indicatorAxis = new THREE.Vector3(1, 0, 0);
+const indicatorDirection = new THREE.Vector3();
+
+function setIndicatorSegment(
+  mesh: THREE.Mesh,
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+  thickness: number,
+): void {
+  indicatorDirection.subVectors(end, start);
+  const length = indicatorDirection.length();
+  if (length === 0) {
+    mesh.visible = false;
+    return;
+  }
+
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(
+    indicatorAxis,
+    indicatorDirection.multiplyScalar(1 / length),
+  );
+  mesh.scale.set(length, thickness, thickness);
+}
+
 export class HighwayRenderer {
   private readonly context: HighwayContext;
   private readonly coordinates: HighwayCoordinateSystem;
@@ -100,6 +128,30 @@ export class HighwayRenderer {
       depthTest: false,
     }),
   );
+  private readonly phrasePlacementIndicator = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshBasicMaterial({
+      color: phrasePlacementIndicatorColor,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  private readonly phraseStartBoundaryIndicator = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshBasicMaterial({
+      color: phraseStartBoundaryIndicatorColor,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  private readonly phraseEndBoundaryIndicator = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshBasicMaterial({
+      color: phraseEndBoundaryIndicatorColor,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
   private readonly gemBindings = new Map<MidiChannelEvent, InstancedNote>();
   private readonly tailBindings = new Map<MidiChannelEvent, InstancedTail>();
   private readonly beatLineInstances: InstancedBeatLine[] = [];
@@ -122,6 +174,12 @@ export class HighwayRenderer {
     color: 0xffffff,
     transparent: true,
     opacity: 0.48,
+    depthWrite: false,
+  });
+  private readonly hoveredPhraseMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.38,
     depthWrite: false,
   });
   private sceneReady = false;
@@ -164,6 +222,15 @@ export class HighwayRenderer {
     this.sustainCutPreviewLine.renderOrder = 15;
     this.sustainCutPreviewLine.visible = false;
     this.scene.add(this.sustainCutPreviewLine);
+    this.phrasePlacementIndicator.renderOrder = 30;
+    this.phraseStartBoundaryIndicator.renderOrder = 29;
+    this.phraseEndBoundaryIndicator.renderOrder = 29;
+    this.phrasePlacementIndicator.visible = false;
+    this.phraseStartBoundaryIndicator.visible = false;
+    this.phraseEndBoundaryIndicator.visible = false;
+    this.scene.add(this.phrasePlacementIndicator);
+    this.scene.add(this.phraseStartBoundaryIndicator);
+    this.scene.add(this.phraseEndBoundaryIndicator);
     this.createFretboard();
     this.createBeatLineInstances();
     this.createPhraseSpanInstances();
@@ -172,12 +239,14 @@ export class HighwayRenderer {
   }
 
   public draw(): void {
+    this.phraseEditing.getSelectedPhraseNoteOns();
     const chart = this.context.getCurrentChart();
     if (!chart) {
       this.scene.userData.visibleNotes = 0;
       this.scene.userData.visibleSustains = 0;
       this.hideAllObjects();
       this.hidePhraseSpans();
+      this.hidePhraseAffordances();
       this.hideSectionMarkers();
       return;
     }
@@ -199,9 +268,7 @@ export class HighwayRenderer {
 
     this.drawBeatLines();
     const visibleStart = this.coordinates.getTickAtDepth(nearBoardZ);
-    const visibleEnd =
-      this.context.getPlayheadTick() +
-      this.context.getPpqn() * visibleQuarterNotes;
+    const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
     const visibleNotes = chart
       .getNotes()
       .map((note) => ({ note, lane: note.note - chart.getOffset() }))
@@ -364,12 +431,19 @@ export class HighwayRenderer {
     this.starpowerMaterial.dispose();
     this.soloMaterial.dispose();
     this.selectedPhraseMaterial.dispose();
+    this.hoveredPhraseMaterial.dispose();
     this.hoverOutline.geometry.dispose();
     (this.hoverOutline.material as THREE.Material).dispose();
     this.marqueeOutline.geometry.dispose();
     (this.marqueeOutline.material as THREE.Material).dispose();
     this.sustainCutPreviewLine.geometry.dispose();
     (this.sustainCutPreviewLine.material as THREE.Material).dispose();
+    this.phrasePlacementIndicator.geometry.dispose();
+    (this.phrasePlacementIndicator.material as THREE.Material).dispose();
+    this.phraseStartBoundaryIndicator.geometry.dispose();
+    (this.phraseStartBoundaryIndicator.material as THREE.Material).dispose();
+    this.phraseEndBoundaryIndicator.geometry.dispose();
+    (this.phraseEndBoundaryIndicator.material as THREE.Material).dispose();
     this.fretAssemblies.forEach((assembly) => {
       assembly.traverse((object) => {
         const mesh = object as THREE.Mesh;
@@ -537,6 +611,9 @@ export class HighwayRenderer {
   }
 
   private drawPhraseSpans(chart: ChartView): void {
+    const selectedPhraseNoteOns = new Set(
+      this.phraseEditing.getSelectedPhraseNoteOns(),
+    );
     const track = chart.getTrack().getMidiTrack();
     const descriptor = chart
       .getSong()
@@ -563,7 +640,10 @@ export class HighwayRenderer {
         : getNotePhrases(track, pitch, kind)
             .filter(
               (phrase) =>
-                phrase.end >= visibleStart && phrase.start <= visibleEnd,
+                phrase.note.noteOn !==
+                  this.phraseEditing.getDragState()?.note?.noteOn &&
+                phrase.end >= visibleStart &&
+                phrase.start <= visibleEnd,
             )
             .map(({ start, end, note }) => ({
               start,
@@ -574,12 +654,16 @@ export class HighwayRenderer {
     });
     const phraseDrag = this.phraseEditing.getDragState();
     if (phraseDrag) {
-      phrases.push({
-        kind: phraseDrag.kind,
-        start: Math.min(phraseDrag.startTick, phraseDrag.endTick),
-        end: Math.max(phraseDrag.startTick, phraseDrag.endTick),
-        noteOn: phraseDrag.note?.noteOn ?? null,
-      });
+      const start = Math.min(phraseDrag.startTick, phraseDrag.endTick);
+      const end = Math.max(phraseDrag.startTick, phraseDrag.endTick);
+      if (end >= visibleStart && start <= visibleEnd) {
+        phrases.push({
+          kind: phraseDrag.kind,
+          start,
+          end,
+          noteOn: phraseDrag.note?.noteOn ?? null,
+        });
+      }
     }
     let index = 0;
     for (const phrase of phrases) {
@@ -592,20 +676,102 @@ export class HighwayRenderer {
       mesh.position.set(0, -0.045, (startZ + endZ) / 2);
       mesh.scale.z = Math.max(0.03, Math.abs(startZ - endZ));
       mesh.material =
-        phrase.noteOn === this.phraseEditing.getSelectedPhraseNoteOn()
+        phrase.noteOn !== null && selectedPhraseNoteOns.has(phrase.noteOn)
           ? this.selectedPhraseMaterial
-          : phrase.kind === "starpower"
-            ? this.starpowerMaterial
-            : this.soloMaterial;
+          : phrase.noteOn !== null &&
+              phrase.noteOn === this.context.getPhraseHoverState()?.noteOn &&
+              this.context.getPhraseHoverState()?.operation === "move"
+            ? this.hoveredPhraseMaterial
+            : phrase.kind === "starpower"
+              ? this.starpowerMaterial
+              : this.soloMaterial;
       mesh.visible = true;
     }
     for (; index < this.phraseSpanInstances.length; index++) {
       this.phraseSpanInstances[index].visible = false;
     }
+    this.drawPhraseAffordances(phrases, phraseDrag);
+  }
+
+  private drawPhraseAffordances(
+    phrases: Array<{
+      start: number;
+      end: number;
+      kind: EditablePhraseKind;
+      noteOn: MidiChannelEvent | null;
+    }>,
+    phraseDrag: ReturnType<HighwayPhraseEditingController["getDragState"]>,
+  ): void {
+    const hover = this.context.getPhraseHoverState();
+    const placementTick =
+      phraseDrag?.operation === "create"
+        ? Math.min(phraseDrag.startTick, phraseDrag.endTick)
+        : hover?.operation === "create"
+          ? hover.placementTick
+          : null;
+    const phraseMode = this.context.getPhraseMode();
+    this.phrasePlacementIndicator.visible =
+      phraseMode !== null && placementTick !== null;
+    if (this.phrasePlacementIndicator.visible && placementTick !== null) {
+      this.phrasePlacementIndicator.position.set(
+        0,
+        -0.045,
+        this.coordinates.getNoteZ(placementTick),
+      );
+      this.phrasePlacementIndicator.scale.set(
+        6,
+        phrasePlacementIndicatorThickness,
+        phrasePlacementIndicatorThickness,
+      );
+    }
+
+    const activeBoundary =
+      phraseDrag?.operation === "resize-start" ||
+      phraseDrag?.operation === "resize-end"
+        ? phraseDrag.operation
+        : hover?.operation === "resize-start" ||
+            hover?.operation === "resize-end"
+          ? hover.operation
+          : null;
+    const activeNoteOn = phraseDrag?.note?.noteOn ?? hover?.noteOn;
+    const phrase = phrases.find((item) => item.noteOn === activeNoteOn);
+    this.phraseStartBoundaryIndicator.visible =
+      phraseMode !== null &&
+      activeBoundary === "resize-start" &&
+      phrase !== undefined;
+    this.phraseEndBoundaryIndicator.visible =
+      phraseMode !== null &&
+      activeBoundary === "resize-end" &&
+      phrase !== undefined;
+    if (!phrase || !activeBoundary) return;
+
+    const boundary = activeBoundary === "resize-start" ? "start" : "end";
+    const projection = this.hitTesting.getPhraseBoundaryProjection(
+      phrase,
+      boundary,
+    );
+    if (!projection) return;
+    const indicator =
+      activeBoundary === "resize-start"
+        ? this.phraseStartBoundaryIndicator
+        : this.phraseEndBoundaryIndicator;
+    setIndicatorSegment(
+      indicator,
+      projection.worldStart,
+      projection.worldEnd,
+      phraseBoundaryIndicatorThickness,
+    );
   }
 
   private hidePhraseSpans(): void {
     this.phraseSpanInstances.forEach((mesh) => (mesh.visible = false));
+    this.hidePhraseAffordances();
+  }
+
+  private hidePhraseAffordances(): void {
+    this.phrasePlacementIndicator.visible = false;
+    this.phraseStartBoundaryIndicator.visible = false;
+    this.phraseEndBoundaryIndicator.visible = false;
   }
 
   private drawSectionMarkers(chart: ChartView): void {
@@ -701,9 +867,11 @@ export class HighwayRenderer {
 
   private drawBeatLines(): void {
     const ppqn = Math.max(1, this.context.getPpqn());
-    const playheadTick = this.context.getPlayheadTick();
-    const minTick = Math.max(0, playheadTick - Math.floor(ppqn * 2));
-    const maxTick = playheadTick + Math.ceil(ppqn * (visibleQuarterNotes + 2));
+    const minTick = Math.max(
+      0,
+      this.coordinates.getTickAtDepth(nearBoardZ) - ppqn,
+    );
+    const maxTick = this.coordinates.getTickAtDepth(farBoardZ) + ppqn;
     const startQuarterTick = Math.ceil(minTick / ppqn) * ppqn;
     let instanceIndex = 0;
     for (let tick = startQuarterTick; tick <= maxTick; tick += ppqn) {

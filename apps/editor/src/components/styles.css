@@ -110,6 +110,15 @@ button:disabled {
 }
 
 .midi-menubar__trigger,
+.midi-menubar__item,
+.viewport-panel__title {
+  font:
+    400 13.3333px Arial,
+    sans-serif;
+  letter-spacing: normal;
+}
+
+.midi-menubar__trigger,
 .midi-menubar__item {
   border: 1px solid transparent;
   border-radius: 4px;
@@ -273,6 +282,21 @@ button:disabled {
   padding: 3px 6px;
   background: #222;
   border-bottom: 1px solid #444;
+}
+.viewport-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.viewport-panel__title-icon {
+  display: inline-flex;
+  flex: 0 0 18px;
+}
+.viewport-panel__title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .viewport-panel__header strong {
   min-width: 0;
