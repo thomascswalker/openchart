@@ -26,21 +26,29 @@
 
 ### Mouse
 
-| Action                         | Context            | Description                     |
-| ------------------------------ | ------------------ | ------------------------------- |
-| **`LMB`**                      |                    | Add note                        |
-| **`LMB`**                      | Mouse over sustain | Add note + trim sustain         |
-| **`LMB + Shift`**              | Mouse over sustain | Add note + preserve sustain     |
-| **`LMB + Drag`**               | Mouse over note    | Move note(s)                    |
-| **`RMB + Drag`**               |                    | Marquee select                  |
-| **`RMB + Drag`**               | Mouse over note    | Move sustain                    |
-| **`RMB (Hold) + LMB`**         | Mouse over note    | Remove note                     |
-| **`RMB (Hold) + LMB + Shift`** | Mouse over note    | Remove individual note          |
-| **`1-5`**                      |                    | Add/remove note                 |
-| **`Up/Down`**                  |                    | Move forward/backward           |
-| **`Left/Right`**               |                    | Increase/decrease snap interval |
-| **`Delete`**                   | Note(s) selected   | Remove note(s)                  |
-| **`Ctrl + C`**                 | Note(s) selected   | Copy                            |
-| **`Ctrl + V`**                 | Note(s) selected   | Paste                           |
-| **`Ctrl + X`**                 | Note(s) selected   | Cut                             |
-| **`N`**                        |                    | Toggle clap                     |
+| Action            | Context             | Description                     |
+| ----------------- | ------------------- | ------------------------------- |
+| **`LMB`**         | Place tool          | Add note                        |
+| **`LMB`**         | Place tool, sustain | Add note + trim sustain         |
+| **`LMB + Shift`** | Place tool, sustain | Add note + preserve sustain     |
+| **`LMB + Drag`**  | Select tool, note   | Move note(s)                    |
+| **`LMB + Drag`**  | Select tool, blank  | Marquee select                  |
+| **`RMB + Drag`**  | Select tool, note   | Move sustain                    |
+| **`1-5`**         |                     | Add/remove note                 |
+| **`Up/Down`**     |                     | Move forward/backward           |
+| **`Left/Right`**  |                     | Increase/decrease snap interval |
+| **`Delete`**      | Note(s) selected    | Remove note(s)                  |
+| **`Ctrl + C`**    | Note(s) selected    | Copy                            |
+| **`Ctrl + V`**    | Note(s) selected    | Paste                           |
+| **`Ctrl + X`**    | Note(s) selected    | Cut                             |
+| **`N`**           |                     | Toggle clap                     |
+
+### Tools
+
+| Hotkey  | Tool             |
+| ------- | ---------------- |
+| **`Q`** | Select           |
+| **`W`** | Place            |
+| **`E`** | Remove           |
+| **`R`** | Starpower phrase |
+| **`T`** | Solo phrase      |

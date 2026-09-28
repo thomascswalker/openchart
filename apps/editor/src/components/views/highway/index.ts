@@ -80,7 +80,8 @@ const farBoardZ = -44;
 const nearBoardZ = 0.5;
 const laneRgbColors = laneColors.map(rgbFromHex);
 
-export type HighwayTool = "multi" | "select" | "place" | "remove";
+export type HighwayTool = "select" | "place" | "remove";
+export type HighwayMode = HighwayTool | EditablePhraseKind;
 
 interface HighwayClipboardNote {
   relativeTick: number;
@@ -268,7 +269,7 @@ export class HighwayView
   private playheadTick = 0;
   private selectedNoteOns = new Set<MidiChannelEvent>();
   private noteClipboard: HighwayClipboardNote[] = [];
-  private tool: HighwayTool = "multi";
+  private mode: HighwayMode = "select";
   private hoveredNoteOn: MidiChannelEvent | null = null;
   private drag: DragState | null = null;
   private marqueeDrag: MarqueeDragState | null = null;
@@ -370,17 +371,17 @@ export class HighwayView
     this.render();
   }
 
-  public setPhraseMode(mode: EditablePhraseKind | null): void {
-    this.phraseMode = mode;
-    if (!mode) this.selectedPhraseNoteOn = null;
+  public setMode(mode: HighwayMode): void {
+    if (mode !== this.mode) this.selectedPhraseNoteOn = null;
+    this.mode = mode;
     this.updateCanvasCursor(this.hoveredNoteOn !== null);
     this.render();
   }
 
-  public setTool(tool: HighwayTool): void {
-    this.tool = tool;
-    this.updateCanvasCursor(this.hoveredNoteOn !== null);
-    this.render();
+  private get tool(): HighwayTool {
+    return this.mode === "starpower" || this.mode === "solo"
+      ? "select"
+      : this.mode;
   }
 
   public canCopySelection(): boolean {
@@ -1130,7 +1131,7 @@ export class HighwayView
     chart: ChartView,
   ): Map<MidiChannelEvent, MidiNote> {
     const location = this.ghostNoteLocation;
-    if (!location || this.phraseMode || this.drag) {
+    if (!location || !this.canShowNotePlacementPreview()) {
       return new Map();
     }
     const sameLanePlacement =
@@ -1147,7 +1148,7 @@ export class HighwayView
   }
 
   private updateSustainCutPreviewLine(tick: number | null): void {
-    if (tick === null) {
+    if (tick === null || !this.canShowNotePlacementPreview()) {
       this.sustainCutPreviewLine.visible = false;
       return;
     }
@@ -1225,7 +1226,7 @@ export class HighwayView
   private drawGhostGem(): void {
     if (!this.ghostGem) return;
     const location = this.ghostNoteLocation;
-    if (!location || this.drag) {
+    if (!location || !this.canShowNotePlacementPreview()) {
       this.ghostGem.object.visible = false;
       return;
     }
@@ -1238,6 +1239,15 @@ export class HighwayView
     this.ghostGem.object.position.set(position.x, position.y, position.z);
     this.ghostGem.object.renderOrder = 30;
     this.ghostGem.object.visible = true;
+  }
+
+  private canShowNotePlacementPreview(): boolean {
+    return (
+      this.canEditNotes &&
+      !this.drag &&
+      !this.phraseMode &&
+      this.tool === "place"
+    );
   }
 
   private drawHoverOutline(chart: ChartView): void {
@@ -1278,7 +1288,7 @@ export class HighwayView
       this.suppressNextClick = false;
       return;
     }
-    if (this.tool !== "place" && this.tool !== "multi") return;
+    if (this.tool !== "place") return;
     const chart = this.getCurrentChart();
     const location = this.getChartLocation(event);
     if (!chart || !location) return;
@@ -1312,15 +1322,10 @@ export class HighwayView
       this.suppressNextClick = true;
       const existingPhrase = this.getPhraseAt(chart, event, this.phraseMode);
       if (existingPhrase) {
-        const distanceToStart = Math.abs(location.tick - existingPhrase.start);
-        const distanceToEnd = Math.abs(location.tick - existingPhrase.end);
-        const edgeThreshold = this.getSnapTicks() * 2;
-        const operation =
-          Math.min(distanceToStart, distanceToEnd) > edgeThreshold
-            ? "move"
-            : distanceToStart <= distanceToEnd
-              ? "resize-start"
-              : "resize-end";
+        const operation = this.getPhraseDragOperation(
+          existingPhrase,
+          location.tick,
+        );
         this.selectedPhraseNoteOn = existingPhrase.note.noteOn;
         this.phraseDrag = {
           pointerId: event.pointerId,
@@ -1351,40 +1356,6 @@ export class HighwayView
       this.render();
       return;
     }
-    if (this.tool === "multi" && event.buttons === 3 && note) {
-      event.preventDefault();
-      this.canvas?.focus();
-      this.suppressNextClick = true;
-      const drag = this.drag;
-      if (drag?.pointerId === event.pointerId) {
-        if (this.canvas?.hasPointerCapture(event.pointerId)) {
-          this.canvas.releasePointerCapture(event.pointerId);
-        }
-        this.drag = null;
-      }
-      if (chart.removeNote(note)) {
-        this.selectedNoteOns.delete(note.noteOn);
-        this.onNotesChanged?.();
-      }
-      this.render();
-      return;
-    }
-    if (
-      this.tool === "multi" &&
-      event.button === 0 &&
-      (event.ctrlKey || event.metaKey) &&
-      note
-    ) {
-      event.preventDefault();
-      this.canvas?.focus();
-      this.suppressNextClick = true;
-      if (chart.removeNote(note)) {
-        this.selectedNoteOns.delete(note.noteOn);
-        this.onNotesChanged?.();
-      }
-      this.render();
-      return;
-    }
     if (this.tool === "place") return;
     if (this.tool === "remove") {
       if (event.button !== 0) return;
@@ -1400,9 +1371,6 @@ export class HighwayView
     }
     if (!note) {
       if (event.button !== 0) return;
-      if (this.tool === "multi" && (event.ctrlKey || event.metaKey)) {
-        this.suppressNextClick = true;
-      }
       const point = this.getCanvasPoint(event);
       if (!point) return;
       this.canvas?.focus();
@@ -1415,7 +1383,7 @@ export class HighwayView
         additive: event.shiftKey || event.ctrlKey || event.metaKey,
         moved: false,
       };
-      this.suppressNextClick ||= this.tool !== "multi";
+      this.suppressNextClick = true;
       this.canvas?.setPointerCapture(event.pointerId);
       this.marqueeOutline.visible = false;
       this.render();
@@ -1491,6 +1459,12 @@ export class HighwayView
       const location = this.getChartLocation(event);
       if (location) {
         const phraseDrag = this.phraseDrag;
+        this.canvas!.style.cursor =
+          phraseDrag.operation === "move"
+            ? "grabbing"
+            : phraseDrag.operation === "create"
+              ? "default"
+              : "ns-resize";
         if (phraseDrag.operation === "create") {
           phraseDrag.endTick = location.tick;
         } else if (phraseDrag.operation === "move") {
@@ -1531,6 +1505,7 @@ export class HighwayView
           ) >= 4;
         if (marquee.moved) {
           this.suppressNextClick = true;
+          if (this.canvas) this.canvas.style.cursor = "crosshair";
           this.updateMarqueeOutline(marquee);
         }
         this.render();
@@ -1638,6 +1613,7 @@ export class HighwayView
         this.selectedNoteOns.clear();
       }
       this.marqueeOutline.visible = false;
+      this.updateCanvasCursor(false, event);
       this.render();
       return;
     }
@@ -1671,6 +1647,7 @@ export class HighwayView
           if (changed) this.onNotesChanged?.();
         }
       }
+      this.updateCanvasCursor(false, event);
       this.render();
       return;
     }
@@ -1853,27 +1830,37 @@ export class HighwayView
       return;
     }
     if (this.phraseMode) {
-      this.canvas.style.cursor = "crosshair";
+      const chart = event ? this.getCurrentChart() : null;
+      const location = event ? this.getChartLocation(event) : null;
+      const phrase =
+        chart && event ? this.getPhraseAt(chart, event, this.phraseMode) : null;
+      if (phrase && location) {
+        const operation = this.getPhraseDragOperation(phrase, location.tick);
+        const isDragging = Boolean(event && event.buttons & 1);
+        this.canvas.style.cursor =
+          operation === "move"
+            ? isDragging
+              ? "grabbing"
+              : "grab"
+            : "ns-resize";
+      } else {
+        this.canvas.style.cursor = "default";
+      }
       return;
     }
-    if (
-      hoveringNote &&
-      (this.tool === "multi" || this.tool === "select") &&
-      event?.buttons
-    ) {
+    if (hoveringNote && this.tool === "select" && event?.buttons) {
       this.canvas.style.cursor = event.buttons & 2 ? "ns-resize" : "grabbing";
       return;
     }
     switch (this.tool) {
-      case "multi":
       case "select":
-        this.canvas.style.cursor = hoveringNote ? "grab" : "crosshair";
+        this.canvas.style.cursor = hoveringNote ? "grab" : "default";
         break;
       case "place":
-        this.canvas.style.cursor = "crosshair";
+        this.canvas.style.cursor = "default";
         break;
       case "remove":
-        this.canvas.style.cursor = hoveringNote ? "pointer" : "not-allowed";
+        this.canvas.style.cursor = hoveringNote ? "pointer" : "default";
         break;
     }
   }
@@ -2025,6 +2012,20 @@ export class HighwayView
       const bounds = this.getPhraseScreenBounds(phrase);
       return bounds && this.containsScreenPoint(bounds, point.x, point.y);
     });
+  }
+
+  private getPhraseDragOperation(
+    phrase: MidiNotePhrase,
+    tick: number,
+  ): PhraseDragState["operation"] {
+    const distanceToStart = Math.abs(tick - phrase.start);
+    const distanceToEnd = Math.abs(tick - phrase.end);
+    const edgeThreshold = this.getSnapTicks() * 2;
+    return Math.min(distanceToStart, distanceToEnd) > edgeThreshold
+      ? "move"
+      : distanceToStart <= distanceToEnd
+        ? "resize-start"
+        : "resize-end";
   }
 
   private getPhraseScreenBounds(phrase: MidiNotePhrase): ScreenBounds | null {
