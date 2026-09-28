@@ -170,7 +170,7 @@ export class HighwayInputController {
 
   private get tool(): "select" | "place" | "remove" {
     const mode = this.context.getMode();
-    return mode === "starpower" || mode === "solo" ? "select" : mode;
+    return mode === "stagepower" || mode === "solo" ? "select" : mode;
   }
 
   private get canEditNotes(): boolean {
@@ -932,7 +932,7 @@ export class HighwayInputController {
       .find((item) => item.key === chart.getTrack().getKey());
     if (!descriptor) return new Set();
     return new Set(
-      (["solo", "starpower"] as const)
+      (["solo", "stagepower"] as const)
         .map((kind) => getPhrasePitch(descriptor, kind))
         .filter((pitch): pitch is number => pitch !== null),
     );

@@ -52,7 +52,7 @@ function createPhrase(): MidiNotePhrase {
 describe("HighwayPhraseEditingController", () => {
   it("creates a drag preview and cancels it", () => {
     const editing = createController();
-    editing.beginPhraseDrag(7, "starpower", 120, null, "create");
+    editing.beginPhraseDrag(7, "stagepower", 120, null, "create");
     editing.updatePhraseDrag(360);
 
     expect(editing.getDragState()).toMatchObject({

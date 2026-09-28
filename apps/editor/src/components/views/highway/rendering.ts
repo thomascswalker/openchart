@@ -158,7 +158,7 @@ export class HighwayRenderer {
   private readonly phraseSpanInstances: THREE.Mesh[] = [];
   private readonly sectionMarkers: SectionMarkerInstance[] = [];
   private readonly phraseSpanGeometry = new THREE.BoxGeometry(6, 0.018, 1);
-  private readonly starpowerMaterial = new THREE.MeshBasicMaterial({
+  private readonly stagepowerMaterial = new THREE.MeshBasicMaterial({
     color: 0xfacc15,
     transparent: true,
     opacity: 0.28,
@@ -428,7 +428,7 @@ export class HighwayRenderer {
     this.phraseSpanInstances.forEach((mesh) => mesh.removeFromParent());
     this.phraseSpanInstances.length = 0;
     this.phraseSpanGeometry.dispose();
-    this.starpowerMaterial.dispose();
+    this.stagepowerMaterial.dispose();
     this.soloMaterial.dispose();
     this.selectedPhraseMaterial.dispose();
     this.hoveredPhraseMaterial.dispose();
@@ -601,7 +601,7 @@ export class HighwayRenderer {
     for (let index = 0; index < instanceSizePhraseSpans; index++) {
       const mesh = new THREE.Mesh(
         this.phraseSpanGeometry,
-        this.starpowerMaterial,
+        this.stagepowerMaterial,
       );
       mesh.visible = false;
       mesh.renderOrder = 4;
@@ -633,7 +633,7 @@ export class HighwayRenderer {
       end: number;
       kind: EditablePhraseKind;
       noteOn: MidiChannelEvent | null;
-    }> = (["starpower", "solo"] as const).flatMap((kind) => {
+    }> = (["stagepower", "solo"] as const).flatMap((kind) => {
       const pitch = getPhrasePitch(descriptor, kind);
       return pitch === null
         ? []
@@ -682,8 +682,8 @@ export class HighwayRenderer {
               phrase.noteOn === this.context.getPhraseHoverState()?.noteOn &&
               this.context.getPhraseHoverState()?.operation === "move"
             ? this.hoveredPhraseMaterial
-            : phrase.kind === "starpower"
-              ? this.starpowerMaterial
+            : phrase.kind === "stagepower"
+              ? this.stagepowerMaterial
               : this.soloMaterial;
       mesh.visible = true;
     }

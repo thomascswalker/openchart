@@ -2,12 +2,12 @@ import type { MidiMetaEvent, MidiNote, MidiTrack } from "@midiedit/core";
 import { MetaType } from "@midiedit/core";
 import type { TrackDescriptor } from "./config.js";
 
-export type EditablePhraseKind = "starpower" | "solo";
+export type EditablePhraseKind = "stagepower" | "solo";
 
 export interface NotePhrase {
   start: number;
   end: number;
-  kind: "starpower" | "solo" | "forced-strum" | "forced-hopo" | "forced-tap";
+  kind: "stagepower" | "solo" | "forced-strum" | "forced-hopo" | "forced-tap";
 }
 
 export interface MidiNotePhrase extends NotePhrase {
@@ -18,7 +18,7 @@ export function getPhrasePitch(
   descriptor: TrackDescriptor,
   kind: EditablePhraseKind,
 ): number | null {
-  const key = kind === "starpower" ? "power" : "solo";
+  const key = kind === "stagepower" ? "power" : "solo";
   const pitch = descriptor.config.notes[key];
   return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 ? pitch : null;
 }

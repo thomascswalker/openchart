@@ -33,7 +33,7 @@ function createHarness(
     beginPhraseDrag: vi.fn(
       (
         pointerId: number,
-        kind: "solo" | "starpower",
+        kind: "solo" | "stagepower",
         tick: number,
         phrase: MidiNotePhrase | null,
         operation: "create" | "move" | "resize-start" | "resize-end",
@@ -152,7 +152,7 @@ function createHarness(
 
 function createPhraseDrag(
   pointerId: number,
-  kind: "solo" | "starpower",
+  kind: "solo" | "stagepower",
   tick: number,
   phrase: MidiNotePhrase | null,
   operation: "create" | "move" | "resize-start" | "resize-end",

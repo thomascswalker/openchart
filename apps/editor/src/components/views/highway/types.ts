@@ -7,7 +7,7 @@ export type HighwayMode = HighwayTool | EditablePhraseKind;
 export function getPhraseModeForHighwayMode(
   mode: HighwayMode,
 ): EditablePhraseKind | null {
-  return mode === "starpower" || mode === "solo" ? mode : null;
+  return mode === "stagepower" || mode === "solo" ? mode : null;
 }
 
 export interface HighwayClipboardNote {

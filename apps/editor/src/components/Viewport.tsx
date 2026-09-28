@@ -199,14 +199,14 @@ function ViewportPanel({
               : key === "e"
                 ? "remove"
                 : key === "r"
-                  ? "starpower"
+                  ? "stagepower"
                   : key === "t"
                     ? "solo"
                     : null;
         if (mode) {
           event.preventDefault();
           setHighwayMode((current) =>
-            current === mode && (mode === "starpower" || mode === "solo")
+            current === mode && (mode === "stagepower" || mode === "solo")
               ? "select"
               : mode,
           );

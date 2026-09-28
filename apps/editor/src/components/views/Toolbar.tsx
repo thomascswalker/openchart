@@ -144,12 +144,12 @@ const Toolbar = ({
           />
 
           <ToolButton
-            active={highwayMode === "starpower"}
-            title="Starpower phrase (R)"
-            ariaLabel="Starpower phrase"
+            active={highwayMode === "stagepower"}
+            title="Stagepower phrase (R)"
+            ariaLabel="Stagepower phrase"
             onClick={() =>
               onHighwayModeChange(
-                highwayMode === "starpower" ? "select" : "starpower",
+                highwayMode === "stagepower" ? "select" : "stagepower",
               )
             }
             Icon={StagepowerIcon}
