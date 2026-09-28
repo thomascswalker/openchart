@@ -348,7 +348,7 @@ function ViewportPanel({
           />
         </div>
       </div>
-      <Timeline chartView={chartView} />
+      <Timeline chartView={chartView} midiData={midiData} />
     </article>
   );
 }

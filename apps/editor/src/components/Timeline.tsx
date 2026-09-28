@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef } from "react";
+import type { Midi } from "@midiedit/core";
 import type { ChartView } from "./views/ChartViews";
+import { HighwayView } from "./views/highway";
 import { usePlayback } from "../context/PlaybackContextStore";
+import { getTimelinePosition } from "./timelinePosition";
 
 interface TimelineProps {
   chartView: ChartView | null;
+  midiData: Midi | null;
 }
 
 const BACKGROUND_COLOR = "#101010";
@@ -11,7 +15,7 @@ const VIEWPORT_COLOR = "rgba(255, 255, 255, 0.12)";
 const VIEWPORT_BORDER_COLOR = "rgba(255, 255, 255, 0.35)";
 const PLAYHEAD_COLOR = "#ff3b30";
 
-export function Timeline({ chartView }: TimelineProps) {
+export function Timeline({ chartView, midiData }: TimelineProps) {
   const {
     isPlaying,
     canPlay,
@@ -30,6 +34,14 @@ export function Timeline({ chartView }: TimelineProps) {
 
   const redrawRef = useRef<() => void>(() => {});
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
+  const position = getTimelinePosition(
+    playbackTick,
+    midiData?.header.division ?? 480,
+    midiData?.getTempoChanges() ?? [
+      { tick: 0, microsecondsPerQuarterNote: 500_000 },
+    ],
+    midiData?.getTimeSignatureChanges() ?? [],
+  );
 
   const tickToX = useCallback(
     (tick: number, width: number): number => {
@@ -149,8 +161,12 @@ export function Timeline({ chartView }: TimelineProps) {
       setPlaybackTick(tick);
 
       if (chartView) {
-        const visibleSpan = chartView.getVisibleTickSpan();
-        chartView.setCameraTick(Math.max(0, tick - visibleSpan / 2));
+        if (chartView instanceof HighwayView) {
+          chartView.setCameraTick(chartView.getCameraTickForPlayhead(tick));
+        } else {
+          const visibleSpan = chartView.getVisibleTickSpan();
+          chartView.setCameraTick(Math.max(0, tick - visibleSpan / 2));
+        }
       }
     },
     [canPlay, chartView, setPlaybackTick, timelineTicks, xToTick],
@@ -191,6 +207,23 @@ export function Timeline({ chartView }: TimelineProps) {
         role="toolbar"
         aria-label="Playback controls"
       >
+        <output
+          className="timeline__position"
+          aria-label={`Playback position: tick ${position.tick}, time ${position.time}, measure ${position.measure}`}
+        >
+          <span className="timeline__position-item">
+            <span className="timeline__position-label">TICK</span>
+            <span>{position.tick}</span>
+          </span>
+          <span className="timeline__position-item">
+            <span className="timeline__position-label">TIME</span>
+            <span>{position.time}</span>
+          </span>
+          <span className="timeline__position-item">
+            <span className="timeline__position-label">MEASURE</span>
+            <span>{position.measure}</span>
+          </span>
+        </output>
         <button
           type="button"
           onClick={seekStart}
