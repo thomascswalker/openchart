@@ -9,9 +9,49 @@ import {
 import * as THREE from "three";
 import type { ModelCalibration } from "./geometry";
 import { noteWorldPosition } from "./geometry";
-import { farBoardZ, laneCount, strikeLineZ } from "./constants";
+import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
+
+export interface PhraseBoundaryProjection {
+  worldStart: THREE.Vector3;
+  worldEnd: THREE.Vector3;
+  screenStart: THREE.Vector2;
+  screenEnd: THREE.Vector2;
+}
+
+export function getPhraseBoundaryHitOperation(
+  point: THREE.Vector2,
+  start: PhraseBoundaryProjection,
+  end: PhraseBoundaryProjection,
+  threshold: number,
+): "resize-start" | "resize-end" | null {
+  const startDistance = distanceToSegment(
+    point,
+    start.screenStart,
+    start.screenEnd,
+  );
+  const endDistance = distanceToSegment(point, end.screenStart, end.screenEnd);
+  if (startDistance > threshold && endDistance > threshold) return null;
+  return startDistance <= endDistance ? "resize-start" : "resize-end";
+}
+
+function distanceToSegment(
+  point: THREE.Vector2,
+  start: THREE.Vector2,
+  end: THREE.Vector2,
+): number {
+  const segment = end.clone().sub(start);
+  const lengthSquared = segment.lengthSq();
+  const projection =
+    lengthSquared === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(1, point.clone().sub(start).dot(segment) / lengthSquared),
+        );
+  return point.distanceTo(start.clone().addScaledVector(segment, projection));
+}
 
 export class HighwayHitTester {
   private readonly coordinates: HighwayCoordinateSystem;
@@ -100,7 +140,23 @@ export class HighwayHitTester {
   public getPhraseDragOperation(
     phrase: MidiNotePhrase,
     tick: number,
+    event?: MouseEvent,
   ): PhraseDragState["operation"] {
+    if (event) {
+      const point = this.coordinates.getCanvasPoint(event);
+      const start = this.getPhraseBoundaryProjection(phrase, "start");
+      const end = this.getPhraseBoundaryProjection(phrase, "end");
+      if (point && start && end) {
+        return (
+          getPhraseBoundaryHitOperation(
+            new THREE.Vector2(point.x, point.y),
+            start,
+            end,
+            9,
+          ) ?? "move"
+        );
+      }
+    }
     const distanceToStart = Math.abs(tick - phrase.start);
     const distanceToEnd = Math.abs(tick - phrase.end);
     const edgeThreshold = this.coordinates.getSnapTicks() * 2;
@@ -111,15 +167,46 @@ export class HighwayHitTester {
         : "resize-end";
   }
 
-  public getPhraseScreenBounds(phrase: MidiNotePhrase): ScreenBounds | null {
-    const points = [
-      new THREE.Vector3(-3, -0.035, this.coordinates.getNoteZ(phrase.start)),
-      new THREE.Vector3(3, -0.035, this.coordinates.getNoteZ(phrase.start)),
-      new THREE.Vector3(-3, -0.035, this.coordinates.getNoteZ(phrase.end)),
-      new THREE.Vector3(3, -0.035, this.coordinates.getNoteZ(phrase.end)),
-    ]
-      .map((point) => this.coordinates.worldToScreen(point))
-      .filter((value): value is THREE.Vector2 => value !== null);
+  public getPhraseBoundaryProjection(
+    phrase: Pick<MidiNotePhrase, "start" | "end">,
+    boundary: "start" | "end",
+  ): PhraseBoundaryProjection | null {
+    const tick = boundary === "start" ? phrase.start : phrase.end;
+    const worldStart = new THREE.Vector3(
+      -3,
+      -0.035,
+      this.coordinates.getNoteZ(tick),
+    );
+    const worldEnd = new THREE.Vector3(
+      3,
+      -0.035,
+      this.coordinates.getNoteZ(tick),
+    );
+    const screenStart = this.coordinates.worldToScreen(worldStart);
+    const screenEnd = this.coordinates.worldToScreen(worldEnd);
+    if (!screenStart || !screenEnd) return null;
+    return { worldStart, worldEnd, screenStart, screenEnd };
+  }
+
+  public getPhraseScreenBounds(
+    phrase: Pick<MidiNotePhrase, "start" | "end">,
+  ): ScreenBounds | null {
+    const visibleStart = Math.max(
+      0,
+      this.coordinates.getTickAtDepth(nearBoardZ),
+    );
+    const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
+    const start = Math.max(phrase.start, visibleStart);
+    const end = Math.min(phrase.end, visibleEnd);
+    if (end < start) return null;
+
+    const points = (["start", "end"] as const).flatMap((boundary) => {
+      const projection = this.getPhraseBoundaryProjection(
+        { start, end },
+        boundary,
+      );
+      return projection ? [projection.screenStart, projection.screenEnd] : [];
+    });
     if (points.length === 0) return null;
     return {
       left: Math.min(...points.map((point) => point.x)),

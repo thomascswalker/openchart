@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
-import { Difficulty, SongView } from "@midiedit/views";
+import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { useEditor, type ViewportSession } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import { useEditorCommands } from "../hooks/useEditorCommands";
@@ -15,7 +15,34 @@ import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, CloseButton } from "./shared/Button/Button";
 import { startCase } from "es-toolkit";
-import { SplitIcon } from "./shared/Icon/Icon";
+import {
+  BassIcon,
+  DrumsIcon,
+  GuitarIcon,
+  NoteIcon,
+  PianoIcon,
+  SplitIcon,
+  VocalsIcon,
+} from "./shared/Icon/Icon";
+
+function InstrumentIcon({ instrument }: { instrument: string }) {
+  switch (instrument) {
+    case InstrumentType.Lead:
+      return <GuitarIcon width={18} height={18} />;
+    case InstrumentType.Groove:
+    case InstrumentType.Bass:
+      return <BassIcon width={18} height={18} />;
+    case InstrumentType.Drums:
+      return <DrumsIcon width={18} height={18} />;
+    case InstrumentType.Vocals:
+    case InstrumentType.Harmonies:
+      return <VocalsIcon width={18} height={18} />;
+    case InstrumentType.Synth:
+      return <PianoIcon width={18} height={18} />;
+    default:
+      return <NoteIcon width={18} height={18} />;
+  }
+}
 
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
@@ -126,11 +153,14 @@ function ViewportPanel({
 
   const keepPlayheadVisible = useCallback(
     (view: ChartView) => {
-      const cameraTick = getCameraTickForPlayhead(
-        playheadTick,
-        view.getCameraTick(),
-        view.getVisibleTickSpan(),
-      );
+      const cameraTick =
+        view instanceof HighwayView
+          ? view.getCameraTickForPlayhead(playheadTick)
+          : getCameraTickForPlayhead(
+              playheadTick,
+              view.getCameraTick(),
+              view.getVisibleTickSpan(),
+            );
       if (cameraTick !== null) view.setCameraTick(cameraTick);
     },
     [playheadTick],
@@ -255,7 +285,6 @@ function ViewportPanel({
     focusViewport(session.id);
     updateViewport(session.id, { view, camera: { tick: playheadTick } });
   };
-
   return (
     <article
       className={`viewport-panel${active ? " viewport-panel--active" : ""}`}
@@ -263,9 +292,14 @@ function ViewportPanel({
     >
       <header className="viewport-panel__header">
         <p className="viewport-panel__title">
-          {session.view === "piano-roll"
-            ? session.instrument
-            : `${startCase(session.instrument)} (${Difficulty[session.difficulty]})`}
+          <span className="viewport-panel__title-icon" aria-hidden="true">
+            <InstrumentIcon instrument={session.instrument} />
+          </span>
+          <span className="viewport-panel__title-text">
+            {session.view === "piano-roll"
+              ? session.instrument
+              : `${startCase(session.instrument)} (${Difficulty[session.difficulty]})`}
+          </span>
         </p>
         <div className="viewport-panel__actions">
           <Button

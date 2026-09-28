@@ -13,11 +13,11 @@ describe("HighwayCoordinateSystem", () => {
     snap: { enabled: true, denominator: 4 },
     isPlaying: false,
   };
-  let playheadTick = 100;
+  let cameraTick = 100;
   const coordinates = new HighwayCoordinateSystem(
     {
       getCanvas: () => null,
-      getPlayheadTick: () => playheadTick,
+      getCameraTick: () => cameraTick,
       getPpqn: () => 480,
       getState: () => state,
       getViewport: () => ({ width: 800, height: 600 }),
@@ -31,12 +31,25 @@ describe("HighwayCoordinateSystem", () => {
   });
 
   it("converts ticks to depth and back", () => {
-    expect(coordinates.getNoteZ(580)).toBeCloseTo(-6.5);
-    expect(coordinates.getTickAtDepth(-6.5)).toBeCloseTo(580);
-    playheadTick = 250;
+    expect(coordinates.getNoteZ(1_220)).toBeCloseTo(-6.5);
+    expect(coordinates.getTickAtDepth(-6.5)).toBeCloseTo(1_220);
+    cameraTick = 250;
     expect(coordinates.getTickAtDepth(coordinates.getNoteZ(730))).toBeCloseTo(
       730,
     );
+  });
+
+  it("keeps the playhead at the strike line, including before tick zero", () => {
+    const strikeTick = 0;
+    const strikeLineZ = -3.5;
+    const nextCameraTick = coordinates.getCameraTickAtDepth(
+      strikeTick,
+      strikeLineZ,
+    );
+
+    expect(nextCameraTick).toBeCloseTo(-640);
+    cameraTick = nextCameraTick;
+    expect(coordinates.getTickAtDepth(strikeLineZ)).toBeCloseTo(strikeTick);
   });
 
   it("snaps down to the configured grid and clamps negative ticks", () => {

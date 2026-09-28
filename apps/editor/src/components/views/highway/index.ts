@@ -23,8 +23,11 @@ import {
   maximumNoteScale,
   minimumCameraFieldOfView,
   minimumNoteScale,
+  farBoardZ,
+  nearBoardZ,
+  strikeLineZ,
 } from "./constants";
-import type { HighwayMode } from "./types";
+import { getPhraseModeForHighwayMode, type HighwayMode } from "./types";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import { HighwayHitTester } from "./hitTesting";
@@ -83,8 +86,11 @@ export class HighwayView
       height: this.viewportHeight,
     }),
     getPlayheadTick: () => this.playheadTick,
+    getCameraTick: () => this.cameraTick,
+    setCameraTick: (tick) => this.setCameraTick(tick),
     getMode: () => this.mode,
     getPhraseMode: () => this.phraseMode,
+    getPhraseHoverState: () => this.input.getPhraseHoverState(),
     getSelectionContext: () => this.selection,
     getGhostNoteLocation: () => this.input.getGhostNoteLocation(),
     getHoveredNoteOn: () => this.input.getHoveredNoteOn(),
@@ -142,6 +148,7 @@ export class HighwayView
   private songMidi: Midi | null = null;
   private song: SongView | null = null;
   private playheadTick = 0;
+  private cameraTick = 0;
   private readonly selection = new SelectionContext();
   private mode: HighwayMode = "select";
   private phraseMode: EditablePhraseKind | null = null;
@@ -205,11 +212,35 @@ export class HighwayView
     this.render();
   }
 
+  public override getCameraTick(): number {
+    return this.cameraTick;
+  }
+
+  public override getVisibleTickSpan(): number {
+    return (
+      this.coordinates.getTickAtDepth(farBoardZ) -
+      this.coordinates.getTickAtDepth(nearBoardZ)
+    );
+  }
+
+  public getCameraTickForPlayhead(tick: number): number {
+    return this.coordinates.getCameraTickAtDepth(tick, strikeLineZ);
+  }
+
+  public override setCameraTick(tick: number): void {
+    const nextTick = tick;
+    if (!Number.isFinite(nextTick) || nextTick === this.cameraTick) return;
+    this.cameraTick = nextTick;
+    this.render();
+    this.onCameraChange?.();
+  }
+
   public setMode(mode: HighwayMode): void {
-    if (mode !== this.mode) {
-      this.phraseEditing.setSelectedPhraseNoteOn(null);
-    }
+    if (mode === this.mode) return;
+    this.input.cancelPhraseGesture();
+    this.phraseEditing.selectPhrase(null);
     this.mode = mode;
+    this.phraseMode = getPhraseModeForHighwayMode(mode);
     this.input.refreshCursor();
     this.render();
   }

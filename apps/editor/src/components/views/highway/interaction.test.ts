@@ -1,18 +1,45 @@
 import { describe, expect, it } from "vitest";
 import {
+  getPhraseAutoScrollDelta,
   getHighwayDragTarget,
   getHighwaySnapDenominator,
   getHighwaySteppedTick,
   getHighwaySustainEnd,
   getHighwayWheelTick,
+  getPhrasePointerAction,
   getSustainCutTargets,
   getSustainsAtTick,
   minimumMidiNoteDurationTicks,
 } from "./interaction";
+import { getPhraseModeForHighwayMode } from "./types";
 
 describe("highway interaction helpers", () => {
+  it("maps phrase modes independently from note tools", () => {
+    expect(getPhraseModeForHighwayMode("starpower")).toBe("starpower");
+    expect(getPhraseModeForHighwayMode("solo")).toBe("solo");
+    expect(getPhraseModeForHighwayMode("select")).toBeNull();
+    expect(getPhraseModeForHighwayMode("place")).toBeNull();
+    expect(getPhraseModeForHighwayMode("remove")).toBeNull();
+  });
+
   it("uses the minimum valid MIDI duration for a click-created note", () => {
     expect(minimumMidiNoteDurationTicks).toBe(1);
+  });
+
+  it("computes bounded phrase edge-scroll targets in both directions", () => {
+    expect(getPhraseAutoScrollDelta(0, 600, "resize-end", 48, 96)).toBe(96);
+    expect(getPhraseAutoScrollDelta(24, 600, "resize-end", 48, 96)).toBe(48);
+    expect(getPhraseAutoScrollDelta(599, 600, "resize-start", 48, 96)).toBe(
+      -94,
+    );
+    expect(getPhraseAutoScrollDelta(100, 600, "resize-end", 48, 96)).toBe(0);
+  });
+
+  it("prioritizes phrase hits, then empty-band creation, then marquee", () => {
+    expect(getPhrasePointerAction(true, true, true)).toBe("edit-phrase");
+    expect(getPhrasePointerAction(false, true, false)).toBe("create-phrase");
+    expect(getPhrasePointerAction(false, true, true)).toBe("marquee");
+    expect(getPhrasePointerAction(false, false, false)).toBe("marquee");
   });
 
   it("moves the playhead in the corrected wheel direction", () => {

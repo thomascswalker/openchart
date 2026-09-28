@@ -35,6 +35,7 @@ describe("chart phrase editing", () => {
     expect(getNotePhrases(track, 116, "starpower")).toMatchObject([
       { start: 720, end: 1_200, kind: "starpower" },
     ]);
+    expect(track.getNotes()[0]?.noteOn).toBe(phrase!.note.noteOn);
 
     expect(removeNotePhrase(track, phrase!.note)).toBe(true);
     expect(track.getNotes()).toHaveLength(0);
@@ -52,6 +53,17 @@ describe("chart phrase editing", () => {
     expect(getNotePhrases(track, 116, "solo")).toMatchObject([
       { start: 0, end: 480 },
     ]);
+  });
+
+  it("rolls back a phrase start if resizing fails", () => {
+    const track = new MidiTrack("LEAD GUITAR");
+    const phrase = addNotePhrase(track, 116, "solo", 480, 960)!;
+    const setDuration = track.setNoteDuration.bind(track);
+    track.setNoteDuration = () => false;
+
+    expect(updateNotePhrase(track, phrase.note, 720, 1_200)).toBe(false);
+    expect(track.getNotes()).toMatchObject([{ start: 480, end: 960 }]);
+    track.setNoteDuration = setDuration;
   });
 
   it("moves a note group by one stable tick and pitch delta", () => {

@@ -4,6 +4,12 @@ import type { EditablePhraseKind } from "@midiedit/views";
 export type HighwayTool = "select" | "place" | "remove";
 export type HighwayMode = HighwayTool | EditablePhraseKind;
 
+export function getPhraseModeForHighwayMode(
+  mode: HighwayMode,
+): EditablePhraseKind | null {
+  return mode === "starpower" || mode === "solo" ? mode : null;
+}
+
 export interface HighwayClipboardNote {
   relativeTick: number;
   relativeLane: number;
@@ -21,6 +27,13 @@ export interface PhraseDragState {
   initialEndTick: number;
   operation: "create" | "move" | "resize-start" | "resize-end";
   note: MidiNote | null;
+  moved: boolean;
+}
+
+export interface PhraseHoverState {
+  noteOn: MidiChannelEvent | null;
+  operation: PhraseDragState["operation"] | null;
+  placementTick: number | null;
 }
 
 export interface DragState {
