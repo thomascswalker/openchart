@@ -1,45 +1,27 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import classNames from "classnames";
-import type { Direction } from "../props";
-
 import styles from "./section.module.css";
+import {
+  compose,
+  space,
+  color,
+  layout,
+  border,
+  type styleFn,
+} from "styled-system";
+
+const getSystemStyles: styleFn = compose(space, color, layout, border);
 
 interface SectionProps extends HTMLAttributes<HTMLElement> {
-  direction?: Direction;
   children?: ReactNode;
-  padding?: string;
-  margin?: string;
-  gap?: string;
 }
 
-const Section = ({
-  direction = "row",
-  padding,
-  margin,
-  gap,
-  role,
-  className,
-  style,
-  children,
-  ...props
-}: SectionProps) => {
-  const sectionClassName: string = classNames(
-    styles["ui-section"],
-    styles[direction],
-    className,
-  );
+const Section = ({ className, children, ...props }: SectionProps) => {
+  const style = getSystemStyles(props);
+  const sectionClassName: string = classNames(styles["ui-section"], className);
+
   return (
-    <section
-      className={sectionClassName}
-      style={{
-        ...style,
-        ...(padding === undefined ? {} : { padding }),
-        ...(margin === undefined ? {} : { margin }),
-        ...(gap === undefined ? {} : { gap }),
-      }}
-      role={role}
-      {...props}
-    >
+    <section className={sectionClassName} style={style} {...props}>
       {children}
     </section>
   );

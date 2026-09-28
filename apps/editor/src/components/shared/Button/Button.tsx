@@ -6,9 +6,12 @@ import type {
   ColorProps,
   LayoutProps,
   BorderProps,
+  styleFn,
 } from "styled-system";
 import styles from "./button.module.css";
 import type { IconProps } from "../Icon/Icon";
+
+const getSystemStyles: styleFn = compose(space, color, layout, border);
 
 interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   disabled?: boolean;
@@ -21,8 +24,6 @@ interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   children?: ReactNode;
 }
 
-const systemStyles = compose(space, color, layout, border);
-
 const Button = ({
   disabled = false,
   active = false,
@@ -34,12 +35,13 @@ const Button = ({
   children,
   ...props
 }: ButtonProps) => {
-  const style = systemStyles(props);
+  const style = getSystemStyles(props);
+  const buttonClassName: string = classNames(styles["ui-button"], className);
 
   return (
     <button
       className={classNames(
-        className ? styles[className] : styles["ui-button"],
+        buttonClassName,
         active && styles["ui-button-active"],
         flat && styles["ui-button-flat"],
       )}

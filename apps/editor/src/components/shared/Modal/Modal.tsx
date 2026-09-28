@@ -60,7 +60,7 @@ interface ModalHeaderProps {
 
 const ModalHeader = ({ title, onClick }: ModalHeaderProps) => {
   return (
-    <Section direction="row" padding={"0"} margin={"0"}>
+    <Section style={{ flexDirection: "row", padding: "0", margin: "0" }}>
       <h2 id="settings-dialog-title">{title}</h2>
       <CloseButton onClick={onClick} />
     </Section>

@@ -74,12 +74,12 @@ const Toolbar = ({
   return (
     <Section
       className="viewport-panel__toolbar"
-      padding="4px"
-      gap="4px"
       style={{
         backgroundColor: "var(--primary)",
         borderBottom: "var(--border-primary)",
         scrollBehavior: "auto",
+        padding: "4px",
+        gap: "4px",
       }}
     >
       {/* View Selection */}
