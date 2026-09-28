@@ -12,6 +12,15 @@ import { noteWorldPosition } from "./geometry";
 import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
+import { getDrumNoteProfile } from "./drumProfile";
+
+function physicalLaneForNote(chart: ChartView, note: MidiNote): number {
+  if (chart.getTrack().getKey() === "drums") {
+    const profile = getDrumNoteProfile(note.note, chart.getOffset());
+    return profile?.kind === "kick" ? 0 : (profile?.lane ?? -1);
+  }
+  return note.note - chart.getOffset();
+}
 
 export interface PhraseBoundaryProjection {
   worldStart: THREE.Vector3;
@@ -71,9 +80,16 @@ export class HighwayHitTester {
     let hit: MidiNote | undefined;
     let nearestDepth = Infinity;
     for (const note of chart.getNotes()) {
-      const lane = note.note - chart.getOffset();
-      const gemBounds = this.getGemScreenBounds(note, lane);
-      const tailBounds = this.getTailScreenBounds(note, lane);
+      const profile =
+        chart.getTrack().getKey() === "drums"
+          ? getDrumNoteProfile(note.note, chart.getOffset())
+          : null;
+      const lane = physicalLaneForNote(chart, note);
+      const gemBounds =
+        profile?.kind === "kick"
+          ? this.getKickScreenBounds(note)
+          : this.getGemScreenBounds(note, lane);
+      const tailBounds = profile ? null : this.getTailScreenBounds(note, lane);
       if (
         (!gemBounds ||
           !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
@@ -96,6 +112,7 @@ export class HighwayHitTester {
     event: MouseEvent,
     tick: number,
   ): MidiNote | undefined {
+    if (chart.getTrack().getKey() === "drums") return undefined;
     const pointer = this.coordinates.getCanvasPoint(event);
     if (!pointer) return undefined;
     let hit: MidiNote | undefined;
@@ -104,7 +121,7 @@ export class HighwayHitTester {
       if (tick <= note.start || tick >= note.end) continue;
       const bounds = this.getTailScreenBounds(
         note,
-        note.note - chart.getOffset(),
+        physicalLaneForNote(chart, note),
       );
       if (!bounds || !this.containsScreenPoint(bounds, pointer.x, pointer.y)) {
         continue;
@@ -217,7 +234,9 @@ export class HighwayHitTester {
   }
 
   public getGemScreenBounds(note: MidiNote, lane: number): ScreenBounds | null {
-    if (lane < 0 || lane >= laneCount) return null;
+    if (lane < 0 || lane >= this.coordinates.getPhysicalLaneCount()) {
+      return null;
+    }
     const calibration = this.getNoteCalibration();
     const position = noteWorldPosition(
       this.coordinates.getLaneX(lane),
@@ -247,6 +266,37 @@ export class HighwayHitTester {
       right: Math.max(...projected.map((corner) => corner.x)),
       top: Math.min(...projected.map((corner) => corner.y)),
       bottom: Math.max(...projected.map((corner) => corner.y)),
+    };
+  }
+
+  public getKickScreenBounds(note: MidiNote): ScreenBounds | null {
+    const calibration = this.getNoteCalibration();
+    const position = noteWorldPosition(
+      0,
+      this.coordinates.getNoteZ(note.start),
+      calibration,
+    );
+    const corners = [-3, 3].flatMap((x) =>
+      [-1, 1].flatMap((ySign) =>
+        [-1, 1].map(
+          (zSign) =>
+            new THREE.Vector3(
+              x,
+              position.y + (ySign * calibration.height) / 2,
+              position.z + (zSign * calibration.depth) / 2,
+            ),
+        ),
+      ),
+    );
+    const projected = corners
+      .map((corner) => this.coordinates.worldToScreen(corner))
+      .filter((point): point is THREE.Vector2 => point !== null);
+    if (!projected.length) return null;
+    return {
+      left: Math.min(...projected.map((point) => point.x)),
+      right: Math.max(...projected.map((point) => point.x)),
+      top: Math.min(...projected.map((point) => point.y)),
+      bottom: Math.max(...projected.map((point) => point.y)),
     };
   }
 

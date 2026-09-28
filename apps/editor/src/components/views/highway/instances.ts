@@ -76,7 +76,7 @@ export function createModelInstance(
 export function createNoteInstances(
   scene: THREE.Scene,
   template: THREE.Object3D,
-  materialSet: MaterialSet,
+  materialSet: Pick<MaterialSet, "noteTinted" | "noteGrayscale">,
   colors: Rgb[],
   instanceSize: number,
   calibration: ModelCalibration,

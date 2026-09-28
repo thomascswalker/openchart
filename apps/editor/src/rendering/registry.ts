@@ -164,6 +164,9 @@ export class ResourceRegistry {
       fretTop: this.resources.fretTopMesh as MeshResource,
       fretBase: this.resources.fretBaseMesh as MeshResource,
       note: this.resources.noteMesh as MeshResource,
+      kick: this.resources.kickMesh as MeshResource,
+      cymbal: this.resources.cymbalMesh as MeshResource,
+      pad: this.resources.padMesh as MeshResource,
     };
   }
 
@@ -171,6 +174,9 @@ export class ResourceRegistry {
     return {
       fret: this.resources.fretColor as TextureResource,
       note: this.resources.noteColor as TextureResource,
+      kickNote: this.resources.kickNoteColor as TextureResource,
+      cymbalNote: this.resources.cymbalNoteColor as TextureResource,
+      padNote: this.resources.padNoteColor as TextureResource,
       noteEmission: this.resources.noteEmission as TextureResource,
       noteEmissionMask: this.resources.noteEmissionMask as TextureResource,
       sustain: this.resources.sustainColor as TextureResource,

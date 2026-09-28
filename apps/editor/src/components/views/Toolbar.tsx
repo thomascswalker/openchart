@@ -28,7 +28,7 @@ import { SnapDenominators } from "../views/pianoRoll/constants";
 import { ToolButton } from "../shared/Button/Button";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { Fragment } from "react";
-import type { HighwayMode } from "./highway";
+import type { DrumPlacementKind, HighwayMode } from "./highway";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -49,6 +49,8 @@ interface ToolbarProps {
   onViewChange: (view: "piano-roll" | "highway") => void;
   highwayMode: HighwayMode;
   onHighwayModeChange: (mode: HighwayMode) => void;
+  drumPlacementKind: DrumPlacementKind;
+  onDrumPlacementKindChange: (kind: DrumPlacementKind) => void;
 }
 
 const Toolbar = ({
@@ -56,6 +58,8 @@ const Toolbar = ({
   onViewChange,
   highwayMode,
   onHighwayModeChange,
+  drumPlacementKind,
+  onDrumPlacementKindChange,
 }: ToolbarProps) => {
   const {
     midiData,
@@ -116,6 +120,22 @@ const Toolbar = ({
 
       {activeViewId === "highway" && (
         <Fragment>
+          {session.instrument === InstrumentType.Drums && (
+            <select
+              aria-label="Drum note type"
+              title="Drum note type"
+              value={drumPlacementKind}
+              onChange={(event) =>
+                onDrumPlacementKindChange(
+                  event.currentTarget.value as DrumPlacementKind,
+                )
+              }
+            >
+              <option value="pad">Pad</option>
+              <option value="cymbal">Cymbal</option>
+              <option value="kick">Kick</option>
+            </select>
+          )}
           <VerticalSeparator />
 
           <ToolButton

@@ -24,6 +24,21 @@
       "Circular_Note_Bottom"
     ]
   },
+  "kickMesh": {
+    "type": "mesh",
+    "path": "note/Kick.glb",
+    "materialIds": ["Material.010", "Material.016"]
+  },
+  "cymbalMesh": {
+    "type": "mesh",
+    "path": "note/Cymbal.glb",
+    "materialIds": ["Note_Base", "Note_Sides", "Note_Color"]
+  },
+  "padMesh": {
+    "type": "mesh",
+    "path": "note/Pad.glb",
+    "materialIds": ["Note_Base.001", "Note_Sides.001", "Note_Color.001"]
+  },
   "fretColor": {
     "type": "texture",
     "path": "fret/Fret.png"
@@ -31,6 +46,18 @@
   "noteColor": {
     "type": "texture",
     "path": "note/Note.png"
+  },
+  "kickNoteColor": {
+    "type": "texture",
+    "path": "note/KickNote.png"
+  },
+  "cymbalNoteColor": {
+    "type": "texture",
+    "path": "note/CymbalNote.png"
+  },
+  "padNoteColor": {
+    "type": "texture",
+    "path": "note/NormalNote.png"
   },
   "noteEmission": {
     "type": "texture",

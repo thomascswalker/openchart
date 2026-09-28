@@ -1,5 +1,6 @@
 import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
 import type { EditablePhraseKind } from "@midiedit/views";
+import type { DrumNoteKind } from "./drumProfile";
 
 export type HighwayTool = "select" | "place" | "remove";
 export type HighwayMode = HighwayTool | EditablePhraseKind;
@@ -15,6 +16,8 @@ export interface HighwayClipboardNote {
   relativeLane: number;
   durationTicks: number;
   velocity: number;
+  drumKind?: DrumNoteKind;
+  originalPitch?: number;
 }
 
 export interface PhraseDragState {

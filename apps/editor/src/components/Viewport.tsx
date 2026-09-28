@@ -9,7 +9,11 @@ import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
-import { HighwayView, type HighwayMode } from "./views/highway";
+import {
+  HighwayView,
+  type DrumPlacementKind,
+  type HighwayMode,
+} from "./views/highway";
 import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
@@ -143,6 +147,8 @@ function ViewportPanel({
   const chartViewRef = useRef<ChartView | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
+  const [drumPlacementKind, setDrumPlacementKind] =
+    useState<DrumPlacementKind>("pad");
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
   const activeView =
@@ -271,6 +277,12 @@ function ViewportPanel({
   }, [chartView, highwayMode]);
 
   useEffect(() => {
+    if (chartView instanceof HighwayView) {
+      chartView.setDrumPlacementKind(drumPlacementKind);
+    }
+  }, [chartView, drumPlacementKind]);
+
+  useEffect(() => {
     if (isPlaying && chartViewRef.current)
       keepPlayheadVisible(chartViewRef.current);
   }, [isPlaying, keepPlayheadVisible]);
@@ -328,6 +340,8 @@ function ViewportPanel({
         onViewChange={setView}
         highwayMode={highwayMode}
         onHighwayModeChange={setHighwayMode}
+        drumPlacementKind={drumPlacementKind}
+        onDrumPlacementKindChange={setDrumPlacementKind}
       />
       <div className="viewport-panel__body">
         {session.view === "piano-roll" ? (

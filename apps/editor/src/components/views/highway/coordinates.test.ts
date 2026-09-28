@@ -30,6 +30,16 @@ describe("HighwayCoordinateSystem", () => {
     expect(coordinates.getLaneX(4)).toBeCloseTo(2.4);
   });
 
+  it("uses four centered physical lanes for drums", () => {
+    state.selectedInstrument = "DRUMS";
+    expect(coordinates.getPhysicalLaneCount()).toBe(4);
+    expect([0, 1, 2, 3].map((lane) => coordinates.getLaneX(lane))).toEqual([
+      -2.25, -0.75, 0.75, 2.25,
+    ]);
+    state.selectedInstrument = "LEAD GUITAR";
+    expect(coordinates.getPhysicalLaneCount()).toBe(5);
+  });
+
   it("converts ticks to depth and back", () => {
     expect(coordinates.getNoteZ(1_220)).toBeCloseTo(-6.5);
     expect(coordinates.getTickAtDepth(-6.5)).toBeCloseTo(1_220);

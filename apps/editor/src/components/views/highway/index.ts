@@ -36,7 +36,9 @@ import { HighwayPhraseEditingController } from "./phraseEditing";
 import { HighwayInputController } from "./input";
 import { HighwayRenderer } from "./rendering";
 import { SelectionContext } from "./selection";
+import type { DrumPlacementKind } from "./drumProfile";
 export type { HighwayMode, HighwayTool } from "./types";
+export type { DrumPlacementKind } from "./drumProfile";
 
 function isValidCameraDebugState(state: CameraDebugState): boolean {
   return (
@@ -89,6 +91,7 @@ export class HighwayView
     getCameraTick: () => this.cameraTick,
     setCameraTick: (tick) => this.setCameraTick(tick),
     getMode: () => this.mode,
+    getDrumPlacementKind: () => this.drumPlacementKind,
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
     getSelectionContext: () => this.selection,
@@ -151,6 +154,7 @@ export class HighwayView
   private cameraTick = 0;
   private readonly selection = new SelectionContext();
   private mode: HighwayMode = "select";
+  private drumPlacementKind: DrumPlacementKind = "pad";
   private phraseMode: EditablePhraseKind | null = null;
 
   public constructor(registry?: ResourceRegistry) {
@@ -242,6 +246,12 @@ export class HighwayView
     this.mode = mode;
     this.phraseMode = getPhraseModeForHighwayMode(mode);
     this.input.refreshCursor();
+    this.render();
+  }
+
+  public setDrumPlacementKind(kind: DrumPlacementKind): void {
+    if (kind === this.drumPlacementKind) return;
+    this.drumPlacementKind = kind;
     this.render();
   }
 

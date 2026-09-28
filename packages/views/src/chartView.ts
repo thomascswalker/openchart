@@ -49,6 +49,7 @@ export class ChartView {
   private difficulty: Difficulty;
   private offset: number;
   private lanes: number;
+  private role?: string;
 
   constructor(
     track: TrackView,
@@ -56,12 +57,14 @@ export class ChartView {
     difficulty: Difficulty,
     offset: number,
     lanes: number,
+    role?: string,
   ) {
     this.track = track;
     this.midiTrack = midiTrack;
     this.difficulty = difficulty;
     this.offset = offset;
     this.lanes = lanes;
+    this.role = role;
   }
 
   public getTrack(): TrackView {
@@ -87,30 +90,48 @@ export class ChartView {
   public getNotes(): MidiNote[] {
     const low = this.offset;
     const high = this.offset + this.lanes;
-    return this.midiTrack?.getNotes({ pitch: { low, high } }) ?? [];
+    const notes = this.midiTrack?.getNotes({ pitch: { low, high } }) ?? [];
+    if (this.role !== "drums" || this.difficulty !== Difficulty.Expert) {
+      return notes;
+    }
+    const expertKick2 =
+      this.midiTrack?.getNotes({ pitch: { low: 95, high: 96 } }) ?? [];
+    return [...notes, ...expertKick2].sort(
+      (left, right) => left.start - right.start || left.note - right.note,
+    );
   }
 
   public addNote(
-    note: Note,
+    note: number,
     start: number,
     end: number = 0,
     velocity: number = 100,
-  ): void {
+  ): boolean {
+    if (!Number.isInteger(note) || note < 0 || note >= this.lanes) {
+      return false;
+    }
+    return this.addNoteAtPitch(this.offset + note, start, end, velocity);
+  }
+
+  public addNoteAtPitch(
+    pitch: number,
+    start: number,
+    end: number = 0,
+    velocity: number = 100,
+  ): boolean {
     if (
+      !this.containsPitch(pitch) ||
       !Number.isInteger(start) ||
       !Number.isInteger(end) ||
       start < 0 ||
-      (end !== 0 && end < start) ||
-      note < 0 ||
-      note >= this.lanes
+      (end !== 0 && end < start)
     ) {
-      return;
+      return false;
     }
 
     this.midiTrack ??= this.getSong().ensureMidiTrack(this.track.getKey());
-    if (!this.midiTrack) return;
+    if (!this.midiTrack) return false;
     this.getSong().attachTrack(this.midiTrack);
-    const pitch = this.offset + note;
     const insertAt = this.midiTrack.getInsertionIndexAt(start);
     const previousTick = this.midiTrack.getAbsoluteTickAt(insertAt);
     const startDelta = start - previousTick;
@@ -122,14 +143,11 @@ export class ChartView {
       Math.max(1, (end > start ? end : start + 1) - start),
       insertAt,
     );
+    return true;
   }
 
   public removeNote(note: MidiNote): boolean {
-    if (
-      !this.midiTrack ||
-      note.note < this.offset ||
-      note.note >= this.offset + this.lanes
-    ) {
+    if (!this.midiTrack || !this.containsNote(note)) {
       return false;
     }
 
@@ -137,15 +155,15 @@ export class ChartView {
     return this.midiTrack.removeNote(note.noteOn, note.noteOff);
   }
 
-  public moveNote(note: MidiNote, lane: Note, start: number): boolean {
+  public moveNote(note: MidiNote, lane: number, start: number): boolean {
     if (
       !this.midiTrack ||
       !Number.isInteger(start) ||
       start < 0 ||
+      !Number.isInteger(lane) ||
       lane < 0 ||
       lane >= this.lanes ||
-      note.note < this.offset ||
-      note.note >= this.offset + this.lanes
+      !this.containsNote(note)
     ) {
       return false;
     }
@@ -162,14 +180,26 @@ export class ChartView {
       !this.midiTrack ||
       !Number.isInteger(end) ||
       end <= note.start ||
-      note.note < this.offset ||
-      note.note >= this.offset + this.lanes
+      !this.containsNote(note)
     ) {
       return false;
     }
 
     this.getSong().attachTrack(this.midiTrack);
     return this.midiTrack.setNoteDuration(note, end - note.start);
+  }
+
+  private containsNote(note: MidiNote): boolean {
+    return this.containsPitch(note.note);
+  }
+
+  private containsPitch(pitch: number): boolean {
+    return (
+      (pitch >= this.offset && pitch < this.offset + this.lanes) ||
+      (this.role === "drums" &&
+        this.difficulty === Difficulty.Expert &&
+        pitch === 95)
+    );
   }
 }
 
@@ -237,6 +267,7 @@ export class InstrumentTrackView extends TrackView {
       Difficulty.Expert,
       config.offsets?.expert || 0,
       config.noteCount,
+      config.role,
     );
     this.hard = new ChartView(
       this,
@@ -244,6 +275,7 @@ export class InstrumentTrackView extends TrackView {
       Difficulty.Hard,
       config.offsets?.hard || 0,
       config.noteCount,
+      config.role,
     );
     this.medium = new ChartView(
       this,
@@ -251,6 +283,7 @@ export class InstrumentTrackView extends TrackView {
       Difficulty.Medium,
       config.offsets?.medium || 0,
       config.noteCount,
+      config.role,
     );
     this.easy = new ChartView(
       this,
@@ -258,6 +291,7 @@ export class InstrumentTrackView extends TrackView {
       Difficulty.Easy,
       config.offsets?.easy || 0,
       config.noteCount,
+      config.role,
     );
   }
 

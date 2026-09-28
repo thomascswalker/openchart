@@ -3,6 +3,7 @@ import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
 import texturedFragmentSource from "./shaders/note.frag.glsl?raw";
 import texturedVertexSource from "./shaders/vert.glsl?raw";
 import type { TextureResource } from "../../../rendering/registry";
+import type { DrumPlacementKind } from "./drumProfile";
 
 export type Rgb = [number, number, number];
 
@@ -26,8 +27,16 @@ export interface MaterialSet {
   noteGrayscale: THREE.ShaderMaterial;
   noteGhostTinted: THREE.ShaderMaterial;
   noteGhostGrayscale: THREE.ShaderMaterial;
+  drum: Record<DrumPlacementKind, NoteMaterialVariants>;
   sustain: THREE.ShaderMaterial;
   destroy(): void;
+}
+
+export interface NoteMaterialVariants {
+  noteTinted: THREE.ShaderMaterial;
+  noteGrayscale: THREE.ShaderMaterial;
+  noteGhostTinted: THREE.ShaderMaterial;
+  noteGhostGrayscale: THREE.ShaderMaterial;
 }
 
 const defaultState: MaterialState = {
@@ -199,6 +208,29 @@ export function createMaterialSet(
     transparent: true,
     frag: solidFragmentSource,
   });
+  const createDrumMaterials = (
+    name: string,
+    texture: THREE.Texture,
+  ): NoteMaterialVariants => ({
+    noteTinted: manager.create(`${name}Color`, {
+      color: texture,
+      emission: texture,
+    }),
+    noteGrayscale: manager.create(`${name}Neutral`, {
+      color: texture,
+      emission: texture,
+    }),
+    noteGhostTinted: manager.create(`${name}GhostColor`, {
+      color: texture,
+      emission: texture,
+      transparent: true,
+    }),
+    noteGhostGrayscale: manager.create(`${name}GhostNeutral`, {
+      color: texture,
+      emission: texture,
+      transparent: true,
+    }),
+  });
   return {
     fretTinted: fretColor,
     fretGrayscale: fretNeutral,
@@ -206,6 +238,11 @@ export function createMaterialSet(
     noteGrayscale: noteNeutral,
     noteGhostTinted: noteGhostColor,
     noteGhostGrayscale: noteGhostNeutral,
+    drum: {
+      kick: createDrumMaterials("kick", textures.kickNote.value!),
+      cymbal: createDrumMaterials("cymbal", textures.cymbalNote.value!),
+      pad: createDrumMaterials("pad", textures.padNote.value!),
+    },
     sustain,
     destroy() {
       Object.values(manager.materials).forEach((material) =>
