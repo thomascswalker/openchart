@@ -45,10 +45,10 @@
 
 ### Tools
 
-| Hotkey  | Tool             |
-| ------- | ---------------- |
-| **`Q`** | Select           |
-| **`W`** | Place            |
-| **`E`** | Remove           |
-| **`R`** | Starpower phrase |
-| **`T`** | Solo phrase      |
+| Hotkey  | Tool              |
+| ------- | ----------------- |
+| **`Q`** | Select            |
+| **`W`** | Place             |
+| **`E`** | Remove            |
+| **`R`** | Stagepower phrase |
+| **`T`** | Solo phrase       |

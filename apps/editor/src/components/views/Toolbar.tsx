@@ -18,6 +18,7 @@ import {
   SoloIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
+import { DropdownButton } from "../shared/Dropdown";
 import {
   useEditor,
   type ViewportKind,
@@ -74,12 +75,12 @@ const Toolbar = ({
   return (
     <Section
       className="viewport-panel__toolbar"
-      padding="4px"
-      gap="4px"
       style={{
         backgroundColor: "var(--primary)",
         borderBottom: "var(--border-primary)",
         scrollBehavior: "auto",
+        padding: "4px",
+        gap: "4px",
       }}
     >
       {/* View Selection */}
@@ -97,25 +98,21 @@ const Toolbar = ({
       <VerticalSeparator />
 
       {/* Tools */}
-      <ToolButton
-        Icon={MagnetIcon}
+      <DropdownButton
+        label="Snap to grid"
+        ariaLabel="Toggle snap to grid"
+        icon={<MagnetIcon />}
         active={snapEnabled}
-        onClick={() => setSnapEnabled(!snapEnabled)}
+        onToggle={setSnapEnabled}
+        dropdownDisabled={!snapEnabled}
+        dropdownWidth={60}
+        value={String(snapDenominator)}
+        onChange={(value) => setSnapDenominator(Number(value))}
+        options={SnapDenominators.map((denominator) => ({
+          value: String(denominator),
+          label: `1/${denominator}`,
+        }))}
       />
-      <select
-        value={snapDenominator}
-        disabled={!snapEnabled}
-        onChange={(event) => {
-          setSnapDenominator(Number(event.target.value));
-        }}
-        style={{ maxWidth: "60px" }}
-      >
-        {SnapDenominators.map((denominator) => (
-          <option key={denominator} value={denominator}>
-            1/{denominator}
-          </option>
-        ))}
-      </select>
 
       {activeViewId === "highway" && (
         <Fragment>
@@ -144,12 +141,12 @@ const Toolbar = ({
           />
 
           <ToolButton
-            active={highwayMode === "starpower"}
-            title="Starpower phrase (R)"
-            ariaLabel="Starpower phrase"
+            active={highwayMode === "stagepower"}
+            title="Stagepower phrase (R)"
+            ariaLabel="Stagepower phrase"
             onClick={() =>
               onHighwayModeChange(
-                highwayMode === "starpower" ? "select" : "starpower",
+                highwayMode === "stagepower" ? "select" : "stagepower",
               )
             }
             Icon={StagepowerIcon}

@@ -52,13 +52,25 @@
 }
 
 .settings-dialog :global(.settings-tabs) button {
+  position: relative;
   width: 100%;
+  border-bottom: 0;
   text-align: left;
 }
 
 .settings-dialog :global(.settings-tabs) button[aria-selected="true"] {
-  border-color: #8cc8ff;
-  background: #3f5261;
+  background: transparent;
+}
+
+.settings-dialog :global(.settings-tabs) button[aria-selected="true"]::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--secondary);
+  content: "";
+  pointer-events: none;
 }
 
 .settings-dialog :global(.settings-panel) {

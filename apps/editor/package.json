@@ -20,6 +20,7 @@
     "@midiedit/views": "^1.0.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.2",
+    "choices.js": "^11.2.4",
     "classnames": "^2.5.1",
     "es-toolkit": "^1.51.0",
     "react": "^19.2.8",

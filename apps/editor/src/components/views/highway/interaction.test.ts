@@ -15,7 +15,7 @@ import { getPhraseModeForHighwayMode } from "./types";
 
 describe("highway interaction helpers", () => {
   it("maps phrase modes independently from note tools", () => {
-    expect(getPhraseModeForHighwayMode("starpower")).toBe("starpower");
+    expect(getPhraseModeForHighwayMode("stagepower")).toBe("stagepower");
     expect(getPhraseModeForHighwayMode("solo")).toBe("solo");
     expect(getPhraseModeForHighwayMode("select")).toBeNull();
     expect(getPhraseModeForHighwayMode("place")).toBeNull();

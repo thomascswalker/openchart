@@ -18,22 +18,22 @@ const leadDescriptor = describeTrack(
 
 describe("chart phrase editing", () => {
   it("resolves phrase pitches from the instrument configuration", () => {
-    expect(getPhrasePitch(leadDescriptor, "starpower")).toBe(116);
+    expect(getPhrasePitch(leadDescriptor, "stagepower")).toBe(116);
     expect(getPhrasePitch(leadDescriptor, "solo")).toBe(118);
   });
 
   it("creates, moves, resizes, and removes a MIDI-note phrase", () => {
     const track = new MidiTrack("LEAD GUITAR");
 
-    const phrase = addNotePhrase(track, 116, "starpower", 480, 960);
+    const phrase = addNotePhrase(track, 116, "stagepower", 480, 960);
 
-    expect(phrase).toMatchObject({ start: 480, end: 960, kind: "starpower" });
+    expect(phrase).toMatchObject({ start: 480, end: 960, kind: "stagepower" });
     expect(track.getNotes()).toHaveLength(1);
-    expect(getNotePhrases(track, 116, "starpower")).toEqual([phrase]);
+    expect(getNotePhrases(track, 116, "stagepower")).toEqual([phrase]);
 
     expect(updateNotePhrase(track, phrase!.note, 720, 1_200)).toBe(true);
-    expect(getNotePhrases(track, 116, "starpower")).toMatchObject([
-      { start: 720, end: 1_200, kind: "starpower" },
+    expect(getNotePhrases(track, 116, "stagepower")).toMatchObject([
+      { start: 720, end: 1_200, kind: "stagepower" },
     ]);
     expect(track.getNotes()[0]?.noteOn).toBe(phrase!.note.noteOn);
 

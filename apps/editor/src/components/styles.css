@@ -231,7 +231,7 @@ button:disabled {
 }
 
 .viewport-manager__toolbar {
-  min-height: 36px;
+  min-height: 20px;
   padding: 4px 8px;
   border-bottom: 1px solid #444;
   background: #202020;
@@ -278,7 +278,8 @@ button:disabled {
   border-color: #5e91c7;
 }
 .viewport-panel__header {
-  min-height: 32px;
+  min-height: 20px;
+  max-height: 32px;
   padding: 3px 6px;
   background: #222;
   border-bottom: 1px solid #444;
@@ -324,17 +325,6 @@ button:disabled {
 .viewport-panel__controls .midi-toolbar {
   min-height: 32px;
   padding: 2px 6px;
-}
-.viewport-panel__toolbar {
-  flex: 0 1 auto;
-  flex-wrap: nowrap;
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-article.viewport-panel .viewport-panel__toolbar > * {
-  flex: 0 0 auto;
 }
 .viewport-panel__body {
   display: flex;
@@ -958,6 +948,28 @@ article.viewport-panel .viewport-panel__toolbar > * {
   gap: 4px;
 
   flex-shrink: 0;
+}
+
+.timeline__position {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  color: #ddd;
+  font-family: monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline__position-item {
+  display: grid;
+  gap: 1px;
+}
+
+.timeline__position-label {
+  color: #888;
+  font-family: inherit;
+  font-size: 9px;
 }
 
 .timeline__track {
