@@ -1,0 +1,69 @@
+import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
+import type { EditablePhraseKind } from "@midiedit/views";
+
+export type HighwayTool = "select" | "place" | "remove";
+export type HighwayMode = HighwayTool | EditablePhraseKind;
+
+export interface HighwayClipboardNote {
+  relativeTick: number;
+  relativeLane: number;
+  durationTicks: number;
+  velocity: number;
+}
+
+export interface PhraseDragState {
+  pointerId: number;
+  kind: EditablePhraseKind;
+  startTick: number;
+  endTick: number;
+  pointerTick: number;
+  initialStartTick: number;
+  initialEndTick: number;
+  operation: "create" | "move" | "resize-start" | "resize-end";
+  note: MidiNote | null;
+}
+
+export interface DragState {
+  pointerId: number;
+  button: 0 | 2;
+  shiftKey: boolean;
+  moved: boolean;
+  sustainHit: MidiNote | null;
+  noteOn: MidiChannelEvent;
+  noteOns: MidiChannelEvent[];
+  targets: Array<{
+    noteOn: MidiChannelEvent;
+    initialTick: number;
+    initialLane: number;
+  }>;
+  initialLane: number;
+  initialTick: number;
+  pointerLane: number;
+  pointerTick: number;
+  resizing: boolean;
+  changed: boolean;
+}
+
+export interface MarqueeDragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  additive: boolean;
+  moved: boolean;
+}
+
+export interface ScreenBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+export interface GhostNoteLocation {
+  lane: number;
+  tick: number;
+  shiftKey: boolean;
+  sustainHit: MidiNote | null;
+}
