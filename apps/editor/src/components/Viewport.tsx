@@ -13,7 +13,9 @@ import { HighwayView, type HighwayTool } from "./views/highway";
 import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
-import { CloseButton } from "./shared/Button/Button";
+import { Button, CloseButton } from "./shared/Button/Button";
+import { startCase } from "es-toolkit";
+import { SplitIcon } from "./shared/Icon/Icon";
 
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
@@ -246,19 +248,24 @@ function ViewportPanel({
         <p className="viewport-panel__title">
           {session.view === "piano-roll"
             ? session.instrument
-            : `${session.instrument} - ${Difficulty[session.difficulty]}`}
+            : `${startCase(session.instrument)} (${Difficulty[session.difficulty]})`}
         </p>
         <div className="viewport-panel__actions">
-          <button
-            type="button"
-            className="viewport-panel__split"
+          <Button
             title="Split to the right"
             aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
             onClick={() => addViewport(session.view, session.id)}
             disabled={viewportSessions.length >= maxViewportCount}
+            flat={true}
+            minWidth="24px"
+            minHeight="24px"
+            maxWidth="24px"
+            maxHeight="24px"
+            padding={"2px"}
+            borderRadius={4}
           >
-            Split
-          </button>
+            <SplitIcon />
+          </Button>
           <CloseButton
             onClick={() => closeViewport(session.id)}
             disabled={viewportSessions.length <= 1}

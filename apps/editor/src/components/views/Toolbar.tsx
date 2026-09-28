@@ -15,6 +15,8 @@ import {
   PencilIcon,
   PianoIcon,
   VocalsIcon,
+  StagepowerIcon,
+  SoloIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
 import {
@@ -23,7 +25,7 @@ import {
   type ViewportSession,
 } from "../../context/EditorContext";
 import { SnapDenominators } from "../views/pianoRoll/constants";
-import { Button, ToolButton } from "../shared/Button/Button";
+import { ToolButton } from "../shared/Button/Button";
 import {
   Difficulty,
   InstrumentType,
@@ -163,26 +165,22 @@ const Toolbar = ({
             onClick={() => onHighwayToolChange("remove")}
           />
 
-          <VerticalSeparator />
-
-          <Button
+          <ToolButton
             active={phraseMode === "starpower"}
             onClick={() =>
               onPhraseModeChange(
                 phraseMode === "starpower" ? null : "starpower",
               )
             }
-          >
-            Starpower
-          </Button>
-          <Button
+            Icon={StagepowerIcon}
+          />
+          <ToolButton
             active={phraseMode === "solo"}
             onClick={() =>
               onPhraseModeChange(phraseMode === "solo" ? null : "solo")
             }
-          >
-            Solo
-          </Button>
+            Icon={SoloIcon}
+          />
 
           <VerticalSeparator />
 
