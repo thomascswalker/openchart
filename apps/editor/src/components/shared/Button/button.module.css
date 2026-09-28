@@ -26,12 +26,29 @@
   background: var(--neutral-90);
 }
 
+.ui-button[aria-pressed="false"]:not(:global(.ui-button-close)) {
+  border-bottom: 0 !important;
+}
+
 .ui-button-active {
+  position: relative;
+  background: transparent;
+  border-bottom: 0 !important;
+}
+
+.ui-button-active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
   background: var(--secondary);
+  content: "";
+  pointer-events: none;
 }
 
 .ui-button-active:hover:not(:disabled) {
-  background: var(--secondary-hover);
+  background: var(--neutral-70);
 }
 
 .ui-button-close {

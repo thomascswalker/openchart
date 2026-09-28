@@ -18,6 +18,7 @@ import {
   SoloIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
+import { DropdownButton } from "../shared/Dropdown";
 import {
   useEditor,
   type ViewportKind,
@@ -97,25 +98,21 @@ const Toolbar = ({
       <VerticalSeparator />
 
       {/* Tools */}
-      <ToolButton
-        Icon={MagnetIcon}
+      <DropdownButton
+        label="Snap to grid"
+        ariaLabel="Toggle snap to grid"
+        icon={<MagnetIcon />}
         active={snapEnabled}
-        onClick={() => setSnapEnabled(!snapEnabled)}
+        onToggle={setSnapEnabled}
+        dropdownDisabled={!snapEnabled}
+        dropdownWidth={60}
+        value={String(snapDenominator)}
+        onChange={(value) => setSnapDenominator(Number(value))}
+        options={SnapDenominators.map((denominator) => ({
+          value: String(denominator),
+          label: `1/${denominator}`,
+        }))}
       />
-      <select
-        value={snapDenominator}
-        disabled={!snapEnabled}
-        onChange={(event) => {
-          setSnapDenominator(Number(event.target.value));
-        }}
-        style={{ maxWidth: "60px" }}
-      >
-        {SnapDenominators.map((denominator) => (
-          <option key={denominator} value={denominator}>
-            1/{denominator}
-          </option>
-        ))}
-      </select>
 
       {activeViewId === "highway" && (
         <Fragment>
