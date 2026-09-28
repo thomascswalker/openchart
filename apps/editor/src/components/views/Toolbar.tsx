@@ -11,10 +11,11 @@ import {
   Highway3dIcon,
   MagnetIcon,
   MediumIcon,
-  NoteIcon,
   PencilIcon,
   PianoIcon,
   VocalsIcon,
+  StagepowerIcon,
+  SoloIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
 import {
@@ -23,15 +24,10 @@ import {
   type ViewportSession,
 } from "../../context/EditorContext";
 import { SnapDenominators } from "../views/pianoRoll/constants";
-import { Button, ToolButton } from "../shared/Button/Button";
-import {
-  Difficulty,
-  InstrumentType,
-  SongView,
-  type EditablePhraseKind,
-} from "@midiedit/views";
+import { ToolButton } from "../shared/Button/Button";
+import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { Fragment } from "react";
-import type { HighwayTool } from "./highway";
+import type { HighwayMode } from "./highway";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -50,19 +46,15 @@ const Difficulties = [
 interface ToolbarProps {
   session: ViewportSession;
   onViewChange: (view: "piano-roll" | "highway") => void;
-  phraseMode: EditablePhraseKind | null;
-  onPhraseModeChange: (mode: EditablePhraseKind | null) => void;
-  highwayTool: HighwayTool;
-  onHighwayToolChange: (tool: HighwayTool) => void;
+  highwayMode: HighwayMode;
+  onHighwayModeChange: (mode: HighwayMode) => void;
 }
 
 const Toolbar = ({
   session,
   onViewChange,
-  phraseMode,
-  onPhraseModeChange,
-  highwayTool,
-  onHighwayToolChange,
+  highwayMode,
+  onHighwayModeChange,
 }: ToolbarProps) => {
   const {
     midiData,
@@ -130,59 +122,47 @@ const Toolbar = ({
           <VerticalSeparator />
 
           <ToolButton
-            Icon={NoteIcon}
-            title="Multi-tool: click to place, drag to select or move, right-drag to edit sustains, right-click to cut, Ctrl-click or both buttons to remove; Shift adds selection, Alt allows sustain overlap"
-            ariaLabel="Multi-tool"
-            active={highwayTool === "multi"}
-            onClick={() =>
-              onHighwayToolChange(highwayTool === "multi" ? "select" : "multi")
-            }
-          />
-          <ToolButton
             Icon={CursorIcon}
-            title="Select, move, and edit sustains"
+            title="Select, move, and edit sustains (Q)"
             ariaLabel="Select, move, and edit sustains"
-            disabled={highwayTool === "multi"}
-            active={highwayTool === "select"}
-            onClick={() => onHighwayToolChange("select")}
+            active={highwayMode === "select"}
+            onClick={() => onHighwayModeChange("select")}
           />
           <ToolButton
             Icon={PencilIcon}
-            title="Place notes"
+            title="Place notes (W)"
             ariaLabel="Place notes"
-            disabled={highwayTool === "multi"}
-            active={highwayTool === "place"}
-            onClick={() => onHighwayToolChange("place")}
+            active={highwayMode === "place"}
+            onClick={() => onHighwayModeChange("place")}
           />
           <ToolButton
             Icon={EraserIcon}
-            title="Remove notes"
+            title="Remove notes (E)"
             ariaLabel="Remove notes"
-            disabled={highwayTool === "multi"}
-            active={highwayTool === "remove"}
-            onClick={() => onHighwayToolChange("remove")}
+            active={highwayMode === "remove"}
+            onClick={() => onHighwayModeChange("remove")}
           />
 
-          <VerticalSeparator />
-
-          <Button
-            active={phraseMode === "starpower"}
+          <ToolButton
+            active={highwayMode === "starpower"}
+            title="Starpower phrase (R)"
+            ariaLabel="Starpower phrase"
             onClick={() =>
-              onPhraseModeChange(
-                phraseMode === "starpower" ? null : "starpower",
+              onHighwayModeChange(
+                highwayMode === "starpower" ? "select" : "starpower",
               )
             }
-          >
-            Starpower
-          </Button>
-          <Button
-            active={phraseMode === "solo"}
+            Icon={StagepowerIcon}
+          />
+          <ToolButton
+            active={highwayMode === "solo"}
+            title="Solo phrase (T)"
+            ariaLabel="Solo phrase"
             onClick={() =>
-              onPhraseModeChange(phraseMode === "solo" ? null : "solo")
+              onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
             }
-          >
-            Solo
-          </Button>
+            Icon={SoloIcon}
+          />
 
           <VerticalSeparator />
 

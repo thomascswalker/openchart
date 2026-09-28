@@ -11,6 +11,11 @@
   border-radius: 0px;
 }
 
+.ui-button-flat {
+  background: transparent;
+  border: none;
+}
+
 .ui-button:hover:not(:disabled) {
   background: var(--neutral-70);
 }

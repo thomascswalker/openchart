@@ -13,6 +13,7 @@ import type { IconProps } from "../Icon/Icon";
 interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   disabled?: boolean;
   active?: boolean;
+  flat?: boolean;
   title?: string;
   ariaLabel?: string;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -25,6 +26,7 @@ const systemStyles = compose(space, color, layout, border);
 const Button = ({
   disabled = false,
   active = false,
+  flat = false,
   title,
   ariaLabel,
   onClick = () => {},
@@ -39,6 +41,7 @@ const Button = ({
       className={classNames(
         className ? styles[className] : styles["ui-button"],
         active && styles["ui-button-active"],
+        flat && styles["ui-button-flat"],
       )}
       onClick={onClick}
       disabled={disabled}
@@ -71,8 +74,8 @@ const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
     <Button
       maxWidth={40}
       maxHeight={40}
-      border="none"
       borderRadius={4}
+      border="none"
       {...rest}
     >
       <Icon />

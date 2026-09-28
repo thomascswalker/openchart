@@ -50,4 +50,7 @@ export const {
   BassIcon,
   DrumsIcon,
   VocalsIcon,
+  SoloIcon,
+  StagepowerIcon,
+  SplitIcon,
 } = Icons;
