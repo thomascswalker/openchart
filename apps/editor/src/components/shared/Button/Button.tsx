@@ -61,7 +61,7 @@ type CloseButtonProps = ButtonProps;
 
 const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
   return (
-    <Button onClick={onClick} className="ui-button-close" {...props}>
+    <Button onClick={onClick} className={styles["ui-button-close"]} {...props}>
       x
     </Button>
   );
