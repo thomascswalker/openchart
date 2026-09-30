@@ -43,6 +43,6 @@ void main() {
   }
 
   // Apply emission
-  outColor = base.rgb * mix(vec3(1.0), outColor, uTintEnabled) + emission;
-  gl_FragColor = vec4(softKnee(outColor, 0.4), alpha);
+  outColor = base.rgb * mix(vec3(0.0), outColor, uTintEnabled) + emission;
+  gl_FragColor = vec4(softKnee(outColor, 0.7), alpha);
 }

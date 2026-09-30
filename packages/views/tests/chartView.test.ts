@@ -107,6 +107,53 @@ describe("data.json", () => {
     expect(midi.getTrack("LEAD GUITAR")?.getNotes()).toHaveLength(1);
   });
 
+  it("includes the Expert drum Kick2 boundary pitch without widening other charts", () => {
+    const midi = new Midi();
+    const drums = new MidiTrack("DRUMS");
+    const guitar = new MidiTrack("LEAD GUITAR");
+    midi.tracks = [drums, guitar];
+    drums.addNote(95, 0, 100, 1);
+    drums.addNote(96, 0, 100, 1);
+    drums.addNote(104, 0, 100, 1);
+    drums.addNote(105, 0, 100, 1);
+    guitar.addNote(95, 0, 100, 1);
+
+    const song = new SongView(midi);
+    const drumNotes = song
+      .getInstrumentTrackView("DRUMS")!
+      .getChart(Difficulty.Expert)
+      .getNotes();
+    const guitarNotes = song
+      .getInstrumentTrackView("LEAD GUITAR")!
+      .getChart(Difficulty.Expert)
+      .getNotes();
+
+    expect(drumNotes.map((note) => note.note)).toEqual([95, 96, 104]);
+    expect(guitarNotes).toHaveLength(0);
+    expect(
+      song
+        .getInstrumentTrackView("DRUMS")!
+        .getChart(Difficulty.Hard)
+        .getNotes()
+        .map((note) => note.note),
+    ).toEqual([]);
+  });
+
+  it("adds and removes Expert Kick2 without changing pitch 95", () => {
+    const midi = new Midi();
+    const track = new MidiTrack("DRUMS");
+    midi.tracks = [track];
+    const chart = new SongView(midi)
+      .getInstrumentTrackView("DRUMS")!
+      .getChart(Difficulty.Expert);
+
+    expect(chart.addNoteAtPitch(95, 480, 720)).toBe(true);
+    const kick2 = chart.getNotes()[0]!;
+    expect(kick2.note).toBe(95);
+    expect(chart.removeNote(kick2)).toBe(true);
+    expect(chart.getNotes()).toEqual([]);
+  });
+
   it("keeps MidiTrack relative timing and ChartView absolute timing separate", () => {
     const midi = new Midi();
     const track = new MidiTrack();

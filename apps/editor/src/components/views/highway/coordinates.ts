@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
 import { laneCount, nearBoardZ, strikeLineZ } from "./constants";
+import { drumLaneCount } from "./drumProfile";
 
 type HighwayCoordinateContext = Pick<
   HighwayContext,
@@ -42,6 +43,7 @@ export class HighwayCoordinateSystem {
   ): { lane: number; tick: number } | null {
     const hit = this.getWorldLocation(event);
     if (!hit) return null;
+    const laneCount = this.getPhysicalLaneCount();
     const lane = Math.max(
       0,
       Math.min(laneCount - 1, Math.floor((hit.x + 3) / (6 / laneCount))),
@@ -88,7 +90,18 @@ export class HighwayCoordinateSystem {
   }
 
   public getLaneX(lane: number): number {
+    if (this.isDrumChart()) {
+      return -3 + ((lane + 0.5) * 6) / drumLaneCount;
+    }
     return -2.4 + (4.8 * lane) / (laneCount - 1);
+  }
+
+  public getPhysicalLaneCount(): number {
+    return this.isDrumChart() ? drumLaneCount : laneCount;
+  }
+
+  private isDrumChart(): boolean {
+    return this.context.getState().selectedInstrument === "DRUMS";
   }
 
   public getNoteZ(tick: number): number {

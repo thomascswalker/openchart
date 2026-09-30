@@ -7,12 +7,9 @@ import {
   type CameraDebugState,
   type ChartViewState,
   type CameraDebugView,
-  type NoteSizeDebugState,
-  type NoteSizeDebugView,
 } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import { ResourceRegistry } from "./assets";
-import { DEFAULT_NOTE_SCALE_MULTIPLIER } from "./geometry";
 import { getHighwaySnapDenominator } from "./interaction";
 import { SnapDenominators } from "../pianoRoll/constants";
 import {
@@ -20,9 +17,7 @@ import {
   defaultCameraPosition,
   defaultCameraRotation,
   maximumCameraFieldOfView,
-  maximumNoteScale,
   minimumCameraFieldOfView,
-  minimumNoteScale,
   farBoardZ,
   nearBoardZ,
   strikeLineZ,
@@ -36,7 +31,9 @@ import { HighwayPhraseEditingController } from "./phraseEditing";
 import { HighwayInputController } from "./input";
 import { HighwayRenderer } from "./rendering";
 import { SelectionContext } from "./selection";
+import type { DrumPlacementKind } from "./drumProfile";
 export type { HighwayMode, HighwayTool } from "./types";
+export type { DrumPlacementKind } from "./drumProfile";
 
 function isValidCameraDebugState(state: CameraDebugState): boolean {
   return (
@@ -54,18 +51,9 @@ function isValidCameraDebugState(state: CameraDebugState): boolean {
   );
 }
 
-function isValidNoteSizeDebugState(state: NoteSizeDebugState): boolean {
-  return [state.x, state.y, state.z].every(
-    (value) =>
-      Number.isFinite(value) &&
-      value >= minimumNoteScale &&
-      value <= maximumNoteScale,
-  );
-}
-
 export class HighwayView
   extends AbstractChartView<MidiNote>
-  implements CameraDebugView, NoteSizeDebugView
+  implements CameraDebugView
 {
   private readonly threeCamera = new THREE.PerspectiveCamera(
     defaultCameraFieldOfView,
@@ -89,6 +77,7 @@ export class HighwayView
     getCameraTick: () => this.cameraTick,
     setCameraTick: (tick) => this.setCameraTick(tick),
     getMode: () => this.mode,
+    getDrumPlacementKind: () => this.drumPlacementKind,
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
     getSelectionContext: () => this.selection,
@@ -121,9 +110,7 @@ export class HighwayView
     this.context,
     this.threeCamera,
   );
-  private readonly hitTesting = new HighwayHitTester(this.coordinates, () =>
-    this.renderer.getEffectiveNoteCalibration(),
-  );
+  private readonly hitTesting = new HighwayHitTester(this.coordinates);
   private readonly editing = new HighwayNoteEditingController(
     this.context,
     this.coordinates,
@@ -151,6 +138,7 @@ export class HighwayView
   private cameraTick = 0;
   private readonly selection = new SelectionContext();
   private mode: HighwayMode = "select";
+  private drumPlacementKind: DrumPlacementKind = "pad";
   private phraseMode: EditablePhraseKind | null = null;
 
   public constructor(registry?: ResourceRegistry) {
@@ -245,6 +233,12 @@ export class HighwayView
     this.render();
   }
 
+  public setDrumPlacementKind(kind: DrumPlacementKind): void {
+    if (kind === this.drumPlacementKind) return;
+    this.drumPlacementKind = kind;
+    this.render();
+  }
+
   public canCopySelection(): boolean {
     return this.editing.canCopySelection();
   }
@@ -311,21 +305,6 @@ export class HighwayView
     return this.cameraDebugDefaults
       ? this.applyCameraDebugState(this.cameraDebugDefaults)
       : false;
-  }
-
-  public getNoteSizeDebugState(): NoteSizeDebugState | null {
-    return this.renderer.getNoteSizeDebugState();
-  }
-
-  public applyNoteSizeDebugState(state: NoteSizeDebugState): boolean {
-    if (!isValidNoteSizeDebugState(state)) return false;
-    if (!this.renderer.applyNoteSizeDebugState(state)) return false;
-    this.render();
-    return true;
-  }
-
-  public resetNoteSizeDebugState(): boolean {
-    return this.applyNoteSizeDebugState({ ...DEFAULT_NOTE_SCALE_MULTIPLIER });
   }
 
   protected override draw(engine: Engine): void {

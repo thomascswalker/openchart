@@ -1,22 +1,11 @@
 import * as THREE from "three";
 import type { Rgb, MaterialSet } from "./materials";
 import { setMaterialStateForMaterial } from "./materials";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
-
-export interface ModelCalibration {
-  noteModelScale: { x: number; y: number; z: number };
-  noteModelRotation: { x: number; y: number; z: number };
-  noteModelOffset: { x: number; y: number; z: number };
-  width: number;
-  height: number;
-  depth: number;
-}
-
-export interface NoteScaleMultiplier {
-  x: number;
-  y: number;
-  z: number;
-}
+import {
+  HIGHWAY_GEOMETRY_CATALOG,
+  type PlacementOffset,
+  type Transform3D,
+} from "./geometryCatalog";
 
 export interface WorldPosition {
   x: number;
@@ -24,32 +13,17 @@ export interface WorldPosition {
   z: number;
 }
 
-export const DEFAULT_NOTE_CALIBRATION: ModelCalibration = {
-  noteModelScale: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.scale },
-  noteModelRotation: {
-    ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
-  },
-  noteModelOffset: { ...HIGHWAY_GEOMETRY_CATALOG.note.transform.position },
-  width: 1,
-  height: 1,
-  depth: 1,
-};
-
-export const DEFAULT_NOTE_SCALE_MULTIPLIER: NoteScaleMultiplier = {
-  x: 1,
-  y: 1,
-  z: 1,
-};
-
 export function noteWorldPosition(
   laneX: number,
   noteZ: number,
-  calibration = DEFAULT_NOTE_CALIBRATION,
+  transform: Transform3D = HIGHWAY_GEOMETRY_CATALOG.note.transform,
+  placementOffset: PlacementOffset = HIGHWAY_GEOMETRY_CATALOG.note
+    .placementOffset!,
 ): WorldPosition {
   return {
-    x: laneX + calibration.noteModelOffset.x,
-    y: 0.05 + calibration.noteModelOffset.y,
-    z: noteZ + calibration.noteModelOffset.z,
+    x: laneX + transform.position.x + placementOffset.x,
+    y: transform.position.y + placementOffset.y,
+    z: noteZ + transform.position.z + placementOffset.z,
   };
 }
 
@@ -66,64 +40,6 @@ export function sustainWorldTransform(
       z: (startZ + endZ) / 2,
     },
     scale: { x: laneWidth, y: Math.abs(startZ - endZ) / 2, z: 1 },
-  };
-}
-
-export function calibrationFromModel(model: THREE.Object3D): ModelCalibration {
-  try {
-    model.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(model);
-    if (box.isEmpty()) {
-      return DEFAULT_NOTE_CALIBRATION;
-    }
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const values = [...size.toArray(), ...center.toArray()];
-    if (!values.every(Number.isFinite)) {
-      return DEFAULT_NOTE_CALIBRATION;
-    }
-    const width = Math.max(0.001, size.x);
-    const height = Math.max(0.001, size.y);
-    const depth = Math.max(0.001, size.z);
-    const scale = 1 / width;
-    return {
-      noteModelScale: { x: scale, y: scale, z: scale },
-      noteModelRotation: {
-        ...HIGHWAY_GEOMETRY_CATALOG.note.transform.rotationDegrees,
-      },
-      noteModelOffset: {
-        x: -center.x * scale,
-        y: 0,
-        z: -center.z * scale,
-      },
-      width: width * scale,
-      height: height * scale,
-      depth: depth * scale,
-    };
-  } catch {
-    return DEFAULT_NOTE_CALIBRATION;
-  }
-}
-
-export function scaleNoteCalibration(
-  calibration: ModelCalibration,
-  multiplier: NoteScaleMultiplier,
-): ModelCalibration {
-  return {
-    ...calibration,
-    noteModelScale: {
-      x: calibration.noteModelScale.x * multiplier.x,
-      y: calibration.noteModelScale.y * multiplier.y,
-      z: calibration.noteModelScale.z * multiplier.z,
-    },
-    noteModelOffset: {
-      x: calibration.noteModelOffset.x * multiplier.x,
-      y: calibration.noteModelOffset.y,
-      z: calibration.noteModelOffset.z * multiplier.z,
-    },
-    width: calibration.width * multiplier.x,
-    height: calibration.height * multiplier.y,
-    depth: calibration.depth * multiplier.z,
   };
 }
 
@@ -146,19 +62,15 @@ export function applyMaterialToModel(
   return meshes;
 }
 
-export function applyModelCalibration(
+export function applyGeometryModelTransform(
   model: THREE.Object3D,
-  calibration: ModelCalibration,
+  transform: Transform3D,
 ): void {
-  model.scale.set(
-    calibration.noteModelScale.x,
-    calibration.noteModelScale.y,
-    calibration.noteModelScale.z,
-  );
+  model.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
   model.rotation.set(
-    THREE.MathUtils.degToRad(calibration.noteModelRotation.x),
-    THREE.MathUtils.degToRad(calibration.noteModelRotation.y),
-    THREE.MathUtils.degToRad(calibration.noteModelRotation.z),
+    THREE.MathUtils.degToRad(transform.rotationDegrees.x),
+    THREE.MathUtils.degToRad(transform.rotationDegrees.y),
+    THREE.MathUtils.degToRad(transform.rotationDegrees.z),
   );
 }
 

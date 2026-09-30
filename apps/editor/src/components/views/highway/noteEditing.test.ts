@@ -111,4 +111,106 @@ describe("HighwayNoteEditingController", () => {
     expect(editing.removeNote(chart, note, false)).toBe(true);
     expect(selection.isSelected(note.noteOn)).toBe(true);
   });
+
+  it("places only the selected drum kind on a compatible physical lane", () => {
+    const addNote = vi.fn();
+    const chart = {
+      getTrack: () => ({ getKey: () => "drums" }),
+      getOffset: () => 96,
+      addNote,
+    } as unknown as ChartView;
+    const context = {
+      getDrumPlacementKind: () => "cymbal",
+    } as unknown as HighwayContext;
+    const editing = new HighwayNoteEditingController(
+      context,
+      {} as HighwayCoordinateSystem,
+    );
+
+    expect(editing.placeNoteAt(chart, 1, 480, false)).toBe(true);
+    expect(editing.placeNoteAt(chart, 0, 960, false)).toBe(false);
+    expect(addNote).toHaveBeenCalledOnce();
+    expect(addNote).toHaveBeenCalledWith(5, 480, 481);
+  });
+
+  it("allows a kick to be placed from any of the four drum lanes", () => {
+    const addNote = vi.fn();
+    const chart = {
+      getTrack: () => ({ getKey: () => "drums" }),
+      getOffset: () => 96,
+      addNote,
+    } as unknown as ChartView;
+    const context = {
+      getDrumPlacementKind: () => "kick",
+    } as unknown as HighwayContext;
+    const editing = new HighwayNoteEditingController(
+      context,
+      {} as HighwayCoordinateSystem,
+    );
+
+    expect(editing.placeNoteAt(chart, 3, 480, false)).toBe(true);
+    expect(addNote).toHaveBeenCalledWith(0, 480, 481);
+  });
+
+  it("moves cymbals as cymbals and keeps Expert Kick2 at pitch 95", () => {
+    const cymbal = makeNote(101, 480, 481);
+    const kick2 = makeNote(95, 960, 961);
+    const setNotePitch = vi.fn((note: MidiNote, pitch: number) => {
+      note.note = pitch;
+      return true;
+    });
+    const setNoteStart = vi.fn(() => true);
+    const track = { setNotePitch, setNoteStart };
+    const chart = {
+      getTrack: () => ({ getKey: () => "drums", getMidiTrack: () => track }),
+      getSong: () => ({ attachTrack: vi.fn() }),
+      getOffset: () => 96,
+    } as unknown as ChartView;
+    const editing = new HighwayNoteEditingController(
+      {} as HighwayContext,
+      {} as HighwayCoordinateSystem,
+    );
+
+    expect(editing.moveNote(chart, cymbal, 2, 720)).toBe(true);
+    expect(setNotePitch).toHaveBeenNthCalledWith(1, cymbal, 102);
+    expect(editing.moveNote(chart, kick2, 3, 1200)).toBe(true);
+    expect(setNotePitch).toHaveBeenNthCalledWith(2, kick2, 95);
+    expect(editing.moveNote(chart, cymbal, 0, 960)).toBe(false);
+  });
+
+  it("copies and pastes drum kinds without canonicalizing Kick2", () => {
+    const sourceNotes = [makeNote(95, 120, 121), makeNote(101, 240, 241)];
+    const added: MidiNote[] = [];
+    const chart = {
+      getTrack: () => ({ getKey: () => "drums" }),
+      getOffset: () => 96,
+      getNotes: () => [...sourceNotes, ...added],
+      addNoteAtPitch: (pitch: number, start: number, end: number) => {
+        added.push(makeNote(pitch, start, end));
+        return true;
+      },
+    } as unknown as ChartView;
+    const selection = new SelectionContext();
+    sourceNotes.forEach((note) => selection.add(note.noteOn));
+    const context = {
+      getCurrentChart: () => chart,
+      getSelectionContext: () => selection,
+      getState: () => ({ isPlaying: false }),
+      notifyNotesChanged: vi.fn(),
+      requestRender: vi.fn(),
+    } as unknown as HighwayContext;
+    const coordinates = { snapTick: (tick: number) => tick };
+    const editing = new HighwayNoteEditingController(
+      context,
+      coordinates as HighwayCoordinateSystem,
+    );
+
+    editing.copySelection();
+    editing.pasteClipboard(600, 0);
+
+    expect(added.map((note) => [note.note, note.start])).toEqual([
+      [95, 600],
+      [101, 720],
+    ]);
+  });
 });

@@ -1,7 +1,16 @@
+import type { MaterialKey, MeshKey } from "../../../rendering/registry";
+import type { DrumPlacementKind } from "./drumProfile";
+
 export interface Transform3D {
   position: { x: number; y: number; z: number };
   rotationDegrees: { x: number; y: number; z: number };
   scale: { x: number; y: number; z: number };
+}
+
+export interface PlacementOffset {
+  x: number;
+  y: number;
+  z: number;
 }
 
 export type GeometryId =
@@ -11,19 +20,39 @@ export type GeometryId =
   | "strikeline"
   | "sustain"
   | "note"
-  | "fretTop"
-  | "fretBase"
+  | "kick"
+  | "cymbal"
+  | "pad"
+  | "kickGhost"
+  | "cymbalGhost"
+  | "padGhost"
+  | "fret"
   | "ghost";
+
+export type DrumGhostGeometryId = "kickGhost" | "cymbalGhost" | "padGhost";
+export type GeometryRenderPass =
+  "opaque" | "sustain" | "note" | "topNote" | "overlay";
+
+export const DRUM_GHOST_GEOMETRY_IDS: Record<
+  DrumPlacementKind,
+  DrumGhostGeometryId
+> = {
+  kick: "kickGhost",
+  cymbal: "cymbalGhost",
+  pad: "padGhost",
+};
 
 export interface GeometryEntry {
   id: GeometryId;
   transform: Transform3D;
+  placementOffset?: PlacementOffset;
+  fallbackHalfExtents?: PlacementOffset;
+  meshKey?: MeshKey;
+  materialKey?: MaterialKey;
   layer: number;
-  renderPass: "opaque" | "sustain" | "note" | "overlay";
+  renderPass: GeometryRenderPass;
 }
 
-// These offsets are intentionally small relative to the camera range. They
-// establish a semantic order for geometry that shares the same highway plane.
 export const HIGHWAY_DEPTH_LAYERS = {
   board: 0,
   markings: 0.002,
@@ -31,6 +60,20 @@ export const HIGHWAY_DEPTH_LAYERS = {
   note: 0.012,
   overlay: 0.02,
 } as const;
+
+export const HIGHWAY_RENDER_ORDER: Record<GeometryRenderPass, number> = {
+  opaque: 0,
+  sustain: 10,
+  note: 20,
+  topNote: 21,
+  overlay: 30,
+};
+
+const identityModelTransform: Transform3D = {
+  position: { x: 0, y: 0, z: 0 },
+  rotationDegrees: { x: 0, y: 0, z: 0 },
+  scale: { x: 1, y: 1, z: 1 },
+};
 
 export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
   board: {
@@ -73,6 +116,33 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     layer: HIGHWAY_DEPTH_LAYERS.markings,
     renderPass: "opaque",
   },
+  fret: {
+    id: "fret",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "fret",
+    materialKey: "fret",
+    layer: HIGHWAY_DEPTH_LAYERS.note,
+    renderPass: "note",
+  },
+  note: {
+    id: "note",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "roundNote",
+    materialKey: "roundNote",
+    layer: HIGHWAY_DEPTH_LAYERS.note,
+    renderPass: "note",
+  },
+  ghost: {
+    id: "ghost",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "roundNote",
+    materialKey: "roundNote",
+    layer: HIGHWAY_DEPTH_LAYERS.overlay,
+    renderPass: "overlay",
+  },
   sustain: {
     id: "sustain",
     transform: {
@@ -80,48 +150,63 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
       rotationDegrees: { x: 90, y: 0, z: 0 },
       scale: { x: 0.32, y: 1, z: 1 },
     },
+    materialKey: "sustain",
     layer: HIGHWAY_DEPTH_LAYERS.sustain,
     renderPass: "sustain",
   },
-  note: {
-    id: "note",
-    transform: {
-      position: { x: 0, y: 0.05, z: 0 },
-      rotationDegrees: { x: 270, y: 0, z: 0 },
-      scale: { x: 0.45, y: 0.45, z: 0.45 },
-    },
+  kick: {
+    id: "kick",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "kickNote",
+    materialKey: "kickNote",
     layer: HIGHWAY_DEPTH_LAYERS.note,
     renderPass: "note",
   },
-  ghost: {
-    id: "ghost",
-    transform: {
-      position: { x: 0, y: 0.15, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: { x: 0.45, y: 0.45, z: 0.45 },
-    },
+  kickGhost: {
+    id: "kickGhost",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "kickNote",
+    materialKey: "kickNote",
     layer: HIGHWAY_DEPTH_LAYERS.overlay,
     renderPass: "overlay",
   },
-  fretTop: {
-    id: "fretTop",
-    transform: {
-      position: { x: 0, y: 0.1, z: 0 },
-      rotationDegrees: { x: -90, y: 0, z: 0 },
-      scale: { x: 0.5, y: 0.5, z: 0.1 },
-    },
+  cymbal: {
+    id: "cymbal",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "cymbalNote",
+    materialKey: "cymbalNote",
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: "topNote",
   },
-  fretBase: {
-    id: "fretBase",
-    transform: {
-      position: { x: 0, y: 5, z: 0 },
-      rotationDegrees: { x: 90, y: 0, z: 0 },
-      scale: { x: 0.5, y: 0.5, z: 0.5 },
-    },
+  cymbalGhost: {
+    id: "cymbalGhost",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "cymbalNote",
+    materialKey: "cymbalNote",
+    layer: HIGHWAY_DEPTH_LAYERS.overlay,
+    renderPass: "overlay",
+  },
+  pad: {
+    id: "pad",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "roundNote",
+    materialKey: "roundNote",
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: "topNote",
+  },
+  padGhost: {
+    id: "padGhost",
+    transform: identityModelTransform,
+    placementOffset: { x: 0, y: 0, z: 0 },
+    meshKey: "roundNote",
+    materialKey: "roundNote",
+    layer: HIGHWAY_DEPTH_LAYERS.overlay,
+    renderPass: "overlay",
   },
 };
 

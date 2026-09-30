@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { MeshDefinition } from "../../../assets";
 import {
   setMaterialState,
   setMaterialStateForMaterial,
@@ -6,11 +7,8 @@ import {
   type MaterialState,
   type Rgb,
 } from "./materials";
-import {
-  applyModelCalibration,
-  meshesInModel,
-  type ModelCalibration,
-} from "./geometry";
+import { applyGeometryModelTransform, meshesInModel } from "./geometry";
+import type { Transform3D } from "./geometryCatalog";
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
 type MaterialSource =
@@ -41,6 +39,27 @@ function cloneModelMeshes(
   return { object, meshes };
 }
 
+export function primitiveRolesForModel(
+  template: THREE.Object3D,
+  definition: MeshDefinition,
+): PrimitiveMaterialRole[] {
+  const declaredIds = new Set(definition.materialIds);
+  const tintedIds = new Set(definition.tintedMaterialIds ?? []);
+  return meshesInModel(template).flatMap((mesh) => {
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    return materials.map((material) => {
+      if (!declaredIds.has(material.name)) {
+        throw new Error(
+          `Mesh definition material "${material.name}" is not declared for this model.`,
+        );
+      }
+      return tintedIds.has(material.name) ? "tinted" : "neutral";
+    });
+  });
+}
+
 export interface InstancedNote {
   object: THREE.Group;
   meshes: THREE.Mesh[];
@@ -65,10 +84,10 @@ export function visibleInstanceItems<T extends { start: number; end: number }>(
 export function createModelInstance(
   template: THREE.Object3D,
   material: MaterialSource,
-  calibration?: ModelCalibration,
+  transform: Transform3D,
 ): InstancedNote {
   const { object, meshes } = cloneModelMeshes(template, material);
-  if (calibration) applyModelCalibration(object, calibration);
+  applyGeometryModelTransform(object, transform);
   object.visible = false;
   return { object, meshes, selected: false };
 }
@@ -76,10 +95,10 @@ export function createModelInstance(
 export function createNoteInstances(
   scene: THREE.Scene,
   template: THREE.Object3D,
-  materialSet: MaterialSet,
+  materialSet: Pick<MaterialSet, "noteTinted" | "noteGrayscale">,
   colors: Rgb[],
   instanceSize: number,
-  calibration: ModelCalibration,
+  transform: Transform3D,
   primitiveRoles: readonly PrimitiveMaterialRole[] = [],
 ): InstancedNote[][] {
   return colors.map((color) => {
@@ -91,7 +110,7 @@ export function createNoteInstances(
           primitiveRoles[primitiveIndex] === "tinted"
             ? materialSet.noteTinted.clone()
             : materialSet.noteGrayscale.clone(),
-        calibration,
+        transform,
       );
       applyPrimitiveMaterialStates(note.meshes, primitiveRoles, (role) => ({
         baseColor: color,
@@ -107,32 +126,26 @@ export function createNoteInstances(
 
 export function createFretAssembly(
   scene: THREE.Scene,
-  topTemplate: THREE.Object3D,
-  baseTemplate: THREE.Object3D,
+  template: THREE.Object3D,
   material: THREE.Material,
   laneColor: Rgb,
-  topPrimitiveRoles: readonly PrimitiveMaterialRole[] = [],
-  neutralMaterial: THREE.Material = material,
-  basePrimitiveRoles: readonly PrimitiveMaterialRole[] = topPrimitiveRoles,
+  primitiveRoles: readonly PrimitiveMaterialRole[],
+  neutralMaterial: THREE.Material,
+  transform: Transform3D,
 ): THREE.Group {
   const assembly = new THREE.Group();
-  const parts = [
-    { template: baseTemplate, primitiveRoles: basePrimitiveRoles },
-    { template: topTemplate, primitiveRoles: topPrimitiveRoles },
-  ];
-  parts.forEach(({ template, primitiveRoles }) => {
-    const { object, meshes } = cloneModelMeshes(template, (primitiveIndex) =>
-      primitiveRoles[primitiveIndex] === "tinted"
-        ? material.clone()
-        : neutralMaterial.clone(),
-    );
-    applyPrimitiveMaterialStates(meshes, primitiveRoles, (role) => ({
-      baseColor: laneColor,
-      emissionColor: laneColor,
-      tint: role === "tinted",
-    }));
-    assembly.add(object);
-  });
+  const { object, meshes } = cloneModelMeshes(template, (primitiveIndex) =>
+    primitiveRoles[primitiveIndex] === "tinted"
+      ? material.clone()
+      : neutralMaterial.clone(),
+  );
+  applyGeometryModelTransform(object, transform);
+  applyPrimitiveMaterialStates(meshes, primitiveRoles, (role) => ({
+    baseColor: laneColor,
+    emissionColor: role === "neutral" ? [1, 1, 1] : laneColor,
+    tint: role === "tinted",
+  }));
+  assembly.add(object);
   scene.add(assembly);
   return assembly;
 }

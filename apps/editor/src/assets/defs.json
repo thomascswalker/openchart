@@ -1,0 +1,93 @@
+{
+  "meshes": {
+    "roundNote": {
+      "root": "./Round",
+      "mesh": "RoundNote.glb",
+      "material": "roundNote",
+      "materialIds": [
+        "RoundNoteTop",
+        "RoundNoteColor",
+        "RoundNoteIndicator",
+        "RoundNoteBottom"
+      ],
+      "tintedMaterialIds": ["RoundNoteColor"]
+    },
+    "kickNote": {
+      "root": "./Kick",
+      "mesh": "KickNote.glb",
+      "material": "kickNote",
+      "materialIds": ["KickNoteSides", "KickNoteBase"],
+      "tintedMaterialIds": ["KickNoteBase"]
+    },
+    "cymbalNote": {
+      "root": "./Cymbal",
+      "mesh": "CymbalNote.glb",
+      "material": "cymbalNote",
+      "materialIds": [
+        "CymbalNoteTop",
+        "CymbalNoteColor",
+        "CymbalNoteIndicator",
+        "CymbalNoteBottom"
+      ],
+      "tintedMaterialIds": ["CymbalNoteColor"]
+    },
+    "sustain": {
+      "root": "./Sustain",
+      "mesh": null,
+      "material": "sustain",
+      "materialIds": []
+    },
+    "fret": {
+      "root": "./Fret",
+      "mesh": "Fret.glb",
+      "material": "fret",
+      "materialIds": ["FretBase", "FretColor"],
+      "tintedMaterialIds": ["FretColor"]
+    }
+  },
+  "materials": {
+    "roundNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "RoundNote_E.png",
+        "emissionMaskTex": "RoundNote_M.png"
+      }
+    },
+    "kickNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "KickNote_E.png"
+      }
+    },
+    "cymbalNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "CymbalNote_E.png",
+        "emissionMaskTex": "CymbalNote_M.png"
+      }
+    },
+    "sustain": {
+      "vert": "vert.glsl",
+      "pixel": "solid.frag.glsl",
+      "properties": {
+        "diffuseTex": "Sustain_D.png",
+        "emissionTex": "Sustain_E.png"
+      }
+    },
+    "fret": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "Fret_E.png"
+      }
+    }
+  },
+  "unusedAssets": {
+    "Round/RoundNote_E2.png": "Alternate round-note emission map; intentionally unused until its visual role is confirmed.",
+    "Rect/RectNote.glb": "Rect notes are retired; drum pads use the round-note model.",
+    "Rect/RectNote_E.png": "Rect notes are retired; drum pads use the round-note material."
+  }
+}

@@ -14,10 +14,10 @@ export const phraseStartBoundaryIndicatorColor = phrasePlacementIndicatorColor;
 export const phraseEndBoundaryIndicatorColor = phrasePlacementIndicatorColor;
 export const phraseBoundaryIndicatorThickness =
   phrasePlacementIndicatorThickness;
-export const minimumNoteScale = 0.1;
-export const maximumNoteScale = 10;
 export const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];
 export const laneCount = laneColors.length;
+export const drumLaneColors = [0xdc2626, 0xfacc15, 0x2563eb, 0x00a651];
+export const kickColor = rgbFromHex(0x9ca3af);
 export const instanceSizePerLane = 128;
 export const instanceSizePreviewSustainPerLane = 16;
 export const instanceSizeBeatLines = 64;
@@ -27,3 +27,4 @@ export const strikeLineZ = -3.5;
 export const farBoardZ = -44;
 export const nearBoardZ = 0.5;
 export const laneRgbColors = laneColors.map(rgbFromHex);
+export const drumLaneRgbColors = drumLaneColors.map(rgbFromHex);

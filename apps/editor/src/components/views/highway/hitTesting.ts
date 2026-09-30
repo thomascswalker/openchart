@@ -7,11 +7,21 @@ import {
   type ChartView,
 } from "@midiedit/views";
 import * as THREE from "three";
-import type { ModelCalibration } from "./geometry";
+import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./geometryCatalog";
+import type { MeshKey } from "../../../rendering/registry";
 import { noteWorldPosition } from "./geometry";
 import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
+import { getDrumNoteProfile } from "./drumProfile";
+
+function physicalLaneForNote(chart: ChartView, note: MidiNote): number {
+  if (chart.getTrack().getKey() === "drums") {
+    const profile = getDrumNoteProfile(note.note, chart.getOffset());
+    return profile?.kind === "kick" ? 0 : (profile?.lane ?? -1);
+  }
+  return note.note - chart.getOffset();
+}
 
 export interface PhraseBoundaryProjection {
   worldStart: THREE.Vector3;
@@ -55,14 +65,14 @@ function distanceToSegment(
 
 export class HighwayHitTester {
   private readonly coordinates: HighwayCoordinateSystem;
-  private readonly getNoteCalibration: () => ModelCalibration;
+  private readonly modelBounds = new Map<MeshKey, THREE.Box3>();
 
-  public constructor(
-    coordinates: HighwayCoordinateSystem,
-    getNoteCalibration: () => ModelCalibration,
-  ) {
+  public constructor(coordinates: HighwayCoordinateSystem) {
     this.coordinates = coordinates;
-    this.getNoteCalibration = getNoteCalibration;
+  }
+
+  public setModelBounds(meshKey: MeshKey, bounds: THREE.Box3): void {
+    this.modelBounds.set(meshKey, bounds.clone());
   }
 
   public getNoteAt(chart: ChartView, event: MouseEvent): MidiNote | undefined {
@@ -71,9 +81,22 @@ export class HighwayHitTester {
     let hit: MidiNote | undefined;
     let nearestDepth = Infinity;
     for (const note of chart.getNotes()) {
-      const lane = note.note - chart.getOffset();
-      const gemBounds = this.getGemScreenBounds(note, lane);
-      const tailBounds = this.getTailScreenBounds(note, lane);
+      const profile =
+        chart.getTrack().getKey() === "drums"
+          ? getDrumNoteProfile(note.note, chart.getOffset())
+          : null;
+      const lane = physicalLaneForNote(chart, note);
+      const gemBounds =
+        profile?.kind === "kick"
+          ? this.getKickScreenBounds(note)
+          : this.getGemScreenBounds(
+              note,
+              lane,
+              profile?.kind === "pad" || profile?.kind === "cymbal"
+                ? profile.kind
+                : "note",
+            );
+      const tailBounds = profile ? null : this.getTailScreenBounds(note, lane);
       if (
         (!gemBounds ||
           !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
@@ -96,6 +119,7 @@ export class HighwayHitTester {
     event: MouseEvent,
     tick: number,
   ): MidiNote | undefined {
+    if (chart.getTrack().getKey() === "drums") return undefined;
     const pointer = this.coordinates.getCanvasPoint(event);
     if (!pointer) return undefined;
     let hit: MidiNote | undefined;
@@ -104,7 +128,7 @@ export class HighwayHitTester {
       if (tick <= note.start || tick >= note.end) continue;
       const bounds = this.getTailScreenBounds(
         note,
-        note.note - chart.getOffset(),
+        physicalLaneForNote(chart, note),
       );
       if (!bounds || !this.containsScreenPoint(bounds, pointer.x, pointer.y)) {
         continue;
@@ -216,23 +240,50 @@ export class HighwayHitTester {
     };
   }
 
-  public getGemScreenBounds(note: MidiNote, lane: number): ScreenBounds | null {
-    if (lane < 0 || lane >= laneCount) return null;
-    const calibration = this.getNoteCalibration();
+  public getGemScreenBounds(
+    note: MidiNote,
+    lane: number,
+    geometryId: GeometryId = "note",
+  ): ScreenBounds | null {
+    if (lane < 0 || lane >= this.coordinates.getPhysicalLaneCount()) {
+      return null;
+    }
+    const entry = HIGHWAY_GEOMETRY_CATALOG[geometryId];
+    const transform = entry.transform;
     const position = noteWorldPosition(
       this.coordinates.getLaneX(lane),
       this.coordinates.getNoteZ(note.start),
-      calibration,
+      transform,
+      entry.placementOffset,
     );
+    const fallbackHalfExtents = entry.fallbackHalfExtents ?? {
+      x: 0.5,
+      y: 0.5,
+      z: 0.5,
+    };
+    const bounds =
+      (entry.meshKey && this.modelBounds.get(entry.meshKey)) ??
+      new THREE.Box3(
+        new THREE.Vector3(
+          -fallbackHalfExtents.x,
+          -fallbackHalfExtents.y,
+          -fallbackHalfExtents.z,
+        ),
+        new THREE.Vector3(
+          fallbackHalfExtents.x,
+          fallbackHalfExtents.y,
+          fallbackHalfExtents.z,
+        ),
+      );
     const corners: THREE.Vector3[] = [];
-    for (const xSign of [-1, 1]) {
-      for (const ySign of [-1, 1]) {
-        for (const zSign of [-1, 1]) {
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
           corners.push(
             new THREE.Vector3(
-              position.x + (xSign * calibration.width) / 2,
-              position.y + ySign * Math.max(0.1, calibration.height / 2),
-              position.z + zSign * Math.max(0.05, calibration.depth / 2),
+              position.x + x * transform.scale.x,
+              position.y + y * transform.scale.y,
+              position.z + z * transform.scale.z,
             ),
           );
         }
@@ -248,6 +299,10 @@ export class HighwayHitTester {
       top: Math.min(...projected.map((corner) => corner.y)),
       bottom: Math.max(...projected.map((corner) => corner.y)),
     };
+  }
+
+  public getKickScreenBounds(note: MidiNote): ScreenBounds | null {
+    return this.getGemScreenBounds(note, 0, "kick");
   }
 
   public getTailScreenBounds(

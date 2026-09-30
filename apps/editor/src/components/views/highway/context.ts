@@ -9,6 +9,7 @@ import type {
   PhraseHoverState,
 } from "./types";
 import type { HighwayMode } from "./types";
+import type { DrumPlacementKind } from "./drumProfile";
 
 /** Narrow view services available to highway-specific collaborators. */
 export interface HighwayContext {
@@ -21,6 +22,7 @@ export interface HighwayContext {
   getCameraTick(): number;
   setCameraTick(tick: number): void;
   getMode(): HighwayMode;
+  getDrumPlacementKind(): DrumPlacementKind;
   getPhraseMode(): EditablePhraseKind | null;
   getPhraseHoverState(): PhraseHoverState | null;
   getSelectionContext(): SelectionContext;

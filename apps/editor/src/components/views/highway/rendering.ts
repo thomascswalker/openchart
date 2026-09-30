@@ -10,6 +10,8 @@ import * as THREE from "three";
 import { ResourceRegistry } from "./assets";
 import {
   farBoardZ,
+  drumLaneRgbColors,
+  kickColor,
   instanceSizeBeatLines,
   instanceSizePerLane,
   instanceSizePhraseSpans,
@@ -27,18 +29,16 @@ import {
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import {
-  applyModelCalibration,
-  calibrationFromModel,
-  DEFAULT_NOTE_CALIBRATION,
-  DEFAULT_NOTE_SCALE_MULTIPLIER,
   noteWorldPosition,
-  scaleNoteCalibration,
   setModelState,
   sustainWorldTransform,
-  type ModelCalibration,
 } from "./geometry";
 import { HighwayHitTester } from "./hitTesting";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
+import {
+  DRUM_GHOST_GEOMETRY_IDS,
+  HIGHWAY_GEOMETRY_CATALOG,
+  HIGHWAY_RENDER_ORDER,
+} from "./geometryCatalog";
 import { getSustainCutTargets } from "./interaction";
 import {
   createMaterialSet,
@@ -51,13 +51,19 @@ import {
   createNoteInstances,
   createSustainInstance,
   destroyInstancedObjects,
+  primitiveRolesForModel,
   type InstancedNote,
   type InstancedTail,
+  type PrimitiveMaterialRole,
 } from "./instances";
 import type { HighwayPhraseEditingController } from "./phraseEditing";
 import type { MarqueeDragState } from "./types";
-import { primitiveRoles } from "../../../rendering/registry";
-import type { NoteSizeDebugState } from "../AbstractChartView";
+import {
+  drumLaneCount,
+  getDrumNoteProfile,
+  getDrumPitchForPlacement,
+  type DrumPlacementKind,
+} from "./drumProfile";
 
 interface InstancedBeatLine {
   mesh: THREE.Mesh;
@@ -112,6 +118,14 @@ export class HighwayRenderer {
     new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 }),
   );
   private readonly gemInstances: InstancedNote[][] = [];
+  private readonly drumGemInstances: Record<
+    DrumPlacementKind,
+    InstancedNote[][]
+  > = {
+    kick: [],
+    cymbal: [],
+    pad: [],
+  };
   private readonly tailInstances: InstancedTail[][] = [];
   private readonly previewTailInstances: InstancedTail[][] = [];
   private readonly sustainCutPreviewLine = new THREE.Line(
@@ -153,9 +167,14 @@ export class HighwayRenderer {
     }),
   );
   private readonly gemBindings = new Map<MidiChannelEvent, InstancedNote>();
+  private readonly gemKinds = new WeakMap<
+    InstancedNote,
+    DrumPlacementKind | undefined
+  >();
   private readonly tailBindings = new Map<MidiChannelEvent, InstancedTail>();
   private readonly beatLineInstances: InstancedBeatLine[] = [];
   private readonly phraseSpanInstances: THREE.Mesh[] = [];
+  private readonly laneDividers: THREE.Mesh[] = [];
   private readonly sectionMarkers: SectionMarkerInstance[] = [];
   private readonly phraseSpanGeometry = new THREE.BoxGeometry(6, 0.018, 1);
   private readonly stagepowerMaterial = new THREE.MeshBasicMaterial({
@@ -185,12 +204,12 @@ export class HighwayRenderer {
   private sceneReady = false;
   private assetsReady = false;
   private materials: MaterialSet | null = null;
-  private noteCalibration: ModelCalibration = DEFAULT_NOTE_CALIBRATION;
-  private noteSizeDebugState: NoteSizeDebugState = {
-    ...DEFAULT_NOTE_SCALE_MULTIPLIER,
-  };
   private fretAssemblies: THREE.Group[] = [];
   private ghostGem: InstancedNote | null = null;
+  private readonly drumGhostGems: Partial<
+    Record<DrumPlacementKind, InstancedNote>
+  > = {};
+  private fretPaletteIsDrums = false;
 
   public constructor(
     context: HighwayContext,
@@ -269,20 +288,30 @@ export class HighwayRenderer {
     this.drawBeatLines();
     const visibleStart = this.coordinates.getTickAtDepth(nearBoardZ);
     const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
-    const visibleNotes = chart
-      .getNotes()
-      .map((note) => ({ note, lane: note.note - chart.getOffset() }))
-      .filter(
-        ({ note, lane }) =>
-          note.end >= visibleStart &&
-          note.start <= visibleEnd &&
-          lane >= 0 &&
-          lane < laneCount,
-      );
+    const isDrumChart = chart.getTrack().getKey() === "drums";
+    const laneColors = isDrumChart ? drumLaneRgbColors : laneRgbColors;
+    this.updateFretboardPalette(isDrumChart);
+    const visibleNotes = chart.getNotes().flatMap((note) => {
+      const profile = isDrumChart
+        ? getDrumNoteProfile(note.note, chart.getOffset())
+        : null;
+      if (isDrumChart && !profile) return [];
+      const lane = isDrumChart
+        ? (profile?.lane ?? 0)
+        : note.note - chart.getOffset();
+      if (isDrumChart && profile?.kind === "marker") return [];
+      const drumKind = isDrumChart ? profile?.kind : undefined;
+      return note.end >= visibleStart &&
+        note.start <= visibleEnd &&
+        lane >= 0 &&
+        lane < (isDrumChart ? drumLaneCount : laneCount)
+        ? [{ note, lane, drumKind }]
+        : [];
+    });
 
     const usedTails = new Set<InstancedTail>();
     const visibleTailEnd = this.coordinates.getTickAtDepth(farBoardZ);
-    for (const { note, lane } of visibleNotes) {
+    for (const { note, lane } of isDrumChart ? [] : visibleNotes) {
       const tailStart = Math.max(note.start, visibleStart);
       const tailEnd = Math.min(note.end, visibleTailEnd);
       if (tailEnd <= tailStart) continue;
@@ -326,35 +355,49 @@ export class HighwayRenderer {
         strikeLineZ,
       });
     }
-    const previewSustains = this.drawSustainCutPreviewRemainders(
-      chart,
-      cutPreview,
-      visibleStart,
-      visibleTailEnd,
-    );
+    const previewSustains = isDrumChart
+      ? 0
+      : this.drawSustainCutPreviewRemainders(
+          chart,
+          cutPreview,
+          visibleStart,
+          visibleTailEnd,
+        );
     this.scene.userData.visibleNotes = visibleNotes.length;
     this.scene.userData.visibleSustains = usedTails.size + previewSustains;
 
     const usedGems = new Set<InstancedNote>();
-    for (const { note, lane } of visibleNotes) {
-      const instancedGem = this.acquireGem(note.noteOn, usedGems);
+    for (const { note, lane, drumKind } of visibleNotes) {
+      const instanceKind =
+        drumKind === "kick" || drumKind === "cymbal" || drumKind === "pad"
+          ? drumKind
+          : undefined;
+      const instancedGem = this.acquireGem(note.noteOn, usedGems, instanceKind);
       if (!instancedGem) continue;
       usedGems.add(instancedGem);
+      const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
       const position = noteWorldPosition(
-        this.coordinates.getLaneX(lane),
+        drumKind === "kick" ? 0 : this.coordinates.getLaneX(lane),
         this.coordinates.getNoteZ(note.start),
-        this.getEffectiveNoteCalibration(),
+        placement.transform,
+        placement.placementOffset,
       );
       instancedGem.object.position.set(position.x, position.y, position.z);
-      instancedGem.object.renderOrder = 20;
+      instancedGem.object.renderOrder =
+        HIGHWAY_RENDER_ORDER[placement.renderPass];
       instancedGem.object.visible = true;
       instancedGem.selected = this.context
         .getSelectionContext()
         .isSelected(note.noteOn);
-      setModelState(instancedGem.object, this.materials, laneRgbColors[lane], {
-        selected: instancedGem.selected,
-        passed: note.start <= this.context.getPlayheadTick() + 0.001,
-      });
+      setModelState(
+        instancedGem.object,
+        this.materials,
+        drumKind === "kick" ? kickColor : laneColors[lane],
+        {
+          selected: instancedGem.selected,
+          passed: note.start <= this.context.getPlayheadTick() + 0.001,
+        },
+      );
     }
     this.releaseUnusedBindings(this.gemBindings, usedGems, (item) => {
       item.object.visible = false;
@@ -364,21 +407,6 @@ export class HighwayRenderer {
     });
     this.drawGhostGem();
     this.drawHoverOutline(chart);
-  }
-
-  public getNoteSizeDebugState(): NoteSizeDebugState | null {
-    return this.sceneReady ? structuredClone(this.noteSizeDebugState) : null;
-  }
-
-  public applyNoteSizeDebugState(state: NoteSizeDebugState): boolean {
-    if (!this.sceneReady) return false;
-    this.noteSizeDebugState = structuredClone(state);
-    this.applyNoteCalibrationToInstances();
-    return true;
-  }
-
-  public getEffectiveNoteCalibration(): ModelCalibration {
-    return scaleNoteCalibration(this.noteCalibration, this.noteSizeDebugState);
   }
 
   public updateMarqueeOutline(marquee: MarqueeDragState | null): void {
@@ -413,6 +441,9 @@ export class HighwayRenderer {
 
   public dispose(): void {
     destroyInstancedObjects(this.gemInstances, this.tailInstances);
+    Object.values(this.drumGemInstances).forEach((instances) =>
+      destroyInstancedObjects(instances, []),
+    );
     destroyInstancedObjects([], this.previewTailInstances);
     this.gemInstances.length = 0;
     this.tailInstances.length = 0;
@@ -459,6 +490,9 @@ export class HighwayRenderer {
     });
     this.fretAssemblies.length = 0;
     this.ghostGem = null;
+    Object.keys(this.drumGhostGems).forEach((kind) => {
+      delete this.drumGhostGems[kind as DrumPlacementKind];
+    });
     this.disposeSectionMarkers();
     this.materials?.destroy();
     this.materials = null;
@@ -472,9 +506,17 @@ export class HighwayRenderer {
     try {
       await this.assetRegistry.loadResources();
       if (!this.sceneReady) return;
-      this.materials = createMaterialSet(this.assetRegistry.textures);
-      const { note, fretTop, fretBase } = this.assetRegistry.meshes;
-      this.noteCalibration = calibrationFromModel(note.value!);
+      this.materials = createMaterialSet(this.assetRegistry);
+      const note = this.assetRegistry.getMesh("roundNote");
+      const fret = this.assetRegistry.getMesh("fret");
+      for (const meshKey of ["roundNote", "kickNote", "cymbalNote"] as const) {
+        const bounds = this.assetRegistry.getMesh(meshKey).bounds;
+        if (bounds) this.hitTesting.setModelBounds(meshKey, bounds);
+      }
+      const noteRoles = primitiveRolesForModel(
+        note.value!,
+        note.definition.definition,
+      );
       this.gemInstances.push(
         ...createNoteInstances(
           this.scene,
@@ -482,10 +524,73 @@ export class HighwayRenderer {
           this.materials,
           laneRgbColors,
           instanceSizePerLane,
-          this.getEffectiveNoteCalibration(),
-          primitiveRoles.note,
+          HIGHWAY_GEOMETRY_CATALOG.note.transform,
+          noteRoles,
         ),
       );
+      const drumModels = {
+        kick: this.assetRegistry.getMesh("kickNote"),
+        cymbal: this.assetRegistry.getMesh("cymbalNote"),
+        pad: this.assetRegistry.getMesh("roundNote"),
+      };
+      const drumPrimitiveRoles: Record<
+        DrumPlacementKind,
+        PrimitiveMaterialRole[]
+      > = {
+        kick: primitiveRolesForModel(
+          drumModels.kick.value!,
+          drumModels.kick.definition.definition,
+        ),
+        cymbal: primitiveRolesForModel(
+          drumModels.cymbal.value!,
+          drumModels.cymbal.definition.definition,
+        ),
+        pad: primitiveRolesForModel(
+          drumModels.pad.value!,
+          drumModels.pad.definition.definition,
+        ),
+      };
+      for (const kind of ["kick", "cymbal", "pad"] as const) {
+        this.drumGemInstances[kind].push(
+          ...createNoteInstances(
+            this.scene,
+            drumModels[kind].value!,
+            this.materials.drum[kind],
+            kind === "kick" ? [kickColor] : drumLaneRgbColors,
+            instanceSizePerLane,
+            HIGHWAY_GEOMETRY_CATALOG[kind].transform,
+            drumPrimitiveRoles[kind],
+          ),
+        );
+        const variants = this.materials.drum[kind];
+        const ghostGeometry =
+          HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
+        const ghost = createModelInstance(
+          drumModels[kind].value!,
+          (primitiveIndex) =>
+            (drumPrimitiveRoles[kind][primitiveIndex] === "tinted"
+              ? variants.noteGhostTinted
+              : variants.noteGhostGrayscale
+            ).clone(),
+          ghostGeometry.transform,
+        );
+        ghost.meshes.forEach((mesh, primitiveIndex) =>
+          setMaterialState(mesh, {
+            baseColor: kind === "kick" ? kickColor : drumLaneRgbColors[0],
+            emissionColor:
+              drumPrimitiveRoles[kind][primitiveIndex] === "neutral"
+                ? [1, 1, 1]
+                : kind === "kick"
+                  ? kickColor
+                  : drumLaneRgbColors[0],
+            alpha: 0.35,
+            ghost: true,
+            tint: drumPrimitiveRoles[kind][primitiveIndex] === "tinted",
+          }),
+        );
+        this.drumGhostGems[kind] = ghost;
+        this.scene.add(ghost.object);
+      }
       this.tailInstances.push(
         ...createSustainInstance(
           this.scene,
@@ -503,51 +608,46 @@ export class HighwayRenderer {
         ),
       );
       this.fretAssemblies = laneRgbColors.map((color, lane) => {
+        const fretRoles = primitiveRolesForModel(
+          fret.value!,
+          fret.definition.definition,
+        );
         const assembly = createFretAssembly(
           this.scene,
-          fretTop.value!,
-          fretBase.value!,
+          fret.value!,
           this.materials!.fretTinted,
           color,
-          primitiveRoles.fretTop,
+          fretRoles,
           this.materials!.fretGrayscale,
-          primitiveRoles.fretBase,
+          HIGHWAY_GEOMETRY_CATALOG.fret.transform,
         );
-        const transform = HIGHWAY_GEOMETRY_CATALOG.fretTop.transform;
+        const placement = HIGHWAY_GEOMETRY_CATALOG.fret.placementOffset!;
         assembly.position.set(
-          this.coordinates.getLaneX(lane) + transform.position.x,
-          transform.position.y,
-          strikeLineZ,
-        );
-        assembly.scale.set(
-          transform.scale.x,
-          transform.scale.y,
-          transform.scale.z,
-        );
-        assembly.rotation.x = THREE.MathUtils.degToRad(
-          transform.rotationDegrees.x,
+          this.coordinates.getLaneX(lane) + placement.x,
+          placement.y,
+          strikeLineZ + placement.z,
         );
         return assembly;
       });
       this.ghostGem = createModelInstance(
         note.value!,
         (primitiveIndex) =>
-          (primitiveRoles.note[primitiveIndex] === "tinted"
+          (noteRoles[primitiveIndex] === "tinted"
             ? this.materials!.noteGhostTinted
             : this.materials!.noteGhostGrayscale
           ).clone(),
-        this.getEffectiveNoteCalibration(),
+        HIGHWAY_GEOMETRY_CATALOG.ghost.transform,
       );
       this.ghostGem.meshes.forEach((mesh, primitiveIndex) =>
         setMaterialState(mesh, {
           baseColor: laneRgbColors[0],
           emissionColor:
-            primitiveRoles.note[primitiveIndex] === "neutral"
+            noteRoles[primitiveIndex] === "neutral"
               ? [1, 1, 1]
               : laneRgbColors[0],
           alpha: 0.35,
           ghost: true,
-          tint: primitiveRoles.note[primitiveIndex] === "tinted",
+          tint: noteRoles[primitiveIndex] === "tinted",
         }),
       );
       this.scene.add(this.ghostGem.object);
@@ -576,6 +676,7 @@ export class HighwayRenderer {
       divider.position.set(-3 + (6 * lane) / laneCount, -0.05, boardCenterZ);
       divider.renderOrder = 2;
       this.scene.add(divider);
+      this.laneDividers.push(divider);
     }
     const strike = new THREE.Mesh(
       new THREE.BoxGeometry(6, 0.03, 0.12),
@@ -900,15 +1001,22 @@ export class HighwayRenderer {
   private acquireGem(
     key: MidiChannelEvent,
     used: Set<InstancedNote>,
+    kind?: DrumPlacementKind,
   ): InstancedNote | null {
     const existing = this.gemBindings.get(key);
-    if (existing) return existing;
+    if (existing && this.gemKinds.get(existing) === kind) return existing;
+    if (existing) {
+      existing.object.visible = false;
+      this.gemBindings.delete(key);
+    }
     const bound = new Set(this.gemBindings.values());
-    const candidate = this.gemInstances
+    const pool = kind ? this.drumGemInstances[kind] : this.gemInstances;
+    const candidate = pool
       .flat()
       .find((item) => !bound.has(item) && !used.has(item));
     if (!candidate) return null;
     this.gemBindings.set(key, candidate);
+    this.gemKinds.set(candidate, kind);
     return candidate;
   }
 
@@ -941,6 +1049,9 @@ export class HighwayRenderer {
 
   private hideAllObjects(): void {
     this.gemInstances.flat().forEach(({ object }) => (object.visible = false));
+    Object.values(this.drumGemInstances)
+      .flat(2)
+      .forEach(({ object }) => (object.visible = false));
     this.tailInstances.flat().forEach(({ mesh }) => (mesh.visible = false));
     this.previewTailInstances
       .flat()
@@ -948,6 +1059,9 @@ export class HighwayRenderer {
     this.beatLineInstances.forEach(({ mesh }) => (mesh.visible = false));
     this.sustainCutPreviewLine.visible = false;
     if (this.ghostGem) this.ghostGem.object.visible = false;
+    Object.values(this.drumGhostGems).forEach((gem) => {
+      if (gem) gem.object.visible = false;
+    });
     this.gemBindings.clear();
     this.tailBindings.clear();
   }
@@ -955,6 +1069,7 @@ export class HighwayRenderer {
   private getSustainCutPreview(
     chart: ChartView,
   ): Map<MidiChannelEvent, MidiNote> {
+    if (chart.getTrack().getKey() === "drums") return new Map();
     const location = this.context.getGhostNoteLocation();
     if (!location || !this.context.canShowNotePlacementPreview())
       return new Map();
@@ -1038,29 +1153,84 @@ export class HighwayRenderer {
     return used;
   }
 
-  private applyNoteCalibrationToInstances(): void {
-    const calibration = this.getEffectiveNoteCalibration();
-    this.gemInstances
-      .flat()
-      .forEach(({ object }) => applyModelCalibration(object, calibration));
-    if (this.ghostGem) applyModelCalibration(this.ghostGem.object, calibration);
-  }
-
   private drawGhostGem(): void {
-    if (!this.ghostGem) return;
     const location = this.context.getGhostNoteLocation();
+    const chart = this.context.getCurrentChart();
+    const isDrumChart = chart?.getTrack().getKey() === "drums";
+    const drumKind = isDrumChart
+      ? this.context.getDrumPlacementKind()
+      : undefined;
+    const ghostGem = drumKind ? this.drumGhostGems[drumKind] : this.ghostGem;
+    if (this.ghostGem) this.ghostGem.object.visible = false;
+    Object.values(this.drumGhostGems).forEach((gem) => {
+      if (gem) gem.object.visible = false;
+    });
+    if (!ghostGem) return;
     if (!location || !this.context.canShowNotePlacementPreview()) {
-      this.ghostGem.object.visible = false;
+      ghostGem.object.visible = false;
       return;
     }
+    if (
+      chart?.getTrack().getKey() === "drums" &&
+      getDrumPitchForPlacement(
+        this.context.getDrumPlacementKind(),
+        location.lane,
+        chart.getOffset(),
+      ) === null
+    ) {
+      ghostGem.object.visible = false;
+      return;
+    }
+    const isDrumKick = isDrumChart && drumKind === "kick";
+    const placement =
+      HIGHWAY_GEOMETRY_CATALOG[
+        drumKind ? DRUM_GHOST_GEOMETRY_IDS[drumKind] : "ghost"
+      ];
     const position = noteWorldPosition(
-      this.coordinates.getLaneX(location.lane),
+      isDrumKick ? 0 : this.coordinates.getLaneX(location.lane),
       this.coordinates.getNoteZ(location.tick),
-      this.getEffectiveNoteCalibration(),
+      placement.transform,
+      placement.placementOffset,
     );
-    this.ghostGem.object.position.set(position.x, position.y, position.z);
-    this.ghostGem.object.renderOrder = 30;
-    this.ghostGem.object.visible = true;
+    const laneColor = isDrumKick
+      ? kickColor
+      : chart?.getTrack().getKey() === "drums"
+        ? drumLaneRgbColors[location.lane]
+        : laneRgbColors[location.lane];
+    ghostGem.meshes.forEach((mesh) =>
+      setMaterialState(mesh, {
+        baseColor: laneColor,
+        emissionColor: laneColor,
+      }),
+    );
+    ghostGem.object.position.set(position.x, position.y, position.z);
+    ghostGem.object.renderOrder = HIGHWAY_RENDER_ORDER[placement.renderPass];
+    ghostGem.object.visible = true;
+  }
+
+  private updateFretboardPalette(isDrums: boolean): void {
+    const paletteChanged = this.fretPaletteIsDrums !== isDrums;
+    this.fretPaletteIsDrums = isDrums;
+    const colors = isDrums ? drumLaneRgbColors : laneRgbColors;
+    const activeLaneCount = isDrums ? drumLaneCount : laneCount;
+    this.laneDividers.forEach((divider, index) => {
+      divider.visible = index <= activeLaneCount;
+      if (divider.visible) {
+        divider.position.x = -3 + (6 * index) / activeLaneCount;
+      }
+    });
+    this.fretAssemblies.forEach((assembly, lane) => {
+      assembly.visible = lane < activeLaneCount;
+      assembly.position.x = this.coordinates.getLaneX(lane);
+      if (!paletteChanged || lane >= activeLaneCount) return;
+      assembly.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        setMaterialState(object, {
+          baseColor: colors[lane],
+          emissionColor: colors[lane],
+        });
+      });
+    });
   }
 
   private drawHoverOutline(chart: ChartView): void {
@@ -1072,8 +1242,21 @@ export class HighwayRenderer {
       this.hoverOutline.visible = false;
       return;
     }
-    const lane = note.note - chart.getOffset();
-    const bounds = this.hitTesting.getGemScreenBounds(note, lane);
+    const profile =
+      chart.getTrack().getKey() === "drums"
+        ? getDrumNoteProfile(note.note, chart.getOffset())
+        : null;
+    const lane = profile?.lane ?? (profile?.kind === "kick" ? 0 : -1);
+    const bounds =
+      profile?.kind === "kick"
+        ? this.hitTesting.getKickScreenBounds(note)
+        : this.hitTesting.getGemScreenBounds(
+            note,
+            profile ? lane : note.note - chart.getOffset(),
+            profile?.kind === "pad" || profile?.kind === "cymbal"
+              ? profile.kind
+              : "note",
+          );
     if (!bounds) {
       this.hoverOutline.visible = false;
       return;
