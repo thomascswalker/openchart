@@ -23,7 +23,12 @@
       "root": "./Cymbal",
       "mesh": "CymbalNote.glb",
       "material": "cymbalNote",
-      "materialIds": ["CymbalNoteBase", "CymbalNoteSides", "CymbalNoteColor"],
+      "materialIds": [
+        "CymbalNoteTop",
+        "CymbalNoteColor",
+        "CymbalNoteIndicator",
+        "CymbalNoteBottom"
+      ],
       "tintedMaterialIds": ["CymbalNoteColor"]
     },
     "sustain": {
