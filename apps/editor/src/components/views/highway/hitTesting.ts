@@ -7,7 +7,8 @@ import {
   type ChartView,
 } from "@midiedit/views";
 import * as THREE from "three";
-import { HIGHWAY_GEOMETRY_CATALOG, type Transform3D } from "./geometryCatalog";
+import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./geometryCatalog";
+import type { MeshKey } from "../../../rendering/registry";
 import { noteWorldPosition } from "./geometry";
 import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
@@ -64,9 +65,14 @@ function distanceToSegment(
 
 export class HighwayHitTester {
   private readonly coordinates: HighwayCoordinateSystem;
+  private readonly modelBounds = new Map<MeshKey, THREE.Box3>();
 
   public constructor(coordinates: HighwayCoordinateSystem) {
     this.coordinates = coordinates;
+  }
+
+  public setModelBounds(meshKey: MeshKey, bounds: THREE.Box3): void {
+    this.modelBounds.set(meshKey, bounds.clone());
   }
 
   public getNoteAt(chart: ChartView, event: MouseEvent): MidiNote | undefined {
@@ -87,8 +93,8 @@ export class HighwayHitTester {
               note,
               lane,
               profile?.kind === "pad" || profile?.kind === "cymbal"
-                ? HIGHWAY_GEOMETRY_CATALOG[profile.kind].transform
-                : HIGHWAY_GEOMETRY_CATALOG.note.transform,
+                ? profile.kind
+                : "note",
             );
       const tailBounds = profile ? null : this.getTailScreenBounds(note, lane);
       if (
@@ -237,25 +243,47 @@ export class HighwayHitTester {
   public getGemScreenBounds(
     note: MidiNote,
     lane: number,
-    transform: Transform3D = HIGHWAY_GEOMETRY_CATALOG.note.transform,
+    geometryId: GeometryId = "note",
   ): ScreenBounds | null {
     if (lane < 0 || lane >= this.coordinates.getPhysicalLaneCount()) {
       return null;
     }
+    const entry = HIGHWAY_GEOMETRY_CATALOG[geometryId];
+    const transform = entry.transform;
     const position = noteWorldPosition(
       this.coordinates.getLaneX(lane),
       this.coordinates.getNoteZ(note.start),
       transform,
+      entry.placementOffset,
     );
+    const fallbackHalfExtents = entry.fallbackHalfExtents ?? {
+      x: 0.5,
+      y: 0.5,
+      z: 0.5,
+    };
+    const bounds =
+      (entry.meshKey && this.modelBounds.get(entry.meshKey)) ??
+      new THREE.Box3(
+        new THREE.Vector3(
+          -fallbackHalfExtents.x,
+          -fallbackHalfExtents.y,
+          -fallbackHalfExtents.z,
+        ),
+        new THREE.Vector3(
+          fallbackHalfExtents.x,
+          fallbackHalfExtents.y,
+          fallbackHalfExtents.z,
+        ),
+      );
     const corners: THREE.Vector3[] = [];
-    for (const xSign of [-1, 1]) {
-      for (const ySign of [-1, 1]) {
-        for (const zSign of [-1, 1]) {
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
           corners.push(
             new THREE.Vector3(
-              position.x + (xSign * transform.scale.x) / 2,
-              position.y + (ySign * transform.scale.y) / 2,
-              position.z + (zSign * transform.scale.z) / 2,
+              position.x + x * transform.scale.x,
+              position.y + y * transform.scale.y,
+              position.z + z * transform.scale.z,
             ),
           );
         }
@@ -274,34 +302,7 @@ export class HighwayHitTester {
   }
 
   public getKickScreenBounds(note: MidiNote): ScreenBounds | null {
-    const transform = HIGHWAY_GEOMETRY_CATALOG.kick.transform;
-    const position = noteWorldPosition(
-      0,
-      this.coordinates.getNoteZ(note.start),
-      transform,
-    );
-    const corners = [-3, 3].flatMap((x) =>
-      [-1, 1].flatMap((ySign) =>
-        [-1, 1].map(
-          (zSign) =>
-            new THREE.Vector3(
-              x,
-              position.y + (ySign * transform.scale.y) / 2,
-              position.z + (zSign * transform.scale.z) / 2,
-            ),
-        ),
-      ),
-    );
-    const projected = corners
-      .map((corner) => this.coordinates.worldToScreen(corner))
-      .filter((point): point is THREE.Vector2 => point !== null);
-    if (!projected.length) return null;
-    return {
-      left: Math.min(...projected.map((point) => point.x)),
-      right: Math.max(...projected.map((point) => point.x)),
-      top: Math.min(...projected.map((point) => point.y)),
-      bottom: Math.max(...projected.map((point) => point.y)),
-    };
+    return this.getGemScreenBounds(note, 0, "kick");
   }
 
   public getTailScreenBounds(

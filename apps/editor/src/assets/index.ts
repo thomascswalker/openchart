@@ -1,22 +1,60 @@
 import * as THREE from "three";
 
-type Rgb = [number, number, number];
+export type Rgb = [number, number, number];
+export type AssetPropertyValue = string | number | Rgb;
+export type UniformValue = number | Rgb | THREE.Texture;
+export type MaterialPropertyName =
+  "diffuseTex" | "emissionTex" | "emissionMaskTex";
 
-/* Mapping of TS to GLSL material uniforms */
-interface Uniforms {
-  [key: string]: number | Rgb | THREE.Texture;
-  diffuse: Rgb | THREE.Texture;
-  diffuseTex: THREE.Texture;
-  emission: Rgb | THREE.Texture;
-  emissionTex: THREE.Texture;
+export interface MaterialProperties {
+  diffuseTex?: string;
+  emissionTex?: string;
+  emissionMaskTex?: string;
+  [name: string]: AssetPropertyValue | undefined;
 }
 
-interface Material {
-  vert?: string;
-  frag?: string;
-  uniforms: Uniforms;
+export interface MaterialDefinition {
+  vert: string;
+  pixel: string;
+  properties: MaterialProperties;
 }
 
-interface MaterialSet {
-  [key: string]: Material;
+export interface MeshDefinition {
+  root: string;
+  mesh: string | null;
+  material: string;
+  materialIds: string[];
+  tintedMaterialIds?: string[];
+}
+
+export interface AssetDefinition {
+  meshes: Record<string, MeshDefinition>;
+  materials: Record<string, MaterialDefinition>;
+  unusedAssets?: Record<string, string>;
+}
+
+export type AssetDefinitions = AssetDefinition;
+
+export interface ResolvedMaterialDefinition {
+  key: string;
+  definition: MaterialDefinition;
+  vertexShader: string;
+  fragmentShader: string;
+  properties: Record<string, number | Rgb | ResolvedTextureResource>;
+}
+
+export interface ResolvedTextureResource {
+  path: string;
+  value?: THREE.Texture;
+}
+
+export interface ResolvedMeshDefinition {
+  key: string;
+  definition: MeshDefinition;
+  url: string | null;
+}
+
+export interface ResolvedAssetDefinition {
+  meshes: Record<string, ResolvedMeshDefinition>;
+  materials: Record<string, ResolvedMaterialDefinition>;
 }

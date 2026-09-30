@@ -1,13 +1,15 @@
 import * as THREE from "three";
-import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
-import texturedFragmentSource from "./shaders/note.frag.glsl?raw";
-import texturedVertexSource from "./shaders/vert.glsl?raw";
-import type { TextureResource } from "../../../rendering/registry";
-import {
-  DRUM_GHOST_GEOMETRY_IDS,
-  HIGHWAY_GEOMETRY_CATALOG,
-} from "./geometryCatalog";
+import type {
+  MaterialKey,
+  ResourceRegistry,
+} from "../../../rendering/registry";
+import type {
+  MaterialPropertyName,
+  ResolvedMaterialDefinition,
+  ResolvedTextureResource,
+} from "../../../assets";
 import type { DrumPlacementKind } from "./drumProfile";
+import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
 
 export type Rgb = [number, number, number];
 
@@ -122,12 +124,26 @@ function updateUniforms(material: THREE.Material, state: MaterialState): void {
 }
 
 interface CreateMaterialOptions {
-  color: THREE.Texture;
-  emission?: THREE.Texture;
-  emissionMask?: THREE.Texture;
   transparent?: boolean;
-  vert?: string;
-  frag?: string;
+  depthTest?: boolean;
+}
+
+const whiteTexture = new THREE.DataTexture(
+  new Uint8Array([255, 255, 255, 255]),
+  1,
+  1,
+);
+whiteTexture.needsUpdate = true;
+
+function textureProperty(
+  definition: ResolvedMaterialDefinition,
+  name: MaterialPropertyName,
+): THREE.Texture | undefined {
+  const property = definition.properties[name] as
+    ResolvedTextureResource | number | Rgb | undefined;
+  return property && typeof property === "object" && "value" in property
+    ? property.value
+    : undefined;
 }
 
 class MaterialManager {
@@ -135,23 +151,25 @@ class MaterialManager {
 
   public create(
     name: string,
-    {
-      color,
-      emission,
-      emissionMask,
-      transparent = false,
-      vert = texturedVertexSource,
-      frag = texturedFragmentSource,
-    }: CreateMaterialOptions,
+    definition: ResolvedMaterialDefinition,
+    { transparent = false, depthTest = true }: CreateMaterialOptions = {},
   ): THREE.ShaderMaterial {
     const material = new THREE.ShaderMaterial({
-      vertexShader: vert,
-      fragmentShader: frag,
+      vertexShader: definition.vertexShader,
+      fragmentShader: definition.fragmentShader,
       uniforms: {
-        uBaseTexture: { value: color },
+        uBaseTexture: {
+          value: textureProperty(definition, "diffuseTex") ?? whiteTexture,
+        },
         uBaseColor: { value: [1, 1, 1] },
-        uEmissionTexture: { value: emission },
-        uEmissionMaskTexture: { value: emissionMask ?? whiteMaskTexture },
+        uBaseIntensity: { value: [1, 1, 1] },
+        uEmissionTexture: {
+          value: textureProperty(definition, "emissionTex") ?? whiteTexture,
+        },
+        uEmissionMaskTexture: {
+          value:
+            textureProperty(definition, "emissionMaskTex") ?? whiteMaskTexture,
+        },
         uEmissionColor: { value: [1, 1, 1] },
         uEmissionIntensity: { value: 1 },
         uAlpha: { value: 1 },
@@ -163,8 +181,8 @@ class MaterialManager {
         uStrikeLineZ: { value: -3.5 },
       },
       transparent,
-      depthTest: true,
-      depthWrite: !transparent,
+      depthTest,
+      depthWrite: !transparent && depthTest,
       side: THREE.DoubleSide,
     });
     this.materials[name] = material;
@@ -172,86 +190,57 @@ class MaterialManager {
   }
 }
 
-export function createMaterialSet(
-  textures: Record<string, TextureResource>,
-): MaterialSet {
+export function createMaterialSet(registry: ResourceRegistry): MaterialSet {
   const manager = new MaterialManager();
-  const fretColor = manager.create("fretColor", {
-    color: textures.fret.value!,
-    emission: textures.fret.value!,
-  });
-  const fretNeutral = manager.create("fretNeutral", {
-    color: textures.fret.value!,
-    emission: textures.fret.value!,
-  });
-  const noteColor = manager.create("noteColor", {
-    color: textures.note.value!,
-    emission: textures.note.value!,
-    emissionMask: textures.noteEmissionMask.value!,
-  });
-  const noteNeutral = manager.create("noteNeutral", {
-    color: textures.note.value!,
-    emission: textures.note.value!,
-    emissionMask: textures.noteEmissionMask.value!,
-  });
-  const noteGhostColor = manager.create("noteGhostColor", {
-    color: textures.note.value!,
-    emission: textures.note.value!,
-    emissionMask: textures.noteEmissionMask.value!,
+  const createVariants = (
+    key: MaterialKey,
+    prefix: string,
+    depthTest = true,
+  ): NoteMaterialVariants => {
+    const definition = registry.getMaterial(key);
+    return {
+      noteTinted: manager.create(`${prefix}Tinted`, definition, { depthTest }),
+      noteGrayscale: manager.create(`${prefix}Neutral`, definition, {
+        depthTest,
+      }),
+      noteGhostTinted: manager.create(`${prefix}GhostTinted`, definition, {
+        transparent: true,
+        depthTest,
+      }),
+      noteGhostGrayscale: manager.create(`${prefix}GhostNeutral`, definition, {
+        transparent: true,
+        depthTest,
+      }),
+    };
+  };
+  const fret = createVariants(
+    HIGHWAY_GEOMETRY_CATALOG.fret.materialKey!,
+    "fret",
+  );
+  const note = createVariants(
+    HIGHWAY_GEOMETRY_CATALOG.note.materialKey!,
+    "roundNote",
+  );
+  const sustain = manager.create("sustain", registry.getMaterial("sustain"), {
     transparent: true,
-  });
-  const noteGhostNeutral = manager.create("noteGhostNeutral", {
-    color: textures.note.value!,
-    emission: textures.note.value!,
-    emissionMask: textures.noteEmissionMask.value!,
-    transparent: true,
-  });
-  const sustain = manager.create("sustain", {
-    color: textures.sustain.value!,
-    emission: textures.sustainEmission.value!,
-    transparent: true,
-    frag: solidFragmentSource,
   });
   const createDrumMaterials = (
     kind: DrumPlacementKind,
   ): NoteMaterialVariants => {
     const geometry = HIGHWAY_GEOMETRY_CATALOG[kind];
-    const texture = textures[geometry.textureResource!].value!;
-    const ghostGeometry =
-      HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
-    const ghostTexture = textures[ghostGeometry.textureResource!].value!;
-    return {
-      noteTinted: manager.create(`${kind}Color`, {
-        color: texture,
-        emission: texture,
-        frag: texturedFragmentSource,
-      }),
-      noteGrayscale: manager.create(`${kind}Neutral`, {
-        color: texture,
-        emission: texture,
-        frag: texturedFragmentSource,
-      }),
-      noteGhostTinted: manager.create(`${kind}GhostColor`, {
-        color: ghostTexture,
-        emission: ghostTexture,
-        transparent: true,
-        frag: texturedFragmentSource,
-      }),
-      noteGhostGrayscale: manager.create(`${kind}GhostNeutral`, {
-        color: ghostTexture,
-        emission: ghostTexture,
-        transparent: true,
-        frag: texturedFragmentSource,
-      }),
-    };
+    return createVariants(
+      geometry.materialKey as MaterialKey,
+      kind,
+      geometry.renderPass !== "topNote",
+    );
   };
   return {
-    fretTinted: fretColor,
-    fretGrayscale: fretNeutral,
-    noteTinted: noteColor,
-    noteGrayscale: noteNeutral,
-    noteGhostTinted: noteGhostColor,
-    noteGhostGrayscale: noteGhostNeutral,
+    fretTinted: fret.noteTinted,
+    fretGrayscale: fret.noteGrayscale,
+    noteTinted: note.noteTinted,
+    noteGrayscale: note.noteGrayscale,
+    noteGhostTinted: note.noteGhostTinted,
+    noteGhostGrayscale: note.noteGhostGrayscale,
     drum: {
       kick: createDrumMaterials("kick"),
       cymbal: createDrumMaterials("cymbal"),

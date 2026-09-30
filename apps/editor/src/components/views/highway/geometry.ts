@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import type { Rgb, MaterialSet } from "./materials";
 import { setMaterialStateForMaterial } from "./materials";
-import { HIGHWAY_GEOMETRY_CATALOG, type Transform3D } from "./geometryCatalog";
+import {
+  HIGHWAY_GEOMETRY_CATALOG,
+  type PlacementOffset,
+  type Transform3D,
+} from "./geometryCatalog";
 
 export interface WorldPosition {
   x: number;
@@ -13,11 +17,13 @@ export function noteWorldPosition(
   laneX: number,
   noteZ: number,
   transform: Transform3D = HIGHWAY_GEOMETRY_CATALOG.note.transform,
+  placementOffset: PlacementOffset = HIGHWAY_GEOMETRY_CATALOG.note
+    .placementOffset!,
 ): WorldPosition {
   return {
-    x: laneX + transform.position.x,
-    y: transform.position.y,
-    z: noteZ + transform.position.z,
+    x: laneX + transform.position.x + placementOffset.x,
+    y: transform.position.y + placementOffset.y,
+    z: noteZ + transform.position.z + placementOffset.z,
   };
 }
 

@@ -5,13 +5,16 @@ import {
   noteWorldPosition,
   sustainWorldTransform,
 } from "./geometry";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
+import {
+  HIGHWAY_GEOMETRY_CATALOG,
+  HIGHWAY_RENDER_ORDER,
+} from "./geometryCatalog";
 
 describe("circular highway geometry", () => {
   it("keeps note timing on the existing lane/depth mapping", () => {
     expect(noteWorldPosition(-1.2, -3.5)).toEqual({
       x: -1.2,
-      y: 0.05,
+      y: 0,
       z: -3.5,
     });
   });
@@ -29,13 +32,39 @@ describe("circular highway geometry", () => {
 
     applyGeometryModelTransform(model, transform);
 
-    expect(model.scale.toArray()).toEqual([1, 0.45, 0.45]);
+    expect(model.scale.toArray()).toEqual([1, 1, 1]);
     expect(model.rotation.x).toBe(0);
     expect(model.position.toArray()).toEqual([0, 0, 0]);
-    expect(noteWorldPosition(1, -2, transform)).toEqual({
-      x: 1,
-      y: 0.05,
-      z: -2,
-    });
+    expect(
+      noteWorldPosition(
+        1,
+        -2,
+        transform,
+        HIGHWAY_GEOMETRY_CATALOG.pad.placementOffset,
+      ),
+    ).toEqual({ x: 1, y: 0, z: -2 });
+  });
+
+  it("keeps normalized note and fret model transforms at identity", () => {
+    for (const id of ["note", "kick", "cymbal", "pad", "fret"] as const) {
+      expect(HIGHWAY_GEOMETRY_CATALOG[id].transform).toEqual({
+        position: { x: 0, y: 0, z: 0 },
+        rotationDegrees: { x: 0, y: 0, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      });
+    }
+  });
+
+  it("places pads and cymbals in the render pass after kicks", () => {
+    expect(HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.kick.renderPass]).toBe(
+      20,
+    );
+    for (const id of ["pad", "cymbal"] as const) {
+      expect(
+        HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG[id].renderPass],
+      ).toBeGreaterThan(
+        HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.kick.renderPass],
+      );
+    }
   });
 });

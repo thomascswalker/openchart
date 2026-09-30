@@ -9,25 +9,22 @@
         "RoundNoteColor",
         "RoundNoteIndicator",
         "RoundNoteBottom"
-      ]
-    },
-    "rectNote": {
-      "root": "./Rect",
-      "mesh": "RectNote.glb",
-      "material": "rectNote",
-      "materialIds": ["RectNoteBase", "RectNoteSides", "RectNoteColor"]
+      ],
+      "tintedMaterialIds": ["RoundNoteColor"]
     },
     "kickNote": {
       "root": "./Kick",
       "mesh": "KickNote.glb",
       "material": "kickNote",
-      "materialIds": ["KickNoteSides", "KickNoteBase"]
+      "materialIds": ["KickNoteSides", "KickNoteBase"],
+      "tintedMaterialIds": ["KickNoteBase"]
     },
     "cymbalNote": {
       "root": "./Cymbal",
       "mesh": "CymbalNote.glb",
       "material": "cymbalNote",
-      "materialIds": ["CymbalNoteBase", "CymbalNoteSides", "CymbalNoteColor"]
+      "materialIds": ["CymbalNoteBase", "CymbalNoteSides", "CymbalNoteColor"],
+      "tintedMaterialIds": ["CymbalNoteColor"]
     },
     "sustain": {
       "root": "./Sustain",
@@ -39,7 +36,8 @@
       "root": "./Fret",
       "mesh": "Fret.glb",
       "material": "fret",
-      "materialIds": ["FretBase", "FretColor"]
+      "materialIds": ["FretBase", "FretColor"],
+      "tintedMaterialIds": ["FretColor"]
     }
   },
   "materials": {
@@ -49,13 +47,6 @@
       "properties": {
         "emissionTex": "RoundNote_E.png",
         "emissionMaskTex": "RoundNote_M.png"
-      }
-    },
-    "rectNote": {
-      "vert": "vert.glsl",
-      "pixel": "note.frag.glsl",
-      "properties": {
-        "emissionTex": "RectNote_E.png"
       }
     },
     "kickNote": {
@@ -69,7 +60,8 @@
       "vert": "vert.glsl",
       "pixel": "note.frag.glsl",
       "properties": {
-        "emissionTex": "CymbalNote_E.png"
+        "emissionTex": "CymbalNote_E.png",
+        "emissionMaskTex": "CymbalNote_M.png"
       }
     },
     "sustain": {
@@ -87,5 +79,10 @@
         "emissionTex": "Fret_E.png"
       }
     }
+  },
+  "unusedAssets": {
+    "Round/RoundNote_E2.png": "Alternate round-note emission map; intentionally unused until its visual role is confirmed.",
+    "Rect/RectNote.glb": "Rect notes are retired; drum pads use the round-note model.",
+    "Rect/RectNote_E.png": "Rect notes are retired; drum pads use the round-note material."
   }
 }

@@ -89,6 +89,23 @@ describe("phrase screen hit bounds", () => {
 });
 
 describe("drum note hit testing", () => {
+  it("uses the same contextual pad and cymbal offsets as rendering", () => {
+    const coordinates = {
+      getLaneX: () => 0,
+      getNoteZ: () => 0,
+      getPhysicalLaneCount: () => 4,
+      worldToScreen: (point: THREE.Vector3) =>
+        new THREE.Vector2(point.x * 100, point.y * 100),
+    } as unknown as HighwayCoordinateSystem;
+    const hitTesting = new HighwayHitTester(coordinates);
+    const note = { note: 100, start: 480 } as MidiNote;
+    const pad = hitTesting.getGemScreenBounds(note, 1, "pad")!;
+    const cymbal = hitTesting.getGemScreenBounds(note, 1, "cymbal")!;
+
+    expect((pad.left + pad.right) / 2).toBeCloseTo(0);
+    expect((cymbal.left + cymbal.right) / 2).toBeCloseTo(0);
+  });
+
   it("hits cymbals on their pad lane and excludes marker pitches", () => {
     const cymbal = { note: 101, start: 480 } as MidiNote;
     const flam = { note: 104, start: 480 } as MidiNote;
@@ -109,13 +126,14 @@ describe("drum note hit testing", () => {
     expect(hitTesting.getNoteAt(chart, {} as MouseEvent)).toBe(cymbal);
   });
 
-  it("gives kick notes full-track hit bounds and ignores flam markers", () => {
+  it("uses normalized kick bounds and ignores flam markers", () => {
     const kick = { note: 95, start: 480 } as MidiNote;
     const flam = { note: 104, start: 480 } as MidiNote;
     const coordinates = {
-      getCanvasPoint: () => ({ x: 20, y: 100 }),
+      getCanvasPoint: () => ({ x: 300, y: 100 }),
       getTickAtDepth: () => 0,
       getNoteZ: () => 0,
+      getLaneX: () => 0,
       getPhysicalLaneCount: () => 4,
       worldToScreen: (point: THREE.Vector3) =>
         new THREE.Vector2((point.x + 3) * 100, (point.y + 1) * 100),
@@ -128,7 +146,7 @@ describe("drum note hit testing", () => {
     } as unknown as ChartView;
 
     const bounds = hitTesting.getKickScreenBounds(kick);
-    expect(bounds).toMatchObject({ left: 0, right: 600 });
+    expect(bounds).toMatchObject({ left: 250, right: 350 });
     expect(hitTesting.getNoteAt(chart, {} as MouseEvent)).toBe(kick);
   });
 });

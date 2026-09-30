@@ -509,9 +509,26 @@ export class HighwayInputController {
           (chart?.getNotes() ?? [])
             .filter((note) => {
               if (phrasePitchSet.has(note.note)) return false;
+              const drumProfile =
+                chart?.getTrack().getKey() === "drums"
+                  ? getDrumNoteProfile(note.note, chart.getOffset())
+                  : null;
+              if (drumProfile?.kind === "kick") {
+                const noteBounds = this.hitTesting.getKickScreenBounds(note);
+                return (
+                  noteBounds !== null &&
+                  noteBounds.right >= bounds.left &&
+                  noteBounds.left <= bounds.right &&
+                  noteBounds.bottom >= bounds.top &&
+                  noteBounds.top <= bounds.bottom
+                );
+              }
               const noteBounds = this.hitTesting.getGemScreenBounds(
                 note,
                 chart ? physicalLaneForNote(chart, note) : -1,
+                drumProfile?.kind === "pad" || drumProfile?.kind === "cymbal"
+                  ? drumProfile.kind
+                  : "note",
               );
               return (
                 noteBounds !== null &&
