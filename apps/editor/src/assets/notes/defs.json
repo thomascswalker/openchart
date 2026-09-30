@@ -1,0 +1,48 @@
+{
+  "roundNote": {
+    "root": "./Round",
+    "mesh": "RoundNote.glb",
+    "material": {
+      "emission": "RoundNote_E.png",
+      "emissionMask": "RoundNote_M.png"
+    },
+    "materialIds": [
+      "RoundNoteTop",
+      "RoundNoteColor",
+      "RoundNoteIndicator",
+      "RoundNoteBottom"
+    ]
+  },
+  "rectNote": {
+    "root": "./Rect",
+    "mesh": "RectNote.glb",
+    "material": {
+      "emission": "RectNote_E.png"
+    },
+    "materialIds": ["RectNoteBase", "RectNoteSides", "RectNoteColor"]
+  },
+  "kickNote": {
+    "root": "./Kick",
+    "mesh": "KickNote.glb",
+    "material": {
+      "emission": "KickNote_E.png"
+    },
+    "materialIds": ["KickNoteSides", "KickNoteBase"]
+  },
+  "cymbalNote": {
+    "root": "./Cymbal",
+    "mesh": "CymbalNote.glb",
+    "material": {
+      "emission": "CymbalNote_E.png"
+    },
+    "materialIds": ["CymbalNoteBase", "CymbalNoteSides", "CymbalNoteColor"]
+  },
+  "sustain": {
+    "root": "./Sustain",
+    "mesh": null,
+    "material": {
+      "diffuse": "Sustain_D.png",
+      "emission": "Sustain_E.png"
+    }
+  }
+}
