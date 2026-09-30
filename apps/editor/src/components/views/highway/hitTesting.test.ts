@@ -8,7 +8,6 @@ import {
 } from "@midiedit/views";
 import type { ChartViewState } from "../AbstractChartView";
 import { HighwayCoordinateSystem } from "./coordinates";
-import { DEFAULT_NOTE_CALIBRATION } from "./geometry";
 import {
   HighwayHitTester,
   getPhraseBoundaryHitOperation,
@@ -72,10 +71,7 @@ describe("phrase screen hit bounds", () => {
     },
     camera,
   );
-  const hitTesting = new HighwayHitTester(
-    coordinates,
-    () => DEFAULT_NOTE_CALIBRATION,
-  );
+  const hitTesting = new HighwayHitTester(coordinates);
 
   function phrase(start: number, end: number): MidiNotePhrase {
     return { start, end } as MidiNotePhrase;
@@ -100,10 +96,7 @@ describe("drum note hit testing", () => {
       getCanvasPoint: () => ({ x: 20, y: 20 }),
       getTickAtDepth: () => 0,
     } as unknown as HighwayCoordinateSystem;
-    const hitTesting = new HighwayHitTester(
-      coordinates,
-      () => DEFAULT_NOTE_CALIBRATION,
-    );
+    const hitTesting = new HighwayHitTester(coordinates);
     hitTesting.getGemScreenBounds = (_note, lane) =>
       lane === 1 ? { left: 0, right: 40, top: 0, bottom: 40 } : null;
     hitTesting.getTailScreenBounds = () => null;
@@ -127,10 +120,7 @@ describe("drum note hit testing", () => {
       worldToScreen: (point: THREE.Vector3) =>
         new THREE.Vector2((point.x + 3) * 100, (point.y + 1) * 100),
     } as unknown as HighwayCoordinateSystem;
-    const hitTesting = new HighwayHitTester(
-      coordinates,
-      () => DEFAULT_NOTE_CALIBRATION,
-    );
+    const hitTesting = new HighwayHitTester(coordinates);
     const chart = {
       getTrack: () => ({ getKey: () => "drums" }),
       getOffset: () => 96,
@@ -138,7 +128,7 @@ describe("drum note hit testing", () => {
     } as unknown as ChartView;
 
     const bounds = hitTesting.getKickScreenBounds(kick);
-    expect(bounds?.right! - bounds?.left!).toBe(600);
+    expect(bounds).toMatchObject({ left: 0, right: 600 });
     expect(hitTesting.getNoteAt(chart, {} as MouseEvent)).toBe(kick);
   });
 });

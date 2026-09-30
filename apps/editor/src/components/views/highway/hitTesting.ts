@@ -7,7 +7,7 @@ import {
   type ChartView,
 } from "@midiedit/views";
 import * as THREE from "three";
-import type { ModelCalibration } from "./geometry";
+import { HIGHWAY_GEOMETRY_CATALOG, type Transform3D } from "./geometryCatalog";
 import { noteWorldPosition } from "./geometry";
 import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
@@ -64,14 +64,9 @@ function distanceToSegment(
 
 export class HighwayHitTester {
   private readonly coordinates: HighwayCoordinateSystem;
-  private readonly getNoteCalibration: () => ModelCalibration;
 
-  public constructor(
-    coordinates: HighwayCoordinateSystem,
-    getNoteCalibration: () => ModelCalibration,
-  ) {
+  public constructor(coordinates: HighwayCoordinateSystem) {
     this.coordinates = coordinates;
-    this.getNoteCalibration = getNoteCalibration;
   }
 
   public getNoteAt(chart: ChartView, event: MouseEvent): MidiNote | undefined {
@@ -88,7 +83,13 @@ export class HighwayHitTester {
       const gemBounds =
         profile?.kind === "kick"
           ? this.getKickScreenBounds(note)
-          : this.getGemScreenBounds(note, lane);
+          : this.getGemScreenBounds(
+              note,
+              lane,
+              profile?.kind === "pad" || profile?.kind === "cymbal"
+                ? HIGHWAY_GEOMETRY_CATALOG[profile.kind].transform
+                : HIGHWAY_GEOMETRY_CATALOG.note.transform,
+            );
       const tailBounds = profile ? null : this.getTailScreenBounds(note, lane);
       if (
         (!gemBounds ||
@@ -233,15 +234,18 @@ export class HighwayHitTester {
     };
   }
 
-  public getGemScreenBounds(note: MidiNote, lane: number): ScreenBounds | null {
+  public getGemScreenBounds(
+    note: MidiNote,
+    lane: number,
+    transform: Transform3D = HIGHWAY_GEOMETRY_CATALOG.note.transform,
+  ): ScreenBounds | null {
     if (lane < 0 || lane >= this.coordinates.getPhysicalLaneCount()) {
       return null;
     }
-    const calibration = this.getNoteCalibration();
     const position = noteWorldPosition(
       this.coordinates.getLaneX(lane),
       this.coordinates.getNoteZ(note.start),
-      calibration,
+      transform,
     );
     const corners: THREE.Vector3[] = [];
     for (const xSign of [-1, 1]) {
@@ -249,9 +253,9 @@ export class HighwayHitTester {
         for (const zSign of [-1, 1]) {
           corners.push(
             new THREE.Vector3(
-              position.x + (xSign * calibration.width) / 2,
-              position.y + ySign * Math.max(0.1, calibration.height / 2),
-              position.z + zSign * Math.max(0.05, calibration.depth / 2),
+              position.x + (xSign * transform.scale.x) / 2,
+              position.y + (ySign * transform.scale.y) / 2,
+              position.z + (zSign * transform.scale.z) / 2,
             ),
           );
         }
@@ -270,11 +274,11 @@ export class HighwayHitTester {
   }
 
   public getKickScreenBounds(note: MidiNote): ScreenBounds | null {
-    const calibration = this.getNoteCalibration();
+    const transform = HIGHWAY_GEOMETRY_CATALOG.kick.transform;
     const position = noteWorldPosition(
       0,
       this.coordinates.getNoteZ(note.start),
-      calibration,
+      transform,
     );
     const corners = [-3, 3].flatMap((x) =>
       [-1, 1].flatMap((ySign) =>
@@ -282,8 +286,8 @@ export class HighwayHitTester {
           (zSign) =>
             new THREE.Vector3(
               x,
-              position.y + (ySign * calibration.height) / 2,
-              position.z + (zSign * calibration.depth) / 2,
+              position.y + (ySign * transform.scale.y) / 2,
+              position.z + (zSign * transform.scale.z) / 2,
             ),
         ),
       ),

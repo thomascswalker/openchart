@@ -1,3 +1,5 @@
+import type { DrumPlacementKind } from "./drumProfile";
+
 export interface Transform3D {
   position: { x: number; y: number; z: number };
   rotationDegrees: { x: number; y: number; z: number };
@@ -11,15 +13,36 @@ export type GeometryId =
   | "strikeline"
   | "sustain"
   | "note"
+  | "kick"
+  | "cymbal"
+  | "pad"
+  | "kickGhost"
+  | "cymbalGhost"
+  | "padGhost"
   | "fretTop"
   | "fretBase"
   | "ghost";
+
+type DrumMeshResource = "kickMesh" | "cymbalMesh" | "padMesh";
+type DrumTextureResource = "kickNote" | "cymbalNote" | "padNote";
+export type DrumGhostGeometryId = "kickGhost" | "cymbalGhost" | "padGhost";
+
+export const DRUM_GHOST_GEOMETRY_IDS: Record<
+  DrumPlacementKind,
+  DrumGhostGeometryId
+> = {
+  kick: "kickGhost",
+  cymbal: "cymbalGhost",
+  pad: "padGhost",
+};
 
 export interface GeometryEntry {
   id: GeometryId;
   transform: Transform3D;
   layer: number;
   renderPass: "opaque" | "sustain" | "note" | "overlay";
+  meshResource?: DrumMeshResource;
+  textureResource?: DrumTextureResource;
 }
 
 // These offsets are intentionally small relative to the camera range. They
@@ -92,6 +115,78 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     },
     layer: HIGHWAY_DEPTH_LAYERS.note,
     renderPass: "note",
+  },
+  kick: {
+    id: "kick",
+    transform: {
+      position: { x: 0, y: 0.05, z: 0 },
+      rotationDegrees: { x: 270, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    layer: HIGHWAY_DEPTH_LAYERS.note,
+    renderPass: "note",
+    meshResource: "kickMesh",
+    textureResource: "kickNote",
+  },
+  cymbal: {
+    id: "cymbal",
+    transform: {
+      position: { x: 0, y: 0.05, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    layer: HIGHWAY_DEPTH_LAYERS.note,
+    renderPass: "note",
+    meshResource: "cymbalMesh",
+    textureResource: "cymbalNote",
+  },
+  pad: {
+    id: "pad",
+    transform: {
+      position: { x: 0, y: 0.05, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    layer: HIGHWAY_DEPTH_LAYERS.note,
+    renderPass: "note",
+    meshResource: "padMesh",
+    textureResource: "padNote",
+  },
+  kickGhost: {
+    id: "kickGhost",
+    transform: {
+      position: { x: 0, y: 0.05, z: 0 },
+      rotationDegrees: { x: 270, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    layer: HIGHWAY_DEPTH_LAYERS.overlay,
+    renderPass: "overlay",
+    meshResource: "kickMesh",
+    textureResource: "kickNote",
+  },
+  cymbalGhost: {
+    id: "cymbalGhost",
+    transform: {
+      position: { x: 0, y: 0.05, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    layer: HIGHWAY_DEPTH_LAYERS.overlay,
+    renderPass: "overlay",
+    meshResource: "cymbalMesh",
+    textureResource: "cymbalNote",
+  },
+  padGhost: {
+    id: "padGhost",
+    transform: {
+      position: { x: 0, y: 0.05, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
+    layer: HIGHWAY_DEPTH_LAYERS.overlay,
+    renderPass: "overlay",
+    meshResource: "padMesh",
+    textureResource: "padNote",
   },
   ghost: {
     id: "ghost",

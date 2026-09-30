@@ -29,18 +29,15 @@ import {
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import {
-  applyModelCalibration,
-  calibrationFromModel,
-  DEFAULT_NOTE_CALIBRATION,
-  DEFAULT_NOTE_SCALE_MULTIPLIER,
   noteWorldPosition,
-  scaleNoteCalibration,
   setModelState,
   sustainWorldTransform,
-  type ModelCalibration,
 } from "./geometry";
 import { HighwayHitTester } from "./hitTesting";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
+import {
+  DRUM_GHOST_GEOMETRY_IDS,
+  HIGHWAY_GEOMETRY_CATALOG,
+} from "./geometryCatalog";
 import { getSustainCutTargets } from "./interaction";
 import {
   createMaterialSet,
@@ -60,7 +57,6 @@ import {
 import type { HighwayPhraseEditingController } from "./phraseEditing";
 import type { MarqueeDragState } from "./types";
 import { primitiveRoles } from "../../../rendering/registry";
-import type { NoteSizeDebugState } from "../AbstractChartView";
 import {
   drumLaneCount,
   getDrumNoteProfile,
@@ -207,10 +203,6 @@ export class HighwayRenderer {
   private sceneReady = false;
   private assetsReady = false;
   private materials: MaterialSet | null = null;
-  private noteCalibration: ModelCalibration = DEFAULT_NOTE_CALIBRATION;
-  private noteSizeDebugState: NoteSizeDebugState = {
-    ...DEFAULT_NOTE_SCALE_MULTIPLIER,
-  };
   private fretAssemblies: THREE.Group[] = [];
   private ghostGem: InstancedNote | null = null;
   private readonly drumGhostGems: Partial<
@@ -382,12 +374,12 @@ export class HighwayRenderer {
       const instancedGem = this.acquireGem(note.noteOn, usedGems, instanceKind);
       if (!instancedGem) continue;
       usedGems.add(instancedGem);
-      const calibration = this.getEffectiveNoteCalibration();
-      applyModelCalibration(instancedGem.object, calibration);
+      const transform =
+        HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"].transform;
       const position = noteWorldPosition(
         drumKind === "kick" ? 0 : this.coordinates.getLaneX(lane),
         this.coordinates.getNoteZ(note.start),
-        calibration,
+        transform,
       );
       instancedGem.object.position.set(position.x, position.y, position.z);
       instancedGem.object.renderOrder = 20;
@@ -413,21 +405,6 @@ export class HighwayRenderer {
     });
     this.drawGhostGem();
     this.drawHoverOutline(chart);
-  }
-
-  public getNoteSizeDebugState(): NoteSizeDebugState | null {
-    return this.sceneReady ? structuredClone(this.noteSizeDebugState) : null;
-  }
-
-  public applyNoteSizeDebugState(state: NoteSizeDebugState): boolean {
-    if (!this.sceneReady) return false;
-    this.noteSizeDebugState = structuredClone(state);
-    this.applyNoteCalibrationToInstances();
-    return true;
-  }
-
-  public getEffectiveNoteCalibration(): ModelCalibration {
-    return scaleNoteCalibration(this.noteCalibration, this.noteSizeDebugState);
   }
 
   public updateMarqueeOutline(marquee: MarqueeDragState | null): void {
@@ -528,9 +505,7 @@ export class HighwayRenderer {
       await this.assetRegistry.loadResources();
       if (!this.sceneReady) return;
       this.materials = createMaterialSet(this.assetRegistry.textures);
-      const { note, kick, cymbal, pad, fretTop, fretBase } =
-        this.assetRegistry.meshes;
-      this.noteCalibration = calibrationFromModel(note.value!);
+      const { note, fretTop, fretBase } = this.assetRegistry.meshes;
       this.gemInstances.push(
         ...createNoteInstances(
           this.scene,
@@ -538,11 +513,21 @@ export class HighwayRenderer {
           this.materials,
           laneRgbColors,
           instanceSizePerLane,
-          this.getEffectiveNoteCalibration(),
+          HIGHWAY_GEOMETRY_CATALOG.note.transform,
           primitiveRoles.note,
         ),
       );
-      const drumModels = { kick, cymbal, pad };
+      const drumModels = {
+        kick: this.assetRegistry.getMesh(
+          HIGHWAY_GEOMETRY_CATALOG.kick.meshResource!,
+        )!,
+        cymbal: this.assetRegistry.getMesh(
+          HIGHWAY_GEOMETRY_CATALOG.cymbal.meshResource!,
+        )!,
+        pad: this.assetRegistry.getMesh(
+          HIGHWAY_GEOMETRY_CATALOG.pad.meshResource!,
+        )!,
+      };
       const drumPrimitiveRoles: Record<
         DrumPlacementKind,
         readonly PrimitiveMaterialRole[]
@@ -559,19 +544,21 @@ export class HighwayRenderer {
             this.materials.drum[kind],
             kind === "kick" ? [kickColor] : drumLaneRgbColors,
             instanceSizePerLane,
-            this.getEffectiveNoteCalibration(),
+            HIGHWAY_GEOMETRY_CATALOG[kind].transform,
             drumPrimitiveRoles[kind],
           ),
         );
         const variants = this.materials.drum[kind];
+        const ghostGeometry =
+          HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
         const ghost = createModelInstance(
-          drumModels[kind].value!,
+          this.assetRegistry.getMesh(ghostGeometry.meshResource!)!.value!,
           (primitiveIndex) =>
             (drumPrimitiveRoles[kind][primitiveIndex] === "tinted"
               ? variants.noteGhostTinted
               : variants.noteGhostGrayscale
             ).clone(),
-          this.getEffectiveNoteCalibration(),
+          ghostGeometry.transform,
         );
         ghost.meshes.forEach((mesh, primitiveIndex) =>
           setMaterialState(mesh, {
@@ -640,7 +627,7 @@ export class HighwayRenderer {
             ? this.materials!.noteGhostTinted
             : this.materials!.noteGhostGrayscale
           ).clone(),
-        this.getEffectiveNoteCalibration(),
+        HIGHWAY_GEOMETRY_CATALOG.ghost.transform,
       );
       this.ghostGem.meshes.forEach((mesh, primitiveIndex) =>
         setMaterialState(mesh, {
@@ -1157,20 +1144,6 @@ export class HighwayRenderer {
     return used;
   }
 
-  private applyNoteCalibrationToInstances(): void {
-    const calibration = this.getEffectiveNoteCalibration();
-    this.gemInstances
-      .flat()
-      .forEach(({ object }) => applyModelCalibration(object, calibration));
-    Object.values(this.drumGemInstances)
-      .flat(2)
-      .forEach(({ object }) => applyModelCalibration(object, calibration));
-    if (this.ghostGem) applyModelCalibration(this.ghostGem.object, calibration);
-    Object.values(this.drumGhostGems).forEach((gem) => {
-      if (gem) applyModelCalibration(gem.object, calibration);
-    });
-  }
-
   private drawGhostGem(): void {
     const location = this.context.getGhostNoteLocation();
     const chart = this.context.getCurrentChart();
@@ -1199,17 +1172,16 @@ export class HighwayRenderer {
       ghostGem.object.visible = false;
       return;
     }
-    const position = noteWorldPosition(
-      this.context.getDrumPlacementKind() === "kick" &&
-        chart?.getTrack().getKey() === "drums"
-        ? 0
-        : this.coordinates.getLaneX(location.lane),
-      this.coordinates.getNoteZ(location.tick),
-      this.getEffectiveNoteCalibration(),
-    );
     const isDrumKick = isDrumChart && drumKind === "kick";
-    const calibration = this.getEffectiveNoteCalibration();
-    applyModelCalibration(ghostGem.object, calibration);
+    const transform =
+      HIGHWAY_GEOMETRY_CATALOG[
+        drumKind ? DRUM_GHOST_GEOMETRY_IDS[drumKind] : "ghost"
+      ].transform;
+    const position = noteWorldPosition(
+      isDrumKick ? 0 : this.coordinates.getLaneX(location.lane),
+      this.coordinates.getNoteZ(location.tick),
+      transform,
+    );
     const laneColor = isDrumKick
       ? kickColor
       : chart?.getTrack().getKey() === "drums"

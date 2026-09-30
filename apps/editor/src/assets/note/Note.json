@@ -1,0 +1,8 @@
+{
+  "mesh": "Note.glb",
+  "material": {
+    "diffuse": null,
+    "emission": "Note.png",
+    "emissionMask": "NoteEmissionMask.png"
+  }
+}

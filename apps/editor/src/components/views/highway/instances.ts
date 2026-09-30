@@ -6,11 +6,8 @@ import {
   type MaterialState,
   type Rgb,
 } from "./materials";
-import {
-  applyModelCalibration,
-  meshesInModel,
-  type ModelCalibration,
-} from "./geometry";
+import { applyGeometryModelTransform, meshesInModel } from "./geometry";
+import type { Transform3D } from "./geometryCatalog";
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
 type MaterialSource =
@@ -65,10 +62,10 @@ export function visibleInstanceItems<T extends { start: number; end: number }>(
 export function createModelInstance(
   template: THREE.Object3D,
   material: MaterialSource,
-  calibration?: ModelCalibration,
+  transform: Transform3D,
 ): InstancedNote {
   const { object, meshes } = cloneModelMeshes(template, material);
-  if (calibration) applyModelCalibration(object, calibration);
+  applyGeometryModelTransform(object, transform);
   object.visible = false;
   return { object, meshes, selected: false };
 }
@@ -79,7 +76,7 @@ export function createNoteInstances(
   materialSet: Pick<MaterialSet, "noteTinted" | "noteGrayscale">,
   colors: Rgb[],
   instanceSize: number,
-  calibration: ModelCalibration,
+  transform: Transform3D,
   primitiveRoles: readonly PrimitiveMaterialRole[] = [],
 ): InstancedNote[][] {
   return colors.map((color) => {
@@ -91,7 +88,7 @@ export function createNoteInstances(
           primitiveRoles[primitiveIndex] === "tinted"
             ? materialSet.noteTinted.clone()
             : materialSet.noteGrayscale.clone(),
-        calibration,
+        transform,
       );
       applyPrimitiveMaterialStates(note.meshes, primitiveRoles, (role) => ({
         baseColor: color,

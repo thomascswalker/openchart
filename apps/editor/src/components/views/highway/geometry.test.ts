@@ -1,18 +1,17 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import {
-  calibrationFromModel,
-  DEFAULT_NOTE_CALIBRATION,
-  scaleNoteCalibration,
+  applyGeometryModelTransform,
   noteWorldPosition,
   sustainWorldTransform,
 } from "./geometry";
+import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
 
 describe("circular highway geometry", () => {
   it("keeps note timing on the existing lane/depth mapping", () => {
     expect(noteWorldPosition(-1.2, -3.5)).toEqual({
       x: -1.2,
-      y: 0.1,
+      y: 0.05,
       z: -3.5,
     });
   });
@@ -24,48 +23,19 @@ describe("circular highway geometry", () => {
     });
   });
 
-  it("uses a normalized note calibration for the strike-line fret", () => {
-    expect(DEFAULT_NOTE_CALIBRATION.width).toBeGreaterThan(0);
-    expect(DEFAULT_NOTE_CALIBRATION.noteModelRotation.x).toBe(270);
-    expect(DEFAULT_NOTE_CALIBRATION.height).toBe(1);
-    expect(DEFAULT_NOTE_CALIBRATION.depth).toBe(1);
-  });
+  it("applies the catalog transform directly to note models", () => {
+    const model = new THREE.Group();
+    const transform = HIGHWAY_GEOMETRY_CATALOG.pad.transform;
 
-  it("applies debug scale multipliers to model size and hit-test dimensions", () => {
-    const scaled = scaleNoteCalibration(DEFAULT_NOTE_CALIBRATION, {
-      x: 1.5,
-      y: 2,
-      z: 0.5,
+    applyGeometryModelTransform(model, transform);
+
+    expect(model.scale.toArray()).toEqual([1, 0.45, 0.45]);
+    expect(model.rotation.x).toBe(0);
+    expect(model.position.toArray()).toEqual([0, 0, 0]);
+    expect(noteWorldPosition(1, -2, transform)).toEqual({
+      x: 1,
+      y: 0.05,
+      z: -2,
     });
-
-    expect(scaled.noteModelScale).toEqual({ x: 0.675, y: 0.9, z: 0.225 });
-    expect(scaled.noteModelOffset).toEqual({ x: 0, y: 0.05, z: 0 });
-    expect(scaled.width).toBe(1.5);
-    expect(scaled.height).toBe(2);
-    expect(scaled.depth).toBe(0.5);
-  });
-
-  it("falls back when imported model bounds are unavailable", () => {
-    const model = new THREE.Group();
-
-    expect(calibrationFromModel(model)).toEqual(DEFAULT_NOTE_CALIBRATION);
-  });
-
-  it("calibrates the generated note as a player-facing XY model", () => {
-    const model = new THREE.Group();
-    model.add(
-      new THREE.Mesh(
-        new THREE.BoxGeometry(2, 2, 0.4),
-        new THREE.MeshBasicMaterial(),
-      ),
-    );
-
-    const calibration = calibrationFromModel(model);
-
-    expect(calibration.noteModelRotation).toEqual({ x: 270, y: 0, z: 0 });
-    expect(calibration.width).toBeCloseTo(1);
-    expect(calibration.height).toBeCloseTo(1);
-    expect(calibration.depth).toBeCloseTo(0.2);
-    expect(calibration.noteModelOffset.z).toBeCloseTo(0);
   });
 });

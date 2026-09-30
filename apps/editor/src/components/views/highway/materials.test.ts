@@ -1,5 +1,11 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { rgbFromHex } from "./materials";
+import { createMaterialSet, rgbFromHex } from "./materials";
+import type { TextureResource } from "../../../rendering/registry";
+import {
+  DRUM_GHOST_GEOMETRY_IDS,
+  HIGHWAY_GEOMETRY_CATALOG,
+} from "./geometryCatalog";
 
 export const CIRCULAR_SHADER_ATTRIBUTES = {
   position: "position",
@@ -56,5 +62,60 @@ describe("circular material state contract", () => {
       normal: "normal",
       uv: "uv",
     });
+  });
+
+  it("uses the shared note fragment shader for every drum note variant", () => {
+    const texturesByName = Object.fromEntries(
+      [
+        "fret",
+        "note",
+        "noteEmissionMask",
+        "kickNote",
+        "cymbalNote",
+        "padNote",
+        "sustain",
+        "sustainEmission",
+      ].map((key) => [key, new THREE.Texture()]),
+    );
+    const textures = Object.fromEntries(
+      [
+        "fret",
+        "note",
+        "noteEmissionMask",
+        "kickNote",
+        "cymbalNote",
+        "padNote",
+        "sustain",
+        "sustainEmission",
+      ].map((key) => [key, { value: texturesByName[key] }]),
+    ) as unknown as Record<string, TextureResource>;
+    const materials = createMaterialSet(textures);
+
+    for (const variants of Object.values(materials.drum)) {
+      for (const material of Object.values(variants)) {
+        expect(material.fragmentShader).toBe(
+          materials.noteTinted.fragmentShader,
+        );
+      }
+    }
+
+    expect(materials.drum.kick.noteTinted.uniforms.uBaseTexture.value).toBe(
+      texturesByName.kickNote,
+    );
+    expect(materials.drum.cymbal.noteTinted.uniforms.uBaseTexture.value).toBe(
+      texturesByName.cymbalNote,
+    );
+    expect(materials.drum.pad.noteTinted.uniforms.uBaseTexture.value).toBe(
+      texturesByName.padNote,
+    );
+    for (const kind of ["kick", "cymbal", "pad"] as const) {
+      const ghostGeometry =
+        HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
+      expect(
+        materials.drum[kind].noteGhostTinted.uniforms.uBaseTexture.value,
+      ).toBe(texturesByName[ghostGeometry.textureResource!]);
+    }
+    materials.destroy();
+    Object.values(texturesByName).forEach((texture) => texture.dispose());
   });
 });

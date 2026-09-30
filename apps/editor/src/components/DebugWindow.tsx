@@ -3,9 +3,7 @@ import { useEditor } from "../context/EditorContext";
 import { usePlayback } from "../context/PlaybackContextStore";
 import {
   isCameraDebugView,
-  isNoteSizeDebugView,
   type CameraDebugState,
-  type NoteSizeDebugState,
 } from "./views/AbstractChartView";
 import type { ChartView } from "./views/ChartViews";
 
@@ -151,109 +149,6 @@ function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
               <input
                 type="number"
                 step={step}
-                value={draft[key]}
-                onChange={(event) => updateDraft(key, event.target.value)}
-              />
-            </label>
-          ))}
-        </div>
-        <div className="debug-camera__actions">
-          <button type="submit">Apply</button>
-          <button type="button" onClick={handleReset}>
-            Reset
-          </button>
-        </div>
-        {error ? <p className="debug-camera__error">{error}</p> : null}
-      </form>
-    </section>
-  );
-}
-
-type NoteSizeDraft = {
-  x: string;
-  y: string;
-  z: string;
-};
-
-function noteSizeStateToDraft(state: NoteSizeDebugState): NoteSizeDraft {
-  return { x: String(state.x), y: String(state.y), z: String(state.z) };
-}
-
-function noteSizeDraftToState(draft: NoteSizeDraft): NoteSizeDebugState | null {
-  const state = {
-    x: Number(draft.x),
-    y: Number(draft.y),
-    z: Number(draft.z),
-  };
-  return Object.values(state).every(Number.isFinite) ? state : null;
-}
-
-function NoteSizeDebugSection({ chartView }: { chartView: ChartView | null }) {
-  const noteSizeView = isNoteSizeDebugView(chartView) ? chartView : null;
-  const [draft, setDraft] = useState<NoteSizeDraft | null>(() => {
-    const state = noteSizeView?.getNoteSizeDebugState() ?? null;
-    return state ? noteSizeStateToDraft(state) : null;
-  });
-  const [error, setError] = useState<string | null>(null);
-
-  if (!noteSizeView || !draft) {
-    return null;
-  }
-
-  const updateDraft = (field: keyof NoteSizeDraft, value: string): void => {
-    setDraft((current) => (current ? { ...current, [field]: value } : current));
-    setError(null);
-  };
-
-  const handleApply = (): void => {
-    const state = noteSizeDraftToState(draft);
-    if (!state || !noteSizeView.applyNoteSizeDebugState(state)) {
-      setError("Enter note scale values from 0.1 to 10.");
-      return;
-    }
-
-    setDraft(
-      noteSizeStateToDraft(noteSizeView.getNoteSizeDebugState() ?? state),
-    );
-    setError(null);
-  };
-
-  const handleReset = (): void => {
-    if (!noteSizeView.resetNoteSizeDebugState()) {
-      setError("Highway is not mounted.");
-      return;
-    }
-
-    const state = noteSizeView.getNoteSizeDebugState();
-    setDraft(state ? noteSizeStateToDraft(state) : null);
-    setError(null);
-  };
-
-  const fields: { key: keyof NoteSizeDraft; label: string }[] = [
-    { key: "x", label: "Scale X" },
-    { key: "y", label: "Scale Y" },
-    { key: "z", label: "Scale Z" },
-  ];
-
-  return (
-    <section className="debug-panel__section">
-      <h2>Highway note size</h2>
-      <form
-        className="debug-camera"
-        onSubmit={(event) => {
-          event.preventDefault();
-          handleApply();
-        }}
-      >
-        <div className="debug-camera__grid">
-          {fields.map(({ key, label }) => (
-            <label key={key} className="debug-camera__field">
-              <span>{label}</span>
-              <input
-                type="number"
-                min="0.1"
-                max="10"
-                step="0.05"
                 value={draft[key]}
                 onChange={(event) => updateDraft(key, event.target.value)}
               />
@@ -426,10 +321,6 @@ function DebugPanel({
 
       <CameraDebugSection
         key={chartView?.constructor.name ?? "no-camera"}
-        chartView={chartView}
-      />
-      <NoteSizeDebugSection
-        key={`note-size-${chartView?.constructor.name ?? "none"}`}
         chartView={chartView}
       />
     </aside>

@@ -3,6 +3,10 @@ import solidFragmentSource from "./shaders/solid.frag.glsl?raw";
 import texturedFragmentSource from "./shaders/note.frag.glsl?raw";
 import texturedVertexSource from "./shaders/vert.glsl?raw";
 import type { TextureResource } from "../../../rendering/registry";
+import {
+  DRUM_GHOST_GEOMETRY_IDS,
+  HIGHWAY_GEOMETRY_CATALOG,
+} from "./geometryCatalog";
 import type { DrumPlacementKind } from "./drumProfile";
 
 export type Rgb = [number, number, number];
@@ -209,28 +213,38 @@ export function createMaterialSet(
     frag: solidFragmentSource,
   });
   const createDrumMaterials = (
-    name: string,
-    texture: THREE.Texture,
-  ): NoteMaterialVariants => ({
-    noteTinted: manager.create(`${name}Color`, {
-      color: texture,
-      emission: texture,
-    }),
-    noteGrayscale: manager.create(`${name}Neutral`, {
-      color: texture,
-      emission: texture,
-    }),
-    noteGhostTinted: manager.create(`${name}GhostColor`, {
-      color: texture,
-      emission: texture,
-      transparent: true,
-    }),
-    noteGhostGrayscale: manager.create(`${name}GhostNeutral`, {
-      color: texture,
-      emission: texture,
-      transparent: true,
-    }),
-  });
+    kind: DrumPlacementKind,
+  ): NoteMaterialVariants => {
+    const geometry = HIGHWAY_GEOMETRY_CATALOG[kind];
+    const texture = textures[geometry.textureResource!].value!;
+    const ghostGeometry =
+      HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
+    const ghostTexture = textures[ghostGeometry.textureResource!].value!;
+    return {
+      noteTinted: manager.create(`${kind}Color`, {
+        color: texture,
+        emission: texture,
+        frag: texturedFragmentSource,
+      }),
+      noteGrayscale: manager.create(`${kind}Neutral`, {
+        color: texture,
+        emission: texture,
+        frag: texturedFragmentSource,
+      }),
+      noteGhostTinted: manager.create(`${kind}GhostColor`, {
+        color: ghostTexture,
+        emission: ghostTexture,
+        transparent: true,
+        frag: texturedFragmentSource,
+      }),
+      noteGhostGrayscale: manager.create(`${kind}GhostNeutral`, {
+        color: ghostTexture,
+        emission: ghostTexture,
+        transparent: true,
+        frag: texturedFragmentSource,
+      }),
+    };
+  };
   return {
     fretTinted: fretColor,
     fretGrayscale: fretNeutral,
@@ -239,9 +253,9 @@ export function createMaterialSet(
     noteGhostTinted: noteGhostColor,
     noteGhostGrayscale: noteGhostNeutral,
     drum: {
-      kick: createDrumMaterials("kick", textures.kickNote.value!),
-      cymbal: createDrumMaterials("cymbal", textures.cymbalNote.value!),
-      pad: createDrumMaterials("pad", textures.padNote.value!),
+      kick: createDrumMaterials("kick"),
+      cymbal: createDrumMaterials("cymbal"),
+      pad: createDrumMaterials("pad"),
     },
     sustain,
     destroy() {

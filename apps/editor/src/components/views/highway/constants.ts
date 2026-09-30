@@ -14,8 +14,6 @@ export const phraseStartBoundaryIndicatorColor = phrasePlacementIndicatorColor;
 export const phraseEndBoundaryIndicatorColor = phrasePlacementIndicatorColor;
 export const phraseBoundaryIndicatorThickness =
   phrasePlacementIndicatorThickness;
-export const minimumNoteScale = 0.1;
-export const maximumNoteScale = 10;
 export const laneColors = [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316];
 export const laneCount = laneColors.length;
 export const drumLaneColors = [0xdc2626, 0xfacc15, 0x2563eb, 0x00a651];
