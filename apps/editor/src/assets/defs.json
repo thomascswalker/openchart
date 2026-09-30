@@ -1,0 +1,91 @@
+{
+  "meshes": {
+    "roundNote": {
+      "root": "./Round",
+      "mesh": "RoundNote.glb",
+      "material": "roundNote",
+      "materialIds": [
+        "RoundNoteTop",
+        "RoundNoteColor",
+        "RoundNoteIndicator",
+        "RoundNoteBottom"
+      ]
+    },
+    "rectNote": {
+      "root": "./Rect",
+      "mesh": "RectNote.glb",
+      "material": "rectNote",
+      "materialIds": ["RectNoteBase", "RectNoteSides", "RectNoteColor"]
+    },
+    "kickNote": {
+      "root": "./Kick",
+      "mesh": "KickNote.glb",
+      "material": "kickNote",
+      "materialIds": ["KickNoteSides", "KickNoteBase"]
+    },
+    "cymbalNote": {
+      "root": "./Cymbal",
+      "mesh": "CymbalNote.glb",
+      "material": "cymbalNote",
+      "materialIds": ["CymbalNoteBase", "CymbalNoteSides", "CymbalNoteColor"]
+    },
+    "sustain": {
+      "root": "./Sustain",
+      "mesh": null,
+      "material": "sustain",
+      "materialIds": []
+    },
+    "fret": {
+      "root": "./Fret",
+      "mesh": "Fret.glb",
+      "material": "fret",
+      "materialIds": ["FretBase", "FretColor"]
+    }
+  },
+  "materials": {
+    "roundNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "RoundNote_E.png",
+        "emissionMaskTex": "RoundNote_M.png"
+      }
+    },
+    "rectNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "RectNote_E.png"
+      }
+    },
+    "kickNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "KickNote_E.png"
+      }
+    },
+    "cymbalNote": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "CymbalNote_E.png"
+      }
+    },
+    "sustain": {
+      "vert": "vert.glsl",
+      "pixel": "solid.frag.glsl",
+      "properties": {
+        "diffuseTex": "Sustain_D.png",
+        "emissionTex": "Sustain_E.png"
+      }
+    },
+    "fret": {
+      "vert": "vert.glsl",
+      "pixel": "note.frag.glsl",
+      "properties": {
+        "emissionTex": "Fret_E.png"
+      }
+    }
+  }
+}
