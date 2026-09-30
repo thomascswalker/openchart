@@ -12,6 +12,7 @@
     "desktop:build": "npm run build --workspace=@midiedit/desktop",
     "dev": "npm run dev:web",
     "dev:web": "turbo run dev --filter=@midiedit/editor",
+    "dev:geometry": "npm run dev:geometry --workspace=@midiedit/editor",
     "dev:desktop": "npm run dev --workspace=@midiedit/desktop",
     "lint": "eslint --config eslint.config.js .",
     "format": "prettier --write .",
