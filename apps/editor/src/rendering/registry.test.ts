@@ -196,7 +196,7 @@ describe("registry resource ownership", () => {
     await firstLoad;
 
     expect(meshLoad).toHaveBeenCalledTimes(4);
-    expect(textureLoad).toHaveBeenCalledTimes(7);
+    expect(textureLoad).toHaveBeenCalledTimes(8);
     expect(registry.getMesh("roundNote")).toBe(registry.getMesh("roundNote"));
     expect(registry.getMesh("roundNote").bounds).toBeInstanceOf(THREE.Box3);
     const emissionTexture = resolvedTexture(
@@ -211,7 +211,7 @@ describe("registry resource ownership", () => {
 
     registry.dispose();
     expect(disposedGeometries).toHaveLength(4);
-    expect(disposedTextures).toHaveLength(7);
+    expect(disposedTextures).toHaveLength(8);
   });
 
   it("releases assets that finish loading after registry disposal", async () => {
