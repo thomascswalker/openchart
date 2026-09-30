@@ -105,7 +105,7 @@ labelRenderer.setSize(viewport.clientWidth, viewport.clientHeight);
 viewport.append(labelRenderer.domElement);
 
 const camera = new THREE.PerspectiveCamera(
-  42,
+  25,
   viewport.clientWidth / viewport.clientHeight,
   0.1,
   1000,
@@ -147,7 +147,9 @@ function placeSample(
   label?: GalleryLabel,
 ): void {
   object.position.copy(gridPosition(row, column));
-  if (label) addLabel(object, label);
+  if (label) {
+    addLabel(object, label);
+  }
   scene.add(object);
   galleryObjects.push(object);
 }
