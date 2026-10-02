@@ -161,7 +161,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     meshKey: "kickNote",
     materialKey: "kickNote",
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: "sustain",
   },
   kickGhost: {
     id: "kickGhost",
@@ -170,16 +170,16 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     meshKey: "kickNote",
     materialKey: "kickNote",
     layer: HIGHWAY_DEPTH_LAYERS.overlay,
-    renderPass: "overlay",
+    renderPass: "sustain",
   },
   cymbal: {
     id: "cymbal",
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
     meshKey: "cymbalNote",
-    materialKey: "cymbalNote",
+    materialKey: "roundNote",
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "topNote",
+    renderPass: "note",
   },
   cymbalGhost: {
     id: "cymbalGhost",
@@ -197,7 +197,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     meshKey: "roundNote",
     materialKey: "roundNote",
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "topNote",
+    renderPass: "note",
   },
   padGhost: {
     id: "padGhost",
