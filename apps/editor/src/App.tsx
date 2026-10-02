@@ -1,10 +1,13 @@
 import "./App.css";
 import Editor from "./components/Editor";
+import Platform, { PlatformProvider } from "./platform";
 
 function App() {
   return (
     <section>
-      <Editor />
+      <PlatformProvider value={Platform}>
+        <Editor />
+      </PlatformProvider>
     </section>
   );
 }
