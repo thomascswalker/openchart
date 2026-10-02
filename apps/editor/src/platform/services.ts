@@ -2,12 +2,21 @@ export interface ServicesAccessor {
   get<T>(serviceId: string): T;
 }
 
-export class ServiceRegistry {
-  private ctors = new Map<string, any>();
-  private instances = new Map<string, any>();
+type ServiceConstructor = new (...dependencies: any[]) => unknown;
 
-  public register(id: string, ctor: any): void {
+export class ServiceRegistry {
+  private ctors = new Map<string, ServiceConstructor>();
+  private instances = new Map<string, unknown>();
+
+  public register(id: string, ctor: ServiceConstructor): void {
+    if (this.ctors.has(id)) {
+      throw new Error(`Service ${id} is already registered.`);
+    }
     this.ctors.set(id, ctor);
+  }
+
+  public hasService(id: string): boolean {
+    return this.ctors.has(id);
   }
 
   public get<T>(id: string): T {
@@ -20,12 +29,14 @@ export class ServiceRegistry {
       throw new Error(`No service class registered under ID: ${id}`);
     }
 
-    const dependencies: string[] = TargetClass.dependencies || [];
+    const dependencies: string[] =
+      (TargetClass as ServiceConstructor & { dependencies?: string[] })
+        .dependencies ?? [];
     const resolved = dependencies.map((depId) => this.get(depId));
     const instance = new TargetClass(...resolved);
     this.instances.set(id, instance);
 
-    return instance;
+    return instance as T;
   }
 
   public createAccessor(): ServicesAccessor {

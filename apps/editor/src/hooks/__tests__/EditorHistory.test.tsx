@@ -1,0 +1,143 @@
+import { act, useState } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { describe, expect, it } from "vitest";
+import { Midi } from "@midiedit/core";
+import { Runtime } from "../../components/Runtime";
+import { Playback } from "../../components/Playback";
+import { useEditorState } from "../useEditorState";
+import { executeEditorAction } from "../../actions/execute";
+import Platform from "../../platform";
+import { DocumentService } from "../../services/document";
+import { useDocumentSnapshot } from "../useDocumentSnapshot";
+
+function HistoryHarness() {
+  const { midiData, canUndoMidi, canRedoMidi } = useDocumentSnapshot();
+  const document = Platform.services.get<DocumentService>("document");
+  const { isDirty } = useEditorState();
+  const [view, setView] = useState<"highway" | "piano-roll">("highway");
+
+  const addNote = (): void => {
+    if (!midiData) return;
+    if (midiData.tracks.length === 0) midiData.addTrack();
+    midiData.tracks[0]?.addNote(60, 0, 100, 120);
+    void executeEditorAction("history.record-edit").catch(() => {});
+    void executeEditorAction("document.mark-dirty").catch(() => {});
+  };
+
+  return (
+    <>
+      <output data-testid="note-count">
+        {midiData?.tracks[0]?.getNotes().length ?? 0}
+      </output>
+      <output data-testid="history-state">
+        {`${canUndoMidi}:${canRedoMidi}:${isDirty}`}
+      </output>
+      <output data-testid="view">{view}</output>
+      <button type="button" onClick={addNote}>
+        Add note
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          setView((current) =>
+            current === "highway" ? "piano-roll" : "highway",
+          )
+        }
+      >
+        Switch view
+      </button>
+      <button type="button" onClick={() => document.setMidiData(new Midi())}>
+        Replace document
+      </button>
+      <input aria-label="Text field" />
+    </>
+  );
+}
+
+function renderHistory(): { container: HTMLDivElement; root: Root } {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  act(() =>
+    root.render(
+      <Runtime>
+        <Playback>
+          <HistoryHarness />
+        </Playback>
+      </Runtime>,
+    ),
+  );
+  return { container, root };
+}
+
+async function pressShortcut(
+  target: EventTarget,
+  key: string,
+): Promise<KeyboardEvent> {
+  const event = new KeyboardEvent("keydown", {
+    key,
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  await act(async () => {
+    target.dispatchEvent(event);
+    await Promise.resolve();
+  });
+  return event;
+}
+
+describe("editor history commands", () => {
+  it("undoes and redoes shared MIDI edits across view switches", async () => {
+    const { container, root } = renderHistory();
+    const addButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Add note",
+    )!;
+    const switchButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Switch view",
+    )!;
+
+    expect((await pressShortcut(window, "z")).defaultPrevented).toBe(false);
+    act(() => addButton.click());
+    expect(
+      container.querySelector('[data-testid="note-count"]')?.textContent,
+    ).toBe("1");
+    act(() => switchButton.click());
+    expect(container.querySelector('[data-testid="view"]')?.textContent).toBe(
+      "piano-roll",
+    );
+
+    expect((await pressShortcut(window, "z")).defaultPrevented).toBe(true);
+    expect(
+      container.querySelector('[data-testid="note-count"]')?.textContent,
+    ).toBe("0");
+    expect(
+      container.querySelector('[data-testid="history-state"]')?.textContent,
+    ).toBe("false:true:true");
+
+    expect((await pressShortcut(window, "y")).defaultPrevented).toBe(true);
+    expect(
+      container.querySelector('[data-testid="note-count"]')?.textContent,
+    ).toBe("1");
+
+    const textField = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Text field"]',
+    )!;
+    expect((await pressShortcut(textField, "z")).defaultPrevented).toBe(false);
+    expect(
+      container.querySelector('[data-testid="note-count"]')?.textContent,
+    ).toBe("1");
+
+    const replaceButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Replace document",
+    )!;
+    act(() => replaceButton.click());
+    expect(
+      container.querySelector('[data-testid="history-state"]')?.textContent,
+    ).toBe("false:false:true");
+    expect((await pressShortcut(window, "z")).defaultPrevented).toBe(false);
+
+    act(() => root.unmount());
+    container.remove();
+  });
+});

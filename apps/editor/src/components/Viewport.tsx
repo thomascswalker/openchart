@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
-import { useEditor, type ViewportSession } from "../context/EditorContext";
-import { usePlayback } from "../context/PlaybackContextStore";
-import { useEditorCommands } from "../hooks/useEditorCommands";
+import { type ViewportSession } from "../services/editor/viewports";
+import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
+import { usePlayback } from "../hooks/usePlayback";
+import { executeEditorAction } from "../actions/execute";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -83,7 +85,8 @@ interface ViewportProps {
 }
 
 export const Viewport = ({ onChartViewReady }: ViewportProps) => {
-  const { viewportSessions, activeViewportId, maxViewportCount } = useEditor();
+  const { viewportSessions, activeViewportId, maxViewportCount } =
+    useViewportSnapshot();
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
       <div className="viewport-manager__toolbar">
@@ -119,38 +122,57 @@ function ViewportPanel({
   active: boolean;
   onChartViewReady: (view: ChartView | null) => void;
 }) {
-  const {
-    midiData,
-    viewportSessions,
-    maxViewportCount,
-    updateViewport,
-    addViewport,
-    closeViewport,
-    focusViewport,
-    snapEnabled,
-    snapDenominator,
-    setSnapDenominator,
-    beginMidiEdit,
-    recordMidiEdit,
-    endMidiEdit,
-  } = useEditor();
+  const { midiData } = useDocumentSnapshot();
+  const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
+    useViewportSnapshot();
   const {
     isPlaying,
     playbackTick: playheadTick,
-    setPlaybackTick,
-    refresh: refreshTotalTicks,
-    togglePlay,
     setActiveView,
     stopPreview,
   } = usePlayback();
-  const { markDirty } = useEditorCommands();
+  const setPlaybackTick = useCallback((tick: number): void => {
+    void executeEditorAction("playback.set-tick", tick).catch(() => {});
+  }, []);
+  const refreshTotalTicks = useCallback((): void => {
+    void executeEditorAction("playback.refresh").catch(() => {});
+  }, []);
+  const focusViewport = useCallback((id: string): void => {
+    void executeEditorAction("editor.focus-viewport", id).catch(() => {});
+  }, []);
+  const updateViewport = useCallback(
+    (id: string, update: Partial<Omit<ViewportSession, "id">>): void => {
+      void executeEditorAction("editor.update-viewport", id, update).catch(
+        () => {},
+      );
+    },
+    [],
+  );
+  const addViewport = useCallback(
+    (view: ViewportSession["view"], afterId?: string): void => {
+      void executeEditorAction("editor.add-viewport", view, afterId).catch(
+        () => {},
+      );
+    },
+    [],
+  );
+  const closeViewport = useCallback((id: string): void => {
+    void executeEditorAction("editor.close-viewport", id).catch(() => {});
+  }, []);
+  const setSnapDenominator = useCallback((denominator: number): void => {
+    void executeEditorAction("editor.set-snap-denominator", denominator).catch(
+      () => {},
+    );
+  }, []);
   const chartViewRef = useRef<ChartView | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
     useState<DrumPlacementKind>("pad");
-  const togglePlayRef = useRef(togglePlay);
-  togglePlayRef.current = togglePlay;
+  const togglePlayRef = useRef(() => {});
+  togglePlayRef.current = () => {
+    void executeEditorAction("playback.toggle").catch(() => {});
+  };
   const activeView =
     CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
   const selectedTrackIndex = midiData
@@ -236,12 +258,15 @@ function ViewportPanel({
     const view = chartViewRef.current;
     if (!view) return;
     view.onNotesChanged = () => {
-      recordMidiEdit();
-      markDirty();
+      void executeEditorAction("history.record-edit").catch(() => {});
       refreshTotalTicks();
     };
-    view.onEditStart = beginMidiEdit;
-    view.onEditEnd = endMidiEdit;
+    view.onEditStart = () => {
+      void executeEditorAction("history.begin-edit").catch(() => {});
+    };
+    view.onEditEnd = () => {
+      void executeEditorAction("history.end-edit").catch(() => {});
+    };
     view.onSeekRequest = setPlaybackTick;
     view.onSnapDenominatorChange = setSnapDenominator;
     view.onCameraChange = () =>
@@ -255,10 +280,6 @@ function ViewportPanel({
       view.onCameraChange = null;
     };
   }, [
-    markDirty,
-    recordMidiEdit,
-    beginMidiEdit,
-    endMidiEdit,
     refreshTotalTicks,
     session.id,
     setSnapDenominator,

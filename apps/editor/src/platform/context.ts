@@ -5,6 +5,16 @@ export class ContextStore {
     this.contexts.set(key, value);
   }
 
+  public get(key: string): any {
+    return this.contexts.get(key);
+  }
+
+  public update(obj: Record<string, any>): void {
+    for (const [key, value] of Object.entries(obj)) {
+      this.contexts.set(key, value);
+    }
+  }
+
   public evaluate(expression: Record<string, any> | undefined): boolean {
     if (!expression) {
       return true;

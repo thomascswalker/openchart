@@ -19,11 +19,13 @@ import {
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
 import { DropdownButton } from "../shared/Dropdown";
-import {
-  useEditor,
-  type ViewportKind,
-  type ViewportSession,
-} from "../../context/EditorContext";
+import type {
+  ViewportKind,
+  ViewportSession,
+} from "../../services/editor/viewports";
+import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
+import { executeEditorAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
 import { ToolButton } from "../shared/Button/Button";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
@@ -61,15 +63,12 @@ const Toolbar = ({
   drumPlacementKind,
   onDrumPlacementKindChange,
 }: ToolbarProps) => {
+  const { midiData } = useDocumentSnapshot();
   const {
-    midiData,
     activeViewId: globalView,
     snapEnabled,
-    setSnapEnabled,
     snapDenominator,
-    setSnapDenominator,
-    updateViewport,
-  } = useEditor();
+  } = useViewportSnapshot();
   const activeViewId = session.view ?? globalView;
 
   const handleViewChange = (kind: ViewportKind) => {
@@ -107,11 +106,20 @@ const Toolbar = ({
         ariaLabel="Toggle snap to grid"
         icon={<MagnetIcon />}
         active={snapEnabled}
-        onToggle={setSnapEnabled}
+        onToggle={(enabled) =>
+          void executeEditorAction("editor.set-snap-enabled", enabled).catch(
+            () => {},
+          )
+        }
         dropdownDisabled={!snapEnabled}
         dropdownWidth={60}
         value={String(snapDenominator)}
-        onChange={(value) => setSnapDenominator(Number(value))}
+        onChange={(value) =>
+          void executeEditorAction(
+            "editor.set-snap-denominator",
+            Number(value),
+          ).catch(() => {})
+        }
         options={SnapDenominators.map((denominator) => ({
           value: String(denominator),
           label: `1/${denominator}`,
@@ -192,12 +200,12 @@ const Toolbar = ({
                 !new SongView(midiData).getInstrumentTrackView(instrument)
               }
               active={session.instrument === instrument}
-              onClick={() =>
-                updateViewport(session.id, {
+              onClick={() => {
+                void executeEditorAction("editor.update-viewport", session.id, {
                   instrument,
                   trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
-                })
-              }
+                }).catch(() => {});
+              }}
             />
           ))}
 
@@ -208,7 +216,11 @@ const Toolbar = ({
               key={difficulty}
               Icon={icon}
               active={session.difficulty === difficulty}
-              onClick={() => updateViewport(session.id, { difficulty })}
+              onClick={() =>
+                void executeEditorAction("editor.update-viewport", session.id, {
+                  difficulty,
+                }).catch(() => {})
+              }
             ></ToolButton>
           ))}
         </Fragment>

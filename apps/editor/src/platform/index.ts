@@ -2,42 +2,32 @@ import { ActionRegistry } from "./actions";
 import { ContextStore } from "./context";
 import { ServiceRegistry } from "./services";
 import { createContext, useContext } from "react";
+import {
+  registerDiscoveredActions,
+  registerDiscoveredServices,
+} from "./discovery";
 
-type ServiceConstructor = new (...dependencies: unknown[]) => unknown;
 const serviceModules = import.meta.glob<Record<string, unknown>>(
-  "../services/*.ts",
+  "../services/**/*.ts",
   {
     eager: true,
   },
 );
+const actionModules = import.meta.glob<Record<string, unknown>>(
+  "../actions/**/*.ts",
+  { eager: true },
+);
 
 function bootstrap(): ServiceRegistry {
   const services = new ServiceRegistry();
-
-  for (const [filepath, module] of Object.entries(serviceModules)) {
-    const filename = filepath
-      .slice(filepath.lastIndexOf("/") + 1)
-      .replace(/\.ts$/, "");
-    const serviceId = `global.${filename}`;
-    const ServiceClass = Object.values(module).find(
-      (exported): exported is ServiceConstructor =>
-        typeof exported === "function",
-    );
-
-    if (!ServiceClass) {
-      throw new Error(`No service class exported from ${filepath}`);
-    }
-
-    services.register(serviceId, ServiceClass);
-    console.log(`Registered service: ${serviceId}`);
-  }
-
+  registerDiscoveredServices(services, serviceModules);
   return services;
 }
 
 const services = bootstrap();
 const context = new ContextStore();
 const actions = new ActionRegistry(services, context);
+registerDiscoveredActions(actions, actionModules);
 
 const Platform = {
   services,
@@ -53,5 +43,7 @@ function useService<T>(serviceId: string): T {
   return platform.services.get(serviceId) as T;
 }
 
+function usePlatform() { return useContext(PlatformContext); }
+
 export default Platform;
-export { PlatformContext, PlatformProvider, useService };
+export { PlatformContext, PlatformProvider, useService, usePlatform };

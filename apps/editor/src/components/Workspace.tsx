@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ChartView } from "./views/ChartViews";
 import { Viewport } from "./Viewport";
-import { DebugWindow } from "./DebugWindow";
+import { DebugWindow } from "./dialogs/DebugDialog";
 
 interface WorkspaceProps {
   debugVisible: boolean;

@@ -11,7 +11,7 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 export class FileSystemService {
-  static dependencies = ["global.logger"];
+  static dependencies = ["logger"];
 
   private _logger: ILoggerService;
   private _path: string;

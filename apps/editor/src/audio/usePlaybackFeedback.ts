@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Midi, MidiNote } from "@midiedit/core";
 import { Difficulty, SongView } from "@midiedit/views";
-import type { ApplicationSettings } from "../context/ApplicationSettingsContext";
+import type { ApplicationSettings } from "../services/settings";
 import {
   PlaybackFeedbackEngine,
   type PitchRange,
