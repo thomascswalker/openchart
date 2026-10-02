@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CommandRegistry } from "../commands";
+import { ActionRegistry } from "../actions";
 import { ContextStore } from "../context";
 import Platform from "../index";
 import { ServiceRegistry } from "../services";
@@ -11,10 +11,10 @@ describe("Platform", () => {
   it("constructs the registries and registers the service classes", () => {
     expect(Platform.services).toBeInstanceOf(ServiceRegistry);
     expect(Platform.context).toBeInstanceOf(ContextStore);
-    expect(Platform.commands).toBeInstanceOf(CommandRegistry);
+    expect(Platform.actions).toBeInstanceOf(ActionRegistry);
 
-    expect(Platform.commands.serviceRegistry).toBe(Platform.services);
-    expect(Platform.commands.contextStore).toBe(Platform.context);
+    expect(Platform.actions.serviceRegistry).toBe(Platform.services);
+    expect(Platform.actions.contextStore).toBe(Platform.context);
 
     expect(Platform.services.get("global.logger")).toBeInstanceOf(
       LoggerService,

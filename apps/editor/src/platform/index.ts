@@ -1,6 +1,6 @@
-import { CommandRegistry } from "./commands.js";
-import { ContextStore } from "./context.js";
-import { ServiceRegistry } from "./services.js";
+import { ActionRegistry } from "./actions";
+import { ContextStore } from "./context";
+import { ServiceRegistry } from "./services";
 import { createContext, useContext } from "react";
 
 type ServiceConstructor = new (...dependencies: unknown[]) => unknown;
@@ -37,12 +37,12 @@ function bootstrap(): ServiceRegistry {
 
 const services = bootstrap();
 const context = new ContextStore();
-const commands = new CommandRegistry(services, context);
+const actions = new ActionRegistry(services, context);
 
 const Platform = {
   services,
   context,
-  commands,
+  actions,
 };
 
 const PlatformContext = createContext(Platform);

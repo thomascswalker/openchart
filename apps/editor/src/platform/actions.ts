@@ -18,8 +18,8 @@ export abstract class Action {
   ): void | Promise<void>;
 }
 
-export class CommandRegistry {
-  private commands = new Map<string, Action>();
+export class ActionRegistry {
+  private actions = new Map<string, Action>();
   public serviceRegistry: ServiceRegistry;
   public contextStore: ContextStore;
 
@@ -28,19 +28,19 @@ export class CommandRegistry {
     this.contextStore = contextStore;
   }
 
-  public registerCommand(action: Action): void {
-    this.commands.set(action.options.id, action);
+  public registerAction(action: Action): void {
+    this.actions.set(action.options.id, action);
   }
 
-  public executeCommand(id: string, ...args: any[]): void {
-    const action = this.commands.get(id);
+  public executeAction(id: string, ...args: any[]): void {
+    const action = this.actions.get(id);
     if (!action) {
-      console.error(`Command ${id} not found.`);
+      console.error(`Action ${id} not found.`);
       return;
     }
 
     if (!this.contextStore.evaluate(action.options.condition)) {
-      console.warn(`Command ${id} cannot execute: Conditions not met.`);
+      console.warn(`Action ${id} cannot execute: Conditions not met.`);
       return;
     }
 

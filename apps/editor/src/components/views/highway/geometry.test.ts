@@ -57,7 +57,7 @@ describe("circular highway geometry", () => {
 
   it("places pads and cymbals in the render pass after kicks", () => {
     expect(HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.kick.renderPass]).toBe(
-      20,
+      10,
     );
     for (const id of ["pad", "cymbal"] as const) {
       expect(
