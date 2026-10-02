@@ -1,9 +1,9 @@
-import { Action, type ActionOptions } from "../platform/commands";
+import { Action, type ActionOptions } from "../platform/actions";
 import type { ServicesAccessor } from "../platform/services";
 import type { DocumentService } from "../services/document";
 
 const SaveFileDef: ActionOptions = {
-  id: "global.action",
+  id: "document.saveFile",
 };
 
 export class SaveFileAction extends Action {
@@ -11,8 +11,8 @@ export class SaveFileAction extends Action {
     super(SaveFileDef);
   }
 
-  run(accessor: ServicesAccessor, ..._: any[]): void | Promise<void> {
-    const doc = accessor.get<DocumentService>("IDocumentService");
+  run(accessor: ServicesAccessor): void | Promise<void> {
+    const doc = accessor.get<DocumentService>("global.document");
     const result = doc.save();
     console.log(`[LOG]: ${result}`);
   }
