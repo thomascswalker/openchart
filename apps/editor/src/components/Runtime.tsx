@@ -39,7 +39,7 @@ export function Runtime({ children }: RuntimeProps) {
     editorState.getSnapshot,
   );
 
-  const {context} = usePlatform();
+  const { context } = usePlatform();
   context.update({
     "document.has-tracks": Boolean(midiData?.trackCount),
     "history.can-undo": canUndoMidi,
@@ -60,13 +60,7 @@ export function Runtime({ children }: RuntimeProps) {
     doc.reset();
     editorViewports.reset();
     void audio.initialize();
-  }, [
-    audio,
-    doc,
-    editorState,
-    settingsService,
-    editorViewports,
-  ]);
+  }, [audio, doc, editorState, settingsService, editorViewports]);
 
   useEffect(() => {
     doc.setHistoryCapacity(settings.history.capacity);

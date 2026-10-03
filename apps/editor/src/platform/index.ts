@@ -8,13 +8,13 @@ import {
 } from "./discovery";
 
 const serviceModules = import.meta.glob<Record<string, unknown>>(
-  "../services/**/*.ts",
+  ["../services/**/*.ts", "!../services/**/__tests__/**"],
   {
     eager: true,
   },
 );
 const actionModules = import.meta.glob<Record<string, unknown>>(
-  "../actions/**/*.ts",
+  ["../actions/**/*.ts", "!../actions/**/__tests__/**"],
   { eager: true },
 );
 
@@ -43,7 +43,9 @@ function useService<T>(serviceId: string): T {
   return platform.services.get(serviceId) as T;
 }
 
-function usePlatform() { return useContext(PlatformContext); }
+function usePlatform() {
+  return useContext(PlatformContext);
+}
 
 export default Platform;
 export { PlatformContext, PlatformProvider, useService, usePlatform };

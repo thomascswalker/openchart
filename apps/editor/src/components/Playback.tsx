@@ -1,4 +1,9 @@
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { Difficulty } from "@midiedit/views";
 import { usePlaybackFeedback } from "../audio/usePlaybackFeedback";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
@@ -47,7 +52,7 @@ export function Playback({ children }: { children: ReactNode }) {
     timeline.canPlay && !timeline.isPlaying,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     feedbackService.setFeedback(feedback);
   }, [feedback, feedbackService]);
 

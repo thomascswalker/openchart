@@ -16,7 +16,7 @@ const Shell = () => {
   const { debugVisible, projectVisible, settingsVisible } = useEditorState();
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   const [chartView, setChartView] = useState<ChartView | null>(null);
-  const {services, actions} = usePlatform();
+  const { services, actions } = usePlatform();
 
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
   clipboard.setView(chartView);
@@ -123,4 +123,4 @@ const Shell = () => {
   );
 };
 
-export {Shell};
+export { Shell };
