@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { MidiNote } from "@midiedit/core";
 import {
-  PlaybackFeedbackEngine,
+  Soundboard,
   midiPitchToFrequency,
-  type FeedbackAudioContext,
-  type FeedbackSettings,
-} from "../PlaybackFeedbackEngine";
+  type AudioContext,
+  type SoundboardSettings,
+} from "../soundboard";
 
 class FakeParam {
   public value = 0;
@@ -40,7 +40,9 @@ class FakeGain {
   public connect(): void {}
 }
 
-function settings(overrides: Partial<FeedbackSettings> = {}): FeedbackSettings {
+function settings(
+  overrides: Partial<SoundboardSettings> = {},
+): SoundboardSettings {
   return {
     metronomeEnabled: false,
     metronomeVolume: 0.4,
@@ -85,8 +87,8 @@ describe("PlaybackFeedbackEngine", () => {
         return oscillator;
       },
       createGain: () => new FakeGain(),
-    } as unknown as FeedbackAudioContext;
-    const engine = new PlaybackFeedbackEngine(() => context);
+    } as unknown as AudioContext;
+    const engine = new Soundboard(() => context);
     engine.configure({
       midi: null,
       ppqn: 480,
@@ -120,8 +122,8 @@ describe("PlaybackFeedbackEngine", () => {
         return oscillator;
       },
       createGain: () => new FakeGain(),
-    } as unknown as FeedbackAudioContext;
-    const engine = new PlaybackFeedbackEngine(() => {
+    } as unknown as AudioContext;
+    const engine = new Soundboard(() => {
       contextCount++;
       return context;
     });
@@ -155,7 +157,7 @@ describe("PlaybackFeedbackEngine", () => {
 
   it("does not create audio when feedback is disabled", () => {
     let contextCount = 0;
-    const engine = new PlaybackFeedbackEngine(() => {
+    const engine = new Soundboard(() => {
       contextCount++;
       throw new Error("audio should remain lazy");
     });
@@ -190,8 +192,8 @@ describe("PlaybackFeedbackEngine", () => {
         return oscillator;
       },
       createGain: () => new FakeGain(),
-    } as unknown as FeedbackAudioContext;
-    const engine = new PlaybackFeedbackEngine(() => context);
+    } as unknown as AudioContext;
+    const engine = new Soundboard(() => context);
     engine.configure({
       midi: null,
       ppqn: 480,

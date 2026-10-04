@@ -1,4 +1,5 @@
 import type { ContextStore } from "./context";
+import { moduleId, type ModuleCollection } from "./modules";
 import type { ServiceRegistry, ServicesAccessor } from "./services";
 
 export interface ActionOptions {
@@ -43,15 +44,44 @@ interface RegisteredAction {
   options: ActionOptions;
   run(accessor: ServicesAccessor, ...args: unknown[]): unknown;
 }
+type ActionConstructor = new () => Action<unknown[], unknown>;
 
 export class ActionRegistry {
   private actions = new Map<string, RegisteredAction>();
   public serviceRegistry: ServiceRegistry;
   public contextStore: ContextStore;
 
-  constructor(serviceRegistry: ServiceRegistry, contextStore: ContextStore) {
+  constructor(
+    serviceRegistry: ServiceRegistry,
+    contextStore: ContextStore,
+    modules: ModuleCollection,
+  ) {
     this.serviceRegistry = serviceRegistry;
     this.contextStore = contextStore;
+
+    for (const filepath of Object.keys(modules).sort()) {
+      const id = moduleId(filepath, "actions");
+      if (!id) {
+        continue;
+      }
+
+      const actionClasses = Object.values(modules[filepath]).filter(
+        (candidate): candidate is ActionConstructor =>
+          typeof candidate === "function" &&
+          candidate.prototype instanceof Action,
+      );
+      if (!actionClasses.length) {
+        continue;
+      }
+      if (actionClasses.length > 1) {
+        throw new Error(`Multiple actions exported from ${filepath}.`);
+      }
+
+      const ActionClass = actionClasses[0];
+      if (ActionClass) {
+        this.registerAction(new ActionClass(), id);
+      }
+    }
   }
 
   public registerAction<Args extends unknown[], Result>(

@@ -12,13 +12,18 @@ import {
 } from "./musicalTime";
 import { NoteCrossingTracker } from "./noteCrossing";
 
-export type FeedbackOscillatorType = OscillatorType;
+const LOOK_AHEAD_MS = 120;
+const SCHEDULER_INTERVAL_MS = 25;
+const CLAP_SPACING_SECONDS = 0.025;
+const CLAP_VOLUME = 0.35;
+const HIGHWAY_VISIBLE_BEFORE_QUARTER_NOTES = 1;
+const HIGHWAY_VISIBLE_AFTER_QUARTER_NOTES = 16;
 
-export interface FeedbackSettings {
+export interface SoundboardSettings {
   metronomeEnabled: boolean;
   metronomeVolume: number;
-  metronomeDownbeatSound: FeedbackOscillatorType;
-  metronomeBeatSound: FeedbackOscillatorType;
+  metronomeDownbeatSound: OscillatorType;
+  metronomeBeatSound: OscillatorType;
   previewVolume: number;
   previewAttackMs: number;
   previewReleaseMs: number;
@@ -39,7 +44,7 @@ export interface PitchRange {
   high: number;
 }
 
-export interface FeedbackAudioContext {
+export interface AudioContext {
   currentTime: number;
   state: AudioContextState;
   destination: AudioNode;
@@ -49,14 +54,12 @@ export interface FeedbackAudioContext {
   createGain(): GainNode;
 }
 
-export type FeedbackAudioContextFactory = () => FeedbackAudioContext;
-
-export interface FeedbackConfigurationInput {
+export interface SoundboardConfigurationInput {
   midi: Midi | null | undefined;
   ppqn: number;
   tempoChanges: TempoChange[];
   timeSignatureChanges: TimeSignatureChange[];
-  settings: FeedbackSettings;
+  settings: SoundboardSettings;
   clapEnabled: boolean;
   highwayActive: boolean;
   highwayNotes: readonly MidiNote[];
@@ -68,17 +71,10 @@ interface ActiveVoice {
   gain: GainNode;
 }
 
-const LOOK_AHEAD_MS = 120;
-const SCHEDULER_INTERVAL_MS = 25;
-const CLAP_SPACING_SECONDS = 0.025;
-const CLAP_VOLUME = 0.35;
-const HIGHWAY_VISIBLE_BEFORE_QUARTER_NOTES = 1;
-const HIGHWAY_VISIBLE_AFTER_QUARTER_NOTES = 16;
-
 /** Inclusive default piano preview range: C2 through C4. */
 export const DEFAULT_PIANO_PREVIEW_RANGE: PitchRange = { low: 36, high: 60 };
 
-function defaultContextFactory(): FeedbackAudioContext {
+function createSoundboardContext(): AudioContext {
   const AudioContextConstructor =
     window.AudioContext ??
     (
@@ -117,28 +113,20 @@ export function validatePitchRange(range: PitchRange): PitchRange {
   return range;
 }
 
-/** Shared lazy Web Audio service for metronome, clap, and piano-roll feedback. */
-export class PlaybackFeedbackEngine {
-  private readonly contextFactory: FeedbackAudioContextFactory;
-  private context: FeedbackAudioContext | null = null;
-  private configuration: FeedbackConfigurationInput | null = null;
+export class Soundboard {
+  private context: AudioContext | null = null;
+  private configuration: SoundboardConfigurationInput | null = null;
   private playing = false;
   private currentTick = 0;
   private metronomeCursorTick = 0;
   private schedulerHandle: ReturnType<typeof setTimeout> | null = null;
   private lastClapTime = 0;
-  private readonly scheduledFeedback = new Set<OscillatorNode>();
+  private readonly pendingSounds = new Set<OscillatorNode>();
   private previewVoices: ActiveVoice[] = [];
   private previewRequest = 0;
   private readonly crossingTracker = new NoteCrossingTracker();
 
-  public constructor(
-    contextFactory: FeedbackAudioContextFactory = defaultContextFactory,
-  ) {
-    this.contextFactory = contextFactory;
-  }
-
-  public configure(configuration: FeedbackConfigurationInput): void {
+  public configure(configuration: SoundboardConfigurationInput): void {
     const previousKey = this.configuration?.highwayKey;
     const previousMidi = this.configuration?.midi;
     const previousSettings = this.configuration?.settings;
@@ -151,7 +139,7 @@ export class PlaybackFeedbackEngine {
       previousClapEnabled !== configuration.clapEnabled
     ) {
       this.stopPreview();
-      this.cancelScheduledFeedback();
+      this.cancelPendingSounds();
       this.metronomeCursorTick = this.currentTick - 1e-6;
       this.crossingTracker.reset(previousKey);
       this.crossingTracker.begin(configuration.highwayKey, this.currentTick);
@@ -162,7 +150,7 @@ export class PlaybackFeedbackEngine {
         void this.ensureStarted().then(() => this.scheduleLoop());
       } else {
         this.stopScheduler();
-        this.cancelScheduledFeedback();
+        this.cancelPendingSounds();
       }
       if (configuration.clapEnabled && configuration.highwayActive) {
         // A menu toggle may enable clap after playback has already started.
@@ -173,7 +161,7 @@ export class PlaybackFeedbackEngine {
   }
 
   public async ensureStarted(): Promise<void> {
-    if (!this.context) this.context = this.contextFactory();
+    if (!this.context) this.context = createSoundboardContext();
     if (this.context.state === "suspended") await this.context.resume();
   }
 
@@ -197,7 +185,7 @@ export class PlaybackFeedbackEngine {
   public stop(): void {
     this.playing = false;
     this.stopScheduler();
-    this.cancelScheduledFeedback();
+    this.cancelPendingSounds();
     this.crossingTracker.reset();
     this.lastClapTime = 0;
     this.stopPreview();
@@ -207,7 +195,7 @@ export class PlaybackFeedbackEngine {
     this.currentTick = Math.max(0, tick);
     this.metronomeCursorTick = this.currentTick - 1e-6;
     const configuration = this.configuration;
-    this.cancelScheduledFeedback();
+    this.cancelPendingSounds();
     this.stopPreview();
     if (configuration) {
       this.crossingTracker.reset(configuration.highwayKey);
@@ -371,7 +359,7 @@ export class PlaybackFeedbackEngine {
   private scheduleClick(
     time: number,
     downbeat: boolean,
-    settings: FeedbackSettings,
+    settings: SoundboardSettings,
   ): void {
     const context = this.context;
     if (!context) return;
@@ -389,8 +377,8 @@ export class PlaybackFeedbackEngine {
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.055);
     oscillator.connect(gain);
     gain.connect(context.destination);
-    this.scheduledFeedback.add(oscillator);
-    oscillator.onended = () => this.scheduledFeedback.delete(oscillator);
+    this.pendingSounds.add(oscillator);
+    oscillator.onended = () => this.pendingSounds.delete(oscillator);
     oscillator.start(time);
     oscillator.stop(time + 0.06);
   }
@@ -422,8 +410,8 @@ export class PlaybackFeedbackEngine {
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
     oscillator.connect(gain);
     gain.connect(context.destination);
-    this.scheduledFeedback.add(oscillator);
-    oscillator.onended = () => this.scheduledFeedback.delete(oscillator);
+    this.pendingSounds.add(oscillator);
+    oscillator.onended = () => this.pendingSounds.delete(oscillator);
     oscillator.start(time);
     oscillator.stop(time + 0.05);
   }
@@ -469,25 +457,18 @@ export class PlaybackFeedbackEngine {
     this.previewVoices.push({ oscillator, gain });
   }
 
-  private cancelScheduledFeedback(): void {
-    for (const oscillator of this.scheduledFeedback) {
+  private cancelPendingSounds(): void {
+    for (const oscillator of this.pendingSounds) {
       try {
         oscillator.stop();
       } catch {
         // The oscillator may already have ended.
       }
     }
-    this.scheduledFeedback.clear();
+    this.pendingSounds.clear();
   }
 
   public getBeatLength(ppqn: number, signature: TimeSignatureChange): number {
     return ticksPerBeat(ppqn, signature);
   }
-}
-
-export function configureFeedbackEngine(
-  engine: PlaybackFeedbackEngine,
-  configuration: FeedbackConfigurationInput,
-): void {
-  engine.configure(configuration);
 }

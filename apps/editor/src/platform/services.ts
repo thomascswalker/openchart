@@ -1,3 +1,5 @@
+import { moduleId, type ModuleCollection } from "./modules";
+
 export interface ServicesAccessor {
   get<T>(serviceId: string): T;
 }
@@ -7,6 +9,32 @@ type ServiceConstructor = new (...dependencies: any[]) => unknown;
 export class ServiceRegistry {
   private ctors = new Map<string, ServiceConstructor>();
   private instances = new Map<string, unknown>();
+
+  constructor(modules: ModuleCollection) {
+    for (const filepath of Object.keys(modules).sort()) {
+      const id = moduleId(filepath, "services");
+      if (!id) {
+        continue;
+      }
+
+      const serviceClasses = Object.values(modules[filepath]).filter(
+        (candidate): candidate is ServiceConstructor =>
+          typeof candidate === "function" &&
+          /^class\s/.test(Function.prototype.toString.call(candidate)),
+      );
+      if (!serviceClasses.length) {
+        continue;
+      }
+      if (serviceClasses.length > 1) {
+        throw new Error(`Multiple services exported from ${filepath}.`);
+      }
+
+      const ServiceClass = serviceClasses[0];
+      if (ServiceClass) {
+        this.register(id, ServiceClass);
+      }
+    }
+  }
 
   public register(id: string, ctor: ServiceConstructor): void {
     if (this.ctors.has(id)) {

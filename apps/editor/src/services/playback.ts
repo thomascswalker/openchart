@@ -7,11 +7,11 @@ import {
 } from "@midiedit/core";
 import { Difficulty, SongView } from "@midiedit/views";
 import {
-  PlaybackFeedbackEngine,
-  type FeedbackSettings,
+  Soundboard,
+  type SoundboardSettings,
   type PitchRange,
   type PreviewNote,
-} from "../audio/PlaybackFeedbackEngine";
+} from "../audio/soundboard";
 import { AudioService } from "./audio";
 import type { DocumentService } from "./document";
 import type { ApplicationSettings } from "./settings";
@@ -84,7 +84,7 @@ export class PlaybackService {
   static dependencies = ["audio", "document"];
 
   private audioService: AudioService;
-  private engine = new PlaybackFeedbackEngine();
+  private engine = new Soundboard();
   private audioUnsubscribe: (() => void) | null = null;
   private documentUnsubscribe: (() => void) | undefined;
   private listeners = new Set<() => void>();
@@ -98,7 +98,7 @@ export class PlaybackService {
   private clapEnabled = false;
   private highwayActive = false;
   private highwayNotes: readonly MidiNote[] = [];
-  private feedbackSettings: FeedbackSettings | null = null;
+  private feedbackSettings: SoundboardSettings | null = null;
   private feedbackSettingsSource: ApplicationSettings["feedback"] | null = null;
   private snapEnabled = true;
   private snapDenominator = 4;
@@ -351,7 +351,9 @@ export class PlaybackService {
 
   // The engine detects settings changes by identity, so only rebuild when the
   // inputs actually change.
-  private getFeedbackSettings(settings: ApplicationSettings): FeedbackSettings {
+  private getFeedbackSettings(
+    settings: ApplicationSettings,
+  ): SoundboardSettings {
     if (
       !this.feedbackSettings ||
       this.feedbackSettingsSource !== settings.feedback ||
