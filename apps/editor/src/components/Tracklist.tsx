@@ -1,5 +1,7 @@
 import { SongView } from "@midiedit/views";
-import { useEditor } from "../context/EditorContext";
+import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
+import { executeEditorAction } from "../actions/execute";
 import "./styles.css";
 
 interface TrackListProps {
@@ -8,8 +10,8 @@ interface TrackListProps {
 
 /** Config-driven track projection used by piano-roll panels. */
 export function TrackList({ viewportId }: TrackListProps) {
-  const { midiData, viewportSessions, updateViewport, focusViewport } =
-    useEditor();
+  const { midiData } = useDocumentSnapshot();
+  const { viewportSessions } = useViewportSnapshot();
   const session = viewportSessions.find((item) => item.id === viewportId);
   const songView = midiData ? new SongView(midiData) : null;
   const allDescriptors = songView?.getTrackDescriptors() ?? [];
@@ -44,11 +46,14 @@ export function TrackList({ viewportId }: TrackListProps) {
                 selected ? "track-row track-row--selected" : "track-row"
               }
               onClick={() => {
-                focusViewport(viewportId);
-                updateViewport(viewportId, {
-                  trackKey: descriptor.key,
-                  instrument: descriptor.name,
-                });
+                void executeEditorAction("editor.focus-viewport", viewportId)
+                  .then(() =>
+                    executeEditorAction("editor.update-viewport", viewportId, {
+                      trackKey: descriptor.key,
+                      instrument: descriptor.name,
+                    }),
+                  )
+                  .catch(() => {});
               }}
               aria-pressed={selected}
             >
@@ -65,11 +70,14 @@ export function TrackList({ viewportId }: TrackListProps) {
             key={`unmapped-${index}`}
             className="track-row"
             onClick={() => {
-              focusViewport(viewportId);
-              updateViewport(viewportId, {
-                trackKey: `unmapped-${index}`,
-                instrument: track.name,
-              });
+              void executeEditorAction("editor.focus-viewport", viewportId)
+                .then(() =>
+                  executeEditorAction("editor.update-viewport", viewportId, {
+                    trackKey: `unmapped-${index}`,
+                    instrument: track.name,
+                  }),
+                )
+                .catch(() => {});
             }}
             aria-label={`Unmapped track ${track.name || index + 1}`}
           >

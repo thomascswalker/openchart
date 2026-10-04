@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Midi } from "@midiedit/core";
+import {
+  ticksToMs,
+  type Midi,
+  type TempoChange,
+  type TimeSignatureChange,
+} from "@midiedit/core";
 import type { ChartView } from "./views/ChartViews";
 import { HighwayView } from "./views/highway";
-import { usePlayback } from "../context/PlaybackContextStore";
-import { getTimelinePosition } from "./timelinePosition";
+import { usePlayback } from "../hooks/usePlayback";
+import { executeEditorAction } from "../actions/execute";
 
 interface TimelineProps {
   chartView: ChartView | null;
@@ -15,22 +20,89 @@ const VIEWPORT_COLOR = "rgba(255, 255, 255, 0.12)";
 const VIEWPORT_BORDER_COLOR = "rgba(255, 255, 255, 0.35)";
 const PLAYHEAD_COLOR = "#ff3b30";
 
+export interface TimelinePosition {
+  tick: string;
+  time: string;
+  measure: string;
+}
+
+function formatTime(milliseconds: number): string {
+  const centiseconds = Math.floor(milliseconds / 10);
+  const totalSeconds = Math.floor(centiseconds / 100);
+  const seconds = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const minutes = totalMinutes % 60;
+  const hours = Math.floor(totalMinutes / 60);
+  const fraction = String(centiseconds % 100).padStart(2, "0");
+  const clock = [hours, minutes, seconds]
+    .map((part) => String(part).padStart(2, "0"))
+    .join(":");
+
+  return `${clock}.${fraction}`;
+}
+
+function formatMeasure(
+  tick: number,
+  ppqn: number,
+  changes: TimeSignatureChange[],
+): string {
+  let measure = 1;
+  let measureStart = 0;
+  let numerator = 4;
+  let denominatorExponent = 2;
+
+  for (const change of changes) {
+    if (change.tick > tick) break;
+    if (change.tick > measureStart) {
+      const previousMeasureTicks =
+        (ppqn * numerator * 4) / 2 ** denominatorExponent;
+      measure += Math.ceil((change.tick - measureStart) / previousMeasureTicks);
+      measureStart = change.tick;
+    }
+    numerator = change.numerator;
+    denominatorExponent = change.denominator;
+  }
+
+  const ticksPerQuarter = ppqn;
+  const ticksPerMeasure =
+    (ticksPerQuarter * numerator * 4) / 2 ** denominatorExponent;
+  const elapsedTicks = tick - measureStart;
+  const completedMeasures = Math.floor(elapsedTicks / ticksPerMeasure);
+  const ticksWithinMeasure = elapsedTicks % ticksPerMeasure;
+  const quarterBeat = Math.floor(ticksWithinMeasure / ticksPerQuarter) + 1;
+  const fraction = Math.min(
+    99,
+    Math.floor(
+      ((ticksWithinMeasure % ticksPerQuarter) / ticksPerQuarter) * 100,
+    ),
+  );
+
+  measure += completedMeasures;
+  return `${measure}.${quarterBeat}.${String(fraction).padStart(2, "0")}`;
+}
+
+export function getTimelinePosition(
+  tick: number,
+  ppqn: number,
+  tempoChanges: TempoChange[],
+  timeSignatureChanges: TimeSignatureChange[],
+): TimelinePosition {
+  return {
+    tick: String(Math.floor(tick)),
+    time: formatTime(ticksToMs(tick, ppqn, tempoChanges)),
+    measure: formatMeasure(tick, ppqn, timeSignatureChanges),
+  };
+}
+
 export function Timeline({ chartView, midiData }: TimelineProps) {
-  const {
-    isPlaying,
-    canPlay,
-    playbackTick,
-    totalTimelineTicks,
-    play,
-    pause,
-    seekStart,
-    seekEnd,
-    setPlaybackTick,
-  } = usePlayback();
+  const { isPlaying, canPlay, playbackTick, totalTimelineTicks } =
+    usePlayback();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const scrubFrameRef = useRef<number | null>(null);
+  const pendingScrubXRef = useRef<number | null>(null);
 
   const redrawRef = useRef<() => void>(() => {});
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
@@ -158,7 +230,7 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       const bounds = canvas.getBoundingClientRect();
       const tick = xToTick(clientX - bounds.left, bounds.width);
 
-      setPlaybackTick(tick);
+      void executeEditorAction("playback.set-tick", tick).catch(() => {});
 
       if (chartView) {
         if (chartView instanceof HighwayView) {
@@ -169,7 +241,40 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
         }
       }
     },
-    [canPlay, chartView, setPlaybackTick, timelineTicks, xToTick],
+    [canPlay, chartView, timelineTicks, xToTick],
+  );
+
+  const queueScrubToClientX = useCallback(
+    (clientX: number): void => {
+      pendingScrubXRef.current = clientX;
+      if (scrubFrameRef.current !== null) return;
+      scrubFrameRef.current = requestAnimationFrame(() => {
+        scrubFrameRef.current = null;
+        const pendingX = pendingScrubXRef.current;
+        pendingScrubXRef.current = null;
+        if (pendingX !== null) scrubToClientX(pendingX);
+      });
+    },
+    [scrubToClientX],
+  );
+
+  const flushPendingScrub = useCallback((): void => {
+    if (scrubFrameRef.current !== null) {
+      cancelAnimationFrame(scrubFrameRef.current);
+      scrubFrameRef.current = null;
+    }
+    const pendingX = pendingScrubXRef.current;
+    pendingScrubXRef.current = null;
+    if (pendingX !== null) scrubToClientX(pendingX);
+  }, [scrubToClientX]);
+
+  useEffect(
+    () => () => {
+      if (scrubFrameRef.current !== null) {
+        cancelAnimationFrame(scrubFrameRef.current);
+      }
+    },
+    [],
   );
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -177,10 +282,10 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
     draggingRef.current = true;
 
     if (isPlaying) {
-      pause();
+      void executeEditorAction("playback.pause").catch(() => {});
     }
 
-    scrubToClientX(event.clientX);
+    queueScrubToClientX(event.clientX);
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -188,7 +293,7 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       return;
     }
 
-    scrubToClientX(event.clientX);
+    queueScrubToClientX(event.clientX);
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -196,6 +301,8 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       return;
     }
 
+    pendingScrubXRef.current = event.clientX;
+    flushPendingScrub();
     draggingRef.current = false;
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
@@ -226,7 +333,9 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
         </output>
         <button
           type="button"
-          onClick={seekStart}
+          onClick={() =>
+            void executeEditorAction("playback.seek-start").catch(() => {})
+          }
           disabled={!canPlay || isPlaying}
           aria-label="Jump to Beginning"
         >
@@ -234,7 +343,9 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
         </button>
         <button
           type="button"
-          onClick={isPlaying ? pause : play}
+          onClick={() =>
+            void executeEditorAction("playback.toggle").catch(() => {})
+          }
           disabled={!canPlay}
           aria-label="Play/Pause"
         >
@@ -242,7 +353,9 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
         </button>
         <button
           type="button"
-          onClick={seekEnd}
+          onClick={() =>
+            void executeEditorAction("playback.seek-end").catch(() => {})
+          }
           disabled={!canPlay || isPlaying}
           aria-label="Jump to End"
         >

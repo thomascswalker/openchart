@@ -16,7 +16,6 @@ import {
   setMaterialStateForMaterial,
   type MaterialSet,
   type MaterialState,
-  type Rgb,
 } from "./components/views/highway/materials";
 import {
   primitiveRolesForModel,

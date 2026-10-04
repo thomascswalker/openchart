@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { EditorCommandId } from "../hooks/useEditorCommands";
 
-export type MenuCommandId = EditorCommandId | "cut" | "copy" | "paste";
+export type MenuCommandId = string;
 
 interface MenuItemDefinition {
   id: MenuCommandId;
@@ -28,18 +27,18 @@ const MENUS: MenuDefinition[] = [
     id: "file",
     label: "File",
     items: [
-      { id: "new", label: "New" },
-      { id: "open", label: "Open", accelerator: "Ctrl/Cmd+O" },
-      { id: "save", label: "Save", accelerator: "Ctrl/Cmd+S" },
+      { id: "document.new", label: "New" },
+      { id: "document.open", label: "Open", accelerator: "Ctrl/Cmd+O" },
+      { id: "document.save", label: "Save", accelerator: "Ctrl/Cmd+S" },
       {
-        id: "saveAs",
+        id: "document.save-as",
         label: "Save As…",
         accelerator: "Ctrl/Cmd+Shift+S",
       },
-      { id: "export", label: "Export" },
-      { id: "openProjectSettings", label: "Project..." },
+      { id: "document.export-midi", label: "Export" },
+      { id: "dialog.open-project", label: "Project..." },
       {
-        id: "openSettings",
+        id: "dialog.open-settings",
         label: "Settings...",
         accelerator: "Ctrl/Cmd+,",
       },
@@ -49,9 +48,9 @@ const MENUS: MenuDefinition[] = [
     id: "edit",
     label: "Edit",
     items: [
-      { id: "cut", label: "Cut", accelerator: "Ctrl/Cmd+X" },
-      { id: "copy", label: "Copy", accelerator: "Ctrl/Cmd+C" },
-      { id: "paste", label: "Paste", accelerator: "Ctrl/Cmd+V" },
+      { id: "clipboard.cut", label: "Cut", accelerator: "Ctrl/Cmd+X" },
+      { id: "clipboard.copy", label: "Copy", accelerator: "Ctrl/Cmd+C" },
+      { id: "clipboard.paste", label: "Paste", accelerator: "Ctrl/Cmd+V" },
     ],
   },
   {
@@ -59,13 +58,13 @@ const MENUS: MenuDefinition[] = [
     label: "Playback",
     items: [
       {
-        id: "toggleMetronome",
+        id: "playback.toggle-metronome",
         label: "Metronome",
         accelerator: "M",
         checkable: true,
       },
       {
-        id: "toggleClap",
+        id: "playback.toggle-clap",
         label: "Highway Clap",
         accelerator: "N",
         checkable: true,
@@ -76,8 +75,8 @@ const MENUS: MenuDefinition[] = [
     id: "window",
     label: "Window",
     items: [
-      { id: "openDebugSettings", label: "Debugger..." },
-      { id: "closeDebugSettings", label: "Close Debugger" },
+      { id: "dialog.open-debug", label: "Debugger..." },
+      { id: "dialog.close-debug", label: "Close Debugger" },
     ],
   },
 ];
