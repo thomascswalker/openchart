@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { TimelineService } from "../../services/timeline";
+import { PlaybackService } from "../../services/playback";
 
 export class SetPlaybackTickAction extends Action<[number]> {
   constructor() {
@@ -8,6 +8,6 @@ export class SetPlaybackTickAction extends Action<[number]> {
   }
 
   run(accessor: ServicesAccessor, tick: number): void {
-    accessor.get<TimelineService>("timeline").setPlaybackTick(tick);
+    accessor.get<PlaybackService>("playback").setPlaybackTick(tick);
   }
 }

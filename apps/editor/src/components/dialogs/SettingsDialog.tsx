@@ -1,11 +1,16 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent,
+} from "react";
 import { AUDIO_ROLES } from "../../services/audio";
 import { AudioService } from "../../services/audio";
 import { useEditorState } from "../../hooks/useEditorState";
 import { executeEditorAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
-import { usePlayback } from "../../hooks/usePlayback";
 import {
   type ApplicationSettings,
   validateApplicationSettings,
@@ -226,10 +231,14 @@ function setSettingValue(
 
 const SettingsDialog = () => {
   const { audioDirectoryName, audioDirectorySupported } = useEditorState();
-  const { sources } = usePlayback();
+  const audioService = Platform.services.get<AudioService>("audio");
+  const sources = useSyncExternalStore(
+    audioService.subscribe,
+    () => audioService.getSnapshot().sources,
+    () => audioService.getSnapshot().sources,
+  );
   const { projectMetadata } = useDocumentSnapshot();
   const { settings } = useApplicationSettings();
-  const audioService = Platform.services.get<AudioService>("audio");
   const [selectedTab, setSelectedTab] = useState<SettingsTab>(tabs[0]);
   const [draft, setDraft] = useState<ApplicationSettings>(settings);
   const [errors, setErrors] = useState<Record<string, string>>({});

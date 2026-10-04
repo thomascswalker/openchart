@@ -1,6 +1,7 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { TimelineService } from "../../services/timeline";
+import { DocumentService } from "../../services/document";
+import { PlaybackService } from "../../services/playback";
 
 export class RefreshPlaybackAction extends Action {
   constructor() {
@@ -8,6 +9,7 @@ export class RefreshPlaybackAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<TimelineService>("timeline").refresh();
+    const midiData = accessor.get<DocumentService>("document").getData();
+    accessor.get<PlaybackService>("playback").refresh(midiData);
   }
 }

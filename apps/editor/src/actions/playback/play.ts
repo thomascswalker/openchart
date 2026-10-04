@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { TimelineService } from "../../services/timeline";
+import { PlaybackService } from "../../services/playback";
 
 export class PlayAction extends Action {
   constructor() {
@@ -8,6 +8,6 @@ export class PlayAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<TimelineService>("timeline").play();
+    accessor.get<PlaybackService>("playback").play();
   }
 }

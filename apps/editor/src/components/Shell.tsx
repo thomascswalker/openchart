@@ -1,22 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { executeEditorAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
-import { usePlayback } from "../hooks/usePlayback";
 import type { ChartView } from "./views/ChartViews";
 import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
+import { PlaybackService } from "../services/playback";
 
 import "./styles.css";
 
 const Shell = () => {
   const { debugVisible, projectVisible, settingsVisible } = useEditorState();
-  const { isMetronomeEnabled, isClapEnabled } = usePlayback();
-  const [chartView, setChartView] = useState<ChartView | null>(null);
   const { services, actions } = usePlatform();
+  const playbackService = services.get<PlaybackService>("playback");
+  const isMetronomeEnabled = useSyncExternalStore(
+    playbackService.subscribe,
+    () => playbackService.getSnapshot().isMetronomeEnabled,
+    () => playbackService.getSnapshot().isMetronomeEnabled,
+  );
+  const isClapEnabled = useSyncExternalStore(
+    playbackService.subscribe,
+    () => playbackService.getSnapshot().isClapEnabled,
+    () => playbackService.getSnapshot().isClapEnabled,
+  );
+  const [chartView, setChartView] = useState<ChartView | null>(null);
 
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
   clipboard.setView(chartView);

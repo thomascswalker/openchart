@@ -1,18 +1,11 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { Difficulty } from "@midiedit/views";
-import { usePlaybackFeedback } from "../audio/usePlaybackFeedback";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import Platform from "../platform";
 import { AudioService } from "../services/audio";
-import { PlaybackFeedbackService } from "../services/playback/feedback";
-import { TimelineService } from "../services/timeline";
+import { PlaybackService } from "../services/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
   const { midiData } = useDocumentSnapshot();
@@ -28,50 +21,52 @@ export function Playback({ children }: { children: ReactNode }) {
         )
       : null;
   const { settings } = useApplicationSettings();
-  const feedback = usePlaybackFeedback({
-    midiData,
-    settings,
-    selectedInstrument: activeViewport?.instrument ?? "LEAD GUITAR",
-    selectedDifficulty: activeViewport?.difficulty ?? Difficulty.Expert,
-    selectedTrackIndex,
-  });
+  const selectedInstrument = activeViewport?.instrument ?? "LEAD GUITAR";
+  const selectedDifficulty = activeViewport?.difficulty ?? Difficulty.Expert;
   const audioService = Platform.services.get<AudioService>("audio");
-  const timelineService = Platform.services.get<TimelineService>("timeline");
-  const feedbackService =
-    Platform.services.get<PlaybackFeedbackService>("playback.feedback");
-  const timeline = useSyncExternalStore(
-    timelineService.subscribe,
-    timelineService.getSnapshot,
-    timelineService.getSnapshot,
+  const playbackService = Platform.services.get<PlaybackService>("playback");
+  const canPlay = useSyncExternalStore(
+    playbackService.subscribe,
+    () => playbackService.getSnapshot().canPlay,
+    () => playbackService.getSnapshot().canPlay,
+  );
+  const isPlaying = useSyncExternalStore(
+    playbackService.subscribe,
+    () => playbackService.getSnapshot().isPlaying,
+    () => playbackService.getSnapshot().isPlaying,
   );
 
-  Platform.context.set("playback.can-play", timeline.canPlay);
-  Platform.context.set("playback.is-playing", timeline.isPlaying);
-  Platform.context.set(
-    "playback.can-seek",
-    timeline.canPlay && !timeline.isPlaying,
-  );
-
-  useLayoutEffect(() => {
-    feedbackService.setFeedback(feedback);
-  }, [feedback, feedbackService]);
+  Platform.context.set("playback.can-play", canPlay);
+  Platform.context.set("playback.is-playing", isPlaying);
+  Platform.context.set("playback.can-seek", canPlay && !isPlaying);
 
   useEffect(() => {
-    timelineService.configure({
+    playbackService.configure({
       midiData,
-      feedback,
+      settings,
       snapEnabled,
       snapDenominator,
+      selectedInstrument,
+      selectedDifficulty,
+      selectedTrackIndex,
     });
-  }, [feedback, midiData, snapDenominator, snapEnabled, timelineService]);
+  }, [
+    midiData,
+    playbackService,
+    selectedDifficulty,
+    selectedInstrument,
+    selectedTrackIndex,
+    settings,
+    snapDenominator,
+    snapEnabled,
+  ]);
 
   useEffect(
     () => () => {
-      feedbackService.setFeedback(null);
-      timelineService.dispose();
+      playbackService.dispose();
       audioService.dispose();
     },
-    [audioService, feedbackService, timelineService],
+    [audioService, playbackService],
   );
 
   return <>{children}</>;

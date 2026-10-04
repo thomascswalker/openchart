@@ -255,7 +255,7 @@ function ViewportPanel({
   }, [playheadTick]);
 
   useEffect(() => {
-    const view = chartViewRef.current;
+    const view = chartView;
     if (!view) return;
     view.onNotesChanged = () => {
       void executeEditorAction("history.record-edit").catch(() => {});
@@ -280,6 +280,7 @@ function ViewportPanel({
       view.onCameraChange = null;
     };
   }, [
+    chartView,
     refreshTotalTicks,
     session.id,
     setSnapDenominator,

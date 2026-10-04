@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { PlaybackFeedbackService } from "../../services/playback/feedback";
+import { PlaybackService } from "../../services/playback";
 
 export class ToggleClapAction extends Action {
   constructor() {
@@ -8,6 +8,6 @@ export class ToggleClapAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<PlaybackFeedbackService>("playback.feedback").toggleClap();
+    accessor.get<PlaybackService>("playback").toggleClap();
   }
 }

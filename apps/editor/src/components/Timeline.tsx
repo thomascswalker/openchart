@@ -101,6 +101,8 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const scrubFrameRef = useRef<number | null>(null);
+  const pendingScrubXRef = useRef<number | null>(null);
 
   const redrawRef = useRef<() => void>(() => {});
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
@@ -242,6 +244,39 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
     [canPlay, chartView, timelineTicks, xToTick],
   );
 
+  const queueScrubToClientX = useCallback(
+    (clientX: number): void => {
+      pendingScrubXRef.current = clientX;
+      if (scrubFrameRef.current !== null) return;
+      scrubFrameRef.current = requestAnimationFrame(() => {
+        scrubFrameRef.current = null;
+        const pendingX = pendingScrubXRef.current;
+        pendingScrubXRef.current = null;
+        if (pendingX !== null) scrubToClientX(pendingX);
+      });
+    },
+    [scrubToClientX],
+  );
+
+  const flushPendingScrub = useCallback((): void => {
+    if (scrubFrameRef.current !== null) {
+      cancelAnimationFrame(scrubFrameRef.current);
+      scrubFrameRef.current = null;
+    }
+    const pendingX = pendingScrubXRef.current;
+    pendingScrubXRef.current = null;
+    if (pendingX !== null) scrubToClientX(pendingX);
+  }, [scrubToClientX]);
+
+  useEffect(
+    () => () => {
+      if (scrubFrameRef.current !== null) {
+        cancelAnimationFrame(scrubFrameRef.current);
+      }
+    },
+    [],
+  );
+
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     draggingRef.current = true;
@@ -250,7 +285,7 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       void executeEditorAction("playback.pause").catch(() => {});
     }
 
-    scrubToClientX(event.clientX);
+    queueScrubToClientX(event.clientX);
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -258,7 +293,7 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       return;
     }
 
-    scrubToClientX(event.clientX);
+    queueScrubToClientX(event.clientX);
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -266,6 +301,8 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       return;
     }
 
+    pendingScrubXRef.current = event.clientX;
+    flushPendingScrub();
     draggingRef.current = false;
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
