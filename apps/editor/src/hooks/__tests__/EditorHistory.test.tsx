@@ -3,7 +3,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { Midi } from "@midiedit/core";
 import { Runtime } from "../../components/Runtime";
-import { Playback } from "../../components/Playback";
 import { useEditorState } from "../useEditorState";
 import { executeEditorAction } from "../../actions/execute";
 import Platform from "../../platform";
@@ -61,30 +60,11 @@ function renderHistory(): { container: HTMLDivElement; root: Root } {
   act(() =>
     root.render(
       <Runtime>
-        <Playback>
-          <HistoryHarness />
-        </Playback>
+        <HistoryHarness />
       </Runtime>,
     ),
   );
   return { container, root };
-}
-
-async function pressShortcut(
-  target: EventTarget,
-  key: string,
-): Promise<KeyboardEvent> {
-  const event = new KeyboardEvent("keydown", {
-    key,
-    ctrlKey: true,
-    bubbles: true,
-    cancelable: true,
-  });
-  await act(async () => {
-    target.dispatchEvent(event);
-    await Promise.resolve();
-  });
-  return event;
 }
 
 describe("editor history commands", () => {
@@ -97,7 +77,7 @@ describe("editor history commands", () => {
       (button) => button.textContent === "Switch view",
     )!;
 
-    expect((await pressShortcut(window, "z")).defaultPrevented).toBe(false);
+    expect(Platform.actions.isAvailable("history.undo")).toBe(false);
     act(() => addButton.click());
     expect(
       container.querySelector('[data-testid="note-count"]')?.textContent,
@@ -107,7 +87,9 @@ describe("editor history commands", () => {
       "piano-roll",
     );
 
-    expect((await pressShortcut(window, "z")).defaultPrevented).toBe(true);
+    await act(async () => {
+      await executeEditorAction("history.undo");
+    });
     expect(
       container.querySelector('[data-testid="note-count"]')?.textContent,
     ).toBe("0");
@@ -115,15 +97,9 @@ describe("editor history commands", () => {
       container.querySelector('[data-testid="history-state"]')?.textContent,
     ).toBe("false:true:true");
 
-    expect((await pressShortcut(window, "y")).defaultPrevented).toBe(true);
-    expect(
-      container.querySelector('[data-testid="note-count"]')?.textContent,
-    ).toBe("1");
-
-    const textField = container.querySelector<HTMLInputElement>(
-      'input[aria-label="Text field"]',
-    )!;
-    expect((await pressShortcut(textField, "z")).defaultPrevented).toBe(false);
+    await act(async () => {
+      await executeEditorAction("history.redo");
+    });
     expect(
       container.querySelector('[data-testid="note-count"]')?.textContent,
     ).toBe("1");
@@ -135,7 +111,7 @@ describe("editor history commands", () => {
     expect(
       container.querySelector('[data-testid="history-state"]')?.textContent,
     ).toBe("false:false:true");
-    expect((await pressShortcut(window, "z")).defaultPrevented).toBe(false);
+    expect(Platform.actions.isAvailable("history.undo")).toBe(false);
 
     act(() => root.unmount());
     container.remove();

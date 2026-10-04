@@ -5,7 +5,6 @@ import { useEditorState } from "../../hooks/useEditorState";
 import { executeEditorAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { Runtime } from "../../components/Runtime";
-import { Playback } from "../../components/Playback";
 import { usePlayback } from "../../hooks/usePlayback";
 
 function CommandEnablementProbe() {
@@ -73,9 +72,7 @@ function renderCommands(): { container: HTMLDivElement; root: Root } {
   act(() =>
     root.render(
       <Runtime>
-        <Playback>
-          <CommandEnablementProbe />
-        </Playback>
+        <CommandEnablementProbe />
       </Runtime>,
     ),
   );
@@ -120,7 +117,7 @@ describe("editor action state", () => {
     });
     expect(
       container.querySelector('[data-testid="command-error"]')?.textContent,
-    ).toBe("This command is not available for the active document.");
+    ).toBe("This action is not available for the active document.");
     act(() => root.unmount());
     container.remove();
   });
@@ -158,7 +155,7 @@ describe("editor action state", () => {
     container.remove();
   });
 
-  it("toggles playback feedback with M and N", () => {
+  it("toggles playback feedback through playback actions", async () => {
     const { container, root } = renderCommands();
     expect(
       container.querySelector('[data-testid="metronome-enabled"]')?.textContent,
@@ -166,9 +163,9 @@ describe("editor action state", () => {
     expect(
       container.querySelector('[data-testid="clap-enabled"]')?.textContent,
     ).toBe("false");
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "m" }));
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "n" }));
+    await act(async () => {
+      await executeEditorAction("playback.toggle-metronome");
+      await executeEditorAction("playback.toggle-clap");
     });
     expect(
       container.querySelector('[data-testid="metronome-enabled"]')?.textContent,

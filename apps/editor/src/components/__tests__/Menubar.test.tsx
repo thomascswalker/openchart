@@ -72,7 +72,7 @@ describe("Menubar", () => {
     const onCommand = vi.fn();
     const { container, root } = render(
       <Menubar
-        canExecute={(command) => command !== "save"}
+        canExecute={(command) => command !== "document.save"}
         onCommand={onCommand}
       />,
     );
@@ -101,7 +101,7 @@ describe("Menubar", () => {
     await settle();
     const save = [
       ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.dataset.command === "save")!;
+    ].find((button) => button.dataset.command === "document.save")!;
     expect(save.disabled).toBe(true);
     expect(document.activeElement?.textContent).toContain("Save As");
 
@@ -131,11 +131,11 @@ describe("Menubar", () => {
     act(() => editTrigger.click());
     await settle();
     const copy = container.querySelector<HTMLButtonElement>(
-      '[data-command="copy"]',
+      '[data-command="clipboard.copy"]',
     );
     expect(copy).not.toBeNull();
     act(() => copy?.click());
-    expect(onCommand).toHaveBeenCalledWith("copy");
+    expect(onCommand).toHaveBeenCalledWith("clipboard.copy");
     act(() => root.unmount());
     container.remove();
   });

@@ -9,7 +9,6 @@ import {
 } from "../../../services/settings";
 import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
 import { Runtime } from "../../Runtime";
-import { Playback } from "../../Playback";
 import { SettingsDialog } from "../SettingsDialog";
 
 function SettingsTestShell() {
@@ -38,9 +37,7 @@ function renderSettings(): { container: HTMLDivElement; root: Root } {
   act(() =>
     root.render(
       <Runtime>
-        <Playback>
-          <SettingsTestShell />
-        </Playback>
+        <SettingsTestShell />
       </Runtime>,
     ),
   );
@@ -79,7 +76,7 @@ describe("Application settings", () => {
     ).toBeUndefined();
   });
 
-  it("shows and persists the bounded history capacity", () => {
+  it("shows and persists the bounded history capacity", async () => {
     const { container, root } = renderSettings();
     const open = container.querySelector<HTMLButtonElement>("button")!;
     act(() => open.click());
@@ -103,11 +100,14 @@ describe("Application settings", () => {
     );
 
     act(() => changeInput(capacity, "1024"));
-    act(() =>
+    await act(async () => {
       [...container.querySelectorAll<HTMLButtonElement>("button")]
         .find((button) => button.textContent === "Save")!
-        .click(),
-    );
+        .click();
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+    });
     act(() => open.click());
     expect(
       container.querySelector<HTMLInputElement>('input[type="number"]')?.value,
@@ -117,7 +117,7 @@ describe("Application settings", () => {
     container.remove();
   });
 
-  it("navigates tabs, validates drafts, cancels, applies, and reopens current values", () => {
+  it("navigates tabs, validates drafts, cancels, applies, and reopens current values", async () => {
     const { container, root } = renderSettings();
     const open = container.querySelector<HTMLButtonElement>("button")!;
     act(() => open.click());
@@ -220,11 +220,14 @@ describe("Application settings", () => {
         "D:/audio",
       ),
     );
-    act(() =>
+    await act(async () => {
       [...container.querySelectorAll<HTMLButtonElement>("button")]
         .find((button) => button.textContent === "Save")!
-        .click(),
-    );
+        .click();
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+    });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     act(() => open.click());
     act(() =>
