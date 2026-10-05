@@ -8,7 +8,7 @@ import {
 import { AUDIO_ROLES } from "../../services/audio";
 import { AudioService } from "../../services/audio";
 import { useEditorState } from "../../hooks/useEditorState";
-import { executeEditorAction } from "../../actions/execute";
+import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
 import {
@@ -269,7 +269,7 @@ const SettingsDialog = () => {
   }, [audioService, draft.audio.rootPath, audioDirectoryName]);
 
   const close = (): void => {
-    void executeEditorAction("dialog.close-settings").catch(() => {});
+    runAction("dialog.close-settings");
   };
   const selectTab = (tab: SettingsTab): void => {
     setSelectedTab(tab);
@@ -629,7 +629,7 @@ const SettingsDialog = () => {
                   type="button"
                   onClick={() => {
                     refreshAudioFileNames();
-                    void executeEditorAction("audio.refresh").catch(() => {});
+                    runAction("audio.refresh");
                   }}
                   disabled={!Platform.actions.isAvailable("audio.refresh")}
                 >

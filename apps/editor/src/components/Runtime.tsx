@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePlatform, useService } from "../platform";
-import { executeEditorAction } from "../actions/execute";
+import { runAction } from "../actions/execute";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
@@ -84,7 +84,7 @@ export function Runtime({ children }: RuntimeProps) {
         const file = event.currentTarget.files?.[0];
         event.currentTarget.value = "";
         if (file) {
-          void executeEditorAction("audio.load-file", file).catch(() => {});
+          runAction("audio.load-file", file);
         }
       }}
       hidden

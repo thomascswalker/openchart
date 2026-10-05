@@ -25,7 +25,7 @@ import type {
 } from "../../services/editor/viewports";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
-import { executeEditorAction } from "../../actions/execute";
+import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
 import { ToolButton } from "../shared/Button/Button";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
@@ -113,19 +113,12 @@ const Toolbar = ({
         ariaLabel="Toggle snap to grid"
         icon={<MagnetIcon />}
         active={snapEnabled}
-        onToggle={(enabled) =>
-          void executeEditorAction("editor.set-snap-enabled", enabled).catch(
-            () => {},
-          )
-        }
+        onToggle={(enabled) => runAction("editor.set-snap-enabled", enabled)}
         dropdownDisabled={!snapEnabled}
         dropdownWidth={60}
         value={String(snapDenominator)}
         onChange={(value) =>
-          void executeEditorAction(
-            "editor.set-snap-denominator",
-            Number(value),
-          ).catch(() => {})
+          runAction("editor.set-snap-denominator", Number(value))
         }
         options={SNAP_OPTIONS}
       />
@@ -204,12 +197,12 @@ const Toolbar = ({
                 !new SongView(midiData).getInstrumentTrackView(instrument)
               }
               active={session.instrument === instrument}
-              onClick={() => {
-                void executeEditorAction("editor.update-viewport", session.id, {
+              onClick={() =>
+                runAction("editor.update-viewport", session.id, {
                   instrument,
                   trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
-                }).catch(() => {});
-              }}
+                })
+              }
             />
           ))}
 
@@ -221,9 +214,7 @@ const Toolbar = ({
               Icon={icon}
               active={session.difficulty === difficulty}
               onClick={() =>
-                void executeEditorAction("editor.update-viewport", session.id, {
-                  difficulty,
-                }).catch(() => {})
+                runAction("editor.update-viewport", session.id, { difficulty })
               }
             ></ToolButton>
           ))}

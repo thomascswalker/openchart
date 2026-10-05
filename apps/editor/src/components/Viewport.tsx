@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
@@ -6,7 +6,7 @@ import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { usePlaybackSelector } from "../hooks/usePlayback";
-import { executeEditorAction } from "../actions/execute";
+import { runAction } from "../actions/execute";
 import Platform from "../platform";
 import { PlaybackService } from "../services/playback";
 import { Timeline } from "./Timeline";
@@ -57,6 +57,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
     (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
       target.isContentEditable)
   );
+}
+
+function updateCameraData(
+  article: HTMLElement | null,
+  view: ChartView,
+): void {
+  if (!article) return;
+  article.dataset.cameraTick = String(view.getCameraTick());
+  article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
 }
 
 function trackIndexForSession(
@@ -129,60 +138,16 @@ function ViewportPanel({
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
   const setActiveView = usePlaybackSelector((s) => s.setActiveView);
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);
-  const setPlaybackTick = useCallback((tick: number): void => {
-    void executeEditorAction("playback.set-tick", tick).catch(() => {});
-  }, []);
-  const refreshTotalTicks = useCallback((): void => {
-    void executeEditorAction("playback.refresh").catch(() => {});
-  }, []);
-  const focusViewport = useCallback((id: string): void => {
-    void executeEditorAction("editor.focus-viewport", id).catch(() => {});
-  }, []);
-  const updateViewport = useCallback(
-    (id: string, update: Partial<Omit<ViewportSession, "id">>): void => {
-      void executeEditorAction("editor.update-viewport", id, update).catch(
-        () => {},
-      );
-    },
-    [],
-  );
-  const addViewport = useCallback(
-    (view: ViewportSession["view"], afterId?: string): void => {
-      void executeEditorAction("editor.add-viewport", view, afterId).catch(
-        () => {},
-      );
-    },
-    [],
-  );
-  const closeViewport = useCallback((id: string): void => {
-    void executeEditorAction("editor.close-viewport", id).catch(() => {});
-  }, []);
-  const setSnapDenominator = useCallback((denominator: number): void => {
-    void executeEditorAction("editor.set-snap-denominator", denominator).catch(
-      () => {},
-    );
-  }, []);
   const articleRef = useRef<HTMLElement | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
     useState<DrumPlacementKind>("pad");
-  const togglePlayRef = useRef(() => {});
-  togglePlayRef.current = () => {
-    void executeEditorAction("playback.toggle").catch(() => {});
-  };
   const activeView =
     CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
   const selectedTrackIndex = midiData
     ? trackIndexForSession(midiData, session)
     : null;
-
-  const updateCameraData = useCallback((view: ChartView): void => {
-    const article = articleRef.current;
-    if (!article) return;
-    article.dataset.cameraTick = String(view.getCameraTick());
-    article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
-  }, []);
 
   const handleReady = (view: ChartView | null): void => {
     setChartView(view);
@@ -195,8 +160,8 @@ function ViewportPanel({
     if (!chartView) return;
     const cameraTick = getCameraTick();
     if (cameraTick) chartView.setCameraTick(cameraTick);
-    updateCameraData(chartView);
-  }, [chartView, updateCameraData]);
+    updateCameraData(articleRef.current, chartView);
+  }, [chartView]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -233,7 +198,7 @@ function ViewportPanel({
       }
       if (event.code === "Space" && active) {
         event.preventDefault();
-        togglePlayRef.current();
+        runAction("playback.toggle");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -244,20 +209,23 @@ function ViewportPanel({
     const view = chartView;
     if (!view) return;
     view.onNotesChanged = () => {
-      void executeEditorAction("history.record-edit").catch(() => {});
-      refreshTotalTicks();
+      runAction("history.record-edit");
+      runAction("playback.refresh");
     };
     view.onEditStart = () => {
-      void executeEditorAction("history.begin-edit").catch(() => {});
+      runAction("history.begin-edit");
     };
     view.onEditEnd = () => {
-      void executeEditorAction("history.end-edit").catch(() => {});
+      runAction("history.end-edit");
     };
-    view.onSeekRequest = setPlaybackTick;
-    view.onSnapDenominatorChange = setSnapDenominator;
+    view.onSeekRequest = (tick) => runAction("playback.set-tick", tick);
+    view.onSnapDenominatorChange = (denominator) =>
+      runAction("editor.set-snap-denominator", denominator);
     const unsubscribeCameraChange = view.subscribeCameraChange(() => {
-      updateCameraData(view);
-      updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
+      updateCameraData(articleRef.current, view);
+      runAction("editor.update-viewport", session.id, {
+        camera: { tick: view.getCameraTick() },
+      });
     });
     return () => {
       unsubscribeCameraChange();
@@ -267,15 +235,7 @@ function ViewportPanel({
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
     };
-  }, [
-    chartView,
-    refreshTotalTicks,
-    session.id,
-    setSnapDenominator,
-    setPlaybackTick,
-    updateViewport,
-    updateCameraData,
-  ]);
+  }, [chartView, session.id]);
 
   useEffect(() => {
     if (!chartView) return;
@@ -313,10 +273,13 @@ function ViewportPanel({
   }, [active, session.view, setActiveView, stopPreview]);
 
   const setView = (view: ViewportSession["view"]) => {
-    focusViewport(session.id);
+    runAction("editor.focus-viewport", session.id);
     const { playbackTick } =
       Platform.services.get<PlaybackService>("playback").getSnapshot();
-    updateViewport(session.id, { view, camera: { tick: playbackTick } });
+    runAction("editor.update-viewport", session.id, {
+      view,
+      camera: { tick: playbackTick },
+    });
   };
   return (
     <article
@@ -325,7 +288,7 @@ function ViewportPanel({
       data-viewport-id={session.id}
       data-view={session.view}
       className={`viewport-panel${active ? " viewport-panel--active" : ""}`}
-      onPointerDown={() => focusViewport(session.id)}
+      onPointerDown={() => runAction("editor.focus-viewport", session.id)}
     >
       <header className="viewport-panel__header">
         <p className="viewport-panel__title">
@@ -342,7 +305,9 @@ function ViewportPanel({
           <Button
             title="Split to the right"
             ariaLabel={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
-            onClick={() => addViewport(session.view, session.id)}
+            onClick={() =>
+              runAction("editor.add-viewport", session.view, session.id)
+            }
             disabled={viewportSessions.length >= maxViewportCount}
             flat={true}
             minWidth="24px"
@@ -355,7 +320,7 @@ function ViewportPanel({
             <SplitIcon />
           </Button>
           <CloseButton
-            onClick={() => closeViewport(session.id)}
+            onClick={() => runAction("editor.close-viewport", session.id)}
             disabled={viewportSessions.length <= 1}
           />
         </div>

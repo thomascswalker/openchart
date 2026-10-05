@@ -5,7 +5,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { executeEditorAction } from "../../actions/execute";
+import { executeEditorAction, runAction } from "../../actions/execute";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import type {
   ProjectMetadata,
@@ -108,7 +108,7 @@ const ProjectDialog = () => {
   }, []);
 
   const close = (): void => {
-    void executeEditorAction("dialog.close-project").catch(() => {});
+    runAction("dialog.close-project");
   };
   const selectSection = (title: string): void => {
     setSelectedSection(title);

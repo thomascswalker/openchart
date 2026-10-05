@@ -7,7 +7,7 @@ import {
 } from "@midiedit/core";
 import type { ChartView } from "./views/ChartViews";
 import { usePlaybackSelector } from "../hooks/usePlayback";
-import { executeEditorAction } from "../actions/execute";
+import { runAction } from "../actions/execute";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 
 interface TimelineProps {
@@ -224,7 +224,7 @@ export function Timeline({ chartView }: TimelineProps) {
     const bounds = canvas.getBoundingClientRect();
     const tick = xToTick(clientX - bounds.left, bounds.width, timelineTicks);
 
-    void executeEditorAction("playback.set-tick", tick).catch(() => {});
+    runAction("playback.set-tick", tick);
 
     if (chartView) {
       const cameraTick = chartView.getCameraTickForPlayhead(tick);
@@ -267,7 +267,7 @@ export function Timeline({ chartView }: TimelineProps) {
     draggingRef.current = true;
 
     if (isPlaying) {
-      void executeEditorAction("playback.pause").catch(() => {});
+      runAction("playback.pause");
     }
 
     queueScrubToClientX(event.clientX);
@@ -318,9 +318,7 @@ export function Timeline({ chartView }: TimelineProps) {
         </output>
         <button
           type="button"
-          onClick={() =>
-            void executeEditorAction("playback.seek-start").catch(() => {})
-          }
+          onClick={() => runAction("playback.seek-start")}
           disabled={!canPlay || isPlaying}
           aria-label="Jump to Beginning"
         >
@@ -328,9 +326,7 @@ export function Timeline({ chartView }: TimelineProps) {
         </button>
         <button
           type="button"
-          onClick={() =>
-            void executeEditorAction("playback.toggle").catch(() => {})
-          }
+          onClick={() => runAction("playback.toggle")}
           disabled={!canPlay}
           aria-label="Play/Pause"
         >
@@ -338,9 +334,7 @@ export function Timeline({ chartView }: TimelineProps) {
         </button>
         <button
           type="button"
-          onClick={() =>
-            void executeEditorAction("playback.seek-end").catch(() => {})
-          }
+          onClick={() => runAction("playback.seek-end")}
           disabled={!canPlay || isPlaying}
           aria-label="Jump to End"
         >

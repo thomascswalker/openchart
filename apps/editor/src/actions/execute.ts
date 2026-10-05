@@ -30,3 +30,8 @@ export async function executeEditorAction<Result = void>(
     throw error;
   }
 }
+
+/** Fire-and-forget. Errors are already surfaced via editorState.setError. */
+export function runAction(id: string, ...args: unknown[]): void {
+  void executeEditorAction(id, ...args).catch(() => {});
+}

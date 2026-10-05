@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
-import { executeEditorAction } from "../actions/execute";
+import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
@@ -38,7 +38,7 @@ const Shell = () => {
   };
 
   const runMenuCommand = (command: MenuCommandId): void => {
-    void executeEditorAction(command).catch(() => {});
+    runAction(command);
   };
 
   useEffect(() => {
@@ -100,7 +100,7 @@ const Shell = () => {
         return;
       }
       event.preventDefault();
-      void executeEditorAction(action).catch(() => {});
+      runAction(action);
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -122,9 +122,7 @@ const Shell = () => {
       />
       <Workspace
         debugVisible={debugVisible}
-        onDebugClose={() =>
-          void executeEditorAction("dialog.close-debug").catch(() => {})
-        }
+        onDebugClose={() => runAction("dialog.close-debug")}
         onChartViewReady={setChartView}
       />
       {projectVisible ? <ProjectDialog /> : null}

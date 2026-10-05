@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useEditorState } from "../../../hooks/useEditorState";
-import { executeEditorAction } from "../../../actions/execute";
+import { runAction } from "../../../actions/execute";
 import Platform from "../../../platform";
 import { AudioService } from "../../../services/audio";
 import {
@@ -20,9 +20,7 @@ function SettingsTestShell() {
     <>
       <button
         type="button"
-        onClick={() =>
-          void executeEditorAction("dialog.open-settings").catch(() => {})
-        }
+        onClick={() => runAction("dialog.open-settings")}
       >
         Open settings
       </button>
