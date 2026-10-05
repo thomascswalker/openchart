@@ -16,6 +16,7 @@ import {
   validateApplicationSettings,
 } from "../../services/settings";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
+import { useRovingTabs } from "../../hooks/useRovingTabs";
 import { matchesAudioFile } from "../../util/audioDiscovery";
 import { Modal } from "../shared/Modal/Modal";
 
@@ -244,11 +245,6 @@ const SettingsDialog = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [audioFileNames, setAudioFileNames] = useState<string[] | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
 
   const refreshAudioFileNames = (): void => {
     void audioService
@@ -275,6 +271,9 @@ const SettingsDialog = () => {
     setSelectedTab(tab);
     setErrors({});
   };
+  const { tabRefs, onTabKeyDown } = useRovingTabs(tabs.length, (index) =>
+    selectTab(tabs[index]),
+  );
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -299,38 +298,6 @@ const SettingsDialog = () => {
         : currentIndex + 1;
     event.preventDefault();
     focusable[nextIndex]?.focus();
-  };
-  const onTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ): void => {
-    if (
-      !(
-        [
-          "ArrowRight",
-          "ArrowLeft",
-          "ArrowDown",
-          "ArrowUp",
-          "Home",
-          "End",
-        ] as string[]
-      ).includes(event.key)
-    )
-      return;
-    event.preventDefault();
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? tabs.length - 1
-          : (index +
-              (event.key === "ArrowRight" || event.key === "ArrowDown"
-                ? 1
-                : -1) +
-              tabs.length) %
-            tabs.length;
-    selectTab(tabs[nextIndex]);
-    tabRefs.current[nextIndex]?.focus();
   };
   const apply = async (): Promise<boolean> => {
     const validationErrors = validateApplicationSettings(draft);
