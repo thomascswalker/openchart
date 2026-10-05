@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import Platform from "../platform";
 import { AudioService } from "../services/audio";
-import { PlaybackService } from "../services/playback";
+import { PlaybackService, type PlaybackSnapshot } from "../services/playback";
 
 export function usePlayback() {
   const audioService = Platform.services.get<AudioService>("audio");
@@ -33,4 +33,13 @@ export function usePlayback() {
     audioFileName: audio.fileName,
     setAudioFileName: audioService.setFileName,
   };
+}
+
+/** Select a primitive or stable snapshot reference, never a fresh object or array. */
+export function usePlaybackSelector<T>(
+  select: (snapshot: PlaybackSnapshot) => T,
+): T {
+  const playback = Platform.services.get<PlaybackService>("playback");
+  const read = () => select(playback.getSnapshot());
+  return useSyncExternalStore(playback.subscribe, read, read);
 }

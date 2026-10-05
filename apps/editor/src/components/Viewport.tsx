@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { usePlayback } from "../hooks/usePlayback";
+import { usePlaybackSelector } from "../hooks/usePlayback";
 import { executeEditorAction } from "../actions/execute";
+import Platform from "../platform";
+import { PlaybackService } from "../services/playback";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -124,12 +126,9 @@ function ViewportPanel({
   const { midiData } = useDocumentSnapshot();
   const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
     useViewportSnapshot();
-  const {
-    isPlaying,
-    playbackTick: playheadTick,
-    setActiveView,
-    stopPreview,
-  } = usePlayback();
+  const isPlaying = usePlaybackSelector((s) => s.isPlaying);
+  const setActiveView = usePlaybackSelector((s) => s.setActiveView);
+  const stopPreview = usePlaybackSelector((s) => s.stopPreview);
   const setPlaybackTick = useCallback((tick: number): void => {
     void executeEditorAction("playback.set-tick", tick).catch(() => {});
   }, []);
@@ -163,7 +162,6 @@ function ViewportPanel({
       () => {},
     );
   }, []);
-  const chartViewRef = useRef<ChartView | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
@@ -179,14 +177,6 @@ function ViewportPanel({
     ? trackIndexForSession(midiData, session)
     : null;
 
-  const keepPlayheadVisible = useCallback(
-    (view: ChartView) => {
-      const cameraTick = view.getCameraTickForPlayhead(playheadTick);
-      if (cameraTick !== null) view.setCameraTick(cameraTick);
-    },
-    [playheadTick],
-  );
-
   const updateCameraData = useCallback((view: ChartView): void => {
     const article = articleRef.current;
     if (!article) return;
@@ -194,26 +184,19 @@ function ViewportPanel({
     article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
   }, []);
 
-  const handleReady = useCallback(
-    (view: ChartView | null) => {
-      chartViewRef.current = view;
-      setChartView(view);
-      if (view) {
-        view.setPlayheadTick(playheadTick);
-        if (session.camera.tick) view.setCameraTick(session.camera.tick);
-        keepPlayheadVisible(view);
-        updateCameraData(view);
-      }
-      onChartViewReady(view);
-    },
-    [
-      keepPlayheadVisible,
-      onChartViewReady,
-      playheadTick,
-      session.camera.tick,
-      updateCameraData,
-    ],
-  );
+  const handleReady = (view: ChartView | null): void => {
+    setChartView(view);
+    onChartViewReady(view);
+  };
+
+  const getCameraTick = useEffectEvent(() => session.camera.tick);
+
+  useEffect(() => {
+    if (!chartView) return;
+    const cameraTick = getCameraTick();
+    if (cameraTick) chartView.setCameraTick(cameraTick);
+    updateCameraData(chartView);
+  }, [chartView, updateCameraData]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -258,10 +241,6 @@ function ViewportPanel({
   }, [active, session.view]);
 
   useEffect(() => {
-    chartViewRef.current?.setPlayheadTick(playheadTick);
-  }, [playheadTick]);
-
-  useEffect(() => {
     const view = chartView;
     if (!view) return;
     view.onNotesChanged = () => {
@@ -299,6 +278,19 @@ function ViewportPanel({
   ]);
 
   useEffect(() => {
+    if (!chartView) return;
+    const playback = Platform.services.get<PlaybackService>("playback");
+    const sync = (): void => {
+      const { playbackTick } = playback.getSnapshot();
+      chartView.setPlayheadTick(playbackTick);
+      const cameraTick = chartView.getCameraTickForPlayhead(playbackTick);
+      if (cameraTick !== null) chartView.setCameraTick(cameraTick);
+    };
+    sync();
+    return playback.subscribe(sync);
+  }, [chartView, isPlaying]); // Re-sync when playback starts or stops.
+
+  useEffect(() => {
     if (active) onChartViewReady(chartView);
   }, [active, chartView, onChartViewReady]);
 
@@ -315,10 +307,6 @@ function ViewportPanel({
   }, [chartView, drumPlacementKind]);
 
   useEffect(() => {
-    if (chartView) keepPlayheadVisible(chartView);
-  }, [chartView, isPlaying, keepPlayheadVisible]);
-
-  useEffect(() => {
     if (!active) return;
     setActiveView(session.view);
     stopPreview();
@@ -326,7 +314,9 @@ function ViewportPanel({
 
   const setView = (view: ViewportSession["view"]) => {
     focusViewport(session.id);
-    updateViewport(session.id, { view, camera: { tick: playheadTick } });
+    const { playbackTick } =
+      Platform.services.get<PlaybackService>("playback").getSnapshot();
+    updateViewport(session.id, { view, camera: { tick: playbackTick } });
   };
   return (
     <article

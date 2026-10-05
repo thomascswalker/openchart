@@ -46,6 +46,11 @@ const Difficulties = [
   [Difficulty.Expert, ExpertIcon],
 ] as const;
 
+const SNAP_OPTIONS = SnapDenominators.map((d) => ({
+  value: String(d),
+  label: `1/${d}`,
+}));
+
 interface ToolbarProps {
   session: ViewportSession;
   onViewChange: (view: "piano-roll" | "highway") => void;
@@ -122,10 +127,7 @@ const Toolbar = ({
             Number(value),
           ).catch(() => {})
         }
-        options={SnapDenominators.map((denominator) => ({
-          value: String(denominator),
-          label: `1/${denominator}`,
-        }))}
+        options={SNAP_OPTIONS}
       />
 
       {activeViewId === "highway" && (

@@ -32,7 +32,7 @@ const Dropdown = ({
   ...selectProps
 }: DropdownProps) => {
   const selectRef = useRef<HTMLSelectElement>(null);
-  const choicesRef = useRef<Choices | null>(null);
+  const [choices, setChoices] = useState<Choices | null>(null);
 
   useEffect(() => {
     const select = selectRef.current;
@@ -45,20 +45,21 @@ const Dropdown = ({
       searchEnabled: false,
       shouldSort: false,
     });
-    choicesRef.current = choices;
+    setChoices(choices);
 
     return () => {
       choices.destroy();
-      choicesRef.current = null;
     };
   }, [placeholder]);
 
   useEffect(() => {
-    const choices = choicesRef.current;
     if (!choices) return;
 
     choices.setChoices(
-      options.map((option) => ({ ...option, selected: false })),
+      options.map((option) => ({
+        ...option,
+        selected: option.value === value,
+      })),
       "value",
       "label",
       true,
@@ -67,11 +68,7 @@ const Dropdown = ({
     );
     if (disabled) choices.disable();
     else choices.enable();
-  }, [options, disabled]);
-
-  useEffect(() => {
-    choicesRef.current?.setChoiceByValue(value);
-  }, [value]);
+  }, [choices, options, value, disabled]);
 
   return (
     <div className={classNames(styles.dropdown, className)}>

@@ -15,7 +15,7 @@ vi.mock("../views/ChartViewHost", () => ({
 }));
 
 describe("viewport playback rendering", () => {
-  it.fails("does not commit the viewport panel for playback ticks alone", () => {
+  it("does not commit the viewport panel for playback ticks alone", () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root: Root = createRoot(container);

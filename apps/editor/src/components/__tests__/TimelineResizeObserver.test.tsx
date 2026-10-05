@@ -7,7 +7,7 @@ import Platform from "../../platform";
 import { PlaybackService } from "../../services/playback";
 
 describe("timeline resize observer", () => {
-  it.fails("keeps one ResizeObserver across playback ticks", async () => {
+  it("keeps one ResizeObserver across playback ticks", async () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     let constructions = 0;
 

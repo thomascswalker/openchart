@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import {
   ticksToMs,
   type Midi,
@@ -6,8 +6,9 @@ import {
   type TimeSignatureChange,
 } from "@midiedit/core";
 import type { ChartView } from "./views/ChartViews";
-import { usePlayback } from "../hooks/usePlayback";
+import { usePlaybackSelector } from "../hooks/usePlayback";
 import { executeEditorAction } from "../actions/execute";
+import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 
 interface TimelineProps {
   chartView: ChartView | null;
@@ -18,6 +19,58 @@ const BACKGROUND_COLOR = "#101010";
 const VIEWPORT_COLOR = "rgba(255, 255, 255, 0.12)";
 const VIEWPORT_BORDER_COLOR = "rgba(255, 255, 255, 0.35)";
 const PLAYHEAD_COLOR = "#ff3b30";
+const DEFAULT_TEMPO: TempoChange[] = [
+  { tick: 0, microsecondsPerQuarterNote: 500_000 },
+];
+const NO_CHANGES: TimeSignatureChange[] = [];
+
+function tickToX(tick: number, width: number, timelineTicks: number): number {
+  if (timelineTicks <= 0) return 0;
+  return (tick / timelineTicks) * width;
+}
+
+function xToTick(x: number, width: number, timelineTicks: number): number {
+  if (width <= 0) return 0;
+  return Math.max(0, Math.min(timelineTicks, (x / width) * timelineTicks));
+}
+
+function drawTimeline(
+  canvas: HTMLCanvasElement,
+  chartView: ChartView | null,
+  timelineTicks: number,
+  playbackTick: number,
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = BACKGROUND_COLOR;
+  ctx.fillRect(0, 0, width, height);
+
+  if (chartView && timelineTicks > 0) {
+    const cameraTick = chartView.getCameraTick();
+    const visibleSpan = chartView.getVisibleTickSpan();
+
+    const boxX = tickToX(cameraTick, width, timelineTicks);
+    const boxWidth = Math.max(2, tickToX(visibleSpan, width, timelineTicks));
+
+    ctx.fillStyle = VIEWPORT_COLOR;
+    ctx.fillRect(boxX, 0, boxWidth, height);
+    ctx.strokeStyle = VIEWPORT_BORDER_COLOR;
+    ctx.strokeRect(boxX + 0.5, 0.5, boxWidth - 1, height - 1);
+  }
+
+  const playheadX = tickToX(playbackTick, width, timelineTicks);
+  ctx.strokeStyle = PLAYHEAD_COLOR;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(playheadX, 0);
+  ctx.lineTo(playheadX, height);
+  ctx.stroke();
+}
 
 export interface TimelinePosition {
   tick: string;
@@ -93,9 +146,13 @@ export function getTimelinePosition(
   };
 }
 
-export function Timeline({ chartView, midiData }: TimelineProps) {
-  const { isPlaying, canPlay, playbackTick, totalTimelineTicks } =
-    usePlayback();
+export function Timeline({ chartView }: TimelineProps) {
+  const isPlaying = usePlaybackSelector((s) => s.isPlaying);
+  const canPlay = usePlaybackSelector((s) => s.canPlay);
+  const playbackTick = usePlaybackSelector((s) => s.playbackTick);
+  const totalTimelineTicks = usePlaybackSelector(
+    (s) => s.totalTimelineTicks,
+  );
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,150 +160,90 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
   const scrubFrameRef = useRef<number | null>(null);
   const pendingScrubXRef = useRef<number | null>(null);
 
-  const redrawRef = useRef<() => void>(() => {});
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
+  const doc = useDocumentSnapshot();
+  const tempo = useMemo(
+    () => doc.midiData?.getTempoChanges() ?? DEFAULT_TEMPO,
+    [doc],
+  );
+  const sigs = useMemo(
+    () => doc.midiData?.getTimeSignatureChanges() ?? NO_CHANGES,
+    [doc],
+  );
   const position = getTimelinePosition(
     playbackTick,
-    midiData?.header.division ?? 480,
-    midiData?.getTempoChanges() ?? [
-      { tick: 0, microsecondsPerQuarterNote: 500_000 },
-    ],
-    midiData?.getTimeSignatureChanges() ?? [],
+    doc.midiData?.header.division ?? 480,
+    tempo,
+    sigs,
   );
 
-  const tickToX = useCallback(
-    (tick: number, width: number): number => {
-      if (timelineTicks <= 0) {
-        return 0;
-      }
-      return (tick / timelineTicks) * width;
-    },
-    [timelineTicks],
-  );
-
-  const xToTick = useCallback(
-    (x: number, width: number): number => {
-      if (width <= 0) {
-        return 0;
-      }
-      return Math.max(0, Math.min(timelineTicks, (x / width) * timelineTicks));
-    },
-    [timelineTicks],
-  );
-
-  const draw = useCallback(() => {
+  const redraw = useEffectEvent(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-
-    if (!canvas || !ctx) {
-      return;
-    }
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = BACKGROUND_COLOR;
-    ctx.fillRect(0, 0, width, height);
-
-    if (chartView && timelineTicks > 0) {
-      const cameraTick = chartView.getCameraTick();
-      const visibleSpan = chartView.getVisibleTickSpan();
-
-      const boxX = tickToX(cameraTick, width);
-      const boxWidth = Math.max(2, tickToX(visibleSpan, width));
-
-      ctx.fillStyle = VIEWPORT_COLOR;
-      ctx.fillRect(boxX, 0, boxWidth, height);
-      ctx.strokeStyle = VIEWPORT_BORDER_COLOR;
-      ctx.strokeRect(boxX + 0.5, 0.5, boxWidth - 1, height - 1);
-    }
-
-    const playheadX = tickToX(playbackTick, width);
-    ctx.strokeStyle = PLAYHEAD_COLOR;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(playheadX, 0);
-    ctx.lineTo(playheadX, height);
-    ctx.stroke();
-  }, [chartView, playbackTick, tickToX, timelineTicks]);
-
-  redrawRef.current = draw;
-
-  // Redraw whenever the chart camera pans or zooms.
-  useEffect(() => {
-    if (!chartView) {
-      return;
-    }
-    return chartView.subscribeCameraChange(() => redrawRef.current());
-  }, [chartView]);
+    if (canvas) drawTimeline(canvas, chartView, timelineTicks, playbackTick);
+  });
 
   useEffect(() => {
-    draw();
-  }, [draw]);
+    redraw();
+  }, [chartView, timelineTicks, playbackTick]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
     const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
-    if (!canvas || !container) {
-      return;
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      const bounds = container.getBoundingClientRect();
-      canvas.width = Math.max(1, Math.floor(bounds.width));
-      canvas.height = Math.max(1, Math.floor(bounds.height));
-      draw();
+    const observer = new ResizeObserver(() => {
+      const { width, height } = container.getBoundingClientRect();
+      const w = Math.max(1, Math.floor(width));
+      const h = Math.max(1, Math.floor(height));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      redraw();
     });
 
-    resizeObserver.observe(container);
-
+    observer.observe(container);
     return () => {
-      resizeObserver.disconnect();
+      observer.disconnect();
     };
-  }, [draw]);
+  }, []);
 
-  const scrubToClientX = useCallback(
-    (clientX: number) => {
-      if (!canPlay || timelineTicks <= 0) {
-        return;
-      }
+  useEffect(() => {
+    if (!chartView) return;
+    return chartView.subscribeCameraChange(() => redraw());
+  }, [chartView]);
 
-      const canvas = canvasRef.current;
+  const scrubToClientX = (clientX: number): void => {
+    if (!canPlay || timelineTicks <= 0) {
+      return;
+    }
 
-      if (!canvas) {
-        return;
-      }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      const bounds = canvas.getBoundingClientRect();
-      const tick = xToTick(clientX - bounds.left, bounds.width);
+    const bounds = canvas.getBoundingClientRect();
+    const tick = xToTick(clientX - bounds.left, bounds.width, timelineTicks);
 
-      void executeEditorAction("playback.set-tick", tick).catch(() => {});
+    void executeEditorAction("playback.set-tick", tick).catch(() => {});
 
-      if (chartView) {
-        const cameraTick = chartView.getCameraTickForPlayhead(tick);
-        if (cameraTick !== null) chartView.setCameraTick(cameraTick);
-      }
-    },
-    [canPlay, chartView, timelineTicks, xToTick],
-  );
+    if (chartView) {
+      const cameraTick = chartView.getCameraTickForPlayhead(tick);
+      if (cameraTick !== null) chartView.setCameraTick(cameraTick);
+    }
+  };
 
-  const queueScrubToClientX = useCallback(
-    (clientX: number): void => {
-      pendingScrubXRef.current = clientX;
-      if (scrubFrameRef.current !== null) return;
-      scrubFrameRef.current = requestAnimationFrame(() => {
-        scrubFrameRef.current = null;
-        const pendingX = pendingScrubXRef.current;
-        pendingScrubXRef.current = null;
-        if (pendingX !== null) scrubToClientX(pendingX);
-      });
-    },
-    [scrubToClientX],
-  );
+  const queueScrubToClientX = (clientX: number): void => {
+    pendingScrubXRef.current = clientX;
+    if (scrubFrameRef.current !== null) return;
+    scrubFrameRef.current = requestAnimationFrame(() => {
+      scrubFrameRef.current = null;
+      const pendingX = pendingScrubXRef.current;
+      pendingScrubXRef.current = null;
+      if (pendingX !== null) scrubToClientX(pendingX);
+    });
+  };
 
-  const flushPendingScrub = useCallback((): void => {
+  const flushPendingScrub = (): void => {
     if (scrubFrameRef.current !== null) {
       cancelAnimationFrame(scrubFrameRef.current);
       scrubFrameRef.current = null;
@@ -254,7 +251,7 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
     const pendingX = pendingScrubXRef.current;
     pendingScrubXRef.current = null;
     if (pendingX !== null) scrubToClientX(pendingX);
-  }, [scrubToClientX]);
+  };
 
   useEffect(
     () => () => {
