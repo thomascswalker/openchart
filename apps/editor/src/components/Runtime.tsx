@@ -1,6 +1,7 @@
 import {
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useRef,
   useSyncExternalStore,
   type ReactNode,
@@ -44,18 +45,36 @@ export function Runtime({ children }: RuntimeProps) {
   );
 
   const { context } = usePlatform();
-  context.update({
-    "document.has-tracks": Boolean(midiData?.trackCount),
-    "history.can-undo": canUndoMidi,
-    "history.can-redo": canRedoMidi,
-    "audio.single-track-mode": !settings.audio.multitrack,
-    "audio.directory-picker-supported": audioStore.audioDirectorySupported,
-    "dialog.debug-open": editorStore.debugVisible,
-    "dialog.project-open": editorStore.projectVisible,
-    "dialog.settings-open": editorStore.settingsVisible,
-    "editor.can-add-viewport": viewportSessions.length < maxViewportCount,
-    "editor.can-close-viewport": viewportSessions.length > 1,
-  });
+  const hasTracks = Boolean(midiData?.trackCount);
+  const canAddViewport = viewportSessions.length < maxViewportCount;
+  const canCloseViewport = viewportSessions.length > 1;
+
+  useLayoutEffect(() => {
+    context.update({
+      "document.has-tracks": hasTracks,
+      "history.can-undo": canUndoMidi,
+      "history.can-redo": canRedoMidi,
+      "audio.single-track-mode": !settings.audio.multitrack,
+      "audio.directory-picker-supported": audioStore.audioDirectorySupported,
+      "dialog.debug-open": editorStore.debugVisible,
+      "dialog.project-open": editorStore.projectVisible,
+      "dialog.settings-open": editorStore.settingsVisible,
+      "editor.can-add-viewport": canAddViewport,
+      "editor.can-close-viewport": canCloseViewport,
+    });
+  }, [
+    context,
+    hasTracks,
+    canUndoMidi,
+    canRedoMidi,
+    settings.audio.multitrack,
+    audioStore.audioDirectorySupported,
+    editorStore.debugVisible,
+    editorStore.projectVisible,
+    editorStore.settingsVisible,
+    canAddViewport,
+    canCloseViewport,
+  ]);
 
   useEffect(() => {
     audio.setFileInputRef(audioFileRef);

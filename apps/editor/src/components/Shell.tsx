@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
@@ -26,10 +26,11 @@ const Shell = () => {
     () => playbackService.getSnapshot().isClapEnabled,
   );
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
-  clipboard.sync();
+  useLayoutEffect(() => {
+    clipboard.sync();
+  }, [clipboard]);
 
   const canRunMenuCommand = (command: MenuCommandId): boolean => {
-    clipboard.sync();
     return actions.isAvailable(command);
   };
 
