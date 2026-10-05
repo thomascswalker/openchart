@@ -89,11 +89,13 @@ const Toolbar = ({
       {/* View Selection */}
       <ToolButton
         Icon={PianoIcon}
+        ariaLabel="Piano Roll"
         active={activeViewId === "piano-roll"}
         onClick={() => handleViewChange("piano-roll")}
       />
       <ToolButton
         Icon={Highway3dIcon}
+        ariaLabel="Highway"
         active={activeViewId === "highway"}
         onClick={() => handleViewChange("highway")}
       />

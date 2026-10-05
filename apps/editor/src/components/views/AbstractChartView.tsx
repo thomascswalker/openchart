@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { RenderScheduler } from "../../rendering/scheduler";
 import { Engine, type EngineOptions } from "../../rendering/engine";
 import type { CanvasPoint, CanvasRect } from "../../rendering/geometry";
+import { getCameraTickForPlayhead } from "./viewNavigation";
 
 export interface ChartViewState {
   midi: Midi | null;
@@ -51,6 +52,7 @@ export abstract class AbstractChartView<T> {
   private readonly defaultCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
   private engine: Engine | null = null;
   private scheduler: RenderScheduler | null = null;
+  private readonly cameraListeners = new Set<() => void>();
   private destroyed = false;
 
   private width = 1;
@@ -115,6 +117,7 @@ export abstract class AbstractChartView<T> {
 
   public destroy(): void {
     this.destroyed = true;
+    this.cameraListeners.clear();
 
     this.scheduler?.dispose();
     this.scheduler = null;
@@ -176,6 +179,15 @@ export abstract class AbstractChartView<T> {
     return 0;
   }
 
+  /** Camera tick that frames the playhead, or null when no move is needed. */
+  public getCameraTickForPlayhead(playheadTick: number): number | null {
+    return getCameraTickForPlayhead(
+      playheadTick,
+      this.getCameraTick(),
+      this.getVisibleTickSpan(),
+    );
+  }
+
   public setCameraTick(_tick: number): void {
     void _tick;
   }
@@ -185,8 +197,17 @@ export abstract class AbstractChartView<T> {
     void _tick;
   }
 
-  /** Notified whenever the view's camera position or zoom changes, if supported. */
-  public onCameraChange: (() => void) | null = null;
+  /** Subscribe to camera pan/zoom changes. Returns an unsubscribe function. */
+  public subscribeCameraChange(listener: () => void): () => void {
+    this.cameraListeners.add(listener);
+    return () => {
+      this.cameraListeners.delete(listener);
+    };
+  }
+
+  protected notifyCameraChange(): void {
+    for (const listener of [...this.cameraListeners]) listener();
+  }
 
   /** Notified whenever notes are added or removed, if supported. */
   public onNotesChanged: (() => void) | null = null;

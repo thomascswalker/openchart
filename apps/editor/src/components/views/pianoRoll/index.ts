@@ -191,7 +191,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     ) {
       this.lastNotifiedCameraX = this.camera.x;
       this.lastNotifiedCameraH = this.camera.h;
-      this.onCameraChange?.();
+      this.notifyCameraChange();
     }
   }
 
