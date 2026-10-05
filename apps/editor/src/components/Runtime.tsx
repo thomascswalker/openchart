@@ -14,7 +14,6 @@ import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { AudioService } from "../services/audio";
 import { DocumentService } from "../services/document";
 import { EditorStateService } from "../services/editor/state";
-import { ViewportService } from "../services/editor/viewports";
 import { Playback } from "./Playback";
 
 interface RuntimeProps {
@@ -31,7 +30,6 @@ export function Runtime({ children }: RuntimeProps) {
   const audio = useService<AudioService>("audio");
   const doc = useService<DocumentService>("document");
   const editorState = useService<EditorStateService>("editor.state");
-  const editorViewports = useService<ViewportService>("editor.viewports");
 
   const audioStore = useSyncExternalStore(
     audio.subscribe,
@@ -78,11 +76,7 @@ export function Runtime({ children }: RuntimeProps) {
 
   useEffect(() => {
     audio.setFileInputRef(audioFileRef);
-    editorState.reset();
-    doc.reset();
-    editorViewports.reset();
-    void audio.initialize();
-  }, [audio, doc, editorState, editorViewports]);
+  }, [audio]);
 
   useEffect(() => {
     doc.setHistoryCapacity(settings.history.capacity);
