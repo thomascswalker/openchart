@@ -2,5 +2,7 @@ node_modules
 dist
 build
 coverage
+apps/editor/playwright-report
+apps/editor/test-results
 package-lock.json
 apps/desktop/src-tauri/gen/**

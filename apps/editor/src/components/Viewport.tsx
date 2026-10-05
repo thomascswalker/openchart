@@ -16,7 +16,6 @@ import {
   type DrumPlacementKind,
   type HighwayMode,
 } from "./views/highway";
-import { getCameraTickForPlayhead } from "./views/viewNavigation";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, CloseButton } from "./shared/Button/Button";
@@ -165,6 +164,7 @@ function ViewportPanel({
     );
   }, []);
   const chartViewRef = useRef<ChartView | null>(null);
+  const articleRef = useRef<HTMLElement | null>(null);
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
@@ -181,18 +181,18 @@ function ViewportPanel({
 
   const keepPlayheadVisible = useCallback(
     (view: ChartView) => {
-      const cameraTick =
-        view instanceof HighwayView
-          ? view.getCameraTickForPlayhead(playheadTick)
-          : getCameraTickForPlayhead(
-              playheadTick,
-              view.getCameraTick(),
-              view.getVisibleTickSpan(),
-            );
+      const cameraTick = view.getCameraTickForPlayhead(playheadTick);
       if (cameraTick !== null) view.setCameraTick(cameraTick);
     },
     [playheadTick],
   );
+
+  const updateCameraData = useCallback((view: ChartView): void => {
+    const article = articleRef.current;
+    if (!article) return;
+    article.dataset.cameraTick = String(view.getCameraTick());
+    article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
+  }, []);
 
   const handleReady = useCallback(
     (view: ChartView | null) => {
@@ -202,10 +202,17 @@ function ViewportPanel({
         view.setPlayheadTick(playheadTick);
         if (session.camera.tick) view.setCameraTick(session.camera.tick);
         keepPlayheadVisible(view);
+        updateCameraData(view);
       }
       onChartViewReady(view);
     },
-    [keepPlayheadVisible, onChartViewReady, playheadTick, session.camera.tick],
+    [
+      keepPlayheadVisible,
+      onChartViewReady,
+      playheadTick,
+      session.camera.tick,
+      updateCameraData,
+    ],
   );
 
   useEffect(() => {
@@ -269,15 +276,17 @@ function ViewportPanel({
     };
     view.onSeekRequest = setPlaybackTick;
     view.onSnapDenominatorChange = setSnapDenominator;
-    view.onCameraChange = () =>
+    const unsubscribeCameraChange = view.subscribeCameraChange(() => {
+      updateCameraData(view);
       updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
+    });
     return () => {
+      unsubscribeCameraChange();
       view.onNotesChanged = null;
       view.onEditStart = null;
       view.onEditEnd = null;
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
-      view.onCameraChange = null;
     };
   }, [
     chartView,
@@ -286,6 +295,7 @@ function ViewportPanel({
     setSnapDenominator,
     setPlaybackTick,
     updateViewport,
+    updateCameraData,
   ]);
 
   useEffect(() => {
@@ -305,9 +315,8 @@ function ViewportPanel({
   }, [chartView, drumPlacementKind]);
 
   useEffect(() => {
-    if (isPlaying && chartViewRef.current)
-      keepPlayheadVisible(chartViewRef.current);
-  }, [isPlaying, keepPlayheadVisible]);
+    if (chartView) keepPlayheadVisible(chartView);
+  }, [chartView, isPlaying, keepPlayheadVisible]);
 
   useEffect(() => {
     if (!active) return;
@@ -321,6 +330,10 @@ function ViewportPanel({
   };
   return (
     <article
+      ref={articleRef}
+      data-testid="viewport-panel"
+      data-viewport-id={session.id}
+      data-view={session.view}
       className={`viewport-panel${active ? " viewport-panel--active" : ""}`}
       onPointerDown={() => focusViewport(session.id)}
     >

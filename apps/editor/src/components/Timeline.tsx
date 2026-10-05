@@ -6,7 +6,6 @@ import {
   type TimeSignatureChange,
 } from "@midiedit/core";
 import type { ChartView } from "./views/ChartViews";
-import { HighwayView } from "./views/highway";
 import { usePlayback } from "../hooks/usePlayback";
 import { executeEditorAction } from "../actions/execute";
 
@@ -174,19 +173,12 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
 
   redrawRef.current = draw;
 
-  // Redraw whenever the piano roll's camera pans or zooms.
+  // Redraw whenever the chart camera pans or zooms.
   useEffect(() => {
     if (!chartView) {
       return;
     }
-
-    chartView.onCameraChange = () => {
-      redrawRef.current();
-    };
-
-    return () => {
-      chartView.onCameraChange = null;
-    };
+    return chartView.subscribeCameraChange(() => redrawRef.current());
   }, [chartView]);
 
   useEffect(() => {
@@ -233,12 +225,8 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
       void executeEditorAction("playback.set-tick", tick).catch(() => {});
 
       if (chartView) {
-        if (chartView instanceof HighwayView) {
-          chartView.setCameraTick(chartView.getCameraTickForPlayhead(tick));
-        } else {
-          const visibleSpan = chartView.getVisibleTickSpan();
-          chartView.setCameraTick(Math.max(0, tick - visibleSpan / 2));
-        }
+        const cameraTick = chartView.getCameraTickForPlayhead(tick);
+        if (cameraTick !== null) chartView.setCameraTick(cameraTick);
       }
     },
     [canPlay, chartView, timelineTicks, xToTick],
@@ -362,7 +350,11 @@ export function Timeline({ chartView, midiData }: TimelineProps) {
           |▶
         </button>
       </div>
-      <div ref={containerRef} className="timeline__track">
+      <div
+        ref={containerRef}
+        className="timeline__track"
+        data-testid="viewport-timeline"
+      >
         <canvas
           ref={canvasRef}
           className="timeline__canvas"

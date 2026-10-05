@@ -211,7 +211,7 @@ export class HighwayView
     );
   }
 
-  public getCameraTickForPlayhead(tick: number): number {
+  public override getCameraTickForPlayhead(tick: number): number {
     return this.coordinates.getCameraTickAtDepth(tick, strikeLineZ);
   }
 
@@ -220,7 +220,7 @@ export class HighwayView
     if (!Number.isFinite(nextTick) || nextTick === this.cameraTick) return;
     this.cameraTick = nextTick;
     this.render();
-    this.onCameraChange?.();
+    this.notifyCameraChange();
   }
 
   public setMode(mode: HighwayMode): void {
