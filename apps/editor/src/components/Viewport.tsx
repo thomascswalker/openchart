@@ -22,6 +22,7 @@ import {
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, CloseButton } from "./shared/Button/Button";
+import { isTypingTarget } from "./shared/isTypingTarget";
 import { startCase } from "es-toolkit";
 import {
   BassIcon,
@@ -50,14 +51,6 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
     default:
       return <NoteIcon width={18} height={18} />;
   }
-}
-
-export function isTypingTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-      target.isContentEditable)
-  );
 }
 
 function updateCameraData(

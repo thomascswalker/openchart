@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
-import { isTypingTarget } from "./Viewport";
+import { isTypingTarget } from "./shared/isTypingTarget";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
