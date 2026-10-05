@@ -26,7 +26,7 @@ describe("viewport playback rendering", () => {
         root.render(
           <Runtime>
             <Profiler id="viewport" onRender={() => commits++}>
-              <Viewport onChartViewReady={() => {}} />
+              <Viewport />
             </Profiler>
           </Runtime>,
         ),

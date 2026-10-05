@@ -9,6 +9,7 @@ import { usePlaybackSelector } from "../hooks/usePlayback";
 import { runAction } from "../actions/execute";
 import Platform from "../platform";
 import { PlaybackService } from "../services/playback";
+import { ActiveChartViewService } from "../services/editor/activeChartView";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -90,11 +91,7 @@ function trackIndexForSession(
   return index >= 0 ? index : null;
 }
 
-interface ViewportProps {
-  onChartViewReady: (view: ChartView | null) => void;
-}
-
-export const Viewport = ({ onChartViewReady }: ViewportProps) => {
+export const Viewport = () => {
   const { viewportSessions, activeViewportId, maxViewportCount } =
     useViewportSnapshot();
   return (
@@ -113,9 +110,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
             key={session.id}
             session={session}
             active={session.id === activeViewportId}
-            onChartViewReady={
-              session.id === activeViewportId ? onChartViewReady : () => {}
-            }
           />
         ))}
       </div>
@@ -126,11 +120,9 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
 function ViewportPanel({
   session,
   active,
-  onChartViewReady,
 }: {
   session: ViewportSession;
   active: boolean;
-  onChartViewReady: (view: ChartView | null) => void;
 }) {
   const { midiData } = useDocumentSnapshot();
   const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
@@ -139,6 +131,8 @@ function ViewportPanel({
   const setActiveView = usePlaybackSelector((s) => s.setActiveView);
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);
   const articleRef = useRef<HTMLElement | null>(null);
+  const activeChartView =
+    Platform.services.get<ActiveChartViewService>("editor.active-chart-view");
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
@@ -151,7 +145,6 @@ function ViewportPanel({
 
   const handleReady = (view: ChartView | null): void => {
     setChartView(view);
-    onChartViewReady(view);
   };
 
   const getCameraTick = useEffectEvent(() => session.camera.tick);
@@ -251,8 +244,10 @@ function ViewportPanel({
   }, [chartView, isPlaying]); // Re-sync when playback starts or stops.
 
   useEffect(() => {
-    if (active) onChartViewReady(chartView);
-  }, [active, chartView, onChartViewReady]);
+    if (!active) return;
+    activeChartView.set(chartView);
+    return () => activeChartView.set(null);
+  }, [active, activeChartView, chartView]);
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {

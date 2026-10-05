@@ -1,4 +1,5 @@
 import Platform from "../../platform";
+import { ActiveChartViewService } from "./activeChartView";
 
 export interface ClipboardView {
   canCopySelection: () => boolean;
@@ -10,10 +11,17 @@ export interface ClipboardView {
 }
 
 export class EditorClipboardService {
-  private view: ClipboardView | null = null;
+  static dependencies = ["editor.active-chart-view"];
+  private readonly activeChartView: ActiveChartViewService;
 
-  public setView(view: ClipboardView | null): void {
-    this.view = view;
+  constructor(activeChartView: ActiveChartViewService) {
+    this.activeChartView = activeChartView;
+    this.activeChartView.subscribe(() => this.sync());
+    this.sync();
+  }
+
+  private get view(): ClipboardView | null {
+    return this.activeChartView.getSnapshot();
   }
 
   public canCopy(): boolean {

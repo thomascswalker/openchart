@@ -1,11 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
-import type { ChartView } from "./views/ChartViews";
 import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
@@ -26,10 +25,7 @@ const Shell = () => {
     () => playbackService.getSnapshot().isClapEnabled,
     () => playbackService.getSnapshot().isClapEnabled,
   );
-  const [chartView, setChartView] = useState<ChartView | null>(null);
-
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
-  clipboard.setView(chartView);
   clipboard.sync();
 
   const canRunMenuCommand = (command: MenuCommandId): boolean => {
@@ -123,7 +119,6 @@ const Shell = () => {
       <Workspace
         debugVisible={debugVisible}
         onDebugClose={() => runAction("dialog.close-debug")}
-        onChartViewReady={setChartView}
       />
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}

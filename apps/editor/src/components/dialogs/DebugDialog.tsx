@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { usePlayback } from "../../hooks/usePlayback";
+import Platform from "../../platform";
+import { ActiveChartViewService } from "../../services/editor/activeChartView";
 import {
   isCameraDebugView,
   type CameraDebugState,
@@ -10,7 +12,6 @@ import type { ChartView } from "../views/ChartViews";
 
 interface DebugWindowProps {
   onClose: () => void;
-  chartView: ChartView | null;
 }
 
 interface DebugEvent {
@@ -338,9 +339,16 @@ function DebugPanel({
   );
 }
 
-export function DebugWindow({ onClose, chartView }: DebugWindowProps) {
+export function DebugWindow({ onClose }: DebugWindowProps) {
   const [events, setEvents] = useState<DebugEvent[]>([]);
   const [pressedKeys, setPressedKeys] = useState<string[]>([]);
+  const activeChartView =
+    Platform.services.get<ActiveChartViewService>("editor.active-chart-view");
+  const chartView = useSyncExternalStore(
+    activeChartView.subscribe,
+    activeChartView.getSnapshot,
+    activeChartView.getSnapshot,
+  );
 
   useEffect(() => {
     const record = (type: string, detail: string): void => {
