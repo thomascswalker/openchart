@@ -181,11 +181,11 @@ test("T5c: playback advances and pauses both highway viewports", async ({
   const firstCamera = await cameraTick(first);
   const secondCamera = await cameraTick(second);
 
-  await page.getByRole("button", { name: "Play/Pause" }).click();
+  await first.getByRole("button", { name: "Play/Pause", exact: true }).click();
   await expect.poll(() => playheadTick(first)).toBeGreaterThan(initialTick);
   await expect.poll(() => cameraTick(first)).toBeGreaterThan(firstCamera);
   await expect.poll(() => cameraTick(second)).toBeGreaterThan(secondCamera);
-  await page.getByRole("button", { name: "Play/Pause" }).click();
+  await first.getByRole("button", { name: "Play/Pause", exact: true }).click();
   const pausedTick = await playheadTick(first);
   const pausedFirstCamera = await cameraTick(first);
   const pausedSecondCamera = await cameraTick(second);

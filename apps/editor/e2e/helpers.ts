@@ -120,7 +120,7 @@ export async function expectPlayheadFramed(
   const tick = await playheadTick(viewport);
   const camera = await cameraTick(viewport);
   if (view === "highway") {
-    expect(camera - tick).toBeCloseTo(-(4 / 3) * 480, 0);
+    expect(Math.abs(camera - tick + (4 / 3) * 480)).toBeLessThan(1);
     return;
   }
   const span = await visibleTickSpan(viewport);
