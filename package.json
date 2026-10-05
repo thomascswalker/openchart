@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "check": "npm run lint && npm run format:check",
     "test": "turbo run test",
+    "check-types": "turbo run check-types --filter=!@midiedit/desktop",
     "test:core": "turbo run test --filter=@midiedit/core",
     "test:views": "turbo run test --filter=@midiedit/views",
     "deploy:editor": "turbo run build --filter=@midiedit/editor^... && npm run deploy --workspace=@midiedit/editor"

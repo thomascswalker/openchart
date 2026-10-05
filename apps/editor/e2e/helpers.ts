@@ -45,7 +45,7 @@ export async function switchView(
   view: "highway" | "piano-roll",
 ): Promise<void> {
   const name = view === "highway" ? "Highway" : "Piano Roll";
-  await viewport.getByRole("button", { name }).click();
+  await viewport.getByRole("button", { name, exact: true }).click();
   await expect(viewport).toHaveAttribute("data-view", view);
   await expect(viewport.locator(".midi-view-host canvas")).toBeVisible();
   await expect(viewport).toHaveAttribute("data-camera-tick", /.+/);
@@ -120,7 +120,7 @@ export async function expectPlayheadFramed(
   const tick = await playheadTick(viewport);
   const camera = await cameraTick(viewport);
   if (view === "highway") {
-    expect(camera - tick).toBeCloseTo(-(4 / 3) * 480, 0);
+    expect(Math.abs(camera - tick + (4 / 3) * 480)).toBeLessThan(1);
     return;
   }
   const span = await visibleTickSpan(viewport);

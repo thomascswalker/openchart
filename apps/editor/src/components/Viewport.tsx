@@ -351,7 +351,7 @@ function ViewportPanel({
         <div className="viewport-panel__actions">
           <Button
             title="Split to the right"
-            aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
+            ariaLabel={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
             onClick={() => addViewport(session.view, session.id)}
             disabled={viewportSessions.length >= maxViewportCount}
             flat={true}
