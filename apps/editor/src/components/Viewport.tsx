@@ -52,7 +52,7 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
   }
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
+export function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
@@ -252,14 +252,9 @@ function ViewportPanel({
   useEffect(() => {
     if (chartView instanceof HighwayView) {
       chartView.setMode(highwayMode);
-    }
-  }, [chartView, highwayMode]);
-
-  useEffect(() => {
-    if (chartView instanceof HighwayView) {
       chartView.setDrumPlacementKind(drumPlacementKind);
     }
-  }, [chartView, drumPlacementKind]);
+  }, [chartView, highwayMode, drumPlacementKind]);
 
   useEffect(() => {
     if (!active) return;

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
+import { isTypingTarget } from "./Viewport";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
@@ -43,9 +44,7 @@ const Shell = () => {
       const target = event.target;
       if (
         event.defaultPrevented ||
-        (target instanceof HTMLElement &&
-          (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-            target.isContentEditable)) ||
+        isTypingTarget(target) ||
         event.altKey
       )
         return;

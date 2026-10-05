@@ -49,6 +49,20 @@ type CameraDraft = {
   fieldOfView: string;
 };
 
+const CAMERA_FIELDS: {
+  key: keyof CameraDraft;
+  label: string;
+  step: string;
+}[] = [
+  { key: "positionX", label: "Position X", step: "0.1" },
+  { key: "positionY", label: "Position Y", step: "0.1" },
+  { key: "positionZ", label: "Position Z", step: "0.1" },
+  { key: "rotationX", label: "Rotation X (deg)", step: "1" },
+  { key: "rotationY", label: "Rotation Y (deg)", step: "1" },
+  { key: "rotationZ", label: "Rotation Z (deg)", step: "1" },
+  { key: "fieldOfView", label: "FOV (deg)", step: "1" },
+];
+
 function cameraStateToDraft(state: CameraDebugState): CameraDraft {
   return {
     positionX: String(state.position.x),
@@ -124,16 +138,6 @@ function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
     setError(null);
   };
 
-  const fields: { key: keyof CameraDraft; label: string; step: string }[] = [
-    { key: "positionX", label: "Position X", step: "0.1" },
-    { key: "positionY", label: "Position Y", step: "0.1" },
-    { key: "positionZ", label: "Position Z", step: "0.1" },
-    { key: "rotationX", label: "Rotation X (deg)", step: "1" },
-    { key: "rotationY", label: "Rotation Y (deg)", step: "1" },
-    { key: "rotationZ", label: "Rotation Z (deg)", step: "1" },
-    { key: "fieldOfView", label: "FOV (deg)", step: "1" },
-  ];
-
   return (
     <section className="debug-panel__section">
       <h2>Highway camera</h2>
@@ -145,7 +149,7 @@ function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
         }}
       >
         <div className="debug-camera__grid">
-          {fields.map(({ key, label, step }) => (
+          {CAMERA_FIELDS.map(({ key, label, step }) => (
             <label key={key} className="debug-camera__field">
               <span>{label}</span>
               <input
