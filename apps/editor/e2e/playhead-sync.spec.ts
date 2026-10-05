@@ -210,11 +210,10 @@ test("T5d: pressing play reframes a manually panned highway", async ({
   await page.mouse.wheel(0, -500);
   const pannedCamera = await cameraTick(viewport);
   await page.getByRole("button", { name: "Play/Pause" }).click();
-  await expect
-    .poll(
-      async () => (await cameraTick(viewport)) - (await playheadTick(viewport)),
-    )
-    .toBeCloseTo(HIGHWAY_CAMERA_OFFSET, 0);
+  await expect.poll(() => cameraTick(viewport)).not.toBe(pannedCamera);
   await page.getByRole("button", { name: "Play/Pause" }).click();
-  expect(await cameraTick(viewport)).not.toBe(pannedCamera);
+  const pausedTick = await playheadTick(viewport);
+  await expect
+    .poll(async () => (await cameraTick(viewport)) - pausedTick)
+    .toBeCloseTo(HIGHWAY_CAMERA_OFFSET, 0);
 });
