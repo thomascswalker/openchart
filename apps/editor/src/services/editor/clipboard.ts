@@ -17,7 +17,6 @@ export class EditorClipboardService {
   constructor(activeChartView: ActiveChartViewService) {
     this.activeChartView = activeChartView;
     this.activeChartView.subscribe(() => this.sync());
-    this.sync();
   }
 
   private get view(): ClipboardView | null {
