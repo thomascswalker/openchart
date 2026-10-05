@@ -251,13 +251,22 @@ const SettingsDialog = () => {
   }, []);
 
   const refreshAudioFileNames = (): void => {
-    void audioService.listDiscoveredFiles(settings).then(setAudioFileNames);
+    void audioService
+      .listDiscoveredFiles(draft.audio.rootPath)
+      .then(setAudioFileNames);
   };
 
   useEffect(() => {
-    refreshAudioFileNames();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.audio.rootPath, audioDirectoryName]);
+    let ignore = false;
+    void audioService
+      .listDiscoveredFiles(draft.audio.rootPath)
+      .then((names) => {
+        if (!ignore) setAudioFileNames(names);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [audioService, draft.audio.rootPath, audioDirectoryName]);
 
   const close = (): void => {
     void executeEditorAction("dialog.close-settings").catch(() => {});

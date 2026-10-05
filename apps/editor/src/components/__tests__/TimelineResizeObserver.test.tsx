@@ -12,7 +12,8 @@ describe("timeline resize observer", () => {
     let constructions = 0;
 
     class CountingResizeObserver implements ResizeObserver {
-      constructor(_callback: ResizeObserverCallback) {
+      constructor(callback: ResizeObserverCallback) {
+        expect(callback).toBeTypeOf("function");
         constructions++;
       }
 

@@ -105,7 +105,7 @@ const Shell = () => {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [chartView]);
+  }, [actions, clipboard]);
 
   return (
     <div className="midi-editor">

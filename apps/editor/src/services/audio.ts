@@ -285,7 +285,7 @@ export class AudioService {
   };
 
   public readonly listDiscoveredFiles = async (
-    settings: ApplicationSettings,
+    rootPath: string,
   ): Promise<string[] | null> => {
     try {
       const { isTauri } = await import("@tauri-apps/api/core");
@@ -293,7 +293,7 @@ export class AudioService {
         await import("../util/audioDiscovery");
       const { hasReadPermission } =
         await import("../util/audioDirectoryHandle");
-      if (isTauri()) return await listAudioFileNames(settings.audio.rootPath);
+      if (isTauri()) return await listAudioFileNames(rootPath);
       if (
         this.audioDirectoryHandle &&
         (await hasReadPermission(this.audioDirectoryHandle))

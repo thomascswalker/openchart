@@ -1,4 +1,10 @@
-import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { usePlatform, useService } from "../platform";
 import { executeEditorAction } from "../actions/execute";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
@@ -8,7 +14,6 @@ import { AudioService } from "../services/audio";
 import { DocumentService } from "../services/document";
 import { EditorStateService } from "../services/editor/state";
 import { ViewportService } from "../services/editor/viewports";
-import { SettingsService } from "../services/settings";
 import { Playback } from "./Playback";
 
 interface RuntimeProps {
@@ -26,7 +31,6 @@ export function Runtime({ children }: RuntimeProps) {
   const doc = useService<DocumentService>("document");
   const editorState = useService<EditorStateService>("editor.state");
   const editorViewports = useService<ViewportService>("editor.viewports");
-  const settingsService = useService<SettingsService>("settings");
 
   const audioStore = useSyncExternalStore(
     audio.subscribe,
@@ -55,20 +59,21 @@ export function Runtime({ children }: RuntimeProps) {
 
   useEffect(() => {
     audio.setFileInputRef(audioFileRef);
-    settingsService.load();
     editorState.reset();
     doc.reset();
     editorViewports.reset();
     void audio.initialize();
-  }, [audio, doc, editorState, settingsService, editorViewports]);
+  }, [audio, doc, editorState, editorViewports]);
 
   useEffect(() => {
     doc.setHistoryCapacity(settings.history.capacity);
   }, [doc, settings.history.capacity]);
 
+  const discover = useEffectEvent(() => void audio.discoverAudio(settings));
+
   useEffect(() => {
-    void audio.discoverAudio(settings);
-  }, [audio, settings]);
+    discover();
+  }, [settings.audio.multitrack, settings.audio.rootPath, settings.discovery]);
 
   const audioFileInput = (
     <input
