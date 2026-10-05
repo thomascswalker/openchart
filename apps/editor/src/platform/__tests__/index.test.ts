@@ -6,6 +6,7 @@ import { ServiceRegistry } from "../services";
 import { DocumentService } from "../../services/document";
 import { FileSystemService } from "../../services/filesystem";
 import { LoggerService } from "../../services/logger";
+import { SettingsService } from "../../services/settings";
 
 describe("Platform", () => {
   it("constructs the registries and registers the service classes", () => {
@@ -21,6 +22,22 @@ describe("Platform", () => {
       FileSystemService,
     );
     expect(Platform.services.get("document")).toBeInstanceOf(DocumentService);
+    expect(Platform.services.get("settings")).toBeInstanceOf(SettingsService);
+
+    const serviceIds = [
+      "audio",
+      "document",
+      "editor.clipboard",
+      "editor.state",
+      "editor.viewports",
+      "filesystem",
+      "logger",
+      "playback",
+      "settings",
+    ];
+    expect(
+      serviceIds.filter((id) => !Platform.services.hasService(id)),
+    ).toEqual([]);
     expect(Platform.actions.hasAction("document.save")).toBe(true);
   });
 

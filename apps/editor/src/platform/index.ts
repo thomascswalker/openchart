@@ -1,13 +1,19 @@
 import { ActionRegistry } from "./actions";
 import { ContextStore } from "./context";
-import { globModules } from "./modules";
 import { ServiceRegistry } from "./services";
 import { createContext, useContext } from "react";
 
-const serviceModules = globModules("services");
+const serviceModules = import.meta.glob<Record<string, unknown>>(
+  ["../services/**/*.ts", "!../services/**/__tests__/**"],
+  { eager: true },
+);
+const actionModules = import.meta.glob<Record<string, unknown>>(
+  ["../actions/**/*.ts", "!../actions/**/__tests__/**"],
+  { eager: true },
+);
+
 const services = new ServiceRegistry(serviceModules);
 const context = new ContextStore();
-const actionModules = globModules("actions");
 const actions = new ActionRegistry(services, context, actionModules);
 
 const Platform = {

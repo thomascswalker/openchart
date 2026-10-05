@@ -20,7 +20,7 @@ export class ServiceRegistry {
       const serviceClasses = Object.values(modules[filepath]).filter(
         (candidate): candidate is ServiceConstructor =>
           typeof candidate === "function" &&
-          /^class\s/.test(Function.prototype.toString.call(candidate)),
+          Object.getOwnPropertyNames(candidate.prototype ?? {}).length > 1,
       );
       if (!serviceClasses.length) {
         continue;

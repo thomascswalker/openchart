@@ -26,12 +26,3 @@ export function moduleId(filepath: string, root: string): string | null {
     )
     .join(".");
 }
-
-export function globModules(name: string) {
-  return import.meta.glob<Record<string, unknown>>(
-    [`../${name}/**/*.ts`, `!../${name}/**/__tests__/**`],
-    {
-      eager: true,
-    },
-  );
-}

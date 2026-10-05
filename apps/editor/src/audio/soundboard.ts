@@ -125,6 +125,11 @@ export class Soundboard {
   private previewVoices: ActiveVoice[] = [];
   private previewRequest = 0;
   private readonly crossingTracker = new NoteCrossingTracker();
+  private readonly contextFactory: (() => AudioContext | null) | null;
+
+  constructor(contextFactory?: (() => AudioContext | null) | null) {
+    this.contextFactory = contextFactory ?? null;
+  }
 
   public configure(configuration: SoundboardConfigurationInput): void {
     const previousKey = this.configuration?.highwayKey;
@@ -161,7 +166,9 @@ export class Soundboard {
   }
 
   public async ensureStarted(): Promise<void> {
-    if (!this.context) this.context = createSoundboardContext();
+    if (!this.context) {
+      this.context = this.contextFactory?.() ?? createSoundboardContext();
+    }
     if (this.context.state === "suspended") await this.context.resume();
   }
 
