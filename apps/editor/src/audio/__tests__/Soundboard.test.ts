@@ -69,7 +69,7 @@ function note(start: number): MidiNote {
   };
 }
 
-describe("PlaybackFeedbackEngine", () => {
+describe("Soundboard", () => {
   it("maps MIDI pitches and cleans up preview voices", async () => {
     expect(midiPitchToFrequency(69)).toBe(440);
     expect(() => midiPitchToFrequency(128)).toThrow(RangeError);
