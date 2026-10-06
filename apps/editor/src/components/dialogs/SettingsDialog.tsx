@@ -27,7 +27,7 @@ interface SettingsField {
   id: string;
   label: string;
   control: SettingsControl;
-  path: `${"audio" | "discovery" | "saving" | "feedback" | "history"}.${string}`;
+  path: `${"audio" | "discovery" | "saving" | "feedback" | "history" | "rendering"}.${string}`;
   options?: ReadonlyArray<{ label: string; value: string }>;
   min?: number;
   max?: number;
@@ -123,6 +123,14 @@ const settingsSchema: Record<string, SettingsField[]> = {
       step: 1,
     },
   ],
+  Rendering: [
+    {
+      id: "instancing",
+      label: "Enable highway instancing",
+      control: "checkbox",
+      path: "rendering.instancing",
+    },
+  ],
   Audio: [
     {
       id: "rootPath",
@@ -205,7 +213,12 @@ function getSettingValue(
   const [group, key] = path.split(".") as [
     keyof Pick<
       ApplicationSettings,
-      "audio" | "discovery" | "saving" | "feedback" | "history"
+    | "audio"
+    | "discovery"
+    | "saving"
+    | "feedback"
+    | "history"
+    | "rendering"
     >,
     string,
   ];
@@ -220,7 +233,12 @@ function setSettingValue(
   const [group, key] = path.split(".") as [
     keyof Pick<
       ApplicationSettings,
-      "audio" | "discovery" | "saving" | "feedback" | "history"
+    | "audio"
+    | "discovery"
+    | "saving"
+    | "feedback"
+    | "history"
+    | "rendering"
     >,
     string,
   ];

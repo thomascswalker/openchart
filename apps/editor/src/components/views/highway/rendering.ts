@@ -57,6 +57,7 @@ import {
   type InstancedTail,
   type PrimitiveMaterialRole,
 } from "./instances";
+import { SustainTailBatch, type SustainInstanceData } from "./tailBatch";
 import type { HighwayPhraseEditingController } from "./phraseEditing";
 import type { MarqueeDragState } from "./types";
 import {
@@ -129,6 +130,8 @@ export class HighwayRenderer {
   };
   private readonly tailInstances: InstancedTail[][] = [];
   private readonly previewTailInstances: InstancedTail[][] = [];
+  private instancedTailBatch: SustainTailBatch | null = null;
+  private instancedPreviewTailBatch: SustainTailBatch | null = null;
   private readonly sustainCutPreviewLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-3, 0, 0),
@@ -311,6 +314,8 @@ export class HighwayRenderer {
       visibleNotes,
     );
 
+    const useInstancedTails = this.context.getInstancingEnabled();
+    const tailData: SustainInstanceData[] = [];
     const usedTails = new Set<InstancedTail>();
     const visibleTailEnd = this.coordinates.getTickAtDepth(farBoardZ);
     for (const { note, lane } of isDrumChart ? [] : visibleNotes) {
@@ -323,9 +328,6 @@ export class HighwayRenderer {
       const solidTailEnd =
         cutTick === null ? tailEnd : Math.min(tailEnd, cutTick);
       if (solidTailEnd <= tailStart) continue;
-      const instancedTail = this.acquireTail(note.noteOn);
-      if (!instancedTail) continue;
-      usedTails.add(instancedTail);
       const transform = sustainWorldTransform(
         this.coordinates.getLaneX(lane),
         this.coordinates.getNoteZ(tailStart),
@@ -334,6 +336,21 @@ export class HighwayRenderer {
       const selected = this.context
         .getSelectionContext()
         .isSelected(note.noteOn);
+      if (useInstancedTails) {
+        tailData.push({
+          x: transform.position.x,
+          y: transform.position.y,
+          z: transform.position.z,
+          width: transform.scale.x,
+          halfLength: transform.scale.y,
+          color: laneRgbColors[lane],
+          selected,
+        });
+        continue;
+      }
+      const instancedTail = this.acquireTail(note.noteOn);
+      if (!instancedTail) continue;
+      usedTails.add(instancedTail);
       instancedTail.mesh.position.set(
         transform.position.x,
         transform.position.y,
@@ -357,6 +374,17 @@ export class HighwayRenderer {
         strikeLineZ,
       });
     }
+    let visibleTails = usedTails.size;
+    if (useInstancedTails) {
+      this.ensureInstancedTailBatches();
+      visibleTails = this.instancedTailBatch!.write(tailData);
+    } else {
+      this.instancedTailBatch?.write([]);
+      this.releaseUnusedBindings(this.tailBindings, usedTails, (item) => {
+        item.mesh.visible = false;
+        this.freeTailInstances.push(item);
+      });
+    }
     const previewSustains = isDrumChart
       ? 0
       : this.drawSustainCutPreviewRemainders(
@@ -366,7 +394,7 @@ export class HighwayRenderer {
           visibleTailEnd,
         );
     this.scene.userData.visibleNotes = visibleNotes.length;
-    this.scene.userData.visibleSustains = usedTails.size + previewSustains;
+    this.scene.userData.visibleSustains = visibleTails + previewSustains;
 
     const usedGems = new Set<InstancedNote>();
     for (const { note, lane, kind } of visibleNotes) {
@@ -405,10 +433,6 @@ export class HighwayRenderer {
       item.object.visible = false;
       this.recycleGem(item);
     });
-    this.releaseUnusedBindings(this.tailBindings, usedTails, (item) => {
-      item.mesh.visible = false;
-      this.freeTailInstances.push(item);
-    });
     this.drawGhostGem();
     this.drawHoverOutline(chart);
     recordDrawDuration();
@@ -445,6 +469,10 @@ export class HighwayRenderer {
   }
 
   public dispose(): void {
+    this.instancedTailBatch?.dispose();
+    this.instancedPreviewTailBatch?.dispose();
+    this.instancedTailBatch = null;
+    this.instancedPreviewTailBatch = null;
     destroyInstancedObjects(this.gemInstances, this.tailInstances);
     Object.values(this.drumGemInstances).forEach((instances) =>
       destroyInstancedObjects(instances, []),
@@ -1058,6 +1086,8 @@ export class HighwayRenderer {
   }
 
   private hideAllObjects(): void {
+    this.instancedTailBatch?.write([]);
+    this.instancedPreviewTailBatch?.write([]);
     this.gemInstances.flat().forEach(({ object }) => (object.visible = false));
     Object.values(this.drumGemInstances)
       .flat(2)
@@ -1116,6 +1146,38 @@ export class HighwayRenderer {
     visibleStart: number,
     visibleEnd: number,
   ): number {
+    if (this.context.getInstancingEnabled()) {
+      const previewData: SustainInstanceData[] = [];
+      const cutTick = this.context.getGhostNoteLocation()?.tick;
+      if (cutTick === undefined) {
+        this.instancedPreviewTailBatch?.write([]);
+        return 0;
+      }
+      for (const note of cutPreview.values()) {
+        const lane = note.note - chart.getOffset();
+        if (lane < 0 || lane >= laneCount) continue;
+        const start = Math.max(note.start, visibleStart, cutTick);
+        const end = Math.min(note.end, visibleEnd);
+        if (end <= start) continue;
+        const transform = sustainWorldTransform(
+          this.coordinates.getLaneX(lane),
+          this.coordinates.getNoteZ(start),
+          this.coordinates.getNoteZ(end),
+        );
+        previewData.push({
+          x: transform.position.x,
+          y: transform.position.y,
+          z: transform.position.z,
+          width: transform.scale.x,
+          halfLength: transform.scale.y,
+          color: laneRgbColors[lane],
+          selected: false,
+        });
+      }
+      this.ensureInstancedTailBatches();
+      return this.instancedPreviewTailBatch!.write(previewData);
+    }
+    this.instancedPreviewTailBatch?.write([]);
     this.previewTailInstances
       .flat()
       .forEach(({ mesh }) => (mesh.visible = false));
@@ -1162,6 +1224,29 @@ export class HighwayRenderer {
       used++;
     }
     return used;
+  }
+
+  private ensureInstancedTailBatches(): void {
+    if (this.instancedTailBatch || !this.materials) return;
+    this.instancedTailBatch = new SustainTailBatch(
+      this.scene,
+      this.materials.sustain,
+      laneCount * instanceSizePerLane,
+      10,
+      { alpha: 0.65, useStrikeLine: true, strikeLineZ },
+    );
+    this.instancedPreviewTailBatch = new SustainTailBatch(
+      this.scene,
+      this.materials.sustain,
+      laneCount * instanceSizePreviewSustainPerLane,
+      11,
+      {
+        alpha: 0.18,
+        ghost: true,
+        useStrikeLine: true,
+        strikeLineZ,
+      },
+    );
   }
 
   private drawGhostGem(): void {

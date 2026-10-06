@@ -32,6 +32,8 @@ import { HighwayInputController } from "./input";
 import { HighwayRenderer } from "./rendering";
 import { SelectionContext } from "./selection";
 import type { DrumPlacementKind } from "./drumProfile";
+import Platform from "../../../platform";
+import { SettingsService } from "../../../services/settings";
 export type { HighwayMode, HighwayTool } from "./types";
 export type { DrumPlacementKind } from "./drumProfile";
 
@@ -78,6 +80,9 @@ export class HighwayView
     setCameraTick: (tick) => this.setCameraTick(tick),
     getMode: () => this.mode,
     getDrumPlacementKind: () => this.drumPlacementKind,
+    getInstancingEnabled: () =>
+      Platform.services.get<SettingsService>("settings").getSettings()
+        .rendering.instancing,
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
     getSelectionContext: () => this.selection,
