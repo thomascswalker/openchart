@@ -1,4 +1,9 @@
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { Difficulty } from "@midiedit/views";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
@@ -36,9 +41,11 @@ export function Playback({ children }: { children: ReactNode }) {
     () => playbackService.getSnapshot().isPlaying,
   );
 
-  Platform.context.set("playback.can-play", canPlay);
-  Platform.context.set("playback.is-playing", isPlaying);
-  Platform.context.set("playback.can-seek", canPlay && !isPlaying);
+  useLayoutEffect(() => {
+    Platform.context.set("playback.can-play", canPlay);
+    Platform.context.set("playback.is-playing", isPlaying);
+    Platform.context.set("playback.can-seek", canPlay && !isPlaying);
+  }, [canPlay, isPlaying]);
 
   useEffect(() => {
     playbackService.configure({

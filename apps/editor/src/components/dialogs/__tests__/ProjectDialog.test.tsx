@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { useEditorState } from "../../../hooks/useEditorState";
-import { executeEditorAction } from "../../../actions/execute";
+import { runAction } from "../../../actions/execute";
 import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import { Runtime } from "../../Runtime";
 import { Playback } from "../../Playback";
@@ -14,12 +14,7 @@ function ProjectTestShell() {
   const { projectMetadata } = useDocumentSnapshot();
   return (
     <>
-      <button
-        type="button"
-        onClick={() =>
-          void executeEditorAction("dialog.open-project").catch(() => {})
-        }
-      >
+      <button type="button" onClick={() => runAction("dialog.open-project")}>
         Open project
       </button>
       <output>{projectMetadata.Song.Name}</output>

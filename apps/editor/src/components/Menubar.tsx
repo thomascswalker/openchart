@@ -155,8 +155,12 @@ export function Menubar({
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target;
       if (!menubarRef.current?.contains(target as Node)) {
+        if (focusFrameRef.current !== null) {
+          cancelAnimationFrame(focusFrameRef.current);
+          focusFrameRef.current = null;
+        }
         focusRequestRef.current += 1;
-        closeMenu(false);
+        setOpenMenu(null);
 
         if (target instanceof HTMLElement) {
           target.focus();
@@ -167,6 +171,15 @@ export function Menubar({
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current);
+      }
+    },
+    [],
+  );
 
   const moveTrigger = (currentIndex: number, delta: number): void => {
     const nextIndex = (currentIndex + delta + menus.length) % menus.length;

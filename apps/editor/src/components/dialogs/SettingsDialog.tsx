@@ -8,7 +8,7 @@ import {
 import { AUDIO_ROLES } from "../../services/audio";
 import { AudioService } from "../../services/audio";
 import { useEditorState } from "../../hooks/useEditorState";
-import { executeEditorAction } from "../../actions/execute";
+import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
 import {
@@ -16,6 +16,7 @@ import {
   validateApplicationSettings,
 } from "../../services/settings";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
+import { useRovingTabs } from "../../hooks/useRovingTabs";
 import { matchesAudioFile } from "../../util/audioDiscovery";
 import { Modal } from "../shared/Modal/Modal";
 
@@ -244,28 +245,35 @@ const SettingsDialog = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [audioFileNames, setAudioFileNames] = useState<string[] | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
 
   const refreshAudioFileNames = (): void => {
-    void audioService.listDiscoveredFiles(settings).then(setAudioFileNames);
+    void audioService
+      .listDiscoveredFiles(draft.audio.rootPath)
+      .then(setAudioFileNames);
   };
 
   useEffect(() => {
-    refreshAudioFileNames();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.audio.rootPath, audioDirectoryName]);
+    let ignore = false;
+    void audioService
+      .listDiscoveredFiles(draft.audio.rootPath)
+      .then((names) => {
+        if (!ignore) setAudioFileNames(names);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [audioService, draft.audio.rootPath, audioDirectoryName]);
 
   const close = (): void => {
-    void executeEditorAction("dialog.close-settings").catch(() => {});
+    runAction("dialog.close-settings");
   };
   const selectTab = (tab: SettingsTab): void => {
     setSelectedTab(tab);
     setErrors({});
   };
+  const { tabRefs, onTabKeyDown } = useRovingTabs(tabs.length, (index) =>
+    selectTab(tabs[index]),
+  );
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -290,38 +298,6 @@ const SettingsDialog = () => {
         : currentIndex + 1;
     event.preventDefault();
     focusable[nextIndex]?.focus();
-  };
-  const onTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ): void => {
-    if (
-      !(
-        [
-          "ArrowRight",
-          "ArrowLeft",
-          "ArrowDown",
-          "ArrowUp",
-          "Home",
-          "End",
-        ] as string[]
-      ).includes(event.key)
-    )
-      return;
-    event.preventDefault();
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? tabs.length - 1
-          : (index +
-              (event.key === "ArrowRight" || event.key === "ArrowDown"
-                ? 1
-                : -1) +
-              tabs.length) %
-            tabs.length;
-    selectTab(tabs[nextIndex]);
-    tabRefs.current[nextIndex]?.focus();
   };
   const apply = async (): Promise<boolean> => {
     const validationErrors = validateApplicationSettings(draft);
@@ -620,7 +596,7 @@ const SettingsDialog = () => {
                   type="button"
                   onClick={() => {
                     refreshAudioFileNames();
-                    void executeEditorAction("audio.refresh").catch(() => {});
+                    runAction("audio.refresh");
                   }}
                   disabled={!Platform.actions.isAvailable("audio.refresh")}
                 >

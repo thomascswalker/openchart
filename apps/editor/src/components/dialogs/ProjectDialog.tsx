@@ -1,17 +1,12 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
-import { executeEditorAction } from "../../actions/execute";
+import { useState, type KeyboardEvent } from "react";
+import { executeEditorAction, runAction } from "../../actions/execute";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import type {
   ProjectMetadata,
   ProjectValidationIssue,
 } from "../../project/projectMetadata";
 import { Modal } from "../shared/Modal/Modal";
+import { useRovingTabs } from "../../hooks/useRovingTabs";
 
 type Primitive = string | number | boolean | null;
 
@@ -93,9 +88,7 @@ const ProjectDialog = () => {
   const [draft, setDraft] = useState<ProjectMetadata>(projectMetadata);
   const [selectedSection, setSelectedSection] = useState("General");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const sections = useMemo(() => getSections(draft), [draft]);
+  const sections = getSections(draft);
   const selectedIndex = Math.max(
     0,
     sections.findIndex((section) => section.title === selectedSection),
@@ -103,17 +96,16 @@ const ProjectDialog = () => {
   const selected = sections[selectedIndex];
   const isDirty = JSON.stringify(draft) !== JSON.stringify(projectMetadata);
 
-  useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
-
   const close = (): void => {
-    void executeEditorAction("dialog.close-project").catch(() => {});
+    runAction("dialog.close-project");
   };
   const selectSection = (title: string): void => {
     setSelectedSection(title);
     setErrors({});
   };
+  const { tabRefs, onTabKeyDown } = useRovingTabs(sections.length, (index) =>
+    selectSection(sections[index].title),
+  );
   const apply = async (): Promise<boolean> => {
     const issues = await executeEditorAction<readonly ProjectValidationIssue[]>(
       "document.apply-project-metadata",
@@ -131,40 +123,8 @@ const ProjectDialog = () => {
       close();
     }
   };
-  const onTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ): void => {
-    if (
-      ![
-        "ArrowRight",
-        "ArrowLeft",
-        "ArrowDown",
-        "ArrowUp",
-        "Home",
-        "End",
-      ].includes(event.key)
-    )
-      return;
-    event.preventDefault();
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? sections.length - 1
-          : (index +
-              (event.key === "ArrowRight" || event.key === "ArrowDown"
-                ? 1
-                : -1) +
-              sections.length) %
-            sections.length;
-    selectSection(sections[nextIndex].title);
-    tabRefs.current[nextIndex]?.focus();
-  };
-
   return (
     <Modal
-      dialogRef={dialogRef}
       onKeyDown={onKeyDown}
       size={{ width: 760, height: 480, margin: 32 }}
       onBackdropClick={(event) => {

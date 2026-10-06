@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 import type { ChartViewState } from "./AbstractChartView";
 import type { ChartView, ChartViewFactory } from "./ChartViews";
@@ -19,11 +19,13 @@ export function ChartViewHost({
   const hostRef = useRef<HTMLDivElement>(null);
 
   const viewRef = useRef<ChartView | null>(null);
-  const latestStateRef = useRef(state);
-  latestStateRef.current = state;
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const onReadyRef = useRef(onReady);
-  onReadyRef.current = onReady;
+  const pushState = useEffectEvent(() => {
+    viewRef.current?.update(state);
+  });
+  const notifyReady = useEffectEvent((view: ChartView | null) => {
+    onReady?.(view);
+  });
 
   /*
    * Renderer lifecycle.
@@ -77,8 +79,8 @@ export function ChartViewHost({
       // Measure again after the renderer inserts its canvas so the first real
       // frame uses the viewport dimensions instead of a 1x1 drawing buffer.
       resizeRenderer();
-      renderer.update(latestStateRef.current);
-      onReadyRef.current?.(renderer);
+      pushState();
+      notifyReady(renderer);
     });
 
     return () => {
@@ -89,7 +91,7 @@ export function ChartViewHost({
         viewRef.current = null;
       }
 
-      onReadyRef.current?.(null);
+      notifyReady(null);
       renderer.destroy();
     };
   }, [createRenderer]);
@@ -99,16 +101,8 @@ export function ChartViewHost({
    * the existing renderer.
    */
   useEffect(() => {
-    viewRef.current?.update(state);
-  }, [
-    state.midi,
-    state.selectedTrackIndex,
-    state.selectedInstrument,
-    state.selectedDifficulty,
-    state.snap.enabled,
-    state.snap.denominator,
-    state.isPlaying,
-  ]);
+    pushState();
+  }, [state]);
 
   return <div ref={hostRef} className="midi-view-host" />;
 }

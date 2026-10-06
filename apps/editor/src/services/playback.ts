@@ -15,6 +15,7 @@ import {
 import { AudioService } from "./audio";
 import type { DocumentService } from "./document";
 import type { ApplicationSettings } from "./settings";
+import { IStatefulService } from "../platform/services";
 
 export interface PlaybackSnapshot {
   isPlaying: boolean;
@@ -80,7 +81,7 @@ function notesForHighway(
   );
 }
 
-export class PlaybackService {
+export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   static dependencies = ["audio", "document"];
 
   private audioService: AudioService;
@@ -116,6 +117,7 @@ export class PlaybackService {
   private snapshot!: PlaybackSnapshot;
 
   constructor(audioService: AudioService, documentService?: DocumentService) {
+    super();
     this.audioService = audioService;
     // Edits publish synchronously, so the end never lags behind the document.
     this.documentUnsubscribe = documentService?.subscribe(() => {
@@ -131,6 +133,21 @@ export class PlaybackService {
   public readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  };
+
+  public readonly reset = (): void => {
+    this.stopPlayback();
+    this.engine.stopPreview();
+    this.midiData = null;
+    this.selectedInstrument = "LEAD GUITAR";
+    this.selectedDifficulty = Difficulty.Expert;
+    this.selectedTrackIndex = null;
+    this.highwayNotes = [];
+    this.midiTotalTicks = 0;
+    this.ppqn = 480;
+    this.tempoChanges = DEFAULT_TEMPO;
+    this.resetSession();
+    this.publish();
   };
 
   public readonly getSnapshot = (): PlaybackSnapshot => this.snapshot;

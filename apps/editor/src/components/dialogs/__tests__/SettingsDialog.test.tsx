@@ -1,8 +1,10 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useEditorState } from "../../../hooks/useEditorState";
-import { executeEditorAction } from "../../../actions/execute";
+import { runAction } from "../../../actions/execute";
+import Platform from "../../../platform";
+import { AudioService } from "../../../services/audio";
 import {
   defaultApplicationSettings,
   validateApplicationSettings,
@@ -16,12 +18,7 @@ function SettingsTestShell() {
   const { settings } = useApplicationSettings();
   return (
     <>
-      <button
-        type="button"
-        onClick={() =>
-          void executeEditorAction("dialog.open-settings").catch(() => {})
-        }
-      >
+      <button type="button" onClick={() => runAction("dialog.open-settings")}>
         Open settings
       </button>
       <output>{settings.audio.rootPath}</output>
@@ -54,6 +51,17 @@ function changeInput(input: HTMLInputElement, value: string): void {
   input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
 describe("Application settings", () => {
   beforeEach(() => localStorage.clear());
 
@@ -74,6 +82,87 @@ describe("Application settings", () => {
     expect(
       validateApplicationSettings(settings).historyCapacity,
     ).toBeUndefined();
+  });
+
+  it("lists files using the draft audio path", async () => {
+    const audio = Platform.services.get<AudioService>("audio");
+    const listDiscoveredFiles = vi
+      .spyOn(audio, "listDiscoveredFiles")
+      .mockResolvedValue(null);
+    const { container, root } = renderSettings();
+
+    act(() => container.querySelector<HTMLButtonElement>("button")!.click());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() =>
+      container.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1].click(),
+    );
+    const audioPath = container.querySelector<HTMLInputElement>(
+      'input:not([type="checkbox"])',
+    )!;
+    act(() => changeInput(audioPath, "C:/draft-audio"));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(listDiscoveredFiles).toHaveBeenCalledWith("C:/draft-audio");
+
+    act(() => root.unmount());
+    container.remove();
+    listDiscoveredFiles.mockRestore();
+  });
+
+  it("ignores a slower file listing for an older draft path", async () => {
+    const audio = Platform.services.get<AudioService>("audio");
+    const earlier = deferred<string[] | null>();
+    const later = deferred<string[] | null>();
+    const listDiscoveredFiles = vi
+      .spyOn(audio, "listDiscoveredFiles")
+      .mockImplementation((rootPath) =>
+        rootPath === "C:/newer-audio" ? later.promise : earlier.promise,
+      );
+    const { container, root } = renderSettings();
+
+    act(() => container.querySelector<HTMLButtonElement>("button")!.click());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() =>
+      container.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1].click(),
+    );
+    const songRegex = container.querySelector<HTMLInputElement>(
+      'input[value="song"]',
+    )!;
+    act(() => changeInput(songRegex, "newer-match"));
+    const audioPath = container.querySelector<HTMLInputElement>(
+      'input:not([type="checkbox"])',
+    )!;
+    act(() => changeInput(audioPath, "C:/newer-audio"));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(listDiscoveredFiles).toHaveBeenCalledWith("C:/newer-audio");
+
+    await act(async () => {
+      later.resolve(["newer-match.wav"]);
+      await later.promise;
+    });
+    expect(
+      container.querySelector('[aria-label="Matching audio file found"]'),
+    ).not.toBeNull();
+
+    await act(async () => {
+      earlier.resolve(["old.wav"]);
+      await earlier.promise;
+    });
+    expect(
+      container.querySelector('[aria-label="Matching audio file found"]'),
+    ).not.toBeNull();
+
+    act(() => root.unmount());
+    container.remove();
+    listDiscoveredFiles.mockRestore();
   });
 
   it("shows and persists the bounded history capacity", async () => {

@@ -27,6 +27,7 @@ describe("Platform", () => {
     const serviceIds = [
       "audio",
       "document",
+      "editor.active-chart-view",
       "editor.clipboard",
       "editor.state",
       "editor.viewports",

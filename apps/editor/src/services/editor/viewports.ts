@@ -1,4 +1,5 @@
 import { Difficulty } from "@midiedit/views";
+import { IStatefulService } from "../../platform/services";
 
 export type ViewportKind = "piano-roll" | "highway";
 
@@ -43,7 +44,7 @@ function createViewportSession(
   };
 }
 
-export class ViewportService {
+export class ViewportService extends IStatefulService<ViewportSnapshot> {
   private readonly listeners = new Set<() => void>();
   private viewportSessions: ViewportSession[] = [
     createViewportSession(DEFAULT_VIEWPORT_ID),

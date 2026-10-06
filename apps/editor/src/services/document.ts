@@ -11,6 +11,7 @@ import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
 import type { FileSystemService } from "./filesystem";
 import type { ILoggerService } from "./logger";
 import type { PublicMethods } from "../util/meta";
+import { IStatefulService } from "../platform/services";
 
 export interface DocumentSnapshot {
   midiData: Midi | null;
@@ -23,7 +24,7 @@ export interface DocumentSnapshot {
   canRedoMidi: boolean;
 }
 
-export class DocumentService {
+export class DocumentService extends IStatefulService<DocumentSnapshot> {
   static dependencies = ["logger", "filesystem"];
 
   private _logger: ILoggerService;
@@ -38,6 +39,7 @@ export class DocumentService {
   private snapshot = this.createSnapshot();
 
   constructor(logger: ILoggerService, fileSystem: FileSystemService) {
+    super();
     this._logger = logger;
     this._fileSystem = fileSystem;
     this.history.reset(this.midiData!);

@@ -5,6 +5,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
+import { useCallback } from "react";
 import { Section } from "../Section";
 import { CloseButton } from "../Button";
 
@@ -25,6 +26,13 @@ const ModalBackdrop = ({
   onKeyDown,
   size,
 }: ModalProps) => {
+  const setDialogRef = useCallback(
+    (element: HTMLDivElement | null): void => {
+      if (dialogRef) dialogRef.current = element;
+      element?.focus();
+    },
+    [dialogRef],
+  );
   const dialogStyle = size
     ? ({
         "--modal-height": `${size.height}px`,
@@ -38,7 +46,7 @@ const ModalBackdrop = ({
       onMouseDown={onBackdropClick}
     >
       <div
-        ref={dialogRef}
+        ref={setDialogRef}
         className={`${styles["settings-dialog"]} ${size ? styles["settings-dialog--fixed"] : ""}`}
         role="dialog"
         aria-modal="true"

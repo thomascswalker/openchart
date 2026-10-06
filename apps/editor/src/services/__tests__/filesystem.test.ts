@@ -53,6 +53,8 @@ describe("FileSystemService", () => {
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
+      reset: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
     });
 
     // Define the bytes to be written and read during the test

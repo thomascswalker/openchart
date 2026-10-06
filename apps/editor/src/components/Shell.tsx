@@ -1,11 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
-import { executeEditorAction } from "../actions/execute";
+import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
+import { isTypingTarget } from "./shared/isTypingTarget";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
-import type { ChartView } from "./views/ChartViews";
 import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
@@ -26,31 +26,23 @@ const Shell = () => {
     () => playbackService.getSnapshot().isClapEnabled,
     () => playbackService.getSnapshot().isClapEnabled,
   );
-  const [chartView, setChartView] = useState<ChartView | null>(null);
-
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
-  clipboard.setView(chartView);
-  clipboard.sync();
+  useLayoutEffect(() => {
+    clipboard.sync();
+  }, [clipboard]);
 
   const canRunMenuCommand = (command: MenuCommandId): boolean => {
-    clipboard.sync();
     return actions.isAvailable(command);
   };
 
   const runMenuCommand = (command: MenuCommandId): void => {
-    void executeEditorAction(command).catch(() => {});
+    runAction(command);
   };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const target = event.target;
-      if (
-        event.defaultPrevented ||
-        (target instanceof HTMLElement &&
-          (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-            target.isContentEditable)) ||
-        event.altKey
-      )
+      if (event.defaultPrevented || isTypingTarget(target) || event.altKey)
         return;
 
       const key = event.key.toLowerCase();
@@ -100,12 +92,12 @@ const Shell = () => {
         return;
       }
       event.preventDefault();
-      void executeEditorAction(action).catch(() => {});
+      runAction(action);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [chartView]);
+  }, [actions, clipboard]);
 
   return (
     <div className="midi-editor">
@@ -122,10 +114,7 @@ const Shell = () => {
       />
       <Workspace
         debugVisible={debugVisible}
-        onDebugClose={() =>
-          void executeEditorAction("dialog.close-debug").catch(() => {})
-        }
-        onChartViewReady={setChartView}
+        onDebugClose={() => runAction("dialog.close-debug")}
       />
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}

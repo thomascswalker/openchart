@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { usePlayback } from "../hooks/usePlayback";
-import { executeEditorAction } from "../actions/execute";
+import { usePlaybackSelector } from "../hooks/usePlayback";
+import { runAction } from "../actions/execute";
+import Platform from "../platform";
+import { PlaybackService } from "../services/playback";
+import { ActiveChartViewService } from "../services/editor/activeChartView";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import { CHART_VIEWS } from "./views/ChartViews";
@@ -19,6 +22,7 @@ import {
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, CloseButton } from "./shared/Button/Button";
+import { isTypingTarget } from "./shared/isTypingTarget";
 import { startCase } from "es-toolkit";
 import {
   BassIcon,
@@ -49,12 +53,10 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
   }
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-      target.isContentEditable)
-  );
+function updateCameraData(article: HTMLElement | null, view: ChartView): void {
+  if (!article) return;
+  article.dataset.cameraTick = String(view.getCameraTick());
+  article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
 }
 
 function trackIndexForSession(
@@ -79,11 +81,7 @@ function trackIndexForSession(
   return index >= 0 ? index : null;
 }
 
-interface ViewportProps {
-  onChartViewReady: (view: ChartView | null) => void;
-}
-
-export const Viewport = ({ onChartViewReady }: ViewportProps) => {
+export const Viewport = () => {
   const { viewportSessions, activeViewportId, maxViewportCount } =
     useViewportSnapshot();
   return (
@@ -102,9 +100,6 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
             key={session.id}
             session={session}
             active={session.id === activeViewportId}
-            onChartViewReady={
-              session.id === activeViewportId ? onChartViewReady : () => {}
-            }
           />
         ))}
       </div>
@@ -115,105 +110,42 @@ export const Viewport = ({ onChartViewReady }: ViewportProps) => {
 function ViewportPanel({
   session,
   active,
-  onChartViewReady,
 }: {
   session: ViewportSession;
   active: boolean;
-  onChartViewReady: (view: ChartView | null) => void;
 }) {
   const { midiData } = useDocumentSnapshot();
   const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
     useViewportSnapshot();
-  const {
-    isPlaying,
-    playbackTick: playheadTick,
-    setActiveView,
-    stopPreview,
-  } = usePlayback();
-  const setPlaybackTick = useCallback((tick: number): void => {
-    void executeEditorAction("playback.set-tick", tick).catch(() => {});
-  }, []);
-  const refreshTotalTicks = useCallback((): void => {
-    void executeEditorAction("playback.refresh").catch(() => {});
-  }, []);
-  const focusViewport = useCallback((id: string): void => {
-    void executeEditorAction("editor.focus-viewport", id).catch(() => {});
-  }, []);
-  const updateViewport = useCallback(
-    (id: string, update: Partial<Omit<ViewportSession, "id">>): void => {
-      void executeEditorAction("editor.update-viewport", id, update).catch(
-        () => {},
-      );
-    },
-    [],
-  );
-  const addViewport = useCallback(
-    (view: ViewportSession["view"], afterId?: string): void => {
-      void executeEditorAction("editor.add-viewport", view, afterId).catch(
-        () => {},
-      );
-    },
-    [],
-  );
-  const closeViewport = useCallback((id: string): void => {
-    void executeEditorAction("editor.close-viewport", id).catch(() => {});
-  }, []);
-  const setSnapDenominator = useCallback((denominator: number): void => {
-    void executeEditorAction("editor.set-snap-denominator", denominator).catch(
-      () => {},
-    );
-  }, []);
-  const chartViewRef = useRef<ChartView | null>(null);
+  const isPlaying = usePlaybackSelector((s) => s.isPlaying);
+  const setActiveView = usePlaybackSelector((s) => s.setActiveView);
+  const stopPreview = usePlaybackSelector((s) => s.stopPreview);
   const articleRef = useRef<HTMLElement | null>(null);
+  const activeChartView = Platform.services.get<ActiveChartViewService>(
+    "editor.active-chart-view",
+  );
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
     useState<DrumPlacementKind>("pad");
-  const togglePlayRef = useRef(() => {});
-  togglePlayRef.current = () => {
-    void executeEditorAction("playback.toggle").catch(() => {});
-  };
   const activeView =
     CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
   const selectedTrackIndex = midiData
     ? trackIndexForSession(midiData, session)
     : null;
 
-  const keepPlayheadVisible = useCallback(
-    (view: ChartView) => {
-      const cameraTick = view.getCameraTickForPlayhead(playheadTick);
-      if (cameraTick !== null) view.setCameraTick(cameraTick);
-    },
-    [playheadTick],
-  );
+  const handleReady = (view: ChartView | null): void => {
+    setChartView(view);
+  };
 
-  const updateCameraData = useCallback((view: ChartView): void => {
-    const article = articleRef.current;
-    if (!article) return;
-    article.dataset.cameraTick = String(view.getCameraTick());
-    article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
-  }, []);
+  const getCameraTick = useEffectEvent(() => session.camera.tick);
 
-  const handleReady = useCallback(
-    (view: ChartView | null) => {
-      chartViewRef.current = view;
-      setChartView(view);
-      if (view) {
-        view.setPlayheadTick(playheadTick);
-        if (session.camera.tick) view.setCameraTick(session.camera.tick);
-        keepPlayheadVisible(view);
-        updateCameraData(view);
-      }
-      onChartViewReady(view);
-    },
-    [
-      keepPlayheadVisible,
-      onChartViewReady,
-      playheadTick,
-      session.camera.tick,
-      updateCameraData,
-    ],
-  );
+  useEffect(() => {
+    if (!chartView) return;
+    const cameraTick = getCameraTick();
+    if (cameraTick) chartView.setCameraTick(cameraTick);
+    updateCameraData(articleRef.current, chartView);
+  }, [chartView]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -250,7 +182,7 @@ function ViewportPanel({
       }
       if (event.code === "Space" && active) {
         event.preventDefault();
-        togglePlayRef.current();
+        runAction("playback.toggle");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -258,27 +190,26 @@ function ViewportPanel({
   }, [active, session.view]);
 
   useEffect(() => {
-    chartViewRef.current?.setPlayheadTick(playheadTick);
-  }, [playheadTick]);
-
-  useEffect(() => {
     const view = chartView;
     if (!view) return;
     view.onNotesChanged = () => {
-      void executeEditorAction("history.record-edit").catch(() => {});
-      refreshTotalTicks();
+      runAction("history.record-edit");
+      runAction("playback.refresh");
     };
     view.onEditStart = () => {
-      void executeEditorAction("history.begin-edit").catch(() => {});
+      runAction("history.begin-edit");
     };
     view.onEditEnd = () => {
-      void executeEditorAction("history.end-edit").catch(() => {});
+      runAction("history.end-edit");
     };
-    view.onSeekRequest = setPlaybackTick;
-    view.onSnapDenominatorChange = setSnapDenominator;
+    view.onSeekRequest = (tick) => runAction("playback.set-tick", tick);
+    view.onSnapDenominatorChange = (denominator) =>
+      runAction("editor.set-snap-denominator", denominator);
     const unsubscribeCameraChange = view.subscribeCameraChange(() => {
-      updateCameraData(view);
-      updateViewport(session.id, { camera: { tick: view.getCameraTick() } });
+      updateCameraData(articleRef.current, view);
+      runAction("editor.update-viewport", session.id, {
+        camera: { tick: view.getCameraTick() },
+      });
     });
     return () => {
       unsubscribeCameraChange();
@@ -288,35 +219,33 @@ function ViewportPanel({
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
     };
-  }, [
-    chartView,
-    refreshTotalTicks,
-    session.id,
-    setSnapDenominator,
-    setPlaybackTick,
-    updateViewport,
-    updateCameraData,
-  ]);
+  }, [chartView, session.id]);
 
   useEffect(() => {
-    if (active) onChartViewReady(chartView);
-  }, [active, chartView, onChartViewReady]);
+    if (!chartView) return;
+    const playback = Platform.services.get<PlaybackService>("playback");
+    const sync = (): void => {
+      const { playbackTick } = playback.getSnapshot();
+      chartView.setPlayheadTick(playbackTick);
+      const cameraTick = chartView.getCameraTickForPlayhead(playbackTick);
+      if (cameraTick !== null) chartView.setCameraTick(cameraTick);
+    };
+    sync();
+    return playback.subscribe(sync);
+  }, [chartView, isPlaying]); // Re-sync when playback starts or stops.
+
+  useEffect(() => {
+    if (!active) return;
+    activeChartView.set(chartView);
+    return () => activeChartView.set(null);
+  }, [active, activeChartView, chartView]);
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {
       chartView.setMode(highwayMode);
-    }
-  }, [chartView, highwayMode]);
-
-  useEffect(() => {
-    if (chartView instanceof HighwayView) {
       chartView.setDrumPlacementKind(drumPlacementKind);
     }
-  }, [chartView, drumPlacementKind]);
-
-  useEffect(() => {
-    if (chartView) keepPlayheadVisible(chartView);
-  }, [chartView, isPlaying, keepPlayheadVisible]);
+  }, [chartView, highwayMode, drumPlacementKind]);
 
   useEffect(() => {
     if (!active) return;
@@ -325,8 +254,14 @@ function ViewportPanel({
   }, [active, session.view, setActiveView, stopPreview]);
 
   const setView = (view: ViewportSession["view"]) => {
-    focusViewport(session.id);
-    updateViewport(session.id, { view, camera: { tick: playheadTick } });
+    runAction("editor.focus-viewport", session.id);
+    const { playbackTick } = Platform.services
+      .get<PlaybackService>("playback")
+      .getSnapshot();
+    runAction("editor.update-viewport", session.id, {
+      view,
+      camera: { tick: playbackTick },
+    });
   };
   return (
     <article
@@ -335,7 +270,7 @@ function ViewportPanel({
       data-viewport-id={session.id}
       data-view={session.view}
       className={`viewport-panel${active ? " viewport-panel--active" : ""}`}
-      onPointerDown={() => focusViewport(session.id)}
+      onPointerDown={() => runAction("editor.focus-viewport", session.id)}
     >
       <header className="viewport-panel__header">
         <p className="viewport-panel__title">
@@ -352,7 +287,9 @@ function ViewportPanel({
           <Button
             title="Split to the right"
             ariaLabel={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
-            onClick={() => addViewport(session.view, session.id)}
+            onClick={() =>
+              runAction("editor.add-viewport", session.view, session.id)
+            }
             disabled={viewportSessions.length >= maxViewportCount}
             flat={true}
             minWidth="24px"
@@ -365,7 +302,7 @@ function ViewportPanel({
             <SplitIcon />
           </Button>
           <CloseButton
-            onClick={() => closeViewport(session.id)}
+            onClick={() => runAction("editor.close-viewport", session.id)}
             disabled={viewportSessions.length <= 1}
           />
         </div>

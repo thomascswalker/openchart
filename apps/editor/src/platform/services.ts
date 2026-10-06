@@ -1,10 +1,22 @@
 import { moduleId, type ModuleCollection } from "./modules";
 
+export type Listener = () => void;
+export type Subscription = (listener: () => void) => () => void;
+
+export abstract class IService {
+  public abstract readonly reset: () => void;
+  public abstract readonly subscribe: Subscription;
+}
+
+export abstract class IStatefulService<T> extends IService {
+  public abstract readonly getSnapshot: () => T;
+}
+
 export interface ServicesAccessor {
   get<T>(serviceId: string): T;
 }
 
-type ServiceConstructor = new (...dependencies: any[]) => unknown;
+type ServiceConstructor = new (...dependencies: unknown[]) => IService;
 
 export class ServiceRegistry {
   private ctors = new Map<string, ServiceConstructor>();

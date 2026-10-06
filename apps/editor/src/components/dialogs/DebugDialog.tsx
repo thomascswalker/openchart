@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { usePlayback } from "../../hooks/usePlayback";
+import Platform from "../../platform";
+import { ActiveChartViewService } from "../../services/editor/activeChartView";
 import {
   isCameraDebugView,
   type CameraDebugState,
@@ -10,7 +12,6 @@ import type { ChartView } from "../views/ChartViews";
 
 interface DebugWindowProps {
   onClose: () => void;
-  chartView: ChartView | null;
 }
 
 interface DebugEvent {
@@ -47,6 +48,20 @@ type CameraDraft = {
   rotationZ: string;
   fieldOfView: string;
 };
+
+const CAMERA_FIELDS: {
+  key: keyof CameraDraft;
+  label: string;
+  step: string;
+}[] = [
+  { key: "positionX", label: "Position X", step: "0.1" },
+  { key: "positionY", label: "Position Y", step: "0.1" },
+  { key: "positionZ", label: "Position Z", step: "0.1" },
+  { key: "rotationX", label: "Rotation X (deg)", step: "1" },
+  { key: "rotationY", label: "Rotation Y (deg)", step: "1" },
+  { key: "rotationZ", label: "Rotation Z (deg)", step: "1" },
+  { key: "fieldOfView", label: "FOV (deg)", step: "1" },
+];
 
 function cameraStateToDraft(state: CameraDebugState): CameraDraft {
   return {
@@ -123,16 +138,6 @@ function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
     setError(null);
   };
 
-  const fields: { key: keyof CameraDraft; label: string; step: string }[] = [
-    { key: "positionX", label: "Position X", step: "0.1" },
-    { key: "positionY", label: "Position Y", step: "0.1" },
-    { key: "positionZ", label: "Position Z", step: "0.1" },
-    { key: "rotationX", label: "Rotation X (deg)", step: "1" },
-    { key: "rotationY", label: "Rotation Y (deg)", step: "1" },
-    { key: "rotationZ", label: "Rotation Z (deg)", step: "1" },
-    { key: "fieldOfView", label: "FOV (deg)", step: "1" },
-  ];
-
   return (
     <section className="debug-panel__section">
       <h2>Highway camera</h2>
@@ -144,7 +149,7 @@ function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
         }}
       >
         <div className="debug-camera__grid">
-          {fields.map(({ key, label, step }) => (
+          {CAMERA_FIELDS.map(({ key, label, step }) => (
             <label key={key} className="debug-camera__field">
               <span>{label}</span>
               <input
@@ -338,9 +343,17 @@ function DebugPanel({
   );
 }
 
-export function DebugWindow({ onClose, chartView }: DebugWindowProps) {
+export function DebugWindow({ onClose }: DebugWindowProps) {
   const [events, setEvents] = useState<DebugEvent[]>([]);
   const [pressedKeys, setPressedKeys] = useState<string[]>([]);
+  const activeChartView = Platform.services.get<ActiveChartViewService>(
+    "editor.active-chart-view",
+  );
+  const chartView = useSyncExternalStore(
+    activeChartView.subscribe,
+    activeChartView.getSnapshot,
+    activeChartView.getSnapshot,
+  );
 
   useEffect(() => {
     const record = (type: string, detail: string): void => {

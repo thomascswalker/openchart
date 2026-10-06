@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { useEditorState } from "../../hooks/useEditorState";
-import { executeEditorAction } from "../../actions/execute";
+import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { Runtime } from "../../components/Runtime";
 import { usePlayback } from "../../hooks/usePlayback";
@@ -12,42 +12,19 @@ function CommandEnablementProbe() {
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>
-      <button
-        type="button"
-        onClick={() =>
-          void executeEditorAction("document.mark-dirty").catch(() => {})
-        }
-      >
+      <button type="button" onClick={() => runAction("document.mark-dirty")}>
         Change document
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          void executeEditorAction("document.save").catch(() => {})
-        }
-      >
+      <button type="button" onClick={() => runAction("document.save")}>
         Save
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          void executeEditorAction("dialog.open-debug").catch(() => {})
-        }
-      >
+      <button type="button" onClick={() => runAction("dialog.open-debug")}>
         Open debug
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          void executeEditorAction("dialog.close-debug").catch(() => {})
-        }
-      >
+      <button type="button" onClick={() => runAction("dialog.close-debug")}>
         Close debug
       </button>
-      <button
-        type="button"
-        onClick={() => void executeEditorAction("document.new").catch(() => {})}
-      >
+      <button type="button" onClick={() => runAction("document.new")}>
         New document
       </button>
       <span data-testid="dirty">{String(isDirty)}</span>

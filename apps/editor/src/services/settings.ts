@@ -1,3 +1,5 @@
+import { IStatefulService } from "../platform/services";
+
 export const APPLICATION_SETTINGS_VERSION = 1;
 const STORAGE_KEY = "midiedit.application-settings";
 
@@ -186,9 +188,18 @@ function readSettings(): ApplicationSettings {
   }
 }
 
-export class SettingsService {
+export class SettingsService extends IStatefulService<ApplicationSettings> {
   private readonly listeners = new Set<() => void>();
   private settings = readSettings();
+
+  public readonly reset = (): void => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(defaultApplicationSettings),
+    );
+    this.settings = defaultApplicationSettings;
+    this.publish();
+  };
 
   public readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);

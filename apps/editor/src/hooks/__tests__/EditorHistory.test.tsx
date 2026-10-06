@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { Midi } from "@midiedit/core";
 import { Runtime } from "../../components/Runtime";
 import { useEditorState } from "../useEditorState";
-import { executeEditorAction } from "../../actions/execute";
+import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { DocumentService } from "../../services/document";
 import { useDocumentSnapshot } from "../useDocumentSnapshot";
@@ -19,8 +19,8 @@ function HistoryHarness() {
     if (!midiData) return;
     if (midiData.tracks.length === 0) midiData.addTrack();
     midiData.tracks[0]?.addNote(60, 0, 100, 120);
-    void executeEditorAction("history.record-edit").catch(() => {});
-    void executeEditorAction("document.mark-dirty").catch(() => {});
+    runAction("history.record-edit");
+    runAction("document.mark-dirty");
   };
 
   return (

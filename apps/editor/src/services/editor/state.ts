@@ -1,3 +1,9 @@
+import {
+  IStatefulService,
+  type Listener,
+  type Subscription,
+} from "../../platform/services";
+
 export interface EditorStateSnapshot {
   error: string | null;
   debugVisible: boolean;
@@ -5,8 +11,8 @@ export interface EditorStateSnapshot {
   settingsVisible: boolean;
 }
 
-export class EditorStateService {
-  private listeners = new Set<() => void>();
+export class EditorStateService extends IStatefulService<EditorStateSnapshot> {
+  private listeners = new Set<Listener>();
   private snapshot: EditorStateSnapshot = {
     error: null,
     debugVisible: false,
@@ -14,7 +20,7 @@ export class EditorStateService {
     settingsVisible: false,
   };
 
-  public readonly subscribe = (listener: () => void): (() => void) => {
+  public readonly subscribe: Subscription = (listener: Listener): Listener => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
@@ -28,33 +34,45 @@ export class EditorStateService {
       projectVisible: false,
       settingsVisible: false,
     };
-    for (const listener of this.listeners) listener();
+    for (const listener of this.listeners) {
+      listener();
+    }
   };
 
   public readonly setError = (error: string | null): void => {
-    if (this.snapshot.error === error) return;
+    if (this.snapshot.error === error) {
+      return;
+    }
     this.update({ error });
   };
 
   public readonly clearError = (): void => this.setError(null);
 
   public readonly setDebugVisible = (debugVisible: boolean): void => {
-    if (this.snapshot.debugVisible === debugVisible) return;
+    if (this.snapshot.debugVisible === debugVisible) {
+      return;
+    }
     this.update({ debugVisible });
   };
 
   public readonly setProjectVisible = (projectVisible: boolean): void => {
-    if (this.snapshot.projectVisible === projectVisible) return;
+    if (this.snapshot.projectVisible === projectVisible) {
+      return;
+    }
     this.update({ projectVisible });
   };
 
   public readonly setSettingsVisible = (settingsVisible: boolean): void => {
-    if (this.snapshot.settingsVisible === settingsVisible) return;
+    if (this.snapshot.settingsVisible === settingsVisible) {
+      return;
+    }
     this.update({ settingsVisible });
   };
 
   private update(change: Partial<EditorStateSnapshot>): void {
     this.snapshot = { ...this.snapshot, ...change };
-    for (const listener of this.listeners) listener();
+    for (const listener of this.listeners) {
+      listener();
+    }
   }
 }
