@@ -143,6 +143,7 @@ class MidiTrack {
 
   private noteCache: MidiNote[] | null = null;
   private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
+  private noteRevision = 0;
   private readonly eventIds = new WeakMap<object, MidiEventId>();
   private nextEventId = 1;
 
@@ -337,6 +338,11 @@ class MidiTrack {
   private invalidateCaches(): void {
     this.noteCache = null;
     this.noteCacheByPitch = null;
+    this.noteRevision += 1;
+  }
+
+  public getNoteRevision(): number {
+    return this.noteRevision;
   }
 
   private keepEndOfTrackLast(events: TimedMidiEvent[]): TimedMidiEvent[] {
@@ -545,8 +551,7 @@ class MidiTrack {
     note.noteOff.data1 = pitch;
     note.note = pitch;
 
-    this.noteCache = null;
-    this.noteCacheByPitch = null;
+    this.invalidateCaches();
 
     return true;
   }
@@ -605,9 +610,6 @@ class MidiTrack {
     this.replaceTimedEvents(others);
 
     note.end = newEndTick;
-
-    this.noteCache = null;
-    this.noteCacheByPitch = null;
 
     return true;
   }
@@ -675,9 +677,6 @@ class MidiTrack {
 
     note.start = startTick;
     note.end = newEndTick;
-
-    this.noteCache = null;
-    this.noteCacheByPitch = null;
 
     return true;
   }

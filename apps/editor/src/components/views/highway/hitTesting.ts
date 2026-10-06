@@ -13,15 +13,7 @@ import { noteWorldPosition } from "./geometry";
 import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
-import { getDrumNoteProfile } from "./drumProfile";
-
-function physicalLaneForNote(chart: ChartView, note: MidiNote): number {
-  if (chart.getTrack().getKey() === "drums") {
-    const profile = getDrumNoteProfile(note.note, chart.getOffset());
-    return profile?.kind === "kick" ? 0 : (profile?.lane ?? -1);
-  }
-  return note.note - chart.getOffset();
-}
+import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
 
 export interface PhraseBoundaryProjection {
   worldStart: THREE.Vector3;
@@ -80,23 +72,33 @@ export class HighwayHitTester {
     if (!pointer) return undefined;
     let hit: MidiNote | undefined;
     let nearestDepth = Infinity;
-    for (const note of chart.getNotes()) {
-      const profile =
-        chart.getTrack().getKey() === "drums"
-          ? getDrumNoteProfile(note.note, chart.getOffset())
-          : null;
-      const lane = physicalLaneForNote(chart, note);
+    const visibleStart = Math.min(
+      this.coordinates.getTickAtDepth(nearBoardZ),
+      this.coordinates.getTickAtDepth(farBoardZ),
+    );
+    const visibleEnd = Math.max(
+      this.coordinates.getTickAtDepth(nearBoardZ),
+      this.coordinates.getTickAtDepth(farBoardZ),
+    );
+    const candidates: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(
+      chart,
+      visibleStart,
+      visibleEnd,
+      candidates,
+    );
+    for (const { note, lane, kind } of candidates) {
       const gemBounds =
-        profile?.kind === "kick"
+        kind === "kick"
           ? this.getKickScreenBounds(note)
           : this.getGemScreenBounds(
               note,
               lane,
-              profile?.kind === "pad" || profile?.kind === "cymbal"
-                ? profile.kind
+              kind === "pad" || kind === "cymbal"
+                ? kind
                 : "note",
             );
-      const tailBounds = profile ? null : this.getTailScreenBounds(note, lane);
+      const tailBounds = kind === "note" ? this.getTailScreenBounds(note, lane) : null;
       if (
         (!gemBounds ||
           !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
@@ -124,12 +126,12 @@ export class HighwayHitTester {
     if (!pointer) return undefined;
     let hit: MidiNote | undefined;
     let nearestDepth = Infinity;
-    for (const note of chart.getNotes()) {
+    const candidates: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(chart, tick, tick, candidates);
+    for (const { note, lane, kind } of candidates) {
+      if (kind !== "note") continue;
       if (tick <= note.start || tick >= note.end) continue;
-      const bounds = this.getTailScreenBounds(
-        note,
-        physicalLaneForNote(chart, note),
-      );
+      const bounds = this.getTailScreenBounds(note, lane);
       if (!bounds || !this.containsScreenPoint(bounds, pointer.x, pointer.y)) {
         continue;
       }

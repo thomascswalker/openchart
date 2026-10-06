@@ -6,8 +6,10 @@ import {
   type ChartView,
   type MidiNotePhrase,
 } from "@midiedit/views";
+import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
 import type { ChartViewState } from "../../AbstractChartView";
 import { HighwayCoordinateSystem } from "../coordinates";
+import { nearBoardZ } from "../constants";
 import {
   HighwayHitTester,
   getPhraseBoundaryHitOperation,
@@ -107,11 +109,11 @@ describe("drum note hit testing", () => {
   });
 
   it("hits cymbals on their pad lane and excludes marker pitches", () => {
-    const cymbal = { note: 101, start: 480 } as MidiNote;
-    const flam = { note: 104, start: 480 } as MidiNote;
+    const cymbal = { note: 101, start: 480, end: 480 } as MidiNote;
+    const flam = { note: 104, start: 480, end: 480 } as MidiNote;
     const coordinates = {
       getCanvasPoint: () => ({ x: 20, y: 20 }),
-      getTickAtDepth: () => 0,
+      getTickAtDepth: (depth: number) => (depth === nearBoardZ ? 0 : 1_000),
     } as unknown as HighwayCoordinateSystem;
     const hitTesting = new HighwayHitTester(coordinates);
     hitTesting.getGemScreenBounds = (_note, lane) =>
@@ -120,18 +122,22 @@ describe("drum note hit testing", () => {
     const chart = {
       getTrack: () => ({ getKey: () => "drums" }),
       getOffset: () => 96,
+      getNoteRevision: () => 1,
       getNotes: () => [cymbal, flam],
     } as unknown as ChartView;
 
+    const candidates: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(chart, 0, 1_000, candidates);
+    expect(candidates.map(({ note }) => note)).toContain(cymbal);
     expect(hitTesting.getNoteAt(chart, {} as MouseEvent)).toBe(cymbal);
   });
 
   it("uses normalized kick bounds and ignores flam markers", () => {
-    const kick = { note: 95, start: 480 } as MidiNote;
-    const flam = { note: 104, start: 480 } as MidiNote;
+    const kick = { note: 95, start: 480, end: 480 } as MidiNote;
+    const flam = { note: 104, start: 480, end: 480 } as MidiNote;
     const coordinates = {
       getCanvasPoint: () => ({ x: 300, y: 100 }),
-      getTickAtDepth: () => 0,
+      getTickAtDepth: (depth: number) => (depth === nearBoardZ ? 0 : 1_000),
       getNoteZ: () => 0,
       getLaneX: () => 0,
       getPhysicalLaneCount: () => 4,
@@ -142,6 +148,7 @@ describe("drum note hit testing", () => {
     const chart = {
       getTrack: () => ({ getKey: () => "drums" }),
       getOffset: () => 96,
+      getNoteRevision: () => 1,
       getNotes: () => [kick, flam],
     } as unknown as ChartView;
 

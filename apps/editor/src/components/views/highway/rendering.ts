@@ -34,6 +34,7 @@ import {
   sustainWorldTransform,
 } from "./geometry";
 import { HighwayHitTester } from "./hitTesting";
+import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
 import {
   DRUM_GHOST_GEOMETRY_IDS,
   HIGHWAY_GEOMETRY_CATALOG,
@@ -167,11 +168,16 @@ export class HighwayRenderer {
     }),
   );
   private readonly gemBindings = new Map<MidiChannelEvent, InstancedNote>();
+  private readonly freeGemInstances: Record<
+    "note" | DrumPlacementKind,
+    InstancedNote[]
+  > = { note: [], kick: [], cymbal: [], pad: [] };
   private readonly gemKinds = new WeakMap<
     InstancedNote,
     DrumPlacementKind | undefined
   >();
   private readonly tailBindings = new Map<MidiChannelEvent, InstancedTail>();
+  private readonly freeTailInstances: InstancedTail[] = [];
   private readonly beatLineInstances: InstancedBeatLine[] = [];
   private readonly phraseSpanInstances: THREE.Mesh[] = [];
   private readonly laneDividers: THREE.Mesh[] = [];
@@ -297,23 +303,13 @@ export class HighwayRenderer {
     const isDrumChart = chart.getTrack().getKey() === "drums";
     const laneColors = isDrumChart ? drumLaneRgbColors : laneRgbColors;
     this.updateFretboardPalette(isDrumChart);
-    const visibleNotes = chart.getNotes().flatMap((note) => {
-      const profile = isDrumChart
-        ? getDrumNoteProfile(note.note, chart.getOffset())
-        : null;
-      if (isDrumChart && !profile) return [];
-      const lane = isDrumChart
-        ? (profile?.lane ?? 0)
-        : note.note - chart.getOffset();
-      if (isDrumChart && profile?.kind === "marker") return [];
-      const drumKind = isDrumChart ? profile?.kind : undefined;
-      return note.end >= visibleStart &&
-        note.start <= visibleEnd &&
-        lane >= 0 &&
-        lane < (isDrumChart ? drumLaneCount : laneCount)
-        ? [{ note, lane, drumKind }]
-        : [];
-    });
+    const visibleNotes: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(
+      chart,
+      visibleStart,
+      visibleEnd,
+      visibleNotes,
+    );
 
     const usedTails = new Set<InstancedTail>();
     const visibleTailEnd = this.coordinates.getTickAtDepth(farBoardZ);
@@ -327,7 +323,7 @@ export class HighwayRenderer {
       const solidTailEnd =
         cutTick === null ? tailEnd : Math.min(tailEnd, cutTick);
       if (solidTailEnd <= tailStart) continue;
-      const instancedTail = this.acquireTail(note.noteOn, usedTails);
+      const instancedTail = this.acquireTail(note.noteOn);
       if (!instancedTail) continue;
       usedTails.add(instancedTail);
       const transform = sustainWorldTransform(
@@ -373,17 +369,17 @@ export class HighwayRenderer {
     this.scene.userData.visibleSustains = usedTails.size + previewSustains;
 
     const usedGems = new Set<InstancedNote>();
-    for (const { note, lane, drumKind } of visibleNotes) {
+    for (const { note, lane, kind } of visibleNotes) {
       const instanceKind =
-        drumKind === "kick" || drumKind === "cymbal" || drumKind === "pad"
-          ? drumKind
+        kind === "kick" || kind === "cymbal" || kind === "pad"
+          ? kind
           : undefined;
-      const instancedGem = this.acquireGem(note.noteOn, usedGems, instanceKind);
+      const instancedGem = this.acquireGem(note.noteOn, instanceKind);
       if (!instancedGem) continue;
       usedGems.add(instancedGem);
       const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
       const position = noteWorldPosition(
-        drumKind === "kick" ? 0 : this.coordinates.getLaneX(lane),
+        kind === "kick" ? 0 : this.coordinates.getLaneX(lane),
         this.coordinates.getNoteZ(note.start),
         placement.transform,
         placement.placementOffset,
@@ -398,7 +394,7 @@ export class HighwayRenderer {
       setModelState(
         instancedGem.object,
         this.materials,
-        drumKind === "kick" ? kickColor : laneColors[lane],
+        kind === "kick" ? kickColor : laneColors[lane],
         {
           selected: instancedGem.selected,
           passed: note.start <= this.context.getPlayheadTick() + 0.001,
@@ -407,9 +403,11 @@ export class HighwayRenderer {
     }
     this.releaseUnusedBindings(this.gemBindings, usedGems, (item) => {
       item.object.visible = false;
+      this.recycleGem(item);
     });
     this.releaseUnusedBindings(this.tailBindings, usedTails, (item) => {
       item.mesh.visible = false;
+      this.freeTailInstances.push(item);
     });
     this.drawGhostGem();
     this.drawHoverOutline(chart);
@@ -614,6 +612,7 @@ export class HighwayRenderer {
           instanceSizePreviewSustainPerLane,
         ),
       );
+      this.resetFreeLists();
       this.fretAssemblies = laneRgbColors.map((color, lane) => {
         const fretRoles = primitiveRolesForModel(
           fret.value!,
@@ -1007,7 +1006,6 @@ export class HighwayRenderer {
 
   private acquireGem(
     key: MidiChannelEvent,
-    used: Set<InstancedNote>,
     kind?: DrumPlacementKind,
   ): InstancedNote | null {
     const existing = this.gemBindings.get(key);
@@ -1015,31 +1013,36 @@ export class HighwayRenderer {
     if (existing) {
       existing.object.visible = false;
       this.gemBindings.delete(key);
+      this.recycleGem(existing);
     }
-    const bound = new Set(this.gemBindings.values());
-    const pool = kind ? this.drumGemInstances[kind] : this.gemInstances;
-    const candidate = pool
-      .flat()
-      .find((item) => !bound.has(item) && !used.has(item));
+    const candidate = this.freeGemInstances[kind ?? "note"].pop();
     if (!candidate) return null;
     this.gemBindings.set(key, candidate);
     this.gemKinds.set(candidate, kind);
     return candidate;
   }
 
-  private acquireTail(
-    key: MidiChannelEvent,
-    used: Set<InstancedTail>,
-  ): InstancedTail | null {
+  private acquireTail(key: MidiChannelEvent): InstancedTail | null {
     const existing = this.tailBindings.get(key);
     if (existing) return existing;
-    const bound = new Set(this.tailBindings.values());
-    const candidate = this.tailInstances
-      .flat()
-      .find((item) => !bound.has(item) && !used.has(item));
+    const candidate = this.freeTailInstances.pop();
     if (!candidate) return null;
     this.tailBindings.set(key, candidate);
     return candidate;
+  }
+
+  private recycleGem(instance: InstancedNote): void {
+    this.freeGemInstances[this.gemKinds.get(instance) ?? "note"].push(instance);
+  }
+
+  private resetFreeLists(): void {
+    for (const free of Object.values(this.freeGemInstances)) free.length = 0;
+    this.freeGemInstances.note.push(...this.gemInstances.flat());
+    for (const kind of ["kick", "cymbal", "pad"] as const) {
+      this.freeGemInstances[kind].push(...this.drumGemInstances[kind].flat());
+    }
+    this.freeTailInstances.length = 0;
+    this.freeTailInstances.push(...this.tailInstances.flat());
   }
 
   private releaseUnusedBindings<T>(
@@ -1071,6 +1074,7 @@ export class HighwayRenderer {
     });
     this.gemBindings.clear();
     this.tailBindings.clear();
+    this.resetFreeLists();
   }
 
   private getSustainCutPreview(
