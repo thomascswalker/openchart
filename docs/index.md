@@ -1,0 +1,85 @@
+# Overview
+
+MidiView is a Typescript-based chart editor which provides a MIDI-native backend.
+
+## Architecture
+
+### Frontend
+
+```mermaid
+flowchart TD
+    START["Entrypoint"] ---> BOOTSTRAP["Bootstrap backend"]
+    START --> SHELL["Shell"]
+
+    subgraph RT["Runtime"]
+      SHELL --> WS["Workspace"]
+      SHELL --> MENU["Menu Bar"]
+      SHELL --> DLG["Dialogs"]
+      DLG ---> SETTINGS["Application Settings"]
+      DLG ---> PROJECT["Project Settings"]
+      WS --> VM
+  
+      subgraph VM["Viewport Manager (1 to 4 panels)"]
+          direction TB
+          subgraph P1["Viewport Panel 1"]
+              direction LR
+              TB["Toolbar"]
+              TL["Track List<br/><i>(Piano Roll)</i>"]
+              subgraph CR["View Renderer"]
+                  direction TB
+                  PR["<b>Piano Roll Renderer</b><br/>2D orthographic"]
+                  HW["<b>Highway Renderer</b><br/>3D perspective"]
+              end
+              TIME["Timeline"]
+          end
+          P2["Viewport Panel 2"]:::ghost
+          P3["Viewport Panel 3"]:::ghost
+          P4["Viewport Panel 4"]:::ghost
+          P1 ~~~ P2
+          P2 ~~~ P3
+          P3 ~~~ P4
+      end
+    end
+
+classDef ghost fill:#ffffff00,stroke:#999999,stroke-dasharray:5 5,color:#888888
+```
+
+### Backend
+
+```mermaid
+flowchart TD
+    direction LR
+        subgraph KERNEL["Platform Kernel"]
+            direction TB
+            NAMING["Bootstrap"]
+            SR["<b>Service Registry</b><br/>Discover and register services"]
+            AR["<b>Action Registry</b><br/>Discover and register actions which can be run"]
+            ACTIONS["Command Actions"]
+        end
+
+        subgraph SERVICES["Services"]
+            direction TB
+            subgraph APPSVC["Application Services"]
+                direction LR
+                LOG["<b>Logger</b>"]
+                FSYS["<b>File System</b><br/>Open, Save, Download"]
+                DOC["<b>Document</b><br/>MIDI data, metadata,<br/>undo and redo"]
+                AUD["<b>Audio</b><br/>backing-track stems"]
+                PB["<b>Playback</b><br/>transport and clock"]
+                SET["<b>Settings</b><br/>saved preferences"]
+            end
+            subgraph EDSVC["Editor Services"]
+                direction LR
+                EST["<b>Editor State</b><br/>dialogs and errors"]
+                VPS["<b>Viewports</b><br/>panel sessions, snapping"]
+                ACV["<b>Active Chart View</b><br/>the focused renderer"]
+                CLIP["<b>Clipboard</b><br/>copy, cut, paste"]
+            end
+        end
+        
+        NAMING --> SR
+        NAMING --> AR
+        AR --> ACTIONS
+        SR --> SERVICES
+        ACTIONS --> SERVICES
+```
