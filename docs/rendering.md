@@ -33,7 +33,7 @@ TODO
 ## 3D Rendering
 
 All assets are bundler-resolved (nothing is fetched at runtime). As a result, validation is strict and 
-explicit upon compilation rather than at runtime. All assets are stored in a global registry.
+explicit upon compilation rather than at runtime. All assets are stored in a [global registry](../apps/editor/src/components/views/highway/geometryCatalog.ts).
 
 A 3D asset consists of the approximate below file structure:
 
@@ -45,7 +45,7 @@ defs.json           # Declarative definition referencing these files
 <type>/<type>_M.png # Emissive mask texture
 ```
 
-`defs.json` is single JSON file (`apps/editor/src/assets/defs.json`) which defines 
+`defs.json` is single [JSON file](../apps/editor/src/assets/defs.json) which defines 
 the different note and material permutations.
 
 ```jsonc
