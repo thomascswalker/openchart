@@ -20,7 +20,6 @@ export const drumLaneColors = [0xdc2626, 0xfacc15, 0x2563eb, 0x00a651];
 export const kickColor = rgbFromHex(0x9ca3af);
 export const instanceSizeBeatLines = 64;
 export const instanceSizePhraseSpans = 128;
-export const visibleQuarterNotes = 16;
 export const strikeLineZ = -3.5;
 export const farBoardZ = -44;
 export const nearBoardZ = 0.5;

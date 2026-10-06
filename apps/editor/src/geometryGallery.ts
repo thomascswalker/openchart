@@ -65,7 +65,7 @@ interface ProceduralSample {
   points?: [number, number, number][];
   material: CatalogMaterial;
   position?: [number, number, number];
-  rotationDegrees?: [number, number, number];
+  rotation?: [number, number, number];
   grid: [number, number];
   label: GalleryLabel | null;
 }
@@ -301,8 +301,8 @@ function createProceduralSample(sample: ProceduralSample): void {
         ? new THREE.LineLoop(geometry, material as THREE.LineBasicMaterial)
         : new THREE.Mesh(geometry, material);
   if (sample.position) object.position.fromArray(sample.position);
-  if (sample.rotationDegrees) {
-    const [x, y, z] = sample.rotationDegrees.map(THREE.MathUtils.degToRad) as [
+  if (sample.rotation) {
+    const [x, y, z] = sample.rotation.map(THREE.MathUtils.degToRad) as [
       number,
       number,
       number,

@@ -10,7 +10,6 @@ import {
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
 import type { FileSystemService } from "./filesystem";
 import type { ILoggerService } from "./logger";
-import type { PublicMethods } from "../util/meta";
 import { IStatefulService } from "../platform/services";
 
 export interface DocumentSnapshot {
@@ -223,5 +222,3 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     for (const listener of this.listeners) listener();
   }
 }
-
-export type IDocumentService = PublicMethods<DocumentService>;

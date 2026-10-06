@@ -113,5 +113,3 @@ export class FileSystemService extends IService {
     for (const listener of this.listeners) listener();
   }
 }
-
-export type IFileSystemService = PublicMethods<FileSystemService>;

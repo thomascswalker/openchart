@@ -20,11 +20,6 @@ export interface PianoRollNote {
   midiNote: MidiNote;
 }
 
-export interface ActiveNote {
-  tick: number;
-  velocity: number;
-}
-
 export type PianoRollTextEvent = TimedMidiEvent & { event: TextMidiEvent };
 
 export interface PianoRollCamera {

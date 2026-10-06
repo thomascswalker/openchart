@@ -49,7 +49,7 @@ describe("circular highway geometry", () => {
     for (const id of ["note", "kick", "cymbal", "pad", "fret"] as const) {
       expect(HIGHWAY_GEOMETRY_CATALOG[id].transform).toEqual({
         position: { x: 0, y: 0, z: 0 },
-        rotationDegrees: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
         scale: { x: 1, y: 1, z: 1 },
       });
     }

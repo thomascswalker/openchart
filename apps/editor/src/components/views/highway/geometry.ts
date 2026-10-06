@@ -3,8 +3,8 @@ import type { Rgb, MaterialSet } from "./materials";
 import { setMaterialStateForMaterial } from "./materials";
 import {
   HIGHWAY_GEOMETRY_CATALOG,
-  type PlacementOffset,
-  type Transform3D,
+  type IVector3,
+  type ITransform,
 } from "./geometryCatalog";
 
 export interface WorldPosition {
@@ -16,9 +16,9 @@ export interface WorldPosition {
 export function noteWorldPosition(
   laneX: number,
   noteZ: number,
-  transform: Transform3D = HIGHWAY_GEOMETRY_CATALOG.note.transform,
-  placementOffset: PlacementOffset = HIGHWAY_GEOMETRY_CATALOG.note
-    .placementOffset!,
+  transform: ITransform = HIGHWAY_GEOMETRY_CATALOG.note.transform,
+  placementOffset: IVector3 =
+    HIGHWAY_GEOMETRY_CATALOG.note.placementOffset ?? { x: 0, y: 0, z: 0 },
 ): WorldPosition {
   return {
     x: laneX + transform.position.x + placementOffset.x,
@@ -51,62 +51,14 @@ export function meshesInModel(model: THREE.Object3D): THREE.Mesh[] {
   return meshes;
 }
 
-export function applyMaterialToModel(
-  model: THREE.Object3D,
-  material: THREE.Material,
-): THREE.Mesh[] {
-  const meshes = meshesInModel(model);
-  meshes.forEach((mesh) => {
-    mesh.material = material;
-  });
-  return meshes;
-}
-
 export function applyGeometryModelTransform(
   model: THREE.Object3D,
-  transform: Transform3D,
+  transform: ITransform,
 ): void {
   model.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
   model.rotation.set(
-    THREE.MathUtils.degToRad(transform.rotationDegrees.x),
-    THREE.MathUtils.degToRad(transform.rotationDegrees.y),
-    THREE.MathUtils.degToRad(transform.rotationDegrees.z),
+    THREE.MathUtils.degToRad(transform.rotation.x),
+    THREE.MathUtils.degToRad(transform.rotation.y),
+    THREE.MathUtils.degToRad(transform.rotation.z),
   );
-}
-
-export function setModelState(
-  model: THREE.Object3D,
-  materialSet: MaterialSet,
-  color: Rgb,
-  state: {
-    selected?: boolean;
-    ghost?: boolean;
-    alpha?: number;
-    passed?: boolean;
-  },
-): void {
-  meshesInModel(model).forEach((mesh) => {
-    const materials = Array.isArray(mesh.material)
-      ? mesh.material
-      : mesh.material
-        ? [mesh.material]
-        : [materialSet.noteTinted];
-    materials.forEach((material) => {
-      const shaderMaterial = material as THREE.ShaderMaterial;
-      const isNeutralPrimitive =
-        shaderMaterial.uniforms?.uTintEnabled?.value === 0;
-      setMaterialStateForMaterial(material, {
-        baseColor: color,
-        emissionColor: color,
-        emissionIntensity: state.selected ? 1 : 1,
-        alpha: state.alpha ?? 1,
-        selected: state.selected ?? false,
-        ghost: state.ghost ?? false,
-        passed: state.passed ?? false,
-        tint: !isNeutralPrimitive,
-        useStrikeLine: false,
-        strikeLineZ: -3.5,
-      });
-    });
-  });
 }

@@ -29,7 +29,7 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
   page,
 }) => {
   await page.addInitScript(() => {
-    Reflect.set(globalThis, "__captureThreeFramebuffer", true);
+    Reflect.set(globalThis, "__captureFramebuffer", true);
   });
   await loadSong(page);
   const viewport = panel(page, 0);

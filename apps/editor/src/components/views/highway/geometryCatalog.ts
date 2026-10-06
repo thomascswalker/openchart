@@ -1,16 +1,19 @@
 import type { MaterialKey, MeshKey } from "../../../rendering/registry";
 import type { DrumPlacementKind } from "./drumProfile";
 
-export interface Transform3D {
-  position: { x: number; y: number; z: number };
-  rotationDegrees: { x: number; y: number; z: number };
-  scale: { x: number; y: number; z: number };
-}
-
-export interface PlacementOffset {
+export interface IVector3 {
   x: number;
   y: number;
   z: number;
+}
+
+export interface ITransform {
+  // Position
+  position: IVector3;
+  // Rotation (in degrees)
+  rotation: IVector3;
+  // Scale
+  scale: IVector3;
 }
 
 export type GeometryId =
@@ -44,9 +47,9 @@ export const DRUM_GHOST_GEOMETRY_IDS: Record<
 
 export interface GeometryEntry {
   id: GeometryId;
-  transform: Transform3D;
-  placementOffset?: PlacementOffset;
-  fallbackHalfExtents?: PlacementOffset;
+  transform: ITransform;
+  placementOffset?: IVector3;
+  fallbackHalfExtents?: IVector3;
   meshKey?: MeshKey;
   materialKey?: MaterialKey;
   layer: number;
@@ -69,9 +72,9 @@ export const HIGHWAY_RENDER_ORDER: Record<GeometryRenderPass, number> = {
   overlay: 30,
 };
 
-const identityModelTransform: Transform3D = {
+const identityModelTransform: ITransform = {
   position: { x: 0, y: 0, z: 0 },
-  rotationDegrees: { x: 0, y: 0, z: 0 },
+  rotation: { x: 0, y: 0, z: 0 },
   scale: { x: 1, y: 1, z: 1 },
 };
 
@@ -80,7 +83,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     id: "board",
     transform: {
       position: { x: 0, y: -0.25, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 3.25, y: 0.15, z: 1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.board,
@@ -90,7 +93,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     id: "laneDivider",
     transform: {
       position: { x: 0, y: -0.05, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 0.025, y: 0.04, z: 1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.markings,
@@ -100,7 +103,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     id: "beatLine",
     transform: {
       position: { x: 0, y: -0.065, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 3, y: 0.008, z: 1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.markings,
@@ -110,7 +113,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     id: "strikeline",
     transform: {
       position: { x: 0, y: -0.04, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 3, y: 0.015, z: 0.06 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.markings,
@@ -147,7 +150,7 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     id: "sustain",
     transform: {
       position: { x: 0, y: -0.04, z: 0 },
-      rotationDegrees: { x: 90, y: 0, z: 0 },
+      rotation: { x: 90, y: 0, z: 0 },
       scale: { x: 0.32, y: 1, z: 1 },
     },
     materialKey: "sustain",
@@ -209,12 +212,3 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     renderPass: "overlay",
   },
 };
-
-export function geometryTransform(id: GeometryId): Transform3D {
-  const source = HIGHWAY_GEOMETRY_CATALOG[id].transform;
-  return {
-    position: { ...source.position },
-    rotationDegrees: { ...source.rotationDegrees },
-    scale: { ...source.scale },
-  };
-}

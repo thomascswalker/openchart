@@ -30,13 +30,6 @@ async function withStore<T>(
   }
 }
 
-export function supportsDirectoryPicker(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.showDirectoryPicker === "function"
-  );
-}
-
 export async function saveAudioDirectoryHandle(
   handle: FileSystemDirectoryHandle,
 ): Promise<void> {

@@ -619,7 +619,12 @@ export class HighwayRenderer {
           this.materials!.fretGrayscale,
           HIGHWAY_GEOMETRY_CATALOG.fret.transform,
         );
-        const placement = HIGHWAY_GEOMETRY_CATALOG.fret.placementOffset!;
+        const placement =
+          HIGHWAY_GEOMETRY_CATALOG.fret.placementOffset ?? {
+            x: 0,
+            y: 0,
+            z: 0,
+          };
         assembly.position.set(
           this.coordinates.getLaneX(lane) + placement.x,
           placement.y,

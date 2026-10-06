@@ -64,7 +64,7 @@ test("highway note and sustain batches render deterministically with compact res
   page,
 }) => {
   await page.addInitScript(() => {
-    Reflect.set(globalThis, "__captureThreeFramebuffer", true);
+    Reflect.set(globalThis, "__captureFramebuffer", true);
   });
   await loadSong(page);
   const viewport = panel(page, 0);
@@ -98,7 +98,7 @@ test("highway note and sustain batches render deterministically with compact res
 
 test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   await page.addInitScript(() => {
-    Reflect.set(globalThis, "__captureThreeFramebuffer", true);
+    Reflect.set(globalThis, "__captureFramebuffer", true);
   });
   await loadSong(page);
   const viewport = panel(page, 0);
@@ -135,7 +135,7 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   page,
 }) => {
   await page.addInitScript(() => {
-    Reflect.set(globalThis, "__captureThreeFramebuffer", true);
+    Reflect.set(globalThis, "__captureFramebuffer", true);
     Reflect.set(globalThis, "showOpenFilePicker", undefined);
     Reflect.set(globalThis, "showSaveFilePicker", undefined);
   });

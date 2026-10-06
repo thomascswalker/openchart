@@ -71,9 +71,6 @@ interface ActiveVoice {
   gain: GainNode;
 }
 
-/** Inclusive default piano preview range: C2 through C4. */
-export const DEFAULT_PIANO_PREVIEW_RANGE: PitchRange = { low: 36, high: 60 };
-
 function createSoundboardContext(): AudioContext {
   const AudioContextConstructor =
     window.AudioContext ??
