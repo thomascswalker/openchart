@@ -1,4 +1,4 @@
-import { useService } from "./platform";
+import Platform from "./platform";
 import { AudioService } from "./services/audio";
 import { DocumentService } from "./services/document";
 import { EditorStateService } from "./services/editor/state";
@@ -9,12 +9,12 @@ import { ViewportService } from "./services/editor/viewports";
  */
 export function bootstrap(): void {
   // Resolve the audio service before resetting the application services.
-  const audio = useService<AudioService>("audio");
+  const audio = Platform.services.get<AudioService>("audio");
 
   // Start with a clean editor, document, and viewport state.
-  useService<EditorStateService>("editor.state").reset();
-  useService<DocumentService>("document").reset();
-  useService<ViewportService>("editor.viewports").reset();
+  Platform.services.get<EditorStateService>("editor.state").reset();
+  Platform.services.get<DocumentService>("document").reset();
+  Platform.services.get<ViewportService>("editor.viewports").reset();
 
   // Initialize audio after the editor state has been reset.
   audio.initialize();
