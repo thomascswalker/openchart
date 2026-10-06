@@ -29,10 +29,7 @@ import { HighwayHitTester } from "./hitTesting";
 import { HighwayNoteEditingController } from "./noteEditing";
 import { HighwayPhraseEditingController } from "./phraseEditing";
 import { HighwayInputController } from "./input";
-import {
-  HighwayRenderer,
-  type HighwayRenderDiagnostics,
-} from "./rendering";
+import { HighwayRenderer, type HighwayRenderDiagnostics } from "./rendering";
 import { SelectionContext } from "./selection";
 import type { DrumPlacementKind } from "./drumProfile";
 export type { HighwayMode, HighwayTool } from "./types";

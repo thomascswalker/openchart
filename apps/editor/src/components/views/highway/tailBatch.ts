@@ -107,7 +107,10 @@ export class SustainTailBatch {
     if (needed > this.capacity) {
       this.resize(expandedCapacity(this.capacity, needed));
       this.shrinkStartedAt = null;
-    } else if (needed < this.capacity * 0.25 && this.capacity > this.minimumCapacity) {
+    } else if (
+      needed < this.capacity * 0.25 &&
+      this.capacity > this.minimumCapacity
+    ) {
       const now = performance.now();
       this.shrinkStartedAt ??= now;
       if (now - this.shrinkStartedAt >= SHRINK_DELAY_MS) {
@@ -123,8 +126,7 @@ export class SustainTailBatch {
     const ordered =
       count < instances.length
         ? [...instances].sort(
-            (left, right) =>
-              (left.priority ?? 0) - (right.priority ?? 0),
+            (left, right) => (left.priority ?? 0) - (right.priority ?? 0),
           )
         : instances;
     const colors = this.colors.array as Float32Array;
@@ -205,17 +207,18 @@ export class SustainTailBatch {
     }
     if (tickEnd >= 0) {
       this.tickRanges.clearUpdateRanges();
-      this.tickRanges.addUpdateRange(
-        tickStart * 2,
-        (tickEnd - tickStart) * 2,
-      );
+      this.tickRanges.addUpdateRange(tickStart * 2, (tickEnd - tickStart) * 2);
       this.tickRanges.needsUpdate = true;
     }
     this.lastWriteMs = performance.now() - writeStartedAt;
     return count;
   }
 
-  public updateScroll(cameraTick: number, ppqn: number, nearBoardZ: number): void {
+  public updateScroll(
+    cameraTick: number,
+    ppqn: number,
+    nearBoardZ: number,
+  ): void {
     this.material.uniforms.uCameraTick.value = cameraTick;
     this.material.uniforms.uPpqn.value = ppqn;
     this.material.uniforms.uNearBoardZ.value = nearBoardZ;

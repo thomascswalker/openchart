@@ -61,7 +61,11 @@ export class HighwayNoteIndex {
         if (profile?.kind === "kick") {
           lane = 0;
           kind = "kick";
-        } else if (!profile || profile.kind === "marker" || profile.lane === null) {
+        } else if (
+          !profile ||
+          profile.kind === "marker" ||
+          profile.lane === null
+        ) {
           continue;
         } else {
           lane = profile.lane;

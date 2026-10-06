@@ -181,11 +181,11 @@ interface HighwayPerformanceDiagnostics {
   batchCapacities: Record<string, number>;
 }
 
-function getHighwayDiagnosticsSource(
-  chartView: ChartView | null,
-): (ChartView & {
-  getPerformanceDiagnostics: () => HighwayPerformanceDiagnostics;
-}) | null {
+function getHighwayDiagnosticsSource(chartView: ChartView | null):
+  | (ChartView & {
+      getPerformanceDiagnostics: () => HighwayPerformanceDiagnostics;
+    })
+  | null {
   if (
     chartView &&
     "getPerformanceDiagnostics" in chartView &&
@@ -205,8 +205,8 @@ function HighwayPerformanceSection({
 }) {
   const source = getHighwayDiagnosticsSource(chartView);
   const [diagnostics, setDiagnostics] =
-    useState<HighwayPerformanceDiagnostics | null>(() =>
-      source?.getPerformanceDiagnostics() ?? null,
+    useState<HighwayPerformanceDiagnostics | null>(
+      () => source?.getPerformanceDiagnostics() ?? null,
     );
 
   useEffect(() => {

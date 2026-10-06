@@ -165,7 +165,10 @@ export class NoteInstanceBatch {
     if (needed > this.capacity) {
       this.resize(expandedCapacity(this.capacity, needed));
       this.shrinkStartedAt = null;
-    } else if (needed < this.capacity * 0.25 && this.capacity > this.minimumCapacity) {
+    } else if (
+      needed < this.capacity * 0.25 &&
+      this.capacity > this.minimumCapacity
+    ) {
       const now = performance.now();
       this.shrinkStartedAt ??= now;
       if (now - this.shrinkStartedAt >= SHRINK_DELAY_MS) {
@@ -181,8 +184,7 @@ export class NoteInstanceBatch {
     const ordered =
       count < instances.length
         ? [...instances].sort(
-            (left, right) =>
-              (left.priority ?? 0) - (right.priority ?? 0),
+            (left, right) => (left.priority ?? 0) - (right.priority ?? 0),
           )
         : instances;
     const matrices = this.matrixAttribute.array as Float32Array;
@@ -266,7 +268,11 @@ export class NoteInstanceBatch {
     return count;
   }
 
-  public updateScroll(cameraTick: number, ppqn: number, nearBoardZ: number): void {
+  public updateScroll(
+    cameraTick: number,
+    ppqn: number,
+    nearBoardZ: number,
+  ): void {
     for (const material of this.materials) {
       material.uniforms.uCameraTick.value = cameraTick;
       material.uniforms.uPpqn.value = ppqn;
@@ -308,12 +314,12 @@ export class NoteInstanceBatch {
       THREE.MathUtils.degToRad(transform.rotationDegrees.z),
     );
     this.rotation.setFromEuler(euler);
-    this.scale.set(
-      transform.scale.x,
-      transform.scale.y,
-      transform.scale.z,
+    this.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
+    return new THREE.Matrix4().compose(
+      new THREE.Vector3(),
+      this.rotation,
+      this.scale,
     );
-    return new THREE.Matrix4().compose(new THREE.Vector3(), this.rotation, this.scale);
   }
 
   private acquireBakedGeometry(

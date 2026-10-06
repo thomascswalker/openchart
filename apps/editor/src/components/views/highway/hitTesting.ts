@@ -94,11 +94,10 @@ export class HighwayHitTester {
           : this.getGemScreenBounds(
               note,
               lane,
-              kind === "pad" || kind === "cymbal"
-                ? kind
-                : "note",
+              kind === "pad" || kind === "cymbal" ? kind : "note",
             );
-      const tailBounds = kind === "note" ? this.getTailScreenBounds(note, lane) : null;
+      const tailBounds =
+        kind === "note" ? this.getTailScreenBounds(note, lane) : null;
       if (
         (!gemBounds ||
           !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&

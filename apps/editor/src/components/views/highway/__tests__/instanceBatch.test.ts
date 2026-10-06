@@ -37,7 +37,9 @@ describe("NoteInstanceBatch", () => {
     expect(batch.meshes[0].material).toBeInstanceOf(THREE.ShaderMaterial);
     expect(batch.meshes[0].material).not.toBe(batch.meshes[1].material);
     expect(
-      batch.meshes.every((mesh) => mesh.renderOrder === 5 && !mesh.frustumCulled),
+      batch.meshes.every(
+        (mesh) => mesh.renderOrder === 5 && !mesh.frustumCulled,
+      ),
     ).toBe(true);
 
     expect(
@@ -49,9 +51,9 @@ describe("NoteInstanceBatch", () => {
     expect(batch.meshes[0].count).toBe(2);
     expect(batch.meshes[1].count).toBe(2);
     expect(batch.meshes[0].instanceMatrix.array[12]).toBe(1);
-    expect(batch.meshes[0].geometry.getAttribute("aLaneColorSelected").array).toEqual(
-      expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1, 4: 0, 5: 1 }),
-    );
+    expect(
+      batch.meshes[0].geometry.getAttribute("aLaneColorSelected").array,
+    ).toEqual(expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1, 4: 0, 5: 1 }));
     const matrixVersion = batch.meshes[0].instanceMatrix.version;
     const colorVersion = (
       batch.meshes[0].geometry.getAttribute(

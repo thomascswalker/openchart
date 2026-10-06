@@ -110,7 +110,9 @@ export class ChartView {
       const expertKick2 =
         this.midiTrack?.getNotes({ pitch: { low: 95, high: 96 } }) ?? [];
       for (const note of expertKick2) notes.push(note);
-      notes.sort((left, right) => left.start - right.start || left.note - right.note);
+      notes.sort(
+        (left, right) => left.start - right.start || left.note - right.note,
+      );
     }
 
     this.cachedNoteTrack = this.midiTrack;

@@ -30,7 +30,11 @@ describe("HighwayNoteIndex", () => {
     const notes = Array.from({ length: 500 }, () => {
       const start = Math.floor(random() * 20_000);
       const duration = Math.floor(random() * 4_000);
-      return makeNote(96 + Math.floor(random() * 7) - 1, start, start + duration);
+      return makeNote(
+        96 + Math.floor(random() * 7) - 1,
+        start,
+        start + duration,
+      );
     });
     notes.push(makeNote(96, 0, 19_000), makeNote(100, 10_000, 10_000));
     const chart = makeChart(notes);
@@ -47,7 +51,9 @@ describe("HighwayNoteIndex", () => {
             note.end >= start &&
             note.start <= end,
         )
-        .sort((left, right) => left.start - right.start || left.note - right.note);
+        .sort(
+          (left, right) => left.start - right.start || left.note - right.note,
+        );
       const actual: IndexedNote[] = [];
       index.query(chart, start, end, actual);
       expect(actual.map(({ note }) => note)).toEqual(expected);

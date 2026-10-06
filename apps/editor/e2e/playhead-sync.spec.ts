@@ -45,7 +45,10 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
     "scene-objects",
     "highway-draw-ms",
   ]) {
-    await expect(canvas).toHaveAttribute(`data-three-${metric}`, /^\d+(\.\d+)?$/);
+    await expect(canvas).toHaveAttribute(
+      `data-three-${metric}`,
+      /^\d+(\.\d+)?$/,
+    );
   }
   const contextAttributes = JSON.parse(
     (await canvas.getAttribute("data-three-context-attributes")) ?? "{}",

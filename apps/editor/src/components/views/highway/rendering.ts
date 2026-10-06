@@ -26,10 +26,7 @@ import {
 } from "./constants";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
-import {
-  noteWorldPosition,
-  sustainWorldTransform,
-} from "./geometry";
+import { noteWorldPosition, sustainWorldTransform } from "./geometry";
 import { HighwayHitTester } from "./hitTesting";
 import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
 import {
@@ -374,13 +371,13 @@ export class HighwayRenderer {
     const chartRevision = chart.getNoteRevision();
     const selectionRevision = selection.getRevision();
     const noteBatchDirty =
-      (this.lastInstancedChart !== chart ||
-        this.lastInstancedChartRevision !== chartRevision ||
-        this.lastInstancedSelectionRevision !== selectionRevision ||
-        this.lastInstancedVisibleEntries.length !== visibleNotes.length ||
-        visibleNotes.some(
-          (entry, index) => this.lastInstancedVisibleEntries[index] !== entry,
-        ));
+      this.lastInstancedChart !== chart ||
+      this.lastInstancedChartRevision !== chartRevision ||
+      this.lastInstancedSelectionRevision !== selectionRevision ||
+      this.lastInstancedVisibleEntries.length !== visibleNotes.length ||
+      visibleNotes.some(
+        (entry, index) => this.lastInstancedVisibleEntries[index] !== entry,
+      );
     this.scene.userData.noteBatchDirty = noteBatchDirty;
     const noteData: Record<"note" | DrumPlacementKind, NoteInstanceData[]> = {
       note: [],

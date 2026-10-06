@@ -47,7 +47,9 @@ function createDenseMidi(noteCount: number): Uint8Array {
       },
     );
   }
-  events.sort((left, right) => left.tick - right.tick || left.order - right.order);
+  events.sort(
+    (left, right) => left.tick - right.tick || left.order - right.order,
+  );
   let previousTick = 0;
   track.events = events.map(({ tick, event }) => {
     const deltaTime = tick - previousTick;
@@ -58,7 +60,9 @@ function createDenseMidi(noteCount: number): Uint8Array {
   return midi.toBuffer();
 }
 
-test("highway note and sustain batches render deterministically with compact resources", async ({ page }) => {
+test("highway note and sustain batches render deterministically with compact resources", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     Reflect.set(globalThis, "__captureThreeFramebuffer", true);
   });
@@ -70,14 +74,26 @@ test("highway note and sustain batches render deterministically with compact res
   await canvas.click();
   for (let step = 0; step < 4; step += 1) await page.keyboard.press("ArrowUp");
   await expect.poll(() => cameraTick(viewport)).not.toBe(initialCameraTick);
-  await expect.poll(() => canvas.getAttribute("data-three-render-calls")).not.toBeNull();
+  await expect
+    .poll(() => canvas.getAttribute("data-three-render-calls"))
+    .not.toBeNull();
   const screenshot = await canvasShot(viewport);
   expect((await canvasShot(viewport)).equals(screenshot)).toBe(true);
-  expect(Number(await canvas.getAttribute("data-three-visible-notes"))).toBeGreaterThan(0);
-  expect(Number(await canvas.getAttribute("data-three-visible-sustains"))).toBeGreaterThan(0);
-  expect(Number(await canvas.getAttribute("data-three-render-calls"))).toBeLessThan(100);
-  expect(Number(await canvas.getAttribute("data-three-scene-objects"))).toBeLessThan(500);
-  expect(Number(await canvas.getAttribute("data-three-geometry-count"))).toBeLessThan(100);
+  expect(
+    Number(await canvas.getAttribute("data-three-visible-notes")),
+  ).toBeGreaterThan(0);
+  expect(
+    Number(await canvas.getAttribute("data-three-visible-sustains")),
+  ).toBeGreaterThan(0);
+  expect(
+    Number(await canvas.getAttribute("data-three-render-calls")),
+  ).toBeLessThan(100);
+  expect(
+    Number(await canvas.getAttribute("data-three-scene-objects")),
+  ).toBeLessThan(500);
+  expect(
+    Number(await canvas.getAttribute("data-three-geometry-count")),
+  ).toBeLessThan(100);
 });
 
 test("highway drum batches render kick and cymbal notes", async ({ page }) => {
@@ -88,17 +104,24 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   const viewport = panel(page, 0);
   await switchView(viewport, "highway");
   await viewport.getByRole("button", { name: "Select DRUMS" }).click();
-  await expect(viewport.getByRole("button", { name: "Select DRUMS" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(
+    viewport.getByRole("button", { name: "Select DRUMS" }),
+  ).toHaveAttribute("aria-pressed", "true");
   const canvas = viewport.locator(".midi-view-host canvas");
   await expect
-    .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
+    .poll(async () =>
+      Number(await canvas.getAttribute("data-three-visible-notes")),
+    )
     .toBeGreaterThan(0);
-  expect((await canvasShot(viewport)).equals(await canvasShot(viewport))).toBe(true);
-  const renderCalls = Number(await canvas.getAttribute("data-three-render-calls"));
-  const sceneObjects = Number(await canvas.getAttribute("data-three-scene-objects"));
+  expect((await canvasShot(viewport)).equals(await canvasShot(viewport))).toBe(
+    true,
+  );
+  const renderCalls = Number(
+    await canvas.getAttribute("data-three-render-calls"),
+  );
+  const sceneObjects = Number(
+    await canvas.getAttribute("data-three-scene-objects"),
+  );
   const instancedCounts = JSON.parse(
     (await canvas.getAttribute("data-three-instanced-note-counts")) ?? "{}",
   ) as Record<string, number>;
@@ -108,7 +131,9 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   expect(instancedCounts.cymbal).toBeGreaterThan(0);
 });
 
-test("instanced note capacity grows beyond the legacy pool without drops", async ({ page }) => {
+test("instanced note capacity grows beyond the legacy pool without drops", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     Reflect.set(globalThis, "__captureThreeFramebuffer", true);
     Reflect.set(globalThis, "showOpenFilePicker", undefined);
@@ -118,7 +143,9 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   await page.getByRole("menuitem", { name: "File" }).click();
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("menuitem", { name: /^Open/ }).click();
-  await (await chooser).setFiles({
+  await (
+    await chooser
+  ).setFiles({
     name: "dense-chart.mid",
     mimeType: "audio/midi",
     buffer: Buffer.from(createDenseMidi(3_000)),
@@ -131,7 +158,9 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   await switchView(viewport, "highway");
   const canvas = viewport.locator(".midi-view-host canvas");
   await expect
-    .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
+    .poll(async () =>
+      Number(await canvas.getAttribute("data-three-visible-notes")),
+    )
     .toBe(3_000);
   await canvas.hover({ position: { x: 1, y: 1 } });
   await expect

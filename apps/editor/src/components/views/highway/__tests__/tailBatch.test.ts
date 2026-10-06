@@ -31,9 +31,9 @@ describe("SustainTailBatch", () => {
     expect(batch.mesh.count).toBe(1);
     expect(batch.mesh.renderOrder).toBe(10);
     expect(batch.mesh.frustumCulled).toBe(false);
-    expect(batch.mesh.geometry.getAttribute("aLaneColorSelected").array).toEqual(
-      expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1 }),
-    );
+    expect(
+      batch.mesh.geometry.getAttribute("aLaneColorSelected").array,
+    ).toEqual(expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1 }));
     expect(batch.mesh.instanceMatrix.array[12]).toBe(1);
     const matrixVersion = batch.mesh.instanceMatrix.version;
     const colorVersion = (

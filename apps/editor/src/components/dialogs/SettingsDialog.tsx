@@ -205,11 +205,7 @@ function getSettingValue(
   const [group, key] = path.split(".") as [
     keyof Pick<
       ApplicationSettings,
-    | "audio"
-    | "discovery"
-    | "saving"
-    | "feedback"
-    | "history"
+      "audio" | "discovery" | "saving" | "feedback" | "history"
     >,
     string,
   ];
@@ -224,11 +220,7 @@ function setSettingValue(
   const [group, key] = path.split(".") as [
     keyof Pick<
       ApplicationSettings,
-    | "audio"
-    | "discovery"
-    | "saving"
-    | "feedback"
-    | "history"
+      "audio" | "discovery" | "saving" | "feedback" | "history"
     >,
     string,
   ];
