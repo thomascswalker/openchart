@@ -83,8 +83,6 @@ the different note and material permutations.
 
 All geometry is in .glb (GLTF) format. Meshes are shared by reference from the registry. 
 
+#### Pooling/Instancing
 
-#### Definitions
-
-The semantic mapping of different note types to an explicit mesh/material combo is handled by the geometry 
-catalog. The catalog is backed by `defs.json`.
+All geometry permutations are built once upon application startup, rather than creating and destroying as geometry becomes visible.
