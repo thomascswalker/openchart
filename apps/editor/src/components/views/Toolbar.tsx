@@ -192,6 +192,7 @@ const Toolbar = ({
             <ToolButton
               key={instrument}
               Icon={icon}
+              ariaLabel={`Select ${instrument}`}
               disabled={
                 !!midiData &&
                 !new SongView(midiData).getInstrumentTrackView(instrument)

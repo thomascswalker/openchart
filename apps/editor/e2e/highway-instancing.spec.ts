@@ -68,3 +68,52 @@ test("instanced notes and tails match pooled rendering with fewer objects", asyn
   expect(instancedGeometries).toBeLessThan(pooledGeometries);
   expect(instanced.equals(pooled)).toBe(true);
 });
+
+test("instanced drum kinds match pooled rendering", async ({ page }) => {
+  await page.addInitScript(() => {
+    Reflect.set(globalThis, "__captureThreeFramebuffer", true);
+  });
+  await page.goto("/");
+  await configureInstancing(page, false);
+  await loadSong(page);
+  let viewport = panel(page, 0);
+  await switchView(viewport, "highway");
+  await viewport.getByRole("button", { name: "Select DRUMS" }).click();
+  await expect(viewport.getByRole("button", { name: "Select DRUMS" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  let canvas = viewport.locator(".midi-view-host canvas");
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
+    .toBeGreaterThan(0);
+  const pooled = await canvasShot(viewport);
+  const pooledCalls = Number(await canvas.getAttribute("data-three-render-calls"));
+  const pooledObjects = Number(await canvas.getAttribute("data-three-scene-objects"));
+
+  await configureInstancing(page, true);
+  await page.reload();
+  await loadSong(page);
+  viewport = panel(page, 0);
+  await switchView(viewport, "highway");
+  await viewport.getByRole("button", { name: "Select DRUMS" }).click();
+  await expect(viewport.getByRole("button", { name: "Select DRUMS" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  canvas = viewport.locator(".midi-view-host canvas");
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
+    .toBeGreaterThan(0);
+  const instanced = await canvasShot(viewport);
+  const instancedCalls = Number(await canvas.getAttribute("data-three-render-calls"));
+  const instancedObjects = Number(await canvas.getAttribute("data-three-scene-objects"));
+  const instancedCounts = JSON.parse(
+    (await canvas.getAttribute("data-three-instanced-note-counts")) ?? "{}",
+  ) as Record<string, number>;
+  expect(instancedCalls).toBeLessThanOrEqual(pooledCalls);
+  expect(instancedObjects).toBeLessThan(pooledObjects);
+  expect(instancedCounts.kick).toBeGreaterThan(0);
+  expect(instancedCounts.cymbal).toBeGreaterThan(0);
+  expect(instanced.equals(pooled)).toBe(true);
+});
