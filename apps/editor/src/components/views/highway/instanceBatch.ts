@@ -11,14 +11,31 @@ export interface NoteInstanceData {
   z: number;
   color: Rgb;
   selected: boolean;
+  priority?: number;
+}
+
+const INITIAL_CAPACITY = 256;
+const MAX_CAPACITY = 16_384;
+const SHRINK_DELAY_MS = 5_000;
+
+function expandedCapacity(current: number, needed: number): number {
+  let capacity = current;
+  while (capacity < needed && capacity < MAX_CAPACITY) {
+    capacity = Math.min(MAX_CAPACITY, capacity * 2);
+  }
+  return capacity;
 }
 
 export class NoteInstanceBatch {
-  public readonly meshes: THREE.InstancedMesh[];
-  private readonly geometries: THREE.BufferGeometry[];
+  public meshes: THREE.InstancedMesh[] = [];
+  public droppedNotes = 0;
+  public capacity: number;
+  private geometries: THREE.BufferGeometry[] = [];
   private readonly materials: THREE.ShaderMaterial[];
-  private readonly matrixAttribute: THREE.InstancedBufferAttribute;
-  private readonly colorAttribute: THREE.InstancedBufferAttribute;
+  private matrixAttribute!: THREE.InstancedBufferAttribute;
+  private colorAttribute!: THREE.InstancedBufferAttribute;
+  private shrinkStartedAt: number | null = null;
+  private readonly minimumCapacity: number;
   private readonly position = new THREE.Vector3();
   private readonly scale = new THREE.Vector3();
   private readonly rotation = new THREE.Quaternion();
@@ -33,7 +50,27 @@ export class NoteInstanceBatch {
     transform: Transform3D,
     renderOrder: number,
   ) {
-    const templateMeshes = meshesInModel(template);
+    this.scene = scene;
+    this.templateMeshes = meshesInModel(template);
+    this.roles = roles;
+    this.transform = transform;
+    this.renderOrder = renderOrder;
+    this.materials = [
+      this.makeMaterial(materialSet.noteTinted, true),
+      this.makeMaterial(materialSet.noteGrayscale, false),
+    ];
+    this.capacity = capacity;
+    this.minimumCapacity = Math.min(capacity, INITIAL_CAPACITY);
+    this.resize(this.minimumCapacity);
+  }
+
+  private readonly scene: THREE.Scene;
+  private readonly templateMeshes: THREE.Mesh[];
+  private readonly roles: readonly PrimitiveMaterialRole[];
+  private readonly transform: Transform3D;
+  private readonly renderOrder: number;
+
+  private createMeshes(capacity: number): void {
     this.matrixAttribute = new THREE.InstancedBufferAttribute(
       new Float32Array(capacity * 16),
       16,
@@ -44,22 +81,18 @@ export class NoteInstanceBatch {
       4,
     );
     this.colorAttribute.setUsage(THREE.DynamicDrawUsage);
-    this.materials = [
-      this.makeMaterial(materialSet.noteTinted, true),
-      this.makeMaterial(materialSet.noteGrayscale, false),
-    ];
     this.geometries = [];
-    this.meshes = templateMeshes.map((templateMesh, index) => {
+    this.meshes = this.templateMeshes.map((templateMesh, index) => {
       templateMesh.updateWorldMatrix(true, false);
       const geometry = templateMesh.geometry.clone();
       geometry.applyMatrix4(templateMesh.matrixWorld);
-      const transformMatrix = this.getTransformMatrix(transform);
+      const transformMatrix = this.getTransformMatrix(this.transform);
       geometry.applyMatrix4(transformMatrix);
       geometry.setAttribute("aLaneColorSelected", this.colorAttribute);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
       this.geometries.push(geometry);
-      const role = roles[index] ?? "neutral";
+      const role = this.roles[index] ?? "neutral";
       const mesh = new THREE.InstancedMesh(
         geometry,
         role === "tinted" ? this.materials[0] : this.materials[1],
@@ -67,20 +100,52 @@ export class NoteInstanceBatch {
       );
       mesh.instanceMatrix = this.matrixAttribute;
       mesh.count = 0;
-      mesh.renderOrder = renderOrder;
+      mesh.renderOrder = this.renderOrder;
       mesh.frustumCulled = false;
-      scene.add(mesh);
       return mesh;
     });
+    this.capacity = capacity;
+  }
+
+  private resize(capacity: number): void {
+    this.meshes.forEach((mesh) => {
+      mesh.removeFromParent();
+      mesh.dispose();
+    });
+    this.geometries.forEach((geometry) => geometry.dispose());
+    this.createMeshes(capacity);
+    this.meshes.forEach((mesh) => this.scene.add(mesh));
   }
 
   public write(instances: readonly NoteInstanceData[]): number {
-    const capacity = this.matrixAttribute.count;
-    const count = Math.min(instances.length, capacity);
+    const needed = Math.min(instances.length, MAX_CAPACITY);
+    if (needed > this.capacity) {
+      this.resize(expandedCapacity(this.capacity, needed));
+      this.shrinkStartedAt = null;
+    } else if (needed < this.capacity * 0.25 && this.capacity > this.minimumCapacity) {
+      const now = performance.now();
+      this.shrinkStartedAt ??= now;
+      if (now - this.shrinkStartedAt >= SHRINK_DELAY_MS) {
+        this.resize(Math.max(this.minimumCapacity, this.capacity / 2));
+        this.shrinkStartedAt = now;
+      }
+    } else {
+      this.shrinkStartedAt = null;
+    }
+
+    const count = Math.min(instances.length, this.capacity);
+    this.droppedNotes = instances.length - count;
+    const ordered =
+      count < instances.length
+        ? [...instances].sort(
+            (left, right) =>
+              (left.priority ?? 0) - (right.priority ?? 0),
+          )
+        : instances;
     const matrices = this.matrixAttribute.array as Float32Array;
     const colors = this.colorAttribute.array as Float32Array;
     for (let index = 0; index < count; index += 1) {
-      const instance = instances[index];
+      const instance = ordered[index];
       this.position.set(instance.x, instance.y, instance.z);
       this.scale.set(1, 1, 1);
       this.matrix.compose(this.position, this.rotation, this.scale);

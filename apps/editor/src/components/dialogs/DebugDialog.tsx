@@ -173,6 +173,74 @@ function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
   );
 }
 
+interface HighwayPerformanceDiagnostics {
+  visibleNotes: number;
+  visibleSustains: number;
+  droppedNotes: number;
+  droppedSustains: number;
+  batchCapacities: Record<string, number>;
+}
+
+function getHighwayDiagnosticsSource(
+  chartView: ChartView | null,
+): (ChartView & {
+  getPerformanceDiagnostics: () => HighwayPerformanceDiagnostics;
+}) | null {
+  if (
+    chartView &&
+    "getPerformanceDiagnostics" in chartView &&
+    typeof chartView.getPerformanceDiagnostics === "function"
+  ) {
+    return chartView as ChartView & {
+      getPerformanceDiagnostics: () => HighwayPerformanceDiagnostics;
+    };
+  }
+  return null;
+}
+
+function HighwayPerformanceSection({
+  chartView,
+}: {
+  chartView: ChartView | null;
+}) {
+  const source = getHighwayDiagnosticsSource(chartView);
+  const [diagnostics, setDiagnostics] =
+    useState<HighwayPerformanceDiagnostics | null>(() =>
+      source?.getPerformanceDiagnostics() ?? null,
+    );
+
+  useEffect(() => {
+    if (!source) return;
+    const update = () => setDiagnostics(source.getPerformanceDiagnostics());
+    update();
+    const interval = window.setInterval(update, 250);
+    return () => window.clearInterval(interval);
+  }, [source]);
+
+  if (!source || !diagnostics) return null;
+  return (
+    <section className="debug-panel__section">
+      <h2>Highway rendering</h2>
+      <dl>
+        <dt>Visible notes</dt>
+        <dd>{formatNumber(diagnostics.visibleNotes)}</dd>
+        <dt>Visible sustains</dt>
+        <dd>{formatNumber(diagnostics.visibleSustains)}</dd>
+        <dt>Dropped notes</dt>
+        <dd>{formatNumber(diagnostics.droppedNotes)}</dd>
+        <dt>Dropped sustains</dt>
+        <dd>{formatNumber(diagnostics.droppedSustains)}</dd>
+        <dt>Batch capacities</dt>
+        <dd>
+          {Object.entries(diagnostics.batchCapacities)
+            .map(([kind, capacity]) => `${kind}: ${formatNumber(capacity)}`)
+            .join(", ") || "none"}
+        </dd>
+      </dl>
+    </section>
+  );
+}
+
 function DebugPanel({
   onClose,
   events,
@@ -339,6 +407,7 @@ function DebugPanel({
         key={chartView?.constructor.name ?? "no-camera"}
         chartView={chartView}
       />
+      <HighwayPerformanceSection chartView={chartView} />
     </aside>
   );
 }

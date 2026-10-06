@@ -80,6 +80,14 @@ interface SectionMarkerInstance {
   label: THREE.Sprite;
 }
 
+export interface HighwayRenderDiagnostics {
+  visibleNotes: number;
+  visibleSustains: number;
+  droppedNotes: number;
+  droppedSustains: number;
+  batchCapacities: Record<string, number>;
+}
+
 const indicatorAxis = new THREE.Vector3(1, 0, 0);
 const indicatorDirection = new THREE.Vector3();
 
@@ -244,6 +252,16 @@ export class HighwayRenderer {
     return this.scene;
   }
 
+  public getPerformanceDiagnostics(): HighwayRenderDiagnostics {
+    return {
+      visibleNotes: this.scene.userData.visibleNotes ?? 0,
+      visibleSustains: this.scene.userData.visibleSustains ?? 0,
+      droppedNotes: this.scene.userData.droppedNotes ?? 0,
+      droppedSustains: this.scene.userData.droppedSustains ?? 0,
+      batchCapacities: this.scene.userData.batchCapacities ?? {},
+    };
+  }
+
   public isReady(): boolean {
     return this.sceneReady;
   }
@@ -355,6 +373,9 @@ export class HighwayRenderer {
           halfLength: transform.scale.y,
           color: laneRgbColors[lane],
           selected,
+          priority: Math.abs(
+            note.start - this.coordinates.getTickAtDepth(strikeLineZ),
+          ),
         });
         continue;
       }
@@ -436,6 +457,9 @@ export class HighwayRenderer {
           z: position.z,
           color: kind === "kick" ? kickColor : laneColors[lane],
           selected,
+          priority: Math.abs(
+            note.start - this.coordinates.getTickAtDepth(strikeLineZ),
+          ),
         });
         continue;
       }
@@ -475,6 +499,7 @@ export class HighwayRenderer {
         batch?.meshes[0]?.count ?? 0,
       ]),
     );
+    this.updateBatchDiagnostics();
     this.releaseUnusedBindings(this.gemBindings, usedGems, (item) => {
       item.object.visible = false;
       this.recycleGem(item);
@@ -1196,6 +1221,26 @@ export class HighwayRenderer {
     this.gemBindings.clear();
     this.tailBindings.clear();
     this.resetFreeLists();
+    this.updateBatchDiagnostics();
+  }
+
+  private updateBatchDiagnostics(): void {
+    const batches = [
+      ...Object.entries(this.instancedGemBatches),
+      ["sustain", this.instancedTailBatch],
+      ["sustainPreview", this.instancedPreviewTailBatch],
+    ] as const;
+    const capacities: Record<string, number> = {};
+    for (const [key, batch] of batches) {
+      if (batch) capacities[key] = batch.capacity;
+    }
+    this.scene.userData.droppedNotes = Object.values(
+      this.instancedGemBatches,
+    ).reduce((total, batch) => total + (batch?.droppedNotes ?? 0), 0);
+    this.scene.userData.droppedSustains =
+      (this.instancedTailBatch?.droppedNotes ?? 0) +
+      (this.instancedPreviewTailBatch?.droppedNotes ?? 0);
+    this.scene.userData.batchCapacities = capacities;
   }
 
   private getSustainCutPreview(
@@ -1263,6 +1308,9 @@ export class HighwayRenderer {
           halfLength: transform.scale.y,
           color: laneRgbColors[lane],
           selected: false,
+          priority: Math.abs(
+            note.start - this.coordinates.getTickAtDepth(strikeLineZ),
+          ),
         });
       }
       this.ensureInstancedTailBatches();
@@ -1322,14 +1370,14 @@ export class HighwayRenderer {
     this.instancedTailBatch = new SustainTailBatch(
       this.scene,
       this.materials.sustain,
-      laneCount * instanceSizePerLane,
+      256,
       10,
       { alpha: 0.65, useStrikeLine: true, strikeLineZ },
     );
     this.instancedPreviewTailBatch = new SustainTailBatch(
       this.scene,
       this.materials.sustain,
-      laneCount * instanceSizePreviewSustainPerLane,
+      256,
       11,
       {
         alpha: 0.18,
@@ -1351,19 +1399,13 @@ export class HighwayRenderer {
     const model = this.assetRegistry.getMesh(meshKey);
     const materialSet =
       kind === "note" ? this.materials : this.materials.drum[kind];
-    const capacity =
-      kind === "note"
-        ? laneCount * instanceSizePerLane
-        : kind === "kick"
-          ? instanceSizePerLane
-          : drumLaneCount * instanceSizePerLane;
     const placement = HIGHWAY_GEOMETRY_CATALOG[kind];
     this.instancedGemBatches[kind] = new NoteInstanceBatch(
       this.scene,
       model.value!,
       primitiveRolesForModel(model.value!, model.definition.definition),
       materialSet,
-      capacity,
+      256,
       placement.transform,
       HIGHWAY_RENDER_ORDER[placement.renderPass],
     );

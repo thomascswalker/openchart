@@ -13,13 +13,32 @@ export interface SustainInstanceData {
   halfLength: number;
   color: Rgb;
   selected: boolean;
+  priority?: number;
+}
+
+const INITIAL_CAPACITY = 256;
+const MAX_CAPACITY = 16_384;
+const SHRINK_DELAY_MS = 5_000;
+
+function expandedCapacity(current: number, needed: number): number {
+  let capacity = current;
+  while (capacity < needed && capacity < MAX_CAPACITY) {
+    capacity = Math.min(MAX_CAPACITY, capacity * 2);
+  }
+  return capacity;
 }
 
 export class SustainTailBatch {
-  public readonly mesh: THREE.InstancedMesh;
-  private readonly geometry: THREE.PlaneGeometry;
+  public mesh!: THREE.InstancedMesh;
+  public capacity: number;
+  public droppedNotes = 0;
+  private geometry!: THREE.PlaneGeometry;
   private readonly material: THREE.ShaderMaterial;
-  private readonly colors: THREE.InstancedBufferAttribute;
+  private colors!: THREE.InstancedBufferAttribute;
+  private shrinkStartedAt: number | null = null;
+  private readonly scene: THREE.Scene;
+  private readonly renderOrder: number;
+  private readonly minimumCapacity: number;
   private readonly position = new THREE.Vector3();
   private readonly scale = new THREE.Vector3();
   private readonly rotation = new THREE.Quaternion().setFromAxisAngle(
@@ -35,13 +54,8 @@ export class SustainTailBatch {
     renderOrder: number,
     state: Partial<MaterialState>,
   ) {
-    this.geometry = new THREE.PlaneGeometry(2, 2);
-    this.colors = new THREE.InstancedBufferAttribute(
-      new Float32Array(capacity * 4),
-      4,
-    );
-    this.colors.setUsage(THREE.DynamicDrawUsage);
-    this.geometry.setAttribute("aLaneColorSelected", this.colors);
+    this.scene = scene;
+    this.renderOrder = renderOrder;
     this.material = material.clone();
     this.material.defines = {
       ...this.material.defines,
@@ -49,23 +63,61 @@ export class SustainTailBatch {
     };
     setMaterialStateForMaterial(this.material, state);
     this.material.needsUpdate = true;
-    this.mesh = new THREE.InstancedMesh(
-      this.geometry,
-      this.material,
-      capacity,
+    this.capacity = capacity;
+    this.minimumCapacity = Math.min(capacity, INITIAL_CAPACITY);
+    this.resize(this.minimumCapacity);
+  }
+
+  private resize(capacity: number): void {
+    if (this.mesh) {
+      this.mesh.removeFromParent();
+      this.mesh.dispose();
+      this.geometry.dispose();
+    }
+    this.geometry = new THREE.PlaneGeometry(2, 2);
+    this.colors = new THREE.InstancedBufferAttribute(
+      new Float32Array(capacity * 4),
+      4,
     );
+    this.colors.setUsage(THREE.DynamicDrawUsage);
+    this.geometry.setAttribute("aLaneColorSelected", this.colors);
+    this.mesh = new THREE.InstancedMesh(this.geometry, this.material, capacity);
     this.mesh.count = 0;
-    this.mesh.renderOrder = renderOrder;
+    this.mesh.renderOrder = this.renderOrder;
     this.mesh.frustumCulled = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    scene.add(this.mesh);
+    this.capacity = capacity;
+    this.scene.add(this.mesh);
   }
 
   public write(instances: readonly SustainInstanceData[]): number {
-    const count = Math.min(instances.length, this.mesh.instanceMatrix.count);
+    const needed = Math.min(instances.length, MAX_CAPACITY);
+    if (needed > this.capacity) {
+      this.resize(expandedCapacity(this.capacity, needed));
+      this.shrinkStartedAt = null;
+    } else if (needed < this.capacity * 0.25 && this.capacity > this.minimumCapacity) {
+      const now = performance.now();
+      this.shrinkStartedAt ??= now;
+      if (now - this.shrinkStartedAt >= SHRINK_DELAY_MS) {
+        this.resize(Math.max(this.minimumCapacity, this.capacity / 2));
+        this.shrinkStartedAt = now;
+      }
+    } else {
+      this.shrinkStartedAt = null;
+    }
+
+    const count = Math.min(instances.length, this.capacity);
+    this.droppedNotes = instances.length - count;
+    const ordered =
+      count < instances.length
+        ? [...instances].sort(
+            (left, right) =>
+              (left.priority ?? 0) - (right.priority ?? 0),
+          )
+        : instances;
     const colors = this.colors.array as Float32Array;
     for (let index = 0; index < count; index += 1) {
-      const instance = instances[index];
+      const instance = ordered[index];
       this.position.set(instance.x, instance.y, instance.z);
       this.scale.set(instance.width, instance.halfLength, 1);
       this.matrix.compose(this.position, this.rotation, this.scale);

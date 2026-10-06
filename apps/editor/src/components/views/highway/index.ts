@@ -29,7 +29,10 @@ import { HighwayHitTester } from "./hitTesting";
 import { HighwayNoteEditingController } from "./noteEditing";
 import { HighwayPhraseEditingController } from "./phraseEditing";
 import { HighwayInputController } from "./input";
-import { HighwayRenderer } from "./rendering";
+import {
+  HighwayRenderer,
+  type HighwayRenderDiagnostics,
+} from "./rendering";
 import { SelectionContext } from "./selection";
 import type { DrumPlacementKind } from "./drumProfile";
 import Platform from "../../../platform";
@@ -155,6 +158,10 @@ export class HighwayView
       this.phraseEditing,
       registry,
     );
+  }
+
+  public getPerformanceDiagnostics(): HighwayRenderDiagnostics {
+    return this.renderer.getPerformanceDiagnostics();
   }
 
   public override update(state: ChartViewState): void {

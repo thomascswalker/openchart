@@ -150,6 +150,15 @@ export class Engine {
       this.canvas.dataset.threeInstancedNoteCounts = JSON.stringify(
         scene.userData.instancedNoteCounts ?? {},
       );
+      this.canvas.dataset.threeDroppedNotes = String(
+        scene.userData.droppedNotes ?? 0,
+      );
+      this.canvas.dataset.threeDroppedSustains = String(
+        scene.userData.droppedSustains ?? 0,
+      );
+      this.canvas.dataset.threeBatchCapacities = JSON.stringify(
+        scene.userData.batchCapacities ?? {},
+      );
     }
   }
 

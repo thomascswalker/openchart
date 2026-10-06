@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { HIGHWAY_GEOMETRY_CATALOG } from "../geometryCatalog";
 import { NoteInstanceBatch } from "../instanceBatch";
 
@@ -63,5 +63,75 @@ describe("NoteInstanceBatch", () => {
       }
     });
     expect(scene.children).toHaveLength(0);
+  });
+
+  it("grows in powers of two and shrinks after sustained low usage", () => {
+    const scene = new THREE.Scene();
+    const template = new THREE.Group();
+    template.add(primitive());
+    const batch = new NoteInstanceBatch(
+      scene,
+      template,
+      ["tinted"],
+      {
+        noteTinted: new THREE.ShaderMaterial(),
+        noteGrayscale: new THREE.ShaderMaterial(),
+      },
+      4,
+      HIGHWAY_GEOMETRY_CATALOG.note.transform,
+      5,
+    );
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    batch.write(
+      Array.from({ length: 5 }, (_, index) => ({
+        x: index,
+        y: 0,
+        z: 0,
+        color: [1, 1, 1] as [number, number, number],
+        selected: false,
+      })),
+    );
+    expect(batch.capacity).toBe(8);
+    batch.write([]);
+    now = 5_001;
+    batch.write([]);
+    expect(batch.capacity).toBe(4);
+
+    vi.restoreAllMocks();
+    batch.dispose();
+  });
+
+  it("keeps nearest notes and reports overflow at the hard ceiling", () => {
+    const scene = new THREE.Scene();
+    const template = new THREE.Group();
+    template.add(primitive());
+    const batch = new NoteInstanceBatch(
+      scene,
+      template,
+      ["tinted"],
+      {
+        noteTinted: new THREE.ShaderMaterial(),
+        noteGrayscale: new THREE.ShaderMaterial(),
+      },
+      16_384,
+      HIGHWAY_GEOMETRY_CATALOG.note.transform,
+      5,
+    );
+    const notes = Array.from({ length: 16_385 }, (_, index) => ({
+      x: index,
+      y: 0,
+      z: 0,
+      color: [1, 1, 1] as [number, number, number],
+      selected: false,
+      priority: Math.abs(index - 100),
+    }));
+
+    expect(batch.write(notes)).toBe(16_384);
+    expect(batch.capacity).toBe(16_384);
+    expect(batch.droppedNotes).toBe(1);
+    expect(batch.meshes[0].instanceMatrix.array[12]).toBe(100);
+    batch.dispose();
   });
 });

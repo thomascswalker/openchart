@@ -41,4 +41,26 @@ describe("SustainTailBatch", () => {
     expect(scene.children).toHaveLength(0);
     material.dispose();
   });
+
+  it("grows without dropping visible sustain tails", () => {
+    const scene = new THREE.Scene();
+    const material = new THREE.ShaderMaterial();
+    const batch = new SustainTailBatch(scene, material, 2, 10, {});
+    const tail = {
+      x: 0,
+      y: 0,
+      z: 0,
+      width: 0.32,
+      halfLength: 1,
+      color: rgbFromHex(0x00ff00),
+      selected: false,
+    };
+
+    expect(batch.write([tail, tail, tail])).toBe(3);
+    expect(batch.capacity).toBe(4);
+    expect(batch.droppedNotes).toBe(0);
+
+    batch.dispose();
+    material.dispose();
+  });
 });
