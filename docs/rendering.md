@@ -61,10 +61,10 @@ the different note and material permutations.
     // Other meshes
   },
   "materials": {
-    "<name>": {
-      "vert": "vert.glsl",
-      "pixel": "note.frag.glsl",
-      "properties": {
+    "<name>": {                       // Material identifier
+      "vert": "vert.glsl",            // Vertex shader file
+      "pixel": "note.frag.glsl",      // Pixel shader file
+      "properties": {                 // Material properties
         "emissionTex": "string",
         "emissionMaskTex": "string",
         // Other properties
