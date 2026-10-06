@@ -63,17 +63,17 @@ flowchart TD
                 direction LR
                 LOG["<b>Logger</b>"]
                 FSYS["<b>File System</b><br/>Open, Save, Download"]
-                DOC["<b>Document</b><br/>MIDI data, metadata,<br/>undo and redo"]
-                AUD["<b>Audio</b><br/>backing-track stems"]
-                PB["<b>Playback</b><br/>transport and clock"]
-                SET["<b>Settings</b><br/>saved preferences"]
+                DOC["<b>Document</b><br/>MIDI Data, Chart Metadata, History"]
+                AUD["<b>Audio</b><br/>Single/Multitrack Audio"]
+                PB["<b>Playback</b><br/>Timeline and Transport"]
+                SET["<b>Settings</b><br/>User preferences"]
             end
             subgraph EDSVC["Editor Services"]
                 direction LR
-                EST["<b>Editor State</b><br/>dialogs and errors"]
-                VPS["<b>Viewports</b><br/>panel sessions, snapping"]
-                ACV["<b>Active Chart View</b><br/>the focused renderer"]
-                CLIP["<b>Clipboard</b><br/>copy, cut, paste"]
+                EST["<b>Editor State</b><br/>Dialogs and Errors"]
+                VPS["<b>Viewports</b><br/>Panel sessions, Editing tools"]
+                ACV["<b>Active Chart View</b><br/>Renderer"]
+                CLIP["<b>Clipboard</b><br/>Copy, Cut, Paste"]
             end
         end
         
