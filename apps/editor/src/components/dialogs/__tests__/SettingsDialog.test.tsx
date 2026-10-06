@@ -69,7 +69,6 @@ describe("Application settings", () => {
     expect(defaultApplicationSettings.version).toBe(1);
     expect(defaultApplicationSettings.audio.rootPath).toBe("~");
     expect(defaultApplicationSettings.history.capacity).toBe(256);
-    expect(defaultApplicationSettings.rendering.instancing).toBe(false);
     expect(validateApplicationSettings(defaultApplicationSettings)).toEqual({});
   });
 

@@ -39,9 +39,6 @@ export interface ApplicationSettings {
   history: {
     capacity: number;
   };
-  rendering: {
-    instancing: boolean;
-  };
 }
 
 export const defaultApplicationSettings: ApplicationSettings = {
@@ -72,7 +69,6 @@ export const defaultApplicationSettings: ApplicationSettings = {
   },
   saving: { defaultSaveMode: "project" },
   history: { capacity: 256 },
-  rendering: { instancing: false },
 };
 
 export function validateApplicationSettings(
@@ -131,9 +127,6 @@ export function validateApplicationSettings(
     errors.historyCapacity =
       "History capacity must be an integer from 1 to 1024.";
   }
-  if (typeof settings.rendering.instancing !== "boolean") {
-    errors.instancing = "Choose whether instanced rendering is enabled.";
-  }
   if (
     !Number.isInteger(settings.feedback.previewLowPitch) ||
     !Number.isInteger(settings.feedback.previewHighPitch) ||
@@ -185,10 +178,6 @@ function readSettings(): ApplicationSettings {
       },
       saving: { ...defaultApplicationSettings.saving, ...parsed.saving },
       history: { ...defaultApplicationSettings.history, ...parsed.history },
-      rendering: {
-        ...defaultApplicationSettings.rendering,
-        ...parsed.rendering,
-      },
     };
     merged.audio.mode = merged.audio.multitrack ? "multitrack" : "single";
     return Object.keys(validateApplicationSettings(merged)).length === 0

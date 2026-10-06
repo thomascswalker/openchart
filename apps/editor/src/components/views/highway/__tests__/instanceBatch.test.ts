@@ -122,6 +122,45 @@ describe("NoteInstanceBatch", () => {
     batch.dispose();
   });
 
+  it("shares baked geometry data between batches with independent shells", () => {
+    const scene = new THREE.Scene();
+    const template = new THREE.Group();
+    template.add(primitive());
+    const createBatch = () =>
+      new NoteInstanceBatch(
+        scene,
+        template,
+        ["tinted"],
+        {
+          noteTinted: new THREE.ShaderMaterial(),
+          noteGrayscale: new THREE.ShaderMaterial(),
+        },
+        4,
+        HIGHWAY_GEOMETRY_CATALOG.note.transform,
+        5,
+      );
+    const first = createBatch();
+    const second = createBatch();
+    const sharedPosition = first.meshes[0].geometry.getAttribute("position");
+
+    expect(second.meshes[0].geometry).not.toBe(first.meshes[0].geometry);
+    expect(second.meshes[0].geometry.getAttribute("position")).toBe(
+      sharedPosition,
+    );
+
+    first.dispose();
+    expect(second.meshes[0].geometry.getAttribute("position")).toBe(
+      sharedPosition,
+    );
+    second.dispose();
+    template.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+        object.material.dispose();
+      }
+    });
+  });
+
   it("keeps nearest notes and reports overflow at the hard ceiling", () => {
     const scene = new THREE.Scene();
     const template = new THREE.Group();

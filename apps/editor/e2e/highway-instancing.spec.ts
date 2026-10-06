@@ -8,20 +8,6 @@ import {
   switchView,
 } from "./helpers.js";
 
-const SETTINGS_KEY = "midiedit.application-settings";
-
-async function configureInstancing(page: import("@playwright/test").Page, enabled: boolean): Promise<void> {
-  await page.evaluate(
-    ({ key, instancing }) => {
-      const settings = JSON.parse(localStorage.getItem(key) ?? "{}");
-      settings.version = 1;
-      settings.rendering = { ...settings.rendering, instancing };
-      localStorage.setItem(key, JSON.stringify(settings));
-    },
-    { key: SETTINGS_KEY, instancing: enabled },
-  );
-}
-
 function createDenseMidi(noteCount: number): Uint8Array {
   const midi = new Midi();
   const track = new MidiTrack("LEAD GUITAR");
@@ -72,115 +58,54 @@ function createDenseMidi(noteCount: number): Uint8Array {
   return midi.toBuffer();
 }
 
-test("instanced notes and tails match pooled rendering with fewer objects", async ({ page }) => {
+test("highway note and sustain batches render deterministically with compact resources", async ({ page }) => {
   await page.addInitScript(() => {
     Reflect.set(globalThis, "__captureThreeFramebuffer", true);
   });
-  await page.goto("/");
-  await configureInstancing(page, false);
   await loadSong(page);
-  let viewport = panel(page, 0);
+  const viewport = panel(page, 0);
   await switchView(viewport, "highway");
-  let canvas = viewport.locator(".midi-view-host canvas");
-  const pooledCameraTick = await cameraTick(viewport);
+  const canvas = viewport.locator(".midi-view-host canvas");
+  const initialCameraTick = await cameraTick(viewport);
   await canvas.click();
   for (let step = 0; step < 4; step += 1) await page.keyboard.press("ArrowUp");
-  await expect.poll(() => cameraTick(viewport)).not.toBe(pooledCameraTick);
+  await expect.poll(() => cameraTick(viewport)).not.toBe(initialCameraTick);
   await expect.poll(() => canvas.getAttribute("data-three-render-calls")).not.toBeNull();
-  const pooled = await canvasShot(viewport);
-  const pooledSustains = Number(
-    await canvas.getAttribute("data-three-visible-sustains"),
-  );
-  const pooledCalls = Number(
-    await canvas.getAttribute("data-three-render-calls"),
-  );
-  const pooledObjects = Number(
-    await canvas.getAttribute("data-three-scene-objects"),
-  );
-  const pooledGeometries = Number(
-    await canvas.getAttribute("data-three-geometry-count"),
-  );
-
-  await configureInstancing(page, true);
-  await page.reload();
-  await loadSong(page);
-  viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  canvas = viewport.locator(".midi-view-host canvas");
-  const instancedCameraTick = await cameraTick(viewport);
-  await canvas.click();
-  for (let step = 0; step < 4; step += 1) await page.keyboard.press("ArrowUp");
-  await expect.poll(() => cameraTick(viewport)).not.toBe(instancedCameraTick);
-  await expect.poll(() => canvas.getAttribute("data-three-render-calls")).not.toBeNull();
-  const instanced = await canvasShot(viewport);
-  const instancedSustains = Number(
-    await canvas.getAttribute("data-three-visible-sustains"),
-  );
-  const instancedCalls = Number(
-    await canvas.getAttribute("data-three-render-calls"),
-  );
-  const instancedObjects = Number(
-    await canvas.getAttribute("data-three-scene-objects"),
-  );
-  const instancedGeometries = Number(
-    await canvas.getAttribute("data-three-geometry-count"),
-  );
-
-  expect(pooledSustains).toBeGreaterThan(0);
-  expect(instancedSustains).toBe(pooledSustains);
-  expect(instancedCalls).toBeLessThan(pooledCalls);
-  expect(instancedObjects).toBeLessThan(pooledObjects);
-  expect(instancedGeometries).toBeLessThan(pooledGeometries);
-  expect(instanced.equals(pooled)).toBe(true);
+  const screenshot = await canvasShot(viewport);
+  expect((await canvasShot(viewport)).equals(screenshot)).toBe(true);
+  expect(Number(await canvas.getAttribute("data-three-visible-notes"))).toBeGreaterThan(0);
+  expect(Number(await canvas.getAttribute("data-three-visible-sustains"))).toBeGreaterThan(0);
+  expect(Number(await canvas.getAttribute("data-three-render-calls"))).toBeLessThan(100);
+  expect(Number(await canvas.getAttribute("data-three-scene-objects"))).toBeLessThan(500);
+  expect(Number(await canvas.getAttribute("data-three-geometry-count"))).toBeLessThan(100);
 });
 
-test("instanced drum kinds match pooled rendering", async ({ page }) => {
+test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   await page.addInitScript(() => {
     Reflect.set(globalThis, "__captureThreeFramebuffer", true);
   });
-  await page.goto("/");
-  await configureInstancing(page, false);
   await loadSong(page);
-  let viewport = panel(page, 0);
+  const viewport = panel(page, 0);
   await switchView(viewport, "highway");
   await viewport.getByRole("button", { name: "Select DRUMS" }).click();
   await expect(viewport.getByRole("button", { name: "Select DRUMS" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  let canvas = viewport.locator(".midi-view-host canvas");
+  const canvas = viewport.locator(".midi-view-host canvas");
   await expect
     .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
     .toBeGreaterThan(0);
-  const pooled = await canvasShot(viewport);
-  const pooledCalls = Number(await canvas.getAttribute("data-three-render-calls"));
-  const pooledObjects = Number(await canvas.getAttribute("data-three-scene-objects"));
-
-  await configureInstancing(page, true);
-  await page.reload();
-  await loadSong(page);
-  viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  await viewport.getByRole("button", { name: "Select DRUMS" }).click();
-  await expect(viewport.getByRole("button", { name: "Select DRUMS" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  canvas = viewport.locator(".midi-view-host canvas");
-  await expect
-    .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
-    .toBeGreaterThan(0);
-  const instanced = await canvasShot(viewport);
-  const instancedCalls = Number(await canvas.getAttribute("data-three-render-calls"));
-  const instancedObjects = Number(await canvas.getAttribute("data-three-scene-objects"));
+  expect((await canvasShot(viewport)).equals(await canvasShot(viewport))).toBe(true);
+  const renderCalls = Number(await canvas.getAttribute("data-three-render-calls"));
+  const sceneObjects = Number(await canvas.getAttribute("data-three-scene-objects"));
   const instancedCounts = JSON.parse(
     (await canvas.getAttribute("data-three-instanced-note-counts")) ?? "{}",
   ) as Record<string, number>;
-  expect(instancedCalls).toBeLessThanOrEqual(pooledCalls);
-  expect(instancedObjects).toBeLessThan(pooledObjects);
+  expect(renderCalls).toBeLessThan(100);
+  expect(sceneObjects).toBeLessThan(500);
   expect(instancedCounts.kick).toBeGreaterThan(0);
   expect(instancedCounts.cymbal).toBeGreaterThan(0);
-  expect(instanced.equals(pooled)).toBe(true);
 });
 
 test("instanced note capacity grows beyond the legacy pool without drops", async ({ page }) => {
@@ -190,8 +115,6 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
     Reflect.set(globalThis, "showSaveFilePicker", undefined);
   });
   await page.goto("/");
-  await configureInstancing(page, true);
-  await page.reload();
   await page.getByRole("menuitem", { name: "File" }).click();
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("menuitem", { name: /^Open/ }).click();

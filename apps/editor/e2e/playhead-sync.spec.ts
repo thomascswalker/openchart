@@ -47,6 +47,10 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
   ]) {
     await expect(canvas).toHaveAttribute(`data-three-${metric}`, /^\d+(\.\d+)?$/);
   }
+  const contextAttributes = JSON.parse(
+    (await canvas.getAttribute("data-three-context-attributes")) ?? "{}",
+  ) as { antialias?: boolean };
+  expect(contextAttributes.antialias).toBe(false);
 });
 
 test("T1: arrow keys move the highway camera with the playhead", async ({

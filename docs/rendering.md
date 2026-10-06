@@ -19,7 +19,7 @@ graph TD
         SCHED["<b>Render Scheduler</b><br/>Collapse frame requests into a single draw call"]
         subgraph VIEW["View"]
           PRR["<b>Piano Roll (Orthographic)</b><br/>Scene rebuilt each draw"]
-          HWR["<b>Highway (Perspective)</b><br/>Persistent scene via object pools"]
+          HWR["<b>Highway (Perspective)</b><br/>Instanced note and sustain batches"]
         end
     end
  
@@ -83,6 +83,26 @@ the different note and material permutations.
 
 All geometry is in .glb (GLTF) format. Meshes are shared by reference from the registry. 
 
-#### Pooling/Instancing
+#### Highway instance batches
 
-All geometry permutations are built once upon application startup, rather than creating and destroying as geometry becomes visible.
+Highway notes are grouped by model kind and material role. Each GLB primitive is
+rendered by one `THREE.InstancedMesh`; the primitives in a model share the same
+instance-matrix and per-note state buffers. Baked CPU geometry is cached by
+source geometry and transform, while each viewport owns its WebGL resources.
+
+Sustain and cut-preview tails use separate instanced plane batches. Note start
+ticks and sustain start/end ticks are stored per instance, and the vertex shader
+derives world Z from the camera tick. Camera scrolling updates uniforms; note
+instance buffers are rewritten only when the chart revision, selection, or
+visible set changes.
+
+Batches start at 256 entries, double as needed, and stop at 16,384. When a batch
+exceeds its ceiling it retains instances nearest the strike line and reports
+drops through the highway diagnostics. Low utilization shrinks capacity after
+five seconds. The Debug window shows visible notes, visible sustains, dropped
+items, and per-kind capacities.
+
+Ghost notes, hover/marquee outlines, fret assemblies, beat lines, and phrase
+spans remain ordinary scene objects. The Engine's opt-in framebuffer capture
+also reports draw calls, triangles, geometry/texture counts, scene-object count,
+and highway draw/buffer-write durations.

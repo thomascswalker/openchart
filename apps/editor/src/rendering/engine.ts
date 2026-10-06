@@ -18,7 +18,7 @@ export class Engine {
   public constructor(options: EngineOptions = {}) {
     this.pixelRatioCap = options.pixelRatioCap ?? 2;
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: options.antialias ?? true,
       alpha: false,
       powerPreference: "high-performance",
     });

@@ -23,7 +23,6 @@ export interface HighwayContext {
   setCameraTick(tick: number): void;
   getMode(): HighwayMode;
   getDrumPlacementKind(): DrumPlacementKind;
-  getInstancingEnabled(): boolean;
   getPhraseMode(): EditablePhraseKind | null;
   getPhraseHoverState(): PhraseHoverState | null;
   getSelectionContext(): SelectionContext;

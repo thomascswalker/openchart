@@ -19,6 +19,22 @@ const INITIAL_CAPACITY = 256;
 const MAX_CAPACITY = 16_384;
 const SHRINK_DELAY_MS = 5_000;
 
+interface SharedGeometryEntry {
+  geometry: THREE.BufferGeometry;
+  refs: number;
+}
+
+interface SharedGeometryReference {
+  source: THREE.BufferGeometry;
+  key: string;
+  entry: SharedGeometryEntry;
+}
+
+const bakedGeometryCache = new WeakMap<
+  THREE.BufferGeometry,
+  Map<string, SharedGeometryEntry>
+>();
+
 function expandedCapacity(current: number, needed: number): number {
   let capacity = current;
   while (capacity < needed && capacity < MAX_CAPACITY) {
@@ -33,6 +49,7 @@ export class NoteInstanceBatch {
   public capacity: number;
   public lastWriteMs = 0;
   private geometries: THREE.BufferGeometry[] = [];
+  private geometryReferences: SharedGeometryReference[] = [];
   private readonly materials: THREE.ShaderMaterial[];
   private matrixAttribute!: THREE.InstancedBufferAttribute;
   private colorAttribute!: THREE.InstancedBufferAttribute;
@@ -96,12 +113,19 @@ export class NoteInstanceBatch {
     );
     this.tickAttribute.setUsage(THREE.DynamicDrawUsage);
     this.geometries = [];
+    this.geometryReferences = [];
     this.meshes = this.templateMeshes.map((templateMesh, index) => {
       templateMesh.updateWorldMatrix(true, false);
-      const geometry = templateMesh.geometry.clone();
-      geometry.applyMatrix4(templateMesh.matrixWorld);
       const transformMatrix = this.getTransformMatrix(this.transform);
-      geometry.applyMatrix4(transformMatrix);
+      const baked = this.acquireBakedGeometry(templateMesh, transformMatrix);
+      const geometry = baked.entry.geometry.clone();
+      for (const [name, attribute] of Object.entries(
+        baked.entry.geometry.attributes,
+      )) {
+        geometry.setAttribute(name, attribute);
+      }
+      geometry.setIndex(baked.entry.geometry.index);
+      this.geometryReferences.push(baked);
       geometry.setAttribute("aLaneColorSelected", this.colorAttribute);
       geometry.setAttribute("aStartTick", this.tickAttribute);
       geometry.computeBoundingBox();
@@ -128,6 +152,9 @@ export class NoteInstanceBatch {
       mesh.dispose();
     });
     this.geometries.forEach((geometry) => geometry.dispose());
+    this.geometryReferences.forEach((reference) =>
+      this.releaseBakedGeometry(reference),
+    );
     this.createMeshes(capacity);
     this.meshes.forEach((mesh) => this.scene.add(mesh));
   }
@@ -253,6 +280,9 @@ export class NoteInstanceBatch {
       mesh.dispose();
     });
     this.geometries.forEach((geometry) => geometry.dispose());
+    this.geometryReferences.forEach((reference) =>
+      this.releaseBakedGeometry(reference),
+    );
     this.materials.forEach((material) => material.dispose());
   }
 
@@ -284,5 +314,40 @@ export class NoteInstanceBatch {
       transform.scale.z,
     );
     return new THREE.Matrix4().compose(new THREE.Vector3(), this.rotation, this.scale);
+  }
+
+  private acquireBakedGeometry(
+    templateMesh: THREE.Mesh,
+    transformMatrix: THREE.Matrix4,
+  ): SharedGeometryReference {
+    const source = templateMesh.geometry;
+    const key = transformMatrix
+      .clone()
+      .multiply(templateMesh.matrixWorld)
+      .elements.join(",");
+    let entries = bakedGeometryCache.get(source);
+    if (!entries) {
+      entries = new Map();
+      bakedGeometryCache.set(source, entries);
+    }
+    let entry = entries.get(key);
+    if (!entry) {
+      const geometry = source.clone();
+      geometry.applyMatrix4(templateMesh.matrixWorld);
+      geometry.applyMatrix4(transformMatrix);
+      entry = { geometry, refs: 0 };
+      entries.set(key, entry);
+    }
+    entry.refs += 1;
+    return { source, key, entry };
+  }
+
+  private releaseBakedGeometry(reference: SharedGeometryReference): void {
+    reference.entry.refs -= 1;
+    if (reference.entry.refs > 0) return;
+    reference.entry.geometry.dispose();
+    const entries = bakedGeometryCache.get(reference.source);
+    entries?.delete(reference.key);
+    if (entries?.size === 0) bakedGeometryCache.delete(reference.source);
   }
 }
