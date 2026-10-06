@@ -103,9 +103,8 @@ const ProjectDialog = () => {
     setSelectedSection(title);
     setErrors({});
   };
-  const { tabRefs, onTabKeyDown } = useRovingTabs(
-    sections.length,
-    (index) => selectSection(sections[index].title),
+  const { tabRefs, onTabKeyDown } = useRovingTabs(sections.length, (index) =>
+    selectSection(sections[index].title),
   );
   const apply = async (): Promise<boolean> => {
     const issues = await executeEditorAction<readonly ProjectValidationIssue[]>(

@@ -346,8 +346,9 @@ function DebugPanel({
 export function DebugWindow({ onClose }: DebugWindowProps) {
   const [events, setEvents] = useState<DebugEvent[]>([]);
   const [pressedKeys, setPressedKeys] = useState<string[]>([]);
-  const activeChartView =
-    Platform.services.get<ActiveChartViewService>("editor.active-chart-view");
+  const activeChartView = Platform.services.get<ActiveChartViewService>(
+    "editor.active-chart-view",
+  );
   const chartView = useSyncExternalStore(
     activeChartView.subscribe,
     activeChartView.getSnapshot,

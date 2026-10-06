@@ -14,10 +14,7 @@ function ProjectTestShell() {
   const { projectMetadata } = useDocumentSnapshot();
   return (
     <>
-      <button
-        type="button"
-        onClick={() => runAction("dialog.open-project")}
-      >
+      <button type="button" onClick={() => runAction("dialog.open-project")}>
         Open project
       </button>
       <output>{projectMetadata.Song.Name}</output>

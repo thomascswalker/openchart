@@ -1,8 +1,11 @@
 import type { ChartView } from "../../components/views/ChartViews";
+import { IStatefulService } from "../../platform/services";
 
-export class ActiveChartViewService {
+export class ActiveChartViewService extends IStatefulService<ChartView | null> {
   private view: ChartView | null = null;
   private listeners = new Set<() => void>();
+
+  public readonly reset = (): void => this.set(null);
 
   public readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);

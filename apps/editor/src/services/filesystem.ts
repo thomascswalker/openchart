@@ -1,5 +1,6 @@
 import type { PublicMethods } from "../util/meta";
 import type { ILoggerService } from "./logger";
+import { IService } from "../platform/services";
 
 const DEFAULT_PATH = "untitled.mid";
 
@@ -10,18 +11,31 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   ) as ArrayBuffer;
 }
 
-export class FileSystemService {
+export class FileSystemService extends IService {
   static dependencies = ["logger"];
 
   private _logger: ILoggerService;
   private _path: string;
   private _handle: FileSystemFileHandle | null;
+  private readonly listeners = new Set<() => void>();
 
   constructor(logger: ILoggerService) {
+    super();
     this._logger = logger;
     this._path = DEFAULT_PATH;
     this._handle = null;
   }
+
+  public readonly reset = (): void => {
+    this._path = DEFAULT_PATH;
+    this._handle = null;
+    this.publish();
+  };
+
+  public readonly subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
 
   private download(bytes: Uint8Array): void {
     const url = URL.createObjectURL(
@@ -53,6 +67,7 @@ export class FileSystemService {
     await writeable.close();
     this.download(data);
     this._logger.info(`Document saved to: ${this._path}`);
+    this.publish();
     return true;
   }
 
@@ -71,6 +86,8 @@ export class FileSystemService {
     });
     if (!data) {
       this._logger.error(`Failed to load document: ${this._path}`);
+    } else {
+      this.publish();
     }
     return data;
   }
@@ -86,9 +103,14 @@ export class FileSystemService {
   public setPath(path: string) {
     this._path = path;
     this._logger.debug(`Document path set to: ${this._path}`);
+    this.publish();
   }
   public getPath() {
     return this._path;
+  }
+
+  private publish(): void {
+    for (const listener of this.listeners) listener();
   }
 }
 

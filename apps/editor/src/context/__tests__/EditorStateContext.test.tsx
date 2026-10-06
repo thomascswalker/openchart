@@ -12,34 +12,19 @@ function CommandEnablementProbe() {
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>
-      <button
-        type="button"
-        onClick={() => runAction("document.mark-dirty")}
-      >
+      <button type="button" onClick={() => runAction("document.mark-dirty")}>
         Change document
       </button>
-      <button
-        type="button"
-        onClick={() => runAction("document.save")}
-      >
+      <button type="button" onClick={() => runAction("document.save")}>
         Save
       </button>
-      <button
-        type="button"
-        onClick={() => runAction("dialog.open-debug")}
-      >
+      <button type="button" onClick={() => runAction("dialog.open-debug")}>
         Open debug
       </button>
-      <button
-        type="button"
-        onClick={() => runAction("dialog.close-debug")}
-      >
+      <button type="button" onClick={() => runAction("dialog.close-debug")}>
         Close debug
       </button>
-      <button
-        type="button"
-        onClick={() => runAction("document.new")}
-      >
+      <button type="button" onClick={() => runAction("document.new")}>
         New document
       </button>
       <span data-testid="dirty">{String(isDirty)}</span>

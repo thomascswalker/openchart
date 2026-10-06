@@ -18,10 +18,7 @@ function SettingsTestShell() {
   const { settings } = useApplicationSettings();
   return (
     <>
-      <button
-        type="button"
-        onClick={() => runAction("dialog.open-settings")}
-      >
+      <button type="button" onClick={() => runAction("dialog.open-settings")}>
         Open settings
       </button>
       <output>{settings.audio.rootPath}</output>

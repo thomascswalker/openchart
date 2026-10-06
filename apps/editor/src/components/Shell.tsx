@@ -42,11 +42,7 @@ const Shell = () => {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const target = event.target;
-      if (
-        event.defaultPrevented ||
-        isTypingTarget(target) ||
-        event.altKey
-      )
+      if (event.defaultPrevented || isTypingTarget(target) || event.altKey)
         return;
 
       const key = event.key.toLowerCase();

@@ -150,9 +150,7 @@ export function Timeline({ chartView }: TimelineProps) {
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
   const canPlay = usePlaybackSelector((s) => s.canPlay);
   const playbackTick = usePlaybackSelector((s) => s.playbackTick);
-  const totalTimelineTicks = usePlaybackSelector(
-    (s) => s.totalTimelineTicks,
-  );
+  const totalTimelineTicks = usePlaybackSelector((s) => s.totalTimelineTicks);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

@@ -53,10 +53,7 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
   }
 }
 
-function updateCameraData(
-  article: HTMLElement | null,
-  view: ChartView,
-): void {
+function updateCameraData(article: HTMLElement | null, view: ChartView): void {
   if (!article) return;
   article.dataset.cameraTick = String(view.getCameraTick());
   article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
@@ -124,8 +121,9 @@ function ViewportPanel({
   const setActiveView = usePlaybackSelector((s) => s.setActiveView);
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);
   const articleRef = useRef<HTMLElement | null>(null);
-  const activeChartView =
-    Platform.services.get<ActiveChartViewService>("editor.active-chart-view");
+  const activeChartView = Platform.services.get<ActiveChartViewService>(
+    "editor.active-chart-view",
+  );
   const [chartView, setChartView] = useState<ChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
@@ -257,8 +255,9 @@ function ViewportPanel({
 
   const setView = (view: ViewportSession["view"]) => {
     runAction("editor.focus-viewport", session.id);
-    const { playbackTick } =
-      Platform.services.get<PlaybackService>("playback").getSnapshot();
+    const { playbackTick } = Platform.services
+      .get<PlaybackService>("playback")
+      .getSnapshot();
     runAction("editor.update-viewport", session.id, {
       view,
       camera: { tick: playbackTick },

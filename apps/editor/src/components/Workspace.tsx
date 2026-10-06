@@ -12,9 +12,7 @@ export const Workspace = ({ debugVisible, onDebugClose }: WorkspaceProps) => {
       className={`midi-workspace${debugVisible ? " midi-workspace--debug" : ""}`}
     >
       <Viewport />
-      {debugVisible ? (
-        <DebugWindow onClose={onDebugClose} />
-      ) : null}
+      {debugVisible ? <DebugWindow onClose={onDebugClose} /> : null}
     </div>
   );
 };

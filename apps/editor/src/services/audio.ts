@@ -1,4 +1,5 @@
 import type { ApplicationSettings } from "./settings";
+import { IStatefulService } from "../platform/services";
 
 export type AudioRole =
   | "single"
@@ -84,7 +85,7 @@ const wavFilePickerTypes: FilePickerAcceptType[] = [
   { description: "WAV file", accept: { "audio/wav": [".wav"] } },
 ];
 
-export class AudioService {
+export class AudioService extends IStatefulService<AudioServiceSnapshot> {
   private players = new Map<AudioRole, AudioPlayer>();
   private sources = new Map<AudioRole, AudioSourceState>();
   private playerCleanups = new Map<AudioRole, () => void>();
@@ -98,6 +99,24 @@ export class AudioService {
   private audioLoadRequests = new Map<AudioRole, number>();
   private endCount = 0;
   private snapshot: AudioServiceSnapshot = this.createSnapshot();
+
+  public readonly reset = (): void => {
+    for (const role of this.audioLoadRequests.keys()) {
+      this.audioLoadRequests.set(role, this.audioLoadRequests.get(role)! + 1);
+    }
+    const roles = new Set<AudioRole>([
+      ...this.players.keys(),
+      ...this.sources.keys(),
+    ]);
+    for (const role of roles) {
+      this.replacePlayer(role, undefined);
+      this.replaceSource(role, undefined);
+    }
+    this.fileName = null;
+    this.audioDirectoryHandle = null;
+    this.endCount = 0;
+    this.publish();
+  };
 
   public readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
