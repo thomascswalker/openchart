@@ -18,7 +18,7 @@ flowchart TD
       DLG ---> SETTINGS["Application Settings"]
       DLG ---> PROJECT["Project Settings"]
       WS --> VM
-  
+
       subgraph VM["Viewport Manager (1 to 4 panels)"]
           direction TB
           subgraph P1["Viewport Panel 1"]
@@ -76,7 +76,7 @@ flowchart TD
                 CLIP["<b>Clipboard</b><br/>Copy, Cut, Paste"]
             end
         end
-        
+
         NAMING --> SR
         NAMING --> AR
         AR --> ACTIONS

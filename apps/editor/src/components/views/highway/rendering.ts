@@ -13,9 +13,7 @@ import {
   drumLaneRgbColors,
   kickColor,
   instanceSizeBeatLines,
-  instanceSizePerLane,
   instanceSizePhraseSpans,
-  instanceSizePreviewSustainPerLane,
   laneCount,
   laneRgbColors,
   nearBoardZ,
@@ -28,12 +26,9 @@ import {
 } from "./constants";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
-import {
-  noteWorldPosition,
-  setModelState,
-  sustainWorldTransform,
-} from "./geometry";
+import { noteWorldPosition, sustainWorldTransform } from "./geometry";
 import { HighwayHitTester } from "./hitTesting";
+import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
 import {
   DRUM_GHOST_GEOMETRY_IDS,
   HIGHWAY_GEOMETRY_CATALOG,
@@ -48,14 +43,12 @@ import {
 import {
   createFretAssembly,
   createModelInstance,
-  createNoteInstances,
-  createSustainInstance,
-  destroyInstancedObjects,
   primitiveRolesForModel,
   type InstancedNote,
-  type InstancedTail,
   type PrimitiveMaterialRole,
 } from "./instances";
+import { SustainTailBatch, type SustainInstanceData } from "./tailBatch";
+import { NoteInstanceBatch, type NoteInstanceData } from "./instanceBatch";
 import type { HighwayPhraseEditingController } from "./phraseEditing";
 import type { MarqueeDragState } from "./types";
 import {
@@ -75,6 +68,14 @@ interface SectionMarkerInstance {
   name: string;
   line: THREE.Mesh;
   label: THREE.Sprite;
+}
+
+export interface HighwayRenderDiagnostics {
+  visibleNotes: number;
+  visibleSustains: number;
+  droppedNotes: number;
+  droppedSustains: number;
+  batchCapacities: Record<string, number>;
 }
 
 const indicatorAxis = new THREE.Vector3(1, 0, 0);
@@ -117,17 +118,11 @@ export class HighwayRenderer {
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 }),
   );
-  private readonly gemInstances: InstancedNote[][] = [];
-  private readonly drumGemInstances: Record<
-    DrumPlacementKind,
-    InstancedNote[][]
-  > = {
-    kick: [],
-    cymbal: [],
-    pad: [],
-  };
-  private readonly tailInstances: InstancedTail[][] = [];
-  private readonly previewTailInstances: InstancedTail[][] = [];
+  private instancedTailBatch: SustainTailBatch | null = null;
+  private instancedPreviewTailBatch: SustainTailBatch | null = null;
+  private readonly instancedGemBatches: Partial<
+    Record<"note" | DrumPlacementKind, NoteInstanceBatch>
+  > = {};
   private readonly sustainCutPreviewLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-3, 0, 0),
@@ -166,12 +161,6 @@ export class HighwayRenderer {
       depthWrite: false,
     }),
   );
-  private readonly gemBindings = new Map<MidiChannelEvent, InstancedNote>();
-  private readonly gemKinds = new WeakMap<
-    InstancedNote,
-    DrumPlacementKind | undefined
-  >();
-  private readonly tailBindings = new Map<MidiChannelEvent, InstancedTail>();
   private readonly beatLineInstances: InstancedBeatLine[] = [];
   private readonly phraseSpanInstances: THREE.Mesh[] = [];
   private readonly laneDividers: THREE.Mesh[] = [];
@@ -210,6 +199,10 @@ export class HighwayRenderer {
     Record<DrumPlacementKind, InstancedNote>
   > = {};
   private fretPaletteIsDrums = false;
+  private lastInstancedChart: ChartView | null = null;
+  private lastInstancedChartRevision = -1;
+  private lastInstancedSelectionRevision = -1;
+  private lastInstancedVisibleEntries: IndexedNote[] = [];
 
   public constructor(
     context: HighwayContext,
@@ -228,6 +221,16 @@ export class HighwayRenderer {
 
   public getScene(): THREE.Scene {
     return this.scene;
+  }
+
+  public getPerformanceDiagnostics(): HighwayRenderDiagnostics {
+    return {
+      visibleNotes: this.scene.userData.visibleNotes ?? 0,
+      visibleSustains: this.scene.userData.visibleSustains ?? 0,
+      droppedNotes: this.scene.userData.droppedNotes ?? 0,
+      droppedSustains: this.scene.userData.droppedSustains ?? 0,
+      batchCapacities: this.scene.userData.batchCapacities ?? {},
+    };
   }
 
   public isReady(): boolean {
@@ -258,6 +261,10 @@ export class HighwayRenderer {
   }
 
   public draw(): void {
+    const drawStartedAt = performance.now();
+    const recordDrawDuration = () => {
+      this.scene.userData.highwayDrawMs = performance.now() - drawStartedAt;
+    };
     this.phraseEditing.getSelectedPhraseNoteOns();
     const chart = this.context.getCurrentChart();
     if (!chart) {
@@ -267,6 +274,7 @@ export class HighwayRenderer {
       this.hidePhraseSpans();
       this.hidePhraseAffordances();
       this.hideSectionMarkers();
+      recordDrawDuration();
       return;
     }
 
@@ -282,34 +290,25 @@ export class HighwayRenderer {
       this.scene.userData.visibleNotes = 0;
       this.scene.userData.visibleSustains = 0;
       this.hideAllObjects();
+      recordDrawDuration();
       return;
     }
 
+    const isDrumChart = chart.getTrack().getKey() === "drums";
     this.drawBeatLines();
     const visibleStart = this.coordinates.getTickAtDepth(nearBoardZ);
     const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
-    const isDrumChart = chart.getTrack().getKey() === "drums";
     const laneColors = isDrumChart ? drumLaneRgbColors : laneRgbColors;
     this.updateFretboardPalette(isDrumChart);
-    const visibleNotes = chart.getNotes().flatMap((note) => {
-      const profile = isDrumChart
-        ? getDrumNoteProfile(note.note, chart.getOffset())
-        : null;
-      if (isDrumChart && !profile) return [];
-      const lane = isDrumChart
-        ? (profile?.lane ?? 0)
-        : note.note - chart.getOffset();
-      if (isDrumChart && profile?.kind === "marker") return [];
-      const drumKind = isDrumChart ? profile?.kind : undefined;
-      return note.end >= visibleStart &&
-        note.start <= visibleEnd &&
-        lane >= 0 &&
-        lane < (isDrumChart ? drumLaneCount : laneCount)
-        ? [{ note, lane, drumKind }]
-        : [];
-    });
+    const visibleNotes: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(
+      chart,
+      visibleStart,
+      visibleEnd,
+      visibleNotes,
+    );
 
-    const usedTails = new Set<InstancedTail>();
+    const tailData: SustainInstanceData[] = [];
     const visibleTailEnd = this.coordinates.getTickAtDepth(farBoardZ);
     for (const { note, lane } of isDrumChart ? [] : visibleNotes) {
       const tailStart = Math.max(note.start, visibleStart);
@@ -321,9 +320,6 @@ export class HighwayRenderer {
       const solidTailEnd =
         cutTick === null ? tailEnd : Math.min(tailEnd, cutTick);
       if (solidTailEnd <= tailStart) continue;
-      const instancedTail = this.acquireTail(note.noteOn, usedTails);
-      if (!instancedTail) continue;
-      usedTails.add(instancedTail);
       const transform = sustainWorldTransform(
         this.coordinates.getLaneX(lane),
         this.coordinates.getNoteZ(tailStart),
@@ -332,28 +328,33 @@ export class HighwayRenderer {
       const selected = this.context
         .getSelectionContext()
         .isSelected(note.noteOn);
-      instancedTail.mesh.position.set(
-        transform.position.x,
-        transform.position.y,
-        transform.position.z,
-      );
-      instancedTail.mesh.scale.set(
-        transform.scale.x,
-        transform.scale.y,
-        transform.scale.z,
-      );
-      instancedTail.mesh.renderOrder = 10;
-      instancedTail.mesh.visible = true;
-      setMaterialState(instancedTail.mesh, {
-        baseColor: laneRgbColors[lane],
-        emissionColor: laneRgbColors[lane],
-        emissionIntensity: selected ? 1.7 : 1,
+      tailData.push({
+        x: transform.position.x,
+        y: transform.position.y,
+        z: 0,
+        width: transform.scale.x,
+        halfLength: transform.scale.y,
+        color: laneRgbColors[lane],
         selected,
-        alpha: 0.65,
-        passed: false,
-        useStrikeLine: true,
-        strikeLineZ,
+        startTick: tailStart,
+        endTick: solidTailEnd,
+        priority: Math.abs(
+          note.start - this.coordinates.getTickAtDepth(strikeLineZ),
+        ),
       });
+    }
+    let visibleTails = 0;
+    if (!isDrumChart) {
+      this.ensureInstancedTailBatches();
+      this.instancedTailBatch!.updateScroll(
+        this.context.getCameraTick(),
+        this.context.getPpqn(),
+        nearBoardZ,
+      );
+      visibleTails = this.instancedTailBatch!.write(tailData);
+    } else {
+      this.instancedTailBatch?.write([]);
+      this.instancedPreviewTailBatch?.write([]);
     }
     const previewSustains = isDrumChart
       ? 0
@@ -364,49 +365,86 @@ export class HighwayRenderer {
           visibleTailEnd,
         );
     this.scene.userData.visibleNotes = visibleNotes.length;
-    this.scene.userData.visibleSustains = usedTails.size + previewSustains;
+    this.scene.userData.visibleSustains = visibleTails + previewSustains;
 
-    const usedGems = new Set<InstancedNote>();
-    for (const { note, lane, drumKind } of visibleNotes) {
-      const instanceKind =
-        drumKind === "kick" || drumKind === "cymbal" || drumKind === "pad"
-          ? drumKind
-          : undefined;
-      const instancedGem = this.acquireGem(note.noteOn, usedGems, instanceKind);
-      if (!instancedGem) continue;
-      usedGems.add(instancedGem);
-      const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
-      const position = noteWorldPosition(
-        drumKind === "kick" ? 0 : this.coordinates.getLaneX(lane),
-        this.coordinates.getNoteZ(note.start),
-        placement.transform,
-        placement.placementOffset,
+    const selection = this.context.getSelectionContext();
+    const chartRevision = chart.getNoteRevision();
+    const selectionRevision = selection.getRevision();
+    const noteBatchDirty =
+      this.lastInstancedChart !== chart ||
+      this.lastInstancedChartRevision !== chartRevision ||
+      this.lastInstancedSelectionRevision !== selectionRevision ||
+      this.lastInstancedVisibleEntries.length !== visibleNotes.length ||
+      visibleNotes.some(
+        (entry, index) => this.lastInstancedVisibleEntries[index] !== entry,
       );
-      instancedGem.object.position.set(position.x, position.y, position.z);
-      instancedGem.object.renderOrder =
-        HIGHWAY_RENDER_ORDER[placement.renderPass];
-      instancedGem.object.visible = true;
-      instancedGem.selected = this.context
-        .getSelectionContext()
-        .isSelected(note.noteOn);
-      setModelState(
-        instancedGem.object,
-        this.materials,
-        drumKind === "kick" ? kickColor : laneColors[lane],
-        {
-          selected: instancedGem.selected,
-          passed: note.start <= this.context.getPlayheadTick() + 0.001,
-        },
-      );
+    this.scene.userData.noteBatchDirty = noteBatchDirty;
+    const noteData: Record<"note" | DrumPlacementKind, NoteInstanceData[]> = {
+      note: [],
+      kick: [],
+      cymbal: [],
+      pad: [],
+    };
+    if (noteBatchDirty) {
+      for (const { note, lane, kind } of visibleNotes) {
+        const instanceKind =
+          kind === "kick" || kind === "cymbal" || kind === "pad"
+            ? kind
+            : undefined;
+        const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
+        const position = noteWorldPosition(
+          kind === "kick" ? 0 : this.coordinates.getLaneX(lane),
+          this.coordinates.getNoteZ(note.start),
+          placement.transform,
+          placement.placementOffset,
+        );
+        noteData[instanceKind ?? "note"].push({
+          x: position.x,
+          y: position.y,
+          z: position.z - this.coordinates.getNoteZ(note.start),
+          color: kind === "kick" ? kickColor : laneColors[lane],
+          selected: selection.isSelected(note.noteOn),
+          tick: note.start,
+          priority: Math.abs(
+            note.start - this.coordinates.getTickAtDepth(strikeLineZ),
+          ),
+        });
+      }
     }
-    this.releaseUnusedBindings(this.gemBindings, usedGems, (item) => {
-      item.object.visible = false;
-    });
-    this.releaseUnusedBindings(this.tailBindings, usedTails, (item) => {
-      item.mesh.visible = false;
-    });
+    for (const kind of ["note", "kick", "cymbal", "pad"] as const) {
+      const instances = noteData[kind];
+      const batch = this.instancedGemBatches[kind];
+      if (instances.length > 0) this.ensureInstancedGemBatch(kind);
+      const activeBatch = this.instancedGemBatches[kind] ?? batch;
+      activeBatch?.updateScroll(
+        this.context.getCameraTick(),
+        this.context.getPpqn(),
+        nearBoardZ,
+      );
+      if (!noteBatchDirty && activeBatch) activeBatch.lastWriteMs = 0;
+      if (noteBatchDirty) activeBatch?.write(instances);
+    }
+    this.lastInstancedChart = chart;
+    this.lastInstancedChartRevision = chartRevision;
+    this.lastInstancedSelectionRevision = selectionRevision;
+    if (noteBatchDirty) this.lastInstancedVisibleEntries = visibleNotes.slice();
+    this.scene.userData.instancedNoteCounts = Object.fromEntries(
+      Object.entries(this.instancedGemBatches).map(([kind, batch]) => [
+        kind,
+        batch?.meshes[0]?.count ?? 0,
+      ]),
+    );
+    this.scene.userData.instanceBufferWriteMs =
+      Object.values(this.instancedGemBatches).reduce(
+        (total, batch) => total + (batch?.lastWriteMs ?? 0),
+        0,
+      ) +
+      (this.instancedTailBatch?.lastWriteMs ?? 0) +
+      (this.instancedPreviewTailBatch?.lastWriteMs ?? 0);
+    this.updateBatchDiagnostics();
     this.drawGhostGem();
     this.drawHoverOutline(chart);
+    recordDrawDuration();
   }
 
   public updateMarqueeOutline(marquee: MarqueeDragState | null): void {
@@ -440,16 +478,14 @@ export class HighwayRenderer {
   }
 
   public dispose(): void {
-    destroyInstancedObjects(this.gemInstances, this.tailInstances);
-    Object.values(this.drumGemInstances).forEach((instances) =>
-      destroyInstancedObjects(instances, []),
-    );
-    destroyInstancedObjects([], this.previewTailInstances);
-    this.gemInstances.length = 0;
-    this.tailInstances.length = 0;
-    this.previewTailInstances.length = 0;
-    this.gemBindings.clear();
-    this.tailBindings.clear();
+    Object.values(this.instancedGemBatches).forEach((batch) => batch.dispose());
+    Object.keys(this.instancedGemBatches).forEach((key) => {
+      delete this.instancedGemBatches[key as "note" | DrumPlacementKind];
+    });
+    this.instancedTailBatch?.dispose();
+    this.instancedPreviewTailBatch?.dispose();
+    this.instancedTailBatch = null;
+    this.instancedPreviewTailBatch = null;
     this.beatLineInstances.forEach(({ mesh, material }) => {
       mesh.geometry.dispose();
       material.dispose();
@@ -517,17 +553,6 @@ export class HighwayRenderer {
         note.value!,
         note.definition.definition,
       );
-      this.gemInstances.push(
-        ...createNoteInstances(
-          this.scene,
-          note.value!,
-          this.materials,
-          laneRgbColors,
-          instanceSizePerLane,
-          HIGHWAY_GEOMETRY_CATALOG.note.transform,
-          noteRoles,
-        ),
-      );
       const drumModels = {
         kick: this.assetRegistry.getMesh("kickNote"),
         cymbal: this.assetRegistry.getMesh("cymbalNote"),
@@ -551,17 +576,6 @@ export class HighwayRenderer {
         ),
       };
       for (const kind of ["kick", "cymbal", "pad"] as const) {
-        this.drumGemInstances[kind].push(
-          ...createNoteInstances(
-            this.scene,
-            drumModels[kind].value!,
-            this.materials.drum[kind],
-            kind === "kick" ? [kickColor] : drumLaneRgbColors,
-            instanceSizePerLane,
-            HIGHWAY_GEOMETRY_CATALOG[kind].transform,
-            drumPrimitiveRoles[kind],
-          ),
-        );
         const variants = this.materials.drum[kind];
         const ghostGeometry =
           HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
@@ -591,22 +605,6 @@ export class HighwayRenderer {
         this.drumGhostGems[kind] = ghost;
         this.scene.add(ghost.object);
       }
-      this.tailInstances.push(
-        ...createSustainInstance(
-          this.scene,
-          this.materials.sustain,
-          laneRgbColors,
-          instanceSizePerLane,
-        ),
-      );
-      this.previewTailInstances.push(
-        ...createSustainInstance(
-          this.scene,
-          this.materials.sustain,
-          laneRgbColors,
-          instanceSizePreviewSustainPerLane,
-        ),
-      );
       this.fretAssemblies = laneRgbColors.map((color, lane) => {
         const fretRoles = primitiveRolesForModel(
           fret.value!,
@@ -998,72 +996,36 @@ export class HighwayRenderer {
     }
   }
 
-  private acquireGem(
-    key: MidiChannelEvent,
-    used: Set<InstancedNote>,
-    kind?: DrumPlacementKind,
-  ): InstancedNote | null {
-    const existing = this.gemBindings.get(key);
-    if (existing && this.gemKinds.get(existing) === kind) return existing;
-    if (existing) {
-      existing.object.visible = false;
-      this.gemBindings.delete(key);
-    }
-    const bound = new Set(this.gemBindings.values());
-    const pool = kind ? this.drumGemInstances[kind] : this.gemInstances;
-    const candidate = pool
-      .flat()
-      .find((item) => !bound.has(item) && !used.has(item));
-    if (!candidate) return null;
-    this.gemBindings.set(key, candidate);
-    this.gemKinds.set(candidate, kind);
-    return candidate;
-  }
-
-  private acquireTail(
-    key: MidiChannelEvent,
-    used: Set<InstancedTail>,
-  ): InstancedTail | null {
-    const existing = this.tailBindings.get(key);
-    if (existing) return existing;
-    const bound = new Set(this.tailBindings.values());
-    const candidate = this.tailInstances
-      .flat()
-      .find((item) => !bound.has(item) && !used.has(item));
-    if (!candidate) return null;
-    this.tailBindings.set(key, candidate);
-    return candidate;
-  }
-
-  private releaseUnusedBindings<T>(
-    bindings: Map<MidiChannelEvent, T>,
-    used: Set<T>,
-    hide: (item: T) => void,
-  ): void {
-    for (const [key, item] of bindings) {
-      if (used.has(item)) continue;
-      hide(item);
-      bindings.delete(key);
-    }
-  }
-
   private hideAllObjects(): void {
-    this.gemInstances.flat().forEach(({ object }) => (object.visible = false));
-    Object.values(this.drumGemInstances)
-      .flat(2)
-      .forEach(({ object }) => (object.visible = false));
-    this.tailInstances.flat().forEach(({ mesh }) => (mesh.visible = false));
-    this.previewTailInstances
-      .flat()
-      .forEach(({ mesh }) => (mesh.visible = false));
+    Object.values(this.instancedGemBatches).forEach((batch) => batch.write([]));
+    this.instancedTailBatch?.write([]);
+    this.instancedPreviewTailBatch?.write([]);
     this.beatLineInstances.forEach(({ mesh }) => (mesh.visible = false));
     this.sustainCutPreviewLine.visible = false;
     if (this.ghostGem) this.ghostGem.object.visible = false;
     Object.values(this.drumGhostGems).forEach((gem) => {
       if (gem) gem.object.visible = false;
     });
-    this.gemBindings.clear();
-    this.tailBindings.clear();
+    this.updateBatchDiagnostics();
+  }
+
+  private updateBatchDiagnostics(): void {
+    const batches = [
+      ...Object.entries(this.instancedGemBatches),
+      ["sustain", this.instancedTailBatch],
+      ["sustainPreview", this.instancedPreviewTailBatch],
+    ] as const;
+    const capacities: Record<string, number> = {};
+    for (const [key, batch] of batches) {
+      if (batch) capacities[key] = batch.capacity;
+    }
+    this.scene.userData.droppedNotes = Object.values(
+      this.instancedGemBatches,
+    ).reduce((total, batch) => total + (batch?.droppedNotes ?? 0), 0);
+    this.scene.userData.droppedSustains =
+      (this.instancedTailBatch?.droppedNotes ?? 0) +
+      (this.instancedPreviewTailBatch?.droppedNotes ?? 0);
+    this.scene.userData.batchCapacities = capacities;
   }
 
   private getSustainCutPreview(
@@ -1105,52 +1067,88 @@ export class HighwayRenderer {
     visibleStart: number,
     visibleEnd: number,
   ): number {
-    this.previewTailInstances
-      .flat()
-      .forEach(({ mesh }) => (mesh.visible = false));
-    const usedByLane = Array<number>(laneCount).fill(0);
-    let used = 0;
+    this.ensureInstancedTailBatches();
+    const previewData: SustainInstanceData[] = [];
     const cutTick = this.context.getGhostNoteLocation()?.tick;
-    if (cutTick === undefined) return used;
+    if (cutTick === undefined) return this.instancedPreviewTailBatch!.write([]);
     for (const note of cutPreview.values()) {
       const lane = note.note - chart.getOffset();
       if (lane < 0 || lane >= laneCount) continue;
       const start = Math.max(note.start, visibleStart, cutTick);
       const end = Math.min(note.end, visibleEnd);
       if (end <= start) continue;
-      const instance = this.previewTailInstances[lane]?.[usedByLane[lane]++];
-      if (!instance) continue;
       const transform = sustainWorldTransform(
         this.coordinates.getLaneX(lane),
         this.coordinates.getNoteZ(start),
         this.coordinates.getNoteZ(end),
       );
-      instance.mesh.position.set(
-        transform.position.x,
-        transform.position.y,
-        transform.position.z,
-      );
-      instance.mesh.scale.set(
-        transform.scale.x,
-        transform.scale.y,
-        transform.scale.z,
-      );
-      instance.mesh.renderOrder = 11;
-      instance.mesh.visible = true;
-      setMaterialState(instance.mesh, {
-        baseColor: laneRgbColors[lane],
-        emissionColor: laneRgbColors[lane],
-        emissionIntensity: 0.25,
+      previewData.push({
+        x: transform.position.x,
+        y: transform.position.y,
+        z: 0,
+        width: transform.scale.x,
+        halfLength: transform.scale.y,
+        color: laneRgbColors[lane],
+        selected: false,
+        startTick: start,
+        endTick: end,
+        priority: Math.abs(
+          note.start - this.coordinates.getTickAtDepth(strikeLineZ),
+        ),
+      });
+    }
+    this.instancedPreviewTailBatch!.updateScroll(
+      this.context.getCameraTick(),
+      this.context.getPpqn(),
+      nearBoardZ,
+    );
+    return this.instancedPreviewTailBatch!.write(previewData);
+  }
+
+  private ensureInstancedTailBatches(): void {
+    if (this.instancedTailBatch || !this.materials) return;
+    this.instancedTailBatch = new SustainTailBatch(
+      this.scene,
+      this.materials.sustain,
+      256,
+      10,
+      { alpha: 0.65, useStrikeLine: true, strikeLineZ },
+    );
+    this.instancedPreviewTailBatch = new SustainTailBatch(
+      this.scene,
+      this.materials.sustain,
+      256,
+      11,
+      {
         alpha: 0.18,
         ghost: true,
-        selected: false,
-        passed: false,
         useStrikeLine: true,
         strikeLineZ,
-      });
-      used++;
-    }
-    return used;
+      },
+    );
+  }
+
+  private ensureInstancedGemBatch(kind: "note" | DrumPlacementKind): void {
+    if (this.instancedGemBatches[kind] || !this.materials) return;
+    const meshKey =
+      kind === "kick"
+        ? "kickNote"
+        : kind === "cymbal"
+          ? "cymbalNote"
+          : "roundNote";
+    const model = this.assetRegistry.getMesh(meshKey);
+    const materialSet =
+      kind === "note" ? this.materials : this.materials.drum[kind];
+    const placement = HIGHWAY_GEOMETRY_CATALOG[kind];
+    this.instancedGemBatches[kind] = new NoteInstanceBatch(
+      this.scene,
+      model.value!,
+      primitiveRolesForModel(model.value!, model.definition.definition),
+      materialSet,
+      256,
+      placement.transform,
+      HIGHWAY_RENDER_ORDER[placement.renderPass],
+    );
   }
 
   private drawGhostGem(): void {

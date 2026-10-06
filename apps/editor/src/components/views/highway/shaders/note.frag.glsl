@@ -15,6 +15,9 @@ uniform float uGhost;
 uniform float uTintEnabled;
 
 varying vec2 vUv;
+#ifdef USE_INSTANCE_STATE
+varying vec4 vLaneColorSelected;
+#endif
 
 // Leaves values below the knee untouched; compresses the excess above it toward 1.0 instead of hard-clipping.
 vec3 softKnee(vec3 color, float knee) {
@@ -25,15 +28,23 @@ vec3 softKnee(vec3 color, float knee) {
 void main() {
 
   vec4 base = texture2D(uBaseTexture, vUv);
+  vec3 baseColor = uBaseColor;
+  vec3 emissionTint = uEmissionColor;
+  float selected = uSelected;
+  #ifdef USE_INSTANCE_STATE
+    baseColor = vLaneColorSelected.rgb;
+    emissionTint = vLaneColorSelected.rgb;
+    selected = vLaneColorSelected.a;
+  #endif
 
   // Apply selection/ghost effect
-  vec3 outColor = uBaseColor;
-  outColor = mix(outColor, vec3(1.0), uSelected);
+  vec3 outColor = baseColor;
+  outColor = mix(outColor, vec3(1.0), selected);
   outColor = mix(outColor, vec3(1.0), uGhost);
 
   // Compute note color via emission
   float emissionMask = texture2D(uEmissionMaskTexture, vUv).r;
-  vec3 emissionColor = mix(vec3(1.0), uEmissionColor, emissionMask);
+  vec3 emissionColor = mix(vec3(1.0), emissionTint, emissionMask);
   vec3 emission =
     texture2D(uEmissionTexture, vUv).rgb * emissionColor * uEmissionIntensity;
   

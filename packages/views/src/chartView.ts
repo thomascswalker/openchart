@@ -50,6 +50,9 @@ export class ChartView {
   private offset: number;
   private lanes: number;
   private role?: string;
+  private cachedNoteTrack: MidiTrack | undefined;
+  private cachedNoteRevision = -1;
+  private cachedNotes: MidiNote[] = [];
 
   constructor(
     track: TrackView,
@@ -87,18 +90,35 @@ export class ChartView {
     return this.lanes;
   }
 
+  public getNoteRevision(): number {
+    return this.midiTrack?.getNoteRevision() ?? 0;
+  }
+
   public getNotes(): MidiNote[] {
+    const revision = this.getNoteRevision();
+    if (
+      this.cachedNoteTrack === this.midiTrack &&
+      this.cachedNoteRevision === revision
+    ) {
+      return this.cachedNotes;
+    }
+
     const low = this.offset;
     const high = this.offset + this.lanes;
     const notes = this.midiTrack?.getNotes({ pitch: { low, high } }) ?? [];
-    if (this.role !== "drums" || this.difficulty !== Difficulty.Expert) {
-      return notes;
+    if (this.role === "drums" && this.difficulty === Difficulty.Expert) {
+      const expertKick2 =
+        this.midiTrack?.getNotes({ pitch: { low: 95, high: 96 } }) ?? [];
+      for (const note of expertKick2) notes.push(note);
+      notes.sort(
+        (left, right) => left.start - right.start || left.note - right.note,
+      );
     }
-    const expertKick2 =
-      this.midiTrack?.getNotes({ pitch: { low: 95, high: 96 } }) ?? [];
-    return [...notes, ...expertKick2].sort(
-      (left, right) => left.start - right.start || left.note - right.note,
-    );
+
+    this.cachedNoteTrack = this.midiTrack;
+    this.cachedNoteRevision = revision;
+    this.cachedNotes = notes;
+    return this.cachedNotes;
   }
 
   public addNote(

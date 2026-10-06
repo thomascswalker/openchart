@@ -76,6 +76,23 @@ describe("data.json", () => {
     expect(chart.getNotes()).toHaveLength(0);
   });
 
+  it("reuses its sorted note list until the track revision changes", () => {
+    const midi = new Midi();
+    const track = new MidiTrack("LEAD GUITAR");
+    midi.tracks = [track];
+    track.addNote(96, 0, 100, 1);
+    const chart = new SongView(midi)
+      .getInstrumentTrackView("LEAD GUITAR")!
+      .getChart(Difficulty.Expert);
+
+    const cached = chart.getNotes();
+    expect(chart.getNotes()).toBe(cached);
+
+    chart.addNote(Note.Red, 240, 360);
+    expect(chart.getNotes()).not.toBe(cached);
+    expect(chart.getNotes()).toHaveLength(2);
+  });
+
   it("moves and resizes notes within its configured chart lanes", () => {
     const midi = new Midi();
     const track = new MidiTrack("LEAD GUITAR");

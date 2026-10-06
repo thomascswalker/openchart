@@ -25,6 +25,37 @@ test("stable canvas screenshot control", async ({ page }) => {
   expect(second.equals(first)).toBe(true);
 });
 
+test("highway framebuffer capture exposes performance diagnostics", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Reflect.set(globalThis, "__captureThreeFramebuffer", true);
+  });
+  await loadSong(page);
+  const viewport = panel(page, 0);
+  await switchView(viewport, "highway");
+  const canvas = viewport.locator(".midi-view-host canvas");
+  await expect
+    .poll(() => canvas.getAttribute("data-three-render-calls"))
+    .not.toBeNull();
+
+  for (const metric of [
+    "geometry-count",
+    "texture-count",
+    "scene-objects",
+    "highway-draw-ms",
+  ]) {
+    await expect(canvas).toHaveAttribute(
+      `data-three-${metric}`,
+      /^\d+(\.\d+)?$/,
+    );
+  }
+  const contextAttributes = JSON.parse(
+    (await canvas.getAttribute("data-three-context-attributes")) ?? "{}",
+  ) as { antialias?: boolean };
+  expect(contextAttributes.antialias).toBe(false);
+});
+
 test("T1: arrow keys move the highway camera with the playhead", async ({
   page,
 }) => {

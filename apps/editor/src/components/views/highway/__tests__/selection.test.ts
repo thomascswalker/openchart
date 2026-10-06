@@ -31,4 +31,19 @@ describe("Highway SelectionContext", () => {
     expect(selection.notes).toEqual([replacement]);
     expect(selection.isSelected(first)).toBe(false);
   });
+
+  it("advances its revision only when selected notes change", () => {
+    const selection = new SelectionContext();
+    const note = {} as MidiChannelEvent;
+
+    expect(selection.getRevision()).toBe(0);
+    selection.add(note);
+    expect(selection.getRevision()).toBe(1);
+    selection.add(note);
+    expect(selection.getRevision()).toBe(1);
+    selection.set([note]);
+    expect(selection.getRevision()).toBe(1);
+    selection.clear();
+    expect(selection.getRevision()).toBe(2);
+  });
 });

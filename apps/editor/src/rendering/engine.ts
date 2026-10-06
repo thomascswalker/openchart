@@ -18,7 +18,7 @@ export class Engine {
   public constructor(options: EngineOptions = {}) {
     this.pixelRatioCap = options.pixelRatioCap ?? 2;
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: options.antialias ?? true,
       alpha: false,
       powerPreference: "high-performance",
     });
@@ -132,6 +132,38 @@ export class Engine {
       );
       this.canvas.dataset.threeRenderTriangles = String(
         this.renderer.info.render.triangles,
+      );
+      this.canvas.dataset.threeGeometryCount = String(
+        this.renderer.info.memory.geometries,
+      );
+      this.canvas.dataset.threeTextureCount = String(
+        this.renderer.info.memory.textures,
+      );
+      let sceneObjectCount = 0;
+      scene.traverse(() => {
+        sceneObjectCount += 1;
+      });
+      this.canvas.dataset.threeSceneObjects = String(sceneObjectCount);
+      this.canvas.dataset.threeHighwayDrawMs = String(
+        scene.userData.highwayDrawMs ?? 0,
+      );
+      this.canvas.dataset.threeInstanceBufferWriteMs = String(
+        scene.userData.instanceBufferWriteMs ?? 0,
+      );
+      this.canvas.dataset.threeNoteBatchDirty = String(
+        scene.userData.noteBatchDirty ?? false,
+      );
+      this.canvas.dataset.threeInstancedNoteCounts = JSON.stringify(
+        scene.userData.instancedNoteCounts ?? {},
+      );
+      this.canvas.dataset.threeDroppedNotes = String(
+        scene.userData.droppedNotes ?? 0,
+      );
+      this.canvas.dataset.threeDroppedSustains = String(
+        scene.userData.droppedSustains ?? 0,
+      );
+      this.canvas.dataset.threeBatchCapacities = JSON.stringify(
+        scene.userData.batchCapacities ?? {},
       );
     }
   }

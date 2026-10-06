@@ -118,6 +118,22 @@ test("setNotePitch mutates pitch and invalidates note cache", () => {
   expect(track.getNotes()[0].note).toBe(60);
 });
 
+test("note revision advances once for each note mutation", () => {
+  const track = new MidiTrack();
+  track.addNote(50, 0);
+  const [note] = track.getNotes();
+  const afterAdd = track.getNoteRevision();
+
+  expect(track.setNotePitch(note, 60)).toBe(true);
+  expect(track.getNoteRevision()).toBe(afterAdd + 1);
+
+  expect(track.setNoteDuration(note, 240)).toBe(true);
+  expect(track.getNoteRevision()).toBe(afterAdd + 2);
+
+  expect(track.setNoteStart(note, 120)).toBe(true);
+  expect(track.getNoteRevision()).toBe(afterAdd + 3);
+});
+
 test("setNotePitch rejects out-of-range pitch", () => {
   const midi = new Midi();
   const track = new MidiTrack();

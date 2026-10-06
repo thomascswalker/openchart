@@ -8,9 +8,18 @@ uniform float uPassed;
 uniform float uUseStrikeLine;
 uniform float uStrikeLineZ;
 varying float vWorldZ;
+#ifdef USE_INSTANCE_STATE
+varying vec4 vLaneColorSelected;
+#endif
 
 void main() {
-  vec3 laneTint = mix(uBaseColor, vec3(1.0), uSelected * 0.35);
+  vec3 baseColor = uBaseColor;
+  float selected = uSelected;
+  #ifdef USE_INSTANCE_STATE
+    baseColor = vLaneColorSelected.rgb;
+    selected = vLaneColorSelected.a;
+  #endif
+  vec3 laneTint = mix(baseColor, vec3(1.0), selected * 0.35);
   vec3 ghostTint = mix(laneTint, vec3(0.82, 0.88, 1.0), uGhost);
   float alpha = uAlpha * (1.0 - uGhost * 0.55);
   if (alpha < 0.02) {
