@@ -14,6 +14,8 @@ export interface SustainInstanceData {
   color: Rgb;
   selected: boolean;
   priority?: number;
+  startTick: number;
+  endTick: number;
 }
 
 const INITIAL_CAPACITY = 256;
@@ -32,9 +34,11 @@ export class SustainTailBatch {
   public mesh!: THREE.InstancedMesh;
   public capacity: number;
   public droppedNotes = 0;
+  public lastWriteMs = 0;
   private geometry!: THREE.PlaneGeometry;
   private readonly material: THREE.ShaderMaterial;
   private colors!: THREE.InstancedBufferAttribute;
+  private tickRanges!: THREE.InstancedBufferAttribute;
   private shrinkStartedAt: number | null = null;
   private readonly scene: THREE.Scene;
   private readonly renderOrder: number;
@@ -60,6 +64,7 @@ export class SustainTailBatch {
     this.material.defines = {
       ...this.material.defines,
       USE_INSTANCE_STATE: 1,
+      USE_TAIL_TICK_SCROLL: 1,
     };
     setMaterialStateForMaterial(this.material, state);
     this.material.needsUpdate = true;
@@ -81,6 +86,12 @@ export class SustainTailBatch {
     );
     this.colors.setUsage(THREE.DynamicDrawUsage);
     this.geometry.setAttribute("aLaneColorSelected", this.colors);
+    this.tickRanges = new THREE.InstancedBufferAttribute(
+      new Float32Array(capacity * 2),
+      2,
+    );
+    this.tickRanges.setUsage(THREE.DynamicDrawUsage);
+    this.geometry.setAttribute("aTickRange", this.tickRanges);
     this.mesh = new THREE.InstancedMesh(this.geometry, this.material, capacity);
     this.mesh.count = 0;
     this.mesh.renderOrder = this.renderOrder;
@@ -91,6 +102,7 @@ export class SustainTailBatch {
   }
 
   public write(instances: readonly SustainInstanceData[]): number {
+    const writeStartedAt = performance.now();
     const needed = Math.min(instances.length, MAX_CAPACITY);
     if (needed > this.capacity) {
       this.resize(expandedCapacity(this.capacity, needed));
@@ -116,25 +128,97 @@ export class SustainTailBatch {
           )
         : instances;
     const colors = this.colors.array as Float32Array;
+    const tickRanges = this.tickRanges.array as Float32Array;
+    const matrices = this.mesh.instanceMatrix.array as Float32Array;
+    let matrixStart = count;
+    let matrixEnd = -1;
+    let colorStart = count;
+    let colorEnd = -1;
+    let tickStart = count;
+    let tickEnd = -1;
     for (let index = 0; index < count; index += 1) {
       const instance = ordered[index];
       this.position.set(instance.x, instance.y, instance.z);
-      this.scale.set(instance.width, instance.halfLength, 1);
+      this.scale.set(instance.width, 1, 1);
       this.matrix.compose(this.position, this.rotation, this.scale);
-      this.mesh.setMatrixAt(index, this.matrix);
+      const matrixOffset = index * 16;
+      let matrixChanged = false;
+      for (let component = 0; component < 16; component += 1) {
+        const value = Math.fround(this.matrix.elements[component]);
+        if (matrices[matrixOffset + component] !== value) {
+          matrices[matrixOffset + component] = value;
+          matrixChanged = true;
+        }
+      }
+      if (matrixChanged) {
+        matrixStart = Math.min(matrixStart, index);
+        matrixEnd = index + 1;
+      }
       const colorOffset = index * 4;
-      colors[colorOffset] = instance.color[0];
-      colors[colorOffset + 1] = instance.color[1];
-      colors[colorOffset + 2] = instance.color[2];
-      colors[colorOffset + 3] = instance.selected ? 1 : 0;
+      let colorChanged = false;
+      const selected = instance.selected ? 1 : 0;
+      if (colors[colorOffset] !== instance.color[0]) {
+        colors[colorOffset] = instance.color[0];
+        colorChanged = true;
+      }
+      if (colors[colorOffset + 1] !== instance.color[1]) {
+        colors[colorOffset + 1] = instance.color[1];
+        colorChanged = true;
+      }
+      if (colors[colorOffset + 2] !== instance.color[2]) {
+        colors[colorOffset + 2] = instance.color[2];
+        colorChanged = true;
+      }
+      if (colors[colorOffset + 3] !== selected) {
+        colors[colorOffset + 3] = selected;
+        colorChanged = true;
+      }
+      if (colorChanged) {
+        colorStart = Math.min(colorStart, index);
+        colorEnd = index + 1;
+      }
+      const rangeOffset = index * 2;
+      if (
+        tickRanges[rangeOffset] !== instance.startTick ||
+        tickRanges[rangeOffset + 1] !== instance.endTick
+      ) {
+        tickRanges[rangeOffset] = instance.startTick;
+        tickRanges[rangeOffset + 1] = instance.endTick;
+        tickStart = Math.min(tickStart, index);
+        tickEnd = index + 1;
+      }
     }
     this.mesh.count = count;
     this.mesh.visible = count > 0;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.colors.clearUpdateRanges();
-    this.colors.addUpdateRange(0, count * 4);
-    this.colors.needsUpdate = true;
+    if (matrixEnd >= 0) {
+      this.mesh.instanceMatrix.clearUpdateRanges();
+      this.mesh.instanceMatrix.addUpdateRange(
+        matrixStart * 16,
+        (matrixEnd - matrixStart) * 16,
+      );
+      this.mesh.instanceMatrix.needsUpdate = true;
+    }
+    if (colorEnd >= 0) {
+      this.colors.clearUpdateRanges();
+      this.colors.addUpdateRange(colorStart * 4, (colorEnd - colorStart) * 4);
+      this.colors.needsUpdate = true;
+    }
+    if (tickEnd >= 0) {
+      this.tickRanges.clearUpdateRanges();
+      this.tickRanges.addUpdateRange(
+        tickStart * 2,
+        (tickEnd - tickStart) * 2,
+      );
+      this.tickRanges.needsUpdate = true;
+    }
+    this.lastWriteMs = performance.now() - writeStartedAt;
     return count;
+  }
+
+  public updateScroll(cameraTick: number, ppqn: number, nearBoardZ: number): void {
+    this.material.uniforms.uCameraTick.value = cameraTick;
+    this.material.uniforms.uPpqn.value = ppqn;
+    this.material.uniforms.uNearBoardZ.value = nearBoardZ;
   }
 
   public dispose(): void {

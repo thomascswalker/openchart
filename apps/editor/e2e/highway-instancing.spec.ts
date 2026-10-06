@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { ChannelMessage, MetaType, Midi, MidiTrack } from "@midiedit/core";
-import { canvasShot, loadSong, panel, switchView } from "./helpers.js";
+import {
+  cameraTick,
+  canvasShot,
+  loadSong,
+  panel,
+  switchView,
+} from "./helpers.js";
 
 const SETTINGS_KEY = "midiedit.application-settings";
 
@@ -76,6 +82,10 @@ test("instanced notes and tails match pooled rendering with fewer objects", asyn
   let viewport = panel(page, 0);
   await switchView(viewport, "highway");
   let canvas = viewport.locator(".midi-view-host canvas");
+  const pooledCameraTick = await cameraTick(viewport);
+  await canvas.click();
+  for (let step = 0; step < 4; step += 1) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => cameraTick(viewport)).not.toBe(pooledCameraTick);
   await expect.poll(() => canvas.getAttribute("data-three-render-calls")).not.toBeNull();
   const pooled = await canvasShot(viewport);
   const pooledSustains = Number(
@@ -97,6 +107,10 @@ test("instanced notes and tails match pooled rendering with fewer objects", asyn
   viewport = panel(page, 0);
   await switchView(viewport, "highway");
   canvas = viewport.locator(".midi-view-host canvas");
+  const instancedCameraTick = await cameraTick(viewport);
+  await canvas.click();
+  for (let step = 0; step < 4; step += 1) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => cameraTick(viewport)).not.toBe(instancedCameraTick);
   await expect.poll(() => canvas.getAttribute("data-three-render-calls")).not.toBeNull();
   const instanced = await canvasShot(viewport);
   const instancedSustains = Number(
@@ -196,14 +210,35 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   await expect
     .poll(async () => Number(await canvas.getAttribute("data-three-visible-notes")))
     .toBe(3_000);
+  await canvas.hover({ position: { x: 1, y: 1 } });
+  await expect
+    .poll(() => canvas.getAttribute("data-three-note-batch-dirty"))
+    .toBe("false");
   const noteCounts = JSON.parse(
     (await canvas.getAttribute("data-three-instanced-note-counts")) ?? "{}",
   ) as Record<string, number>;
   const capacities = JSON.parse(
     (await canvas.getAttribute("data-three-batch-capacities")) ?? "{}",
   ) as Record<string, number>;
+  const drawDurationMs = Number(
+    await canvas.getAttribute("data-three-highway-draw-ms"),
+  );
+  const instanceWriteDurationMs = Number(
+    await canvas.getAttribute("data-three-instance-buffer-write-ms"),
+  );
 
   expect(noteCounts.note).toBe(3_000);
   expect(capacities.note).toBe(4_096);
   expect(await canvas.getAttribute("data-three-dropped-notes")).toBe("0");
+  expect(Number.isFinite(drawDurationMs)).toBe(true);
+  expect(Number.isFinite(instanceWriteDurationMs)).toBe(true);
+  if (process.env.MIDIVIEW_PERF_LOG === "1") {
+    console.log(`3,000-note highway draw(): ${drawDurationMs.toFixed(3)} ms`);
+    console.log(
+      `3,000-note instance buffer writes: ${instanceWriteDurationMs.toFixed(3)} ms`,
+    );
+    console.log(
+      `Note state rebuilt: ${await canvas.getAttribute("data-three-note-batch-dirty")}`,
+    );
+  }
 });

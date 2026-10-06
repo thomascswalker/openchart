@@ -42,8 +42,8 @@ describe("NoteInstanceBatch", () => {
 
     expect(
       batch.write([
-        { x: 1, y: 0, z: -1, color: [1, 0, 0], selected: true },
-        { x: 2, y: 0, z: -2, color: [0, 1, 0], selected: false },
+        { x: 1, y: 0, z: -1, color: [1, 0, 0], selected: true, tick: 10 },
+        { x: 2, y: 0, z: -2, color: [0, 1, 0], selected: false, tick: 20 },
       ]),
     ).toBe(2);
     expect(batch.meshes[0].count).toBe(2);
@@ -52,6 +52,24 @@ describe("NoteInstanceBatch", () => {
     expect(batch.meshes[0].geometry.getAttribute("aLaneColorSelected").array).toEqual(
       expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1, 4: 0, 5: 1 }),
     );
+    const matrixVersion = batch.meshes[0].instanceMatrix.version;
+    const colorVersion = (
+      batch.meshes[0].geometry.getAttribute(
+        "aLaneColorSelected",
+      ) as THREE.BufferAttribute
+    ).version;
+    batch.write([
+      { x: 1, y: 0, z: -1, color: [1, 0, 0], selected: true, tick: 10 },
+      { x: 2, y: 0, z: -2, color: [0, 1, 0], selected: false, tick: 20 },
+    ]);
+    expect(batch.meshes[0].instanceMatrix.version).toBe(matrixVersion);
+    expect(
+      (
+        batch.meshes[0].geometry.getAttribute(
+          "aLaneColorSelected",
+        ) as THREE.BufferAttribute
+      ).version,
+    ).toBe(colorVersion);
 
     batch.dispose();
     tintedMaterial.dispose();
@@ -91,6 +109,7 @@ describe("NoteInstanceBatch", () => {
         z: 0,
         color: [1, 1, 1] as [number, number, number],
         selected: false,
+        tick: index,
       })),
     );
     expect(batch.capacity).toBe(8);
@@ -126,6 +145,7 @@ describe("NoteInstanceBatch", () => {
       color: [1, 1, 1] as [number, number, number],
       selected: false,
       priority: Math.abs(index - 100),
+      tick: index,
     }));
 
     expect(batch.write(notes)).toBe(16_384);

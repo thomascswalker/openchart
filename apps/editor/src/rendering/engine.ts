@@ -147,6 +147,12 @@ export class Engine {
       this.canvas.dataset.threeHighwayDrawMs = String(
         scene.userData.highwayDrawMs ?? 0,
       );
+      this.canvas.dataset.threeInstanceBufferWriteMs = String(
+        scene.userData.instanceBufferWriteMs ?? 0,
+      );
+      this.canvas.dataset.threeNoteBatchDirty = String(
+        scene.userData.noteBatchDirty ?? false,
+      );
       this.canvas.dataset.threeInstancedNoteCounts = JSON.stringify(
         scene.userData.instancedNoteCounts ?? {},
       );

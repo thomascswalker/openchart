@@ -12,6 +12,7 @@ export interface NoteInstanceData {
   color: Rgb;
   selected: boolean;
   priority?: number;
+  tick: number;
 }
 
 const INITIAL_CAPACITY = 256;
@@ -30,16 +31,16 @@ export class NoteInstanceBatch {
   public meshes: THREE.InstancedMesh[] = [];
   public droppedNotes = 0;
   public capacity: number;
+  public lastWriteMs = 0;
   private geometries: THREE.BufferGeometry[] = [];
   private readonly materials: THREE.ShaderMaterial[];
   private matrixAttribute!: THREE.InstancedBufferAttribute;
   private colorAttribute!: THREE.InstancedBufferAttribute;
+  private tickAttribute!: THREE.InstancedBufferAttribute;
   private shrinkStartedAt: number | null = null;
   private readonly minimumCapacity: number;
-  private readonly position = new THREE.Vector3();
   private readonly scale = new THREE.Vector3();
   private readonly rotation = new THREE.Quaternion();
-  private readonly matrix = new THREE.Matrix4();
 
   public constructor(
     scene: THREE.Scene,
@@ -76,11 +77,24 @@ export class NoteInstanceBatch {
       16,
     );
     this.matrixAttribute.setUsage(THREE.DynamicDrawUsage);
+    const matrices = this.matrixAttribute.array as Float32Array;
+    for (let index = 0; index < capacity; index += 1) {
+      const offset = index * 16;
+      matrices[offset] = 1;
+      matrices[offset + 5] = 1;
+      matrices[offset + 10] = 1;
+      matrices[offset + 15] = 1;
+    }
     this.colorAttribute = new THREE.InstancedBufferAttribute(
       new Float32Array(capacity * 4),
       4,
     );
     this.colorAttribute.setUsage(THREE.DynamicDrawUsage);
+    this.tickAttribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(capacity),
+      1,
+    );
+    this.tickAttribute.setUsage(THREE.DynamicDrawUsage);
     this.geometries = [];
     this.meshes = this.templateMeshes.map((templateMesh, index) => {
       templateMesh.updateWorldMatrix(true, false);
@@ -89,6 +103,7 @@ export class NoteInstanceBatch {
       const transformMatrix = this.getTransformMatrix(this.transform);
       geometry.applyMatrix4(transformMatrix);
       geometry.setAttribute("aLaneColorSelected", this.colorAttribute);
+      geometry.setAttribute("aStartTick", this.tickAttribute);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
       this.geometries.push(geometry);
@@ -118,6 +133,7 @@ export class NoteInstanceBatch {
   }
 
   public write(instances: readonly NoteInstanceData[]): number {
+    const writeStartedAt = performance.now();
     const needed = Math.min(instances.length, MAX_CAPACITY);
     if (needed > this.capacity) {
       this.resize(expandedCapacity(this.capacity, needed));
@@ -144,29 +160,91 @@ export class NoteInstanceBatch {
         : instances;
     const matrices = this.matrixAttribute.array as Float32Array;
     const colors = this.colorAttribute.array as Float32Array;
+    const ticks = this.tickAttribute.array as Float32Array;
+    let matrixStart = count;
+    let matrixEnd = -1;
+    let colorStart = count;
+    let colorEnd = -1;
+    let tickStart = count;
+    let tickEnd = -1;
     for (let index = 0; index < count; index += 1) {
       const instance = ordered[index];
-      this.position.set(instance.x, instance.y, instance.z);
-      this.scale.set(1, 1, 1);
-      this.matrix.compose(this.position, this.rotation, this.scale);
-      this.matrix.toArray(matrices, index * 16);
+      const matrixOffset = index * 16;
+      if (
+        matrices[matrixOffset + 12] !== instance.x ||
+        matrices[matrixOffset + 13] !== instance.y ||
+        matrices[matrixOffset + 14] !== instance.z
+      ) {
+        matrices[matrixOffset + 12] = instance.x;
+        matrices[matrixOffset + 13] = instance.y;
+        matrices[matrixOffset + 14] = instance.z;
+        matrixStart = Math.min(matrixStart, index);
+        matrixEnd = index + 1;
+      }
       const colorOffset = index * 4;
-      colors[colorOffset] = instance.color[0];
-      colors[colorOffset + 1] = instance.color[1];
-      colors[colorOffset + 2] = instance.color[2];
-      colors[colorOffset + 3] = instance.selected ? 1 : 0;
+      let colorChanged = false;
+      if (colors[colorOffset] !== instance.color[0]) {
+        colors[colorOffset] = instance.color[0];
+        colorChanged = true;
+      }
+      if (colors[colorOffset + 1] !== instance.color[1]) {
+        colors[colorOffset + 1] = instance.color[1];
+        colorChanged = true;
+      }
+      if (colors[colorOffset + 2] !== instance.color[2]) {
+        colors[colorOffset + 2] = instance.color[2];
+        colorChanged = true;
+      }
+      const selected = instance.selected ? 1 : 0;
+      if (colors[colorOffset + 3] !== selected) {
+        colors[colorOffset + 3] = selected;
+        colorChanged = true;
+      }
+      if (colorChanged) {
+        colorStart = Math.min(colorStart, index);
+        colorEnd = index + 1;
+      }
+      if (ticks[index] !== instance.tick) {
+        ticks[index] = instance.tick;
+        tickStart = Math.min(tickStart, index);
+        tickEnd = index + 1;
+      }
     }
     this.meshes.forEach((mesh) => {
       mesh.count = count;
       mesh.visible = count > 0;
     });
-    this.matrixAttribute.clearUpdateRanges();
-    this.matrixAttribute.addUpdateRange(0, count * 16);
-    this.matrixAttribute.needsUpdate = true;
-    this.colorAttribute.clearUpdateRanges();
-    this.colorAttribute.addUpdateRange(0, count * 4);
-    this.colorAttribute.needsUpdate = true;
+    if (matrixEnd >= 0) {
+      this.matrixAttribute.clearUpdateRanges();
+      this.matrixAttribute.addUpdateRange(
+        matrixStart * 16,
+        (matrixEnd - matrixStart) * 16,
+      );
+      this.matrixAttribute.needsUpdate = true;
+    }
+    if (colorEnd >= 0) {
+      this.colorAttribute.clearUpdateRanges();
+      this.colorAttribute.addUpdateRange(
+        colorStart * 4,
+        (colorEnd - colorStart) * 4,
+      );
+      this.colorAttribute.needsUpdate = true;
+    }
+    if (tickEnd >= 0) {
+      this.tickAttribute.clearUpdateRanges();
+      this.tickAttribute.addUpdateRange(tickStart, tickEnd - tickStart);
+      this.tickAttribute.needsUpdate = true;
+    }
+    this.lastWriteMs = performance.now() - writeStartedAt;
     return count;
+  }
+
+  public updateScroll(cameraTick: number, ppqn: number, nearBoardZ: number): void {
+    for (const material of this.materials) {
+      material.uniforms.uCameraTick.value = cameraTick;
+      material.uniforms.uPpqn.value = ppqn;
+      material.uniforms.uNearBoardZ.value = nearBoardZ;
+    }
   }
 
   public dispose(): void {
@@ -183,7 +261,11 @@ export class NoteInstanceBatch {
     tinted: boolean,
   ): THREE.ShaderMaterial {
     const material = source.clone();
-    material.defines = { ...material.defines, USE_INSTANCE_STATE: 1 };
+    material.defines = {
+      ...material.defines,
+      USE_INSTANCE_STATE: 1,
+      USE_TICK_SCROLL: 1,
+    };
     setMaterialStateForMaterial(material, { tint: tinted });
     material.needsUpdate = true;
     return material;

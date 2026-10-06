@@ -21,6 +21,8 @@ describe("SustainTailBatch", () => {
         halfLength: 2,
         color: rgbFromHex(0xff0000),
         selected: true,
+        startTick: 480,
+        endTick: 720,
       },
     ]);
 
@@ -33,6 +35,33 @@ describe("SustainTailBatch", () => {
       expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1 }),
     );
     expect(batch.mesh.instanceMatrix.array[12]).toBe(1);
+    const matrixVersion = batch.mesh.instanceMatrix.version;
+    const colorVersion = (
+      batch.mesh.geometry.getAttribute(
+        "aLaneColorSelected",
+      ) as THREE.BufferAttribute
+    ).version;
+    batch.write([
+      {
+        x: 1,
+        y: -0.04,
+        z: -5,
+        width: 0.32,
+        halfLength: 2,
+        color: rgbFromHex(0xff0000),
+        selected: true,
+        startTick: 480,
+        endTick: 720,
+      },
+    ]);
+    expect(batch.mesh.instanceMatrix.version).toBe(matrixVersion);
+    expect(
+      (
+        batch.mesh.geometry.getAttribute(
+          "aLaneColorSelected",
+        ) as THREE.BufferAttribute
+      ).version,
+    ).toBe(colorVersion);
 
     batch.write([]);
     expect(batch.mesh.count).toBe(0);
@@ -54,6 +83,8 @@ describe("SustainTailBatch", () => {
       halfLength: 1,
       color: rgbFromHex(0x00ff00),
       selected: false,
+      startTick: 0,
+      endTick: 240,
     };
 
     expect(batch.write([tail, tail, tail])).toBe(3);

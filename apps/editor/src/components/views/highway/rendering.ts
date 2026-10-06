@@ -232,6 +232,11 @@ export class HighwayRenderer {
     Record<DrumPlacementKind, InstancedNote>
   > = {};
   private fretPaletteIsDrums = false;
+  private instancedNotesWereEnabled = false;
+  private lastInstancedChart: ChartView | null = null;
+  private lastInstancedChartRevision = -1;
+  private lastInstancedSelectionRevision = -1;
+  private lastInstancedVisibleEntries: IndexedNote[] = [];
 
   public constructor(
     context: HighwayContext,
@@ -368,11 +373,13 @@ export class HighwayRenderer {
         tailData.push({
           x: transform.position.x,
           y: transform.position.y,
-          z: transform.position.z,
+          z: 0,
           width: transform.scale.x,
           halfLength: transform.scale.y,
           color: laneRgbColors[lane],
           selected,
+          startTick: tailStart,
+          endTick: solidTailEnd,
           priority: Math.abs(
             note.start - this.coordinates.getTickAtDepth(strikeLineZ),
           ),
@@ -408,6 +415,11 @@ export class HighwayRenderer {
     let visibleTails = usedTails.size;
     if (useInstancedTails) {
       this.ensureInstancedTailBatches();
+      this.instancedTailBatch!.updateScroll(
+        this.context.getCameraTick(),
+        this.context.getPpqn(),
+        nearBoardZ,
+      );
       visibleTails = this.instancedTailBatch!.write(tailData);
     } else {
       this.instancedTailBatch?.write([]);
@@ -429,13 +441,28 @@ export class HighwayRenderer {
 
     const usedGems = new Set<InstancedNote>();
     const useInstancedNotes = this.context.getInstancingEnabled();
+    const selection = this.context.getSelectionContext();
+    const chartRevision = chart.getNoteRevision();
+    const selectionRevision = selection.getRevision();
+    const noteBatchDirty =
+      useInstancedNotes &&
+      (!this.instancedNotesWereEnabled ||
+        this.lastInstancedChart !== chart ||
+        this.lastInstancedChartRevision !== chartRevision ||
+        this.lastInstancedSelectionRevision !== selectionRevision ||
+        this.lastInstancedVisibleEntries.length !== visibleNotes.length ||
+        visibleNotes.some(
+          (entry, index) => this.lastInstancedVisibleEntries[index] !== entry,
+        ));
+    this.scene.userData.noteBatchDirty = noteBatchDirty;
     const noteData: Record<"note" | DrumPlacementKind, NoteInstanceData[]> = {
       note: [],
       kick: [],
       cymbal: [],
       pad: [],
     };
-    for (const { note, lane, kind } of visibleNotes) {
+    if (!useInstancedNotes || noteBatchDirty) {
+      for (const { note, lane, kind } of visibleNotes) {
       const instanceKind =
         kind === "kick" || kind === "cymbal" || kind === "pad"
           ? kind
@@ -447,16 +474,15 @@ export class HighwayRenderer {
         placement.transform,
         placement.placementOffset,
       );
-      const selected = this.context
-        .getSelectionContext()
-        .isSelected(note.noteOn);
+      const selected = selection.isSelected(note.noteOn);
       if (useInstancedNotes) {
         noteData[instanceKind ?? "note"].push({
           x: position.x,
           y: position.y,
-          z: position.z,
+          z: position.z - this.coordinates.getNoteZ(note.start),
           color: kind === "kick" ? kickColor : laneColors[lane],
           selected,
+          tick: note.start,
           priority: Math.abs(
             note.start - this.coordinates.getTickAtDepth(strikeLineZ),
           ),
@@ -480,18 +506,32 @@ export class HighwayRenderer {
           passed: note.start <= this.context.getPlayheadTick() + 0.001,
         },
       );
+      }
     }
     if (useInstancedNotes) {
       for (const kind of ["note", "kick", "cymbal", "pad"] as const) {
         const instances = noteData[kind];
         const batch = this.instancedGemBatches[kind];
         if (instances.length > 0) this.ensureInstancedGemBatch(kind);
-        (this.instancedGemBatches[kind] ?? batch)?.write(instances);
+        const activeBatch = this.instancedGemBatches[kind] ?? batch;
+        activeBatch?.updateScroll(
+          this.context.getCameraTick(),
+          this.context.getPpqn(),
+          nearBoardZ,
+        );
+        if (!noteBatchDirty && activeBatch) activeBatch.lastWriteMs = 0;
+        if (noteBatchDirty) activeBatch?.write(instances);
       }
+      this.instancedNotesWereEnabled = true;
+      this.lastInstancedChart = chart;
+      this.lastInstancedChartRevision = chartRevision;
+      this.lastInstancedSelectionRevision = selectionRevision;
+      if (noteBatchDirty) this.lastInstancedVisibleEntries = visibleNotes.slice();
     } else {
       Object.values(this.instancedGemBatches).forEach((batch) =>
         batch.write([]),
       );
+      this.instancedNotesWereEnabled = false;
     }
     this.scene.userData.instancedNoteCounts = Object.fromEntries(
       Object.entries(this.instancedGemBatches).map(([kind, batch]) => [
@@ -499,6 +539,13 @@ export class HighwayRenderer {
         batch?.meshes[0]?.count ?? 0,
       ]),
     );
+    this.scene.userData.instanceBufferWriteMs =
+      Object.values(this.instancedGemBatches).reduce(
+        (total, batch) => total + (batch?.lastWriteMs ?? 0),
+        0,
+      ) +
+      (this.instancedTailBatch?.lastWriteMs ?? 0) +
+      (this.instancedPreviewTailBatch?.lastWriteMs ?? 0);
     this.updateBatchDiagnostics();
     this.releaseUnusedBindings(this.gemBindings, usedGems, (item) => {
       item.object.visible = false;
@@ -1303,11 +1350,13 @@ export class HighwayRenderer {
         previewData.push({
           x: transform.position.x,
           y: transform.position.y,
-          z: transform.position.z,
+          z: 0,
           width: transform.scale.x,
           halfLength: transform.scale.y,
           color: laneRgbColors[lane],
           selected: false,
+          startTick: start,
+          endTick: end,
           priority: Math.abs(
             note.start - this.coordinates.getTickAtDepth(strikeLineZ),
           ),
