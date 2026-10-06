@@ -15,7 +15,7 @@ async function configureInstancing(page: import("@playwright/test").Page, enable
   );
 }
 
-test("instanced sustain tails match pooled rendering", async ({ page }) => {
+test("instanced notes and tails match pooled rendering with fewer objects", async ({ page }) => {
   await page.addInitScript(() => {
     Reflect.set(globalThis, "__captureThreeFramebuffer", true);
   });
@@ -33,6 +33,12 @@ test("instanced sustain tails match pooled rendering", async ({ page }) => {
   const pooledCalls = Number(
     await canvas.getAttribute("data-three-render-calls"),
   );
+  const pooledObjects = Number(
+    await canvas.getAttribute("data-three-scene-objects"),
+  );
+  const pooledGeometries = Number(
+    await canvas.getAttribute("data-three-geometry-count"),
+  );
 
   await configureInstancing(page, true);
   await page.reload();
@@ -48,9 +54,17 @@ test("instanced sustain tails match pooled rendering", async ({ page }) => {
   const instancedCalls = Number(
     await canvas.getAttribute("data-three-render-calls"),
   );
+  const instancedObjects = Number(
+    await canvas.getAttribute("data-three-scene-objects"),
+  );
+  const instancedGeometries = Number(
+    await canvas.getAttribute("data-three-geometry-count"),
+  );
 
   expect(pooledSustains).toBeGreaterThan(0);
   expect(instancedSustains).toBe(pooledSustains);
   expect(instancedCalls).toBeLessThan(pooledCalls);
+  expect(instancedObjects).toBeLessThan(pooledObjects);
+  expect(instancedGeometries).toBeLessThan(pooledGeometries);
   expect(instanced.equals(pooled)).toBe(true);
 });
