@@ -1,6 +1,4 @@
 import * as THREE from "three";
-import type { Rgb, MaterialSet } from "./materials";
-import { setMaterialStateForMaterial } from "./materials";
 import {
   HIGHWAY_GEOMETRY_CATALOG,
   type IVector3,
@@ -17,8 +15,11 @@ export function noteWorldPosition(
   laneX: number,
   noteZ: number,
   transform: ITransform = HIGHWAY_GEOMETRY_CATALOG.note.transform,
-  placementOffset: IVector3 =
-    HIGHWAY_GEOMETRY_CATALOG.note.placementOffset ?? { x: 0, y: 0, z: 0 },
+  placementOffset: IVector3 = HIGHWAY_GEOMETRY_CATALOG.note.placementOffset ?? {
+    x: 0,
+    y: 0,
+    z: 0,
+  },
 ): WorldPosition {
   return {
     x: laneX + transform.position.x + placementOffset.x,

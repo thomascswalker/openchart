@@ -12,6 +12,10 @@ function createHarness(
     phrases?: MidiNotePhrase[];
     note?: MidiNote;
     outsidePhraseBand?: boolean;
+    mode?: "select" | "place" | "remove" | "solo" | "stagepower";
+    phraseMode?: "solo" | "stagepower" | null;
+    sustain?: boolean;
+    cameraTick?: number;
   } = {},
 ) {
   const state: ChartViewState = {
@@ -81,11 +85,12 @@ function createHarness(
   const context = {
     getState: () => state,
     getCurrentChart: () => chart,
-    getMode: () => "solo",
-    getPhraseMode: () => "solo",
+    getMode: () => options.mode ?? "solo",
+    getPhraseMode: () =>
+      options.phraseMode === undefined ? "solo" : options.phraseMode,
     getSelectionContext: () => selection,
     getPlayheadTick: () => 0,
-    getCameraTick: () => 0,
+    getCameraTick: () => options.cameraTick ?? 0,
     getPpqn: () => 480,
     getCanvas: () => canvas,
     getViewport: () => ({ width: 800, height: 600 }),
@@ -119,7 +124,7 @@ function createHarness(
     getSnapTicks: () => 480,
   };
   const hitTesting = {
-    getSustainAt: () => undefined,
+    getSustainAt: () => (options.sustain ? options.note : undefined),
     getNoteAt: () => options.note,
     getPhraseAt: () => options.phrase,
     getPhraseDragOperation: () => "resize-end",
@@ -130,7 +135,10 @@ function createHarness(
       bottom: 240,
     }),
   };
-  const editing = {};
+  const editing = {
+    placeNoteAt: vi.fn(() => true),
+    resizeNote: vi.fn(() => true),
+  };
   const input = new HighwayInputController(
     context,
     coordinates as never,
@@ -147,6 +155,8 @@ function createHarness(
     phraseEditing,
     selection,
     setPointerCapture,
+    coordinates,
+    editing,
   };
 }
 
@@ -275,5 +285,95 @@ describe("HighwayInputController phrase pointer routing", () => {
       false,
     );
     expect(harness.selection.size).toBe(0);
+  });
+});
+
+describe("HighwayInputController note interaction", () => {
+  it("refreshes the hover and placement cursor after wheel scrolling", () => {
+    const noteOn = {} as MidiChannelEvent;
+    const note = { note: 0, start: 0, end: 960, noteOn } as MidiNote;
+    const harness = createHarness({
+      mode: "place",
+      phraseMode: null,
+      note,
+      cameraTick: 480,
+    });
+    detachInput = () => harness.input.detach();
+
+    harness.canvas.dispatchEvent(
+      new WheelEvent("wheel", {
+        bubbles: true,
+        cancelable: true,
+        deltaY: 100,
+        clientX: 300,
+        clientY: 200,
+      }),
+    );
+
+    expect(harness.context.setCameraTick).toHaveBeenCalledWith(960);
+    expect(harness.input.getGhostNoteLocation()).toMatchObject({
+      lane: 0,
+      tick: 240,
+    });
+    expect(harness.input.getHoveredNoteOn()).toBe(noteOn);
+  });
+
+  it("keeps click placement on a sustain available in Place mode", () => {
+    const note = {
+      note: 0,
+      start: 0,
+      end: 960,
+      noteOn: {} as MidiChannelEvent,
+    } as MidiNote;
+    const harness = createHarness({
+      mode: "place",
+      phraseMode: null,
+      note,
+      sustain: true,
+    });
+    detachInput = () => harness.input.detach();
+
+    harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
+    harness.canvas.dispatchEvent(pointerEvent("pointerup"));
+    harness.canvas.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(harness.editing.placeNoteAt).toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      240,
+      false,
+      note,
+    );
+  });
+
+  it("resizes a sustain by dragging it in Place mode", () => {
+    const note = {
+      note: 0,
+      start: 0,
+      end: 960,
+      noteOn: {} as MidiChannelEvent,
+    } as MidiNote;
+    const harness = createHarness({
+      mode: "place",
+      phraseMode: null,
+      note,
+      sustain: true,
+    });
+    vi.spyOn(harness.coordinates, "getChartLocation")
+      .mockReturnValueOnce({ lane: 0, tick: 240 })
+      .mockReturnValueOnce({ lane: 0, tick: 480 });
+    detachInput = () => harness.input.detach();
+
+    harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
+    harness.canvas.dispatchEvent(pointerEvent("pointermove", 300, 300));
+    harness.canvas.dispatchEvent(pointerEvent("pointerup", 300, 300));
+
+    expect(harness.editing.resizeNote).toHaveBeenCalledWith(
+      expect.anything(),
+      note,
+      480,
+    );
+    expect(harness.editing.placeNoteAt).not.toHaveBeenCalled();
+    expect(harness.context.notifyNotesChanged).toHaveBeenCalledOnce();
   });
 });

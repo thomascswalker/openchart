@@ -285,7 +285,38 @@ export class HighwayInputController {
       return;
     }
     if (!location) return;
-    if (this.tool === "place") return;
+    if (this.tool === "place") {
+      if (event.button !== 0 || !sustainHit) return;
+      event.preventDefault();
+      this.canvas?.focus();
+      this.suppressNextClick = true;
+      const lane = physicalLaneForNote(chart, sustainHit);
+      this.drag = {
+        pointerId: event.pointerId,
+        button: 0,
+        shiftKey: event.shiftKey,
+        moved: false,
+        sustainHit,
+        noteOn: sustainHit.noteOn,
+        noteOns: [sustainHit.noteOn],
+        targets: [
+          {
+            noteOn: sustainHit.noteOn,
+            initialTick: sustainHit.start,
+            initialLane: lane,
+          },
+        ],
+        initialLane: lane,
+        initialTick: sustainHit.start,
+        pointerLane: location.lane,
+        pointerTick: location.tick,
+        resizing: true,
+        changed: false,
+      };
+      this.canvas?.setPointerCapture(event.pointerId);
+      this.context.requestRender();
+      return;
+    }
     if (this.tool === "remove") {
       if (event.button !== 0) return;
       event.preventDefault();
@@ -631,6 +662,8 @@ export class HighwayInputController {
       wheelTicksPerPixel,
     );
     this.context.setCameraTick(nextTick);
+    this.updateHoveredNote(event);
+    this.updateGhostLocation(event);
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
@@ -739,7 +772,7 @@ export class HighwayInputController {
     }
   };
 
-  private updateHoveredNote(event: PointerEvent): void {
+  private updateHoveredNote(event: MouseEvent): void {
     if (this.context.getPhraseMode()) {
       this.updatePhraseHover(event);
       return;
@@ -753,10 +786,7 @@ export class HighwayInputController {
     this.context.requestRender();
   }
 
-  private updateCanvasCursor(
-    hoveringNote: boolean,
-    event?: PointerEvent,
-  ): void {
+  private updateCanvasCursor(hoveringNote: boolean, event?: MouseEvent): void {
     const canvas = this.canvas;
     if (!canvas) return;
     if (!this.canEditNotes) {
@@ -766,7 +796,9 @@ export class HighwayInputController {
     const phraseMode = this.context.getPhraseMode();
     if (phraseMode) {
       const activeDrag = this.phraseEditing.getDragState();
-      if (activeDrag && event?.pointerId === activeDrag.pointerId) {
+      const pointerId =
+        event && "pointerId" in event ? event.pointerId : undefined;
+      if (activeDrag && pointerId === activeDrag.pointerId) {
         canvas.style.cursor =
           activeDrag.operation === "move"
             ? "grabbing"
@@ -824,7 +856,7 @@ export class HighwayInputController {
     }
   }
 
-  private updateGhostLocation(event: PointerEvent): void {
+  private updateGhostLocation(event: MouseEvent): void {
     if (!this.canEditNotes || this.context.getPhraseMode()) {
       this.ghostNoteLocation = null;
       return;
@@ -909,7 +941,7 @@ export class HighwayInputController {
     this.context.requestRender();
   }
 
-  private updatePhraseHover(event: PointerEvent): void {
+  private updatePhraseHover(event: MouseEvent): void {
     const chart = this.getCurrentChart();
     const kind = this.context.getPhraseMode();
     if (!chart || !kind) return;

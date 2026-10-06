@@ -8,9 +8,9 @@ declare global {
 }
 
 export interface EngineOptions {
-  background?: number;
-  antialias?: boolean;
-  pixelRatioCap?: number;
+  background: number;
+  antialias: boolean;
+  pixelRatioCap: number;
 }
 
 const defaultEngineOptions: EngineOptions = {
@@ -20,7 +20,7 @@ const defaultEngineOptions: EngineOptions = {
 };
 
 // Dataset for storing diagnostic information about the rendering engine
-interface CanvasDataset {
+interface CanvasDataset extends DOMStringMap {
   /* Children of the scene */
   sceneChildren: string;
   /* Number of visible notes in the scene */
@@ -78,32 +78,28 @@ export class Engine {
   // Flag indicating whether the engine has been disposed
   private disposed = false;
 
-  public constructor(options: EngineOptions = {}) {
+  public constructor({ background, antialias, pixelRatioCap }: EngineOptions) {
     // Merge the provided options with the default options
-    options = { ...defaultEngineOptions, ...options };
-
-    // Set pixel ratio cap
-    this.pixelRatioCap = options.pixelRatioCap;
+    background = background ?? defaultEngineOptions.background;
+    antialias = antialias ?? defaultEngineOptions.antialias;
+    this.pixelRatioCap = pixelRatioCap ?? defaultEngineOptions.pixelRatioCap;
 
     // Create the WebGL renderer instance
     this.renderer = new THREE.WebGLRenderer({
-      antialias: options.antialias,
+      antialias: antialias,
       alpha: false,
       powerPreference: "high-performance",
     });
 
     // Extract the canvas element from the renderer and set its default style
     this.canvas = this.renderer.domElement;
-    this.canvas.style = {
-      ...this.canvas.style,
-      display: "block",
-      width: "100%",
-      height: "100%",
-      touchAction: "none",
-    };
+    this.canvas.style.display = "block";
+    this.canvas.style.width = "100%";
+    this.canvas.style.height = "100%";
+    this.canvas.style.touchAction = "none";
 
     // Set the clear color and other renderer properties
-    this.renderer.setClearColor(options.background, 1);
+    this.renderer.setClearColor(background, 1);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.debug.checkShaderErrors = true;
 

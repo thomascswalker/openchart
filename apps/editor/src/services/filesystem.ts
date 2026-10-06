@@ -1,4 +1,3 @@
-import type { PublicMethods } from "../util/meta";
 import type { ILoggerService } from "./logger";
 import { IService } from "../platform/services";
 

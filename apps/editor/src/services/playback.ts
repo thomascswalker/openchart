@@ -107,6 +107,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   private canPlay = false;
   private playbackTick = 0;
   private midiTotalTicks = 0;
+  private midiPlaybackEndTick = 0;
   private ppqn = 480;
   private tempoChanges: TempoChange[] = DEFAULT_TEMPO;
   private lastAudio: ReturnType<AudioService["getSnapshot"]>["audio"];
@@ -144,6 +145,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.selectedTrackIndex = null;
     this.highwayNotes = [];
     this.midiTotalTicks = 0;
+    this.midiPlaybackEndTick = 0;
     this.ppqn = 480;
     this.tempoChanges = DEFAULT_TEMPO;
     this.resetSession();
@@ -218,6 +220,20 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       maxTick = Math.max(maxTick, trackEndTick);
     }
     this.midiTotalTicks = Math.max(maxTick, hasEvents ? 1 : 0);
+    if (hasEvents) {
+      const timeSignatures = this.midiData?.getTimeSignatureChanges() ?? [];
+      let numerator = 4;
+      let denominator = 2;
+      for (const change of timeSignatures) {
+        if (change.tick > maxTick) break;
+        numerator = change.numerator;
+        denominator = change.denominator;
+      }
+      const measureTicks = this.ppqn * (4 / 2 ** denominator) * numerator;
+      this.midiPlaybackEndTick = maxTick + 2 * measureTicks;
+    } else {
+      this.midiPlaybackEndTick = 0;
+    }
     this.canPlay =
       hasEvents || this.audioService.getSnapshot().audio !== undefined;
     this.publish();
@@ -462,7 +478,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   }
 
   private totalTimelineTicks(): number {
-    return Math.max(this.midiTotalTicks, this.totalAudioTicks());
+    return Math.max(this.midiPlaybackEndTick, this.totalAudioTicks());
   }
 
   private createSnapshot(): PlaybackSnapshot {

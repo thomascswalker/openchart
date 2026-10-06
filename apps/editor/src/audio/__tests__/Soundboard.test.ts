@@ -202,7 +202,7 @@ describe("Soundboard", () => {
       settings: settings(),
       clapEnabled: true,
       highwayActive: true,
-      highwayNotes: [note(10_000)],
+      highwayNotes: [note(10_000), note(10_000), note(10_000), note(10_500)],
       highwayKey: "highway:expert",
     });
     engine.start(0);
@@ -211,6 +211,8 @@ describe("Soundboard", () => {
     expect(oscillators).toHaveLength(0);
     engine.updateTick(10_000);
     expect(oscillators).toHaveLength(1);
+    engine.updateTick(10_500);
+    expect(oscillators).toHaveLength(2);
     engine.stop();
   });
 });

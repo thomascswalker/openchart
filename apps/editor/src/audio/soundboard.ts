@@ -230,7 +230,8 @@ export class Soundboard {
         nextTick,
         visibleNotes,
       );
-      if (crossings.length > 0) this.queueClaps(crossings.length);
+      const onsetCount = new Set(crossings.map((note) => note.start)).size;
+      if (onsetCount > 0) this.queueClaps(onsetCount);
     } else {
       this.crossingTracker.begin(configuration.highwayKey, nextTick);
     }

@@ -39,6 +39,11 @@ function midi(
   tracks: object[] = [
     { getNotes: () => [{ end: 960 }], getTimedEvents: () => [] },
   ],
+  timeSignatures: {
+    tick: number;
+    numerator: number;
+    denominator: number;
+  }[] = [],
 ): MidiData {
   const normalizedTracks = tracks.map((track) => {
     const source = track as {
@@ -62,7 +67,7 @@ function midi(
   return {
     header: { division: 480 },
     getTempoChanges: () => [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-    getTimeSignatureChanges: () => [],
+    getTimeSignatureChanges: () => timeSignatures,
     tracks: normalizedTracks,
   } as unknown as MidiData;
 }
@@ -105,7 +110,7 @@ describe("PlaybackService", () => {
     configure(service);
 
     expect(service.getSnapshot().canPlay).toBe(true);
-    expect(service.getSnapshot().totalTimelineTicks).toBe(960);
+    expect(service.getSnapshot().totalTimelineTicks).toBe(4_800);
     service.setPlaybackTick(240);
     expect(engine.seek).toHaveBeenCalledWith(240);
     service.dispose();
@@ -142,7 +147,7 @@ describe("PlaybackService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("plays until the last MIDI event, even past the last note", () => {
+  it("plays two measures past the last MIDI event, even past the last note", () => {
     const audio = new AudioService();
     const service = new PlaybackService(audio);
     configure(service, {
@@ -155,9 +160,24 @@ describe("PlaybackService", () => {
       ]),
     });
 
-    expect(service.getSnapshot().totalTimelineTicks).toBe(2_000);
+    expect(service.getSnapshot().totalTimelineTicks).toBe(5_840);
     service.seekEnd();
     expect(service.getSnapshot().playbackTick).toBe(2_000);
+    service.dispose();
+    audio.dispose();
+  });
+
+  it("uses the active time signature to extend MIDI playback", () => {
+    const audio = new AudioService();
+    const service = new PlaybackService(audio);
+    configure(service, {
+      midiData: midi(
+        [{ getNotes: () => [], getTimedEvents: () => [{ tick: 2_000 }] }],
+        [{ tick: 0, numerator: 3, denominator: 2 }],
+      ),
+    });
+
+    expect(service.getSnapshot().totalTimelineTicks).toBe(4_880);
     service.dispose();
     audio.dispose();
   });
@@ -174,7 +194,7 @@ describe("PlaybackService", () => {
     currentTrack.events = [{ deltaTime: 3_840 }];
 
     service.refresh(currentMidi);
-    expect(service.getSnapshot().totalTimelineTicks).toBe(3_840);
+    expect(service.getSnapshot().totalTimelineTicks).toBe(7_680);
     service.seekEnd();
     expect(service.getSnapshot().playbackTick).toBe(3_840);
 
@@ -196,11 +216,11 @@ describe("PlaybackService", () => {
     };
     const service = new PlaybackService(audio, documentService as never);
     configure(service, { midiData: currentMidi });
-    expect(service.getSnapshot().totalTimelineTicks).toBe(961);
+    expect(service.getSnapshot().totalTimelineTicks).toBe(4_801);
 
     track.events = [{ deltaTime: 4_320 }, { deltaTime: 1 }];
     listener();
-    expect(service.getSnapshot().totalTimelineTicks).toBe(4_321);
+    expect(service.getSnapshot().totalTimelineTicks).toBe(8_161);
     service.seekEnd();
     expect(service.getSnapshot().playbackTick).toBe(4_321);
 
