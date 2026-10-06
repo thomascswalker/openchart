@@ -22,9 +22,9 @@ flowchart TD
       subgraph VM["Viewport Manager (1 to 4 panels)"]
           direction TB
           subgraph P1["Viewport Panel 1"]
-              direction LR
+              direction TB
               TB["Toolbar"]
-              TL["Track List<br/><i>(Piano Roll)</i>"]
+              TL["Track List<br/><i>(Piano Roll)</i>"] ---> PR
               subgraph CR["View Renderer"]
                   direction TB
                   PR["<b>Piano Roll Renderer</b><br/>2D orthographic"]
