@@ -2,7 +2,6 @@ import * as THREE from "three";
 
 export type Rgb = [number, number, number];
 export type AssetPropertyValue = string | number | Rgb;
-export type UniformValue = number | Rgb | THREE.Texture;
 export type MaterialPropertyName =
   "diffuseTex" | "emissionTex" | "emissionMaskTex";
 
@@ -32,8 +31,6 @@ export interface AssetDefinition {
   materials: Record<string, MaterialDefinition>;
   unusedAssets?: Record<string, string>;
 }
-
-export type AssetDefinitions = AssetDefinition;
 
 export interface ResolvedMaterialDefinition {
   key: string;

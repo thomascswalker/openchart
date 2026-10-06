@@ -1,4 +1,3 @@
-import type { PublicMethods } from "../util/meta";
 import type { ILoggerService } from "./logger";
 import { IService } from "../platform/services";
 
@@ -113,5 +112,3 @@ export class FileSystemService extends IService {
     for (const listener of this.listeners) listener();
   }
 }
-
-export type IFileSystemService = PublicMethods<FileSystemService>;

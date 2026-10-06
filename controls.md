@@ -31,6 +31,7 @@
 | **`LMB`**         | Place tool          | Add note                        |
 | **`LMB`**         | Place tool, sustain | Add note + trim sustain         |
 | **`LMB + Shift`** | Place tool, sustain | Add note + preserve sustain     |
+| **`LMB + Drag`**  | Place tool, sustain | Resize sustain                  |
 | **`LMB + Drag`**  | Select tool, note   | Move note(s)                    |
 | **`LMB + Drag`**  | Select tool, blank  | Marquee select                  |
 | **`RMB + Drag`**  | Select tool, note   | Move sustain                    |

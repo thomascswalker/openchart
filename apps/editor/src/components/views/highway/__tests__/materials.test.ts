@@ -10,12 +10,6 @@ import { createMaterialSet, rgbFromHex } from "../materials";
 import { primitiveRolesForModel } from "../instances";
 import { HIGHWAY_GEOMETRY_CATALOG } from "../geometryCatalog";
 
-export const CIRCULAR_SHADER_ATTRIBUTES = {
-  position: "position",
-  normal: "normal",
-  uv: "uv",
-} as const;
-
 export const CIRCULAR_MATERIAL_MAPPING = {
   baseColor: "optional diffuse texture or white default * uBaseColor",
   laneTint: "uBaseColor",

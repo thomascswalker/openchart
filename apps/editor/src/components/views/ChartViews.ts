@@ -19,7 +19,7 @@ void applicationRenderAssets.loadResources().catch((error) => {
   console.error("Circular highway assets failed to preload", error);
 });
 
-export const CHART_VIEWS = [
+export const CHART_VIEWS: ChartViewDefinition[] = [
   {
     id: "piano-roll",
     name: "Piano Roll",

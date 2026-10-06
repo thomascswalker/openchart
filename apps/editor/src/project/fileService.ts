@@ -1,8 +1,3 @@
-export interface FileType {
-  description: string;
-  accept: Record<string, string[]>;
-}
-
 export interface OpenedFile {
   name: string;
   bytes: Uint8Array;

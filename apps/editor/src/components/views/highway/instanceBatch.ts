@@ -3,7 +3,7 @@ import type { MaterialSet, Rgb } from "./materials";
 import { setMaterialStateForMaterial } from "./materials";
 import { meshesInModel } from "./geometry";
 import type { PrimitiveMaterialRole } from "./instances";
-import type { Transform3D } from "./geometryCatalog";
+import type { ITransform } from "./geometryCatalog";
 
 export interface NoteInstanceData {
   x: number;
@@ -65,7 +65,7 @@ export class NoteInstanceBatch {
     roles: readonly PrimitiveMaterialRole[],
     materialSet: Pick<MaterialSet, "noteTinted" | "noteGrayscale">,
     capacity: number,
-    transform: Transform3D,
+    transform: ITransform,
     renderOrder: number,
   ) {
     this.scene = scene;
@@ -85,7 +85,7 @@ export class NoteInstanceBatch {
   private readonly scene: THREE.Scene;
   private readonly templateMeshes: THREE.Mesh[];
   private readonly roles: readonly PrimitiveMaterialRole[];
-  private readonly transform: Transform3D;
+  private readonly transform: ITransform;
   private readonly renderOrder: number;
 
   private createMeshes(capacity: number): void {
@@ -307,11 +307,11 @@ export class NoteInstanceBatch {
     return material;
   }
 
-  private getTransformMatrix(transform: Transform3D): THREE.Matrix4 {
+  private getTransformMatrix(transform: ITransform): THREE.Matrix4 {
     const euler = new THREE.Euler(
-      THREE.MathUtils.degToRad(transform.rotationDegrees.x),
-      THREE.MathUtils.degToRad(transform.rotationDegrees.y),
-      THREE.MathUtils.degToRad(transform.rotationDegrees.z),
+      THREE.MathUtils.degToRad(transform.rotation.x),
+      THREE.MathUtils.degToRad(transform.rotation.y),
+      THREE.MathUtils.degToRad(transform.rotation.z),
     );
     this.rotation.setFromEuler(euler);
     this.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);

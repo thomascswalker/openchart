@@ -6,7 +6,7 @@ import {
   type Rgb,
 } from "./materials";
 import { applyGeometryModelTransform, meshesInModel } from "./geometry";
-import type { Transform3D } from "./geometryCatalog";
+import type { ITransform } from "./geometryCatalog";
 
 export type PrimitiveMaterialRole = "tinted" | "neutral";
 type MaterialSource =
@@ -67,7 +67,7 @@ export interface InstancedNote {
 export function createModelInstance(
   template: THREE.Object3D,
   material: MaterialSource,
-  transform: Transform3D,
+  transform: ITransform,
 ): InstancedNote {
   const { object, meshes } = cloneModelMeshes(template, material);
   applyGeometryModelTransform(object, transform);
@@ -82,7 +82,7 @@ export function createFretAssembly(
   laneColor: Rgb,
   primitiveRoles: readonly PrimitiveMaterialRole[],
   neutralMaterial: THREE.Material,
-  transform: Transform3D,
+  transform: ITransform,
 ): THREE.Group {
   const assembly = new THREE.Group();
   const { object, meshes } = cloneModelMeshes(template, (primitiveIndex) =>
@@ -118,10 +118,4 @@ function applyPrimitiveMaterialStates(
       setMaterialStateForMaterial(material, stateForRole(role));
     });
   });
-}
-
-export function modelMeshesForBounds(instance: InstancedNote): THREE.Mesh[] {
-  return instance.meshes.length
-    ? instance.meshes
-    : meshesInModel(instance.object);
 }
