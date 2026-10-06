@@ -258,6 +258,10 @@ export class HighwayRenderer {
   }
 
   public draw(): void {
+    const drawStartedAt = performance.now();
+    const recordDrawDuration = () => {
+      this.scene.userData.highwayDrawMs = performance.now() - drawStartedAt;
+    };
     this.phraseEditing.getSelectedPhraseNoteOns();
     const chart = this.context.getCurrentChart();
     if (!chart) {
@@ -267,6 +271,7 @@ export class HighwayRenderer {
       this.hidePhraseSpans();
       this.hidePhraseAffordances();
       this.hideSectionMarkers();
+      recordDrawDuration();
       return;
     }
 
@@ -282,6 +287,7 @@ export class HighwayRenderer {
       this.scene.userData.visibleNotes = 0;
       this.scene.userData.visibleSustains = 0;
       this.hideAllObjects();
+      recordDrawDuration();
       return;
     }
 
@@ -407,6 +413,7 @@ export class HighwayRenderer {
     });
     this.drawGhostGem();
     this.drawHoverOutline(chart);
+    recordDrawDuration();
   }
 
   public updateMarqueeOutline(marquee: MarqueeDragState | null): void {

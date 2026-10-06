@@ -133,6 +133,20 @@ export class Engine {
       this.canvas.dataset.threeRenderTriangles = String(
         this.renderer.info.render.triangles,
       );
+      this.canvas.dataset.threeGeometryCount = String(
+        this.renderer.info.memory.geometries,
+      );
+      this.canvas.dataset.threeTextureCount = String(
+        this.renderer.info.memory.textures,
+      );
+      let sceneObjectCount = 0;
+      scene.traverse(() => {
+        sceneObjectCount += 1;
+      });
+      this.canvas.dataset.threeSceneObjects = String(sceneObjectCount);
+      this.canvas.dataset.threeHighwayDrawMs = String(
+        scene.userData.highwayDrawMs ?? 0,
+      );
     }
   }
 
