@@ -144,30 +144,25 @@ function readSettings(): ApplicationSettings {
 }
 
 export class SettingsService extends IStatefulService<ApplicationSettings> {
-  private readonly listeners = new Set<() => void>();
-  private settings = readSettings();
+  constructor() {
+    super();
+    this._snapshot = readSettings();
+  }
 
   public readonly reset = (): void => {
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(defaultApplicationSettings),
     );
-    this.settings = defaultApplicationSettings;
-    this.publish();
+    this._snapshot = defaultApplicationSettings;
+    this.notify();
   };
 
-  public readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-
-  public readonly getSnapshot = (): ApplicationSettings => this.settings;
-
-  public readonly getSettings = (): ApplicationSettings => this.settings;
+  public readonly getSettings = (): ApplicationSettings => this._snapshot;
 
   public readonly load = (): void => {
-    this.settings = readSettings();
-    this.publish();
+    this._snapshot = readSettings();
+    this.notify();
   };
 
   public readonly applySettings = (settings: ApplicationSettings): boolean => {
@@ -175,12 +170,9 @@ export class SettingsService extends IStatefulService<ApplicationSettings> {
       return false;
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    this.settings = settings;
-    this.publish();
+    this._snapshot = settings;
+    this.notify();
     return true;
   };
 
-  private publish(): void {
-    for (const listener of this.listeners) listener();
-  }
 }

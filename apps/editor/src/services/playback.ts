@@ -84,7 +84,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
 
   private engine = new Soundboard();
   private documentUnsubscribe: (() => void) | undefined;
-  private listeners = new Set<() => void>();
   private midiData: Midi | null | undefined;
   private settings: ApplicationSettings | null = null;
   private selectedInstrument = "LEAD GUITAR";
@@ -109,7 +108,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   private animationFrame: number | null = null;
   private lastFrameMs: number | null = null;
   private configured = false;
-  private snapshot!: PlaybackSnapshot;
 
   constructor(documentService?: DocumentService) {
     super();
@@ -117,13 +115,8 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.documentUnsubscribe = documentService?.subscribe(() => {
       if (this.configured) this.refresh(documentService.getData());
     });
-    this.snapshot = this.createSnapshot();
+    this._snapshot = this.buildSnapshot();
   }
-
-  public readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
 
   public readonly reset = (): void => {
     this.stopPlayback();
@@ -140,8 +133,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.resetSession();
     this.publish();
   };
-
-  public readonly getSnapshot = (): PlaybackSnapshot => this.snapshot;
 
   public readonly configure = (options: PlaybackConfiguration): void => {
     const documentChanged = this.midiData !== options.midiData;
@@ -338,7 +329,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.highwayActive = false;
     this.playbackTick = 0;
     this.feedbackSettings = null;
-    this.snapshot = this.createSnapshot();
+    this._snapshot = this.buildSnapshot();
   }
 
   private configureEngine(): void {
@@ -420,7 +411,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     return this.midiPlaybackEndTick;
   }
 
-  private createSnapshot(): PlaybackSnapshot {
+  private buildSnapshot(): PlaybackSnapshot {
     return {
       isPlaying: this.isPlaying,
       canPlay: this.canPlay,
@@ -445,7 +436,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   }
 
   private publish(): void {
-    this.snapshot = this.createSnapshot();
-    for (const listener of this.listeners) listener();
+    this._snapshot = this.buildSnapshot();
+    this.notify();
   }
 }

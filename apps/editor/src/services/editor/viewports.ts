@@ -45,7 +45,6 @@ function createViewportSession(
 }
 
 export class ViewportService extends IStatefulService<ViewportSnapshot> {
-  private readonly listeners = new Set<() => void>();
   private viewportSessions: ViewportSession[] = [
     createViewportSession(DEFAULT_VIEWPORT_ID),
   ];
@@ -54,14 +53,11 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   private activeViewId = "piano-roll";
   private snapEnabled = true;
   private snapDenominator = 4;
-  private snapshot = this.createSnapshot();
 
-  public readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-
-  public readonly getSnapshot = (): ViewportSnapshot => this.snapshot;
+  constructor() {
+    super();
+    this._snapshot = this.buildSnapshot();
+  }
 
   public readonly reset = (): void => {
     this.viewportSessions = [createViewportSession(DEFAULT_VIEWPORT_ID)];
@@ -173,7 +169,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   public readonly getViewport = (id: string): ViewportSession | undefined =>
     this.viewportSessions.find((item) => item.id === id);
 
-  private createSnapshot(): ViewportSnapshot {
+  private buildSnapshot(): ViewportSnapshot {
     return {
       viewportSessions: this.viewportSessions,
       activeViewportId: this.activeViewportId,
@@ -185,7 +181,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   }
 
   private publish(): void {
-    this.snapshot = this.createSnapshot();
-    for (const listener of this.listeners) listener();
+    this._snapshot = this.buildSnapshot();
+    this.notify();
   }
 }

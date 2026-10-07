@@ -16,7 +16,6 @@ export class FileSystemService extends IService {
   private _logger: ILoggerService;
   private _path: string;
   private _handle: FileSystemFileHandle | null;
-  private readonly listeners = new Set<() => void>();
 
   constructor(logger: ILoggerService) {
     super();
@@ -28,12 +27,7 @@ export class FileSystemService extends IService {
   public readonly reset = (): void => {
     this._path = DEFAULT_PATH;
     this._handle = null;
-    this.publish();
-  };
-
-  public readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    this.notify();
   };
 
   private download(bytes: Uint8Array): void {
@@ -66,7 +60,7 @@ export class FileSystemService extends IService {
     await writeable.close();
     this.download(data);
     this._logger.info(`Document saved to: ${this._path}`);
-    this.publish();
+    this.notify();
     return true;
   }
 
@@ -86,7 +80,7 @@ export class FileSystemService extends IService {
     if (!data) {
       this._logger.error(`Failed to load document: ${this._path}`);
     } else {
-      this.publish();
+      this.notify();
     }
     return data;
   }
@@ -102,13 +96,10 @@ export class FileSystemService extends IService {
   public setPath(path: string) {
     this._path = path;
     this._logger.debug(`Document path set to: ${this._path}`);
-    this.publish();
+    this.notify();
   }
   public getPath() {
     return this._path;
   }
 
-  private publish(): void {
-    for (const listener of this.listeners) listener();
-  }
 }

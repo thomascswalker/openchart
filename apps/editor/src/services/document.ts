@@ -29,27 +29,19 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   private _logger: ILoggerService;
   private _fileSystem: FileSystemService;
   private readonly history = new History(DEFAULT_HISTORY_CAPACITY);
-  private readonly listeners = new Set<() => void>();
   private midiData: Midi | null = new Midi();
   private projectMetadata = createProjectMetadata();
   private fileName: string | null = null;
   private fileHandle: FileSystemFileHandle | null = null;
   private dirty = false;
-  private snapshot = this.createSnapshot();
 
   constructor(logger: ILoggerService, fileSystem: FileSystemService) {
     super();
     this._logger = logger;
     this._fileSystem = fileSystem;
     this.history.reset(this.midiData!);
+    this._snapshot = this.buildSnapshot();
   }
-
-  public readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-
-  public readonly getSnapshot = (): DocumentSnapshot => this.snapshot;
 
   public readonly reset = (): void => {
     this.replaceDocument(
@@ -197,7 +189,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   }
 
-  private createSnapshot(): DocumentSnapshot {
+  private buildSnapshot(): DocumentSnapshot {
     return {
       midiData: this.midiData,
       projectDocument: this.midiData
@@ -218,7 +210,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   }
 
   private publish(): void {
-    this.snapshot = this.createSnapshot();
-    for (const listener of this.listeners) listener();
+    this._snapshot = this.buildSnapshot();
+    this.notify();
   }
 }

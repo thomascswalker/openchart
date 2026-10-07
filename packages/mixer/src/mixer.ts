@@ -6,32 +6,21 @@ class Mixer {
   private _masterVolume: number = 1;
   private _eventListeners = new Map<AudioEvent, AudioEventCallback[]>();
   private _trackEventHandlers = new Map<AudioEvent, AudioEventCallback>();
+  private _onChange?: () => void;
 
   public addTrack(id: TrackId, filename: string) {
     const track = new Track(filename);
     track.volumeScale = this._masterVolume;
     this._tracks[id] = track;
-    for (const eventType of this._eventListeners.keys()) {
-      switch (eventType) {
-        case "ready":
-          track.onReady = this.getTrackEventHandler(eventType);
-          break;
-        case "state":
-          track.onState = this.getTrackEventHandler(eventType);
-          break;
-        case "start":
-          track.onStart = this.getTrackEventHandler(eventType);
-          break;
-        case "end":
-          track.onEnd = this.getTrackEventHandler(eventType);
-          break;
-      }
-    }
+    this.attachTrackEvents(track);
+    this.notifyChange();
   }
 
   public removeTrack(id: TrackId) {
     if (this._tracks[id]) {
+      this._tracks[id][Symbol.dispose]();
       delete this._tracks[id];
+      this.notifyChange();
     }
   }
 
@@ -55,17 +44,20 @@ class Mixer {
     for (const key in this._tracks) {
       this._tracks[key].volumeScale = value;
     }
+    this.notifyChange();
   }
 
   public solo(id: TrackId) {
     for (const key in this._tracks) {
       this._tracks[key].muted = key !== id;
     }
+    this.notifyChange();
   }
 
   public mute(id: TrackId) {
     if (this._tracks[id]) {
       this._tracks[id].muted = true;
+      this.notifyChange();
     }
   }
 
@@ -80,18 +72,21 @@ class Mixer {
     for (const key in this._tracks) {
       this._tracks[key].seek(time);
     }
+    this.notifyChange();
   }
 
   public seekStart() {
     for (const key in this._tracks) {
       this._tracks[key].seek(0);
     }
+    this.notifyChange();
   }
 
   public seekEnd() {
     for (const key in this._tracks) {
       this._tracks[key].seek(this._tracks[key].duration);
     }
+    this.notifyChange();
   }
 
   public get duration(): number {
@@ -108,24 +103,13 @@ class Mixer {
     const listeners = this._eventListeners.get(eventType) ?? [];
     listeners.push(callback);
     this._eventListeners.set(eventType, listeners);
+  }
 
-    for (const key in this._tracks) {
-      const track = this._tracks[key];
-      switch (eventType) {
-        case "ready":
-          track.onReady = this.getTrackEventHandler(eventType);
-          break;
-        case "state":
-          track.onState = this.getTrackEventHandler(eventType);
-          break;
-        case "start":
-          track.onStart = this.getTrackEventHandler(eventType);
-          break;
-        case "end":
-          track.onEnd = this.getTrackEventHandler(eventType);
-          break;
-      }
-    }
+  private attachTrackEvents(track: Track): void {
+    track.onReady = this.getTrackEventHandler("ready");
+    track.onState = this.getTrackEventHandler("state");
+    track.onStart = this.getTrackEventHandler("start");
+    track.onEnd = this.getTrackEventHandler("end");
   }
 
   public set onReady(callback: AudioEventCallback) {
@@ -144,6 +128,10 @@ class Mixer {
     this.on("end", callback);
   }
 
+  public set onChange(callback: () => void) {
+    this._onChange = callback;
+  }
+
   public get playing(): boolean {
     for (const key in this._tracks) {
       if (this._tracks[key].playing) {
@@ -157,18 +145,21 @@ class Mixer {
     for (const key in this._tracks) {
       this._tracks[key].play();
     }
+    this.notifyChange();
   }
 
   public pause() {
     for (const key in this._tracks) {
       this._tracks[key].pause();
     }
+    this.notifyChange();
   }
 
   public stop() {
     for (const key in this._tracks) {
       this._tracks[key].stop();
     }
+    this.notifyChange();
   }
 
   private getTrackEventHandler(eventType: AudioEvent): AudioEventCallback {
@@ -178,10 +169,15 @@ class Mixer {
         for (const callback of this._eventListeners.get(eventType) ?? []) {
           callback(event);
         }
+        this.notifyChange();
       };
       this._trackEventHandlers.set(eventType, handler);
     }
     return handler;
+  }
+
+  private notifyChange(): void {
+    this._onChange?.();
   }
 }
 
