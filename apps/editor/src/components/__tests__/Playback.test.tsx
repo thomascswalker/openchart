@@ -36,5 +36,4 @@ describe("Playback", () => {
     act(() => root.unmount());
     container.remove();
   });
-
 });

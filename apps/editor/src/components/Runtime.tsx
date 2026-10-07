@@ -63,9 +63,5 @@ export function Runtime({ children }: RuntimeProps) {
     doc.setHistoryCapacity(settings.history.capacity);
   }, [doc, settings.history.capacity]);
 
-  return (
-    <Playback>
-      {children}
-    </Playback>
-  );
+  return <Playback>{children}</Playback>;
 }
