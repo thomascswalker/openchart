@@ -87,6 +87,34 @@ describe(".midproject serialization", () => {
     ).toBe(true);
   });
 
+  it("silently ignores legacy Audio metadata and omits it when resaved", async () => {
+    const metadata = {
+      ...createProjectMetadata("Legacy audio"),
+      Audio: { Mode: "multitrack", Sources: {} },
+    };
+    const bytes = createZip([
+      {
+        name: PROJECT_ARCHIVE_METADATA_ENTRY,
+        bytes: new TextEncoder().encode(JSON.stringify(metadata)),
+      },
+      { name: PROJECT_ARCHIVE_MIDI_ENTRY, bytes: createMidi().toBuffer() },
+    ]);
+
+    const restored = await deserializeProject(bytes);
+    expect(restored.metadata).not.toHaveProperty("Audio");
+    expect(restored.metadata.Chart).toEqual({
+      Author: "",
+      PreviewStart: 0,
+      PreviewEnd: 0,
+    });
+
+    const saved = readZip(await serializeProject(restored));
+    const savedMetadata = JSON.parse(
+      new TextDecoder().decode(saved.get(PROJECT_ARCHIVE_METADATA_ENTRY)),
+    );
+    expect(savedMetadata).not.toHaveProperty("Audio");
+  });
+
   it("round-trips a MIDI file containing an otherwise empty track", async () => {
     const midi = new Midi();
     midi.addTrack();

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Difficulty } from "@midiedit/views";
-import { AudioService } from "../audio";
 import { PlaybackService, snapToPreviousTimelineBoundary } from "../playback";
 import type { ApplicationSettings } from "../settings";
 
@@ -44,6 +43,7 @@ function midi(
     numerator: number;
     denominator: number;
   }[] = [],
+  tempoChanges = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
 ): MidiData {
   const normalizedTracks = tracks.map((track) => {
     const source = track as {
@@ -66,7 +66,7 @@ function midi(
   });
   return {
     header: { division: 480 },
-    getTempoChanges: () => [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+    getTempoChanges: () => tempoChanges,
     getTimeSignatureChanges: () => timeSignatures,
     tracks: normalizedTracks,
   } as unknown as MidiData;
@@ -105,8 +105,7 @@ describe("PlaybackService", () => {
   });
 
   it("supports MIDI-only playback and seeks the feedback engine", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     configure(service);
 
     expect(service.getSnapshot().canPlay).toBe(true);
@@ -114,12 +113,45 @@ describe("PlaybackService", () => {
     service.setPlaybackTick(240);
     expect(engine.seek).toHaveBeenCalledWith(240);
     service.dispose();
-    audio.dispose();
+  });
+
+  it("requires MIDI events and advances on the tempo-aware MIDI clock", () => {
+    const service = new PlaybackService();
+    configure(service, { midiData: midi([]) });
+    expect(service.getSnapshot().canPlay).toBe(false);
+
+    configure(service, {
+      midiData: midi(
+        [{ getNotes: () => [{ end: 960 }], getTimedEvents: () => [] }],
+        [],
+        [
+          { tick: 0, microsecondsPerQuarterNote: 500_000 },
+          { tick: 480, microsecondsPerQuarterNote: 1_000_000 },
+        ],
+      ),
+    });
+    let frame: FrameRequestCallback | undefined;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((callback: FrameRequestCallback) => {
+        frame = callback;
+        return 1;
+      }),
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+
+    service.play();
+    frame?.(0);
+    frame?.(750);
+
+    expect(service.getSnapshot().playbackTick).toBe(600);
+    expect(engine.updateTick).toHaveBeenLastCalledWith(600);
+    service.dispose();
+    vi.unstubAllGlobals();
   });
 
   it("pauses with grid snapping and notifies subscribers", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     vi.stubGlobal(
       "requestAnimationFrame",
       vi.fn(() => 1),
@@ -143,13 +175,11 @@ describe("PlaybackService", () => {
     expect(engine.stop).toHaveBeenCalled();
     expect(listener).toHaveBeenCalled();
     service.dispose();
-    audio.dispose();
     vi.unstubAllGlobals();
   });
 
   it("plays two measures past the last MIDI event, even past the last note", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     configure(service, {
       midiData: midi([
         {
@@ -164,12 +194,10 @@ describe("PlaybackService", () => {
     service.seekEnd();
     expect(service.getSnapshot().playbackTick).toBe(2_000);
     service.dispose();
-    audio.dispose();
   });
 
   it("uses the active time signature to extend MIDI playback", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     configure(service, {
       midiData: midi(
         [{ getNotes: () => [], getTimedEvents: () => [{ tick: 2_000 }] }],
@@ -179,12 +207,10 @@ describe("PlaybackService", () => {
 
     expect(service.getSnapshot().totalTimelineTicks).toBe(4_880);
     service.dispose();
-    audio.dispose();
   });
 
   it("refreshes the timeline from the current document data", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     const currentTrack = {
       events: [{ deltaTime: 961 }],
       getNotes: () => [{ end: 961 }],
@@ -199,11 +225,9 @@ describe("PlaybackService", () => {
     expect(service.getSnapshot().playbackTick).toBe(3_840);
 
     service.dispose();
-    audio.dispose();
   });
 
   it("follows document edits without an explicit refresh", () => {
-    const audio = new AudioService();
     let listener = () => {};
     const track = { events: [{ deltaTime: 961 }] };
     const currentMidi = midi([track]);
@@ -214,7 +238,7 @@ describe("PlaybackService", () => {
       },
       getData: () => currentMidi,
     };
-    const service = new PlaybackService(audio, documentService as never);
+    const service = new PlaybackService(documentService as never);
     configure(service, { midiData: currentMidi });
     expect(service.getSnapshot().totalTimelineTicks).toBe(4_801);
 
@@ -225,12 +249,10 @@ describe("PlaybackService", () => {
     expect(service.getSnapshot().playbackTick).toBe(4_321);
 
     service.dispose();
-    audio.dispose();
   });
 
   it("toggles metronome and clap, starting the engine in the gesture", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     configure(service, { settings: settings(true) });
     expect(service.getSnapshot().isMetronomeEnabled).toBe(true);
 
@@ -245,12 +267,10 @@ describe("PlaybackService", () => {
       expect.objectContaining({ clapEnabled: true }),
     );
     service.dispose();
-    audio.dispose();
   });
 
   it("gates highway feedback on the active view and previews notes", () => {
-    const audio = new AudioService();
-    const service = new PlaybackService(audio);
+    const service = new PlaybackService();
     configure(service);
     service.setActiveView("highway");
     expect(engine.configure).toHaveBeenLastCalledWith(
@@ -268,6 +288,5 @@ describe("PlaybackService", () => {
     expect(engine.stopPreview).toHaveBeenCalled();
     service.dispose();
     expect(engine.dispose).toHaveBeenCalled();
-    audio.dispose();
   });
 });

@@ -26,12 +26,6 @@ function formatNumber(value: number): string {
   return Number.isFinite(value) ? value.toLocaleString() : "n/a";
 }
 
-function formatMinutes(milliseconds: number): string {
-  return Number.isFinite(milliseconds) && milliseconds > 0
-    ? `${(milliseconds / 60_000).toFixed(2)} min`
-    : "n/a";
-}
-
 function trackMaxTick(track: {
   getTimedEvents: () => { tick: number }[];
 }): number {
@@ -264,10 +258,6 @@ function DebugPanel({
         )
       : null;
   const {
-    audio,
-    audioDurationMs,
-    totalAudioTicks: audioTotalTicks,
-    audioFileName,
     isPlaying,
     canPlay,
     playbackTick: playheadTick,
@@ -277,8 +267,6 @@ function DebugPanel({
   const tracks = midiData?.tracks ?? [];
   const selectedTrack =
     selectedTrackIndex !== null ? tracks[selectedTrackIndex] : undefined;
-  const currentAudioTimeMs = audio ? audio.currentTime * 1_000 : 0;
-
   return (
     <aside className="debug-panel">
       <div className="debug-panel__header">
@@ -342,22 +330,6 @@ function DebugPanel({
                 )
               : "n/a"}
           </dd>
-        </dl>
-      </section>
-
-      <section className="debug-panel__section">
-        <h2>Audio info</h2>
-        <dl>
-          <dt>Filename</dt>
-          <dd>{audioFileName ?? "none"}</dd>
-          <dt>Loaded</dt>
-          <dd>{audio ? "yes" : "no"}</dd>
-          <dt>Length</dt>
-          <dd>{formatMinutes(audioDurationMs)}</dd>
-          <dt>Current time</dt>
-          <dd>{formatMinutes(currentAudioTimeMs)}</dd>
-          <dt>Length in ticks</dt>
-          <dd>{audio ? formatNumber(audioTotalTicks) : "n/a"}</dd>
         </dl>
       </section>
 

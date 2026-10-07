@@ -25,7 +25,6 @@ describe("Platform", () => {
     expect(Platform.services.get("settings")).toBeInstanceOf(SettingsService);
 
     const serviceIds = [
-      "audio",
       "document",
       "editor.active-chart-view",
       "editor.clipboard",

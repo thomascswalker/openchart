@@ -9,7 +9,6 @@ import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import Platform from "../platform";
-import { AudioService } from "../services/audio";
 import { PlaybackService } from "../services/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
@@ -28,7 +27,6 @@ export function Playback({ children }: { children: ReactNode }) {
   const { settings } = useApplicationSettings();
   const selectedInstrument = activeViewport?.instrument ?? "LEAD GUITAR";
   const selectedDifficulty = activeViewport?.difficulty ?? Difficulty.Expert;
-  const audioService = Platform.services.get<AudioService>("audio");
   const playbackService = Platform.services.get<PlaybackService>("playback");
   const canPlay = useSyncExternalStore(
     playbackService.subscribe,
@@ -71,9 +69,8 @@ export function Playback({ children }: { children: ReactNode }) {
   useEffect(
     () => () => {
       playbackService.dispose();
-      audioService.dispose();
     },
-    [audioService, playbackService],
+    [playbackService],
   );
 
   return <>{children}</>;

@@ -1,23 +1,11 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type KeyboardEvent,
-} from "react";
-import { AUDIO_ROLES } from "../../services/audio";
-import { AudioService } from "../../services/audio";
-import { useEditorState } from "../../hooks/useEditorState";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { executeEditorAction, runAction } from "../../actions/execute";
-import Platform from "../../platform";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
 import {
   type ApplicationSettings,
   validateApplicationSettings,
 } from "../../services/settings";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useRovingTabs } from "../../hooks/useRovingTabs";
-import { matchesAudioFile } from "../../util/audioDiscovery";
 import { Modal } from "../shared/Modal/Modal";
 
 type SettingsTab = string;
@@ -27,79 +15,12 @@ interface SettingsField {
   id: string;
   label: string;
   control: SettingsControl;
-  path: `${"audio" | "discovery" | "saving" | "feedback" | "history"}.${string}`;
+  path: `${"saving" | "feedback" | "history"}.${string}`;
   options?: ReadonlyArray<{ label: string; value: string }>;
   min?: number;
   max?: number;
   step?: number;
-  enabledWhen?: (settings: ApplicationSettings) => boolean;
 }
-
-const audioDiscoveryFields: SettingsField[] = [
-  {
-    id: "songRegex",
-    label: "Song regex",
-    control: "text",
-    path: "discovery.songRegex",
-    enabledWhen: (settings) => !settings.audio.multitrack,
-  },
-  {
-    id: "leadRegex",
-    label: "Lead regex",
-    control: "text",
-    path: "discovery.leadRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "rhythmRegex",
-    label: "Rhythm regex",
-    control: "text",
-    path: "discovery.rhythmRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "bassRegex",
-    label: "Bass regex",
-    control: "text",
-    path: "discovery.bassRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "drumsRegex",
-    label: "Drums regex",
-    control: "text",
-    path: "discovery.drumsRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "vocalsRegex",
-    label: "Vocals regex",
-    control: "text",
-    path: "discovery.vocalsRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "harmoniesRegex",
-    label: "Harmonies regex",
-    control: "text",
-    path: "discovery.harmoniesRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "synthRegex",
-    label: "Synth regex",
-    control: "text",
-    path: "discovery.synthRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-  {
-    id: "otherRegex",
-    label: "Other regex",
-    control: "text",
-    path: "discovery.otherRegex",
-    enabledWhen: (settings) => settings.audio.multitrack,
-  },
-];
 
 const settingsSchema: Record<string, SettingsField[]> = {
   General: [
@@ -122,21 +43,6 @@ const settingsSchema: Record<string, SettingsField[]> = {
       max: 1024,
       step: 1,
     },
-  ],
-  Audio: [
-    {
-      id: "rootPath",
-      label: "Audio Path",
-      control: "text",
-      path: "audio.rootPath",
-    },
-    {
-      id: "multitrack",
-      label: "Use multitrack audio",
-      control: "checkbox",
-      path: "audio.multitrack",
-    },
-    ...audioDiscoveryFields,
   ],
   Feedback: [
     {
@@ -203,10 +109,7 @@ function getSettingValue(
   path: SettingsField["path"],
 ): string | number | boolean {
   const [group, key] = path.split(".") as [
-    keyof Pick<
-      ApplicationSettings,
-      "audio" | "discovery" | "saving" | "feedback" | "history"
-    >,
+    keyof Pick<ApplicationSettings, "saving" | "feedback" | "history">,
     string,
   ];
   return (settings[group] as Record<string, string | number | boolean>)[key];
@@ -218,10 +121,7 @@ function setSettingValue(
   value: string | number | boolean,
 ): ApplicationSettings {
   const [group, key] = path.split(".") as [
-    keyof Pick<
-      ApplicationSettings,
-      "audio" | "discovery" | "saving" | "feedback" | "history"
-    >,
+    keyof Pick<ApplicationSettings, "saving" | "feedback" | "history">,
     string,
   ];
   return {
@@ -231,38 +131,11 @@ function setSettingValue(
 }
 
 const SettingsDialog = () => {
-  const { audioDirectoryName, audioDirectorySupported } = useEditorState();
-  const audioService = Platform.services.get<AudioService>("audio");
-  const sources = useSyncExternalStore(
-    audioService.subscribe,
-    () => audioService.getSnapshot().sources,
-    () => audioService.getSnapshot().sources,
-  );
-  const { projectMetadata } = useDocumentSnapshot();
   const { settings } = useApplicationSettings();
   const [selectedTab, setSelectedTab] = useState<SettingsTab>(tabs[0]);
   const [draft, setDraft] = useState<ApplicationSettings>(settings);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [audioFileNames, setAudioFileNames] = useState<string[] | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  const refreshAudioFileNames = (): void => {
-    void audioService
-      .listDiscoveredFiles(draft.audio.rootPath)
-      .then(setAudioFileNames);
-  };
-
-  useEffect(() => {
-    let ignore = false;
-    void audioService
-      .listDiscoveredFiles(draft.audio.rootPath)
-      .then((names) => {
-        if (!ignore) setAudioFileNames(names);
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [audioService, draft.audio.rootPath, audioDirectoryName]);
 
   const close = (): void => {
     runAction("dialog.close-settings");
@@ -307,30 +180,6 @@ const SettingsDialog = () => {
   };
   const save = async (): Promise<void> => {
     if (await apply()) close();
-  };
-  const syncPortableAudio = async (
-    role: string,
-    source: { fileName: string; enabled: boolean; volume: number } | null,
-  ): Promise<void> => {
-    const current = projectMetadata.Audio ?? {
-      Mode: draft.audio.multitrack ? "multitrack" : "single",
-      Sources: {},
-    };
-    const sources = { ...current.Sources };
-    if (source)
-      sources[role as keyof typeof sources] = {
-        FileName: source.fileName,
-        Enabled: source.enabled,
-        Volume: source.volume,
-      };
-    else delete sources[role as keyof typeof sources];
-    await executeEditorAction("document.apply-project-metadata", {
-      ...projectMetadata,
-      Audio: {
-        Mode: draft.audio.multitrack ? "multitrack" : "single",
-        Sources: sources,
-      },
-    });
   };
   const fields = settingsSchema[selectedTab] ?? [];
   const isDirty = JSON.stringify(draft) !== JSON.stringify(settings);
@@ -379,19 +228,8 @@ const SettingsDialog = () => {
         >
           {fields.map((field) => {
             const value = getSettingValue(draft, field.path);
-            const enabled = field.enabledWhen?.(draft) ?? true;
-            const isDiscoveryField = field.path.startsWith("discovery.");
-            const isFound = isDiscoveryField
-              ? audioFileNames === null
-                ? null
-                : matchesAudioFile(audioFileNames, value as string)
-              : null;
             const update = (nextValue: string | number | boolean): void => {
-              const next = setSettingValue(draft, field.path, nextValue);
-              if (field.id === "multitrack") {
-                next.audio.mode = nextValue ? "multitrack" : "single";
-              }
-              setDraft(next);
+              setDraft(setSettingValue(draft, field.path, nextValue));
             };
             return (
               <label key={field.id}>
@@ -400,43 +238,18 @@ const SettingsDialog = () => {
                     className="input"
                     type="checkbox"
                     checked={value as boolean}
-                    disabled={!enabled}
                     onChange={(event) => update(event.target.checked)}
                   />
                 ) : (
                   field.label
                 )}
                 {field.control === "text" ? (
-                  <div className="audio-discovery-field">
-                    <input
-                      className="input"
-                      aria-invalid={!!errors[field.id]}
-                      value={value as string}
-                      disabled={!enabled}
-                      onChange={(event) => update(event.target.value)}
-                    />
-                    {isDiscoveryField && isFound !== null ? (
-                      <span
-                        className={
-                          isFound
-                            ? "audio-discovery-status audio-discovery-status--found"
-                            : "audio-discovery-status audio-discovery-status--missing"
-                        }
-                        aria-label={
-                          isFound
-                            ? "Matching audio file found"
-                            : "No matching audio file found"
-                        }
-                        title={
-                          isFound
-                            ? "Matching audio file found"
-                            : "No matching audio file found"
-                        }
-                      >
-                        {isFound ? "\u2713" : "\u2717"}
-                      </span>
-                    ) : null}
-                  </div>
+                  <input
+                    className="input"
+                    aria-invalid={!!errors[field.id]}
+                    value={value as string}
+                    onChange={(event) => update(event.target.value)}
+                  />
                 ) : null}
                 {field.control === "number" ? (
                   <input
@@ -454,7 +267,6 @@ const SettingsDialog = () => {
                   <select
                     aria-invalid={!!errors[field.id]}
                     value={value as string}
-                    disabled={!enabled}
                     onChange={(event) => update(event.target.value)}
                   >
                     {field.options?.map((option) => (
@@ -471,140 +283,6 @@ const SettingsDialog = () => {
               </label>
             );
           })}
-          {selectedTab === "Audio" ? (
-            <>
-              <div
-                className="audio-role-sources"
-                aria-label="Multitrack WAV sources"
-              >
-                {AUDIO_ROLES.map((role) => {
-                  const source = sources.get(role);
-                  return (
-                    <div className="audio-role-source" key={role}>
-                      <strong>{role}</strong>
-                      <span>{source?.fileName ?? "No file selected"}</span>
-                      <input
-                        type="file"
-                        accept=".wav,audio/wav"
-                        aria-label={`Choose ${role} WAV`}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = "";
-                          if (!file) return;
-                          void executeEditorAction(
-                            "audio.load-role-file",
-                            role,
-                            file,
-                          )
-                            .then(() =>
-                              syncPortableAudio(role, {
-                                fileName: file.name,
-                                enabled: true,
-                                volume: 1,
-                              }),
-                            )
-                            .catch(() => {});
-                        }}
-                      />
-                      {source ? (
-                        <>
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={source.enabled}
-                              onChange={(event) => {
-                                const enabled = event.target.checked;
-                                void executeEditorAction(
-                                  "audio.set-enabled",
-                                  role,
-                                  enabled,
-                                )
-                                  .then(() =>
-                                    syncPortableAudio(role, {
-                                      fileName: source.fileName ?? "",
-                                      enabled,
-                                      volume: source.volume,
-                                    }),
-                                  )
-                                  .catch(() => {});
-                              }}
-                            />{" "}
-                            Enabled
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={source.volume}
-                            aria-label={`${role} volume`}
-                            onChange={(event) => {
-                              const volume = Number(event.target.value);
-                              void executeEditorAction(
-                                "audio.set-volume",
-                                role,
-                                volume,
-                              )
-                                .then(() =>
-                                  syncPortableAudio(role, {
-                                    fileName: source.fileName ?? "",
-                                    enabled: source.enabled,
-                                    volume,
-                                  }),
-                                )
-                                .catch(() => {});
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void executeEditorAction(
-                                "audio.clear-source",
-                                role,
-                              )
-                                .then(() => syncPortableAudio(role, null))
-                                .catch(() => {});
-                            }}
-                          >
-                            Clear
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="audio-discovery-actions">
-                {audioDirectorySupported ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void executeEditorAction("audio.select-folder")
-                        .then(refreshAudioFileNames)
-                        .catch(() => {});
-                    }}
-                    disabled={
-                      !Platform.actions.isAvailable("audio.select-folder")
-                    }
-                  >
-                    {audioDirectoryName
-                      ? `Audio Folder: ${audioDirectoryName}`
-                      : "Select Audio Folder"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => {
-                    refreshAudioFileNames();
-                    runAction("audio.refresh");
-                  }}
-                  disabled={!Platform.actions.isAvailable("audio.refresh")}
-                >
-                  Refresh Audio
-                </button>
-              </div>
-            </>
-          ) : null}
         </div>
       </div>
       <div className="settings-actions">
