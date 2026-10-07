@@ -36,7 +36,7 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
   await switchView(viewport, "highway");
   const canvas = viewport.locator(".midi-view-host canvas");
   await expect
-    .poll(() => canvas.getAttribute("data-three-render-calls"))
+    .poll(() => canvas.getAttribute("data-render-calls"))
     .not.toBeNull();
 
   for (const metric of [
@@ -45,13 +45,10 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
     "scene-objects",
     "highway-draw-ms",
   ]) {
-    await expect(canvas).toHaveAttribute(
-      `data-three-${metric}`,
-      /^\d+(\.\d+)?$/,
-    );
+    await expect(canvas).toHaveAttribute(`data-${metric}`, /^\d+(\.\d+)?$/);
   }
   const contextAttributes = JSON.parse(
-    (await canvas.getAttribute("data-three-context-attributes")) ?? "{}",
+    (await canvas.getAttribute("data-context-attributes")) ?? "{}",
   ) as { antialias?: boolean };
   expect(contextAttributes.antialias).toBe(false);
 });
