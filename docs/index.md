@@ -64,7 +64,6 @@ flowchart TD
                 LOG["<b>Logger</b>"]
                 FSYS["<b>File System</b><br/>Open, Save, Download"]
                 DOC["<b>Document</b><br/>MIDI Data, Chart Metadata, History"]
-                AUD["<b>Audio</b><br/>Single/Multitrack Audio"]
                 PB["<b>Playback</b><br/>Timeline and Transport"]
                 SET["<b>Settings</b><br/>User preferences"]
             end
