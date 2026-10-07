@@ -1,5 +1,6 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import Mixer from "../mixer";
+import { audioInstances } from "./audioMock";
 
 test("Mixer can instantiate", () => {
   const mixer = new Mixer();
@@ -94,4 +95,36 @@ test("Duration of tracks", () => {
   mixer.addTrack("track2", "sample.wav");
 
   expect(mixer.duration).toBe(0);
+});
+
+test("Mixer forwards events to listeners for existing and future tracks", () => {
+  const mixer = new Mixer();
+  const ready = vi.fn();
+  const secondReady = vi.fn();
+
+  mixer.onReady = ready;
+  mixer.addTrack("track1", "sample.wav");
+  const track1Audio = audioInstances.at(-1)!;
+  mixer.onReady = secondReady;
+
+  const readyEvent = { data: "track1 ready" };
+  track1Audio.emit("ready", readyEvent.data);
+  expect(ready).toHaveBeenCalledWith(readyEvent);
+  expect(secondReady).toHaveBeenCalledWith(readyEvent);
+
+  const end = vi.fn();
+  const start = vi.fn();
+  const state = vi.fn();
+  mixer.onEnd = end;
+  mixer.onStart = start;
+  mixer.onState = state;
+  mixer.addTrack("track2", "sample.wav");
+  const track2Audio = audioInstances.at(-1)!;
+
+  track2Audio.emit("end", null);
+  track2Audio.emit("start", null);
+  track2Audio.emit("state", "running");
+  expect(end).toHaveBeenCalledWith({ data: null });
+  expect(start).toHaveBeenCalledWith({ data: null });
+  expect(state).toHaveBeenCalledWith({ data: "running" });
 });

@@ -1,4 +1,4 @@
-import type { Audio } from "./types";
+import type { Audio, AudioEvent, AudioEventCallback } from "./types";
 import { Audio as AudioFactory } from "ts-audio";
 
 type TrackId = string;
@@ -52,6 +52,26 @@ class Track implements Disposable {
 
   public play() {
     this._audio.play();
+  }
+
+  private on(eventType: AudioEvent, callback: AudioEventCallback) {
+    this._audio.on(eventType, callback);
+  }
+
+  public set onReady(callback: AudioEventCallback) {
+    this.on("ready", callback);
+  }
+
+  public set onState(callback: AudioEventCallback) {
+    this.on("state", callback);
+  }
+
+  public set onStart(callback: AudioEventCallback) {
+    this.on("start", callback);
+  }
+
+  public set onEnd(callback: AudioEventCallback) {
+    this.on("end", callback);
   }
 
   public get playing(): boolean {

@@ -1,13 +1,32 @@
 import Track, { type TrackId } from "./track";
+import type { AudioEvent, AudioEventCallback } from "./types";
 
 class Mixer {
   private _tracks: Record<TrackId, Track> = {};
   private _masterVolume: number = 1;
+  private _eventListeners = new Map<AudioEvent, AudioEventCallback[]>();
+  private _trackEventHandlers = new Map<AudioEvent, AudioEventCallback>();
 
   public addTrack(id: TrackId, filename: string) {
     const track = new Track(filename);
     track.volumeScale = this._masterVolume;
     this._tracks[id] = track;
+    for (const eventType of this._eventListeners.keys()) {
+      switch (eventType) {
+        case "ready":
+          track.onReady = this.getTrackEventHandler(eventType);
+          break;
+        case "state":
+          track.onState = this.getTrackEventHandler(eventType);
+          break;
+        case "start":
+          track.onStart = this.getTrackEventHandler(eventType);
+          break;
+        case "end":
+          track.onEnd = this.getTrackEventHandler(eventType);
+          break;
+      }
+    }
   }
 
   public removeTrack(id: TrackId) {
@@ -85,6 +104,46 @@ class Mixer {
     return maxDuration;
   }
 
+  private on(eventType: AudioEvent, callback: AudioEventCallback) {
+    const listeners = this._eventListeners.get(eventType) ?? [];
+    listeners.push(callback);
+    this._eventListeners.set(eventType, listeners);
+
+    for (const key in this._tracks) {
+      const track = this._tracks[key];
+      switch (eventType) {
+        case "ready":
+          track.onReady = this.getTrackEventHandler(eventType);
+          break;
+        case "state":
+          track.onState = this.getTrackEventHandler(eventType);
+          break;
+        case "start":
+          track.onStart = this.getTrackEventHandler(eventType);
+          break;
+        case "end":
+          track.onEnd = this.getTrackEventHandler(eventType);
+          break;
+      }
+    }
+  }
+
+  public set onReady(callback: AudioEventCallback) {
+    this.on("ready", callback);
+  }
+
+  public set onState(callback: AudioEventCallback) {
+    this.on("state", callback);
+  }
+
+  public set onStart(callback: AudioEventCallback) {
+    this.on("start", callback);
+  }
+
+  public set onEnd(callback: AudioEventCallback) {
+    this.on("end", callback);
+  }
+
   public get playing(): boolean {
     for (const key in this._tracks) {
       if (this._tracks[key].playing) {
@@ -110,6 +169,19 @@ class Mixer {
     for (const key in this._tracks) {
       this._tracks[key].stop();
     }
+  }
+
+  private getTrackEventHandler(eventType: AudioEvent): AudioEventCallback {
+    let handler = this._trackEventHandlers.get(eventType);
+    if (!handler) {
+      handler = (event) => {
+        for (const callback of this._eventListeners.get(eventType) ?? []) {
+          callback(event);
+        }
+      };
+      this._trackEventHandlers.set(eventType, handler);
+    }
+    return handler;
   }
 }
 

@@ -1,5 +1,6 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import Track from "../track";
+import { audioInstances } from "./audioMock";
 
 test("Track can instantiate", () => {
   const track = new Track("sample.wav");
@@ -35,4 +36,15 @@ test("Track volume scaling is preserved while muted", () => {
 
   track.muted = false;
   expect(track.volume).toBe(0.2);
+});
+
+test("Track forwards audio event listeners", () => {
+  const track = new Track("sample.wav");
+  const audio = audioInstances.at(-1)!;
+  const callback = vi.fn();
+
+  track.onState = callback;
+  audio.emit("state", "running");
+
+  expect(callback).toHaveBeenCalledWith({ data: "running" });
 });
