@@ -22,6 +22,7 @@
     "check-types": "turbo run check-types --filter=!@midiedit/desktop",
     "test:core": "turbo run test --filter=@midiedit/core",
     "test:views": "turbo run test --filter=@midiedit/views",
+    "test:mixer": "turbo run test --filter=@midiedit/mixer",
     "deploy:editor": "turbo run build --filter=@midiedit/editor^... && npm run deploy --workspace=@midiedit/editor"
   },
   "repository": {
