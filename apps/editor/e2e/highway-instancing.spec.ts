@@ -75,25 +75,25 @@ test("highway note and sustain batches render deterministically with compact res
   for (let step = 0; step < 4; step += 1) await page.keyboard.press("ArrowUp");
   await expect.poll(() => cameraTick(viewport)).not.toBe(initialCameraTick);
   await expect
-    .poll(() => canvas.getAttribute("data-three-render-calls"))
+    .poll(() => canvas.getAttribute("data-render-calls"))
     .not.toBeNull();
   const screenshot = await canvasShot(viewport);
   expect((await canvasShot(viewport)).equals(screenshot)).toBe(true);
   expect(
-    Number(await canvas.getAttribute("data-three-visible-notes")),
+    Number(await canvas.getAttribute("data-visible-notes")),
   ).toBeGreaterThan(0);
   expect(
-    Number(await canvas.getAttribute("data-three-visible-sustains")),
+    Number(await canvas.getAttribute("data-visible-sustains")),
   ).toBeGreaterThan(0);
-  expect(
-    Number(await canvas.getAttribute("data-three-render-calls")),
-  ).toBeLessThan(100);
-  expect(
-    Number(await canvas.getAttribute("data-three-scene-objects")),
-  ).toBeLessThan(500);
-  expect(
-    Number(await canvas.getAttribute("data-three-geometry-count")),
-  ).toBeLessThan(100);
+  expect(Number(await canvas.getAttribute("data-render-calls"))).toBeLessThan(
+    100,
+  );
+  expect(Number(await canvas.getAttribute("data-scene-objects"))).toBeLessThan(
+    500,
+  );
+  expect(Number(await canvas.getAttribute("data-geometry-count"))).toBeLessThan(
+    100,
+  );
 });
 
 test("highway drum batches render kick and cymbal notes", async ({ page }) => {
@@ -109,21 +109,15 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   ).toHaveAttribute("aria-pressed", "true");
   const canvas = viewport.locator(".midi-view-host canvas");
   await expect
-    .poll(async () =>
-      Number(await canvas.getAttribute("data-three-visible-notes")),
-    )
+    .poll(async () => Number(await canvas.getAttribute("data-visible-notes")))
     .toBeGreaterThan(0);
   expect((await canvasShot(viewport)).equals(await canvasShot(viewport))).toBe(
     true,
   );
-  const renderCalls = Number(
-    await canvas.getAttribute("data-three-render-calls"),
-  );
-  const sceneObjects = Number(
-    await canvas.getAttribute("data-three-scene-objects"),
-  );
+  const renderCalls = Number(await canvas.getAttribute("data-render-calls"));
+  const sceneObjects = Number(await canvas.getAttribute("data-scene-objects"));
   const instancedCounts = JSON.parse(
-    (await canvas.getAttribute("data-three-instanced-note-counts")) ?? "{}",
+    (await canvas.getAttribute("data-instanced-note-counts")) ?? "{}",
   ) as Record<string, number>;
   expect(renderCalls).toBeLessThan(100);
   expect(sceneObjects).toBeLessThan(500);
@@ -158,30 +152,28 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   await switchView(viewport, "highway");
   const canvas = viewport.locator(".midi-view-host canvas");
   await expect
-    .poll(async () =>
-      Number(await canvas.getAttribute("data-three-visible-notes")),
-    )
+    .poll(async () => Number(await canvas.getAttribute("data-visible-notes")))
     .toBe(3_000);
   await canvas.hover({ position: { x: 1, y: 1 } });
   await expect
-    .poll(() => canvas.getAttribute("data-three-note-batch-dirty"))
+    .poll(() => canvas.getAttribute("data-note-batch-dirty"))
     .toBe("false");
   const noteCounts = JSON.parse(
-    (await canvas.getAttribute("data-three-instanced-note-counts")) ?? "{}",
+    (await canvas.getAttribute("data-instanced-note-counts")) ?? "{}",
   ) as Record<string, number>;
   const capacities = JSON.parse(
-    (await canvas.getAttribute("data-three-batch-capacities")) ?? "{}",
+    (await canvas.getAttribute("data-batch-capacities")) ?? "{}",
   ) as Record<string, number>;
   const drawDurationMs = Number(
-    await canvas.getAttribute("data-three-highway-draw-ms"),
+    await canvas.getAttribute("data-highway-draw-ms"),
   );
   const instanceWriteDurationMs = Number(
-    await canvas.getAttribute("data-three-instance-buffer-write-ms"),
+    await canvas.getAttribute("data-instance-buffer-write-ms"),
   );
 
   expect(noteCounts.note).toBe(3_000);
   expect(capacities.note).toBe(4_096);
-  expect(await canvas.getAttribute("data-three-dropped-notes")).toBe("0");
+  expect(await canvas.getAttribute("data-dropped-notes")).toBe("0");
   expect(Number.isFinite(drawDurationMs)).toBe(true);
   expect(Number.isFinite(instanceWriteDurationMs)).toBe(true);
   if (process.env.MIDIVIEW_PERF_LOG === "1") {
@@ -190,7 +182,7 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
       `3,000-note instance buffer writes: ${instanceWriteDurationMs.toFixed(3)} ms`,
     );
     console.log(
-      `Note state rebuilt: ${await canvas.getAttribute("data-three-note-batch-dirty")}`,
+      `Note state rebuilt: ${await canvas.getAttribute("data-note-batch-dirty")}`,
     );
   }
 });
