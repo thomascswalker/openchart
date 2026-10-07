@@ -35,6 +35,7 @@ export interface AudioPlayer {
   duration: number;
   currentTime: number;
   volume?: number;
+  isPlaying?: boolean;
   play: () => void;
   pause: () => void;
   seek: (seconds: number) => void;
@@ -97,6 +98,9 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
     typeof window !== "undefined" &&
     typeof window.showDirectoryPicker === "function";
   private audioLoadRequests = new Map<AudioRole, number>();
+  private pausedSeekTimes = new Map<AudioRole, number>();
+  private playerDurations = new Map<AudioRole, number>();
+  private audioPlayerFactory: ((url: string) => AudioPlayer) | null = null;
   private endCount = 0;
   private snapshot: AudioServiceSnapshot = this.createSnapshot();
 
@@ -114,6 +118,8 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
     }
     this.fileName = null;
     this.audioDirectoryHandle = null;
+    this.pausedSeekTimes.clear();
+    this.playerDurations.clear();
     this.endCount = 0;
     this.publish();
   };
@@ -179,7 +185,9 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
         URL.revokeObjectURL(url);
         return;
       }
-      const player = Audio({ file: url, preload: true }) as AudioPlayer;
+      this.audioPlayerFactory = (fileUrl) =>
+        Audio({ file: fileUrl, preload: true }) as AudioPlayer;
+      const player = this.audioPlayerFactory(url);
       this.setAudioSource(
         { role, fileName: file.name, url, enabled: true, volume: 1 },
         player,
@@ -396,7 +404,18 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
 
   public readonly play = (): void => {
     for (const [role, player] of this.players) {
-      if (this.sources.get(role)?.enabled ?? true) player.play();
+      if (!(this.sources.get(role)?.enabled ?? true)) continue;
+
+      const pendingSeek = this.pausedSeekTimes.get(role);
+      const source = this.sources.get(role);
+      if (pendingSeek !== undefined && source?.url && this.audioPlayerFactory) {
+        const replacement = this.audioPlayerFactory(source.url);
+        this.replacePlayer(role, replacement);
+        replacement.seek(pendingSeek);
+        replacement.play();
+      } else {
+        player.play();
+      }
     }
   };
 
@@ -405,7 +424,20 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
   };
 
   public readonly seek = (seconds: number): void => {
-    for (const player of this.players.values()) player.seek(seconds);
+    for (const [role, player] of this.players) {
+      if (
+        player.isPlaying === false &&
+        player.duration > 0 &&
+        this.sources.get(role)?.url &&
+        this.audioPlayerFactory
+      ) {
+        // A decoded ts-audio source may not have started before a paused seek.
+        this.pausedSeekTimes.set(role, seconds);
+      } else {
+        this.pausedSeekTimes.delete(role);
+        player.seek(seconds);
+      }
+    }
   };
 
   public dispose(): void {
@@ -415,6 +447,8 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
     this.players = new Map();
     for (const source of this.sources.values()) this.revokeSourceUrl(source);
     this.sources = new Map();
+    this.pausedSeekTimes.clear();
+    this.playerDurations.clear();
     this.fileName = null;
     this.endCount = 0;
     this.publish();
@@ -424,16 +458,19 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
   private async createPlayer(role: AudioRole, url: string): Promise<void> {
     const { Audio } = await import("ts-audio");
     if (this.sources.get(role)?.url !== url) return;
-    this.replacePlayer(
-      role,
-      Audio({ file: url, preload: true }) as AudioPlayer,
-    );
+    this.audioPlayerFactory = (fileUrl) =>
+      Audio({ file: fileUrl, preload: true }) as AudioPlayer;
+    this.replacePlayer(role, this.audioPlayerFactory(url));
     this.publish();
   }
 
   private replacePlayer(role: AudioRole, next: AudioPlayer | undefined): void {
     const previous = this.players.get(role);
     if (previous === next) return;
+    this.pausedSeekTimes.delete(role);
+    if (previous?.duration) {
+      this.playerDurations.set(role, previous.duration);
+    }
     this.playerCleanups.get(role)?.();
     this.playerCleanups.delete(role);
     previous?.destroy();
@@ -445,6 +482,7 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
         this.publish();
       };
       const onReady = () => {
+        if (next.duration > 0) this.playerDurations.set(role, next.duration);
         this.publish();
       };
       const eventful = next as unknown as EventfulAudioPlayer;
@@ -465,7 +503,11 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
     next: AudioSourceState | undefined,
   ): void {
     const previous = this.sources.get(role);
-    if (previous?.url !== next?.url) this.revokeSourceUrl(previous);
+    if (previous?.url !== next?.url) {
+      this.revokeSourceUrl(previous);
+      this.pausedSeekTimes.delete(role);
+      this.playerDurations.delete(role);
+    }
     if (next) this.sources.set(role, next);
     else this.sources.delete(role);
   }
@@ -489,8 +531,10 @@ export class AudioService extends IStatefulService<AudioServiceSnapshot> {
       sources: this.sources,
       duration: Math.max(
         0,
-        ...Array.from(this.players.values()).map(
-          (player) => player.duration * 1_000,
+        ...Array.from(
+          this.players,
+          ([role, player]) =>
+            (player.duration || this.playerDurations.get(role) || 0) * 1_000,
         ),
       ),
       fileName: this.fileName,

@@ -468,15 +468,6 @@ export class HighwayInputController {
         (note) => note.noteOn === target.noteOn,
       );
       if (!candidate) continue;
-      const dragTarget = getHighwayDragTarget(
-        target.initialTick,
-        target.initialLane,
-        location.tick - drag.pointerTick,
-        location.lane - drag.pointerLane,
-        this.coordinates.getSnapTicks(),
-        this.context.getState().snap.enabled,
-        this.coordinates.getPhysicalLaneCount(),
-      );
       if (drag.resizing) {
         const nextEnd = getHighwaySustainEnd(
           candidate.start,
@@ -489,6 +480,15 @@ export class HighwayInputController {
             this.editing.resizeNote(chart, candidate, nextEnd) || changed;
         }
       } else {
+        const dragTarget = getHighwayDragTarget(
+          target.initialTick,
+          target.initialLane,
+          location.tick - drag.pointerTick,
+          location.lane - drag.pointerLane,
+          this.coordinates.getSnapTicks(),
+          this.context.getState().snap.enabled,
+          this.coordinates.getPhysicalLaneCount(),
+        );
         changed =
           this.editing.moveNote(
             chart,
