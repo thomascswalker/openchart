@@ -14,6 +14,25 @@ test("Adding/removing tracks", () => {
   expect(mixer.tracks).not.toHaveProperty("track1");
 });
 
+test("Master volume scales track volumes", () => {
+  const mixer = new Mixer();
+  mixer.addTrack("track1", "sample.wav");
+  mixer.masterVolume = 0.5;
+
+  expect(mixer.masterVolume).toBe(0.5);
+  expect(mixer.tracks["track1"].volume).toBe(0.5);
+
+  mixer.tracks["track1"].volume = 0.4;
+  expect(mixer.tracks["track1"].volume).toBe(0.2);
+
+  mixer.addTrack("track2", "sample.wav");
+  expect(mixer.tracks["track2"].volume).toBe(0.5);
+
+  mixer.masterVolume = 2;
+  expect(mixer.tracks["track1"].volume).toBe(0.8);
+  expect(mixer.tracks["track2"].volume).toBe(2);
+});
+
 test("Soloing a track", () => {
   const mixer = new Mixer();
   mixer.addTrack("track1", "sample.wav");
@@ -25,6 +44,7 @@ test("Soloing a track", () => {
   // Check that track1 is unmuted and track2 is muted after soloing
   expect(mixer.tracks["track1"].muted).toBe(false);
   expect(mixer.tracks["track2"].muted).toBe(true);
+  expect(mixer.tracks["track2"].volume).toBe(0);
 });
 
 test("Muting a track", () => {
@@ -33,5 +53,25 @@ test("Muting a track", () => {
   mixer.addTrack("track2", "sample.wav");
   mixer.mute("track1");
   expect(mixer.tracks["track1"].muted).toBe(true);
+  expect(mixer.tracks["track1"].volume).toBe(0);
   expect(mixer.tracks["track2"].muted).toBe(false);
+});
+
+test("Play, pause, and stop tracks", () => {
+  const mixer = new Mixer();
+  mixer.addTrack("track1", "sample.wav");
+  mixer.addTrack("track2", "sample.wav");
+
+  // Play all tracks
+  mixer.play();
+  expect(mixer.playing).toBe(true);
+
+  // Pause all tracks
+  mixer.pause();
+  expect(mixer.playing).toBe(false);
+
+  // Stop all tracks
+  mixer.stop();
+  expect(mixer.playing).toBe(false);
+  expect(mixer.currentTime).toEqual(0);
 });

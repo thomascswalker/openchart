@@ -15,11 +15,24 @@ test("Track loads file", () => {
 test("Track mutes and unmutes, preserving volume", () => {
   const filename = "sample.wav";
   const track = new Track(filename);
-  const initialVolume = track["audio"].volume;
+  const initialVolume = track.volume;
   track.muted = true;
   expect(track.muted).toBe(true);
-  expect(track["audio"].volume).toBe(0);
+  expect(track.volume).toBe(0);
   track.muted = false;
   expect(track.muted).toBe(false);
-  expect(track["audio"].volume).toBe(initialVolume);
+  expect(track.volume).toBe(initialVolume);
+});
+
+test("Track volume scaling is preserved while muted", () => {
+  const track = new Track("sample.wav");
+  track.volumeScale = 0.5;
+  track.muted = true;
+  expect(track.volume).toBe(0);
+
+  track.volume = 0.4;
+  expect(track.volume).toBe(0);
+
+  track.muted = false;
+  expect(track.volume).toBe(0.2);
 });

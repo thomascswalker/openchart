@@ -4,22 +4,38 @@ import { Audio as AudioFactory } from "ts-audio";
 type TrackId = string;
 
 class Track implements Disposable {
-  private audio: Audio;
+  private _audio: Audio;
   private _filename: string;
   private _muted: boolean = false;
-  private cachedVolume: number = 1;
+  private _volume: number;
+  private _volumeScale: number = 1;
 
   constructor(filename: string) {
     this._filename = filename;
-    this.audio = AudioFactory({ file: filename, volume: 100 });
+    this._audio = AudioFactory({ file: filename, volume: 100 });
+    this._volume = this._audio.volume;
   }
 
   [Symbol.dispose]() {
-    this.audio.destroy();
+    this._audio.destroy();
   }
 
   public get filename(): string {
     return this._filename;
+  }
+
+  public get volume(): number {
+    return this._audio.volume;
+  }
+
+  public set volume(value: number) {
+    this._volume = value;
+    this.updateVolume();
+  }
+
+  public set volumeScale(value: number) {
+    this._volumeScale = value;
+    this.updateVolume();
   }
 
   public get muted(): boolean {
@@ -27,16 +43,35 @@ class Track implements Disposable {
   }
   public set muted(value: boolean) {
     this._muted = value;
-    if (value) {
-      this.cachedVolume = this.audio.volume;
-      this.audio.volume = 0;
-    } else {
-      this.audio.volume = this.cachedVolume;
-    }
+    this.updateVolume();
   }
 
   public toggleMute() {
     this.muted = !this.muted;
+  }
+
+  public play() {
+    this._audio.play();
+  }
+
+  public get playing(): boolean {
+    return this._audio.isPlaying;
+  }
+
+  public get currentTime(): number {
+    return this._audio.currentTime;
+  }
+
+  public pause() {
+    this._audio.pause();
+  }
+
+  public stop() {
+    this._audio.stop();
+  }
+
+  private updateVolume() {
+    this._audio.volume = this._muted ? 0 : this._volume * this._volumeScale;
   }
 }
 export default Track;
