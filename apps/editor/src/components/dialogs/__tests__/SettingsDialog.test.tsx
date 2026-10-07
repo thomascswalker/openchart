@@ -1,8 +1,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useEditorState } from "../../../hooks/useEditorState";
 import { runAction } from "../../../actions/execute";
+import Platform from "../../../platform";
 import {
   defaultApplicationSettings,
   validateApplicationSettings,
@@ -53,7 +54,13 @@ function changeInput(input: HTMLInputElement, value: string): void {
 }
 
 describe("Application settings", () => {
-  beforeEach(() => localStorage.clear());
+  const resetSettings = (): void => {
+    Platform.services.get<SettingsService>("settings").reset();
+    localStorage.clear();
+  };
+
+  beforeEach(resetSettings);
+  afterEach(resetSettings);
 
   it("has valid versioned defaults", () => {
     expect(defaultApplicationSettings.version).toBe(1);
