@@ -1,8 +1,9 @@
 import { expect, test } from "vitest";
 import Track from "../track";
 
-test("Track should be defined", () => {
-  expect(Track).toBeDefined();
+test("Track can instantiate", () => {
+  const track = new Track("sample.wav");
+  expect(track).toBeDefined();
 });
 
 test("Track loads file", () => {

@@ -1,8 +1,9 @@
 import { expect, test } from "vitest";
 import Mixer from "../mixer";
 
-test("Mixer should be defined", () => {
-  expect(Mixer).toBeDefined();
+test("Mixer can instantiate", () => {
+  const mixer = new Mixer();
+  expect(mixer).toBeDefined();
 });
 
 test("Adding/removing tracks", () => {
