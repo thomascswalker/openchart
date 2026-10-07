@@ -5,11 +5,6 @@ const STORAGE_KEY = "midiedit.application-settings";
 
 export interface ApplicationSettings {
   version: typeof APPLICATION_SETTINGS_VERSION;
-  audio: {
-    rootPath: string;
-    multitrack: boolean;
-    mode: "single" | "multitrack";
-  };
   feedback: {
     metronomeEnabled: boolean;
     metronomeVolume: number;
@@ -22,17 +17,6 @@ export interface ApplicationSettings {
     previewLowPitch: number;
     previewHighPitch: number;
   };
-  discovery: {
-    songRegex: string;
-    leadRegex: string;
-    rhythmRegex: string;
-    bassRegex: string;
-    drumsRegex: string;
-    vocalsRegex: string;
-    harmoniesRegex: string;
-    synthRegex: string;
-    otherRegex: string;
-  };
   saving: {
     defaultSaveMode: "project" | "midi";
   };
@@ -43,7 +27,6 @@ export interface ApplicationSettings {
 
 export const defaultApplicationSettings: ApplicationSettings = {
   version: APPLICATION_SETTINGS_VERSION,
-  audio: { rootPath: "~", multitrack: false, mode: "single" },
   feedback: {
     metronomeEnabled: false,
     metronomeVolume: 0.35,
@@ -56,17 +39,6 @@ export const defaultApplicationSettings: ApplicationSettings = {
     previewLowPitch: 36,
     previewHighPitch: 60,
   },
-  discovery: {
-    songRegex: "song",
-    leadRegex: "lead",
-    rhythmRegex: "rhythm",
-    bassRegex: "bass",
-    drumsRegex: "drums",
-    vocalsRegex: "vocals",
-    harmoniesRegex: "harmonies",
-    synthRegex: "synth",
-    otherRegex: "other",
-  },
   saving: { defaultSaveMode: "project" },
   history: { capacity: 256 },
 };
@@ -77,16 +49,6 @@ export function validateApplicationSettings(
   const errors: Record<string, string> = {};
   if (settings.version !== APPLICATION_SETTINGS_VERSION) {
     errors.version = "Unsupported settings version.";
-  }
-  if (!settings.audio.rootPath.trim()) {
-    errors.rootPath = "Audio Path is required.";
-  }
-  if (
-    settings.audio.mode !== undefined &&
-    settings.audio.mode !== "single" &&
-    settings.audio.mode !== "multitrack"
-  ) {
-    errors.audioMode = "Choose a supported audio mode.";
   }
   if (
     !Number.isFinite(settings.feedback.metronomeVolume) ||
@@ -139,18 +101,6 @@ export function validateApplicationSettings(
     errors.previewHighPitch =
       "Preview pitch range must be inclusive MIDI pitches 0–127.";
   }
-  const discoveryFields = settings.audio.multitrack
-    ? Object.entries(settings.discovery).filter(
-        ([field]) => field !== "songRegex",
-      )
-    : [["songRegex", settings.discovery.songRegex] as const];
-  for (const [field, expression] of discoveryFields) {
-    try {
-      new RegExp(expression);
-    } catch {
-      errors[field] = "Enter a valid regular expression.";
-    }
-  }
   if (!["project", "midi"].includes(settings.saving.defaultSaveMode)) {
     errors.defaultSaveMode = "Select a valid save mode.";
   }
@@ -161,25 +111,30 @@ function readSettings(): ApplicationSettings {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return defaultApplicationSettings;
-    const parsed = JSON.parse(stored) as ApplicationSettings;
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    const canonicalSettings = Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([key]) => key !== "audio" && key !== "discovery",
+      ),
+    ) as Partial<ApplicationSettings>;
     const storedFeedback = Object.fromEntries(
-      Object.entries(parsed.feedback ?? {}).filter(
+      Object.entries((parsed.feedback ?? {}) as Record<string, unknown>).filter(
         ([key]) => key !== "highwayClapEnabled" && key !== "highwayClapVolume",
       ),
     );
     const merged: ApplicationSettings = {
       ...defaultApplicationSettings,
-      ...parsed,
-      audio: { ...defaultApplicationSettings.audio, ...parsed.audio },
+      ...canonicalSettings,
       feedback: { ...defaultApplicationSettings.feedback, ...storedFeedback },
-      discovery: {
-        ...defaultApplicationSettings.discovery,
-        ...parsed.discovery,
+      saving: {
+        ...defaultApplicationSettings.saving,
+        ...(parsed.saving as Partial<ApplicationSettings["saving"]>),
       },
-      saving: { ...defaultApplicationSettings.saving, ...parsed.saving },
-      history: { ...defaultApplicationSettings.history, ...parsed.history },
+      history: {
+        ...defaultApplicationSettings.history,
+        ...(parsed.history as Partial<ApplicationSettings["history"]>),
+      },
     };
-    merged.audio.mode = merged.audio.multitrack ? "multitrack" : "single";
     return Object.keys(validateApplicationSettings(merged)).length === 0
       ? merged
       : defaultApplicationSettings;

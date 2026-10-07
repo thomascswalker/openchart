@@ -68,14 +68,6 @@
         "Publisher": { "type": "string" },
         "Writer": { "type": "string" }
       }
-    },
-    "Audio": {
-      "type": "object",
-      "required": ["Mode", "Sources"],
-      "properties": {
-        "Mode": { "enum": ["single", "multitrack"] },
-        "Sources": { "type": "object" }
-      }
     }
   }
 }
