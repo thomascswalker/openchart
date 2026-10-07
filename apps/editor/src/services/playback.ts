@@ -12,7 +12,6 @@ import {
   type PitchRange,
   type PreviewNote,
 } from "../audio/soundboard";
-import { AudioService } from "./audio";
 import type { DocumentService } from "./document";
 import type { ApplicationSettings } from "./settings";
 import { IStatefulService } from "../platform/services";
@@ -22,7 +21,6 @@ export interface PlaybackSnapshot {
   canPlay: boolean;
   playbackTick: number;
   totalTimelineTicks: number;
-  totalAudioTicks: number;
   isMetronomeEnabled: boolean;
   isClapEnabled: boolean;
   play: () => void;
@@ -82,11 +80,9 @@ function notesForHighway(
 }
 
 export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
-  static dependencies = ["audio", "document"];
+  static dependencies = ["document"];
 
-  private audioService: AudioService;
   private engine = new Soundboard();
-  private audioUnsubscribe: (() => void) | null = null;
   private documentUnsubscribe: (() => void) | undefined;
   private listeners = new Set<() => void>();
   private midiData: Midi | null | undefined;
@@ -110,24 +106,17 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   private midiPlaybackEndTick = 0;
   private ppqn = 480;
   private tempoChanges: TempoChange[] = DEFAULT_TEMPO;
-  private lastAudio: ReturnType<AudioService["getSnapshot"]>["audio"];
-  private lastAudioEndCount = 0;
   private animationFrame: number | null = null;
   private lastFrameMs: number | null = null;
   private configured = false;
   private snapshot!: PlaybackSnapshot;
 
-  constructor(audioService: AudioService, documentService?: DocumentService) {
+  constructor(documentService?: DocumentService) {
     super();
-    this.audioService = audioService;
     // Edits publish synchronously, so the end never lags behind the document.
     this.documentUnsubscribe = documentService?.subscribe(() => {
       if (this.configured) this.refresh(documentService.getData());
     });
-    const audioSnapshot = audioService.getSnapshot();
-    this.lastAudio = audioSnapshot.audio;
-    this.lastAudioEndCount = audioSnapshot.endCount;
-    this.connectToAudio();
     this.snapshot = this.createSnapshot();
   }
 
@@ -155,10 +144,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   public readonly getSnapshot = (): PlaybackSnapshot => this.snapshot;
 
   public readonly configure = (options: PlaybackConfiguration): void => {
-    this.connectToAudio();
-    const audio = this.audioService.getSnapshot().audio;
     const documentChanged = this.midiData !== options.midiData;
-    const audioChanged = this.lastAudio !== audio;
     const selectionChanged =
       documentChanged ||
       this.selectedInstrument !== options.selectedInstrument ||
@@ -187,12 +173,11 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     }
     this.configureEngine();
 
-    if (this.configured && (documentChanged || audioChanged)) {
+    if (this.configured && documentChanged) {
       this.stopPlayback();
       this.playbackTick = 0;
     }
     this.configured = true;
-    this.lastAudio = audio;
     this.refresh();
   };
 
@@ -234,8 +219,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     } else {
       this.midiPlaybackEndTick = 0;
     }
-    this.canPlay =
-      hasEvents || this.audioService.getSnapshot().audio !== undefined;
+    this.canPlay = hasEvents;
     this.publish();
   };
 
@@ -243,9 +227,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     const nextTick = Math.max(0, tick);
     if (nextTick === this.playbackTick) return;
     this.playbackTick = nextTick;
-    this.audioService.seek(
-      ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) / 1_000,
-    );
     this.engine.seek(this.playbackTick);
     this.publish();
   };
@@ -258,7 +239,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     }
     this.isPlaying = true;
     this.engine.start(this.playbackTick);
-    this.audioService.play();
     this.lastFrameMs = null;
     this.requestNextFrame();
     this.publish();
@@ -342,8 +322,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   public dispose(): void {
     this.stopPlayback();
     this.engine.dispose();
-    this.audioUnsubscribe?.();
-    this.audioUnsubscribe = null;
     this.documentUnsubscribe?.();
     this.listeners.clear();
     this.resetSession();
@@ -401,32 +379,8 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     return this.feedbackSettings;
   }
 
-  private connectToAudio(): void {
-    if (!this.audioUnsubscribe) {
-      this.audioUnsubscribe = this.audioService.subscribe(this.onAudioChanged);
-    }
-  }
-
-  private readonly onAudioChanged = (): void => {
-    const audioSnapshot = this.audioService.getSnapshot();
-    if (this.configured && this.lastAudio !== audioSnapshot.audio) {
-      this.stopPlayback();
-      this.playbackTick = 0;
-    } else if (
-      this.isPlaying &&
-      audioSnapshot.endCount !== this.lastAudioEndCount
-    ) {
-      this.stopPlayback();
-      this.setPlaybackTick(0);
-    }
-    this.lastAudio = audioSnapshot.audio;
-    this.lastAudioEndCount = audioSnapshot.endCount;
-    this.refresh();
-  };
-
   private stopPlayback(): void {
     this.isPlaying = false;
-    this.audioService.pause();
     this.engine.stop();
     if (this.animationFrame !== null) {
       cancelAnimationFrame(this.animationFrame);
@@ -442,26 +396,16 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   }
 
   private readonly step = (frameTimeMs: number): void => {
-    const audio = this.audioService.getSnapshot().audio;
     const totalTicks = this.totalTimelineTicks();
-    if (audio) {
-      this.playbackTick = msToTicks(
-        audio.currentTime * 1_000,
-        this.ppqn,
-        this.tempoChanges,
-      );
-    } else {
-      if (this.lastFrameMs !== null) {
-        const elapsedMs = frameTimeMs - this.lastFrameMs;
-        const currentMs =
-          ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) +
-          elapsedMs;
-        const nextTick = msToTicks(currentMs, this.ppqn, this.tempoChanges);
-        this.playbackTick =
-          totalTicks > 0 && nextTick >= totalTicks ? totalTicks : nextTick;
-      }
-      this.lastFrameMs = frameTimeMs;
+    if (this.lastFrameMs !== null) {
+      const elapsedMs = frameTimeMs - this.lastFrameMs;
+      const currentMs =
+        ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) + elapsedMs;
+      const nextTick = msToTicks(currentMs, this.ppqn, this.tempoChanges);
+      this.playbackTick =
+        totalTicks > 0 && nextTick >= totalTicks ? totalTicks : nextTick;
     }
+    this.lastFrameMs = frameTimeMs;
 
     this.engine.updateTick(this.playbackTick);
     this.publish();
@@ -472,13 +416,8 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.requestNextFrame();
   };
 
-  private totalAudioTicks(): number {
-    const duration = this.audioService.getSnapshot().duration;
-    return duration > 0 ? msToTicks(duration, this.ppqn, this.tempoChanges) : 0;
-  }
-
   private totalTimelineTicks(): number {
-    return Math.max(this.midiPlaybackEndTick, this.totalAudioTicks());
+    return this.midiPlaybackEndTick;
   }
 
   private createSnapshot(): PlaybackSnapshot {
@@ -487,7 +426,6 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       canPlay: this.canPlay,
       playbackTick: this.playbackTick,
       totalTimelineTicks: this.totalTimelineTicks(),
-      totalAudioTicks: this.totalAudioTicks(),
       isMetronomeEnabled: this.metronomeEnabled,
       isClapEnabled: this.clapEnabled,
       play: this.play,

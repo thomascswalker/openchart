@@ -7,7 +7,6 @@ import {
 } from "react";
 import { AUDIO_ROLES } from "../../services/audio";
 import { AudioService } from "../../services/audio";
-import { useEditorState } from "../../hooks/useEditorState";
 import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
@@ -231,7 +230,6 @@ function setSettingValue(
 }
 
 const SettingsDialog = () => {
-  const { audioDirectoryName, audioDirectorySupported } = useEditorState();
   const audioService = Platform.services.get<AudioService>("audio");
   const sources = useSyncExternalStore(
     audioService.subscribe,
@@ -262,7 +260,7 @@ const SettingsDialog = () => {
     return () => {
       ignore = true;
     };
-  }, [audioService, draft.audio.rootPath, audioDirectoryName]);
+  }, [audioService, draft.audio.rootPath]);
 
   const close = (): void => {
     runAction("dialog.close-settings");
@@ -575,23 +573,17 @@ const SettingsDialog = () => {
                 })}
               </div>
               <div className="audio-discovery-actions">
-                {audioDirectorySupported ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void executeEditorAction("audio.select-folder")
-                        .then(refreshAudioFileNames)
-                        .catch(() => {});
-                    }}
-                    disabled={
-                      !Platform.actions.isAvailable("audio.select-folder")
-                    }
-                  >
-                    {audioDirectoryName
-                      ? `Audio Folder: ${audioDirectoryName}`
-                      : "Select Audio Folder"}
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    void executeEditorAction("audio.select-folder")
+                      .then(refreshAudioFileNames)
+                      .catch(() => {});
+                  }}
+                  disabled={!Platform.actions.isAvailable("audio.select-folder")}
+                >
+                  Select Audio Folder
+                </button>
                 <button
                   type="button"
                   onClick={() => {
