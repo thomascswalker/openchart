@@ -75,3 +75,23 @@ test("Play, pause, and stop tracks", () => {
   expect(mixer.playing).toBe(false);
   expect(mixer.currentTime).toEqual(0);
 });
+
+test("Seek tracks", () => {
+  const mixer = new Mixer();
+  mixer.addTrack("track1", "sample.wav");
+  mixer.addTrack("track2", "sample.wav");
+
+  const seekTime = 10;
+  mixer.seek(seekTime);
+  expect(mixer.currentTime).toBe(seekTime);
+  expect(mixer.tracks["track1"].currentTime).toBe(seekTime);
+  expect(mixer.tracks["track2"].currentTime).toBe(seekTime);
+});
+
+test("Duration of tracks", () => {
+  const mixer = new Mixer();
+  mixer.addTrack("track1", "sample.wav");
+  mixer.addTrack("track2", "sample.wav");
+
+  expect(mixer.duration).toBe(0);
+});

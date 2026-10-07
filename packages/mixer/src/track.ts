@@ -62,6 +62,14 @@ class Track implements Disposable {
     return this._audio.currentTime;
   }
 
+  public seek(time: number) {
+    this._audio.seek(time);
+  }
+
+  public get duration(): number {
+    return this._audio.duration;
+  }
+
   public pause() {
     this._audio.pause();
   }

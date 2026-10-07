@@ -57,6 +57,34 @@ class Mixer {
     return 0;
   }
 
+  public seek(time: number) {
+    for (const key in this._tracks) {
+      this._tracks[key].seek(time);
+    }
+  }
+
+  public seekStart() {
+    for (const key in this._tracks) {
+      this._tracks[key].seek(0);
+    }
+  }
+
+  public seekEnd() {
+    for (const key in this._tracks) {
+      this._tracks[key].seek(this._tracks[key].duration);
+    }
+  }
+
+  public get duration(): number {
+    let maxDuration = 0;
+    for (const key in this._tracks) {
+      if (this._tracks[key].duration > maxDuration) {
+        maxDuration = this._tracks[key].duration;
+      }
+    }
+    return maxDuration;
+  }
+
   public get playing(): boolean {
     for (const key in this._tracks) {
       if (this._tracks[key].playing) {
