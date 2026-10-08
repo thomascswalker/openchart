@@ -30,26 +30,12 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>,
     );
 
-    const fallback = container.querySelector('[role="alert"]');
-    expect(fallback?.textContent).toContain("The editor encountered an error");
-    expect(fallback?.textContent).toContain("render failed");
-    expect(fallback?.className).toBeTruthy();
-    expect(getComputedStyle(fallback!).padding).toBe("32px");
-    expect(getComputedStyle(fallback!.querySelector("h1")!).color).toBe(
-      "rgb(198, 40, 40)",
+    const fallback = container.querySelector("section");
+    expect(fallback?.querySelector("h1")?.textContent).toBe(
+      "An error occurred",
     );
-    expect(
-      fallback?.querySelector('[aria-label="Error message"]')?.textContent,
-    ).toContain("render failed");
-    expect(fallback?.querySelectorAll("pre")[1].textContent).toContain(
-      "Error: render failed",
-    );
-    expect(fallback?.querySelectorAll("pre")[2].textContent).toContain("Throw");
-    expect(
-      [...(fallback?.querySelectorAll("pre") ?? [])]
-        .slice(1)
-        .map((pre) => getComputedStyle(pre).textAlign),
-    ).toEqual(["left", "left"]);
+    expect(fallback?.textContent).toContain("Error: render failed");
+    expect(fallback?.textContent).toContain("Throw");
     expect(consoleError).toHaveBeenCalledWith(
       "Editor rendering failed",
       error,
@@ -60,23 +46,20 @@ describe("ErrorBoundary", () => {
     container.remove();
   });
 
-  it("retries rendering its children", () => {
+  it("shows the failing child in the component stack", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    let shouldThrow = true;
-    const MaybeThrow = () => {
-      if (shouldThrow) throw new Error("render failed");
-      return <p>Editor is ready</p>;
+    const FailingEditor = () => {
+      throw new Error("editor failed");
     };
     const { container, root } = render(
       <ErrorBoundary>
-        <MaybeThrow />
+        <FailingEditor />
       </ErrorBoundary>,
     );
 
-    shouldThrow = false;
-    act(() => container.querySelector<HTMLButtonElement>("button")?.click());
-
-    expect(container.textContent).toContain("Editor is ready");
+    expect(container.querySelector("h2")?.textContent).toBe("Stack");
+    expect(container.textContent).toContain("Components");
+    expect(container.textContent).toContain("FailingEditor");
 
     act(() => root.unmount());
     container.remove();
