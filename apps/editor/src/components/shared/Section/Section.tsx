@@ -7,10 +7,11 @@ import {
   color,
   layout,
   border,
+  flex,
   type styleFn,
 } from "styled-system";
 
-const getSystemStyles: styleFn = compose(space, color, layout, border);
+const getSystemStyles: styleFn = compose(space, color, layout, border, flex);
 
 interface SectionProps extends HTMLAttributes<HTMLElement> {
   children?: ReactNode;
