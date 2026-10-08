@@ -9,7 +9,6 @@ import type {
   styleFn,
 } from "styled-system";
 import styles from "./button.module.css";
-import type { IconProps } from "../Icon/Icon";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 
@@ -57,34 +56,5 @@ const Button = ({
   );
 };
 
-type CloseButtonProps = ButtonProps;
-
-const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
-  return (
-    <Button onClick={onClick} className={styles["ui-button-close"]} {...props}>
-      x
-    </Button>
-  );
-};
-
-interface ToolButtonProps extends ButtonProps {
-  Icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
-}
-
-const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
-  return (
-    <Button
-      maxWidth={40}
-      maxHeight={40}
-      borderRadius={4}
-      border="none"
-      {...rest}
-    >
-      <Icon />
-      {children}
-    </Button>
-  );
-};
-
-export { Button, CloseButton, ToolButton };
-export type { ButtonProps, CloseButtonProps, ToolButtonProps };
+export { Button };
+export type { ButtonProps };

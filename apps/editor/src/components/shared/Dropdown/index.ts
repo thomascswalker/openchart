@@ -1,6 +1,4 @@
-export { Dropdown, DropdownButton } from "./Dropdown";
-export type {
-  DropdownButtonProps,
-  DropdownOption,
-  DropdownProps,
-} from "./Dropdown";
+export { Dropdown } from "./Dropdown";
+export { DropdownButton } from "./DropdownButton";
+export type { DropdownButtonProps } from "./DropdownButton";
+export type { DropdownOption, DropdownProps } from "./Dropdown";
