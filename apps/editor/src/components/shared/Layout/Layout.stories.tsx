@@ -14,24 +14,20 @@ export const Sections: Story = {
   render: () => (
     <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
       <Section
-        style={{
-          flexDirection: "column",
-          gap: 8,
-          padding: 16,
-          border: "1px solid var(--neutral-60)",
-        }}
+        flexDirection="column"
+        gap="8px"
+        padding="16px"
+        border="1px solid var(--neutral-60)"
       >
         <strong>Vertical section</strong>
         <span>Sections group content into a flexible layout.</span>
       </Section>
       <Section
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-          padding: 16,
-          border: "1px solid var(--neutral-60)",
-        }}
+        flexDirection="row"
+        alignItems="center"
+        gap="12px"
+        padding="16px"
+        border="1px solid var(--neutral-60)"
       >
         <span>Left content</span>
         <VerticalSeparator />

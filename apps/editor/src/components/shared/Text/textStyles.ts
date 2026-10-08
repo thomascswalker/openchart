@@ -1,8 +1,11 @@
 import type { styleFn } from "styled-system";
-import { color, textAlign, fontWeight, compose } from "styled-system";
+import { color, textAlign, fontWeight, compose, border } from "styled-system";
 
-const textColor: styleFn = ({ textColor: value, ...props }) =>
-  color({ ...props, color: value });
-const getTextSystemStyles: styleFn = compose(textAlign, fontWeight, textColor);
+const getTextSystemStyles: styleFn = compose(
+  textAlign,
+  fontWeight,
+  color,
+  border,
+);
 
 export { getTextSystemStyles };

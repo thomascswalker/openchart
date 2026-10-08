@@ -3,11 +3,13 @@ import type {
   TextAlignProps,
   TextColorProps,
   FontWeightProps,
+  BorderProps,
 } from "styled-system";
 import { getTextSystemStyles } from "./textStyles";
 import styles from "./text.module.css";
 
-interface TextProps extends TextAlignProps, FontWeightProps, TextColorProps {
+interface TextProps
+  extends TextAlignProps, FontWeightProps, TextColorProps, BorderProps {
   className?: string;
   children: React.ReactNode;
 }
