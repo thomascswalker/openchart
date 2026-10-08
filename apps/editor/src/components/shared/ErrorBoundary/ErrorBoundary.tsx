@@ -58,9 +58,9 @@ export class ErrorBoundary extends Component<
         <Section flexDirection="column">
           <H1>An error occurred</H1>
           <H2>Stack</H2>
-          <CodeBlock>{stackTrace}</CodeBlock>
+          <CodeBlock variation="error">{stackTrace}</CodeBlock>
           <H2>Components</H2>
-          <CodeBlock>{componentStack}</CodeBlock>
+          <CodeBlock variation="error">{componentStack}</CodeBlock>
         </Section>
       );
     }

@@ -14,6 +14,7 @@
   --neutral-60: hsl(0, 0%, 40%);
   --neutral-70: hsl(0, 0%, 30%);
   --neutral-80: hsl(0, 0%, 20%);
+  --neutral-85: hsl(0, 0%, 15%);
   --neutral-90: hsl(0, 0%, 10%);
   --red-10: hsl(0, 90%, 90%);
   --red-20: hsl(0, 90%, 80%);
@@ -49,11 +50,14 @@
   --secondary-hover: var(--blue-30);
 
   /* Sizing */
-  --size-large: 48px;
+  --size-very-large: 48px;
+  --size-large: 36px;
   --size-med: 24px;
   --size-small: 12px;
+  --size-very-small: 8px;
 
   /* Spacing */
+  --space-very-large: 24px;
   --space-large: 12px;
   --space-med: 8px;
   --space-small: 4px;
@@ -74,9 +78,10 @@
   --text-error: var(--red-50);
   --text-success: var(--green-50);
   --text-disabled: var(--neutral-50);
+
   --font-primary: "Roboto", sans-serif;
   --font-mono: "Roboto Mono", monospace;
-  --font-size: 16px;
+  --font-size: 13px;
   --font-weight: 400;
 
   --label-font-size: 14px;
@@ -103,6 +108,10 @@ input,
 select,
 textarea {
   font-family: inherit;
+
+  &:focus {
+    outline: 2px solid var(--blue-30);
+  }
 }
 
 .ui-button,

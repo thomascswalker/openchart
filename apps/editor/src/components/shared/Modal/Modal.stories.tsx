@@ -29,7 +29,7 @@ const ModalExample = () => {
           }}
         >
           <Modal.Header title="Example dialog" onClick={() => setOpen(false)} />
-          <Section className="settings-panel">
+          <Section>
             <Label>
               Project name
               <input defaultValue="Untitled project" />

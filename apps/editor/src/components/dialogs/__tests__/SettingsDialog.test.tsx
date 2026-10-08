@@ -134,7 +134,7 @@ describe("Application settings", () => {
     act(() => changeInput(capacity, "1024"));
     await act(async () => {
       [...container.querySelectorAll<HTMLButtonElement>("button")]
-        .find((button) => button.textContent === "Save")!
+        .find((button) => button.textContent === "OK")!
         .click();
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve()),
@@ -155,7 +155,9 @@ describe("Application settings", () => {
     act(() => open.click());
 
     const tabs = [
-      ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+      ...container.querySelectorAll<HTMLElement>(
+        '#dialog-sections [role="option"]',
+      ),
     ];
     expect(tabs.map((tab) => tab.textContent)).toEqual(["General", "Feedback"]);
     expect(
@@ -165,10 +167,16 @@ describe("Application settings", () => {
     ).toBe(true);
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("button")].find(
-        (button) => button.textContent === "Save",
+        (button) => button.textContent === "OK",
       )?.disabled,
     ).toBe(true);
-    act(() => tabs[1].click());
+    act(() => {
+      tabs[0].focus();
+      tabs[0].dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    });
+    expect(document.activeElement).toBe(tabs[1]);
     expect(container.textContent).toContain("Enable metronome");
     expect(container.textContent).toContain("Metronome volume");
     expect(container.textContent).toContain("Downbeat sound");

@@ -5,27 +5,30 @@ import type {
   FontWeightProps,
   BorderProps,
   FlexWrapProps,
+  FontSizeProps,
 } from "styled-system";
-import { getTextSystemStyles } from "./textStyles";
 import styles from "./text.module.css";
+import { getTextSystemStyles } from "./textStyles";
 
 interface TextProps
   extends
     TextAlignProps,
+    FontSizeProps,
     FontWeightProps,
     TextColorProps,
     BorderProps,
     FlexWrapProps {
   className?: string;
   children: React.ReactNode;
+  role?: React.AriaRole;
 }
 
-const Text = ({ className, children, ...props }: TextProps) => {
+const Text = ({ className, children, role, ...props }: TextProps) => {
   const style = getTextSystemStyles(props);
   const textClassName = classNames(styles["ui-text"], className);
 
   return (
-    <span className={textClassName} style={style}>
+    <span className={textClassName} role={role} style={style}>
       {children}
     </span>
   );

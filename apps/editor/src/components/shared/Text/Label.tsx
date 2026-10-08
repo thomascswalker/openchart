@@ -1,17 +1,24 @@
-import { Text } from "./Text";
 import type { TextProps } from "./Text";
 import classNames from "classnames";
 import styles from "./text.module.css";
+import { getTextSystemStyles } from "./textStyles";
 
-type LabelProps = TextProps;
+interface LabelProps extends TextProps {
+  htmlFor?: string;
+}
 
-const Label = ({ children, ...props }: LabelProps) => {
-  const labelClassName = classNames(styles["ui-text"], styles["ui-label"]);
+const Label = ({ children, className, htmlFor, ...props }: LabelProps) => {
+  const style = getTextSystemStyles(props);
+  const labelClassName = classNames(
+    styles["ui-text"],
+    styles["ui-label"],
+    className,
+  );
 
   return (
-    <Text className={labelClassName} {...props}>
+    <label className={labelClassName} htmlFor={htmlFor} style={style}>
       {children}
-    </Text>
+    </label>
   );
 };
 

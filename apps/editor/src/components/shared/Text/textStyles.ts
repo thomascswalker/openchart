@@ -6,6 +6,7 @@ import {
   compose,
   border,
   flexWrap,
+  fontSize,
 } from "styled-system";
 
 const getTextSystemStyles: styleFn = compose(
@@ -14,6 +15,7 @@ const getTextSystemStyles: styleFn = compose(
   color,
   border,
   flexWrap,
+  fontSize,
 );
 
 export { getTextSystemStyles };
