@@ -18,5 +18,11 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "e2e/**/*.ts"]
+  "include": [
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.storybook.config.ts",
+    "e2e/**/*.ts",
+    "e2e-storybook/**/*.ts"
+  ]
 }
