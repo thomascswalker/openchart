@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
-import Track from "../track";
-import { audioInstances } from "./audioMock";
+import Track from "../track.js";
+import { audioInstances } from "./audioMock.js";
 
 test("Track can instantiate", () => {
   const track = new Track("sample.wav");

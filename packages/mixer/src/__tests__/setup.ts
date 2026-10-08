@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { audioInstances, type MockAudio } from "./audioMock";
+import { audioInstances, type MockAudio } from "./audioMock.js";
 
 vi.mock("ts-audio", () => ({
   Audio: () => {
@@ -22,7 +22,7 @@ vi.mock("ts-audio", () => ({
         this.isPlaying = false;
         this.currentTime = 0;
       },
-      destroy() {},
+      destroy() { },
       on(eventType, callback) {
         this.events[eventType] = callback;
       },

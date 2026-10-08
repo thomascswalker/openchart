@@ -87,6 +87,7 @@ const Toolbar = ({
       borderBottom="var(--border-primary)"
       padding="4px"
       gap="4px"
+      flexDirection="row"
     >
       {/* View Selection */}
       <ToolButton

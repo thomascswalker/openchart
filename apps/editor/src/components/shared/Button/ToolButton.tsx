@@ -13,6 +13,7 @@ const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
       maxHeight={40}
       borderRadius={4}
       border="none"
+      padding={0}
       {...rest}
     >
       <Icon />
