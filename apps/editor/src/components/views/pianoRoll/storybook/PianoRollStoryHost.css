@@ -1,0 +1,84 @@
+.piano-roll-story {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(100%, 1200px);
+  margin: 0 auto;
+  color: #e8e8e8;
+  font: 13px/1.4 var(--font-primary, Arial, sans-serif);
+}
+
+.piano-roll-story > * {
+  flex: 0 0 auto;
+}
+
+.piano-roll-story__toolbar,
+.piano-roll-story__diagnostics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.piano-roll-story__field,
+.piano-roll-story__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.piano-roll-story__check label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.piano-roll-story__toolbar select,
+.piano-roll-story__toolbar input[type="number"] {
+  min-height: 30px;
+  padding: 3px 6px;
+  color: #eee;
+  background: #242424;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+.piano-roll-story__toolbar input[type="number"] {
+  width: 90px;
+}
+
+.piano-roll-story__check input {
+  margin: 0;
+}
+
+.piano-roll-story__toolbar button {
+  min-height: 36px;
+}
+
+.piano-roll-story__diagnostics {
+  color: #bbb;
+  font-family: var(--font-monospace, monospace);
+  font-size: 12px;
+}
+
+.piano-roll-story__renderer {
+  position: relative;
+  width: 100%;
+  height: min(600px, 65vh);
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid #444;
+  background: #151515;
+}
+
+.piano-roll-story__renderer > .midi-view-host {
+  position: absolute;
+  inset: 0;
+}
+
+.piano-roll-story__status {
+  display: block;
+  margin: 0;
+  padding: 12px;
+  color: #ffd28a;
+}

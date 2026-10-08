@@ -53,6 +53,17 @@ jobs:
       - name: Run editor end-to-end tests
         run: npm run test:e2e --workspace=@midiedit/editor
 
+      - name: Build Storybook package dependencies
+        run: |
+          npm run build --workspace=@midiedit/core
+          npm run build --workspace=@midiedit/views
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Run Storybook browser tests
+        run: npm run test:storybook --workspace=@midiedit/editor
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

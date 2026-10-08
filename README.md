@@ -98,7 +98,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ### Install Dependencies
 
 ```bash
-npm install
+npm ci
 ```
 
 ### Build Everything (Libraries & Apps)
@@ -110,14 +110,33 @@ npm run build
 ### Web App (`@midiedit/editor`)
 
 ```bash
+# Install from the repository root
+npm ci
+
 # Start development server
 npm run dev
 
 # Build web editor static bundle
 npm run build --workspace=@midiedit/editor
 
-# Browse shared editor components in isolation
-npm run storybook
+```
+
+### Piano Roll Storybook Harness
+
+Run these commands from the repository root. Build the package exports first;
+the editor imports `@midiedit/core` and `@midiedit/views` from their `dist`
+directories.
+
+```bash
+npm ci
+npm run build --workspace=@midiedit/core
+npm run build --workspace=@midiedit/views
+npm run storybook                    # open http://localhost:6006, then Views/Piano Roll
+npm run build-storybook
+npm run test:storybook --workspace=@midiedit/editor
+npm run check-types
+npm run check
+npm test
 ```
 
 ### Desktop App (`@midiedit/desktop`)
