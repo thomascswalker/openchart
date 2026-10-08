@@ -22,7 +22,7 @@ vi.mock("ts-audio", () => ({
         this.isPlaying = false;
         this.currentTime = 0;
       },
-      destroy() { },
+      destroy() {},
       on(eventType, callback) {
         this.events[eventType] = callback;
       },
