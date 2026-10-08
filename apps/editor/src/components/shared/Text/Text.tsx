@@ -5,13 +5,15 @@ import type {
   FontWeightProps,
   BorderProps,
   FlexWrapProps,
+  FontSizeProps,
 } from "styled-system";
-import { getTextSystemStyles } from "./textStyles";
 import styles from "./text.module.css";
+import { getTextSystemStyles } from "./textStyles";
 
 interface TextProps
   extends
     TextAlignProps,
+    FontSizeProps,
     FontWeightProps,
     TextColorProps,
     BorderProps,

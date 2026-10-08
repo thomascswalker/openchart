@@ -26,9 +26,9 @@
   background: var(--neutral-90);
 }
 
-.ui-button[aria-pressed="false"]:not(.ui-button-close) {
+/* .ui-button[aria-pressed="false"]:not(.ui-button-close) {
   border-bottom: 0 !important;
-}
+} */
 
 .ui-button-active {
   position: relative;

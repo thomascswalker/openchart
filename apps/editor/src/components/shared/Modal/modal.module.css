@@ -10,14 +10,14 @@
 .ui-modal {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-large);
   width: min(420px, calc(100% - 32px));
-  padding: 20px;
-  border: 1px solid #555;
-  border-radius: 6px;
-  background: #242424;
+  padding: var(--space-large);
+  border: var(--border-primary);
+  border-radius: var(--radius-large);
+  background: var(--neutral-85);
   box-shadow: 0 12px 28px rgb(0 0 0 / 45%);
-  color: #eee;
+  color: var(--text-primary);
   text-align: left;
 }
 
@@ -28,5 +28,5 @@
 
 .ui-modal h2 {
   margin: 0;
-  color: #eee;
+  color: var(--text-primary);
 }
