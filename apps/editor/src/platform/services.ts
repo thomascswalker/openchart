@@ -4,12 +4,30 @@ export type Listener = () => void;
 export type Subscription = (listener: () => void) => () => void;
 
 export abstract class IService {
+  protected readonly listeners = new Set<Listener>();
+
   public abstract readonly reset: () => void;
-  public abstract readonly subscribe: Subscription;
+
+  public readonly subscribe: Subscription = (listener) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  protected notify(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
 }
 
 export abstract class IStatefulService<T> extends IService {
-  public abstract readonly getSnapshot: () => T;
+  protected _snapshot!: T;
+
+  public get snapshot(): T {
+    return this.getSnapshot();
+  }
+
+  public readonly getSnapshot = (): T => this._snapshot;
 }
 
 export interface ServicesAccessor {
@@ -32,7 +50,7 @@ export class ServiceRegistry {
       const serviceClasses = Object.values(modules[filepath]).filter(
         (candidate): candidate is ServiceConstructor =>
           typeof candidate === "function" &&
-          Object.getOwnPropertyNames(candidate.prototype ?? {}).length > 1,
+          candidate.prototype instanceof IService,
       );
       if (!serviceClasses.length) {
         continue;

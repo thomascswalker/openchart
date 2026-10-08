@@ -1,11 +1,14 @@
 import { Runtime } from "./Runtime";
 import { Shell } from "./Shell";
+import { ErrorBoundary } from "./shared/ErrorBoundary/ErrorBoundary";
 
 const Editor = () => {
   return (
-    <Runtime>
-      <Shell />
-    </Runtime>
+    <ErrorBoundary>
+      <Runtime>
+        <Shell />
+      </Runtime>
+    </ErrorBoundary>
   );
 };
 

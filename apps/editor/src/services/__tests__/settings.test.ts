@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ServiceRegistry } from "../../platform/services";
 import { defaultApplicationSettings, SettingsService } from "../settings";
 
 describe("SettingsService", () => {
@@ -7,6 +8,14 @@ describe("SettingsService", () => {
   afterEach(() => {
     values.clear();
     vi.unstubAllGlobals();
+  });
+
+  it("registers services that define methods as instance fields", () => {
+    const services = new ServiceRegistry({
+      "../services/settings.ts": { SettingsService },
+    });
+
+    expect(services.get("settings")).toBeInstanceOf(SettingsService);
   });
 
   it("silently drops legacy song-audio settings when loading and saving", () => {

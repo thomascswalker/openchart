@@ -14,7 +14,6 @@ export interface ClipboardView {
 export class EditorClipboardService extends IService {
   static dependencies = ["editor.active-chart-view"];
   private readonly activeChartView: ActiveChartViewService;
-  private readonly listeners = new Set<() => void>();
 
   constructor(activeChartView: ActiveChartViewService) {
     super();
@@ -23,11 +22,6 @@ export class EditorClipboardService extends IService {
   }
 
   public readonly reset = (): void => this.sync();
-
-  public readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
 
   private get view(): ClipboardView | null {
     return this.activeChartView.getSnapshot();
@@ -61,6 +55,6 @@ export class EditorClipboardService extends IService {
     Platform.context.set("clipboard.can-copy", this.canCopy());
     Platform.context.set("clipboard.can-cut", this.canCut());
     Platform.context.set("clipboard.can-paste", this.canPaste());
-    for (const listener of this.listeners) listener();
+    this.notify();
   }
 }

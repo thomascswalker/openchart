@@ -8,6 +8,12 @@
   flex: 1;
 }
 
+.ui-section > pre {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
 .row {
   flex-direction: row;
 }
