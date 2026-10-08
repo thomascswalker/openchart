@@ -1,49 +1,49 @@
 .ui-text .ui-heading .ui-h1 .ui-h2 .ui-h3 .ui-h4 .ui-h5 .ui-h6 {
-    font-family: var(--font-primary);
-    font-size: var(--font-size);
-    font-weight: var(--font-weight);
-    color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+  color: var(--text-primary);
 }
 
 .ui-heading {
-    font-size: var(--heading-font-size);
-    font-weight: var(--heading-font-weight);
+  font-size: var(--heading-font-size);
+  font-weight: var(--heading-font-weight);
 }
 
 .ui-h1 {
-    font-size: var(--h1-font-size);
-    font-weight: var(--h1-font-weight);
+  font-size: var(--h1-font-size);
+  font-weight: var(--h1-font-weight);
 }
 
 .ui-h2 {
-    font-size: var(--h2-font-size);
-    font-weight: var(--h2-font-weight);
+  font-size: var(--h2-font-size);
+  font-weight: var(--h2-font-weight);
 }
 
 .ui-h3 {
-    font-size: var(--h3-font-size);
-    font-weight: var(--h3-font-weight);
+  font-size: var(--h3-font-size);
+  font-weight: var(--h3-font-weight);
 }
 
 .ui-h4 {
-    font-size: var(--h4-font-size);
-    font-weight: var(--h4-font-weight);
+  font-size: var(--h4-font-size);
+  font-weight: var(--h4-font-weight);
 }
 
 .ui-h5 {
-    font-size: var(--h5-font-size);
-    font-weight: var(--h5-font-weight);
+  font-size: var(--h5-font-size);
+  font-weight: var(--h5-font-weight);
 }
 
 .ui-h6 {
-    font-size: var(--h6-font-size);
-    font-weight: var(--h6-font-weight);
+  font-size: var(--h6-font-size);
+  font-weight: var(--h6-font-weight);
 }
 
 .ui-code {
-    font-family: var(--font-mono);
-    background: var(--neutral-90);
-    color: var(--text-primary);
-    padding: var(--space-small);
-    border-radius: var(--radius-small);
+  font-family: var(--font-mono);
+  background: var(--neutral-90);
+  color: var(--text-primary);
+  padding: var(--space-small);
+  border-radius: var(--radius-small);
 }

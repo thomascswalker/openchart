@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap");
 
 :root {
   /* Colors */
@@ -72,8 +72,8 @@
   --text-error: var(--red-50);
   --text-success: var(--green-50);
   --text-disabled: var(--neutral-50);
-  --font-primary: 'Roboto, sans-serif';
-  --font-mono: 'Roboto Mono, sans-serif';
+  --font-primary: "Roboto, sans-serif";
+  --font-mono: "Roboto Mono, sans-serif";
   --font-size: 16px;
   --font-weight: 400;
   --heading-font-size: 24px;
