@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEventHandler, ReactNode, Ref } from "react";
 import classNames from "classnames";
 import { space, color, layout, compose, border } from "styled-system";
 import type {
@@ -19,6 +19,14 @@ interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   title?: string;
   ariaLabel?: string;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
+  type?: "button" | "submit" | "reset";
+  id?: string;
+  role?: React.AriaRole;
+  tabIndex?: number;
+  ref?: Ref<HTMLButtonElement>;
+  "aria-controls"?: string;
+  "aria-selected"?: boolean;
   className?: string;
   children?: ReactNode;
 }
@@ -29,6 +37,14 @@ const Button = ({
   flat = false,
   title,
   ariaLabel,
+  onKeyDown,
+  type = "button",
+  id,
+  role,
+  tabIndex,
+  ref,
+  "aria-controls": ariaControls,
+  "aria-selected": ariaSelected,
   onClick = () => {},
   className,
   children,
@@ -39,14 +55,22 @@ const Button = ({
 
   return (
     <button
+      ref={ref}
       className={classNames(
         buttonClassName,
         active && styles["ui-button-active"],
         flat && styles["ui-button-flat"],
       )}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       disabled={disabled}
+      type={type}
+      id={id}
+      role={role}
+      tabIndex={tabIndex}
       aria-pressed={active}
+      aria-controls={ariaControls}
+      aria-selected={ariaSelected}
       title={title}
       aria-label={ariaLabel}
       style={style}

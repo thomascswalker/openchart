@@ -12,7 +12,7 @@ const defaultInputProps: InputProps = {
 
 const Input = ({ className, ...props }: InputProps) => {
   const inputClassName = classNames(styles["ui-input"], className);
-  const combinedProps = { ...props, ...defaultInputProps };
+  const combinedProps = { ...defaultInputProps, ...props };
   return <input type="text" className={inputClassName} {...combinedProps} />;
 };
 

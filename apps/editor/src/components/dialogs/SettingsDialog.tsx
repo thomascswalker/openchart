@@ -1,14 +1,18 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { executeEditorAction, runAction } from "../../actions/execute";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
 import {
   type ApplicationSettings,
   validateApplicationSettings,
 } from "../../services/settings";
-import { useRovingTabs } from "../../hooks/useRovingTabs";
-import { Modal } from "../shared/Modal/Modal";
+import { Input } from "../shared/Input/Input";
+import { Label, Text } from "../shared/Text";
+import { Checkbox } from "../shared/Button";
+import { Section } from "../shared/Section";
+import { Dropdown } from "../shared/Dropdown";
+import { BaseDialog } from "./BaseDialog";
+import styles from "./SettingsDialog.module.css";
 
-type SettingsTab = string;
 type SettingsControl = "text" | "number" | "checkbox" | "select";
 
 interface SettingsField {
@@ -132,45 +136,11 @@ function setSettingValue(
 
 const SettingsDialog = () => {
   const { settings } = useApplicationSettings();
-  const [selectedTab, setSelectedTab] = useState<SettingsTab>(tabs[0]);
   const [draft, setDraft] = useState<ApplicationSettings>(settings);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   const close = (): void => {
     runAction("dialog.close-settings");
-  };
-  const selectTab = (tab: SettingsTab): void => {
-    setSelectedTab(tab);
-    setErrors({});
-  };
-  const { tabRefs, onTabKeyDown } = useRovingTabs(tabs.length, (index) =>
-    selectTab(tabs[index]),
-  );
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-      return;
-    }
-    if (event.key !== "Tab") return;
-    const focusable = [
-      ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-        "button:not([disabled]), input:not([disabled]), select:not([disabled])",
-      ) ?? []),
-    ];
-    const currentIndex = focusable.indexOf(
-      document.activeElement as HTMLElement,
-    );
-    const nextIndex = event.shiftKey
-      ? currentIndex <= 0
-        ? focusable.length - 1
-        : currentIndex - 1
-      : currentIndex === focusable.length - 1
-        ? 0
-        : currentIndex + 1;
-    event.preventDefault();
-    focusable[nextIndex]?.focus();
   };
   const apply = async (): Promise<boolean> => {
     const validationErrors = validateApplicationSettings(draft);
@@ -178,125 +148,80 @@ const SettingsDialog = () => {
     if (Object.keys(validationErrors).length > 0) return false;
     return executeEditorAction("settings.apply", draft);
   };
-  const save = async (): Promise<void> => {
-    if (await apply()) close();
-  };
-  const fields = settingsSchema[selectedTab] ?? [];
   const isDirty = JSON.stringify(draft) !== JSON.stringify(settings);
 
   return (
-    <Modal
-      dialogRef={dialogRef}
-      onKeyDown={onKeyDown}
-      size={{ width: 760, height: 480, margin: 32 }}
-      onBackdropClick={(event) => {
-        if (event.target === event.currentTarget) close();
+    <BaseDialog
+      title="Settings"
+      options={tabs}
+      optionsLabel="Settings sections"
+      isDirty={isDirty}
+      onApply={apply}
+      onClose={close}
+      onTabChange={() => setErrors({})}
+      renderTab={(tab) => {
+        const fields = settingsSchema[tab] ?? [];
+        return fields.map((field) => {
+          const value = getSettingValue(draft, field.path);
+          const update = (nextValue: string | number | boolean): void => {
+            setDraft(setSettingValue(draft, field.path, nextValue));
+          };
+          const inputId = `settings-field-${field.id}`;
+          return (
+            <Section className={styles.field} key={field.id}>
+              {field.control === "checkbox" ? (
+                <Checkbox
+                  checked={value as boolean}
+                  label={field.label}
+                  onChange={(event) => update(event.target.checked)}
+                />
+              ) : (
+                <Label htmlFor={inputId}>{field.label}</Label>
+              )}
+              {field.control === "text" ? (
+                <Input
+                  id={inputId}
+                  className={styles.input}
+                  aria-invalid={!!errors[field.id]}
+                  value={value as string}
+                  placeholder=""
+                  onChange={(event) => update(event.target.value)}
+                />
+              ) : null}
+              {field.control === "number" ? (
+                <Input
+                  id={inputId}
+                  className={styles.input}
+                  type="number"
+                  min={field.min}
+                  max={field.max}
+                  step={field.step ?? "any"}
+                  aria-invalid={!!errors[field.id]}
+                  value={value as number}
+                  placeholder=""
+                  onChange={(event) => update(Number(event.target.value))}
+                />
+              ) : null}
+              {field.control === "select" ? (
+                <Dropdown
+                  id={inputId}
+                  className={styles.dropdown}
+                  aria-invalid={!!errors[field.id]}
+                  value={value as string}
+                  options={
+                    field.options?.map((option) => ({ ...option })) ?? []
+                  }
+                  onChange={(nextValue) => update(nextValue)}
+                />
+              ) : null}
+              {errors[field.id] ? (
+                <Text role="alert">{errors[field.id]}</Text>
+              ) : null}
+            </Section>
+          );
+        });
       }}
-    >
-      <Modal.Header title="Settings" onClick={close} />
-      <div className="settings-body">
-        <div
-          className="settings-tabs"
-          role="tablist"
-          aria-label="Settings sections"
-          aria-orientation="vertical"
-        >
-          {tabs.map((tab, index) => (
-            <button
-              key={tab}
-              ref={(element) => {
-                tabRefs.current[index] = element;
-              }}
-              type="button"
-              role="tab"
-              id={`settings-tab-${index}`}
-              aria-selected={selectedTab === tab}
-              aria-controls={`settings-panel-${index}`}
-              tabIndex={selectedTab === tab ? 0 : -1}
-              onClick={() => selectTab(tab)}
-              onKeyDown={(event) => onTabKeyDown(event, index)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        <div
-          className="settings-panel"
-          role="tabpanel"
-          id={`settings-panel-${tabs.indexOf(selectedTab)}`}
-          aria-labelledby={`settings-tab-${tabs.indexOf(selectedTab)}`}
-        >
-          {fields.map((field) => {
-            const value = getSettingValue(draft, field.path);
-            const update = (nextValue: string | number | boolean): void => {
-              setDraft(setSettingValue(draft, field.path, nextValue));
-            };
-            return (
-              <label key={field.id}>
-                {field.control === "checkbox" ? (
-                  <input
-                    className="input"
-                    type="checkbox"
-                    checked={value as boolean}
-                    onChange={(event) => update(event.target.checked)}
-                  />
-                ) : (
-                  field.label
-                )}
-                {field.control === "text" ? (
-                  <input
-                    className="input"
-                    aria-invalid={!!errors[field.id]}
-                    value={value as string}
-                    onChange={(event) => update(event.target.value)}
-                  />
-                ) : null}
-                {field.control === "number" ? (
-                  <input
-                    className="input"
-                    type="number"
-                    min={field.min}
-                    max={field.max}
-                    step={field.step ?? "any"}
-                    aria-invalid={!!errors[field.id]}
-                    value={value as number}
-                    onChange={(event) => update(Number(event.target.value))}
-                  />
-                ) : null}
-                {field.control === "select" ? (
-                  <select
-                    aria-invalid={!!errors[field.id]}
-                    value={value as string}
-                    onChange={(event) => update(event.target.value)}
-                  >
-                    {field.options?.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                {field.control === "checkbox" ? field.label : null}
-                {errors[field.id] ? (
-                  <span role="alert">{errors[field.id]}</span>
-                ) : null}
-              </label>
-            );
-          })}
-        </div>
-      </div>
-      <div className="settings-actions">
-        <button type="button" onClick={close}>
-          Cancel
-        </button>
-        <button type="button" onClick={apply} disabled={!isDirty}>
-          Apply
-        </button>
-        <button type="button" onClick={save} disabled={!isDirty}>
-          Save
-        </button>
-      </div>
-    </Modal>
+    />
   );
 };
 

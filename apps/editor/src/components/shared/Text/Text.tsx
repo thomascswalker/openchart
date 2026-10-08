@@ -18,14 +18,15 @@ interface TextProps
     FlexWrapProps {
   className?: string;
   children: React.ReactNode;
+  role?: React.AriaRole;
 }
 
-const Text = ({ className, children, ...props }: TextProps) => {
+const Text = ({ className, children, role, ...props }: TextProps) => {
   const style = getTextSystemStyles(props);
   const textClassName = classNames(styles["ui-text"], className);
 
   return (
-    <span className={textClassName} style={style}>
+    <span className={textClassName} role={role} style={style}>
       {children}
     </span>
   );

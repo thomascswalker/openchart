@@ -64,7 +64,9 @@ describe("ProjectDialog", () => {
     act(() => container.querySelector<HTMLButtonElement>("button")?.click());
 
     const tabs = [
-      ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+      ...container.querySelectorAll<HTMLElement>(
+        '#dialog-sections [role="option"]',
+      ),
     ];
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "General",
@@ -78,7 +80,14 @@ describe("ProjectDialog", () => {
     const nameLabel = [...container.querySelectorAll("label")].find((label) =>
       label.textContent?.startsWith("Name"),
     )!;
-    act(() => changeInput(nameLabel.querySelector("input")!, "Updated song"));
+    act(() =>
+      changeInput(
+        container.ownerDocument.getElementById(
+          nameLabel.htmlFor,
+        ) as HTMLInputElement,
+        "Updated song",
+      ),
+    );
     act(() =>
       [...container.querySelectorAll<HTMLButtonElement>("button")]
         .find((button) => button.textContent === "Apply")

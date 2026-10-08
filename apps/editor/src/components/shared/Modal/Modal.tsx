@@ -17,6 +17,7 @@ interface ModalProps {
   dialogRef?: RefObject<HTMLDivElement | null>;
   onBackdropClick?: MouseEventHandler<HTMLDivElement>;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  className?: string;
   size?: { width: number; height: number; margin?: number };
 }
 
@@ -25,6 +26,7 @@ const ModalBackdrop = ({
   dialogRef,
   onBackdropClick,
   onKeyDown,
+  className,
   size,
 }: ModalProps) => {
   const setDialogRef = useCallback(
@@ -42,13 +44,10 @@ const ModalBackdrop = ({
       } as CSSProperties)
     : undefined;
   return (
-    <div
-      className={styles["settings-dialog-backdrop"]}
-      onMouseDown={onBackdropClick}
-    >
+    <div className={styles["ui-modal-backdrop"]} onMouseDown={onBackdropClick}>
       <div
         ref={setDialogRef}
-        className={`${styles["settings-dialog"]} ${size ? styles["settings-dialog--fixed"] : ""}`}
+        className={`${styles["ui-modal"]} ${size ? styles["ui-modal-fixed"] : ""} ${className ?? ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
