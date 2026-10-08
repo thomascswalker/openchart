@@ -1,7 +1,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ErrorBoundary } from "../ErrorBoundary";
+import { ErrorBoundary } from "../shared/ErrorBoundary/ErrorBoundary";
 
 function render(element: ReactNode): { container: HTMLDivElement; root: Root } {
   const container = document.createElement("div");

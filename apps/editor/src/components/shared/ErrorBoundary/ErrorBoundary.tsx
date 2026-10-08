@@ -1,6 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Section } from "./shared/Section";
-import { HorizontalSeparator } from "./shared/Separator";
+import { Section } from "../Section";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -25,10 +24,6 @@ export class ErrorBoundary extends Component<
     console.error("Editor rendering failed", error, info.componentStack);
     this.setState({ info });
   }
-
-  private retry = (): void => {
-    this.setState({ error: null, info: null });
-  };
 
   render(): ReactNode {
     if (this.state.error) {

@@ -1,6 +1,6 @@
 import { Runtime } from "./Runtime";
 import { Shell } from "./Shell";
-import { ErrorBoundary } from "./ErrorBoundary";
+import { ErrorBoundary } from "./shared/ErrorBoundary/ErrorBoundary";
 
 const Editor = () => {
   return (
