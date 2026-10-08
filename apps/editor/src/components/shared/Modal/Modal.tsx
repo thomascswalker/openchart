@@ -10,6 +10,7 @@ import { Section } from "../Section";
 import { CloseButton } from "../Button";
 
 import styles from "./modal.module.css";
+import { H2 } from "../Text";
 
 interface ModalProps {
   children: ReactNode;
@@ -68,8 +69,8 @@ interface ModalHeaderProps {
 
 const ModalHeader = ({ title, onClick }: ModalHeaderProps) => {
   return (
-    <Section style={{ flexDirection: "row", padding: "0", margin: "0" }}>
-      <h2 id="settings-dialog-title">{title}</h2>
+    <Section flexDirection="row" padding="0px" margin="0px">
+      <H2>{title}</H2>
       <CloseButton onClick={onClick} />
     </Section>
   );

@@ -1,0 +1,9 @@
+body {
+  margin: 0;
+}
+
+.storybook-stage {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 24px;
+}

@@ -2,15 +2,13 @@ import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
-import { isTypingTarget } from "./shared/isTypingTarget";
+import { isTypingTarget } from "../util/html";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
 import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
-
-import "./styles.css";
 
 const Shell = () => {
   const { debugVisible, projectVisible, settingsVisible } = useEditorState();

@@ -27,7 +27,7 @@ import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
-import { ToolButton } from "../shared/Button/Button";
+import { ToolButton } from "../shared/Button";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { Fragment } from "react";
 import type { DrumPlacementKind, HighwayMode } from "./highway";
@@ -83,13 +83,11 @@ const Toolbar = ({
   return (
     <Section
       className="viewport-panel__toolbar"
-      style={{
-        backgroundColor: "var(--primary)",
-        borderBottom: "var(--border-primary)",
-        scrollBehavior: "auto",
-        padding: "4px",
-        gap: "4px",
-      }}
+      backgroundColor="var(--primary)"
+      borderBottom="var(--border-primary)"
+      padding="4px"
+      gap="4px"
+      flexDirection="row"
     >
       {/* View Selection */}
       <ToolButton

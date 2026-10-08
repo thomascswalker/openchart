@@ -21,8 +21,8 @@ import {
 } from "./views/highway";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
-import { Button, CloseButton } from "./shared/Button/Button";
-import { isTypingTarget } from "./shared/isTypingTarget";
+import { Button, CloseButton } from "./shared/Button";
+import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
 import {
   BassIcon,

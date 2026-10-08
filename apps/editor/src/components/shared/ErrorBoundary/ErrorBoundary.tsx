@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Section } from "../Section";
+import { H2, CodeBlock, H1 } from "../Text";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -9,6 +10,23 @@ interface ErrorBoundaryState {
   error: Error | null;
   info: ErrorInfo | null;
 }
+
+const trimStackAt = (stack: string, marker: string) => {
+  const markerIndex = stack.indexOf(marker);
+  if (markerIndex === -1) return stack;
+
+  const lineStart = stack.lastIndexOf("\n", markerIndex);
+  return stack.slice(0, lineStart === -1 ? 0 : lineStart).trimEnd();
+};
+
+const trimComponentStackAtBoundary = (stack: string) => {
+  const boundaryFrame = /^\s*at (?:ErrorBondary|ErrorBoundary)(?:\s|$|\()/;
+  const lines = stack.split("\n");
+  const boundaryIndex = lines.findIndex((line) => boundaryFrame.test(line));
+  return boundaryIndex === -1
+    ? stack
+    : lines.slice(0, boundaryIndex).join("\n").trimEnd();
+};
 
 export class ErrorBoundary extends Component<
   ErrorBoundaryProps,
@@ -27,37 +45,22 @@ export class ErrorBoundary extends Component<
 
   render(): ReactNode {
     if (this.state.error) {
+      const stackTrace = trimStackAt(
+        this.state.error.stack?.trimStart() ?? "Stack trace unavailable.",
+        "Object.react_stack_bottom_frame ",
+      );
+      const componentStack = trimComponentStackAtBoundary(
+        this.state.info?.componentStack?.trimStart() ??
+          "Component stack unavailable.",
+      );
+
       return (
-        <Section
-          style={{
-            flexDirection: "column",
-            padding: "20px",
-            scrollBehavior: "auto",
-          }}
-        >
-          <h2 style={{ textAlign: "left" }}>STACK TRACE</h2>
-          <pre
-            style={{
-              color: "var(--red-40)",
-              textAlign: "left",
-              border: "solid 1px var(--neutral-40)",
-              padding: "16px",
-            }}
-          >
-            {this.state.error.stack?.trimStart() ?? "Stack trace unavailable."}
-          </pre>
-          <h2 style={{ textAlign: "left" }}>COMPONENT STACK</h2>
-          <pre
-            style={{
-              color: "var(--red-40)",
-              textAlign: "left",
-              border: "solid 1px var(--neutral-40)",
-              padding: "16px",
-            }}
-          >
-            {this.state.info?.componentStack?.trimStart() ??
-              "Component stack unavailable."}
-          </pre>
+        <Section flexDirection="column">
+          <H1>An error occurred</H1>
+          <H2>Stack</H2>
+          <CodeBlock>{stackTrace}</CodeBlock>
+          <H2>Components</H2>
+          <CodeBlock>{componentStack}</CodeBlock>
         </Section>
       );
     }

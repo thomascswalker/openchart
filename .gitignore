@@ -4,6 +4,7 @@ node_modules/
 # Build outputs (adjust 'dist' or 'build' to match your outDir)
 dist/
 build/
+storybook-static/
 *.tsbuildinfo
 
 # Logs

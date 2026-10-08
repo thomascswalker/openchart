@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { audioInstances, type MockAudio } from "./audioMock";
+import { audioInstances, type MockAudio } from "./audioMock.js";
 
 vi.mock("ts-audio", () => ({
   Audio: () => {
