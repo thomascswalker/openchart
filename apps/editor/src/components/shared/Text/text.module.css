@@ -58,6 +58,17 @@
   border-radius: var(--radius-small);
 }
 
+.ui-code-block {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ui-code-line {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
 .ui-label {
   font-size: var(--label-font-size);
   font-weight: var(--label-font-weight);

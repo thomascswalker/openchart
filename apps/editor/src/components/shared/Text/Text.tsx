@@ -4,12 +4,18 @@ import type {
   TextColorProps,
   FontWeightProps,
   BorderProps,
+  FlexWrapProps,
 } from "styled-system";
 import { getTextSystemStyles } from "./textStyles";
 import styles from "./text.module.css";
 
 interface TextProps
-  extends TextAlignProps, FontWeightProps, TextColorProps, BorderProps {
+  extends
+    TextAlignProps,
+    FontWeightProps,
+    TextColorProps,
+    BorderProps,
+    FlexWrapProps {
   className?: string;
   children: React.ReactNode;
 }
