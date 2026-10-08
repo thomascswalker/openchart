@@ -4,6 +4,11 @@ import { playwright } from "@vitest/browser-playwright";
 import svgr from "vite-plugin-svgr"; // 1. Import the SVGR plugin
 export default defineConfig({
   plugins: [react(), svgr()],
+  resolve: {
+    alias: {
+      "ts-audio": "ts-audio/dist/index.modern.mjs",
+    },
+  },
   test: {
     fileParallelism: false,
     include: ["src/**/*.test.tsx"],
