@@ -1,6 +1,4 @@
-import {
-  IStatefulService,
-} from "../../platform/services";
+import { IStatefulService } from "../../platform/services";
 
 export interface EditorStateSnapshot {
   error: string | null;

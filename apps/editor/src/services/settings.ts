@@ -174,5 +174,4 @@ export class SettingsService extends IStatefulService<ApplicationSettings> {
     this.notify();
     return true;
   };
-
 }

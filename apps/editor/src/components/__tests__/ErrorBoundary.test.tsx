@@ -18,7 +18,9 @@ describe("ErrorBoundary", () => {
 
   it("shows a fallback and logs errors thrown by its children", () => {
     const error = new Error("render failed");
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     const Throw = () => {
       throw error;
     };
@@ -44,9 +46,9 @@ describe("ErrorBoundary", () => {
     );
     expect(fallback?.querySelectorAll("pre")[2].textContent).toContain("Throw");
     expect(
-      [...(fallback?.querySelectorAll("pre") ?? [])].slice(1).map(
-        (pre) => getComputedStyle(pre).textAlign,
-      ),
+      [...(fallback?.querySelectorAll("pre") ?? [])]
+        .slice(1)
+        .map((pre) => getComputedStyle(pre).textAlign),
     ).toEqual(["left", "left"]);
     expect(consoleError).toHaveBeenCalledWith(
       "Editor rendering failed",
@@ -72,9 +74,7 @@ describe("ErrorBoundary", () => {
     );
 
     shouldThrow = false;
-    act(() =>
-      container.querySelector<HTMLButtonElement>("button")?.click(),
-    );
+    act(() => container.querySelector<HTMLButtonElement>("button")?.click());
 
     expect(container.textContent).toContain("Editor is ready");
 

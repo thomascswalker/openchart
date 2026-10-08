@@ -101,5 +101,4 @@ export class FileSystemService extends IService {
   public getPath() {
     return this._path;
   }
-
 }
