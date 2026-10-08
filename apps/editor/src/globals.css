@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap');
+
 :root {
   /* Colors */
   --white: #ffffff;
@@ -63,6 +65,31 @@
 
   /* Border */
   --border-primary: 1px solid var(--neutral-60);
+
+  /* Text */
+  --text-primary: var(--neutral-10);
+  --text-secondary: var(--neutral-30);
+  --text-error: var(--red-50);
+  --text-success: var(--green-50);
+  --text-disabled: var(--neutral-50);
+  --font-primary: 'Roboto, sans-serif';
+  --font-mono: 'Roboto Mono, sans-serif';
+  --font-size: 16px;
+  --font-weight: 400;
+  --heading-font-size: 24px;
+  --heading-font-weight: 600;
+  --h1-font-size: 32px;
+  --h1-font-weight: 600;
+  --h2-font-size: 24px;
+  --h2-font-weight: 600;
+  --h3-font-size: 20px;
+  --h3-font-weight: 600;
+  --h4-font-size: 18px;
+  --h4-font-weight: 600;
+  --h5-font-size: 16px;
+  --h5-font-weight: 600;
+  --h6-font-size: 14px;
+  --h6-font-weight: 600;
 }
 
 .ui-button,

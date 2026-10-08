@@ -1,7 +1,7 @@
-import type { Orientation } from "../props";
-
 const DEFAULT_THICKNESS = 2;
 const DEFAULT_MARGIN = 4;
+
+export type Orientation = "horizontal" | "vertical";
 
 interface SeparatorProps {
   orientation?: Orientation;

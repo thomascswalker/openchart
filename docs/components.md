@@ -1,6 +1,6 @@
 # Shared Components
 
-All components in the [`shared`](../apps/editor/src/components/shared) folder are intended to be 
+All components in the [`shared`](../apps/editor/src/components/shared) folder are intended to be
 generic and not implementation-specific.
 
 ## Components
@@ -11,23 +11,23 @@ generic and not implementation-specific.
 
 Standard button styled with a required text label.
 
-#### Close Button ✅
+### Close Button ✅
 
 [Source](../apps/editor/src/components/shared/Button/CloseButton.tsx)
 
 Standard button styled with an `x` icon. Turns red on hover.
 
-#### Tool Button ✅
+### Tool Button ✅
 
 [Source](../apps/editor/src/components/shared/Button/ToolButton.tsx)
 
-Standard button styled with an [`Icon`](#icon) and (optional) text label. 
+Standard button styled with an [`Icon`](#icon) and (optional) text label.
 
-#### Checkbox
+### Checkbox ❌
 
 ### Dropdown ✅
 
-#### Dropdown Button ✅
+### Dropdown Button ✅
 
 ### Error Boundary ✅
 
@@ -39,7 +39,9 @@ Standard button styled with an [`Icon`](#icon) and (optional) text label.
 
 ### Separator ✅
 
-### Text ❌
+### Text ✅
+
+### Header ✅
 
 ### Modal ✅
 

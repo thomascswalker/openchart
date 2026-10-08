@@ -22,7 +22,7 @@ import {
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, CloseButton } from "./shared/Button";
-import { isTypingTarget } from "./shared/isTypingTarget";
+import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
 import {
   BassIcon,
