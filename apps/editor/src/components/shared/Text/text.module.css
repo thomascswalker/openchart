@@ -57,3 +57,9 @@
   padding: var(--space-small);
   border-radius: var(--radius-small);
 }
+
+.ui-label {
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  color: var(--text-secondary);
+}

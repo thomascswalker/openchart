@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "../Button/Button";
 import { Modal } from "./Modal";
+import { Text, Label } from "../Text";
+import { Section } from "../Section";
 
 const meta = {
   title: "Shared/Modal",
@@ -27,13 +29,13 @@ const ModalExample = () => {
           }}
         >
           <Modal.Header title="Example dialog" onClick={() => setOpen(false)} />
-          <div className="settings-panel">
-            <label>
+          <Section className="settings-panel">
+            <Label>
               Project name
               <input defaultValue="Untitled project" />
-            </label>
-            <p>This example shows the dialog with a form control.</p>
-          </div>
+            </Label>
+            <Text>This example shows the dialog with a form control.</Text>
+          </Section>
         </Modal>
       )}
     </>
