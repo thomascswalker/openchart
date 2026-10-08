@@ -24,7 +24,8 @@ const ButtonVariantsView = () => {
         Toggle active
       </Button>
       <CloseButton ariaLabel="Close example" onClick={() => setActive(false)} />
-      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool">
+      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool" />
+      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool with text">
         Cursor
       </ToolButton>
     </div>

@@ -7,13 +7,19 @@ interface ToolButtonProps extends ButtonProps {
 }
 
 const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
+  const hasText = Boolean(children);
+  const maxWidth = hasText ? undefined : 40;
+  const paddingRight = hasText ? "12px" : 0;
+  const paddingLeft = hasText ? "6px" : 0;
+
   return (
     <Button
-      maxWidth={40}
+      maxWidth={maxWidth}
       maxHeight={40}
       borderRadius={4}
       border="none"
-      padding={0}
+      paddingRight={paddingRight}
+      paddingLeft={paddingLeft}
       {...rest}
     >
       <Icon />
