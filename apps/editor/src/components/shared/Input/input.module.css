@@ -1,0 +1,19 @@
+.ui-input {
+  box-sizing: border-box;
+  font-family: var(--font-primary);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+  padding: 0.5rem 1rem;
+  line-height: 1.5;
+  padding: var(--space-med);
+  border: var(--border-primary);
+  border-radius: var(--radius-small);
+  background: var(--neutral-90);
+  color: var(--white);
+  min-height: var(--size-small);
+}
+
+.ui-input:disabled {
+  background: var(--neutral-80);
+  color: var(--neutral-30);
+}

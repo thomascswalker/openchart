@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Code } from "./Code";
+import { CodeBlock } from "./Code";
 import { Heading } from "./Heading";
 import { Text } from "./Text";
 
@@ -30,22 +31,24 @@ export const Headings: Story = {
   ),
 };
 
-export const CodeBlock: Story = {
-  render: () => (
-    <Code>
-      const hello = "world";
-      <br />
-      const foo = "bar";
-      <br />
-      console.log(hello, foo);
-    </Code>
-  ),
+export const _CodeBlock: Story = {
+  render: () => {
+    const code = `const hello = "world";
+const foo = "bar";
+console.log(hello, foo);`;
+    return (
+      <div style={{ gap: "12px", display: "grid" }}>
+        <CodeBlock>{code}</CodeBlock>
+        <CodeBlock variation="error">{code}</CodeBlock>
+      </div>
+    );
+  },
 };
 
 export const InlineCode: Story = {
   render: () => (
-    <p>
+    <Text>
       Current playback speed: <Code>1.25x</Code>
-    </p>
+    </Text>
   ),
 };
