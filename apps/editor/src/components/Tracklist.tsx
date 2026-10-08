@@ -2,7 +2,6 @@ import { SongView } from "@midiedit/views";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { executeEditorAction } from "../actions/execute";
-import "./styles.css";
 
 interface TrackListProps {
   viewportId: string;

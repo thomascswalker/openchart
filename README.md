@@ -115,6 +115,9 @@ npm run dev
 
 # Build web editor static bundle
 npm run build --workspace=@midiedit/editor
+
+# Browse shared editor components in isolation
+npm run storybook
 ```
 
 ### Desktop App (`@midiedit/desktop`)

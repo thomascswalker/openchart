@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Section } from "../Section";
+import { Code, H2 } from "../Text";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -27,6 +28,12 @@ export class ErrorBoundary extends Component<
 
   render(): ReactNode {
     if (this.state.error) {
+      const stackTrace =
+        this.state.error.stack?.trimStart() ?? "Stack trace unavailable.";
+      const componentStack =
+        this.state.info?.componentStack?.trimStart() ??
+        "Component stack unavailable.";
+
       return (
         <Section
           style={{
@@ -35,29 +42,10 @@ export class ErrorBoundary extends Component<
             scrollBehavior: "auto",
           }}
         >
-          <h2 style={{ textAlign: "left" }}>STACK TRACE</h2>
-          <pre
-            style={{
-              color: "var(--red-40)",
-              textAlign: "left",
-              border: "solid 1px var(--neutral-40)",
-              padding: "16px",
-            }}
-          >
-            {this.state.error.stack?.trimStart() ?? "Stack trace unavailable."}
-          </pre>
-          <h2 style={{ textAlign: "left" }}>COMPONENT STACK</h2>
-          <pre
-            style={{
-              color: "var(--red-40)",
-              textAlign: "left",
-              border: "solid 1px var(--neutral-40)",
-              padding: "16px",
-            }}
-          >
-            {this.state.info?.componentStack?.trimStart() ??
-              "Component stack unavailable."}
-          </pre>
+          <H2>STACK TRACE</H2>
+          <Code>{stackTrace}</Code>
+          <H2>COMPONENT STACK</H2>
+          <Code>{componentStack}</Code>
         </Section>
       );
     }

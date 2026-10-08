@@ -10,17 +10,23 @@ body,
   margin: 0;
 }
 
-body {
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+html {
+  font: 18px/145% var(--font-primary);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
+body {
   background: #181818;
   color: #e8e8e8;
+}
+
+p {
+  margin: 0;
 }
 
 button {
@@ -112,9 +118,7 @@ button:disabled {
 .midi-menubar__trigger,
 .midi-menubar__item,
 .viewport-panel__title {
-  font:
-    400 13.3333px Arial,
-    sans-serif;
+  font: 400 13.3333px var(--font-primary);
   letter-spacing: normal;
 }
 
@@ -378,7 +382,7 @@ button:disabled {
   border-left: 1px solid #3f4b4a;
   background: #101315;
   color: #d8e0df;
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--font-primary);
 }
 
 .debug-panel__header {
@@ -392,17 +396,13 @@ button:disabled {
 .debug-panel h1 {
   margin: 0;
   color: #f0c674;
-  font:
-    700 16px system-ui,
-    sans-serif;
+  font: 700 16px var(--font-primary);
 }
 
 .debug-panel h2 {
   margin: 0 0 10px;
   color: #8bd5ca;
-  font:
-    700 11px system-ui,
-    sans-serif;
+  font: 700 11px var(--font-primary);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -462,10 +462,7 @@ button:disabled {
   border-radius: 2px;
   background: #18201f;
   color: #e8efed;
-  font:
-    11px Consolas,
-    "Courier New",
-    monospace;
+  font: 11px var(--font-mono);
 }
 
 .debug-camera__actions {
@@ -480,9 +477,7 @@ button:disabled {
   background: #263331;
   color: #e8efed;
   cursor: pointer;
-  font:
-    11px system-ui,
-    sans-serif;
+  font: 11px var(--font-primary);
 }
 
 .debug-camera__actions button:hover {
@@ -926,7 +921,7 @@ button:disabled {
   gap: 8px;
   margin-right: 4px;
   color: #ddd;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }

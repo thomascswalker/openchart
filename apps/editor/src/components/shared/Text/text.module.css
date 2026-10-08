@@ -1,4 +1,11 @@
-.ui-text .ui-heading .ui-h1 .ui-h2 .ui-h3 .ui-h4 .ui-h5 .ui-h6 {
+.ui-text,
+.ui-heading,
+.ui-h1,
+.ui-h2,
+.ui-h3,
+.ui-h4,
+.ui-h5,
+.ui-h6 {
   font-family: var(--font-primary);
   font-size: var(--font-size);
   font-weight: var(--font-weight);
@@ -41,7 +48,10 @@
 }
 
 .ui-code {
+  display: inline-flex;
   font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 135%;
   background: var(--neutral-90);
   color: var(--text-primary);
   padding: var(--space-small);

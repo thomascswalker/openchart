@@ -5,7 +5,7 @@ import type {
   FontWeightProps,
 } from "styled-system";
 import { getTextSystemStyles } from "./textStyles";
-import * as styles from "./text.module.css";
+import styles from "./text.module.css";
 
 interface TextProps extends TextAlignProps, FontWeightProps, TextColorProps {
   className?: string;

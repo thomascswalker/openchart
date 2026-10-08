@@ -10,8 +10,6 @@ import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
 
-import "./styles.css";
-
 const Shell = () => {
   const { debugVisible, projectVisible, settingsVisible } = useEditorState();
   const { services, actions } = usePlatform();

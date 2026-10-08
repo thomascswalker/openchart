@@ -12,9 +12,7 @@ body {
   overflow: hidden;
   background: #111827;
   color: #e5e7eb;
-  font:
-    14px/1.4 system-ui,
-    sans-serif;
+  font: 14px/1.4 var(--font-primary);
 }
 #gallery {
   display: flex;

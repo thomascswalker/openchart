@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import { getTextSystemStyles } from "./textStyles";
 import type { TextProps } from "./Text";
-import * as styles from "./text.module.css";
+import styles from "./text.module.css";
 
 type CodeProps = TextProps;
 

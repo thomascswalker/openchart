@@ -67,7 +67,7 @@
 
 .errorMessage pre {
   margin: 0;
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
   text-align: left;
 }

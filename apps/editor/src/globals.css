@@ -1,4 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap");
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/600.css";
+@import "@fontsource/roboto-mono/400.css";
 
 :root {
   /* Colors */
@@ -72,8 +74,8 @@
   --text-error: var(--red-50);
   --text-success: var(--green-50);
   --text-disabled: var(--neutral-50);
-  --font-primary: "Roboto, sans-serif";
-  --font-mono: "Roboto Mono, sans-serif";
+  --font-primary: "Roboto", sans-serif;
+  --font-mono: "Roboto Mono", monospace;
   --font-size: 16px;
   --font-weight: 400;
   --heading-font-size: 24px;
@@ -92,12 +94,18 @@
   --h6-font-weight: 600;
 }
 
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 .ui-button,
-.ui-select,
-.ui-box {
+.ui-select {
   box-sizing: border-box;
   font-size: 1rem;
-  font-family: inherit;
+  font-family: var(--font-primary);
   padding: 0.5rem 1rem;
   line-height: 1.5;
   padding: var(--space-med);
