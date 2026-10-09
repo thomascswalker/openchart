@@ -1,5 +1,11 @@
-import { useEffect, useEffectEvent, useMemo, useRef } from "react";
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Midi } from "@midiedit/core";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
 import { type ViewportSession } from "../services/editor/viewports";
@@ -86,6 +92,23 @@ function trackIndexForSession(
 export const Viewport = () => {
   const { viewportSessions, activeViewportId, maxViewportCount } =
     useViewportSnapshot();
+  const [chartViews, setChartViews] = useState<Map<string, ChartView>>(
+    () => new Map(),
+  );
+  const handleChartViewChange = useCallback(
+    (sessionId: string, chartView: ChartView | null) => {
+      setChartViews((current) => {
+        if (chartView && current.get(sessionId) === chartView) return current;
+        if (!chartView && !current.has(sessionId)) return current;
+        const next = new Map(current);
+        if (chartView) next.set(sessionId, chartView);
+        else next.delete(sessionId);
+        return next;
+      });
+    },
+    [],
+  );
+  const chartViewList = useMemo(() => [...chartViews.values()], [chartViews]);
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
       <div className="viewport-manager__toolbar">
@@ -102,9 +125,11 @@ export const Viewport = () => {
             key={session.id}
             session={session}
             active={session.id === activeViewportId}
+            onChartViewChange={handleChartViewChange}
           />
         ))}
       </div>
+      <Timeline chartViews={chartViewList} />
     </section>
   );
 };
@@ -112,9 +137,11 @@ export const Viewport = () => {
 function ViewportPanel({
   session,
   active,
+  onChartViewChange,
 }: {
   session: ViewportSession;
   active: boolean;
+  onChartViewChange: (sessionId: string, chartView: ChartView | null) => void;
 }) {
   const { midiData } = useDocumentSnapshot();
   const { settings } = useApplicationSettings();
@@ -149,6 +176,11 @@ function ViewportPanel({
   };
 
   const getCameraTick = useEffectEvent(() => session.camera.tick);
+
+  useEffect(() => {
+    onChartViewChange(session.id, chartView);
+    return () => onChartViewChange(session.id, null);
+  }, [chartView, onChartViewChange, session.id]);
 
   useEffect(() => {
     if (!chartView) return;
@@ -345,7 +377,6 @@ function ViewportPanel({
           />
         </div>
       </div>
-      <Timeline chartView={chartView} midiData={midiData} />
     </article>
   );
 }

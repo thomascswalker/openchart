@@ -60,6 +60,7 @@ export async function addViewport(viewport: Locator): Promise<void> {
 
 export async function playheadTick(viewport: Locator): Promise<number> {
   const label = await viewport
+    .page()
     .locator('output[aria-label^="Playback position: tick"]')
     .getAttribute("aria-label");
   const match = label?.match(/tick (\d+)/);
@@ -103,7 +104,7 @@ export async function scrubTimeline(
   fraction: number,
 ): Promise<void> {
   const page = viewport.page();
-  const canvas = viewport.getByTestId("viewport-timeline").locator("canvas");
+  const canvas = page.getByTestId("viewport-timeline").locator("canvas");
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Timeline canvas is not visible");
   const x = bounds.x + bounds.width * fraction;

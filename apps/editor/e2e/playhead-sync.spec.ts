@@ -121,6 +121,7 @@ for (const [originView, otherView] of [
     const origin = panel(page, 0);
     await switchView(origin, originView);
     await addViewport(origin);
+    await expect(page.getByTestId("viewport-timeline")).toHaveCount(1);
     const other = panel(page, 1);
     await switchView(other, otherView);
     const initialOtherCamera = await cameraTick(other);
@@ -148,7 +149,7 @@ test("T4: timeline viewport box redraws when the highway camera pans", async ({
   await loadSong(page);
   const viewport = panel(page, 0);
   await switchView(viewport, "highway");
-  const timeline = viewport.getByTestId("viewport-timeline").locator("canvas");
+  const timeline = page.getByTestId("viewport-timeline").locator("canvas");
   const bounds = await viewport.locator(".midi-view-host canvas").boundingBox();
   if (!bounds) throw new Error("Highway canvas is not visible");
   const before = await timeline.screenshot();
