@@ -192,18 +192,18 @@
     },
     {
       "name": "FOUR PAD",
-      "type": "global",
+      "type": "instrument",
       "key": "four-pad",
-      "visible": false,
-      "editable": false,
+      "noteCount": 4,
+      "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
       "notes": {}
     },
     {
       "name": "FIVE PAD",
-      "type": "global",
+      "type": "instrument",
       "key": "five-pad",
-      "visible": false,
-      "editable": false,
+      "noteCount": 5,
+      "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
       "notes": {}
     }
   ]

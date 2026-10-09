@@ -49,6 +49,8 @@ if (firstNote) {
 For example, the default lead-guitar Expert chart begins at MIDI pitch 96, so
 `Note.Green` maps to pitch 96. `ChartView.addNoteAtPitch` can be used when the
 raw pitch is already known; it validates that the pitch belongs to that chart.
+The default `FOUR PAD` and `FIVE PAD` tracks use four and five lanes,
+respectively, with the same difficulty offsets.
 
 ## Inspect tracks and configure a view
 

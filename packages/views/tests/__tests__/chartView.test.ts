@@ -26,10 +26,29 @@ describe("data.json", () => {
     expect(lead).toBeDefined();
     expect(
       song.getInstrumentTrackViews().map((instrument) => instrument.getName()),
-    ).toEqual(["LEAD GUITAR", "RHYTHM GUITAR", "DRUMS", "VOCALS"]);
+    ).toEqual([
+      "LEAD GUITAR",
+      "RHYTHM GUITAR",
+      "DRUMS",
+      "VOCALS",
+      "FOUR PAD",
+      "FIVE PAD",
+    ]);
     expect(song.getInstrumentTrackView("RHYTHM GUITAR")).toBeDefined();
     expect(song.getInstrumentTrackView("DRUMS")).toBeDefined();
     expect(song.getInstrumentTrackView("VOCALS")).toBeDefined();
+    expect(
+      song
+        .getInstrumentTrackView("FOUR PAD")
+        ?.getChart(Difficulty.Expert)
+        .getLaneCount(),
+    ).toBe(4);
+    expect(
+      song
+        .getInstrumentTrackView("FIVE PAD")
+        ?.getChart(Difficulty.Expert)
+        .getLaneCount(),
+    ).toBe(5);
 
     const noteCounts = [
       1954, // Expert
@@ -41,6 +60,43 @@ describe("data.json", () => {
       const notes = chart.getNotes();
       expect(notes.length).toBe(noteCounts[index]);
     });
+  });
+
+  it("maps four- and five-pad difficulty lanes and note pitches", () => {
+    const midi = new Midi();
+    const song = new SongView(midi);
+    const fourPad = song.getInstrumentTrackView("FOUR PAD")!;
+    const fivePad = song.getInstrumentTrackView("FIVE PAD")!;
+
+    expect(
+      fourPad
+        .getCharts()
+        .map((chart) => [chart.getOffset(), chart.getLaneCount()]),
+    ).toEqual([
+      [96, 4],
+      [84, 4],
+      [72, 4],
+      [60, 4],
+    ]);
+    expect(
+      fivePad
+        .getCharts()
+        .map((chart) => [chart.getOffset(), chart.getLaneCount()]),
+    ).toEqual([
+      [96, 5],
+      [84, 5],
+      [72, 5],
+      [60, 5],
+    ]);
+
+    const fourPadExpert = fourPad.getChart(Difficulty.Expert);
+    const fivePadExpert = fivePad.getChart(Difficulty.Expert);
+    expect(fourPadExpert.addNote(3, 0, 120)).toBe(true);
+    expect(fourPadExpert.addNote(4, 240, 360)).toBe(false);
+    expect(fourPadExpert.addNoteAtPitch(116, 480, 600)).toBe(false);
+    expect(fourPadExpert.getNotes().map((note) => note.note)).toEqual([99]);
+    expect(fivePadExpert.addNote(4, 0, 120)).toBe(true);
+    expect(fivePadExpert.getNotes().map((note) => note.note)).toEqual([100]);
   });
 
   it("mutates both the ChartView and its underlying MidiTrack", () => {

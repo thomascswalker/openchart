@@ -36,6 +36,8 @@ import {
   BassIcon,
   DrumsIcon,
   GuitarIcon,
+  FourpadIcon,
+  FivepadIcon,
   NoteIcon,
   PianoIcon,
   SplitIcon,
@@ -46,6 +48,10 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
     case InstrumentType.Lead:
       return <GuitarIcon width={18} height={18} />;
+    case InstrumentType.FourPad:
+      return <FourpadIcon width={18} height={18} />;
+    case InstrumentType.FivePad:
+      return <FivepadIcon width={18} height={18} />;
     case InstrumentType.Groove:
     case InstrumentType.Bass:
       return <BassIcon width={18} height={18} />;

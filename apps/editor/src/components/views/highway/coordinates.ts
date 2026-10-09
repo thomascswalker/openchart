@@ -6,7 +6,8 @@ import { drumLaneCount } from "./drumProfile";
 type HighwayCoordinateContext = Pick<
   HighwayContext,
   "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
->;
+> &
+  Partial<Pick<HighwayContext, "getCurrentChart">>;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
 export class HighwayCoordinateSystem {
@@ -90,14 +91,13 @@ export class HighwayCoordinateSystem {
   }
 
   public getLaneX(lane: number): number {
-    if (this.isDrumChart()) {
-      return -3 + ((lane + 0.5) * 6) / drumLaneCount;
-    }
-    return -2.4 + (4.8 * lane) / (laneCount - 1);
+    const laneCount = this.getPhysicalLaneCount();
+    return -3 + ((lane + 0.5) * 6) / laneCount;
   }
 
   public getPhysicalLaneCount(): number {
-    return this.isDrumChart() ? drumLaneCount : laneCount;
+    if (this.isDrumChart()) return drumLaneCount;
+    return this.context.getCurrentChart?.()?.getLaneCount() ?? laneCount;
   }
 
   private isDrumChart(): boolean {
