@@ -37,6 +37,12 @@ describe("NoteInstanceBatch", () => {
     expect(batch.meshes[0].material).toBeInstanceOf(THREE.ShaderMaterial);
     expect(batch.meshes[0].material).not.toBe(batch.meshes[1].material);
     expect(
+      batch.meshes.every((mesh) => {
+        const material = mesh.material as THREE.ShaderMaterial;
+        return material.transparent && !material.depthWrite;
+      }),
+    ).toBe(true);
+    expect(
       batch.meshes.every(
         (mesh) => mesh.renderOrder === 5 && !mesh.frustumCulled,
       ),

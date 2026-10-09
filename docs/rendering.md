@@ -98,6 +98,10 @@ derives world Z from the camera tick. Camera scrolling updates uniforms; note
 instance buffers are rewritten only when the chart revision, selection, or
 visible set changes.
 
+Five-fret guitar notes use chart force markers and the default tick threshold
+to distinguish HOPOs from strums. Tap-marker notes and tap SysEx phrases tint
+their notes purple; HOPO notes receive a glowing white center.
+
 Batches start at 256 entries, double as needed, and stop at 16,384. When a batch
 exceeds its ceiling it retains instances nearest the strike line and reports
 drops through the highway diagnostics. Low utilization shrinks capacity after

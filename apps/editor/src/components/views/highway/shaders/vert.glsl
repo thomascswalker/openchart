@@ -4,6 +4,12 @@ varying float vWorldZ;
 attribute vec4 aLaneColorSelected;
 varying vec4 vLaneColorSelected;
 #endif
+#ifdef USE_NOTE_FLAGS
+attribute vec2 aNoteFlags;
+varying vec2 vNoteFlags;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
+#endif
 #ifdef USE_TICK_SCROLL
 attribute float aStartTick;
 #endif
@@ -27,6 +33,9 @@ void main() {
   #ifdef USE_INSTANCE_STATE
     vLaneColorSelected = aLaneColorSelected;
   #endif
+  #ifdef USE_NOTE_FLAGS
+    vNoteFlags = aNoteFlags;
+  #endif
   vec4 worldPosition = model * vec4(position, 1.0);
   #ifdef USE_TICK_SCROLL
     worldPosition.z += tickToZ(aStartTick);
@@ -39,5 +48,10 @@ void main() {
     );
   #endif
   vWorldZ = worldPosition.z;
+  #ifdef USE_NOTE_FLAGS
+    vec4 viewPosition = viewMatrix * worldPosition;
+    vViewNormal = normalize(mat3(viewMatrix * model) * normal);
+    vViewPosition = viewPosition.xyz;
+  #endif
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }

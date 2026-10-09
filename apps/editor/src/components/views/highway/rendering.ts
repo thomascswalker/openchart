@@ -49,6 +49,11 @@ import {
 } from "./instances";
 import { SustainTailBatch, type SustainInstanceData } from "./tailBatch";
 import { NoteInstanceBatch, type NoteInstanceData } from "./instanceBatch";
+import {
+  getFiveFretNoteStyles,
+  getTapSysExRanges,
+  type GuitarNoteStyle,
+} from "./noteStyles";
 import type { HighwayPhraseEditingController } from "./phraseEditing";
 import type { MarqueeDragState } from "./types";
 import {
@@ -100,6 +105,43 @@ function setIndicatorSegment(
     indicatorDirection.multiplyScalar(1 / length),
   );
   mesh.scale.set(length, thickness, thickness);
+}
+
+function fiveFretNoteStyles(
+  chart: ChartView,
+  ppqn: number,
+): Map<MidiNote, GuitarNoteStyle> {
+  const descriptor = chart
+    .getSong()
+    .getTrackDescriptors()
+    .find((item) => item.key === chart.getTrack().getKey());
+  const midiTrack = chart.getTrack().getMidiTrack();
+  if (!descriptor || descriptor.config.type !== "instrument" || !midiTrack) {
+    return new Map();
+  }
+
+  const difficulty = Object.entries(descriptor.config.offsets ?? {}).find(
+    ([, offset]) => offset === chart.getOffset(),
+  )?.[0];
+  if (!difficulty) return new Map();
+
+  const forceHopoPitch = descriptor.config.notes[`${difficulty}Hopo`];
+  const forceStrumPitch = descriptor.config.notes[`${difficulty}Strum`];
+  const tapMarkerPitch = descriptor.config.notes[`${difficulty}Tap`];
+  if (forceHopoPitch === undefined || forceStrumPitch === undefined) {
+    return new Map();
+  }
+
+  return getFiveFretNoteStyles(chart.getNotes(), midiTrack.getNotes(), {
+    forceHopoPitch,
+    forceStrumPitch,
+    tapMarkerPitches: [
+      104,
+      ...(tapMarkerPitch === undefined ? [] : [tapMarkerPitch]),
+    ],
+    ppqn,
+    tapSysExRanges: getTapSysExRanges(midiTrack.getTimedEvents()),
+  });
 }
 
 export class HighwayRenderer {
@@ -386,6 +428,7 @@ export class HighwayRenderer {
       pad: [],
     };
     if (noteBatchDirty) {
+      const noteStyles = fiveFretNoteStyles(chart, this.context.getPpqn());
       for (const { note, lane, kind } of visibleNotes) {
         const instanceKind =
           kind === "kick" || kind === "cymbal" || kind === "pad"
@@ -404,6 +447,8 @@ export class HighwayRenderer {
           z: position.z - this.coordinates.getNoteZ(note.start),
           color: kind === "kick" ? kickColor : laneColors[lane],
           selected: selection.isSelected(note.noteOn),
+          hopo: noteStyles.get(note)?.hopo,
+          tap: noteStyles.get(note)?.tap,
           tick: note.start,
           priority: Math.abs(
             note.start - this.coordinates.getTickAtDepth(strikeLineZ),
