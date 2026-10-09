@@ -54,6 +54,7 @@ export abstract class AbstractChartView<T> {
   private scheduler: RenderScheduler | null = null;
   private readonly cameraListeners = new Set<() => void>();
   private destroyed = false;
+  private readonly engineOptions: EngineOptions | undefined;
 
   private width = 1;
   private height = 1;
@@ -66,6 +67,10 @@ export abstract class AbstractChartView<T> {
     snap: { enabled: true, denominator: 4 },
     isPlaying: false,
   };
+
+  public constructor(engineOptions?: EngineOptions) {
+    this.engineOptions = engineOptions;
+  }
 
   public async mount(host: HTMLElement): Promise<void> {
     if (this.destroyed) return;
@@ -126,7 +131,13 @@ export abstract class AbstractChartView<T> {
   }
 
   protected getEngineOptions(): EngineOptions {
-    return { background: 0x151515, antialias: false, pixelRatioCap: 2 };
+    return (
+      this.engineOptions ?? {
+        background: 0x151515,
+        antialias: false,
+        pixelRatioCap: 2,
+      }
+    );
   }
 
   protected onMounted(_engine: Engine): void {

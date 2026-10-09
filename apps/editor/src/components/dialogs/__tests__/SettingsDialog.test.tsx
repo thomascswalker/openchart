@@ -159,7 +159,11 @@ describe("Application settings", () => {
         '#dialog-sections [role="option"]',
       ),
     ];
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["General", "Feedback"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "General",
+      "Feedback",
+      "Graphics",
+    ]);
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("button")].find(
         (button) => button.textContent === "Apply",
@@ -196,6 +200,38 @@ describe("Application settings", () => {
       await Promise.resolve();
     });
     expect(container.querySelector("output")?.textContent).toBe("enabled");
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("shows and applies the antialiasing checkbox", async () => {
+    const { container, root } = renderSettings();
+    const open = container.querySelector<HTMLButtonElement>("button")!;
+    act(() => open.click());
+
+    const graphicsTab = [
+      ...container.querySelectorAll<HTMLElement>(
+        '#dialog-sections [role="option"]',
+      ),
+    ][2];
+    act(() => graphicsTab.click());
+
+    const antialiasing = container.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    )!;
+    expect(antialiasing.checked).toBe(true);
+    act(() => antialiasing.click());
+    await act(async () => {
+      [...container.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent === "Apply")!
+        .click();
+      await Promise.resolve();
+    });
+
+    expect(
+      Platform.services.get<SettingsService>("settings").getSettings().graphics
+        .antialiasing,
+    ).toBe(false);
     act(() => root.unmount());
     container.remove();
   });

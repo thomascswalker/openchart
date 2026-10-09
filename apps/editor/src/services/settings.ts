@@ -23,6 +23,9 @@ export interface ApplicationSettings {
   history: {
     capacity: number;
   };
+  graphics: {
+    antialiasing: boolean;
+  };
 }
 
 export const defaultApplicationSettings: ApplicationSettings = {
@@ -41,6 +44,7 @@ export const defaultApplicationSettings: ApplicationSettings = {
   },
   saving: { defaultSaveMode: "project" },
   history: { capacity: 256 },
+  graphics: { antialiasing: true },
 };
 
 export function validateApplicationSettings(
@@ -104,6 +108,9 @@ export function validateApplicationSettings(
   if (!["project", "midi"].includes(settings.saving.defaultSaveMode)) {
     errors.defaultSaveMode = "Select a valid save mode.";
   }
+  if (typeof settings.graphics.antialiasing !== "boolean") {
+    errors.antialiasing = "Antialiasing must be enabled or disabled.";
+  }
   return errors;
 }
 
@@ -122,6 +129,26 @@ function readSettings(): ApplicationSettings {
         ([key]) => key !== "highwayClapEnabled" && key !== "highwayClapVolume",
       ),
     );
+    const parsedGraphics = (parsed.graphics ?? {}) as Record<string, unknown>;
+    const storedGraphics = Object.fromEntries(
+      Object.entries(parsedGraphics).filter(
+        ([key]) => key !== "antialiasingQuality",
+      ),
+    );
+    const savedAntialiasing = parsedGraphics.antialiasing;
+    const legacyQuality = parsedGraphics.antialiasingQuality;
+    const antialiasing =
+      typeof savedAntialiasing === "boolean"
+        ? savedAntialiasing
+        : savedAntialiasing === "on"
+          ? true
+          : savedAntialiasing === "off"
+            ? false
+            : legacyQuality === "performance"
+              ? false
+              : legacyQuality === "balanced" || legacyQuality === "high"
+                ? true
+                : defaultApplicationSettings.graphics.antialiasing;
     const merged: ApplicationSettings = {
       ...defaultApplicationSettings,
       ...canonicalSettings,
@@ -133,6 +160,11 @@ function readSettings(): ApplicationSettings {
       history: {
         ...defaultApplicationSettings.history,
         ...(parsed.history as Partial<ApplicationSettings["history"]>),
+      },
+      graphics: {
+        ...defaultApplicationSettings.graphics,
+        ...storedGraphics,
+        antialiasing,
       },
     };
     return Object.keys(validateApplicationSettings(merged)).length === 0

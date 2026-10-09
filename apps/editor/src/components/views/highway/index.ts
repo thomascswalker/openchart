@@ -9,6 +9,7 @@ import {
   type CameraDebugView,
 } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
+import type { EngineOptions } from "../../../rendering/engine";
 import { ResourceRegistry } from "./assets";
 import { getHighwaySnapDenominator } from "./interaction";
 import { SnapDenominators } from "../pianoRoll/constants";
@@ -141,8 +142,11 @@ export class HighwayView
   private drumPlacementKind: DrumPlacementKind = "pad";
   private phraseMode: EditablePhraseKind | null = null;
 
-  public constructor(registry?: ResourceRegistry) {
-    super();
+  public constructor(
+    registry?: ResourceRegistry,
+    engineOptions?: EngineOptions,
+  ) {
+    super(engineOptions);
     this.renderer = new HighwayRenderer(
       this.context,
       this.coordinates,

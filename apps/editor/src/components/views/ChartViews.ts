@@ -1,9 +1,10 @@
 import { PianoRollView } from "./pianoRoll";
 import { HighwayView } from "./highway";
 import { ResourceRegistry } from "../../rendering/registry";
+import type { EngineOptions } from "../../rendering/engine";
 
 export type ChartView = PianoRollView | HighwayView;
-export type ChartViewFactory = () => ChartView;
+export type ChartViewFactory = (engineOptions?: EngineOptions) => ChartView;
 
 export interface ChartViewDefinition {
   id: string;
@@ -24,16 +25,16 @@ export const CHART_VIEWS: ChartViewDefinition[] = [
     id: "piano-roll",
     name: "Piano Roll",
 
-    createRenderer: () => {
-      return new PianoRollView();
+    createRenderer: (engineOptions) => {
+      return new PianoRollView(engineOptions);
     },
   },
   {
     id: "highway",
     name: "Highway",
 
-    createRenderer: () => {
-      return new HighwayView(applicationRenderAssets);
+    createRenderer: (engineOptions) => {
+      return new HighwayView(applicationRenderAssets, engineOptions);
     },
   },
 ];

@@ -11,6 +11,8 @@ export interface NoteInstanceData {
   z: number;
   color: Rgb;
   selected: boolean;
+  hopo?: boolean;
+  tap?: boolean;
   priority?: number;
   tick: number;
 }
@@ -53,6 +55,7 @@ export class NoteInstanceBatch {
   private readonly materials: THREE.ShaderMaterial[];
   private matrixAttribute!: THREE.InstancedBufferAttribute;
   private colorAttribute!: THREE.InstancedBufferAttribute;
+  private styleAttribute!: THREE.InstancedBufferAttribute;
   private tickAttribute!: THREE.InstancedBufferAttribute;
   private shrinkStartedAt: number | null = null;
   private readonly minimumCapacity: number;
@@ -107,6 +110,11 @@ export class NoteInstanceBatch {
       4,
     );
     this.colorAttribute.setUsage(THREE.DynamicDrawUsage);
+    this.styleAttribute = new THREE.InstancedBufferAttribute(
+      new Float32Array(capacity * 2),
+      2,
+    );
+    this.styleAttribute.setUsage(THREE.DynamicDrawUsage);
     this.tickAttribute = new THREE.InstancedBufferAttribute(
       new Float32Array(capacity),
       1,
@@ -127,6 +135,7 @@ export class NoteInstanceBatch {
       geometry.setIndex(baked.entry.geometry.index);
       this.geometryReferences.push(baked);
       geometry.setAttribute("aLaneColorSelected", this.colorAttribute);
+      geometry.setAttribute("aNoteFlags", this.styleAttribute);
       geometry.setAttribute("aStartTick", this.tickAttribute);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
@@ -189,11 +198,14 @@ export class NoteInstanceBatch {
         : instances;
     const matrices = this.matrixAttribute.array as Float32Array;
     const colors = this.colorAttribute.array as Float32Array;
+    const styles = this.styleAttribute.array as Float32Array;
     const ticks = this.tickAttribute.array as Float32Array;
     let matrixStart = count;
     let matrixEnd = -1;
     let colorStart = count;
     let colorEnd = -1;
+    let styleStart = count;
+    let styleEnd = -1;
     let tickStart = count;
     let tickEnd = -1;
     for (let index = 0; index < count; index += 1) {
@@ -233,6 +245,15 @@ export class NoteInstanceBatch {
         colorStart = Math.min(colorStart, index);
         colorEnd = index + 1;
       }
+      const styleOffset = index * 2;
+      const hopo = instance.hopo ? 1 : 0;
+      const tap = instance.tap ? 1 : 0;
+      if (styles[styleOffset] !== hopo || styles[styleOffset + 1] !== tap) {
+        styles[styleOffset] = hopo;
+        styles[styleOffset + 1] = tap;
+        styleStart = Math.min(styleStart, index);
+        styleEnd = index + 1;
+      }
       if (ticks[index] !== instance.tick) {
         ticks[index] = instance.tick;
         tickStart = Math.min(tickStart, index);
@@ -258,6 +279,14 @@ export class NoteInstanceBatch {
         (colorEnd - colorStart) * 4,
       );
       this.colorAttribute.needsUpdate = true;
+    }
+    if (styleEnd >= 0) {
+      this.styleAttribute.clearUpdateRanges();
+      this.styleAttribute.addUpdateRange(
+        styleStart * 2,
+        (styleEnd - styleStart) * 2,
+      );
+      this.styleAttribute.needsUpdate = true;
     }
     if (tickEnd >= 0) {
       this.tickAttribute.clearUpdateRanges();
@@ -297,9 +326,12 @@ export class NoteInstanceBatch {
     tinted: boolean,
   ): THREE.ShaderMaterial {
     const material = source.clone();
+    material.transparent = true;
+    material.depthWrite = false;
     material.defines = {
       ...material.defines,
       USE_INSTANCE_STATE: 1,
+      USE_NOTE_FLAGS: 1,
       USE_TICK_SCROLL: 1,
     };
     setMaterialStateForMaterial(material, { tint: tinted });

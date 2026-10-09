@@ -50,4 +50,24 @@ describe("SettingsService", () => {
     expect(saved).not.toHaveProperty("audio");
     expect(saved).not.toHaveProperty("discovery");
   });
+
+  it("fills graphics defaults when loading settings saved before graphics options", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: () =>
+          JSON.stringify({
+            version: defaultApplicationSettings.version,
+            feedback: defaultApplicationSettings.feedback,
+            saving: defaultApplicationSettings.saving,
+            history: defaultApplicationSettings.history,
+          }),
+        setItem: (key: string, value: string) => values.set(key, value),
+      },
+    });
+
+    const service = new SettingsService();
+
+    expect(service.getSettings().graphics.antialiasing).toBe(true);
+    expect(service.applySettings(service.getSettings())).toBe(true);
+  });
 });

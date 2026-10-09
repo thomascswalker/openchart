@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { rgbFromHex } from "../materials";
 import { SustainTailBatch } from "../tailBatch";
+import { minimumSustainLengthTicks } from "../interaction";
 
 describe("SustainTailBatch", () => {
   it("writes transforms and lane/selection attributes to one instanced mesh", () => {
@@ -90,6 +91,31 @@ describe("SustainTailBatch", () => {
     expect(batch.write([tail, tail, tail])).toBe(3);
     expect(batch.capacity).toBe(4);
     expect(batch.droppedNotes).toBe(0);
+
+    batch.dispose();
+    material.dispose();
+  });
+
+  it("renders sustains only when they meet the minimum sustain length", () => {
+    const scene = new THREE.Scene();
+    const material = new THREE.ShaderMaterial();
+    const batch = new SustainTailBatch(scene, material, 4, 10, {});
+    const tail = {
+      x: 0,
+      y: 0,
+      z: 0,
+      width: 0.32,
+      halfLength: 1,
+      color: rgbFromHex(0x00ff00),
+      selected: false,
+      startTick: 0,
+      endTick: minimumSustainLengthTicks,
+    };
+
+    expect(
+      batch.write([{ ...tail, endTick: 239 }, tail, { ...tail, endTick: 241 }]),
+    ).toBe(2);
+    expect(batch.mesh.count).toBe(2);
 
     batch.dispose();
     material.dispose();
