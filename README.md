@@ -159,36 +159,8 @@ npm run test
 
 ## Packages
 
-### `@midiedit/core`
+Package-specific API documentation and examples:
 
-#### Construction
-
-```ts
-import { Midi, MidiTrack } from "@midiedit/core";
-
-// Create in memory
-const midi = new Midi();
-const track = new MidiTrack("My Track");
-midi.tracks.push(track);
-
-// Load from file
-const midi = Midi.fromFile("song.mid");
-```
-
-#### Mutating notes
-
-```ts
-// Place four notes (C4, D4, D#4, F4) a quarter note apart (assuming ppqn=480), starting at tick 0.
-track.addNote(60 /* Pitch */, 0 /* Delta from previous note */);
-track.addNote(62, 480);
-track.addNote(63, 480);
-track.addNote(65, 480);
-
-// A delta of 0 means the note is placed at the same position of the previous note (creating a chord).
-track.addNote(63, 0);
-track.addNote(62, 0);
-
-// Remove some notes
-const notes = track.getNoteEvents();
-track.removeNote(notes[0] /* NoteOn */, notes[1] /* NoteOff */);
-```
+- [`@midiedit/core`](packages/core/README.md) — read, edit, and write Standard MIDI Files.
+- [`@midiedit/views`](packages/views/README.md) — create chart-oriented views and edit instrument charts.
+- [`@midiedit/mixer`](packages/mixer/README.md) — mix and control multitrack audio.
