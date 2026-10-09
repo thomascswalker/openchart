@@ -27,8 +27,8 @@ describe("highway interaction helpers", () => {
     expect(minimumMidiNoteDurationTicks).toBe(1);
   });
 
-  it("uses a 60-tick minimum sustain length", () => {
-    expect(minimumSustainLengthTicks).toBe(60);
+  it("uses a 240-tick minimum sustain length", () => {
+    expect(minimumSustainLengthTicks).toBe(240);
   });
 
   it("computes bounded phrase edge-scroll targets in both directions", () => {

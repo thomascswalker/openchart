@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { rgbFromHex } from "../materials";
 import { SustainTailBatch } from "../tailBatch";
+import { minimumSustainLengthTicks } from "../interaction";
 
 describe("SustainTailBatch", () => {
   it("writes transforms and lane/selection attributes to one instanced mesh", () => {
@@ -108,11 +109,11 @@ describe("SustainTailBatch", () => {
       color: rgbFromHex(0x00ff00),
       selected: false,
       startTick: 0,
-      endTick: 60,
+      endTick: minimumSustainLengthTicks,
     };
 
     expect(
-      batch.write([{ ...tail, endTick: 59 }, tail, { ...tail, endTick: 61 }]),
+      batch.write([{ ...tail, endTick: 239 }, tail, { ...tail, endTick: 241 }]),
     ).toBe(2);
     expect(batch.mesh.count).toBe(2);
 
