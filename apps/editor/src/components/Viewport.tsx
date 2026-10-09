@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import { useState } from "react";
 import type { Midi } from "@midiedit/core";
 import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
@@ -6,12 +6,14 @@ import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { usePlaybackSelector } from "../hooks/usePlayback";
+import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { runAction } from "../actions/execute";
 import Platform from "../platform";
 import { PlaybackService } from "../services/playback";
 import { ActiveChartViewService } from "../services/editor/activeChartView";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
+import type { EngineOptions } from "../rendering/engine";
 import { CHART_VIEWS } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
 import {
@@ -115,6 +117,7 @@ function ViewportPanel({
   active: boolean;
 }) {
   const { midiData } = useDocumentSnapshot();
+  const { settings } = useApplicationSettings();
   const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
     useViewportSnapshot();
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
@@ -130,6 +133,13 @@ function ViewportPanel({
     useState<DrumPlacementKind>("pad");
   const activeView =
     CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
+  const engineOptions = useMemo<EngineOptions>(() => {
+    return {
+      background: 0x151515,
+      antialias: settings.graphics.antialiasing,
+      pixelRatioCap: 2,
+    };
+  }, [settings.graphics.antialiasing]);
   const selectedTrackIndex = midiData
     ? trackIndexForSession(midiData, session)
     : null;
@@ -322,6 +332,7 @@ function ViewportPanel({
         <div className="viewport-panel__renderer">
           <ChartViewHost
             createRenderer={activeView.createRenderer}
+            engineOptions={engineOptions}
             state={{
               midi: midiData,
               selectedTrackIndex,

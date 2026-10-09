@@ -112,11 +112,7 @@ describe("SustainTailBatch", () => {
     };
 
     expect(
-      batch.write([
-        { ...tail, endTick: 59 },
-        tail,
-        { ...tail, endTick: 61 },
-      ]),
+      batch.write([{ ...tail, endTick: 59 }, tail, { ...tail, endTick: 61 }]),
     ).toBe(2);
     expect(batch.mesh.count).toBe(2);
 

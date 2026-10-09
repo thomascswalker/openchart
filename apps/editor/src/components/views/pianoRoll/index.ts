@@ -7,7 +7,7 @@ import type {
 import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
-import { type Engine } from "../../../rendering/engine";
+import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import { PianoRollInputController } from "./input";
@@ -20,6 +20,10 @@ import { SelectionContext } from "./selection";
 import type { PianoRollCamera, PianoRollContext, PianoRollNote } from "./types";
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
+  public constructor(engineOptions?: EngineOptions) {
+    super(engineOptions);
+  }
+
   private readonly threeCamera = new THREE.OrthographicCamera(
     0,
     1,

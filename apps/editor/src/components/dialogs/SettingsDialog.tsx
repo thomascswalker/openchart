@@ -19,7 +19,7 @@ interface SettingsField {
   id: string;
   label: string;
   control: SettingsControl;
-  path: `${"saving" | "feedback" | "history"}.${string}`;
+  path: `${"saving" | "feedback" | "history" | "graphics"}.${string}`;
   options?: ReadonlyArray<{ label: string; value: string }>;
   min?: number;
   max?: number;
@@ -104,6 +104,14 @@ const settingsSchema: Record<string, SettingsField[]> = {
       path: "feedback.previewHighPitch",
     },
   ],
+  Graphics: [
+    {
+      id: "antialiasing",
+      label: "Antialiasing",
+      control: "checkbox",
+      path: "graphics.antialiasing",
+    },
+  ],
 };
 
 const tabs = Object.keys(settingsSchema);
@@ -113,7 +121,10 @@ function getSettingValue(
   path: SettingsField["path"],
 ): string | number | boolean {
   const [group, key] = path.split(".") as [
-    keyof Pick<ApplicationSettings, "saving" | "feedback" | "history">,
+    keyof Pick<
+      ApplicationSettings,
+      "saving" | "feedback" | "history" | "graphics"
+    >,
     string,
   ];
   return (settings[group] as Record<string, string | number | boolean>)[key];
@@ -125,7 +136,10 @@ function setSettingValue(
   value: string | number | boolean,
 ): ApplicationSettings {
   const [group, key] = path.split(".") as [
-    keyof Pick<ApplicationSettings, "saving" | "feedback" | "history">,
+    keyof Pick<
+      ApplicationSettings,
+      "saving" | "feedback" | "history" | "graphics"
+    >,
     string,
   ];
   return {

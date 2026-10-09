@@ -2,9 +2,11 @@ import { useEffect, useEffectEvent, useRef } from "react";
 
 import type { ChartViewState } from "./AbstractChartView";
 import type { ChartView, ChartViewFactory } from "./ChartViews";
+import type { EngineOptions } from "../../rendering/engine";
 
 interface ChartViewHostProps {
   createRenderer: ChartViewFactory;
+  engineOptions?: EngineOptions;
   state: ChartViewState;
   onSelectionChange?: (count: number) => void;
   /** Called with the mounted renderer instance, and again with null when it's torn down. */
@@ -13,6 +15,7 @@ interface ChartViewHostProps {
 
 export function ChartViewHost({
   createRenderer,
+  engineOptions,
   state,
   onReady,
 }: ChartViewHostProps) {
@@ -30,7 +33,7 @@ export function ChartViewHost({
   /*
    * Renderer lifecycle.
    *
-   * This only runs when the visualization itself changes.
+   * This runs when the visualization or its WebGL settings change.
    * Changing tracks/MIDI does NOT recreate the renderer.
    */
   useEffect(() => {
@@ -40,7 +43,7 @@ export function ChartViewHost({
       return;
     }
 
-    const renderer = createRenderer();
+    const renderer = createRenderer(engineOptions);
     let disposed = false;
 
     viewRef.current = renderer;
@@ -94,7 +97,7 @@ export function ChartViewHost({
       notifyReady(null);
       renderer.destroy();
     };
-  }, [createRenderer]);
+  }, [createRenderer, engineOptions]);
 
   /*
    * Updating MIDI data or changing the selected track just updates
