@@ -86,7 +86,7 @@ const Toolbar = ({
 
   return (
     <Section
-      className="viewport-panel__toolbar"
+      className="viewport-panel__toolbar highway-toolbar"
       backgroundColor="var(--primary)"
       borderBottom="var(--border-primary)"
       padding="4px"
