@@ -1,7 +1,6 @@
 import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
 import type { ChartView } from "@midiedit/views";
 import type { HighwayContext } from "./context";
-import { laneCount } from "./constants";
 import { HighwayCoordinateSystem } from "./coordinates";
 import {
   getSustainCutTargets,
@@ -95,7 +94,7 @@ export class HighwayNoteEditingController {
     const pasted = new Set<MidiChannelEvent>();
     const physicalLaneCount = this.isDrumChart(chart)
       ? drumLaneCount
-      : laneCount;
+      : chart.getLaneCount();
     for (const entry of this.clipboard) {
       const lane = anchorLane + entry.relativeLane;
       if (lane < 0 || lane >= physicalLaneCount) continue;

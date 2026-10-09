@@ -241,6 +241,7 @@ export class HighwayRenderer {
     Record<DrumPlacementKind, InstancedNote>
   > = {};
   private fretPaletteIsDrums = false;
+  private fretPaletteLaneCount = laneCount;
   private lastInstancedChart: ChartView | null = null;
   private lastInstancedChartRevision = -1;
   private lastInstancedSelectionRevision = -1;
@@ -341,7 +342,10 @@ export class HighwayRenderer {
     const visibleStart = this.coordinates.getTickAtDepth(nearBoardZ);
     const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
     const laneColors = isDrumChart ? drumLaneRgbColors : laneRgbColors;
-    this.updateFretboardPalette(isDrumChart);
+    this.updateFretboardPalette(
+      isDrumChart,
+      isDrumChart ? drumLaneCount : chart.getLaneCount(),
+    );
     const visibleNotes: IndexedNote[] = [];
     getHighwayNoteIndex(chart).query(
       chart,
@@ -1122,7 +1126,7 @@ export class HighwayRenderer {
     if (cutTick === undefined) return this.instancedPreviewTailBatch!.write([]);
     for (const note of cutPreview.values()) {
       const lane = note.note - chart.getOffset();
-      if (lane < 0 || lane >= laneCount) continue;
+      if (lane < 0 || lane >= chart.getLaneCount()) continue;
       const start = Math.max(note.start, visibleStart, cutTick);
       const end = Math.min(note.end, visibleEnd);
       if (end <= start) continue;
@@ -1255,11 +1259,16 @@ export class HighwayRenderer {
     ghostGem.object.visible = true;
   }
 
-  private updateFretboardPalette(isDrums: boolean): void {
-    const paletteChanged = this.fretPaletteIsDrums !== isDrums;
+  private updateFretboardPalette(
+    isDrums: boolean,
+    activeLaneCount: number,
+  ): void {
+    const paletteChanged =
+      this.fretPaletteIsDrums !== isDrums ||
+      this.fretPaletteLaneCount !== activeLaneCount;
     this.fretPaletteIsDrums = isDrums;
+    this.fretPaletteLaneCount = activeLaneCount;
     const colors = isDrums ? drumLaneRgbColors : laneRgbColors;
-    const activeLaneCount = isDrums ? drumLaneCount : laneCount;
     this.laneDividers.forEach((divider, index) => {
       divider.visible = index <= activeLaneCount;
       if (divider.visible) {

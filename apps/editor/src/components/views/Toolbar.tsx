@@ -7,6 +7,8 @@ import {
   EasyIcon,
   ExpertIcon,
   GuitarIcon,
+  FourpadIcon,
+  FivepadIcon,
   HardIcon,
   Highway3dIcon,
   MagnetIcon,
@@ -35,6 +37,8 @@ import type { DrumPlacementKind, HighwayMode } from "./highway";
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
   [InstrumentType.Groove, BassIcon],
+  [InstrumentType.FourPad, FourpadIcon],
+  [InstrumentType.FivePad, FivepadIcon],
   [InstrumentType.Drums, DrumsIcon],
   [InstrumentType.Vocals, VocalsIcon],
 ] as const;
@@ -82,7 +86,7 @@ const Toolbar = ({
 
   return (
     <Section
-      className="viewport-panel__toolbar"
+      className="viewport-panel__toolbar highway-toolbar"
       backgroundColor="var(--primary)"
       borderBottom="var(--border-primary)"
       padding="4px"

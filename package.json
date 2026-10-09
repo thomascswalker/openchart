@@ -16,7 +16,7 @@
     "dev:desktop": "npm run dev --workspace=@midiedit/desktop",
     "storybook": "npm run storybook --workspace=@midiedit/editor",
     "build-storybook": "npm run build-storybook --workspace=@midiedit/editor",
-    "ci": "npm run format && npm run lint && npm run check-types",
+    "ci": "npm run format && npm run lint && npm run check-types && npm run test",
     "lint": "eslint --config eslint.config.js .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

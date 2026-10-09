@@ -11,6 +11,8 @@ import {
 type Instrument =
   | "LEAD GUITAR"
   | "RHYTHM GUITAR"
+  | "FOUR PAD"
+  | "FIVE PAD"
   | "BASS"
   | "DRUMS"
   | "VOCALS"
@@ -20,6 +22,8 @@ type Instrument =
 enum InstrumentType {
   Lead = "LEAD GUITAR",
   Groove = "RHYTHM GUITAR",
+  FourPad = "FOUR PAD",
+  FivePad = "FIVE PAD",
   Bass = "BASS",
   Drums = "DRUMS",
   Vocals = "VOCALS",

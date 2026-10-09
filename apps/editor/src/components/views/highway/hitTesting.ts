@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./geometryCatalog";
 import type { MeshKey } from "../../../rendering/registry";
 import { noteWorldPosition } from "./geometry";
-import { farBoardZ, laneCount, nearBoardZ, strikeLineZ } from "./constants";
+import { farBoardZ, nearBoardZ, strikeLineZ } from "./constants";
 import type { PhraseDragState, ScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
 import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
@@ -310,7 +310,13 @@ export class HighwayHitTester {
     note: MidiNote,
     lane: number,
   ): ScreenBounds | null {
-    if (lane < 0 || lane >= laneCount || note.end <= note.start) return null;
+    if (
+      lane < 0 ||
+      lane >= this.coordinates.getPhysicalLaneCount() ||
+      note.end <= note.start
+    ) {
+      return null;
+    }
     const tailStart = Math.max(
       note.start,
       this.coordinates.getTickAtDepth(strikeLineZ),

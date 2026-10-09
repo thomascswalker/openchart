@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Difficulty } from "@midiedit/views";
+import type { ChartView } from "@midiedit/views";
 import * as THREE from "three";
 import type { ChartViewState } from "../../AbstractChartView";
 import { HighwayCoordinateSystem } from "../coordinates";
@@ -14,10 +15,12 @@ describe("HighwayCoordinateSystem", () => {
     isPlaying: false,
   };
   let cameraTick = 100;
+  let currentChart: ChartView | null = null;
   const coordinates = new HighwayCoordinateSystem(
     {
       getCanvas: () => null,
       getCameraTick: () => cameraTick,
+      getCurrentChart: () => currentChart,
       getPpqn: () => 480,
       getState: () => state,
       getViewport: () => ({ width: 800, height: 600 }),
@@ -38,6 +41,30 @@ describe("HighwayCoordinateSystem", () => {
     ]);
     state.selectedInstrument = "LEAD GUITAR";
     expect(coordinates.getPhysicalLaneCount()).toBe(5);
+  });
+
+  it("uses the configured lane count for pad tracks", () => {
+    currentChart = {
+      getLaneCount: () => 4,
+    } as ChartView;
+    state.selectedInstrument = "FOUR PAD";
+    expect(coordinates.getPhysicalLaneCount()).toBe(4);
+    expect([0, 1, 2, 3].map((lane) => coordinates.getLaneX(lane))).toEqual([
+      -2.25, -0.75, 0.75, 2.25,
+    ]);
+
+    currentChart = {
+      getLaneCount: () => 5,
+    } as ChartView;
+    state.selectedInstrument = "FIVE PAD";
+    expect(coordinates.getPhysicalLaneCount()).toBe(5);
+    [0, 1, 2, 3, 4].forEach((lane, index) => {
+      expect(coordinates.getLaneX(lane)).toBeCloseTo(
+        [-2.4, -1.2, 0, 1.2, 2.4][index]!,
+      );
+    });
+    currentChart = null;
+    state.selectedInstrument = "LEAD GUITAR";
   });
 
   it("converts ticks to depth and back", () => {

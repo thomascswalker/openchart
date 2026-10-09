@@ -47,6 +47,8 @@ export const {
   HardIcon,
   ExpertIcon,
   GuitarIcon,
+  FourpadIcon,
+  FivepadIcon,
   BassIcon,
   DrumsIcon,
   VocalsIcon,

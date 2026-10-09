@@ -35,6 +35,7 @@ describe("HighwayNoteEditingController", () => {
     const chart = {
       getNotes: () => [...notes, ...added],
       getOffset: () => offset,
+      getLaneCount: () => 5,
       addNote: (lane: Note, start: number, end: number, velocity: number) => {
         added.push(makeNote(offset + Number(lane), start, end, velocity));
       },
