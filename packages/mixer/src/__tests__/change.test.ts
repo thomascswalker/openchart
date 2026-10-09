@@ -19,7 +19,7 @@ test("Mixer reports changes from operations", () => {
   mixer.stop();
   mixer.removeTrack("track1");
 
-  expect(onChange).toHaveBeenCalledTimes(11);
+  expect(onChange).toHaveBeenCalledTimes(14);
 });
 
 test("Mixer reports changes from audio events", () => {
@@ -30,10 +30,9 @@ test("Mixer reports changes from audio events", () => {
   onChange.mockClear();
   const audio = audioInstances.at(-1)!;
 
-  audio.emit("ready", null);
-  audio.emit("state", "playing");
-  audio.emit("start", null);
-  audio.emit("end", null);
+  audio.emit("loaded", null);
+  audio.play();
+  audio.emit("ended", null);
 
-  expect(onChange).toHaveBeenCalledTimes(4);
+  expect(onChange).toHaveBeenCalledTimes(3);
 });

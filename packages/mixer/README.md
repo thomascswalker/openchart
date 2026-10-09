@@ -1,7 +1,7 @@
 # `@midiedit/mixer`
 
 `@midiedit/mixer` provides a small multitrack audio mixer built on
-[`ts-audio`](https://www.npmjs.com/package/ts-audio). It loads audio files,
+[`@midiedit/audio`](../audio). It loads audio files,
 controls playback and seeking, and exposes track and master volume and mute
 controls.
 
@@ -25,9 +25,9 @@ mixer.play();
 mixer.stop();
 ```
 
-Audio files are loaded by `ts-audio` in the current runtime. In a browser, use
-URLs the browser can fetch; in Node.js, use a runtime and audio source supported
-by `ts-audio`.
+Audio files are loaded by `@midiedit/audio` and played through the Web Audio
+API. Provide a filesystem path that the audio package can read in the current
+runtime.
 
 ## Control individual tracks
 
@@ -47,24 +47,21 @@ mixer.mute("drums");
 mixer.solo("backing"); // Mutes every other track.
 ```
 
-Use `listTracks()` to retrieve the track IDs. `removeTrack(id)` destroys the
-audio instance and removes it from the mixer.
+Use `listTracks()` to retrieve the track IDs. `removeTrack(id)` disposes the
+track's audio context and removes it from the mixer.
 
 ## Respond to mixer events
 
-The event properties accept callbacks for audio readiness, state changes, and
-playback start and end. `onChange` runs after mixer operations and forwarded
-track events, which is useful for keeping UI state in sync.
+The event properties mirror `AudioSample` callbacks. `onChange` runs after
+mixer operations and forwarded track events, which is useful for keeping UI
+state in sync.
 
 ```ts
-mixer.onReady = (event) => {
-  console.log("Audio ready", event.data);
-};
-mixer.onState = (event) => {
-  console.log("Audio state", event.data);
-};
-mixer.onStart = () => console.log("Playback started");
-mixer.onEnd = () => console.log("Playback ended");
+mixer.onLoaded = () => console.log("Audio loaded");
+mixer.onPlay = () => console.log("Playback started");
+mixer.onPause = () => console.log("Playback paused");
+mixer.onStop = () => console.log("Playback stopped");
+mixer.onEnded = () => console.log("Playback ended");
 mixer.onChange = () => {
   console.log("Time:", mixer.currentTime);
 };

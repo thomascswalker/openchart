@@ -102,29 +102,33 @@ test("Mixer forwards events to listeners for existing and future tracks", () => 
   const ready = vi.fn();
   const secondReady = vi.fn();
 
-  mixer.onReady = ready;
+  mixer.onLoaded = ready;
   mixer.addTrack("track1", "sample.wav");
   const track1Audio = audioInstances.at(-1)!;
-  mixer.onReady = secondReady;
+  mixer.onLoaded = secondReady;
 
-  const readyEvent = { data: "track1 ready" };
-  track1Audio.emit("ready", readyEvent.data);
-  expect(ready).toHaveBeenCalledWith(readyEvent);
-  expect(secondReady).toHaveBeenCalledWith(readyEvent);
+  const loadedEvent = { data: null };
+  track1Audio.emit("loaded", null);
+  expect(ready).toHaveBeenCalledWith(loadedEvent);
+  expect(secondReady).toHaveBeenCalledWith(loadedEvent);
 
-  const end = vi.fn();
-  const start = vi.fn();
-  const state = vi.fn();
-  mixer.onEnd = end;
-  mixer.onStart = start;
-  mixer.onState = state;
+  const ended = vi.fn();
+  const play = vi.fn();
+  const pause = vi.fn();
+  const stop = vi.fn();
+  mixer.onEnded = ended;
+  mixer.onPlay = play;
+  mixer.onPause = pause;
+  mixer.onStop = stop;
   mixer.addTrack("track2", "sample.wav");
   const track2Audio = audioInstances.at(-1)!;
 
-  track2Audio.emit("end", null);
-  track2Audio.emit("start", null);
-  track2Audio.emit("state", "running");
-  expect(end).toHaveBeenCalledWith({ data: null });
-  expect(start).toHaveBeenCalledWith({ data: null });
-  expect(state).toHaveBeenCalledWith({ data: "running" });
+  track2Audio.emit("ended", null);
+  track2Audio.emit("play", "playing");
+  track2Audio.emit("pause", "paused");
+  track2Audio.emit("stop", "stopped");
+  expect(ended).toHaveBeenCalledWith({ data: null });
+  expect(play).toHaveBeenCalledWith({ data: "playing" });
+  expect(pause).toHaveBeenCalledWith({ data: "paused" });
+  expect(stop).toHaveBeenCalledWith({ data: "stopped" });
 });

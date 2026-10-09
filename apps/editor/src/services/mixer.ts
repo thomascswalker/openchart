@@ -30,9 +30,12 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
 
   public readonly reset = (): void => {
     const mixer = new Mixer();
-    mixer.onState = (state) => {
-      this.logger.info(`Mixer state updated: ${JSON.stringify(state)}`);
-    };
+    mixer.onPlay = (event) =>
+      this.logger.info(`Mixer playback started: ${JSON.stringify(event)}`);
+    mixer.onPause = (event) =>
+      this.logger.info(`Mixer playback paused: ${JSON.stringify(event)}`);
+    mixer.onStop = (event) =>
+      this.logger.info(`Mixer playback stopped: ${JSON.stringify(event)}`);
     mixer.onChange = this.publish;
     this._snapshot = { mixer };
     this.notify();

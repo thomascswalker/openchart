@@ -63,6 +63,17 @@ test("AudioSample rejects seek positions outside the buffer", async () => {
   expect(source.seek(Number.NaN)).toBe(false);
 });
 
+test("AudioSample can be disposed while loading", async () => {
+  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const source = AudioSample.load(filename);
+
+  source.dispose();
+  await expect(source.ready).resolves.toBeUndefined();
+
+  expect(source.isValid).toBe(false);
+  expect(source.play()).toBe(false);
+});
+
 test("AudioSample onLoaded callback is called", async () => {
   const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
   let loadedCalled = false;
