@@ -1,7 +1,6 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import {
   ticksToMs,
-  type Midi,
   type TempoChange,
   type TimeSignatureChange,
 } from "@midiedit/core";
@@ -11,8 +10,7 @@ import { runAction } from "../actions/execute";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 
 interface TimelineProps {
-  chartView: ChartView | null;
-  midiData: Midi | null;
+  chartViews: ChartView[];
 }
 
 const BACKGROUND_COLOR = "#101010";
@@ -36,7 +34,7 @@ function xToTick(x: number, width: number, timelineTicks: number): number {
 
 function drawTimeline(
   canvas: HTMLCanvasElement,
-  chartView: ChartView | null,
+  chartViews: ChartView[],
   timelineTicks: number,
   playbackTick: number,
 ): void {
@@ -50,17 +48,19 @@ function drawTimeline(
   ctx.fillStyle = BACKGROUND_COLOR;
   ctx.fillRect(0, 0, width, height);
 
-  if (chartView && timelineTicks > 0) {
-    const cameraTick = chartView.getCameraTick();
-    const visibleSpan = chartView.getVisibleTickSpan();
+  if (timelineTicks > 0) {
+    for (const chartView of chartViews) {
+      const cameraTick = chartView.getCameraTick();
+      const visibleSpan = chartView.getVisibleTickSpan();
 
-    const boxX = tickToX(cameraTick, width, timelineTicks);
-    const boxWidth = Math.max(2, tickToX(visibleSpan, width, timelineTicks));
+      const boxX = tickToX(cameraTick, width, timelineTicks);
+      const boxWidth = Math.max(2, tickToX(visibleSpan, width, timelineTicks));
 
-    ctx.fillStyle = VIEWPORT_COLOR;
-    ctx.fillRect(boxX, 0, boxWidth, height);
-    ctx.strokeStyle = VIEWPORT_BORDER_COLOR;
-    ctx.strokeRect(boxX + 0.5, 0.5, boxWidth - 1, height - 1);
+      ctx.fillStyle = VIEWPORT_COLOR;
+      ctx.fillRect(boxX, 0, boxWidth, height);
+      ctx.strokeStyle = VIEWPORT_BORDER_COLOR;
+      ctx.strokeRect(boxX + 0.5, 0.5, boxWidth - 1, height - 1);
+    }
   }
 
   const playheadX = tickToX(playbackTick, width, timelineTicks);
@@ -146,7 +146,7 @@ export function getTimelinePosition(
   };
 }
 
-export function Timeline({ chartView }: TimelineProps) {
+export function Timeline({ chartViews }: TimelineProps) {
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
   const canPlay = usePlaybackSelector((s) => s.canPlay);
   const playbackTick = usePlaybackSelector((s) => s.playbackTick);
@@ -177,12 +177,12 @@ export function Timeline({ chartView }: TimelineProps) {
 
   const redraw = useEffectEvent(() => {
     const canvas = canvasRef.current;
-    if (canvas) drawTimeline(canvas, chartView, timelineTicks, playbackTick);
+    if (canvas) drawTimeline(canvas, chartViews, timelineTicks, playbackTick);
   });
 
   useEffect(() => {
     redraw();
-  }, [chartView, timelineTicks, playbackTick]);
+  }, [chartViews, timelineTicks, playbackTick]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -207,9 +207,11 @@ export function Timeline({ chartView }: TimelineProps) {
   }, []);
 
   useEffect(() => {
-    if (!chartView) return;
-    return chartView.subscribeCameraChange(() => redraw());
-  }, [chartView]);
+    const unsubscribe = chartViews.map((chartView) =>
+      chartView.subscribeCameraChange(() => redraw()),
+    );
+    return () => unsubscribe.forEach((dispose) => dispose());
+  }, [chartViews]);
 
   const scrubToClientX = (clientX: number): void => {
     if (!canPlay || timelineTicks <= 0) {
@@ -224,7 +226,7 @@ export function Timeline({ chartView }: TimelineProps) {
 
     runAction("playback.set-tick", tick);
 
-    if (chartView) {
+    for (const chartView of chartViews) {
       const cameraTick = chartView.getCameraTickForPlayhead(tick);
       if (cameraTick !== null) chartView.setCameraTick(cameraTick);
     }

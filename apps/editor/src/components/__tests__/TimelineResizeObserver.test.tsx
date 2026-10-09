@@ -32,7 +32,7 @@ describe("timeline resize observer", () => {
       act(() =>
         root.render(
           <Runtime>
-            <Timeline chartView={null} midiData={null} />
+            <Timeline chartViews={[]} />
           </Runtime>,
         ),
       );
