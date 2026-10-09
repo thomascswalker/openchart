@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { minimumSustainLengthTicks } from "./interaction";
 import {
   setMaterialStateForMaterial,
   type MaterialState,
@@ -103,7 +104,11 @@ export class SustainTailBatch {
 
   public write(instances: readonly SustainInstanceData[]): number {
     const writeStartedAt = performance.now();
-    const needed = Math.min(instances.length, MAX_CAPACITY);
+    const renderableInstances = instances.filter(
+      (instance) =>
+        instance.endTick - instance.startTick >= minimumSustainLengthTicks,
+    );
+    const needed = Math.min(renderableInstances.length, MAX_CAPACITY);
     if (needed > this.capacity) {
       this.resize(expandedCapacity(this.capacity, needed));
       this.shrinkStartedAt = null;
@@ -121,14 +126,14 @@ export class SustainTailBatch {
       this.shrinkStartedAt = null;
     }
 
-    const count = Math.min(instances.length, this.capacity);
-    this.droppedNotes = instances.length - count;
+    const count = Math.min(renderableInstances.length, this.capacity);
+    this.droppedNotes = renderableInstances.length - count;
     const ordered =
-      count < instances.length
-        ? [...instances].sort(
+      count < renderableInstances.length
+        ? [...renderableInstances].sort(
             (left, right) => (left.priority ?? 0) - (right.priority ?? 0),
           )
-        : instances;
+        : renderableInstances;
     const colors = this.colors.array as Float32Array;
     const tickRanges = this.tickRanges.array as Float32Array;
     const matrices = this.mesh.instanceMatrix.array as Float32Array;

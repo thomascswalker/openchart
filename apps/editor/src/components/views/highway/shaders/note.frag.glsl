@@ -17,10 +17,12 @@ uniform float uTintEnabled;
 
 // Tap-note tint and Fresnel transparency tuning.
 const vec3 TAP_TINT_COLOR = vec3(0.5, 0.0, 1.0);
-const float TAP_TINT_STRENGTH = 0.5;
+const float TAP_TINT_STRENGTH = 0.3;
+const float TAP_TINT_MIX_RATIO = 0.9;
 const float TAP_FRESNEL_POWER = 2.0;
-const float TAP_OPACITY_START = 0.02;
-const float TAP_OPACITY_END = 0.18;
+const float TAP_OPACITY_START = 0.01;
+const float TAP_OPACITY_END = 0.2;
+const float TAP_CENTER_OPACITY = 0.25;
 
 // HOPO-note white core and glow tuning in UV-space radii.
 const float HOPO_CORE_START_RADIUS = 0.07;
@@ -45,6 +47,30 @@ varying vec3 vViewPosition;
 vec3 softKnee(vec3 color, float knee) {
   vec3 excess = max(color - knee, 0.0);
   return color - excess + excess / (1.0 + excess);
+}
+
+vec3 rgbToHsv(vec3 color) {
+  float value = max(color.r, max(color.g, color.b));
+  float minimum = min(color.r, min(color.g, color.b));
+  float chroma = value - minimum;
+  float hue = 0.0;
+  if (chroma > 0.0) {
+    if (value == color.r) {
+      hue = mod((color.g - color.b) / chroma, 6.0);
+    } else if (value == color.g) {
+      hue = (color.b - color.r) / chroma + 2.0;
+    } else {
+      hue = (color.r - color.g) / chroma + 4.0;
+    }
+    hue /= 6.0;
+  }
+  float saturation = value > 0.0 ? chroma / value : 0.0;
+  return vec3(hue, saturation, value);
+}
+
+vec3 hsvToRgb(vec3 color) {
+  vec3 channel = abs(fract(color.xxx + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+  return color.z * mix(vec3(1.0), clamp(channel - 1.0, 0.0, 1.0), color.y);
 }
 
 void main() {
@@ -80,11 +106,24 @@ void main() {
   outColor = base.rgb * mix(vec3(0.0), outColor, uTintEnabled) + emission;
 
 #ifdef USE_NOTE_FLAGS
-  // Tap notes receive a 50% purple tint.
-  outColor = mix(
-    outColor,
+  // Blend the hue-shifted tint with the original RGB purple tint.
+  vec3 tapOriginalColor = outColor;
+  vec3 tapHsv = rgbToHsv(outColor);
+  float targetHue = rgbToHsv(TAP_TINT_COLOR).x;
+  float hueDelta = mod(targetHue - tapHsv.x + 0.5, 1.0) - 0.5;
+  tapHsv.x = fract(
+    tapHsv.x + hueDelta * TAP_TINT_STRENGTH * vNoteFlags.y
+  );
+  vec3 hueShiftedColor = hsvToRgb(tapHsv);
+  vec3 previousTintColor = mix(
+    tapOriginalColor,
     TAP_TINT_COLOR,
     TAP_TINT_STRENGTH * vNoteFlags.y
+  );
+  outColor = mix(
+    hueShiftedColor,
+    previousTintColor,
+    TAP_TINT_MIX_RATIO * vNoteFlags.y
   );
 
   // Fresnel fades the Tap note's center while preserving its visible rim.
@@ -92,10 +131,10 @@ void main() {
     1.0 - abs(dot(normalize(vViewNormal), normalize(-vViewPosition))),
     TAP_FRESNEL_POWER
   );
-  float tapOpacity = smoothstep(
-    TAP_OPACITY_START,
-    TAP_OPACITY_END,
-    fresnel
+  float tapOpacity = mix(
+    TAP_CENTER_OPACITY,
+    1.0,
+    smoothstep(TAP_OPACITY_START, TAP_OPACITY_END, fresnel)
   );
   alpha *= mix(1.0, tapOpacity, vNoteFlags.y);
 

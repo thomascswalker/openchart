@@ -1,4 +1,5 @@
 export const minimumMidiNoteDurationTicks = 1;
+export const minimumSustainLengthTicks = 240;
 
 export function getPhrasePointerAction(
   phraseHit: boolean,

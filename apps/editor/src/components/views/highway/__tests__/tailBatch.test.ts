@@ -94,4 +94,33 @@ describe("SustainTailBatch", () => {
     batch.dispose();
     material.dispose();
   });
+
+  it("renders sustains only when they meet the minimum sustain length", () => {
+    const scene = new THREE.Scene();
+    const material = new THREE.ShaderMaterial();
+    const batch = new SustainTailBatch(scene, material, 4, 10, {});
+    const tail = {
+      x: 0,
+      y: 0,
+      z: 0,
+      width: 0.32,
+      halfLength: 1,
+      color: rgbFromHex(0x00ff00),
+      selected: false,
+      startTick: 0,
+      endTick: 60,
+    };
+
+    expect(
+      batch.write([
+        { ...tail, endTick: 59 },
+        tail,
+        { ...tail, endTick: 61 },
+      ]),
+    ).toBe(2);
+    expect(batch.mesh.count).toBe(2);
+
+    batch.dispose();
+    material.dispose();
+  });
 });
