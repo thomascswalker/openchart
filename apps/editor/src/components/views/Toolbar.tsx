@@ -41,10 +41,10 @@ import type {
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
   [InstrumentType.Groove, BassIcon],
-  [InstrumentType.FourPad, FourpadIcon],
-  [InstrumentType.FivePad, FivepadIcon],
   [InstrumentType.Drums, DrumsIcon],
   [InstrumentType.Vocals, VocalsIcon],
+  [InstrumentType.FourPad, FourpadIcon],
+  [InstrumentType.FivePad, FivepadIcon],
 ] as const;
 
 const Difficulties = [
