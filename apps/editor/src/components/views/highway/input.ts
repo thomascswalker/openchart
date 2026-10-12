@@ -1,4 +1,4 @@
-import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
+import type { MidiChannelEvent, MidiNote } from "@openchart/core";
 import {
   findSection,
   getNotePhrases,
@@ -6,7 +6,7 @@ import {
   type ChartView,
   type EditablePhraseKind,
   type MidiNotePhrase,
-} from "@midiedit/views";
+} from "@openchart/views";
 import { HighwayCoordinateSystem } from "./coordinates";
 import type { HighwayContext } from "./context";
 import { HighwayHitTester } from "./hitTesting";

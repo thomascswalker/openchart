@@ -1,5 +1,5 @@
 {
-  "name": "@midiedit/desktop",
+  "name": "@openchart/desktop",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,7 +8,7 @@
     "build": "npx tauri build"
   },
   "dependencies": {
-    "@midiedit/editor": "0.0.0"
+    "@openchart/editor": "0.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.3.0"

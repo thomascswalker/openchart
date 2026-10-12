@@ -1,7 +1,7 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { Midi } from "@midiedit/core";
+import { Midi } from "@openchart/core";
 import { Runtime } from "../../components/Runtime";
 import { useEditorState } from "../useEditorState";
 import { executeEditorAction, runAction } from "../../actions/execute";

@@ -1,5 +1,5 @@
 {
-  "name": "@midiedit/audio",
+  "name": "@openchart/audio",
   "version": "1.0.0",
   "description": "",
   "engines": {
@@ -23,16 +23,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thomascswalker/midiview.git"
+    "url": "git+https://github.com/thomascswalker/openchart.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/thomascswalker/midiview/issues"
+    "url": "https://github.com/thomascswalker/openchart/issues"
   },
-  "homepage": "https://github.com/thomascswalker/midiview#readme",
+  "homepage": "https://github.com/thomascswalker/openchart#readme",
   "devDependencies": {
     "@types/node": "^26.3.0",
     "typescript": "~6.0.2",

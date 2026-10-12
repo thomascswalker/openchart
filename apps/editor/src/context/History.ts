@@ -1,4 +1,4 @@
-import type { Midi } from "@midiedit/core";
+import type { Midi } from "@openchart/core";
 
 export const DEFAULT_HISTORY_CAPACITY = 256;
 export const MIN_HISTORY_CAPACITY = 1;

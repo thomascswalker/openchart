@@ -1,4 +1,4 @@
-import type { MidiTrack, TempoChange } from "@midiedit/core";
+import type { MidiTrack, TempoChange } from "@openchart/core";
 import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import { NoteResizeHandleWidth } from "./constants";
 import type { PianoRollNote } from "./types";

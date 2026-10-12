@@ -1,4 +1,4 @@
-import { MetaType, Midi, MidiTrack } from "@midiedit/core";
+import { MetaType, Midi, MidiTrack } from "@openchart/core";
 
 export type PianoRollFixtureVariant = "populated" | "empty" | "dense";
 

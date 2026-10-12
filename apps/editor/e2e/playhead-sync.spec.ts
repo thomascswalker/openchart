@@ -30,7 +30,7 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
 }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
-      "midiedit.application-settings",
+      "openchart.application-settings",
       JSON.stringify({ graphics: { antialiasing: false } }),
     );
   });

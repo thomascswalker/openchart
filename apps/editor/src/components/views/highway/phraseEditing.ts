@@ -1,11 +1,11 @@
-import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
+import type { MidiChannelEvent, MidiNote } from "@openchart/core";
 import {
   addNotePhrase,
   getPhrasePitch,
   type EditablePhraseKind,
   type MidiNotePhrase,
   updateNotePhrase,
-} from "@midiedit/views";
+} from "@openchart/views";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import type { PhraseDragState } from "./types";

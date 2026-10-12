@@ -1,7 +1,7 @@
 import { IStatefulService } from "../platform/services";
 
 export const APPLICATION_SETTINGS_VERSION = 1;
-const STORAGE_KEY = "midiedit.application-settings";
+const STORAGE_KEY = "openchart.application-settings";
 
 export interface ApplicationSettings {
   version: typeof APPLICATION_SETTINGS_VERSION;

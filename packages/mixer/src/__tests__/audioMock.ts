@@ -1,4 +1,4 @@
-import type { AudioSampleOptions } from "@midiedit/audio";
+import type { AudioSampleOptions } from "@openchart/audio";
 
 export type MockAudioEvent = { data: unknown };
 

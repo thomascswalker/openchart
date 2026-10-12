@@ -4,7 +4,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Difficulty } from "@midiedit/views";
+import { Difficulty } from "@openchart/views";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";

@@ -1,8 +1,8 @@
-import type { Midi, MidiChannelEvent } from "@midiedit/core";
-import type { ChartView } from "@midiedit/views";
+import type { Midi, MidiChannelEvent } from "@openchart/core";
+import type { ChartView } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
 import type { SelectionContext } from "./selection";
-import type { EditablePhraseKind } from "@midiedit/views";
+import type { EditablePhraseKind } from "@openchart/views";
 import type {
   GhostNoteLocation,
   MarqueeDragState,

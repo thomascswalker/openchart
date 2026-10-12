@@ -3,7 +3,7 @@ import type {
   MidiTrack,
   TempoChange,
   TimeSignatureChange,
-} from "@midiedit/core";
+} from "@openchart/core";
 import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";

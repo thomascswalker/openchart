@@ -1,5 +1,5 @@
-import type { TimedMidiEvent } from "@midiedit/core";
-import { defaultConfig } from "@midiedit/views";
+import type { TimedMidiEvent } from "@openchart/core";
+import { defaultConfig } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import {
   getFiveFretNoteStyles,

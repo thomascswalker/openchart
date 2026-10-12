@@ -1,4 +1,4 @@
-import { Midi } from "@midiedit/core";
+import { Midi } from "@openchart/core";
 import {
   createProjectMetadata,
   type ProjectMetadata,
@@ -92,12 +92,12 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
 
   public readonly setClean = (): void => this.setDirty(false);
 
-  public readonly beginMidiEdit = (): void => {
+  public readonly beginOpenChart = (): void => {
     this.history.beginTransaction();
     this.publish();
   };
 
-  public readonly recordMidiEdit = (): void => {
+  public readonly recordOpenChart = (): void => {
     if (!this.midiData) return;
     const wasInTransaction = this.history.isInTransaction;
     this.history.recordEdit(this.midiData);
@@ -105,13 +105,13 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     if (!wasInTransaction) this.publish();
   };
 
-  public readonly endMidiEdit = (): void => {
+  public readonly endOpenChart = (): void => {
     if (!this.midiData) return;
     if (this.history.endTransaction(this.midiData)) this.dirty = true;
     this.publish();
   };
 
-  public readonly undoMidiEdit = (): void => {
+  public readonly undoOpenChart = (): void => {
     const restored = this.history.undo();
     if (!restored) return;
     this.midiData = restored;
@@ -119,7 +119,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
-  public readonly redoMidiEdit = (): void => {
+  public readonly redoOpenChart = (): void => {
     const restored = this.history.redo();
     if (!restored) return;
     this.midiData = restored;

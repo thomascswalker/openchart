@@ -8,6 +8,6 @@ export class RedoAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>("document").redoMidiEdit();
+    accessor.get<DocumentService>("document").redoOpenChart();
   }
 }

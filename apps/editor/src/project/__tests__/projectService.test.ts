@@ -1,4 +1,4 @@
-import { ChannelMessage, MetaType, Midi } from "@midiedit/core";
+import { ChannelMessage, MetaType, Midi } from "@openchart/core";
 import { describe, expect, it } from "vitest";
 import {
   createProjectMetadata,

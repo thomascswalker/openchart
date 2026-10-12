@@ -312,7 +312,7 @@ export class PianoRollRenderer {
 
 export function* iterateGridBeats(
   ppqn: number,
-  segments: import("@midiedit/core").TimeSignatureChange[],
+  segments: import("@openchart/core").TimeSignatureChange[],
   startTick: number,
   endTick: number,
 ): Generator<{ tick: number; isMeasure: boolean }> {

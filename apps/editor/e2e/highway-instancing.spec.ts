@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ChannelMessage, MetaType, Midi, MidiTrack } from "@midiedit/core";
+import { ChannelMessage, MetaType, Midi, MidiTrack } from "@openchart/core";
 import {
   cameraTick,
   canvasShot,
@@ -176,7 +176,7 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   expect(await canvas.getAttribute("data-dropped-notes")).toBe("0");
   expect(Number.isFinite(drawDurationMs)).toBe(true);
   expect(Number.isFinite(instanceWriteDurationMs)).toBe(true);
-  if (process.env.MIDIVIEW_PERF_LOG === "1") {
+  if (process.env.OPENCHART_PERF_LOG === "1") {
     console.log(`3,000-note highway draw(): ${drawDurationMs.toFixed(3)} ms`);
     console.log(
       `3,000-note instance buffer writes: ${instanceWriteDurationMs.toFixed(3)} ms`,

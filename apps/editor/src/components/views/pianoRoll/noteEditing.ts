@@ -1,4 +1,4 @@
-import type { MidiChannelEvent } from "@midiedit/core";
+import type { MidiChannelEvent } from "@openchart/core";
 import { clamp } from "es-toolkit";
 import type { CanvasPoint } from "../../../rendering/geometry";
 import type { CoordinateSystem } from "./coordinates";

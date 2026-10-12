@@ -30,7 +30,7 @@ import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
 import { ToolButton } from "../shared/Button";
-import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
+import { Difficulty, InstrumentType, SongView } from "@openchart/views";
 import { Fragment } from "react";
 import type { DrumPlacementKind, HighwayMode } from "./highway";
 

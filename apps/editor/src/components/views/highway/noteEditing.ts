@@ -1,5 +1,5 @@
-import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
-import type { ChartView } from "@midiedit/views";
+import type { MidiChannelEvent, MidiNote } from "@openchart/core";
+import type { ChartView } from "@openchart/views";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import {

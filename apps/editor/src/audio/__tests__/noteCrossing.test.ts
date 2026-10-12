@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MidiNote } from "@midiedit/core";
+import type { MidiNote } from "@openchart/core";
 import { NoteCrossingTracker } from "../noteCrossing";
 
 function note(start: number, pitch: number): MidiNote {

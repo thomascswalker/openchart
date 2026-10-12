@@ -1,6 +1,6 @@
-import type { Midi, MidiNote } from "@midiedit/core";
-import type { EditablePhraseKind } from "@midiedit/views";
-import { ChartView, SongView } from "@midiedit/views";
+import type { Midi, MidiNote } from "@openchart/core";
+import type { EditablePhraseKind } from "@openchart/views";
+import { ChartView, SongView } from "@openchart/views";
 import * as THREE from "three";
 import {
   AbstractChartView,

@@ -3,7 +3,7 @@ import {
   ticksToMs,
   type TempoChange,
   type TimeSignatureChange,
-} from "@midiedit/core";
+} from "@openchart/core";
 import type { ChartView } from "./views/ChartViews";
 import { usePlaybackSelector } from "../hooks/usePlayback";
 import { runAction } from "../actions/execute";

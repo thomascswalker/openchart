@@ -1,9 +1,9 @@
-import AudioSample from "@midiedit/audio";
+import AudioSample from "@openchart/audio";
 import type {
   AudioEvent,
   AudioEventCallback,
   AudioEventData,
-} from "@midiedit/audio";
+} from "@openchart/audio";
 
 type TrackId = string;
 

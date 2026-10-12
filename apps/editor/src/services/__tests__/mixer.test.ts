@@ -3,7 +3,7 @@ import type { FileSystemService } from "../filesystem";
 import type { ILoggerService } from "../logger";
 import { MixerService } from "../mixer";
 
-vi.mock("@midiedit/mixer", () => ({
+vi.mock("@openchart/mixer", () => ({
   default: class MockMixer {
     onChange?: () => void;
     onPlay?: (event: unknown) => void;

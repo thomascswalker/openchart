@@ -1,6 +1,6 @@
 # Overview
 
-MidiView is a Typescript-based chart editor which provides a MIDI-native backend.
+OpenChart is a Typescript-based chart editor which provides a MIDI-native backend.
 
 ## Architecture
 

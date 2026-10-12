@@ -8,6 +8,6 @@ export class UndoAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>("document").undoMidiEdit();
+    accessor.get<DocumentService>("document").undoOpenChart();
   }
 }

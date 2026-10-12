@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     Boolean(process.env.TAURI_ENV);
 
   return {
-    base: isDesktop ? "./" : "/midiview/",
+    base: isDesktop ? "./" : "/openchart/",
     plugins: [react(), svgr()],
     server: {
       watch: {

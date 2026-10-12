@@ -72,7 +72,7 @@ describe("Application settings", () => {
 
   it("discards legacy audio and discovery settings when loading and saving", () => {
     localStorage.setItem(
-      "midiedit.application-settings",
+      "openchart.application-settings",
       JSON.stringify({
         ...defaultApplicationSettings,
         audio: { rootPath: "/legacy", multitrack: true },
@@ -90,7 +90,7 @@ describe("Application settings", () => {
     expect(service.getSnapshot().feedback.metronomeEnabled).toBe(true);
     expect(service.applySettings(service.getSnapshot())).toBe(true);
     const saved = JSON.parse(
-      localStorage.getItem("midiedit.application-settings")!,
+      localStorage.getItem("openchart.application-settings")!,
     );
     expect(saved).not.toHaveProperty("audio");
     expect(saved).not.toHaveProperty("discovery");

@@ -1,5 +1,5 @@
-import type { MidiMetaEvent, MidiNote, MidiTrack } from "@midiedit/core";
-import { MetaType } from "@midiedit/core";
+import type { MidiMetaEvent, MidiNote, MidiTrack } from "@openchart/core";
+import { MetaType } from "@openchart/core";
 import type { TrackDescriptor } from "./config.js";
 
 export type EditablePhraseKind = "stagepower" | "solo";

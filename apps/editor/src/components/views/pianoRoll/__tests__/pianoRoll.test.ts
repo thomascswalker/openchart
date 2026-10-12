@@ -3,7 +3,7 @@ import type {
   MidiTrack,
   TempoChange,
   TimeSignatureChange,
-} from "@midiedit/core";
+} from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
 import type { CanvasPoint, CanvasRect } from "../../../../rendering/geometry";
 import { CoordinateSystem } from "../coordinates";

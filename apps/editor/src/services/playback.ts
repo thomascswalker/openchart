@@ -4,8 +4,8 @@ import {
   type Midi,
   type MidiNote,
   type TempoChange,
-} from "@midiedit/core";
-import { Difficulty, SongView } from "@midiedit/views";
+} from "@openchart/core";
+import { Difficulty, SongView } from "@openchart/views";
 import {
   Soundboard,
   type SoundboardSettings,

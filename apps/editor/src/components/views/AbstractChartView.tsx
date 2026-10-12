@@ -1,5 +1,5 @@
-import type { Midi } from "@midiedit/core";
-import { Difficulty } from "@midiedit/views";
+import type { Midi } from "@openchart/core";
+import { Difficulty } from "@openchart/views";
 import * as THREE from "three";
 import { RenderScheduler } from "../../rendering/scheduler";
 import { Engine, type EngineOptions } from "../../rendering/engine";

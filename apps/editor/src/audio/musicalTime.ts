@@ -3,7 +3,7 @@ import {
   ticksToMs,
   type TempoChange,
   type TimeSignatureChange,
-} from "@midiedit/core";
+} from "@openchart/core";
 
 export interface BeatPosition {
   tick: number;

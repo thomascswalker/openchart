@@ -40,8 +40,8 @@ jobs:
 
       - name: Build Editor
         run: |
-          npx turbo run build --filter=@midiedit/editor^...
-          npm run build --workspace=@midiedit/editor
+          npx turbo run build --filter=@openchart/editor^...
+          npm run build --workspace=@openchart/editor
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
