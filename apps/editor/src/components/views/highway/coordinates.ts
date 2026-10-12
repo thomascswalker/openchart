@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
-import { laneCount, nearBoardZ, strikeLineZ } from "./constants";
+import { laneCount, nearBoardZ } from "./constants";
 import { drumLaneCount } from "./drumProfile";
 
 type HighwayCoordinateContext = Pick<
   HighwayContext,
   "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
 > &
-  Partial<Pick<HighwayContext, "getCurrentChart">>;
+  Partial<Pick<HighwayContext, "getCurrentChart" | "getScrollSpeedMultiplier">>;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
 export class HighwayCoordinateSystem {
@@ -105,21 +105,33 @@ export class HighwayCoordinateSystem {
   }
 
   public getNoteZ(tick: number): number {
-    const strikeTick =
-      this.context.getCameraTick() +
-      ((strikeLineZ - nearBoardZ) / 3) * -this.context.getPpqn();
-    return strikeLineZ - ((tick - strikeTick) / this.context.getPpqn()) * 3;
+    return (
+      nearBoardZ -
+      (((tick - this.context.getCameraTick()) *
+        this.getScrollSpeedMultiplier()) /
+        this.context.getPpqn()) *
+        3
+    );
   }
 
   public getTickAtDepth(z: number): number {
     return (
       this.context.getCameraTick() +
-      ((nearBoardZ - z) / 3) * this.context.getPpqn()
+      (((nearBoardZ - z) / 3) * this.context.getPpqn()) /
+        this.getScrollSpeedMultiplier()
     );
   }
 
   public getCameraTickAtDepth(tick: number, z: number): number {
-    return tick - ((nearBoardZ - z) / 3) * this.context.getPpqn();
+    return (
+      tick -
+      (((nearBoardZ - z) / 3) * this.context.getPpqn()) /
+        this.getScrollSpeedMultiplier()
+    );
+  }
+
+  private getScrollSpeedMultiplier(): number {
+    return this.context.getScrollSpeedMultiplier?.() ?? 1;
   }
 
   public getSnapTicks(): number {

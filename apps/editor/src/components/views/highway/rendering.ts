@@ -396,6 +396,7 @@ export class HighwayRenderer {
         this.context.getCameraTick(),
         this.context.getPpqn(),
         nearBoardZ,
+        this.context.getScrollSpeedMultiplier?.() ?? 1,
       );
       visibleTails = this.instancedTailBatch!.write(tailData);
     } else {
@@ -469,6 +470,7 @@ export class HighwayRenderer {
         this.context.getCameraTick(),
         this.context.getPpqn(),
         nearBoardZ,
+        this.context.getScrollSpeedMultiplier?.() ?? 1,
       );
       if (!noteBatchDirty && activeBatch) activeBatch.lastWriteMs = 0;
       if (noteBatchDirty) activeBatch?.write(instances);
@@ -1154,6 +1156,7 @@ export class HighwayRenderer {
       this.context.getCameraTick(),
       this.context.getPpqn(),
       nearBoardZ,
+      this.context.getScrollSpeedMultiplier?.() ?? 1,
     );
     return this.instancedPreviewTailBatch!.write(previewData);
   }

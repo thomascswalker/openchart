@@ -19,9 +19,10 @@ attribute vec2 aTickRange;
 uniform float uCameraTick;
 uniform float uPpqn;
 uniform float uNearBoardZ;
+uniform float uScrollSpeed;
 
 float tickToZ(float tick) {
-  return uNearBoardZ - ((tick - uCameraTick) / uPpqn) * 3.0;
+  return uNearBoardZ - ((tick - uCameraTick) / uPpqn) * 3.0 * uScrollSpeed;
 }
 
 void main() {

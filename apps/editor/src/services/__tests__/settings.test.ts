@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceRegistry } from "../../platform/services";
-import { defaultApplicationSettings, SettingsService } from "../settings";
+import {
+  defaultApplicationSettings,
+  SettingsService,
+  validateApplicationSettings,
+} from "../settings";
 
 describe("SettingsService", () => {
   const values = new Map<string, string>();
@@ -68,6 +72,42 @@ describe("SettingsService", () => {
     const service = new SettingsService();
 
     expect(service.getSettings().graphics.antialiasing).toBe(true);
+    expect(service.getSettings().graphics.scrollSpeed).toBe(1);
     expect(service.applySettings(service.getSettings())).toBe(true);
+  });
+
+  it("validates the application highway visual speed range", () => {
+    const settings = structuredClone(defaultApplicationSettings);
+
+    settings.graphics.scrollSpeed = 0.49;
+    expect(validateApplicationSettings(settings).scrollSpeed).toBeDefined();
+    settings.graphics.scrollSpeed = 4.01;
+    expect(validateApplicationSettings(settings).scrollSpeed).toBeDefined();
+    settings.graphics.scrollSpeed = 2;
+    expect(validateApplicationSettings(settings).scrollSpeed).toBeUndefined();
+  });
+
+  it("applies one setting while preserving the other application settings", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+      },
+    });
+    const service = new SettingsService();
+    const original = service.getSettings();
+
+    expect(service.applySetting("graphics.scrollSpeed", 1.5)).toBe(true);
+    expect(service.getSettings()).toEqual({
+      ...original,
+      graphics: { ...original.graphics, scrollSpeed: 1.5 },
+    });
+    expect(
+      JSON.parse(values.get("openchart.application-settings") ?? "{}").graphics
+        .scrollSpeed,
+    ).toBe(1.5);
+
+    expect(service.applySetting("graphics.scrollSpeed", 4.5)).toBe(false);
+    expect(service.getSettings().graphics.scrollSpeed).toBe(1.5);
   });
 });

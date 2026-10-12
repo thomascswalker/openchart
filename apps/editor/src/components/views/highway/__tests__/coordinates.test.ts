@@ -15,11 +15,13 @@ describe("HighwayCoordinateSystem", () => {
     isPlaying: false,
   };
   let cameraTick = 100;
+  let scrollSpeedMultiplier = 1;
   let currentChart: ChartView | null = null;
   const coordinates = new HighwayCoordinateSystem(
     {
       getCanvas: () => null,
       getCameraTick: () => cameraTick,
+      getScrollSpeedMultiplier: () => scrollSpeedMultiplier,
       getCurrentChart: () => currentChart,
       getPpqn: () => 480,
       getState: () => state,
@@ -74,6 +76,19 @@ describe("HighwayCoordinateSystem", () => {
     expect(coordinates.getTickAtDepth(coordinates.getNoteZ(730))).toBeCloseTo(
       730,
     );
+  });
+
+  it("scales visual tick spacing while keeping coordinate conversions inverse", () => {
+    cameraTick = 250;
+    scrollSpeedMultiplier = 2;
+    const noteZ = coordinates.getNoteZ(730);
+
+    expect(noteZ).toBeCloseTo(-5.5);
+    expect(coordinates.getTickAtDepth(noteZ)).toBeCloseTo(730);
+    expect(
+      coordinates.getCameraTickAtDepth(730, coordinates.getNoteZ(730)),
+    ).toBeCloseTo(250);
+    scrollSpeedMultiplier = 1;
   });
 
   it("keeps the playhead at the strike line, including before tick zero", () => {

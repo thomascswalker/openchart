@@ -20,7 +20,7 @@ import {
   SoloIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
-import { DropdownButton } from "../shared/Dropdown";
+import { Dropdown, DropdownButton } from "../shared/Dropdown";
 import type {
   ViewportKind,
   ViewportSession,
@@ -30,9 +30,16 @@ import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
 import { ToolButton } from "../shared/Button";
+import { Slider } from "../shared/Slider";
 import { Difficulty, InstrumentType, SongView } from "@openchart/views";
 import { Fragment } from "react";
-import type { DrumPlacementKind, HighwayMode } from "./highway";
+import type {
+  DrumPlacementKind,
+  HighwayMode,
+  HighwayNotePlacementType,
+} from "./highway";
+import { useApplicationSettings } from "../../hooks/useApplicationSettings";
+import { HIGHWAY_SCROLL_SPEED_RANGE } from "../../services/settings";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -55,6 +62,19 @@ const SNAP_OPTIONS = SnapDenominators.map((d) => ({
   label: `1/${d}`,
 }));
 
+const DRUM_NOTE_TYPE_OPTIONS = [
+  { value: "pad", label: "Pad" },
+  { value: "cymbal", label: "Cymbal" },
+  { value: "kick", label: "Kick" },
+];
+
+const GUITAR_NOTE_TYPE_OPTIONS = [
+  { value: "normal", label: "Normal" },
+  { value: "force-hopo", label: "Force HOPO" },
+  { value: "force-strum", label: "Force Strum" },
+  { value: "tap", label: "Tap" },
+];
+
 interface ToolbarProps {
   session: ViewportSession;
   onViewChange: (view: "piano-roll" | "highway") => void;
@@ -62,6 +82,8 @@ interface ToolbarProps {
   onHighwayModeChange: (mode: HighwayMode) => void;
   drumPlacementKind: DrumPlacementKind;
   onDrumPlacementKindChange: (kind: DrumPlacementKind) => void;
+  notePlacementType: HighwayNotePlacementType;
+  onNotePlacementTypeChange: (type: HighwayNotePlacementType) => void;
 }
 
 const Toolbar = ({
@@ -71,6 +93,8 @@ const Toolbar = ({
   onHighwayModeChange,
   drumPlacementKind,
   onDrumPlacementKindChange,
+  notePlacementType,
+  onNotePlacementTypeChange,
 }: ToolbarProps) => {
   const { midiData } = useDocumentSnapshot();
   const {
@@ -78,6 +102,7 @@ const Toolbar = ({
     snapEnabled,
     snapDenominator,
   } = useViewportSnapshot();
+  const { settings, applySetting } = useApplicationSettings();
   const activeViewId = session.view ?? globalView;
 
   const handleViewChange = (kind: ViewportKind) => {
@@ -127,21 +152,43 @@ const Toolbar = ({
 
       {activeViewId === "highway" && (
         <Fragment>
+          <Slider
+            value={String(settings.graphics.scrollSpeed)}
+            onInput={(event) =>
+              applySetting(
+                "graphics.scrollSpeed",
+                Number(event.currentTarget.value),
+              )
+            }
+            step={HIGHWAY_SCROLL_SPEED_RANGE.step}
+            min={HIGHWAY_SCROLL_SPEED_RANGE.min}
+            max={HIGHWAY_SCROLL_SPEED_RANGE.max}
+            maxWidth={100}
+          />
           {session.instrument === InstrumentType.Drums && (
-            <select
+            <Dropdown
               aria-label="Drum note type"
               title="Drum note type"
               value={drumPlacementKind}
-              onChange={(event) =>
-                onDrumPlacementKindChange(
-                  event.currentTarget.value as DrumPlacementKind,
-                )
+              onChange={(value) =>
+                onDrumPlacementKindChange(value as DrumPlacementKind)
               }
-            >
-              <option value="pad">Pad</option>
-              <option value="cymbal">Cymbal</option>
-              <option value="kick">Kick</option>
-            </select>
+              options={DRUM_NOTE_TYPE_OPTIONS}
+              maxWidth={120}
+            />
+          )}
+          {(session.instrument === InstrumentType.Lead ||
+            session.instrument === InstrumentType.Groove) && (
+            <Dropdown
+              aria-label="Note type"
+              title="Note type"
+              value={notePlacementType}
+              onChange={(value) =>
+                onNotePlacementTypeChange(value as HighwayNotePlacementType)
+              }
+              options={GUITAR_NOTE_TYPE_OPTIONS}
+              maxWidth={140}
+            />
           )}
           <VerticalSeparator />
 

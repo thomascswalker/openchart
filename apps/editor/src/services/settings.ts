@@ -3,6 +3,12 @@ import { IStatefulService } from "../platform/services";
 export const APPLICATION_SETTINGS_VERSION = 1;
 const STORAGE_KEY = "openchart.application-settings";
 
+export const HIGHWAY_SCROLL_SPEED_RANGE = {
+  min: 0.5,
+  max: 4,
+  step: 0.1,
+} as const;
+
 export interface ApplicationSettings {
   version: typeof APPLICATION_SETTINGS_VERSION;
   feedback: {
@@ -25,8 +31,26 @@ export interface ApplicationSettings {
   };
   graphics: {
     antialiasing: boolean;
+    scrollSpeed: number;
   };
 }
+
+type ApplicationSettingGroup = "feedback" | "saving" | "history" | "graphics";
+export type ApplicationSettingPath = {
+  [Group in ApplicationSettingGroup]: `${Group}.${Extract<
+    keyof ApplicationSettings[Group],
+    string
+  >}`;
+}[ApplicationSettingGroup];
+
+type ApplicationSettingValue<Path extends ApplicationSettingPath> =
+  Path extends `${infer Group}.${infer Key}`
+    ? Group extends ApplicationSettingGroup
+      ? Key extends keyof ApplicationSettings[Group]
+        ? ApplicationSettings[Group][Key]
+        : never
+      : never
+    : never;
 
 export const defaultApplicationSettings: ApplicationSettings = {
   version: APPLICATION_SETTINGS_VERSION,
@@ -44,7 +68,7 @@ export const defaultApplicationSettings: ApplicationSettings = {
   },
   saving: { defaultSaveMode: "project" },
   history: { capacity: 256 },
-  graphics: { antialiasing: true },
+  graphics: { antialiasing: true, scrollSpeed: 1 },
 };
 
 export function validateApplicationSettings(
@@ -110,6 +134,13 @@ export function validateApplicationSettings(
   }
   if (typeof settings.graphics.antialiasing !== "boolean") {
     errors.antialiasing = "Antialiasing must be enabled or disabled.";
+  }
+  if (
+    !Number.isFinite(settings.graphics.scrollSpeed) ||
+    settings.graphics.scrollSpeed < HIGHWAY_SCROLL_SPEED_RANGE.min ||
+    settings.graphics.scrollSpeed > HIGHWAY_SCROLL_SPEED_RANGE.max
+  ) {
+    errors.scrollSpeed = `Highway visual speed must be between ${HIGHWAY_SCROLL_SPEED_RANGE.min} and ${HIGHWAY_SCROLL_SPEED_RANGE.max}.`;
   }
   return errors;
 }
@@ -205,5 +236,17 @@ export class SettingsService extends IStatefulService<ApplicationSettings> {
     this._snapshot = settings;
     this.notify();
     return true;
+  };
+
+  public readonly applySetting = <Path extends ApplicationSettingPath>(
+    path: Path,
+    value: ApplicationSettingValue<Path>,
+  ): boolean => {
+    const [group, key] = path.split(".") as [ApplicationSettingGroup, string];
+    const settings = {
+      ...this._snapshot,
+      [group]: { ...this._snapshot[group], [key]: value },
+    } as ApplicationSettings;
+    return this.applySettings(settings);
   };
 }

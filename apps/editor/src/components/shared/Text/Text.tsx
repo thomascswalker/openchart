@@ -6,6 +6,7 @@ import type {
   BorderProps,
   FlexWrapProps,
   FontSizeProps,
+  SizeProps,
 } from "styled-system";
 import styles from "./text.module.css";
 import { getTextSystemStyles } from "./textStyles";
@@ -17,7 +18,8 @@ interface TextProps
     FontWeightProps,
     TextColorProps,
     BorderProps,
-    FlexWrapProps {
+    FlexWrapProps,
+    SizeProps {
   className?: string;
   children: React.ReactNode;
   role?: React.AriaRole;

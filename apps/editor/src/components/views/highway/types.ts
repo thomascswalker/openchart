@@ -4,6 +4,8 @@ import type { DrumNoteKind } from "./drumProfile";
 
 export type HighwayTool = "select" | "place" | "remove";
 export type HighwayMode = HighwayTool | EditablePhraseKind;
+export type HighwayNotePlacementType =
+  "normal" | "force-hopo" | "force-strum" | "tap";
 
 export function getPhraseModeForHighwayMode(
   mode: HighwayMode,

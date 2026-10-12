@@ -223,10 +223,12 @@ export class SustainTailBatch {
     cameraTick: number,
     ppqn: number,
     nearBoardZ: number,
+    scrollSpeed: number,
   ): void {
     this.material.uniforms.uCameraTick.value = cameraTick;
     this.material.uniforms.uPpqn.value = ppqn;
     this.material.uniforms.uNearBoardZ.value = nearBoardZ;
+    this.material.uniforms.uScrollSpeed.value = scrollSpeed;
   }
 
   public dispose(): void {
