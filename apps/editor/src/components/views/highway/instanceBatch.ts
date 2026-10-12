@@ -301,11 +301,13 @@ export class NoteInstanceBatch {
     cameraTick: number,
     ppqn: number,
     nearBoardZ: number,
+    scrollSpeed: number,
   ): void {
     for (const material of this.materials) {
       material.uniforms.uCameraTick.value = cameraTick;
       material.uniforms.uPpqn.value = ppqn;
       material.uniforms.uNearBoardZ.value = nearBoardZ;
+      material.uniforms.uScrollSpeed.value = scrollSpeed;
     }
   }
 

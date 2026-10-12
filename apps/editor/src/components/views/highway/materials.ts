@@ -182,6 +182,7 @@ class MaterialManager {
         uCameraTick: { value: 0 },
         uPpqn: { value: 480 },
         uNearBoardZ: { value: 0.5 },
+        uScrollSpeed: { value: 1 },
       },
       transparent,
       depthTest,

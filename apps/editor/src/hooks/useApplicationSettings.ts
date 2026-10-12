@@ -9,5 +9,9 @@ export function useApplicationSettings() {
     settingsService.getSnapshot,
     settingsService.getSnapshot,
   );
-  return { settings, applySettings: settingsService.applySettings };
+  return {
+    settings,
+    applySettings: settingsService.applySettings,
+    applySetting: settingsService.applySetting,
+  };
 }

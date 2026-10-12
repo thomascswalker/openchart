@@ -1,0 +1,12 @@
+.slider {
+  width: var(--size-large);
+  height: var(--size-large);
+  margin: 0;
+  accent-color: var(--secondary);
+  cursor: pointer;
+}
+
+.slider:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

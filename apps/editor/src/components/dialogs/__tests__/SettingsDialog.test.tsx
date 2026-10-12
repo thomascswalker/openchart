@@ -221,6 +221,13 @@ describe("Application settings", () => {
     )!;
     expect(antialiasing.checked).toBe(true);
     act(() => antialiasing.click());
+    const scrollSpeed = container.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    )!;
+    expect(scrollSpeed.value).toBe("1");
+    expect(scrollSpeed.min).toBe("0.5");
+    expect(scrollSpeed.max).toBe("4");
+    act(() => changeInput(scrollSpeed, "2"));
     await act(async () => {
       [...container.querySelectorAll<HTMLButtonElement>("button")]
         .find((button) => button.textContent === "Apply")!
@@ -232,6 +239,10 @@ describe("Application settings", () => {
       Platform.services.get<SettingsService>("settings").getSettings().graphics
         .antialiasing,
     ).toBe(false);
+    expect(
+      Platform.services.get<SettingsService>("settings").getSettings().graphics
+        .scrollSpeed,
+    ).toBe(2);
     act(() => root.unmount());
     container.remove();
   });

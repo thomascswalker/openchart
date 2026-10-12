@@ -3,6 +3,7 @@ import { executeEditorAction, runAction } from "../../actions/execute";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
 import {
   type ApplicationSettings,
+  HIGHWAY_SCROLL_SPEED_RANGE,
   validateApplicationSettings,
 } from "../../services/settings";
 import { Input } from "../shared/Input/Input";
@@ -110,6 +111,13 @@ const settingsSchema: Record<string, SettingsField[]> = {
       label: "Antialiasing",
       control: "checkbox",
       path: "graphics.antialiasing",
+    },
+    {
+      id: "scrollSpeed",
+      label: "Visual speed at which the note chart scrolls.",
+      control: "number",
+      path: "graphics.scrollSpeed",
+      ...HIGHWAY_SCROLL_SPEED_RANGE,
     },
   ],
 };

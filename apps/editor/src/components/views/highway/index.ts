@@ -23,7 +23,11 @@ import {
   nearBoardZ,
   strikeLineZ,
 } from "./constants";
-import { getPhraseModeForHighwayMode, type HighwayMode } from "./types";
+import {
+  getPhraseModeForHighwayMode,
+  type HighwayMode,
+  type HighwayNotePlacementType,
+} from "./types";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import { HighwayHitTester } from "./hitTesting";
@@ -34,6 +38,7 @@ import { HighwayRenderer, type HighwayRenderDiagnostics } from "./rendering";
 import { SelectionContext } from "./selection";
 import type { DrumPlacementKind } from "./drumProfile";
 export type { HighwayMode, HighwayTool } from "./types";
+export type { HighwayNotePlacementType } from "./types";
 export type { DrumPlacementKind } from "./drumProfile";
 
 function isValidCameraDebugState(state: CameraDebugState): boolean {
@@ -76,8 +81,10 @@ export class HighwayView
     }),
     getPlayheadTick: () => this.playheadTick,
     getCameraTick: () => this.cameraTick,
+    getScrollSpeedMultiplier: () => this.scrollSpeedMultiplier,
     setCameraTick: (tick) => this.setCameraTick(tick),
     getMode: () => this.mode,
+    getNotePlacementType: () => this.notePlacementType,
     getDrumPlacementKind: () => this.drumPlacementKind,
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
@@ -137,8 +144,10 @@ export class HighwayView
   private song: SongView | null = null;
   private playheadTick = 0;
   private cameraTick = 0;
+  private scrollSpeedMultiplier = 1;
   private readonly selection = new SelectionContext();
   private mode: HighwayMode = "select";
+  private notePlacementType: HighwayNotePlacementType = "normal";
   private drumPlacementKind: DrumPlacementKind = "pad";
   private phraseMode: EditablePhraseKind | null = null;
 
@@ -231,6 +240,25 @@ export class HighwayView
     this.notifyCameraChange();
   }
 
+  public setScrollSpeedMultiplier(multiplier: number): void {
+    if (
+      !Number.isFinite(multiplier) ||
+      multiplier < 0.5 ||
+      multiplier > 4 ||
+      multiplier === this.scrollSpeedMultiplier
+    ) {
+      return;
+    }
+    const strikeTick = this.coordinates.getTickAtDepth(strikeLineZ);
+    this.scrollSpeedMultiplier = multiplier;
+    const cameraTick = this.coordinates.getCameraTickAtDepth(
+      strikeTick,
+      strikeLineZ,
+    );
+    if (cameraTick === this.cameraTick) this.render();
+    else this.setCameraTick(cameraTick);
+  }
+
   public setMode(mode: HighwayMode): void {
     if (mode === this.mode) return;
     this.input.cancelPhraseGesture();
@@ -245,6 +273,11 @@ export class HighwayView
     if (kind === this.drumPlacementKind) return;
     this.drumPlacementKind = kind;
     this.render();
+  }
+
+  public setNotePlacementType(type: HighwayNotePlacementType): void {
+    if (type === this.notePlacementType) return;
+    this.notePlacementType = type;
   }
 
   public canCopySelection(): boolean {

@@ -7,6 +7,7 @@ import { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayContext } from "../context";
 import { HighwayNoteEditingController } from "../noteEditing";
 import { SelectionContext } from "../selection";
+import type { HighwayNotePlacementType } from "../types";
 
 function makeNote(
   lane: number,
@@ -152,6 +153,68 @@ describe("HighwayNoteEditingController", () => {
     expect(editing.placeNoteAt(chart, 3, 480, false)).toBe(true);
     expect(addNote).toHaveBeenCalledWith(0, 480, 481);
   });
+
+  it.each([
+    ["force-hopo", 101],
+    ["force-strum", 102],
+    ["tap", 103],
+  ] as const)(
+    "adds the configured %s marker when placing a Lead/Groove note",
+    (placementType: HighwayNotePlacementType, markerPitch) => {
+      const markers: Array<{ note: number; start: number }> = [];
+      const midiTrack = {
+        getNotes: (options?: { pitch: { low: number; high: number } }) =>
+          options
+            ? markers.filter(
+                (note) =>
+                  note.note >= options.pitch.low &&
+                  note.note < options.pitch.high,
+              )
+            : markers,
+        getInsertionIndexAt: () => markers.length,
+        getAbsoluteTickAt: () => 0,
+        addNote: (note: number, start: number) => {
+          markers.push({ note, start });
+        },
+        removeNote: vi.fn(),
+      };
+      const chart = {
+        getTrack: () => ({
+          getKey: () => "lead-guitar",
+          getMidiTrack: () => midiTrack,
+        }),
+        getSong: () => ({
+          getTrackDescriptors: () => [
+            {
+              key: "lead-guitar",
+              config: {
+                type: "instrument",
+                offsets: { expert: 96 },
+                notes: {
+                  expertHopo: 101,
+                  expertStrum: 102,
+                  expertTap: 103,
+                },
+              },
+            },
+          ],
+        }),
+        getOffset: () => 96,
+        getNotes: () => [],
+        addNote: vi.fn(() => true),
+      } as unknown as ChartView;
+      const context = {
+        getNotePlacementType: () => placementType,
+      } as unknown as HighwayContext;
+      const editing = new HighwayNoteEditingController(
+        context,
+        {} as HighwayCoordinateSystem,
+      );
+
+      expect(editing.placeNoteAt(chart, 0, 480, false)).toBe(true);
+      expect(markers).toContainEqual({ note: markerPitch, start: 480 });
+    },
+  );
 
   it("moves cymbals as cymbals and keeps Expert Kick2 at pitch 95", () => {
     const cymbal = makeNote(101, 480, 481);

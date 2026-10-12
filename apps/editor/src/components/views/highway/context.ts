@@ -8,7 +8,7 @@ import type {
   MarqueeDragState,
   PhraseHoverState,
 } from "./types";
-import type { HighwayMode } from "./types";
+import type { HighwayMode, HighwayNotePlacementType } from "./types";
 import type { DrumPlacementKind } from "./drumProfile";
 
 /** Narrow view services available to highway-specific collaborators. */
@@ -20,8 +20,10 @@ export interface HighwayContext {
   getViewport(): { width: number; height: number };
   getPlayheadTick(): number;
   getCameraTick(): number;
+  getScrollSpeedMultiplier?(): number;
   setCameraTick(tick: number): void;
   getMode(): HighwayMode;
+  getNotePlacementType?(): HighwayNotePlacementType;
   getDrumPlacementKind(): DrumPlacementKind;
   getPhraseMode(): EditablePhraseKind | null;
   getPhraseHoverState(): PhraseHoverState | null;

@@ -26,6 +26,7 @@ import {
   HighwayView,
   type DrumPlacementKind,
   type HighwayMode,
+  type HighwayNotePlacementType,
 } from "./views/highway";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
@@ -164,6 +165,8 @@ function ViewportPanel({
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
     useState<DrumPlacementKind>("pad");
+  const [notePlacementType, setNotePlacementType] =
+    useState<HighwayNotePlacementType>("normal");
   const activeView =
     CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
   const engineOptions = useMemo<EngineOptions>(() => {
@@ -292,8 +295,15 @@ function ViewportPanel({
     if (chartView instanceof HighwayView) {
       chartView.setMode(highwayMode);
       chartView.setDrumPlacementKind(drumPlacementKind);
+      chartView.setNotePlacementType(notePlacementType);
     }
-  }, [chartView, highwayMode, drumPlacementKind]);
+  }, [chartView, highwayMode, drumPlacementKind, notePlacementType]);
+
+  useEffect(() => {
+    if (chartView instanceof HighwayView) {
+      chartView.setScrollSpeedMultiplier(settings.graphics.scrollSpeed);
+    }
+  }, [chartView, settings.graphics.scrollSpeed]);
 
   useEffect(() => {
     if (!active) return;
@@ -362,6 +372,8 @@ function ViewportPanel({
         onHighwayModeChange={setHighwayMode}
         drumPlacementKind={drumPlacementKind}
         onDrumPlacementKindChange={setDrumPlacementKind}
+        notePlacementType={notePlacementType}
+        onNotePlacementTypeChange={setNotePlacementType}
       />
       <div className="viewport-panel__body">
         {session.view === "piano-roll" ? (

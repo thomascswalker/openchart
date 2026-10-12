@@ -42,6 +42,7 @@ export class PianoRollRenderer {
 
   public draw(width: number, height: number, playheadTick: number): void {
     this.clearScene();
+
     this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, 10);
     this.addRect(0, HeaderHeight, width, height - HeaderHeight, 0x151515, 0);
     this.drawPitchRows(width, height);
