@@ -11,7 +11,7 @@ import {
   FivepadIcon,
   HardIcon,
   Highway3dIcon,
-  MagnetIcon,
+  SnapIcon,
   MediumIcon,
   PencilIcon,
   PianoIcon,
@@ -136,7 +136,7 @@ const Toolbar = ({
       <DropdownButton
         label="Snap to grid"
         ariaLabel="Toggle snap to grid"
-        icon={<MagnetIcon />}
+        icon={<SnapIcon />}
         active={snapEnabled}
         onToggle={(enabled) => runAction("editor.set-snap-enabled", enabled)}
         dropdownDisabled={!snapEnabled}

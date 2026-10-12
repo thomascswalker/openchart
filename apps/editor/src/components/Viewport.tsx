@@ -30,7 +30,7 @@ import {
 } from "./views/highway";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
-import { Button, CloseButton } from "./shared/Button";
+import { Button, CloseButton, ToolButton } from "./shared/Button";
 import { Popup } from "./shared/Popup";
 import { Slider } from "./shared/Slider";
 import { Text } from "./shared/Text";
@@ -47,6 +47,7 @@ import {
   PianoIcon,
   SplitIcon,
   VocalsIcon,
+  SettingsIcon,
 } from "./shared/Icon/Icon";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
@@ -384,9 +385,11 @@ function ViewportPanel({
             <div className="viewport-panel__highway-settings">
               <Popup
                 trigger={
-                  <Button border="none" borderRadius={32}>
-                    V
-                  </Button>
+                  <ToolButton
+                    Icon={SettingsIcon}
+                    border="none"
+                    borderRadius={32}
+                  />
                 }
                 title="Viewport Settings"
                 width={280}

@@ -39,7 +39,7 @@ export const {
   EraserIcon,
   NoteIcon,
   PencilIcon,
-  MagnetIcon,
+  SnapIcon,
   PianoIcon,
   Highway3dIcon,
   EasyIcon,
@@ -55,4 +55,5 @@ export const {
   SoloIcon,
   StagepowerIcon,
   SplitIcon,
+  SettingsIcon,
 } = Icons;
