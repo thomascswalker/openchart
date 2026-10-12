@@ -94,6 +94,7 @@
   position: relative;
   display: inline-flex;
   align-items: stretch;
+  flex: 0 0 auto;
   min-width: 0;
   height: var(--size-large);
   border: 1px solid var(--neutral-60);
@@ -111,6 +112,11 @@
   background: transparent;
   justify-content: flex-start;
   gap: 8px;
+}
+
+.dropdown-button__value > svg,
+.dropdown-button__value > span {
+  flex-shrink: 0;
 }
 
 .dropdown-button > .dropdown-button__value[aria-pressed="true"] {

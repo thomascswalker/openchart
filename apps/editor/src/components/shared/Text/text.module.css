@@ -10,6 +10,7 @@
   font-size: var(--font-size);
   font-weight: var(--font-weight);
   color: var(--text-primary);
+  margin: 0;
 }
 
 .ui-heading {

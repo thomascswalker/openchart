@@ -30,7 +30,6 @@ import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
 import { ToolButton } from "../shared/Button";
-import { Slider } from "../shared/Slider";
 import { Difficulty, InstrumentType, SongView } from "@openchart/views";
 import { Fragment } from "react";
 import type {
@@ -38,8 +37,6 @@ import type {
   HighwayMode,
   HighwayNotePlacementType,
 } from "./highway";
-import { useApplicationSettings } from "../../hooks/useApplicationSettings";
-import { HIGHWAY_SCROLL_SPEED_RANGE } from "../../services/settings";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -102,7 +99,6 @@ const Toolbar = ({
     snapEnabled,
     snapDenominator,
   } = useViewportSnapshot();
-  const { settings, applySetting } = useApplicationSettings();
   const activeViewId = session.view ?? globalView;
 
   const handleViewChange = (kind: ViewportKind) => {
@@ -111,12 +107,14 @@ const Toolbar = ({
 
   return (
     <Section
-      className="viewport-panel__toolbar highway-toolbar"
+      // className="viewport-panel__toolbar highway-toolbar"
       backgroundColor="var(--primary)"
       borderBottom="var(--border-primary)"
       padding="4px"
       gap="4px"
       flexDirection="row"
+      overflowX="auto"
+      overflowY="unset"
     >
       {/* View Selection */}
       <ToolButton
@@ -152,19 +150,6 @@ const Toolbar = ({
 
       {activeViewId === "highway" && (
         <Fragment>
-          <Slider
-            value={String(settings.graphics.scrollSpeed)}
-            onInput={(event) =>
-              applySetting(
-                "graphics.scrollSpeed",
-                Number(event.currentTarget.value),
-              )
-            }
-            step={HIGHWAY_SCROLL_SPEED_RANGE.step}
-            min={HIGHWAY_SCROLL_SPEED_RANGE.min}
-            max={HIGHWAY_SCROLL_SPEED_RANGE.max}
-            maxWidth={100}
-          />
           {session.instrument === InstrumentType.Drums && (
             <Dropdown
               aria-label="Drum note type"

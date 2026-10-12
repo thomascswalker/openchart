@@ -41,6 +41,14 @@ A select control for choosing one value from a list of options.
 
 A button paired with a dropdown for toggling and selecting an option.
 
+### Popup ✅
+
+[Source](../apps/editor/src/components/shared/Popup/Popup.tsx)
+
+A non-modal panel anchored to a button passed as a `ReactNode` trigger, with
+viewport-aware placement and outside-click, Escape, and trigger-toggle
+dismissal.
+
 ### Error Boundary ✅
 
 [Source](../apps/editor/src/components/shared/ErrorBoundary/ErrorBoundary.tsx)

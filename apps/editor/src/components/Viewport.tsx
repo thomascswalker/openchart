@@ -31,8 +31,12 @@ import {
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, CloseButton } from "./shared/Button";
+import { Popup } from "./shared/Popup";
+import { Slider } from "./shared/Slider";
+import { Text } from "./shared/Text";
 import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
+import { HIGHWAY_SCROLL_SPEED_RANGE } from "../services/settings";
 import {
   BassIcon,
   DrumsIcon,
@@ -97,8 +101,7 @@ function trackIndexForSession(
 }
 
 export const Viewport = () => {
-  const { viewportSessions, activeViewportId, maxViewportCount } =
-    useViewportSnapshot();
+  const { viewportSessions, activeViewportId } = useViewportSnapshot();
   const [chartViews, setChartViews] = useState<Map<string, ChartView>>(
     () => new Map(),
   );
@@ -118,12 +121,6 @@ export const Viewport = () => {
   const chartViewList = useMemo(() => [...chartViews.values()], [chartViews]);
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
-      <div className="viewport-manager__toolbar">
-        <strong>Viewports</strong>
-        <span>
-          {viewportSessions.length}/{maxViewportCount}
-        </span>
-      </div>
       <div
         className={`viewport-grid viewport-grid--${viewportSessions.length}`}
       >
@@ -151,7 +148,7 @@ function ViewportPanel({
   onChartViewChange: (sessionId: string, chartView: ChartView | null) => void;
 }) {
   const { midiData } = useDocumentSnapshot();
-  const { settings } = useApplicationSettings();
+  const { settings, applySetting } = useApplicationSettings();
   const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
     useViewportSnapshot();
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
@@ -321,6 +318,9 @@ function ViewportPanel({
       camera: { tick: playbackTick },
     });
   };
+
+  const showTrackList = session.view === "piano-roll";
+
   return (
     <article
       ref={articleRef}
@@ -375,11 +375,44 @@ function ViewportPanel({
         notePlacementType={notePlacementType}
         onNotePlacementTypeChange={setNotePlacementType}
       />
-      <div className="viewport-panel__body">
-        {session.view === "piano-roll" ? (
-          <TrackList viewportId={session.id} />
-        ) : null}
-        <div className="viewport-panel__renderer">
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {showTrackList && <TrackList viewportId={session.id} />}
+        <div
+          style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
+        >
+          {session.view === "highway" && (
+            <div className="viewport-panel__highway-settings">
+              <Popup
+                trigger={
+                  <Button border="none" borderRadius={32}>
+                    V
+                  </Button>
+                }
+                title="Viewport Settings"
+                width={280}
+              >
+                <div
+                  style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}
+                >
+                  <Text>Scroll Speed</Text>
+                  <Slider
+                    aria-label="Scroll speed"
+                    value={String(settings.graphics.scrollSpeed)}
+                    onInput={(event) =>
+                      applySetting(
+                        "graphics.scrollSpeed",
+                        Number(event.currentTarget.value),
+                      )
+                    }
+                    step={HIGHWAY_SCROLL_SPEED_RANGE.step}
+                    min={HIGHWAY_SCROLL_SPEED_RANGE.min}
+                    max={HIGHWAY_SCROLL_SPEED_RANGE.max}
+                    width="100%"
+                  />
+                </div>
+              </Popup>
+            </div>
+          )}
           <ChartViewHost
             createRenderer={activeView.createRenderer}
             engineOptions={engineOptions}

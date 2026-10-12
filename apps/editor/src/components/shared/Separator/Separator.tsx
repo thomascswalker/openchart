@@ -20,6 +20,8 @@ const Separator = ({
     backgroundColor: "var(--neutral-60)",
     width,
     height,
+    minWidth: width,
+    minHeight: height,
     maxWidth: width,
     maxHeight: height,
     marginLeft: `${DEFAULT_MARGIN}px`,
