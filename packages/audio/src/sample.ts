@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import type { AudioEventCallback } from "./events.js";
 
 export interface AudioSampleOptions {
@@ -97,11 +96,13 @@ class AudioSample {
       return;
     }
     this.#ensureContext();
-    const file = await readFile(this.#filename);
+    const buffer =
+      typeof window !== "undefined"
+        ? await this.#readFromBrowser()
+        : await this.#readFromNode();
     if (this.#disposed) {
       return;
     }
-    const buffer = Uint8Array.from(file).buffer;
     const context = this.#context;
     if (!context) {
       throw new Error("Audio context was not initialized");
@@ -113,6 +114,22 @@ class AudioSample {
         throw error;
       }
     }
+  }
+
+  async #readFromBrowser(): Promise<ArrayBuffer> {
+    const response = await fetch(this.#filename);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load audio sample "${this.#filename}": ${response.status} ${response.statusText}`,
+      );
+    }
+    return response.arrayBuffer();
+  }
+
+  async #readFromNode(): Promise<ArrayBuffer> {
+    const { readFile } = await import("node:fs/promises");
+    const file = await readFile(this.#filename);
+    return Uint8Array.from(file).buffer;
   }
 
   get isValid(): boolean {
