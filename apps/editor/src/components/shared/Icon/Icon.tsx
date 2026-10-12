@@ -11,7 +11,7 @@ export interface IconProps {
   height?: number;
 }
 
-const Icon = ({ svg: Svg, width = 24, height = 24 }: IconProps) => {
+const Icon = ({ svg: Svg, width = 32, height = 32 }: IconProps) => {
   return <Svg width={width} height={height} />;
 };
 
