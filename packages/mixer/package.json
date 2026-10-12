@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/thomascswalker/midiview#readme",
   "dependencies": {
-    "ts-audio": "^0.8.1"
+    "@midiedit/audio": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.3.0",

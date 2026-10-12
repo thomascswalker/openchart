@@ -118,6 +118,7 @@ export class Soundboard {
   private metronomeCursorTick = 0;
   private schedulerHandle: ReturnType<typeof setTimeout> | null = null;
   private lastClapTime = 0;
+  private resumePromise: Promise<void> | null = null;
   private readonly pendingSounds = new Set<OscillatorNode>();
   private previewVoices: ActiveVoice[] = [];
   private previewRequest = 0;
@@ -166,7 +167,18 @@ export class Soundboard {
     if (!this.context) {
       this.context = this.contextFactory?.() ?? createSoundboardContext();
     }
-    if (this.context.state === "suspended") await this.context.resume();
+    if (this.context.state === "suspended") {
+      if (this.resumePromise === null) {
+        let pendingResume: Promise<void>;
+        pendingResume = this.context.resume().finally(() => {
+          if (this.resumePromise === pendingResume) {
+            this.resumePromise = null;
+          }
+        });
+        this.resumePromise = pendingResume;
+      }
+      await this.resumePromise;
+    }
   }
 
   public start(tick: number): void {
@@ -298,7 +310,16 @@ export class Soundboard {
     this.stop();
     const context = this.context;
     this.context = null;
-    if (context) void context.close();
+    if (!context) return;
+
+    const closeContext = (): void => {
+      void context.close();
+    };
+    if (this.resumePromise) {
+      void this.resumePromise.then(closeContext, closeContext);
+    } else {
+      closeContext();
+    }
   }
 
   private tickToMs(tick: number): number {

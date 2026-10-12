@@ -6,7 +6,9 @@ import { MixerService } from "../mixer";
 vi.mock("@midiedit/mixer", () => ({
   default: class MockMixer {
     onChange?: () => void;
-    onState?: (state: unknown) => void;
+    onPlay?: (event: unknown) => void;
+    onPause?: (event: unknown) => void;
+    onStop?: (event: unknown) => void;
 
     play(): void {
       this.onChange?.();

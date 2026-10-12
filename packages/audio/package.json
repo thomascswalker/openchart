@@ -1,0 +1,44 @@
+{
+  "name": "@midiedit/audio",
+  "version": "1.0.0",
+  "description": "",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "vitest run --no-file-parallelism --disable-console-intercept ",
+    "build": "tsc -p tsconfig.json",
+    "check-types": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomascswalker/midiview.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/thomascswalker/midiview/issues"
+  },
+  "homepage": "https://github.com/thomascswalker/midiview#readme",
+  "devDependencies": {
+    "@types/node": "^26.3.0",
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "standardized-audio-context-mock": "^10.0.1"
+  }
+}

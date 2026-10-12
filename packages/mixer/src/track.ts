@@ -1,49 +1,60 @@
-import type { Audio, AudioEvent, AudioEventCallback } from "./types";
-import { Audio as AudioFactory } from "ts-audio";
+import AudioSample from "@midiedit/audio";
+import type {
+  AudioEvent,
+  AudioEventCallback,
+  AudioEventData,
+} from "@midiedit/audio";
 
 type TrackId = string;
 
 class Track implements Disposable {
-  private _audio: Audio;
-  private _filename: string;
-  private _muted: boolean = false;
-  private _volume: number;
-  private _volumeScale: number = 1;
+  #audio: AudioSample;
+  #filename: string;
+  #muted: boolean = false;
+  #volume: number;
+  #volumeScale: number = 1;
+  #eventListeners = new Map<AudioEvent, AudioEventCallback>();
 
   constructor(filename: string) {
-    this._filename = filename;
-    this._audio = AudioFactory({ file: filename, volume: 100 });
-    this._volume = this._audio.volume;
+    this.#filename = filename;
+    this.#audio = AudioSample.load(filename, {
+      onLoaded: (event) => this.#emit("loaded", event),
+      onPlay: (event) => this.#emit("play", event),
+      onPause: (event) => this.#emit("pause", event),
+      onStop: (event) => this.#emit("stop", event),
+      onEnded: (event) => this.#emit("ended", event),
+    });
+    this.#volume = 1;
   }
 
   [Symbol.dispose]() {
-    this._audio.destroy();
+    this.#audio.dispose();
   }
 
   public get filename(): string {
-    return this._filename;
+    return this.#filename;
   }
 
   public get volume(): number {
-    return this._audio.volume;
+    return this.#muted ? 0 : this.#volume * this.#volumeScale;
   }
 
   public set volume(value: number) {
-    this._volume = value;
-    this.updateVolume();
+    this.#volume = value;
+    this.#updateVolume();
   }
 
   public set volumeScale(value: number) {
-    this._volumeScale = value;
-    this.updateVolume();
+    this.#volumeScale = value;
+    this.#updateVolume();
   }
 
   public get muted(): boolean {
-    return this._muted;
+    return this.#muted;
   }
   public set muted(value: boolean) {
-    this._muted = value;
-    this.updateVolume();
+    this.#muted = value;
+    this.#updateVolume();
   }
 
   public toggleMute() {
@@ -51,55 +62,63 @@ class Track implements Disposable {
   }
 
   public play() {
-    this._audio.play();
+    this.#audio.play();
   }
 
-  private on(eventType: AudioEvent, callback: AudioEventCallback) {
-    this._audio.on(eventType, callback);
+  #on(eventType: AudioEvent, callback: AudioEventCallback) {
+    this.#eventListeners.set(eventType, callback);
   }
 
-  public set onReady(callback: AudioEventCallback) {
-    this.on("ready", callback);
+  #emit(eventType: AudioEvent, event: AudioEventData): void {
+    this.#eventListeners.get(eventType)?.(event);
   }
 
-  public set onState(callback: AudioEventCallback) {
-    this.on("state", callback);
+  public set onLoaded(callback: AudioEventCallback) {
+    this.#on("loaded", callback);
   }
 
-  public set onStart(callback: AudioEventCallback) {
-    this.on("start", callback);
+  public set onPlay(callback: AudioEventCallback) {
+    this.#on("play", callback);
   }
 
-  public set onEnd(callback: AudioEventCallback) {
-    this.on("end", callback);
+  public set onPause(callback: AudioEventCallback) {
+    this.#on("pause", callback);
+  }
+
+  public set onStop(callback: AudioEventCallback) {
+    this.#on("stop", callback);
+  }
+
+  public set onEnded(callback: AudioEventCallback) {
+    this.#on("ended", callback);
   }
 
   public get playing(): boolean {
-    return this._audio.isPlaying;
+    return this.#audio.playing;
   }
 
   public get currentTime(): number {
-    return this._audio.currentTime;
+    return this.#audio.currentTime;
   }
 
   public seek(time: number) {
-    this._audio.seek(time);
+    this.#audio.seek(time);
   }
 
   public get duration(): number {
-    return this._audio.duration;
+    return this.#audio.duration;
   }
 
   public pause() {
-    this._audio.pause();
+    this.#audio.pause();
   }
 
   public stop() {
-    this._audio.stop();
+    this.#audio.stop();
   }
 
-  private updateVolume() {
-    this._audio.volume = this._muted ? 0 : this._volume * this._volumeScale;
+  #updateVolume() {
+    this.#audio.volume = this.#muted ? 0 : this.#volume * this.#volumeScale;
   }
 }
 export default Track;

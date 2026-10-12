@@ -178,6 +178,41 @@ describe("Soundboard", () => {
     expect(contextCount).toBe(0);
   });
 
+  it("waits for a pending context resume before closing audio", async () => {
+    let finishResume!: () => void;
+    let resumeCount = 0;
+    let closeCount = 0;
+    const context = {
+      currentTime: 0,
+      state: "suspended",
+      destination: {},
+      resume: () => {
+        resumeCount++;
+        return new Promise<void>((resolve) => {
+          finishResume = resolve;
+        });
+      },
+      close: async () => {
+        closeCount++;
+      },
+      createOscillator: () => new FakeOscillator(),
+      createGain: () => new FakeGain(),
+    } as unknown as AudioContext;
+    const engine = new Soundboard(() => context);
+
+    const firstStart = engine.ensureStarted();
+    const secondStart = engine.ensureStarted();
+    engine.dispose();
+
+    expect(resumeCount).toBe(1);
+    expect(closeCount).toBe(0);
+
+    finishResume();
+    await Promise.all([firstStart, secondStart]);
+    await Promise.resolve();
+    expect(closeCount).toBe(1);
+  });
+
   it("claps only for notes visible on the active highway chart", async () => {
     const oscillators: FakeOscillator[] = [];
     const context = {

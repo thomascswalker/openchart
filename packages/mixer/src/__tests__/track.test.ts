@@ -38,13 +38,13 @@ test("Track volume scaling is preserved while muted", () => {
   expect(track.volume).toBe(0.2);
 });
 
-test("Track forwards audio event listeners", () => {
+test("Track forwards audio callbacks", () => {
   const track = new Track("sample.wav");
   const audio = audioInstances.at(-1)!;
   const callback = vi.fn();
 
-  track.onState = callback;
-  audio.emit("state", "running");
+  track.onPlay = callback;
+  audio.emit("play", "started");
 
-  expect(callback).toHaveBeenCalledWith({ data: "running" });
+  expect(callback).toHaveBeenCalledWith({ data: "started" });
 });
