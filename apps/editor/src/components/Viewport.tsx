@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Midi } from "@midiedit/core";
-import { Difficulty, InstrumentType, SongView } from "@midiedit/views";
+import type { Midi } from "@openchart/core";
+import { Difficulty, InstrumentType, SongView } from "@openchart/views";
 import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";

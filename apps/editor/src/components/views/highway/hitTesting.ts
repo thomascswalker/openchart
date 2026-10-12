@@ -1,11 +1,11 @@
-import type { MidiNote } from "@midiedit/core";
+import type { MidiNote } from "@openchart/core";
 import {
   getNotePhrases,
   getPhrasePitch,
   type EditablePhraseKind,
   type MidiNotePhrase,
   type ChartView,
-} from "@midiedit/views";
+} from "@openchart/views";
 import * as THREE from "three";
 import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./geometryCatalog";
 import type { MeshKey } from "../../../rendering/registry";

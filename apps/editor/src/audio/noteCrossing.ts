@@ -1,4 +1,4 @@
-import type { MidiNote } from "@midiedit/core";
+import type { MidiNote } from "@openchart/core";
 
 interface TrackerState {
   lastTick: number;

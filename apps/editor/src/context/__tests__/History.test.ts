@@ -1,4 +1,4 @@
-import { Midi } from "@midiedit/core";
+import { Midi } from "@openchart/core";
 import { describe, expect, it } from "vitest";
 import { History } from "../History.js";
 

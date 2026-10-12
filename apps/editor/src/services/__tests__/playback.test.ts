@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Difficulty } from "@midiedit/views";
+import { Difficulty } from "@openchart/views";
 import { PlaybackService, snapToPreviousTimelineBoundary } from "../playback";
 import type { ApplicationSettings } from "../settings";
 
@@ -21,14 +21,14 @@ vi.mock("../../audio/soundboard", () => ({
   }),
 }));
 
-vi.mock("@midiedit/views", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@midiedit/views")>()),
+vi.mock("@openchart/views", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@openchart/views")>()),
   SongView: vi.fn(function () {
     return { getInstrumentTrackView: () => undefined };
   }),
 }));
 
-type MidiData = import("@midiedit/core").Midi;
+type MidiData = import("@openchart/core").Midi;
 
 function settings(metronomeEnabled = false): ApplicationSettings {
   return { feedback: { metronomeEnabled } } as unknown as ApplicationSettings;

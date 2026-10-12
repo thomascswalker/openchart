@@ -1,1 +1,1 @@
-# `@midiedit/audio`
+# `@openchart/audio`

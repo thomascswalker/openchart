@@ -3,8 +3,8 @@ import type {
   MidiNote,
   TempoChange,
   TimeSignatureChange,
-} from "@midiedit/core";
-import { ticksToMs } from "@midiedit/core";
+} from "@openchart/core";
+import { ticksToMs } from "@openchart/core";
 import {
   beatCrossings,
   tickWindowForLookAhead,

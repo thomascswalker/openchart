@@ -51,18 +51,18 @@ jobs:
         run: npm test
 
       - name: Run editor end-to-end tests
-        run: npm run test:e2e --workspace=@midiedit/editor
+        run: npm run test:e2e --workspace=@openchart/editor
 
       - name: Build Storybook package dependencies
         run: |
-          npm run build --workspace=@midiedit/core
-          npm run build --workspace=@midiedit/views
+          npm run build --workspace=@openchart/core
+          npm run build --workspace=@openchart/views
 
       - name: Build Storybook
         run: npm run build-storybook
 
       - name: Run Storybook browser tests
-        run: npm run test:storybook --workspace=@midiedit/editor
+        run: npm run test:storybook --workspace=@openchart/editor
 
       - name: Upload Playwright report
         if: failure()

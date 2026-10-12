@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Difficulty } from "@midiedit/views";
-import type { ChartView } from "@midiedit/views";
+import { Difficulty } from "@openchart/views";
+import type { ChartView } from "@openchart/views";
 import * as THREE from "three";
 import type { ChartViewState } from "../../AbstractChartView";
 import { HighwayCoordinateSystem } from "../coordinates";

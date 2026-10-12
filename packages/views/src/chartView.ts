@@ -1,4 +1,4 @@
-import { Midi, MidiNote, MidiTrack } from "@midiedit/core";
+import { Midi, MidiNote, MidiTrack } from "@openchart/core";
 import {
   defaultConfig,
   describeTrack,

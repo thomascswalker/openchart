@@ -1,4 +1,4 @@
-import { Difficulty } from "@midiedit/views";
+import { Difficulty } from "@openchart/views";
 import { IStatefulService } from "../../platform/services";
 
 export type ViewportKind = "piano-roll" | "highway";

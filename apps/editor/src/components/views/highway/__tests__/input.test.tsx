@@ -1,5 +1,5 @@
-import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
-import { Difficulty, type MidiNotePhrase } from "@midiedit/views";
+import type { MidiChannelEvent, MidiNote } from "@openchart/core";
+import { Difficulty, type MidiNotePhrase } from "@openchart/views";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ChartViewState } from "../../AbstractChartView";
 import type { HighwayContext } from "../context";

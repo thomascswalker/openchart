@@ -1,5 +1,5 @@
-import { Midi } from "@midiedit/core";
-import { Difficulty } from "@midiedit/views";
+import { Midi } from "@openchart/core";
+import { Difficulty } from "@openchart/views";
 import {
   useCallback,
   useEffect,

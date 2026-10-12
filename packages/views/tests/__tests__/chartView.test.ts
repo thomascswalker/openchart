@@ -1,6 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import { ChannelMessage, Midi, MidiTrack } from "@midiedit/core";
+import { ChannelMessage, Midi, MidiTrack } from "@openchart/core";
 import { expect, describe, beforeAll, it } from "vitest";
 import { SongView, Difficulty, Note } from "../../src/chartView.js";
 import * as fs from "fs";

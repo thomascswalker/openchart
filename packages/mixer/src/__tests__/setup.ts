@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-vi.mock("@midiedit/audio", async () => {
+vi.mock("@openchart/audio", async () => {
   const { createMockAudio } = await import("./audioMock.js");
   return {
     default: {

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { MidiNote } from "@midiedit/core";
+import type { MidiNote } from "@openchart/core";
 import * as THREE from "three";
 import {
   Difficulty,
   type ChartView,
   type MidiNotePhrase,
-} from "@midiedit/views";
+} from "@openchart/views";
 import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
 import type { ChartViewState } from "../../AbstractChartView";
 import { HighwayCoordinateSystem } from "../coordinates";

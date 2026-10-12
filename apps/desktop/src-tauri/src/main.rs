@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    midiview_desktop_lib::run();
+    openchart_desktop_lib::run();
 }

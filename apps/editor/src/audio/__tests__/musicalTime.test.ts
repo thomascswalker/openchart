@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ticksToMs } from "@midiedit/core";
+import { ticksToMs } from "@openchart/core";
 import {
   beatCrossings,
   tickToBeatPosition,

@@ -1,14 +1,14 @@
-# `@midiedit/mixer`
+# `@openchart/mixer`
 
-`@midiedit/mixer` provides a small multitrack audio mixer built on
-[`@midiedit/audio`](../audio). It loads audio files,
+`@openchart/mixer` provides a small multitrack audio mixer built on
+[`@openchart/audio`](../audio). It loads audio files,
 controls playback and seeking, and exposes track and master volume and mute
 controls.
 
 ## Create a mixer and control playback
 
 ```ts
-import Mixer from "@midiedit/mixer";
+import Mixer from "@openchart/mixer";
 
 const mixer = new Mixer();
 mixer.addTrack("backing", "audio/backing.ogg");
@@ -25,7 +25,7 @@ mixer.play();
 mixer.stop();
 ```
 
-Audio files are loaded by `@midiedit/audio` and played through the Web Audio
+Audio files are loaded by `@openchart/audio` and played through the Web Audio
 API. Provide a filesystem path that the audio package can read in the current
 runtime.
 

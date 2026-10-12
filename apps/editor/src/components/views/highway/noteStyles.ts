@@ -1,4 +1,4 @@
-import type { MidiEvent, TimedMidiEvent } from "@midiedit/core";
+import type { MidiEvent, TimedMidiEvent } from "@openchart/core";
 
 export interface GuitarNoteLike {
   note: number;

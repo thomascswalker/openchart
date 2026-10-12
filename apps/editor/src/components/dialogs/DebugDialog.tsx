@@ -270,7 +270,7 @@ function DebugPanel({
   return (
     <aside className="debug-panel">
       <div className="debug-panel__header">
-        <h1>MidiView Debug</h1>
+        <h1>OpenChart Debug</h1>
         <button type="button" onClick={onClose} aria-label="Close debug panel">
           Close
         </button>

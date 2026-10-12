@@ -1,5 +1,5 @@
-import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
-import type { EditablePhraseKind } from "@midiedit/views";
+import type { MidiChannelEvent, MidiNote } from "@openchart/core";
+import type { EditablePhraseKind } from "@openchart/views";
 import type { DrumNoteKind } from "./drumProfile";
 
 export type HighwayTool = "select" | "place" | "remove";

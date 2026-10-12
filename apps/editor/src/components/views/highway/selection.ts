@@ -1,4 +1,4 @@
-import type { MidiChannelEvent } from "@midiedit/core";
+import type { MidiChannelEvent } from "@openchart/core";
 
 export class SelectionContext {
   private readonly selected = new Set<MidiChannelEvent>();

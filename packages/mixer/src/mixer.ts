@@ -1,5 +1,5 @@
 import Track, { type TrackId } from "./track";
-import type { AudioEvent, AudioEventCallback } from "@midiedit/audio";
+import type { AudioEvent, AudioEventCallback } from "@openchart/audio";
 
 class Mixer {
   #tracks: Record<TrackId, Track> = {};

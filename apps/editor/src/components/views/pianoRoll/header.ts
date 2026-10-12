@@ -3,7 +3,7 @@ import {
   type TempoChange,
   type TextMidiEvent,
   type TimeSignatureChange,
-} from "@midiedit/core";
+} from "@openchart/core";
 import type { CanvasPoint } from "../../../rendering/geometry";
 import {
   HeaderHeight,

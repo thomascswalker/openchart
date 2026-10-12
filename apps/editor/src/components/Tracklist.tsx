@@ -1,4 +1,4 @@
-import { SongView } from "@midiedit/views";
+import { SongView } from "@openchart/views";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { executeEditorAction } from "../actions/execute";

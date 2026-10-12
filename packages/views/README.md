@@ -1,6 +1,6 @@
-# `@midiedit/views`
+# `@openchart/views`
 
-`@midiedit/views` provides non-owning, chart-oriented views over MIDI data.
+`@openchart/views` provides non-owning, chart-oriented views over MIDI data.
 `SongView` maps MIDI tracks to configured instrument tracks and exposes
 difficulty-specific `ChartView` objects. Edits made through a chart update the
 underlying `MidiTrack`.
@@ -13,8 +13,8 @@ names.
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { Midi } from "@midiedit/core";
-import { Difficulty, Note, SongView } from "@midiedit/views";
+import { Midi } from "@openchart/core";
+import { Difficulty, Note, SongView } from "@openchart/views";
 
 const midi = new Midi(new Uint8Array(await readFile("song.mid")));
 const song = new SongView(midi);
@@ -60,7 +60,7 @@ invalid JSON is reported to the console and returns `undefined`.
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { defaultConfig, loadConfig } from "@midiedit/views";
+import { defaultConfig, loadConfig } from "@openchart/views";
 
 const descriptors = song.getVisibleTrackDescriptors();
 console.log(descriptors.map(({ key, name, type }) => ({ key, name, type })));
@@ -86,8 +86,8 @@ The `chartEditing` helpers operate directly on a `MidiTrack`. They can add,
 move, resize, and remove special-note phrases, and find section marker events.
 
 ```ts
-import { MidiTrack } from "@midiedit/core";
-import { addNotePhrase, findSection, updateNotePhrase } from "@midiedit/views";
+import { MidiTrack } from "@openchart/core";
+import { addNotePhrase, findSection, updateNotePhrase } from "@openchart/views";
 
 const track = new MidiTrack("LEAD GUITAR");
 const phrase = addNotePhrase(track, 116, "stagepower", 480, 1_440);

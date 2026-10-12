@@ -1,5 +1,5 @@
-import type { MidiNote } from "@midiedit/core";
-import type { ChartView } from "@midiedit/views";
+import type { MidiNote } from "@openchart/core";
+import type { ChartView } from "@openchart/views";
 import { drumLaneCount, getDrumNoteProfile } from "./drumProfile";
 
 export type IndexedNoteKind = "note" | "kick" | "cymbal" | "pad";

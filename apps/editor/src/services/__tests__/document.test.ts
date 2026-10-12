@@ -1,4 +1,4 @@
-import { Midi } from "@midiedit/core";
+import { Midi } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../document";
 import type { FileSystemService } from "../filesystem";
@@ -20,11 +20,11 @@ describe("DocumentService", () => {
     service.setClean();
 
     midi.tracks[0]?.addNote(60, 0, 100, 120);
-    service.recordMidiEdit();
+    service.recordOpenChart();
     expect(service.getSnapshot().canUndoMidi).toBe(true);
     expect(service.getSnapshot().isDirty).toBe(true);
 
-    service.undoMidiEdit();
+    service.undoOpenChart();
     expect(service.getSnapshot().midiData?.tracks[0]?.getNotes()).toHaveLength(
       0,
     );
@@ -35,8 +35,8 @@ describe("DocumentService", () => {
   it("does not dirty an empty edit transaction", () => {
     const service = createDocumentService();
     service.setClean();
-    service.beginMidiEdit();
-    service.endMidiEdit();
+    service.beginOpenChart();
+    service.endOpenChart();
 
     expect(service.getSnapshot().isDirty).toBe(false);
     expect(service.getSnapshot().canUndoMidi).toBe(false);

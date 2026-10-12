@@ -6,7 +6,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:5173/midiview/",
+    baseURL: "http://localhost:5173/openchart/",
     viewport: { width: 1600, height: 1000 },
     launchOptions: {
       args: [
@@ -19,7 +19,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
     command: "npm run dev -- --port 5173 --strictPort",
-    url: "http://localhost:5173/midiview/",
+    url: "http://localhost:5173/openchart/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

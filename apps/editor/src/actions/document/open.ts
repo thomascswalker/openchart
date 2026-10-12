@@ -1,4 +1,4 @@
-import { Midi } from "@midiedit/core";
+import { Midi } from "@openchart/core";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import { openFile } from "../../project/fileService";

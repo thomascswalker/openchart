@@ -1,11 +1,11 @@
-import type { MidiChannelEvent, MidiNote } from "@midiedit/core";
+import type { MidiChannelEvent, MidiNote } from "@openchart/core";
 import {
   extractSections,
   getNotePhrases,
   getPhrasePitch,
   type ChartView,
   type EditablePhraseKind,
-} from "@midiedit/views";
+} from "@openchart/views";
 import * as THREE from "three";
 import { ResourceRegistry } from "./assets";
 import {

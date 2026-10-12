@@ -6,7 +6,7 @@ import type {
   TextMidiEvent,
   TempoChange,
   TimeSignatureChange,
-} from "@midiedit/core";
+} from "@openchart/core";
 import type { ChartViewState } from "../AbstractChartView";
 import type { SelectionContext } from "./selection";
 import type { PointerContext } from "./pointer";

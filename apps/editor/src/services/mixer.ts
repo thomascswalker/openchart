@@ -1,5 +1,5 @@
 import { IStatefulService } from "../platform/services";
-import Mixer from "@midiedit/mixer";
+import Mixer from "@openchart/mixer";
 import type { ILoggerService } from "./logger";
 import type { FileSystemService } from "./filesystem";
 

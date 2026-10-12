@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MIDIView",
+  "productName": "OpenChart",
   "version": "0.1.0",
-  "identifier": "com.midiedit.desktop",
+  "identifier": "com.openchart.desktop",
   "build": {
-    "beforeBuildCommand": "npm run build:desktop --workspace=@midiedit/editor",
-    "beforeDevCommand": "npm run dev --workspace=@midiedit/editor",
+    "beforeBuildCommand": "npm run build:desktop --workspace=@openchart/editor",
+    "beforeDevCommand": "npm run dev --workspace=@openchart/editor",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../../editor/dist"
   },
   "app": {
     "windows": [
       {
-        "title": "MIDIView - MIDI Editor",
+        "title": "OpenChart - MIDI Editor",
         "width": 1280,
         "height": 800,
         "resizable": true

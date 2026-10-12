@@ -1,5 +1,5 @@
-import type { TempoChange } from "@midiedit/core";
-import { msToTicks, ticksToMs } from "@midiedit/core";
+import type { TempoChange } from "@openchart/core";
+import { msToTicks, ticksToMs } from "@openchart/core";
 import { clamp } from "es-toolkit";
 import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import {

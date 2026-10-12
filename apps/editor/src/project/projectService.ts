@@ -1,4 +1,4 @@
-import { Midi } from "@midiedit/core";
+import { Midi } from "@openchart/core";
 import { createZip, readZip } from "./zipArchive";
 import {
   PROJECT_FORMAT_VERSION,

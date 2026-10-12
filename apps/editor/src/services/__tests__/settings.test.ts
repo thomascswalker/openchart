@@ -26,7 +26,7 @@ describe("SettingsService", () => {
       },
     });
     values.set(
-      "midiedit.application-settings",
+      "openchart.application-settings",
       JSON.stringify({
         ...defaultApplicationSettings,
         audio: { rootPath: "/legacy", multitrack: true },
@@ -45,7 +45,7 @@ describe("SettingsService", () => {
     expect(service.applySettings(service.getSnapshot())).toBe(true);
 
     const saved = JSON.parse(
-      values.get("midiedit.application-settings") ?? "{}",
+      values.get("openchart.application-settings") ?? "{}",
     );
     expect(saved).not.toHaveProperty("audio");
     expect(saved).not.toHaveProperty("discovery");
