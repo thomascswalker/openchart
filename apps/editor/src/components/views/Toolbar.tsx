@@ -159,6 +159,7 @@ const Toolbar = ({
                 onDrumPlacementKindChange(value as DrumPlacementKind)
               }
               options={DRUM_NOTE_TYPE_OPTIONS}
+              minWidth={100}
               maxWidth={120}
             />
           )}
@@ -172,6 +173,7 @@ const Toolbar = ({
                 onNotePlacementTypeChange(value as HighwayNotePlacementType)
               }
               options={GUITAR_NOTE_TYPE_OPTIONS}
+              minWidth={100}
               maxWidth={140}
             />
           )}
@@ -199,6 +201,7 @@ const Toolbar = ({
             onClick={() => onHighwayModeChange("remove")}
           />
 
+          <VerticalSeparator />
           <ToolButton
             active={highwayMode === "stagepower"}
             title="Stagepower phrase (R)"

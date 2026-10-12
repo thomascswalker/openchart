@@ -9,14 +9,14 @@
   margin-bottom: 0;
 }
 
-.dropdown :global(.choices__inner) {
+.dropdown :global(.choices[data-type*="select-one"] .choices__inner) {
   display: flex;
   align-items: center;
   box-sizing: border-box;
   height: var(--size-large);
   min-height: var(--size-large);
   max-height: var(--size-large);
-  padding: 8px 28px 0 8px;
+  padding: 0 28px 0 8px;
   border: 1px solid var(--neutral-60);
   border-radius: var(--radius-small);
   background: var(--neutral-90);
