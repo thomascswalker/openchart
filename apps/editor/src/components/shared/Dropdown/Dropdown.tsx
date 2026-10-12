@@ -61,6 +61,86 @@ const Dropdown = ({
     const select = selectRef.current;
     if (!select) return;
 
+    let dropdownMenu: HTMLElement | null = null;
+    let dropdownAnchor: HTMLElement | null = null;
+    let menuTopOffset = 0;
+    let menuLeftOffset = 0;
+    let showDropdownFrame = 0;
+
+    const repositionDropdownMenu = () => {
+      if (!dropdownMenu || !dropdownAnchor) return;
+
+      const anchorRect = dropdownAnchor.getBoundingClientRect();
+      dropdownMenu.style.left = `${anchorRect.left + menuLeftOffset}px`;
+      dropdownMenu.style.top = `${anchorRect.top + menuTopOffset}px`;
+    };
+
+    const clearDropdownMenuPosition = () => {
+      cancelAnimationFrame(showDropdownFrame);
+      document.removeEventListener("scroll", repositionDropdownMenu, true);
+      window.removeEventListener("resize", repositionDropdownMenu);
+
+      if (dropdownMenu) {
+        dropdownMenu.style.position = "";
+        dropdownMenu.style.top = "";
+        dropdownMenu.style.right = "";
+        dropdownMenu.style.bottom = "";
+        dropdownMenu.style.left = "";
+        dropdownMenu.style.width = "";
+      }
+      dropdownMenu = null;
+      dropdownAnchor = null;
+    };
+
+    const handleShowDropdown = () => {
+      showDropdownFrame = requestAnimationFrame(() => {
+        const choicesContainer = select.closest<HTMLElement>(".choices");
+        const menu = choicesContainer?.querySelector<HTMLElement>(
+          ".choices__list--dropdown",
+        );
+        if (!choicesContainer || !menu) return;
+
+        const anchor =
+          menu.offsetParent instanceof HTMLElement
+            ? menu.offsetParent
+            : choicesContainer;
+        const hasClippingAncestor = (element: HTMLElement) => {
+          for (
+            let ancestor = element.parentElement;
+            ancestor;
+            ancestor = ancestor.parentElement
+          ) {
+            const { overflowX, overflowY } = getComputedStyle(ancestor);
+            if (overflowX !== "visible" || overflowY !== "visible") {
+              return true;
+            }
+          }
+          return false;
+        };
+        if (!hasClippingAncestor(anchor)) return;
+
+        dropdownMenu = menu;
+        dropdownAnchor = anchor;
+
+        const menuRect = menu.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+        menuTopOffset = menuRect.top - anchorRect.top;
+        menuLeftOffset = menuRect.left - anchorRect.left;
+
+        menu.style.position = "fixed";
+        menu.style.right = "auto";
+        menu.style.bottom = "auto";
+        menu.style.width = `${menuRect.width}px`;
+        repositionDropdownMenu();
+
+        document.addEventListener("scroll", repositionDropdownMenu, true);
+        window.addEventListener("resize", repositionDropdownMenu);
+      });
+    };
+
+    select.addEventListener("showDropdown", handleShowDropdown);
+    select.addEventListener("hideDropdown", clearDropdownMenuPosition);
+
     const choices = new Choices(select, {
       allowHTML: false,
       itemSelectText: "",
@@ -71,6 +151,9 @@ const Dropdown = ({
     setChoices(choices);
 
     return () => {
+      select.removeEventListener("showDropdown", handleShowDropdown);
+      select.removeEventListener("hideDropdown", clearDropdownMenuPosition);
+      clearDropdownMenuPosition();
       choices.destroy();
     };
   }, [placeholder]);

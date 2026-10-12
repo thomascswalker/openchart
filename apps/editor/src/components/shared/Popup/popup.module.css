@@ -1,0 +1,64 @@
+.popup {
+  position: fixed;
+  z-index: 25;
+  box-sizing: border-box;
+  min-width: min(260px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  padding: var(--space-large);
+  overflow: auto;
+  border: var(--border-primary);
+  border-radius: var(--radius-small);
+  background: var(--neutral-85);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 40%);
+  color: var(--text-primary);
+  text-align: left;
+  gap: var(--size-med);
+}
+
+.popup::before,
+.popup::after {
+  position: absolute;
+  left: calc(var(--popup-arrow-x) - 8px);
+  width: 0;
+  height: 0;
+  border-right: 8px solid transparent;
+  border-left: 8px solid transparent;
+  content: "";
+}
+
+.popup[data-placement="bottom"]::before,
+.popup[data-placement="bottom"]::after {
+  border-top: 0;
+  border-bottom: 8px solid var(--neutral-60);
+}
+
+.popup[data-placement="bottom"]::before {
+  top: -8px;
+}
+
+.popup[data-placement="bottom"]::after {
+  top: -7px;
+  border-bottom-color: var(--neutral-85);
+}
+
+.popup[data-placement="top"]::before,
+.popup[data-placement="top"]::after {
+  border-top: 8px solid var(--neutral-60);
+  border-bottom: 0;
+}
+
+.popup[data-placement="top"]::before {
+  bottom: -8px;
+}
+
+.popup[data-placement="top"]::after {
+  bottom: -7px;
+  border-top-color: var(--neutral-85);
+}
+
+.title {
+  margin: 0 0 var(--space-med);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}

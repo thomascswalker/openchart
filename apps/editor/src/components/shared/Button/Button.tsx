@@ -26,7 +26,10 @@ interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
   tabIndex?: number;
   ref?: Ref<HTMLButtonElement>;
   "aria-controls"?: string;
+  "aria-expanded"?: boolean;
+  "aria-haspopup"?: React.AriaAttributes["aria-haspopup"];
   "aria-selected"?: boolean;
+  "data-popup-trigger"?: string;
   className?: string;
   children?: ReactNode;
 }
@@ -44,7 +47,10 @@ const Button = ({
   tabIndex,
   ref,
   "aria-controls": ariaControls,
+  "aria-expanded": ariaExpanded,
+  "aria-haspopup": ariaHasPopup,
   "aria-selected": ariaSelected,
+  "data-popup-trigger": dataPopupTrigger,
   onClick = () => {},
   className,
   children,
@@ -70,7 +76,10 @@ const Button = ({
       tabIndex={tabIndex}
       aria-pressed={active}
       aria-controls={ariaControls}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
       aria-selected={ariaSelected}
+      data-popup-trigger={dataPopupTrigger}
       title={title}
       aria-label={ariaLabel}
       style={style}

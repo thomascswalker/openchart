@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 618 974" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(1,0,0,1,-210.211274,-22.619444)">
-        <text x="222.711px" y="983.752px" style="font-family:'Impact', sans-serif;font-stretch:condensed;font-size:1200px;fill:rgb(251,36,36);stroke:black;stroke-width:25px;">X</text>
+<svg width="100%" height="100%" viewBox="0 0 1000 1001" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,0,-2393)">
+        <g id="expert" transform="matrix(1,0,0,1,-30605,2393.97309)">
+            <rect x="30605" y="0" width="1000" height="1000" style="fill:none;"/>
+            <g transform="matrix(1,0,0,1,30603.654012,1.38256)">
+                <text x="211.893px" y="972.934px" style="font-family:'Impact', sans-serif;font-stretch:condensed;font-size:1200px;fill:rgb(127,127,127);stroke:black;stroke-width:25px;">X</text>
+            </g>
+        </g>
     </g>
 </svg>
