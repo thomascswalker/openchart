@@ -30,7 +30,7 @@ import {
 } from "./views/highway";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
-import { Button, CloseButton, ToolButton } from "./shared/Button";
+import { Button, Checkbox, CloseButton, ToolButton } from "./shared/Button";
 import { Popup } from "./shared/Popup";
 import { Slider } from "./shared/Slider";
 import { Text } from "./shared/Text";
@@ -397,6 +397,17 @@ function ViewportPanel({
                 <div
                   style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}
                 >
+                  <Text>Antialiasing</Text>
+                  <Checkbox
+                    label=""
+                    checked={settings.graphics.antialiasing}
+                    onChange={(event) =>
+                      applySetting(
+                        "graphics.antialiasing",
+                        Boolean(event.target.checked),
+                      )
+                    }
+                  />
                   <Text>Scroll Speed</Text>
                   <Slider
                     aria-label="Scroll speed"
