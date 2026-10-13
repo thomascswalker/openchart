@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, CSSProperties, SVGProps } from "react";
 
 const svgModules = import.meta.glob("../../../assets/*.svg", {
   query: "?react",
@@ -9,10 +9,16 @@ export interface IconProps {
   svg: ComponentType<SVGProps<SVGSVGElement>>;
   width?: number;
   height?: number;
+  style?: CSSProperties;
 }
 
-const Icon = ({ svg: Svg, width = 32, height = 32 }: IconProps) => {
-  return <Svg width={width} height={height} />;
+const Icon = ({
+  svg: Svg,
+  width = 32,
+  height = 32,
+  style = undefined,
+}: IconProps) => {
+  return <Svg width={width} height={height} style={style} />;
 };
 
 const makeIcon = (svg: ComponentType<SVGProps<SVGSVGElement>>) => {
