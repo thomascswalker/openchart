@@ -5,6 +5,10 @@
   font-weight: var(--font-weight);
 }
 
+.dropdown:hover {
+  background-color: var(--primary-hover);
+}
+
 .dropdown :global(.choices) {
   margin-bottom: 0;
 }

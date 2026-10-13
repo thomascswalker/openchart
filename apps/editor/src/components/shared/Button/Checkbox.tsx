@@ -19,7 +19,7 @@ type CheckboxProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
   keyof SystemProps
 > &
-  SystemProps & { label: string };
+  SystemProps & { label?: string };
 
 const Checkbox = ({
   className,
@@ -43,7 +43,7 @@ const Checkbox = ({
         className={checkboxClassName}
         style={style}
       />
-      <Text>{label}</Text>
+      {label && <Text>{label}</Text>}
     </label>
   );
 };

@@ -11,7 +11,6 @@ import {
   FivepadIcon,
   HardIcon,
   Highway3dIcon,
-  SnapIcon,
   MediumIcon,
   PencilIcon,
   PianoIcon,
@@ -20,7 +19,7 @@ import {
   SoloIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
-import { Dropdown, DropdownButton } from "../shared/Dropdown";
+import { Dropdown } from "../shared/Dropdown";
 import type {
   ViewportKind,
   ViewportSession,
@@ -29,7 +28,7 @@ import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
-import { ToolButton } from "../shared/Button";
+import { Checkbox, ToolButton } from "../shared/Button";
 import { Difficulty, InstrumentType, SongView } from "@openchart/views";
 import { Fragment } from "react";
 import type {
@@ -99,6 +98,7 @@ const Toolbar = ({
     snapEnabled,
     snapDenominator,
   } = useViewportSnapshot();
+
   const activeViewId = session.view ?? globalView;
 
   const handleViewChange = (kind: ViewportKind) => {
@@ -172,19 +172,30 @@ const Toolbar = ({
       <VerticalSeparator />
 
       {/* Tools */}
-      <DropdownButton
-        label="Snap to grid"
-        icon={<SnapIcon width={20} height={20} />}
-        active={snapEnabled}
-        onToggle={(enabled) => runAction("editor.set-snap-enabled", enabled)}
-        dropdownDisabled={!snapEnabled}
-        dropdownWidth={60}
-        value={String(snapDenominator)}
-        onChange={(value) =>
-          runAction("editor.set-snap-denominator", Number(value))
-        }
-        options={SNAP_OPTIONS}
-      />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          maxWidth: "95px",
+          gap: 8,
+        }}
+      >
+        <Checkbox
+          checked={snapEnabled}
+          onChange={(event) =>
+            runAction("editor.set-snap-enabled", Boolean(event.target.checked))
+          }
+        />
+        <Dropdown
+          disabled={!snapEnabled}
+          value={String(snapDenominator)}
+          onChange={(value) =>
+            runAction("editor.set-snap-denominator", Number(value))
+          }
+          minWidth="70px"
+          options={SNAP_OPTIONS}
+        />
+      </div>
 
       {activeViewId === "highway" && (
         <Fragment>
