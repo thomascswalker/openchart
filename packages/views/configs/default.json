@@ -186,9 +186,19 @@
       "type": "instrument",
       "key": "vocals",
       "role": "vocals",
-      "noteCount": 5,
-      "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
-      "notes": {}
+      "hasDifficulties": false,
+      "vocals": {
+        "range": { "low": 36, "high": 84 },
+        "pitchlessPlacement": "pitchlessHigh"
+      },
+      "notes": {
+        "power": 116,
+        "powerWindow": 111,
+        "vocalPhrase": 96,
+        "percussion": 90,
+        "pitchlessHigh": 85,
+        "pitchlessLow": 35
+      }
     },
     {
       "name": "FOUR PAD",

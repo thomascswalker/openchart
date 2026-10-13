@@ -53,7 +53,7 @@ describe("Menubar", () => {
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),
       ),
-    ).toEqual(["MetronomeM", "Highway ClapN"]);
+    ).toEqual(["MetronomeM", "Highway ClapN", "Vocal Pitch FeedbackP"]);
     act(() => triggers[1].click());
     await settle();
     expect(

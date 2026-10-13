@@ -17,6 +17,9 @@ import {
   VocalsIcon,
   StagepowerIcon,
   SoloIcon,
+  PhraseIcon,
+  ActivateIcon,
+  VolumeIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
 import { Dropdown } from "../shared/Dropdown";
@@ -29,7 +32,16 @@ import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
 import { Checkbox, ToolButton } from "../shared/Button";
-import { Difficulty, InstrumentType, SongView } from "@openchart/views";
+import {
+  Difficulty,
+  InstrumentType,
+  requiresPianoRoll,
+  SongView,
+  type VocalNoteKind,
+  type VocalPhraseKind,
+} from "@openchart/views";
+import { usePlaybackSelector } from "../../hooks/usePlayback";
+import type { VocalPlacement } from "./pianoRoll";
 import { Fragment } from "react";
 import type {
   DrumPlacementKind,
@@ -64,6 +76,18 @@ const DRUM_NOTE_TYPE_OPTIONS = [
   { value: "kick", label: "Kick" },
 ];
 
+const VOCAL_NOTE_TYPE_OPTIONS: { value: VocalNoteKind; label: string }[] = [
+  { value: "pitched", label: "Pitched" },
+  { value: "percussion", label: "Percussion" },
+  { value: "pitchless", label: "Pitchless" },
+];
+
+const VOCAL_PHRASES = [
+  ["vocal", PhraseIcon, "Vocal phrase (T)"],
+  ["power-window", ActivateIcon, "Power window (Y)"],
+  ["stagepower", StagepowerIcon, "Stagepower phrase (R)"],
+] as const satisfies readonly (readonly [VocalPhraseKind, unknown, string])[];
+
 const GUITAR_NOTE_TYPE_OPTIONS = [
   { value: "normal", label: "Normal" },
   { value: "force-hopo", label: "Force HOPO" },
@@ -80,6 +104,8 @@ interface ToolbarProps {
   onDrumPlacementKindChange: (kind: DrumPlacementKind) => void;
   notePlacementType: HighwayNotePlacementType;
   onNotePlacementTypeChange: (type: HighwayNotePlacementType) => void;
+  vocalPlacement: VocalPlacement;
+  onVocalPlacementChange: (placement: VocalPlacement) => void;
 }
 
 const Toolbar = ({
@@ -91,7 +117,13 @@ const Toolbar = ({
   onDrumPlacementKindChange,
   notePlacementType,
   onNotePlacementTypeChange,
+  vocalPlacement,
+  onVocalPlacementChange,
 }: ToolbarProps) => {
+  const isVocalFeedbackEnabled = usePlaybackSelector(
+    (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
+  );
+  const pianoRollOnly = requiresPianoRoll(session.instrument);
   const { midiData } = useDocumentSnapshot();
   const {
     activeViewId: globalView,
@@ -165,6 +197,13 @@ const Toolbar = ({
       />
       <ToolButton
         Icon={Highway3dIcon}
+        title={
+          pianoRollOnly
+            ? `${startCaseName(session.instrument)} has no difficulties and is edited in the Piano Roll`
+            : "Highway"
+        }
+        ariaLabel="Highway"
+        disabled={pianoRollOnly}
         active={activeViewId === "highway"}
         onClick={() => handleViewChange("highway")}
       />
@@ -196,6 +235,51 @@ const Toolbar = ({
           options={SNAP_OPTIONS}
         />
       </div>
+
+      {activeViewId === "piano-roll" && pianoRollOnly && (
+        <Fragment>
+          <VerticalSeparator />
+          <Dropdown
+            aria-label="Vocal note type"
+            title="Vocal note type"
+            disabled={vocalPlacement.phrase !== null}
+            value={vocalPlacement.noteKind}
+            onChange={(value: string) =>
+              onVocalPlacementChange({
+                ...vocalPlacement,
+                noteKind: value as VocalNoteKind,
+              })
+            }
+            options={VOCAL_NOTE_TYPE_OPTIONS}
+            minWidth={100}
+            maxWidth={120}
+          />
+          <VerticalSeparator />
+          {VOCAL_PHRASES.map(([phrase, icon, title]) => (
+            <ToolButton
+              key={phrase}
+              Icon={icon}
+              title={title}
+              ariaLabel={title.replace(/ \(.\)$/, "")}
+              active={vocalPlacement.phrase === phrase}
+              onClick={() =>
+                onVocalPlacementChange({
+                  ...vocalPlacement,
+                  phrase: vocalPlacement.phrase === phrase ? null : phrase,
+                })
+              }
+            />
+          ))}
+          <VerticalSeparator />
+          <ToolButton
+            Icon={VolumeIcon}
+            title="Vocal pitch feedback (P)"
+            ariaLabel="Vocal pitch feedback"
+            active={isVocalFeedbackEnabled}
+            onClick={() => runAction("playback.toggle-vocal-pitch-feedback")}
+          />
+        </Fragment>
+      )}
 
       {activeViewId === "highway" && (
         <Fragment>
@@ -284,5 +368,9 @@ const Toolbar = ({
     </Section>
   );
 };
+
+function startCaseName(name: string): string {
+  return name.charAt(0) + name.slice(1).toLowerCase();
+}
 
 export default Toolbar;

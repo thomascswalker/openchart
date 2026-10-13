@@ -12,6 +12,8 @@ export interface NoteGeometry {
   height: number;
   radius: number;
   note: PianoRollNote;
+  /** Screen-space Y band for notes drawn in a pinned (non-scrolling) lane. */
+  pinned: { y: number; height: number } | null;
 }
 
 export interface NoteGeometryCoordinates {
@@ -21,6 +23,40 @@ export interface NoteGeometryCoordinates {
   screenXForTick(tick: number): number;
   timelineUnitsAtTick(tick: number): number;
   toScreenSpace(value: CanvasRect): CanvasRect;
+  /** Optional: profiles with pinned lanes place special pitches there. */
+  pinnedRectForPitch?(pitch: number): { y: number; height: number } | null;
+  /** Optional: grid notes are clipped below this Y. */
+  getGridTop?(): number;
+}
+
+/**
+ * Screen-space rectangle of a note, shared by drawing, hit-testing and
+ * marquee selection. Grid notes are clipped to the grid so they never cover
+ * the header or pinned lanes; null when fully clipped.
+ */
+export function screenRectOf(
+  geometry: NoteGeometry,
+  coordinates: NoteGeometryCoordinates,
+): CanvasRect | null {
+  const rect = coordinates.toScreenSpace({
+    x: geometry.x,
+    y: geometry.y,
+    width: geometry.width,
+    height: geometry.height,
+  });
+  if (geometry.pinned) {
+    return {
+      x: rect.x,
+      y: geometry.pinned.y + 1,
+      width: rect.width,
+      height: Math.max(1, geometry.pinned.height - 2),
+    };
+  }
+  const gridTop = coordinates.getGridTop?.();
+  if (gridTop === undefined || rect.y >= gridTop) return rect;
+  const bottom = rect.y + rect.height;
+  if (bottom <= gridTop) return null;
+  return { x: rect.x, y: gridTop, width: rect.width, height: bottom - gridTop };
 }
 
 interface GeometryCache {
@@ -133,7 +169,8 @@ export class NoteGeometryCache {
 
     for (let index = visibleRange.start; index < visibleRange.end; index++) {
       const note = notes[index];
-      if (note.pitch < minPitch || note.pitch > maxPitch) {
+      const pinned = coordinates.pinnedRectForPitch?.(note.pitch) ?? null;
+      if (!pinned && (note.pitch < minPitch || note.pitch > maxPitch)) {
         continue;
       }
 
@@ -154,6 +191,7 @@ export class NoteGeometryCache {
         height: noteHeight,
         radius,
         note,
+        pinned,
       });
     }
 
@@ -178,20 +216,15 @@ export class NoteGeometryCache {
     coordinates: NoteGeometryCoordinates,
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
-      const geometry = this.geometry[index];
-      const screenRect = coordinates.toScreenSpace({
-        x: geometry.x,
-        y: geometry.y,
-        width: geometry.width,
-        height: geometry.height,
-      });
+      const screenRect = screenRectOf(this.geometry[index], coordinates);
       if (
+        screenRect &&
         point.x >= screenRect.x &&
         point.x <= screenRect.x + screenRect.width &&
         point.y >= screenRect.y &&
         point.y <= screenRect.y + screenRect.height
       ) {
-        return geometry.note;
+        return this.geometry[index].note;
       }
     }
     return null;
@@ -203,13 +236,9 @@ export class NoteGeometryCache {
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const geometry = this.geometry[index];
-      const screenRect = coordinates.toScreenSpace({
-        x: geometry.x,
-        y: geometry.y,
-        width: geometry.width,
-        height: geometry.height,
-      });
+      const screenRect = screenRectOf(geometry, coordinates);
       if (
+        !screenRect ||
         point.y < screenRect.y ||
         point.y > screenRect.y + screenRect.height
       ) {

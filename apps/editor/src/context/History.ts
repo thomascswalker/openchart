@@ -73,6 +73,18 @@ export class History {
     return true;
   }
 
+  /**
+   * Abandons every open transaction and returns a copy of the document as it
+   * was before the outermost one began, without adding history. Returns null
+   * when no transaction is open.
+   */
+  public rollbackTransaction(): Midi | null {
+    if (this.transactionDepth === 0 || !this.current) return null;
+    this.transactionDepth = 0;
+    this.transactionChanged = false;
+    return this.current.clone();
+  }
+
   public undo(): Midi | null {
     if (!this.canUndo || !this.current) return null;
     const restored = this.undoStack.pop()!;

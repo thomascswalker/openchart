@@ -11,12 +11,20 @@ import {
   ZoomSensitivity,
 } from "./constants";
 import type { ChartViewState } from "../AbstractChartView";
+import {
+  GENERIC_PROFILE,
+  gridTopFor,
+  type LaneDef,
+  type PianoRollProfile,
+} from "./profile";
 import type { PianoRollCamera, PianoRollNote } from "./types";
 
 export interface CoordinateSystemContext {
   getPpqn(): number;
   getTempoChanges(): TempoChange[];
   getState(): ChartViewState;
+  /** Optional so callers without a profile keep the generic 0-127 grid. */
+  getProfile?(): PianoRollProfile;
 }
 
 /** Tempo-aware conversion and camera math used by every piano-roll surface. */
@@ -33,6 +41,57 @@ export class CoordinateSystem {
     this.context = context;
     this.camera = camera;
     this.keyboardWidth = keyboardWidth;
+  }
+
+  public getProfile(): PianoRollProfile {
+    return this.context.getProfile?.() ?? GENERIC_PROFILE;
+  }
+
+  /** Inclusive pitch range the camera, pointer and transpose clamp to. */
+  public getPitchRange(): { low: number; high: number } {
+    return this.getProfile().pitchRange;
+  }
+
+  /**
+   * Screen Y where the scrolling pitch grid starts: below the header and any
+   * pinned lanes. `HeaderHeight` remains the header's own hit-test bound.
+   */
+  public getGridTop(): number {
+    return gridTopFor(this.getProfile(), HeaderHeight);
+  }
+
+  public clampPitch(pitch: number): number {
+    const range = this.getPitchRange();
+    return clamp(pitch, range.low, range.high);
+  }
+
+  /** The pinned lane under a screen Y, or null for the header and grid. */
+  public laneAtScreenY(y: number): LaneDef | null {
+    const profile = this.getProfile();
+    if (y < HeaderHeight || y >= this.getGridTop()) return null;
+    return (
+      profile.pinnedLanes[
+        Math.floor((y - HeaderHeight) / profile.laneHeight)
+      ] ?? null
+    );
+  }
+
+  /** Screen-space top and height of a pinned lane. */
+  public laneRect(lane: LaneDef): { y: number; height: number } {
+    const profile = this.getProfile();
+    const index = profile.pinnedLanes.indexOf(lane);
+    return {
+      y: HeaderHeight + Math.max(0, index) * profile.laneHeight,
+      height: profile.laneHeight,
+    };
+  }
+
+  /** Screen rect of a pitch drawn in a pinned lane, or null for grid notes. */
+  public pinnedRectForPitch(
+    pitch: number,
+  ): { y: number; height: number } | null {
+    const lane = this.getProfile().laneForPitch(pitch);
+    return lane ? this.laneRect(lane) : null;
   }
 
   public getZoomFactor(value: number): number {
@@ -106,8 +165,10 @@ export class CoordinateSystem {
   }
 
   public pitchAtScreenY(y: number): number {
-    const pitch = Math.ceil(this.camera.y - (y - HeaderHeight) / this.camera.v);
-    return clamp(pitch, 0, 127);
+    const pitch = Math.ceil(
+      this.camera.y - (y - this.getGridTop()) / this.camera.v,
+    );
+    return this.clampPitch(pitch);
   }
 
   public timelineUnitsAtTick(tick: number): number {
@@ -133,7 +194,7 @@ export class CoordinateSystem {
   ): CanvasPoint | CanvasRect {
     const screenX =
       value.x - this.timelineUnitsAtTick(this.camera.x) * this.camera.h;
-    const screenY = value.y + this.camera.y * this.camera.v + HeaderHeight;
+    const screenY = value.y + this.camera.y * this.camera.v + this.getGridTop();
 
     if (!("width" in value)) {
       return { x: screenX, y: screenY };
@@ -161,7 +222,7 @@ export class CoordinateSystem {
     );
     this.camera.y += dy / this.camera.v;
     this.camera.x = Math.max(0, this.camera.x);
-    this.camera.y = clamp(this.camera.y, 0, 127);
+    this.camera.y = this.clampPitch(this.camera.y);
   }
 
   public zoomHorizontal(zoomFactor: number, mouseX: number): void {
@@ -191,7 +252,7 @@ export class CoordinateSystem {
   public zoomAtCursor(zoomFactor: number, cursor: CanvasPoint): void {
     const rollX = cursor.x - this.keyboardWidth;
     const anchorX = Math.max(0, rollX);
-    const anchorY = cursor.y - HeaderHeight;
+    const anchorY = cursor.y - this.getGridTop();
     const anchorPitch = this.camera.y - anchorY / this.camera.v;
     const anchorTick = this.tickAtScreenX(this.keyboardWidth + anchorX);
     const anchorMs = ticksToMs(
@@ -218,7 +279,7 @@ export class CoordinateSystem {
         this.context.getTempoChanges(),
       ),
     );
-    this.camera.y = clamp(anchorPitch + anchorY / this.camera.v, 0, 127);
+    this.camera.y = this.clampPitch(anchorPitch + anchorY / this.camera.v);
   }
 
   public zoomVertical(zoomFactor: number, mouseY: number): void {
@@ -228,7 +289,7 @@ export class CoordinateSystem {
       MinimumPixelsPerSemitone,
       MaximumPixelsPerSemitone,
     );
-    this.camera.y = clamp(anchorPitch + mouseY / this.camera.v, 0, 127);
+    this.camera.y = this.clampPitch(anchorPitch + mouseY / this.camera.v);
   }
 
   public focusSelection(
@@ -247,7 +308,7 @@ export class CoordinateSystem {
     const minPitch = Math.min(...notes.map((note) => note.pitch));
     const maxPitch = Math.max(...notes.map((note) => note.pitch));
     const viewWidth = Math.max(1, width - this.keyboardWidth);
-    const viewHeight = Math.max(1, height - HeaderHeight);
+    const viewHeight = Math.max(1, height - this.getGridTop());
     const padding = 1.2;
     const pitchSpan = Math.max(1, maxPitch - minPitch + 1) * padding;
     const tempoChanges = this.context.getTempoChanges();
@@ -284,10 +345,21 @@ export class CoordinateSystem {
         tempoChanges,
       ),
     );
-    this.camera.y = clamp(
+    this.camera.y = this.clampPitch(
       maxPitch + 1 + (viewHeight / this.camera.v - pitchSpan) / 2,
-      0,
-      127,
     );
+  }
+
+  /** Fits the profile's whole pitch range into the visible grid height. */
+  public fitPitchRange(height: number): void {
+    const range = this.getPitchRange();
+    const rows = range.high - range.low + 1;
+    const viewHeight = Math.max(1, height - this.getGridTop());
+    this.camera.v = clamp(
+      viewHeight / rows,
+      MinimumPixelsPerSemitone,
+      MaximumPixelsPerSemitone,
+    );
+    this.camera.y = range.high;
   }
 }

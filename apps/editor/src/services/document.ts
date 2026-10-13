@@ -111,6 +111,15 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
+  /** Discards the open edit transaction, restoring the pre-edit document. */
+  public readonly rollbackOpenChart = (): boolean => {
+    const restored = this.history.rollbackTransaction();
+    if (!restored) return false;
+    this.midiData = restored;
+    this.publish();
+    return true;
+  };
+
   public readonly undoOpenChart = (): void => {
     const restored = this.history.undo();
     if (!restored) return;

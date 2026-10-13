@@ -1,4 +1,4 @@
-import { Difficulty } from "@openchart/views";
+import { Difficulty, requiresPianoRoll } from "@openchart/views";
 import { IStatefulService } from "../../platform/services";
 
 export type ViewportKind = "piano-roll" | "highway";
@@ -7,6 +7,21 @@ export interface ViewportCameraState {
   tick: number;
   pianoRoll?: unknown;
   highway?: unknown;
+}
+
+/**
+ * Instruments without difficulties (Vocals) can only be shown in the Piano
+ * Roll. Applied on every update so both the TrackList and the Highway's
+ * instrument buttons land on the Piano Roll.
+ */
+export function enforceViewForInstrument(
+  session: ViewportSession,
+): ViewportSession {
+  return session.view !== "piano-roll" &&
+    (requiresPianoRoll(session.instrument) ||
+      requiresPianoRoll(session.trackKey))
+    ? { ...session, view: "piano-roll" }
+    : session;
 }
 
 export interface ViewportSession {
@@ -131,19 +146,25 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
     id: string,
     update: Partial<Omit<ViewportSession, "id">>,
   ): void => {
+    const previousView = this.getViewport(id)?.view;
     this.viewportSessions = this.viewportSessions.map((session) =>
       session.id === id
-        ? {
+        ? enforceViewForInstrument({
             ...session,
             ...update,
             camera: update.camera
               ? { ...session.camera, ...update.camera }
               : session.camera,
-          }
+          })
         : session,
     );
-    if (id === this.activeViewportId && update.view) {
-      this.activeViewId = update.view;
+    const updated = this.getViewport(id);
+    if (
+      id === this.activeViewportId &&
+      updated &&
+      (update.view || updated.view !== previousView)
+    ) {
+      this.activeViewId = updated.view;
     }
     this.publish();
   };

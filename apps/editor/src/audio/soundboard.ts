@@ -64,6 +64,17 @@ export interface SoundboardConfigurationInput {
   highwayActive: boolean;
   highwayNotes: readonly MidiNote[];
   highwayKey: string;
+  /** Play pitched vocal notes at their MIDI pitch during playback. */
+  vocalFeedbackEnabled?: boolean;
+  /** Pitched vocal notes (sorted by start) for pitch feedback. */
+  vocalNotes?: readonly MidiNote[];
+}
+
+interface VocalVoice {
+  oscillator: OscillatorNode;
+  gain: GainNode;
+  startTime: number;
+  endTime: number;
 }
 
 interface ActiveVoice {
@@ -120,6 +131,12 @@ export class Soundboard {
   private lastClapTime = 0;
   private resumePromise: Promise<void> | null = null;
   private readonly pendingSounds = new Set<OscillatorNode>();
+  /** Last scheduled vocal voice; a new onset ends it (monophonic legato). */
+  private vocalVoice: VocalVoice | null = null;
+  /** Vocal onsets at or before this tick have been scheduled. */
+  private vocalCursorTick = 0;
+  /** Notes already sounding when playback starts or seeks begin at once. */
+  private vocalNeedsCatchUp = true;
   private previewVoices: ActiveVoice[] = [];
   private previewRequest = 0;
   private readonly crossingTracker = new NoteCrossingTracker();
@@ -134,21 +151,26 @@ export class Soundboard {
     const previousMidi = this.configuration?.midi;
     const previousSettings = this.configuration?.settings;
     const previousClapEnabled = this.configuration?.clapEnabled;
+    const previousVocalEnabled = this.configuration?.vocalFeedbackEnabled;
+    const previousVocalNotes = this.configuration?.vocalNotes;
     this.configuration = configuration;
     if (
       previousKey !== configuration.highwayKey ||
       previousMidi !== configuration.midi ||
       previousSettings !== configuration.settings ||
-      previousClapEnabled !== configuration.clapEnabled
+      previousClapEnabled !== configuration.clapEnabled ||
+      previousVocalEnabled !== configuration.vocalFeedbackEnabled ||
+      previousVocalNotes !== configuration.vocalNotes
     ) {
       this.stopPreview();
       this.cancelPendingSounds();
       this.metronomeCursorTick = this.currentTick - 1e-6;
+      this.resetVocalCursor();
       this.crossingTracker.reset(previousKey);
       this.crossingTracker.begin(configuration.highwayKey, this.currentTick);
     }
     if (this.playing) {
-      if (configuration.settings.metronomeEnabled) {
+      if (this.needsScheduler(configuration)) {
         this.stopScheduler();
         void this.ensureStarted().then(() => this.scheduleLoop());
       } else {
@@ -186,10 +208,15 @@ export class Soundboard {
     this.playing = true;
     this.stopScheduler();
     this.metronomeCursorTick = this.currentTick - 1e-6;
+    this.resetVocalCursor();
     const configuration = this.configuration!;
-    if (configuration?.settings.metronomeEnabled || configuration.clapEnabled) {
+    if (
+      configuration?.settings.metronomeEnabled ||
+      configuration.clapEnabled ||
+      this.vocalFeedbackActive(configuration)
+    ) {
       void this.ensureStarted().then(() => {
-        if (configuration.settings.metronomeEnabled) this.scheduleLoop();
+        if (this.needsScheduler(configuration)) this.scheduleLoop();
       });
     }
     if (configuration) {
@@ -210,6 +237,7 @@ export class Soundboard {
   public seek(tick: number): void {
     this.currentTick = Math.max(0, tick);
     this.metronomeCursorTick = this.currentTick - 1e-6;
+    this.resetVocalCursor();
     const configuration = this.configuration;
     this.cancelPendingSounds();
     this.stopPreview();
@@ -328,9 +356,33 @@ export class Soundboard {
     return ticksToMs(tick, configuration.ppqn, configuration.tempoChanges);
   }
 
+  private needsScheduler(configuration: SoundboardConfigurationInput): boolean {
+    return (
+      configuration.settings.metronomeEnabled ||
+      this.vocalFeedbackActive(configuration)
+    );
+  }
+
+  private vocalFeedbackActive(
+    configuration: SoundboardConfigurationInput | null,
+  ): boolean {
+    return Boolean(
+      configuration?.vocalFeedbackEnabled && configuration.vocalNotes?.length,
+    );
+  }
+
+  private resetVocalCursor(): void {
+    this.vocalCursorTick = this.currentTick;
+    this.vocalNeedsCatchUp = true;
+    this.vocalVoice = null;
+  }
+
+  // Metronome and vocal feedback share one look-ahead loop so onsets are
+  // scheduled on the audio clock rather than the animation frame.
   private scheduleLoop = (): void => {
     if (!this.playing || !this.configuration) return;
     this.scheduleMetronome();
+    this.scheduleVocals();
     this.stopScheduler();
     this.schedulerHandle = setTimeout(this.scheduleLoop, SCHEDULER_INTERVAL_MS);
   };
@@ -380,6 +432,113 @@ export class Soundboard {
       );
       this.metronomeCursorTick = Math.max(this.metronomeCursorTick, beat.tick);
     }
+  }
+
+  /**
+   * Schedules pitched vocal notes whose onsets fall in the look-ahead
+   * window. Voices are monophonic and legato: each lasts its note's duration
+   * unless the next onset arrives first, which ends it.
+   */
+  private scheduleVocals(): void {
+    const configuration = this.configuration;
+    const context = this.context;
+    const notes = configuration?.vocalNotes;
+    if (
+      !configuration ||
+      !context ||
+      !configuration.vocalFeedbackEnabled ||
+      !notes?.length
+    ) {
+      return;
+    }
+    const endTick = tickWindowForLookAhead(
+      this.currentTick,
+      LOOK_AHEAD_MS,
+      configuration.ppqn,
+      configuration.tempoChanges,
+    );
+    const nowMs = this.tickToMs(this.currentTick);
+    const timeAt = (tick: number): number =>
+      context.currentTime + Math.max(0, this.tickToMs(tick) - nowMs) / 1_000;
+
+    const playable = (note: MidiNote): boolean =>
+      note.end > note.start && note.note >= 0 && note.note <= 127;
+
+    if (this.vocalNeedsCatchUp) {
+      // After start/seek, the note under the playhead sounds immediately. The
+      // voice is monophonic, so only the most recent such onset counts.
+      let sounding: MidiNote | null = null;
+      for (const note of notes) {
+        if (note.start >= this.currentTick) break;
+        if (note.end > this.currentTick && playable(note)) sounding = note;
+      }
+      if (sounding) {
+        this.scheduleVocalVoice(
+          sounding.note,
+          context.currentTime,
+          timeAt(sounding.end),
+        );
+      }
+    }
+
+    for (const note of notes) {
+      if (note.start > endTick) break;
+      const isNewOnset =
+        note.start >= this.vocalCursorTick &&
+        (note.start > this.vocalCursorTick || this.vocalNeedsCatchUp);
+      if (!isNewOnset || !playable(note)) continue;
+      this.scheduleVocalVoice(note.note, timeAt(note.start), timeAt(note.end));
+    }
+    this.vocalNeedsCatchUp = false;
+    this.vocalCursorTick = Math.max(this.vocalCursorTick, endTick);
+  }
+
+  private scheduleVocalVoice(
+    pitch: number,
+    startTime: number,
+    endTime: number,
+  ): void {
+    const configuration = this.configuration;
+    const context = this.context;
+    if (!configuration || !context || endTime <= startTime) return;
+    const settings = configuration.settings;
+    const attack = Math.max(0.001, settings.previewAttackMs / 1_000);
+    const release = Math.max(0.001, settings.previewReleaseMs / 1_000);
+    const volume = clamp(settings.previewVolume);
+
+    const previous = this.vocalVoice;
+    if (previous && previous.endTime > startTime) {
+      // Legato: the new onset ends the previous voice.
+      const cut = Math.max(previous.startTime, startTime);
+      try {
+        previous.gain.gain.cancelScheduledValues(cut);
+        previous.gain.gain.setValueAtTime(volume, cut);
+        previous.gain.gain.linearRampToValueAtTime(0, cut + 0.005);
+        previous.oscillator.stop(cut + 0.006);
+      } catch {
+        // The previous voice may already have ended.
+      }
+      previous.endTime = cut;
+    }
+
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(midiPitchToFrequency(pitch), startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(volume, startTime + attack);
+    gain.gain.setValueAtTime(
+      volume,
+      Math.max(startTime + attack, endTime - release),
+    );
+    gain.gain.linearRampToValueAtTime(0, endTime);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    this.pendingSounds.add(oscillator);
+    oscillator.onended = () => this.pendingSounds.delete(oscillator);
+    oscillator.start(startTime);
+    oscillator.stop(endTime + 0.005);
+    this.vocalVoice = { oscillator, gain, startTime, endTime };
   }
 
   private scheduleClick(
@@ -484,6 +643,7 @@ export class Soundboard {
   }
 
   private cancelPendingSounds(): void {
+    this.vocalVoice = null;
     for (const oscillator of this.pendingSounds) {
       try {
         oscillator.stop();

@@ -3,7 +3,12 @@ import type { EditablePhraseKind } from "@openchart/views";
 import type { DrumNoteKind } from "./drumProfile";
 
 export type HighwayTool = "select" | "place" | "remove";
-export type HighwayMode = HighwayTool | EditablePhraseKind;
+/** Phrases the Highway can place; vocal phrases live in the Piano Roll. */
+export type HighwayPhraseKind = Extract<
+  EditablePhraseKind,
+  "stagepower" | "solo"
+>;
+export type HighwayMode = HighwayTool | HighwayPhraseKind;
 export type HighwayNotePlacementType =
   "normal" | "force-hopo" | "force-strum" | "tap";
 

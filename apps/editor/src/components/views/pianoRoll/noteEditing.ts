@@ -1,26 +1,15 @@
 import type { MidiChannelEvent } from "@openchart/core";
-import { clamp } from "es-toolkit";
 import type { CanvasPoint } from "../../../rendering/geometry";
 import type { CoordinateSystem } from "./coordinates";
+import {
+  GenericEditingStrategy,
+  type ClipboardNote,
+  type MoveTarget,
+  type NoteEditingStrategy,
+  type ResizeTarget,
+} from "./editingStrategy";
 import type { PianoRollContext, PianoRollNote } from "./types";
-
-interface ResizeTarget {
-  note: PianoRollNote;
-  initialDuration: number;
-}
-
-interface MoveTarget {
-  note: PianoRollNote;
-  initialTick: number;
-  initialPitch: number;
-}
-
-interface ClipboardNote {
-  relativeTick: number;
-  pitch: number;
-  durationTicks: number;
-  velocity: number;
-}
+import { VocalEditingStrategy } from "./vocalEditing";
 
 export function remapNotesByIdentity(
   notes: PianoRollNote[],
@@ -29,10 +18,18 @@ export function remapNotesByIdentity(
   return notes.filter((note) => keep.has(note.midiNote.noteOn));
 }
 
-/** Model commands for notes, selection remapping, and clipboard actions. */
+/**
+ * Gesture state, selection remapping, history bracketing and clipboard for
+ * the Piano Roll. What each gesture does to the MIDI data is delegated to
+ * the profile's editing strategy (generic or vocal).
+ */
 export class NoteEditingController {
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
+  private readonly strategies: Record<
+    NoteEditingStrategy["id"],
+    NoteEditingStrategy
+  >;
 
   private resizing = false;
   private resizeAnchor: PianoRollNote | null = null;
@@ -49,6 +46,10 @@ export class NoteEditingController {
   private moveTargets: MoveTarget[] = [];
   private moveSelectionKeep = new Set<MidiChannelEvent>();
 
+  /** A just-created vocal note waiting for its lyric (transaction open). */
+  private pendingLyric: MidiChannelEvent | null = null;
+  private awaitingLyric = false;
+
   private clipboard: ClipboardNote[] = [];
 
   private get isNoteEditingLocked(): boolean {
@@ -58,6 +59,14 @@ export class NoteEditingController {
   public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
     this.context = context;
     this.coordinates = coordinates;
+    this.strategies = {
+      generic: new GenericEditingStrategy(context, coordinates),
+      vocal: new VocalEditingStrategy(context, coordinates),
+    };
+  }
+
+  private get strategy(): NoteEditingStrategy {
+    return this.strategies[this.context.getProfile().editing];
   }
 
   public get isResizing(): boolean {
@@ -70,6 +79,11 @@ export class NoteEditingController {
 
   public get isCreating(): boolean {
     return this.creating;
+  }
+
+  /** True while the lyric prompt for a new note is open. */
+  public get isAwaitingLyric(): boolean {
+    return this.awaitingLyric;
   }
 
   public beginResize(anchor: PianoRollNote): void {
@@ -99,8 +113,7 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
-    if (!track || !this.resizeAnchor) {
+    if (!this.strategy.getTrack(false) || !this.resizeAnchor) {
       return;
     }
 
@@ -110,14 +123,7 @@ export class NoteEditingController {
     const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
     const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
 
-    let changed = false;
-    for (const { note, initialDuration } of this.resizeTargets) {
-      changed =
-        track.setNoteDuration(
-          note.midiNote,
-          Math.max(1, initialDuration + delta),
-        ) || changed;
-    }
+    const changed = this.strategy.resize(this.resizeTargets, delta);
 
     this.remapSelection(this.resizeSelectionKeep);
     if (changed) this.context.notifyNotesChanged();
@@ -145,6 +151,7 @@ export class NoteEditingController {
     this.moveSelectionKeep = new Set(
       selection.notes.map((note) => note.midiNote.noteOn),
     );
+    this.strategy.beginMove(this.moveTargets);
     this.beginGestureTransaction();
   }
 
@@ -152,8 +159,7 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
-    if (!track || !this.moveAnchor) {
+    if (!this.strategy.getTrack(false) || !this.moveAnchor) {
       return;
     }
 
@@ -164,19 +170,7 @@ export class NoteEditingController {
     const tickDelta = newAnchorTick - this.moveAnchorInitialTick;
     const pitchDelta = newAnchorPitch - this.moveAnchorInitialPitch;
 
-    let changed = false;
-    for (const { note, initialTick, initialPitch } of this.moveTargets) {
-      changed =
-        track.setNoteStart(
-          note.midiNote,
-          Math.max(0, initialTick + tickDelta),
-        ) || changed;
-      changed =
-        track.setNotePitch(
-          note.midiNote,
-          clamp(initialPitch + pitchDelta, 0, 127),
-        ) || changed;
-    }
+    const changed = this.strategy.move(this.moveTargets, tickDelta, pitchDelta);
 
     this.remapSelection(this.moveSelectionKeep);
     if (changed) this.context.notifyNotesChanged();
@@ -189,19 +183,30 @@ export class NoteEditingController {
       return;
     }
 
-    this.creating = false;
-    this.resizing = false;
-    this.resizeAnchor = null;
-    this.resizeTargets = [];
-    this.resizeSelectionKeep = new Set();
-    this.moving = false;
-    this.moveAnchor = null;
-    this.moveTargets = [];
-    this.moveSelectionKeep = new Set();
+    const lyricNote = this.creating ? this.pendingLyric : null;
+    this.resetGestureState();
+    if (lyricNote) {
+      // Keep the transaction open: the note and its lyric become one history
+      // entry, and Escape rolls both back.
+      this.openLyricPrompt(lyricNote);
+      return;
+    }
     this.endGestureTransaction();
   }
 
   public cancelGesture(): void {
+    this.resetGestureState();
+    if (this.awaitingLyric) {
+      // Closing the prompt runs its onCancel, which rolls the create back.
+      this.context.cancelLyricPrompt();
+      if (this.awaitingLyric) this.rollbackPendingCreate();
+      return;
+    }
+    this.pendingLyric = null;
+    this.endGestureTransaction();
+  }
+
+  private resetGestureState(): void {
     this.creating = false;
     this.resizing = false;
     this.resizeAnchor = null;
@@ -211,26 +216,24 @@ export class NoteEditingController {
     this.moveAnchor = null;
     this.moveTargets = [];
     this.moveSelectionKeep = new Set();
-    this.endGestureTransaction();
   }
 
   public beginCreate(local: CanvasPoint): void {
-    if (this.isNoteEditingLocked) {
+    if (this.isNoteEditingLocked || this.awaitingLyric) {
       return;
     }
-    const track = this.context.getSelectedTrack();
-    if (!track) {
+    if (!this.strategy.getTrack(this.strategy.id === "vocal")) {
       return;
     }
 
-    const pitch = this.coordinates.pitchAtScreenY(local.y);
-    const tick = this.coordinates.snapTick(
-      this.coordinates.tickAtScreenX(local.x),
-    );
-    const insertAt = track.getInsertionIndexAt(tick);
-    const startDelta = tick - track.getAbsoluteTickAt(insertAt);
     this.beginGestureTransaction();
-    const { noteOn } = track.addNote(pitch, startDelta, 100, 1, insertAt);
+    const created = this.strategy.create(local);
+    if (!created) {
+      this.endGestureTransaction();
+      return;
+    }
+    const { noteOn } = created;
+    this.pendingLyric = created.needsLyric ? noteOn : null;
     this.context.notifyNotesChanged();
     this.remapSelection(new Set([noteOn]));
 
@@ -250,6 +253,74 @@ export class NoteEditingController {
     this.context.requestRender();
   }
 
+  private openLyricPrompt(noteOn: MidiChannelEvent): void {
+    const note = this.strategy
+      .getTrack(false)
+      ?.getNotes()
+      .find((item) => item.noteOn === noteOn);
+    if (!note) {
+      this.pendingLyric = null;
+      this.endGestureTransaction();
+      return;
+    }
+    this.awaitingLyric = true;
+    this.context.promptLyric(note.start, {
+      onCommit: (text) => this.commitPendingLyric(text),
+      onCancel: () => this.rollbackPendingCreate(),
+      onTab: (text) => {
+        const tick = note.start;
+        if (this.commitPendingLyric(text)) this.context.editNextLyric(tick);
+        else this.rollbackPendingCreate();
+      },
+    });
+  }
+
+  /** Writes the new note's lyric and closes the create transaction. */
+  public commitPendingLyric(text: string): boolean {
+    const noteOn = this.pendingLyric;
+    if (!noteOn || !this.awaitingLyric || !text.trim()) return false;
+    if (!this.strategy.setLyric?.(noteOn, text)) return false;
+    this.pendingLyric = null;
+    this.awaitingLyric = false;
+    this.context.notifyNotesChanged();
+    this.endGestureTransaction();
+    this.context.requestRender();
+    return true;
+  }
+
+  /**
+   * Escape (or empty text): undo the note, the lyric-less track creation and
+   * every resize step in one go by restoring the pre-transaction document.
+   */
+  public rollbackPendingCreate(): void {
+    const noteOn = this.pendingLyric;
+    if (!this.awaitingLyric) return;
+    this.pendingLyric = null;
+    this.awaitingLyric = false;
+    this.context.getSelectionContext().clear();
+    if (this.gestureTransactionOpen && this.context.rollbackEdit()) {
+      this.gestureTransactionOpen = false;
+    } else {
+      // No history service (e.g. Storybook): remove the note by hand.
+      const track = this.strategy.getTrack(false);
+      const note = track?.getNotes().find((item) => item.noteOn === noteOn);
+      if (note) {
+        this.strategy.remove([
+          {
+            tick: note.start,
+            durationTicks: note.end - note.start,
+            pitch: note.note,
+            velocity: note.velocity,
+            midiNote: note,
+          },
+        ]);
+        this.context.notifyNotesChanged();
+      }
+      this.endGestureTransaction();
+    }
+    this.context.requestRender();
+  }
+
   private beginGestureTransaction(): void {
     if (this.gestureTransactionOpen) return;
     this.gestureTransactionOpen = true;
@@ -266,8 +337,7 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
-    if (!track) {
+    if (!this.strategy.getTrack(false)) {
       return;
     }
 
@@ -277,7 +347,7 @@ export class NoteEditingController {
         .filter((selected) => selected !== note)
         .map((selected) => selected.midiNote.noteOn),
     );
-    track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
+    this.strategy.remove([note]);
     this.context.notifyNotesChanged();
     this.remapSelection(keep);
     this.context.requestRender();
@@ -287,15 +357,12 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
-    if (!track || selection.size === 0) {
+    if (!this.strategy.getTrack(false) || selection.size === 0) {
       return;
     }
 
-    for (const note of selection.notes) {
-      track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
-    }
+    this.strategy.remove(selection.notes);
     this.context.notifyNotesChanged();
     selection.clear();
     this.context.requestRender();
@@ -305,16 +372,13 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
-    if (!track || selection.size === 0) {
+    if (!this.strategy.getTrack(false) || selection.size === 0) {
       return;
     }
 
     const keep = new Set(selection.notes.map((note) => note.midiNote.noteOn));
-    for (const note of selection.notes) {
-      track.setNotePitch(note.midiNote, clamp(note.pitch + semitones, 0, 127));
-    }
+    this.strategy.transpose(selection.notes, semitones);
     this.remapSelection(keep);
     this.context.notifyNotesChanged();
     this.context.requestRender();
@@ -324,19 +388,13 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
-    if (!track || selection.size === 0) {
+    if (!this.strategy.getTrack(false) || selection.size === 0) {
       return;
     }
 
     const keep = new Set(selection.notes.map((note) => note.midiNote.noteOn));
-    for (const note of selection.notes) {
-      track.setNoteStart(
-        note.midiNote,
-        Math.max(0, Math.round(note.tick + deltaTicks)),
-      );
-    }
+    this.strategy.shift(selection.notes, deltaTicks);
     this.remapSelection(keep);
     this.context.notifyNotesChanged();
     this.context.requestRender();
@@ -347,15 +405,7 @@ export class NoteEditingController {
     if (selection.size === 0) {
       return;
     }
-
-    const notes = selection.notes;
-    const minTick = Math.min(...notes.map((note) => note.tick));
-    this.clipboard = notes.map((note) => ({
-      relativeTick: note.tick - minTick,
-      pitch: note.pitch,
-      durationTicks: note.durationTicks,
-      velocity: note.velocity,
-    }));
+    this.clipboard = this.strategy.copy(selection.notes);
   }
 
   public canCopySelection(): boolean {
@@ -374,16 +424,13 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
     const selection = this.context.getSelectionContext();
-    if (!track || selection.size === 0) {
+    if (!this.strategy.getTrack(false) || selection.size === 0) {
       return;
     }
 
     this.copySelection();
-    for (const note of selection.notes) {
-      track.removeNote(note.midiNote.noteOn, note.midiNote.noteOff);
-    }
+    this.strategy.remove(selection.notes);
     this.context.notifyNotesChanged();
     this.remapSelection(new Set());
     this.context.requestRender();
@@ -393,8 +440,10 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    const track = this.context.getSelectedTrack();
-    if (!track || this.clipboard.length === 0) {
+    if (
+      !this.strategy.getTrack(this.strategy.id === "vocal") ||
+      this.clipboard.length === 0
+    ) {
       return;
     }
 
@@ -402,21 +451,9 @@ export class NoteEditingController {
     const anchorTick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(x),
     );
-    const pastedNoteOns = new Set<MidiChannelEvent>();
-
-    for (const entry of this.clipboard) {
-      const tick = Math.max(0, anchorTick + entry.relativeTick);
-      const insertAt = track.getInsertionIndexAt(tick);
-      const startDelta = tick - track.getAbsoluteTickAt(insertAt);
-      const { noteOn } = track.addNote(
-        entry.pitch,
-        startDelta,
-        entry.velocity,
-        entry.durationTicks,
-        insertAt,
-      );
-      pastedNoteOns.add(noteOn);
-    }
+    const pastedNoteOns = new Set(
+      this.strategy.paste(this.clipboard, anchorTick),
+    );
     this.context.notifyNotesChanged();
     this.remapSelection(pastedNoteOns);
     this.context.requestRender();
@@ -424,13 +461,13 @@ export class NoteEditingController {
 
   public remapSelection(keep: Set<MidiChannelEvent>): void {
     const midi = this.context.getMidi();
-    const state = this.context.getState();
-    if (!midi || state.selectedTrackIndex === null || keep.size === 0) {
+    const trackIndex = this.context.getSelectedTrackIndex();
+    if (!midi || trackIndex === null || keep.size === 0) {
       this.context.getSelectionContext().clear();
       return;
     }
 
-    const mapped = this.context.getTrackNotes(midi, state.selectedTrackIndex);
+    const mapped = this.context.getTrackNotes(midi, trackIndex);
     this.context.getSelectionContext().notes = remapNotesByIdentity(
       mapped,
       keep,

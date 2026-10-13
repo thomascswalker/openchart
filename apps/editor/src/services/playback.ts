@@ -5,7 +5,7 @@ import {
   type MidiNote,
   type TempoChange,
 } from "@openchart/core";
-import { Difficulty, SongView } from "@openchart/views";
+import { Difficulty, SongView, VocalTrackView } from "@openchart/views";
 import {
   Soundboard,
   type SoundboardSettings,
@@ -23,6 +23,8 @@ export interface PlaybackSnapshot {
   totalTimelineTicks: number;
   isMetronomeEnabled: boolean;
   isClapEnabled: boolean;
+  /** Pitched vocal notes sound at their MIDI pitch during playback. */
+  isVocalPitchFeedbackEnabled: boolean;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
@@ -32,6 +34,7 @@ export interface PlaybackSnapshot {
   refresh: () => void;
   toggleMetronome: () => void;
   toggleClap: () => void;
+  toggleVocalPitchFeedback: () => void;
   setActiveView: (viewId: string) => void;
   /** Preview the current track; an explicit range overrides the settings range. */
   previewTrack: (trackIndex?: number, range?: PitchRange) => void;
@@ -79,6 +82,29 @@ function notesForHighway(
   );
 }
 
+/**
+ * Pitched notes for vocal pitch feedback: the selected instrument when it is
+ * a vocal track, otherwise the first configured vocal track, so the toggle
+ * lets you hear the melody while editing any part.
+ */
+export function notesForVocalFeedback(
+  midi: Midi | null | undefined,
+  instrument: string,
+): readonly MidiNote[] {
+  if (!midi) return [];
+  const song = new SongView(midi);
+  const selected = song.getInstrumentTrackView(instrument);
+  const view =
+    selected instanceof VocalTrackView
+      ? selected
+      : song
+          .getInstrumentTrackViews?.()
+          .find(
+            (item): item is VocalTrackView => item instanceof VocalTrackView,
+          );
+  return view?.getNotes("pitched").map((item) => item.note) ?? [];
+}
+
 export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   static dependencies = ["document"];
 
@@ -94,6 +120,8 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   private clapEnabled = false;
   private highwayActive = false;
   private highwayNotes: readonly MidiNote[] = [];
+  private vocalFeedbackEnabled = false;
+  private vocalNotes: readonly MidiNote[] = [];
   private feedbackSettings: SoundboardSettings | null = null;
   private feedbackSettingsSource: ApplicationSettings["feedback"] | null = null;
   private snapEnabled = true;
@@ -126,6 +154,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.selectedDifficulty = Difficulty.Expert;
     this.selectedTrackIndex = null;
     this.highwayNotes = [];
+    this.vocalNotes = [];
     this.midiTotalTicks = 0;
     this.midiPlaybackEndTick = 0;
     this.ppqn = 480;
@@ -156,6 +185,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
         this.selectedInstrument,
         this.selectedDifficulty,
       );
+      this.updateVocalNotes();
     }
     const defaultMetronome = options.settings.feedback.metronomeEnabled;
     if (this.defaultMetronome !== defaultMetronome) {
@@ -182,6 +212,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
         this.selectedInstrument,
         this.selectedDifficulty,
       );
+      this.updateVocalNotes();
       this.configureEngine();
     }
 
@@ -279,6 +310,15 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.publish();
   };
 
+  public readonly toggleVocalPitchFeedback = (): void => {
+    this.vocalFeedbackEnabled = !this.vocalFeedbackEnabled;
+    // Start audio inside the originating gesture, like metronome and clap.
+    if (this.vocalFeedbackEnabled) void this.engine.ensureStarted();
+    this.updateVocalNotes();
+    this.configureEngine();
+    this.publish();
+  };
+
   public readonly setActiveView = (viewId: string): void => {
     const active = viewId === "highway";
     if (active === this.highwayActive) return;
@@ -326,6 +366,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.defaultMetronome = null;
     this.metronomeEnabled = false;
     this.clapEnabled = false;
+    this.vocalFeedbackEnabled = false;
     this.highwayActive = false;
     this.playbackTick = 0;
     this.feedbackSettings = null;
@@ -348,7 +389,18 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       // A selected track change also resets the tracker so a newly active
       // viewport cannot replay stale crossings.
       highwayKey: `${this.selectedTrackIndex ?? -1}:${this.selectedInstrument}:${this.selectedDifficulty}`,
+      vocalFeedbackEnabled: this.vocalFeedbackEnabled,
+      vocalNotes: this.vocalNotes,
     });
+  }
+
+  // Only collected while the toggle is on, so playback without vocal
+  // feedback never walks the vocal track. The array identity changes only
+  // with the document or selection, which the engine uses to reset.
+  private updateVocalNotes(): void {
+    this.vocalNotes = this.vocalFeedbackEnabled
+      ? notesForVocalFeedback(this.midiData, this.selectedInstrument)
+      : [];
   }
 
   // The engine detects settings changes by identity, so only rebuild when the
@@ -419,6 +471,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       totalTimelineTicks: this.totalTimelineTicks(),
       isMetronomeEnabled: this.metronomeEnabled,
       isClapEnabled: this.clapEnabled,
+      isVocalPitchFeedbackEnabled: this.vocalFeedbackEnabled,
       play: this.play,
       pause: this.pause,
       togglePlay: this.togglePlay,
@@ -428,6 +481,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       refresh: this.refresh,
       toggleMetronome: this.toggleMetronome,
       toggleClap: this.toggleClap,
+      toggleVocalPitchFeedback: this.toggleVocalPitchFeedback,
       setActiveView: this.setActiveView,
       previewTrack: this.previewTrack,
       previewNotes: this.previewNotes,

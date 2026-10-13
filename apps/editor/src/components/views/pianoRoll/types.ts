@@ -1,5 +1,6 @@
 import type {
   Midi,
+  MidiChannelEvent,
   MidiNote,
   MidiTrack,
   TimedMidiEvent,
@@ -7,7 +8,9 @@ import type {
   TempoChange,
   TimeSignatureChange,
 } from "@openchart/core";
+import type { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
+import type { PianoRollProfile } from "./profile";
 import type { SelectionContext } from "./selection";
 import type { PointerContext } from "./pointer";
 
@@ -46,12 +49,42 @@ export interface PianoRollCamera {
   v: number;
 }
 
+/** Toolbar state that decides what a vocal drag in the grid creates. */
+export interface VocalPlacement {
+  noteKind: VocalNoteKind;
+  /** When set, a grid drag creates this phrase instead of a note. */
+  phrase: VocalPhraseKind | null;
+}
+
+/** Derived vocal validation state used for drawing, cached per revision. */
+export interface VocalMarks {
+  /** NoteOn events of pitched/pitchless notes with no lyric on their tick. */
+  missingLyric: ReadonlySet<MidiChannelEvent>;
+  /** Ticks of those notes, for the header's validation markers. */
+  missingTicks: readonly number[];
+}
+
+/** Callbacks for the header's inline lyric prompt. */
+export interface LyricPromptHandlers {
+  initialText?: string;
+  /** Return false to keep the prompt open (e.g. empty text). */
+  onCommit(text: string): boolean;
+  onCancel(): void;
+  /** Tab: commit and move on. Falls back to onCommit when omitted. */
+  onTab?(text: string): void;
+}
+
 /** The narrow dependency surface shared by the piano-roll controllers. */
 export interface PianoRollContext {
   getState(): ChartViewState;
   getMidi(): Midi | null;
   getPpqn(): number;
   getSelectedTrack(): MidiTrack | null;
+  /** Index of getSelectedTrack() in the MIDI file (resolved by name if new). */
+  getSelectedTrackIndex(): number | null;
+  getProfile(): PianoRollProfile;
+  getVocalPlacement(): VocalPlacement;
+  getVocalMarks(): VocalMarks;
   getTrackNotes(midi: Midi, trackIndex: number): PianoRollNote[];
   getCurrentNotes(): PianoRollNote[];
   getTempoChanges(): TempoChange[];
@@ -68,4 +101,12 @@ export interface PianoRollContext {
   notifyNotesChanged(): void;
   requestSeek(tick: number): void;
   invalidateTempoCache(): void;
+  /** Restores the document to before the open edit transaction. */
+  rollbackEdit(): boolean;
+  promptLyric(tick: number, handlers: LyricPromptHandlers): void;
+  cancelLyricPrompt(): void;
+  /** Tab from a lyric: edit (or prompt for) the next note's lyric. */
+  editNextLyric(afterTick: number): void;
+  /** Audition notes (vocal pitch feedback on place/move). */
+  previewNotes(notes: readonly PianoRollNote[]): void;
 }

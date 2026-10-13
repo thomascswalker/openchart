@@ -24,6 +24,7 @@ import {
   encodeMidiEvent,
   encodeMetaPayload,
   isTwoByteMessage,
+  textByteLength,
   writeAscii,
   writeUInt16BE,
   writeUInt32BE,
@@ -268,7 +269,7 @@ class MidiTrack {
       deltaTime: 0,
       status: 0xff,
       type,
-      length: text.length,
+      length: textByteLength(text),
       data: { text },
     };
     this.insertEventsAt([{ tick, event }]);
@@ -278,7 +279,7 @@ class MidiTrack {
   public updateTextEvent(event: TextMidiEvent, text: string): boolean {
     if (!this.events.includes(event) || !text.trim()) return false;
     event.data.text = text;
-    event.length = text.length;
+    event.length = textByteLength(text);
     this.invalidateCaches();
     return true;
   }

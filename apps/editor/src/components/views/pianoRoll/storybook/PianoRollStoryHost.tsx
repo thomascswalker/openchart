@@ -1,5 +1,5 @@
-import { Midi } from "@openchart/core";
-import { Difficulty } from "@openchart/views";
+import { MetaType, Midi } from "@openchart/core";
+import { Difficulty, type VocalNoteKind } from "@openchart/views";
 import {
   useCallback,
   useEffect,
@@ -10,7 +10,7 @@ import {
 import { ChartViewHost } from "../../ChartViewHost";
 import type { ChartView } from "../../ChartViews";
 import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
-import { PianoRollView } from "../index";
+import { PianoRollView, profileForInstrument } from "../index";
 import { PlaybackService } from "../../../../services/playback";
 import { defaultApplicationSettings } from "../../../../services/settings";
 import { Button, Checkbox } from "../../../shared/Button";
@@ -25,7 +25,12 @@ import {
 } from "./createPianoRollFixture";
 import "./PianoRollStoryHost.css";
 
-const SELECTED_INSTRUMENT = "LEAD GUITAR";
+const DEFAULT_INSTRUMENT = "LEAD GUITAR";
+const VOCAL_KIND_OPTIONS: DropdownOption[] = [
+  { value: "pitched", label: "Pitched" },
+  { value: "percussion", label: "Percussion" },
+  { value: "pitchless", label: "Pitchless" },
+];
 const SELECTED_DIFFICULTY = Difficulty.Expert;
 const SNAP_OPTIONS: DropdownOption[] = [2, 4, 8, 16].map((denominator) => ({
   value: String(denominator),
@@ -43,6 +48,8 @@ const silentStorySettings = {
 interface PianoRollStoryHostProps {
   variant: PianoRollFixtureVariant;
   initialTrackIndex?: number;
+  /** Instrument whose Piano Roll profile is applied (e.g. "VOCALS"). */
+  instrument?: string;
 }
 
 interface CameraDiagnostics {
@@ -58,7 +65,11 @@ function webGLAvailable(): boolean {
 export function PianoRollStoryHost({
   variant,
   initialTrackIndex = 1,
+  instrument = DEFAULT_INSTRUMENT,
 }: PianoRollStoryHostProps) {
+  const SELECTED_INSTRUMENT = instrument;
+  const profile = profileForInstrument(instrument);
+  const [vocalKind, setVocalKind] = useState<VocalNoteKind>("pitched");
   const [midi] = useState<Midi>(() => createPianoRollFixture(variant));
   const [playback] = useState(() => new PlaybackService());
   const [selectedTrackIndex, setSelectedTrackIndex] =
@@ -92,7 +103,7 @@ export function PianoRollStoryHost({
       snap,
       isPlaying: snapshot.isPlaying,
     }),
-    [midi, selectedTrackIndex, snap, snapshot.isPlaying],
+    [midi, selectedTrackIndex, snap, snapshot.isPlaying, SELECTED_INSTRUMENT],
   );
   const updateCamera = useCallback((activeView: ChartView) => {
     setCamera({
@@ -122,7 +133,20 @@ export function PianoRollStoryHost({
       selectedDifficulty: SELECTED_DIFFICULTY,
       selectedTrackIndex,
     });
-  }, [midi, playback, selectedTrackIndex, snapDenominator, snapEnabled]);
+  }, [
+    midi,
+    playback,
+    selectedTrackIndex,
+    snapDenominator,
+    snapEnabled,
+    SELECTED_INSTRUMENT,
+  ]);
+
+  useEffect(() => {
+    if (!(view instanceof PianoRollView)) return;
+    view.setProfile(profile);
+    view.setVocalPlacement({ noteKind: vocalKind, phrase: null });
+  }, [profile, view, vocalKind]);
 
   useEffect(
     () => () => {
@@ -199,6 +223,12 @@ export function PianoRollStoryHost({
       data-camera-tick={camera.tick}
       data-visible-tick-span={camera.visibleTickSpan}
       data-revision={revision}
+      data-profile={profile.id}
+      data-lyrics={JSON.stringify(
+        (midi.tracks[selectedTrackIndex]?.getTextEvents() ?? [])
+          .filter(({ event }) => event.type === MetaType.Lyric)
+          .map(({ tick, event }) => [tick, event.data.text]),
+      )}
       data-note-data={noteData}
     >
       <div
@@ -231,6 +261,17 @@ export function PianoRollStoryHost({
             onChange={(value) => setSnapDenominator(Number(value))}
           />
         </div>
+        {profile.editing === "vocal" ? (
+          <div className="piano-roll-story__field">
+            <Label htmlFor="piano-roll-vocal-kind">Vocal note type</Label>
+            <Dropdown
+              id="piano-roll-vocal-kind"
+              value={vocalKind}
+              options={VOCAL_KIND_OPTIONS}
+              onChange={(value) => setVocalKind(value as VocalNoteKind)}
+            />
+          </div>
+        ) : null}
         <Button
           type="button"
           onClick={snapshot.isPlaying ? snapshot.pause : snapshot.play}

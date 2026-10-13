@@ -39,3 +39,17 @@ export const AlternateTrack: Story = {
 export const DenseTempoChange: Story = {
   args: { variant: "dense", initialTrackIndex: 1 },
 };
+
+/**
+ * Vocals profile: C2-C6 grid, pinned lanes for phrases, percussion and
+ * pitchless notes, lyrics in the header. Drag in the grid to place a pitched
+ * note and type its lyric (Enter commits, Escape removes the note, Tab moves
+ * to the next note). The amber note has no lyric yet.
+ */
+export const Vocals: Story = {
+  args: { variant: "vocals", initialTrackIndex: 1, instrument: "VOCALS" },
+};
+
+export const VocalsEmpty: Story = {
+  args: { variant: "vocals-empty", initialTrackIndex: 1, instrument: "VOCALS" },
+};

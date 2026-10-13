@@ -3,11 +3,29 @@ import { BlackPitchClasses, HeaderHeight } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import { NoteDataStore } from "./noteData";
-import { NoteGeometryCache } from "./noteGeometry";
+import { NoteGeometryCache, screenRectOf } from "./noteGeometry";
+import type { PianoRollNoteKind } from "./profile";
 import type { PianoRollContext } from "./types";
 
 const noteColor = 0x5d9cec;
 const noteSelectedColor = 0xff0000;
+const missingLyricColor = 0xf0ad4e;
+const outOfRangeRowColor = 0x101010;
+
+/** Fill colour and opacity per note kind; phrases are translucent bands. */
+const kindStyles: Record<
+  PianoRollNoteKind,
+  { color: number; opacity: number }
+> = {
+  generic: { color: noteColor, opacity: 1 },
+  pitched: { color: noteColor, opacity: 1 },
+  pitchless: { color: 0x9b7fd4, opacity: 1 },
+  percussion: { color: 0xe58e3a, opacity: 1 },
+  "phrase:vocal": { color: 0x4fc1a6, opacity: 0.55 },
+  "phrase:power-window": { color: 0xf2c94c, opacity: 0.55 },
+  "phrase:stagepower": { color: 0x7fd3ff, opacity: 0.55 },
+  unknown: { color: 0x777777, opacity: 1 },
+};
 
 /** Owns the Three scene objects and piano-roll draw order. */
 export class PianoRollRenderer {
@@ -43,12 +61,15 @@ export class PianoRollRenderer {
   public draw(width: number, height: number, playheadTick: number): void {
     this.clearScene();
 
+    const gridTop = this.coordinates.getGridTop();
     this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, 10);
-    this.addRect(0, HeaderHeight, width, height - HeaderHeight, 0x151515, 0);
+    this.addRect(0, gridTop, width, height - gridTop, 0x151515, 0);
     this.drawPitchRows(width, height);
+    this.drawPinnedLanes(width);
     this.drawGrid(width, height);
     this.drawNotes(width, height);
     this.drawKeyboard(height);
+    this.drawLyricMarkers(width);
     this.drawSelectionBox();
     this.drawCursor(width, height, playheadTick);
     this.header.draw(width);
@@ -67,7 +88,9 @@ export class PianoRollRenderer {
 
   private drawPitchRows(width: number, height: number): void {
     const rowHeight = this.coordinates.getCamera().v;
-    const rollHeight = Math.max(0, height - HeaderHeight);
+    const gridTop = this.coordinates.getGridTop();
+    const range = this.coordinates.getPitchRange();
+    const rollHeight = Math.max(0, height - gridTop);
     const camera = this.coordinates.getCamera();
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
@@ -76,13 +99,18 @@ export class PianoRollRenderer {
       const pitch = firstPitch - row;
       if (pitch < 0 || pitch > 127) continue;
       const pitchClass = ((pitch % 12) + 12) % 12;
-      const y = HeaderHeight + topOffset + row * rowHeight;
+      const y = gridTop + topOffset + row * rowHeight;
+      const inRange = pitch >= range.low && pitch <= range.high;
       this.addRect(
         this.context.getKeyboardWidth(),
         y,
         Math.max(0, width - this.context.getKeyboardWidth()),
         rowHeight,
-        BlackPitchClasses.has(pitchClass) ? 0x181818 : 0x202020,
+        !inRange
+          ? outOfRangeRowColor
+          : BlackPitchClasses.has(pitchClass)
+            ? 0x181818
+            : 0x202020,
         1,
       );
     }
@@ -90,20 +118,25 @@ export class PianoRollRenderer {
 
   private drawKeyboard(height: number): void {
     const rowHeight = this.coordinates.getCamera().v;
-    const rollHeight = Math.max(0, height - HeaderHeight);
+    const gridTop = this.coordinates.getGridTop();
+    const range = this.coordinates.getPitchRange();
+    const rollHeight = Math.max(0, height - gridTop);
     const camera = this.coordinates.getCamera();
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
     const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
     const keyboardWidth = this.context.getKeyboardWidth();
-    this.addRect(0, HeaderHeight, keyboardWidth, rollHeight, 0xd6d6d6, 2);
+    this.addRect(0, gridTop, keyboardWidth, rollHeight, 0xd6d6d6, 2);
     for (let row = 0; row < rowCount; row++) {
       const pitch = firstPitch - row;
       if (pitch < 0 || pitch > 127) continue;
       const pitchClass = ((pitch % 12) + 12) % 12;
-      const y = HeaderHeight + topOffset + row * rowHeight;
+      const y = gridTop + topOffset + row * rowHeight;
       if (BlackPitchClasses.has(pitchClass)) {
         this.addRect(0, y, keyboardWidth * 0.65, rowHeight, 0x272727, 3);
+      }
+      if (pitch < range.low || pitch > range.high) {
+        this.addRect(0, y, keyboardWidth, rowHeight, 0x000000, 4, 0.55);
       }
       this.addLine(
         [
@@ -117,7 +150,7 @@ export class PianoRollRenderer {
     }
     this.addLine(
       [
-        new THREE.Vector3(keyboardWidth, HeaderHeight, 5),
+        new THREE.Vector3(keyboardWidth, gridTop, 5),
         new THREE.Vector3(keyboardWidth, height, 5),
       ],
       0x777777,
@@ -131,12 +164,9 @@ export class PianoRollRenderer {
     const camera = this.coordinates.getCamera();
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
+    const gridTop = this.coordinates.getGridTop();
     const horizontal: THREE.Vector3[] = [];
-    for (
-      let y = HeaderHeight + topOffset;
-      y <= height + rowHeight;
-      y += rowHeight
-    ) {
+    for (let y = gridTop + topOffset; y <= height + rowHeight; y += rowHeight) {
       horizontal.push(
         new THREE.Vector3(this.context.getKeyboardWidth(), y, 6),
         new THREE.Vector3(width, y, 6),
@@ -160,6 +190,7 @@ export class PianoRollRenderer {
     )) {
       const x = this.coordinates.screenXForTick(tick);
       const target = isMeasure ? major : vertical;
+      // Beat lines run through the pinned lanes so phrases align to the grid.
       target.push(
         new THREE.Vector3(x, HeaderHeight, 7),
         new THREE.Vector3(x, height, 7),
@@ -183,10 +214,9 @@ export class PianoRollRenderer {
     const tickWidth = camera.h / this.context.getPpqn();
     const rowHeight = camera.v;
     const noteHeight = Math.max(1, rowHeight - 2);
-    const notes = this.context.getTrackNotes(
-      midi,
-      this.context.getState().selectedTrackIndex!,
-    );
+    const trackIndex = this.context.getSelectedTrackIndex();
+    if (trackIndex === null) return;
+    const notes = this.context.getTrackNotes(midi, trackIndex);
     const visibleEnd = this.coordinates.tickAtScreenX(width);
     if (
       this.geometry.needsRebuild({
@@ -217,6 +247,13 @@ export class PianoRollRenderer {
     const selection = this.context.getSelectionContext();
     const allSelected = selection.size > 0 && selection.size >= notes.length;
     const noneSelected = selection.size === 0;
+    const profile = this.context.getProfile();
+    const missingLyric =
+      profile.editing === "vocal"
+        ? this.context.getVocalMarks().missingLyric
+        : null;
+    const gridTop = this.coordinates.getGridTop();
+    const keyboardWidth = this.context.getKeyboardWidth();
     this.scene.userData.visibleNotes = this.geometry.geometry.length;
     this.scene.userData.visibleSustains = 0;
     for (const geometry of this.geometry.geometry) {
@@ -225,20 +262,86 @@ export class PianoRollRenderer {
         : noneSelected
           ? false
           : selection.isSelected(geometry.note);
-      const screenRect = this.coordinates.toScreenSpace({
-        x: geometry.x,
-        y: geometry.y,
-        width: geometry.width,
-        height: geometry.height,
-      });
+      const screenRect = screenRectOf(geometry, this.coordinates);
+      if (!screenRect) continue;
+      const kind = profile.classify(geometry.note.pitch);
+      const style = kindStyles[kind];
+      const missing = missingLyric?.has(geometry.note.midiNote.noteOn) ?? false;
+      const color = isSelected
+        ? noteSelectedColor
+        : missing
+          ? missingLyricColor
+          : style.color;
+      // Pinned notes already sit inside their lane; grid notes keep the
+      // original 1px top inset.
+      const inset = geometry.pinned ? 0 : 1;
+      const y = Math.max(screenRect.y + inset, geometry.pinned ? 0 : gridTop);
       this.addRect(
         screenRect.x,
-        screenRect.y + 1,
+        y,
         screenRect.width,
-        screenRect.height,
-        isSelected ? noteSelectedColor : noteColor,
+        screenRect.y + inset + screenRect.height - y,
+        color,
         20,
+        isSelected ? Math.max(style.opacity, 0.75) : style.opacity,
       );
+      if (kind === "phrase:vocal") {
+        // Vocal phrases also shade the grid so phrase boundaries are visible
+        // while placing notes.
+        const left = Math.max(keyboardWidth, screenRect.x);
+        this.addRect(
+          left,
+          gridTop,
+          screenRect.x + screenRect.width - left,
+          height - gridTop,
+          style.color,
+          2,
+          0.06,
+        );
+      }
+    }
+  }
+
+  /** Fixed rows under the header for phrases, percussion and pitchless. */
+  private drawPinnedLanes(width: number): void {
+    const lanes = this.context.getProfile().pinnedLanes;
+    if (lanes.length === 0) return;
+    const keyboardWidth = this.context.getKeyboardWidth();
+    const separators: THREE.Vector3[] = [];
+    lanes.forEach((lane, index) => {
+      const { y, height } = this.coordinates.laneRect(lane);
+      this.addRect(
+        keyboardWidth,
+        y,
+        Math.max(0, width - keyboardWidth),
+        height,
+        index % 2 === 0 ? 0x1a1a1a : 0x1e1e1e,
+        1,
+      );
+      this.addRect(0, y, keyboardWidth, height, 0x2a2a2a, 2);
+      separators.push(
+        new THREE.Vector3(0, y + height, 6),
+        new THREE.Vector3(width, y + height, 6),
+      );
+    });
+    this.addLine(separators, 0x333333, 1, 6);
+    const gridTop = this.coordinates.getGridTop();
+    this.addLine(
+      [new THREE.Vector3(0, gridTop, 9), new THREE.Vector3(width, gridTop, 9)],
+      0x555555,
+      1,
+      9,
+    );
+  }
+
+  /** Validation colour in the header text lane for notes with no lyric. */
+  private drawLyricMarkers(width: number): void {
+    if (this.context.getProfile().editing !== "vocal") return;
+    const keyboardWidth = this.context.getKeyboardWidth();
+    for (const tick of this.context.getVocalMarks().missingTicks) {
+      const x = this.coordinates.screenXForTick(tick);
+      if (x < keyboardWidth || x > width) continue;
+      this.addRect(x, HeaderHeight - 10, 3, 10, missingLyricColor, 11);
     }
   }
 
