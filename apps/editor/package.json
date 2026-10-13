@@ -36,6 +36,7 @@
     "fix": "0.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-select": "^5.10.2",
     "styled-system": "^5.1.5",
     "three": "^0.180.0",
     "vite-plugin-svgr": "^5.2.0"
