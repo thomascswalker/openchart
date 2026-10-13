@@ -105,27 +105,66 @@ const Toolbar = ({
     onViewChange(kind);
   };
 
+  const getNoteTypeComponent = () => {
+    let value = "";
+    let onChange = (_: string) => {};
+    let options: {
+      value: string;
+      label: string;
+    }[] = [];
+    let disabled = false;
+    switch (session.instrument) {
+      case InstrumentType.Drums: {
+        value = drumPlacementKind;
+        onChange = (value: string) =>
+          onDrumPlacementKindChange(value as DrumPlacementKind);
+        options = DRUM_NOTE_TYPE_OPTIONS;
+        break;
+      }
+      case InstrumentType.Lead:
+      case InstrumentType.Groove:
+        value = notePlacementType;
+        onChange = (value: string) =>
+          onNotePlacementTypeChange(value as HighwayNotePlacementType);
+        options = GUITAR_NOTE_TYPE_OPTIONS;
+        break;
+      default:
+        disabled = true;
+        break;
+    }
+    return (
+      <Dropdown
+        aria-label="Note type"
+        title="Note type"
+        disabled={disabled}
+        value={value}
+        onChange={onChange}
+        options={options}
+        minWidth={100}
+        maxWidth={120}
+      />
+    );
+  };
+
   return (
     <Section
-      // className="viewport-panel__toolbar highway-toolbar"
       backgroundColor="var(--primary)"
       borderBottom="var(--border-primary)"
-      padding="4px"
+      padding={2}
       gap="4px"
       flexDirection="row"
       overflowX="auto"
       overflowY="unset"
+      alignItems={"center"}
     >
       {/* View Selection */}
       <ToolButton
         Icon={PianoIcon}
-        ariaLabel="Piano Roll"
         active={activeViewId === "piano-roll"}
         onClick={() => handleViewChange("piano-roll")}
       />
       <ToolButton
         Icon={Highway3dIcon}
-        ariaLabel="Highway"
         active={activeViewId === "highway"}
         onClick={() => handleViewChange("highway")}
       />
@@ -135,8 +174,7 @@ const Toolbar = ({
       {/* Tools */}
       <DropdownButton
         label="Snap to grid"
-        ariaLabel="Toggle snap to grid"
-        icon={<SnapIcon />}
+        icon={<SnapIcon width={20} height={20} />}
         active={snapEnabled}
         onToggle={(enabled) => runAction("editor.set-snap-enabled", enabled)}
         dropdownDisabled={!snapEnabled}
@@ -150,33 +188,7 @@ const Toolbar = ({
 
       {activeViewId === "highway" && (
         <Fragment>
-          {session.instrument === InstrumentType.Drums && (
-            <Dropdown
-              aria-label="Drum note type"
-              title="Drum note type"
-              value={drumPlacementKind}
-              onChange={(value) =>
-                onDrumPlacementKindChange(value as DrumPlacementKind)
-              }
-              options={DRUM_NOTE_TYPE_OPTIONS}
-              minWidth={100}
-              maxWidth={120}
-            />
-          )}
-          {(session.instrument === InstrumentType.Lead ||
-            session.instrument === InstrumentType.Groove) && (
-            <Dropdown
-              aria-label="Note type"
-              title="Note type"
-              value={notePlacementType}
-              onChange={(value) =>
-                onNotePlacementTypeChange(value as HighwayNotePlacementType)
-              }
-              options={GUITAR_NOTE_TYPE_OPTIONS}
-              minWidth={100}
-              maxWidth={140}
-            />
-          )}
+          {getNoteTypeComponent()}
           <VerticalSeparator />
 
           <ToolButton

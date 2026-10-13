@@ -20,15 +20,15 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+/* body {
   background: #181818;
   color: #e8e8e8;
-}
+} */
 
 p {
   margin: 0;
 }
-
+/* 
 button {
   padding: 6px 12px;
 
@@ -48,7 +48,7 @@ button:hover:not(:disabled) {
 button:disabled {
   opacity: 0.4;
   cursor: default;
-}
+} */
 
 /* Application */
 

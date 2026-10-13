@@ -55,7 +55,6 @@ const DropdownButton = ({
       }}
     >
       <Button
-        maxHeight={40}
         borderRadius={4}
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
@@ -65,12 +64,12 @@ const DropdownButton = ({
         disabled={disabled}
         ariaLabel={ariaLabel ?? label}
         onClick={toggle}
+        maxHeight={20}
       >
         {icon}
         <span>{selectedLabel}</span>
       </Button>
       <Dropdown
-        aria-label={`${label} options`}
         options={options}
         value={value}
         onChange={onChange}

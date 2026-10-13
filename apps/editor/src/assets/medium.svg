@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 1000 1000" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(1,0,0,1,-2100,-2393)">
-        <rect id="medium" x="2100" y="2393" width="1000" height="1000" style="fill:none;"/>
-        <g id="medium1" affinity:id="medium">
-            <g transform="matrix(1,0,0,1,2087.835601,2383.564149)">
-                <text x="82.086px" y="983.752px" style="font-family:'Impact', sans-serif;font-stretch:condensed;font-size:1200px;fill:rgb(127,127,127);stroke:black;stroke-width:25px;">M</text>
+<svg width="100%" height="100%" viewBox="0 0 17 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-37,-58)">
+        <g id="medium" transform="matrix(0.016,0,0,0.016,3.937381,19.712)">
+            <rect x="2100" y="2393" width="1000" height="1000" style="fill:none;"/>
+            <g transform="matrix(1,0,0,1,2099.545521,2395.274068)">
+                <text x="13.76px" y="919.601px" style="font-family:'Roboto-Light', 'Roboto';font-weight:300;font-size:1125px;fill:rgb(233,233,233);">M</text>
             </g>
         </g>
     </g>
