@@ -1,6 +1,6 @@
 # OpenChart
 
-TypeScript libraries and applications for editing and reviewing MIDI files for rhythm games.
+TypeScript application (web/desktop) and libraries for editing and reviewing MIDI files for rhythm games.
 
 ![Preview](./image.png)
 
