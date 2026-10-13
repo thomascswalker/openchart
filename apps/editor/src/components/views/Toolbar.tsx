@@ -17,9 +17,9 @@ import {
   VocalsIcon,
   StagepowerIcon,
   SoloIcon,
-  VocalPhraseIcon,
-  PowerWindowIcon,
-  PitchFeedbackIcon,
+  PhraseIcon,
+  ActivateIcon,
+  VolumeIcon,
 } from "../shared/Icon/Icon";
 import { VerticalSeparator } from "../shared/Separator";
 import { Dropdown } from "../shared/Dropdown";
@@ -83,8 +83,8 @@ const VOCAL_NOTE_TYPE_OPTIONS: { value: VocalNoteKind; label: string }[] = [
 ];
 
 const VOCAL_PHRASES = [
-  ["vocal", VocalPhraseIcon, "Vocal phrase (T)"],
-  ["power-window", PowerWindowIcon, "Power window (Y)"],
+  ["vocal", PhraseIcon, "Vocal phrase (T)"],
+  ["power-window", ActivateIcon, "Power window (Y)"],
   ["stagepower", StagepowerIcon, "Stagepower phrase (R)"],
 ] as const satisfies readonly (readonly [VocalPhraseKind, unknown, string])[];
 
@@ -272,7 +272,7 @@ const Toolbar = ({
           ))}
           <VerticalSeparator />
           <ToolButton
-            Icon={PitchFeedbackIcon}
+            Icon={VolumeIcon}
             title="Vocal pitch feedback (P)"
             ariaLabel="Vocal pitch feedback"
             active={isVocalFeedbackEnabled}
