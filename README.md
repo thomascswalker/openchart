@@ -2,6 +2,8 @@
 
 TypeScript libraries and applications for editing and reviewing MIDI files for rhythm games.
 
+![Preview](./image.png)
+
 ## What's in this repo
 
 | Type    | Name                 | Description                                                                                                                                                                     |
