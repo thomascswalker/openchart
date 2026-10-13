@@ -1,5 +1,6 @@
 import { Button } from "./Button";
 import type { ButtonProps } from "./Button";
+import { RemoveIcon } from "../Icon/Icon";
 import styles from "./button.module.css";
 
 type CloseButtonProps = ButtonProps;
@@ -7,7 +8,7 @@ type CloseButtonProps = ButtonProps;
 const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
   return (
     <Button onClick={onClick} className={styles["ui-button-close"]} {...props}>
-      x
+      <RemoveIcon />
     </Button>
   );
 };

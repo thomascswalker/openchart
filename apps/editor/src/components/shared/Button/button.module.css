@@ -1,54 +1,50 @@
+/* Base */
 .ui-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
 
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0px 12px;
+  background: var(--primary);
 
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px 12px;
+
+  border: 1px solid var(--border);
   border-radius: 4px;
+
+  cursor: pointer;
+
+  transition: all 0.15s ease-in-out;
 }
 
+/* Flat */
 .ui-button-flat {
   background: transparent;
   border: none;
 }
 
+/* Hover (enabled) */
 .ui-button:hover:not(:disabled) {
   background: var(--neutral-70);
 }
 
+/* Base disabled */
 .ui-button:disabled {
-  cursor: default;
+  cursor: not-allowed;
   color: var(--netural-90);
   background: var(--neutral-90);
 }
 
-/* .ui-button[aria-pressed="false"]:not(.ui-button-close) {
-  border-bottom: 0 !important;
-} */
-
+/* Active */
 .ui-button-active {
-  position: relative;
-  background: transparent;
-  border-bottom: 0 !important;
+  background-color: var(--secondary);
 }
 
-.ui-button-active::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background: var(--secondary);
-  content: "";
-  pointer-events: none;
-}
-
+/* Active hover */
 .ui-button-active:hover:not(:disabled) {
-  background: var(--neutral-70);
+  background-color: var(--secondary-hover);
 }
 
 .ui-button-close {
@@ -64,21 +60,21 @@
   padding: 0px;
 
   border: 1px solid transparent;
-  border-radius: 4px;
   background: transparent;
 
-  color: #888;
-  font-size: 12px;
+  color: var(--neutral-50);
+  font-size: 16px;
   cursor: pointer;
   flex-shrink: 0;
-
-  transition: all 0.15s ease-in-out;
 }
 
 .ui-button-close:hover {
-  background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.4);
   color: #ef4444;
+}
+
+.ui-button-close:hover(:disabled) {
+  background: var(--neutral-50);
 }
 
 .ui-button-close:active {

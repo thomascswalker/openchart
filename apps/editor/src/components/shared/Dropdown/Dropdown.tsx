@@ -162,7 +162,12 @@ const Dropdown = ({
     if (!choices) return;
 
     choices.setChoices(
-      options.map((option) => ({
+      [
+        ...(placeholder
+          ? [{ value: "", label: placeholder, disabled: true }]
+          : []),
+        ...options,
+      ].map((option) => ({
         ...option,
         selected: option.value === value,
       })),
@@ -174,33 +179,17 @@ const Dropdown = ({
     );
     if (disabled) choices.disable();
     else choices.enable();
-  }, [choices, options, value, disabled]);
+  }, [choices, options, value, placeholder, disabled]);
 
   return (
     <div className={classNames(styles.dropdown, className)} style={style}>
       <select
         ref={selectRef}
-        value={value}
         disabled={disabled}
         aria-label={selectProps["aria-label"]}
         onChange={(event) => onChange(event.currentTarget.value)}
         {...selectProps}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
+      />
     </div>
   );
 };

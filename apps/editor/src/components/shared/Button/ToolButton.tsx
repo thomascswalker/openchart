@@ -6,25 +6,27 @@ interface ToolButtonProps extends ButtonProps {
   Icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
 }
 
+const ToolbarSize = 24;
+const IconSize = ToolbarSize - 4;
+
 const ToolButton = ({ Icon, children, ...rest }: ToolButtonProps) => {
   const hasText = Boolean(children);
-  const maxWidth = hasText ? undefined : 40;
-
-  const padding = "--space-small";
-  const paddingRight = hasText ? `var(${padding})` : 0;
-  const paddingLeft = hasText ? `calc(var(${padding}) / 2)` : 0;
+  const maxWidth = hasText ? undefined : ToolbarSize;
 
   return (
     <Button
+      width={ToolbarSize}
+      height={ToolbarSize}
+      minWidth={0}
+      minHeight={0}
       maxWidth={maxWidth}
-      maxHeight={40}
+      maxHeight={ToolbarSize}
       borderRadius={4}
       border="none"
-      paddingRight={paddingRight}
-      paddingLeft={paddingLeft}
+      padding={0}
       {...rest}
     >
-      <Icon />
+      <Icon width={IconSize} height={IconSize} />
       {children}
     </Button>
   );

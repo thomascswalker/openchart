@@ -56,4 +56,9 @@ export const {
   StagepowerIcon,
   SplitIcon,
   SettingsIcon,
+  RemoveIcon,
+  AddIcon,
+  DownIcon,
+  RightIcon,
+  ElipsesIcon,
 } = Icons;
