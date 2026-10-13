@@ -1,18 +1,14 @@
-/* Base typography and sizing for the dropdown control. */
 .dropdown {
   min-width: 0;
   font-family: var(--font-primary);
   font-size: var(--font-size);
   font-weight: var(--font-weight);
-  position: relative;
 }
 
-/* Remove the browser's native select arrow so the custom arrow can show. */
-.dropdown select {
-  appearance: none;
+.dropdown :global(.choices) {
+  margin-bottom: 0;
 }
 
-/* Style the closed, single-select control. */
 .dropdown :global(.choices[data-type*="select-one"] .choices__inner) {
   display: flex;
   align-items: center;
@@ -27,37 +23,27 @@
   color: var(--text-primary);
 }
 
-/* Vertically center the selected value in the closed control. */
-.dropdown :global(.choices__list--single),
+.dropdown :global(.choices__list--single) {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+}
+
 .dropdown :global(.choices__list--single .choices__item) {
   display: flex;
   align-items: center;
   height: 100%;
 }
 
-.dropdown :global(.choices__list--single) {
-  padding: 0;
-}
-
-/* Use the right arrow while closed. */
 .dropdown :global(.choices[data-type*="select-one"]::after) {
-  content: "";
-  width: 16px;
-  height: 16px;
-  margin-top: -8px;
-  border: 0;
-  background-image: var(--dropdown-arrow-closed);
-  background-position: center;
-  background-size: contain;
-  background-repeat: no-repeat;
-  display: none;
+  border-color: currentColor transparent transparent;
 }
 
 .dropdown :global(.choices.is-open[data-type*="select-one"]::after) {
-  background-image: var(--dropdown-arrow-open);
+  border-color: transparent transparent currentColor;
 }
 
-/* Style the dropdown menu and its expanded-list variant. */
 .dropdown :global(.choices__list--dropdown),
 .dropdown :global(.choices__list[aria-expanded]) {
   z-index: 5;
@@ -67,7 +53,6 @@
   color: inherit;
 }
 
-/* Give each menu option a consistent height and alignment. */
 .dropdown :global(.choices__list--dropdown .choices__item),
 .dropdown :global(.choices__list[aria-expanded] .choices__item) {
   display: flex;
@@ -77,7 +62,6 @@
   padding: 0 8px;
 }
 
-/* Highlight the currently focused menu option. */
 .dropdown
   :global(.choices__list--dropdown .choices__item--selectable.is-highlighted),
 .dropdown
@@ -87,7 +71,6 @@
   background: var(--neutral-80);
 }
 
-/* Distinguish a selected option when it is not highlighted. */
 .dropdown
   :global(
     .choices__list--dropdown
@@ -102,13 +85,11 @@
   background: var(--neutral-85);
 }
 
-/* Dim the closed control when Choices.js disables it. */
 .dropdown :global(.choices.is-disabled .choices__inner) {
   opacity: 0.6;
   cursor: default;
 }
 
-/* Layout for a button paired with a dropdown selector. */
 .dropdown-button {
   position: relative;
   display: inline-flex;
@@ -121,7 +102,6 @@
   background: transparent;
 }
 
-/* Main action button that displays the current value. */
 .dropdown-button > .dropdown-button__value {
   flex: 1 1 auto;
   min-width: 0;
@@ -134,46 +114,44 @@
   gap: 8px;
 }
 
-/* Allow the value button's icon and label to shrink when space is limited. */
 .dropdown-button__value > svg,
 .dropdown-button__value > span {
   flex-shrink: 1;
 }
 
-/* Keep the selected value button transparent by default. */
 .dropdown-button > .dropdown-button__value[aria-pressed="true"] {
   background: transparent;
 }
 
-/* Apply the same hover treatment to pressed and unpressed enabled buttons. */
-.dropdown-button > .dropdown-button__value:hover:not(:disabled) {
+.dropdown-button
+  > .dropdown-button__value:not([aria-pressed="true"]):hover:not(:disabled) {
   background: var(--neutral-80);
 }
 
-/* Show a distinct background when the value button is disabled. */
+.dropdown-button
+  > .dropdown-button__value[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--neutral-80);
+}
+
 .dropdown-button > .dropdown-button__value:disabled {
   background: var(--neutral-90);
 }
 
-/* Truncate long value labels instead of letting them expand the button. */
 .dropdown-button__value > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Reserve space for the dropdown arrow control. */
 .dropdown-button > .dropdown-button__select {
   flex: 0 0 30px;
 }
 
-/* Position the nested Choices.js control within the button layout. */
 .dropdown-button__select :global(.choices) {
   position: static;
   height: var(--size-med);
 }
 
-/* Size and align the arrow area's visible control. */
 .dropdown-button__select :global(.choices__inner) {
   box-sizing: border-box;
   justify-content: center;
@@ -186,40 +164,33 @@
   background: transparent;
 }
 
-/* Hide the selected-value area; this control only displays the arrow. */
 .dropdown-button__select :global(.choices__list--single) {
   display: none;
 }
 
-/* Align the dropdown arrow within the narrow selector area. */
 .dropdown-button__select :global(.choices[data-type*="select-one"]::after) {
   right: 9px;
 }
 
-/* Highlight the arrow area when the selector is hovered. */
 .dropdown-button__select:hover :global(.choices__inner) {
   background: var(--neutral-70);
 }
 
-/* Keep the arrow area transparent while its menu is open. */
 .dropdown-button__select :global(.choices.is-open .choices__inner) {
   background: transparent;
 }
 
-/* Set the disabled selector's colors without applying the usual dimming. */
 .dropdown-button__select :global(.choices.is-disabled .choices__inner) {
   color: rgb(50, 50, 50);
   background: rgb(40, 40, 40);
   opacity: 1;
 }
 
-/* Set the arrow color for the disabled selector. */
 .dropdown-button__select
   :global(.choices.is-disabled[data-type*="select-one"]::after) {
   border-color: rgb(150, 150, 150) transparent transparent;
 }
 
-/* Position and size the menu opened from the narrow selector area. */
 .dropdown-button__select :global(.choices__list--dropdown),
 .dropdown-button__select :global(.choices__list[aria-expanded]) {
   right: -1px;
@@ -228,18 +199,4 @@
   min-width: 0;
   box-sizing: border-box;
   border-radius: 4px;
-}
-
-.arrow {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  width: 16px;
-  height: 16px;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.dropdown-button__select .arrow {
-  right: 9px;
 }
