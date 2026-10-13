@@ -69,6 +69,12 @@ const MENUS: MenuDefinition[] = [
         accelerator: "N",
         checkable: true,
       },
+      {
+        id: "playback.toggle-vocal-pitch-feedback",
+        label: "Vocal Pitch Feedback",
+        accelerator: "P",
+        checkable: true,
+      },
     ],
   },
   {

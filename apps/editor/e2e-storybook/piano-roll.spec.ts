@@ -6,6 +6,12 @@ const EMPTY_STORY =
   "/iframe.html?id=views-piano-roll--empty-chart&viewMode=story";
 const TEMPO_STORY =
   "/iframe.html?id=views-piano-roll--dense-tempo-change&viewMode=story";
+const VOCALS_STORY = "/iframe.html?id=views-piano-roll--vocals&viewMode=story";
+
+/** Vocals layout: keyboard width, then 120 px per quarter (4 ticks/px). */
+const KEYBOARD_WIDTH = 64;
+const VOCAL_GRID_TOP = 36 + 5 * 14;
+const xForTick = (tick: number) => KEYBOARD_WIDTH + tick / 4;
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -259,4 +265,67 @@ test("empty chart keeps the grid but disables playback; remount resets state", a
     ).toHaveCount(1);
     await expect(page.locator(".piano-roll-header-input")).toHaveCount(1);
   }
+});
+
+test.describe("vocals profile", () => {
+  test("renders lanes and lyrics, and prompts for a new note's lyric", async ({
+    page,
+  }) => {
+    await page.goto(VOCALS_STORY);
+    const story = page.getByTestId("piano-roll-story");
+    const renderer = page.locator(".piano-roll-story__renderer");
+    const canvas = renderer.locator("canvas");
+    await expect(canvas).toBeVisible();
+    await expect(story).toHaveAttribute("data-profile", "vocals");
+    await expect(renderer.getByText("Sing", { exact: true })).toBeAttached();
+    await expect(renderer.getByText("Phrase", { exact: true })).toBeAttached();
+    await expect(renderer.getByText("C4", { exact: true })).toBeAttached();
+    // Vocal headers show lyrics only, never "[section New]" on click.
+    await expect(page.getByTestId("note-count")).toHaveText("Notes: 11");
+
+    const bounds = await canvas.boundingBox();
+    if (!bounds) throw new Error("Piano-roll canvas has no layout bounds");
+    const y = bounds.y + VOCAL_GRID_TOP + 120;
+    // Ticks 1440-1920 are free in the fixture.
+    await page.mouse.move(bounds.x + xForTick(1460), y);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + xForTick(1900), y, { steps: 4 });
+    await page.mouse.up();
+
+    const input = page.locator(".piano-roll-header-input");
+    await expect(input).toBeVisible();
+    await expect(input).toBeFocused();
+    await expect(page.getByTestId("note-count")).toHaveText("Notes: 12");
+    await page.keyboard.type("née");
+    await page.keyboard.press("Enter");
+
+    await expect
+      .poll(async () => JSON.parse((await story.getAttribute("data-lyrics"))!))
+      .toContainEqual([1440, "née"]);
+    await expect(page.getByTestId("edit-transaction")).toHaveText(
+      "Transaction: Ready",
+    );
+  });
+
+  test("Escape removes a just-created note and its pending lyric", async ({
+    page,
+  }) => {
+    await page.goto(VOCALS_STORY);
+    const story = page.getByTestId("piano-roll-story");
+    const canvas = page.locator(".piano-roll-story__renderer canvas");
+    await expect(canvas).toBeVisible();
+    const lyricsBefore = await story.getAttribute("data-lyrics");
+    const bounds = await canvas.boundingBox();
+    if (!bounds) throw new Error("Piano-roll canvas has no layout bounds");
+    const y = bounds.y + VOCAL_GRID_TOP + 120;
+    await page.mouse.move(bounds.x + xForTick(1460), y);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + xForTick(1900), y, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator(".piano-roll-header-input")).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("note-count")).toHaveText("Notes: 11");
+    await expect(story).toHaveAttribute("data-lyrics", lyricsBefore ?? "");
+  });
 });

@@ -7,7 +7,12 @@ import {
   useState,
 } from "react";
 import type { Midi } from "@openchart/core";
-import { Difficulty, InstrumentType, SongView } from "@openchart/views";
+import {
+  Difficulty,
+  InstrumentType,
+  SongView,
+  type VocalPhraseKind,
+} from "@openchart/views";
 import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
@@ -28,6 +33,11 @@ import {
   type HighwayMode,
   type HighwayNotePlacementType,
 } from "./views/highway";
+import {
+  PianoRollView,
+  profileForInstrument,
+  type VocalPlacement,
+} from "./views/pianoRoll";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
 import { Button, Checkbox, CloseButton, ToolButton } from "./shared/Button";
@@ -165,6 +175,11 @@ function ViewportPanel({
     useState<DrumPlacementKind>("pad");
   const [notePlacementType, setNotePlacementType] =
     useState<HighwayNotePlacementType>("normal");
+  const [vocalPlacement, setVocalPlacement] = useState<VocalPlacement>({
+    noteKind: "pitched",
+    phrase: null,
+  });
+  const pianoRollProfile = profileForInstrument(session.instrument);
   const activeView =
     CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
   const engineOptions = useMemo<EngineOptions>(() => {
@@ -183,6 +198,7 @@ function ViewportPanel({
   };
 
   const getCameraTick = useEffectEvent(() => session.camera.tick);
+  const getPianoRollCamera = useEffectEvent(() => session.camera.pianoRoll);
 
   useEffect(() => {
     onChartViewChange(session.id, chartView);
@@ -205,6 +221,29 @@ function ViewportPanel({
         isTypingTarget(event.target)
       )
         return;
+      if (
+        active &&
+        session.view === "piano-roll" &&
+        pianoRollProfile.editing === "vocal"
+      ) {
+        const key = event.key.toLowerCase();
+        const phrase: VocalPhraseKind | null =
+          key === "r"
+            ? "stagepower"
+            : key === "t"
+              ? "vocal"
+              : key === "y"
+                ? "power-window"
+                : null;
+        if (phrase) {
+          event.preventDefault();
+          setVocalPlacement((current) => ({
+            ...current,
+            phrase: current.phrase === phrase ? null : phrase,
+          }));
+          return;
+        }
+      }
       if (active && session.view === "highway") {
         const key = event.key.toLowerCase();
         const mode =
@@ -236,7 +275,7 @@ function ViewportPanel({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [active, session.view]);
+  }, [active, session.view, pianoRollProfile.editing]);
 
   useEffect(() => {
     const view = chartView;
@@ -251,13 +290,44 @@ function ViewportPanel({
     view.onEditEnd = () => {
       runAction("history.end-edit");
     };
+    // Must be synchronous: the controller reopens editing right after.
+    view.onEditRollback = () => {
+      try {
+        return (
+          Platform.actions.executeAction<boolean>("history.rollback-edit") ===
+          true
+        );
+      } catch {
+        return false;
+      }
+    };
+    if (view instanceof PianoRollView) {
+      view.onNotePreview = (notes) => {
+        const playback = Platform.services.get<PlaybackService>("playback");
+        if (!playback.getSnapshot().isVocalPitchFeedbackEnabled) return;
+        playback.previewNotes(
+          notes.map((note) => ({
+            pitch: note.pitch,
+            startTick: note.tick,
+            endTick: note.tick + note.durationTicks,
+            velocity: note.velocity,
+          })),
+          // The settings preview range (36-60 by default) is narrower than
+          // the vocal range, so pass the profile's range explicitly.
+          view.getProfile().pitchRange,
+        );
+      };
+    }
     view.onSeekRequest = (tick) => runAction("playback.set-tick", tick);
     view.onSnapDenominatorChange = (denominator) =>
       runAction("editor.set-snap-denominator", denominator);
     const unsubscribeCameraChange = view.subscribeCameraChange(() => {
       updateCameraData(articleRef.current, view);
       runAction("editor.update-viewport", session.id, {
-        camera: { tick: view.getCameraTick() },
+        camera:
+          view instanceof PianoRollView
+            ? { tick: view.getCameraTick(), pianoRoll: view.getCameraState() }
+            : { tick: view.getCameraTick() },
       });
     });
     return () => {
@@ -265,6 +335,8 @@ function ViewportPanel({
       view.onNotesChanged = null;
       view.onEditStart = null;
       view.onEditEnd = null;
+      view.onEditRollback = null;
+      if (view instanceof PianoRollView) view.onNotePreview = null;
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
     };
@@ -296,6 +368,20 @@ function ViewportPanel({
       chartView.setNotePlacementType(notePlacementType);
     }
   }, [chartView, highwayMode, drumPlacementKind, notePlacementType]);
+
+  useEffect(() => {
+    if (!(chartView instanceof PianoRollView)) return;
+    // Same pattern as HighwayView.setMode(): swap behaviour on the live
+    // renderer instead of recreating it, so the camera survives.
+    chartView.setProfile(pianoRollProfile);
+    chartView.applyCameraState(getPianoRollCamera());
+  }, [chartView, pianoRollProfile]);
+
+  useEffect(() => {
+    if (chartView instanceof PianoRollView) {
+      chartView.setVocalPlacement(vocalPlacement);
+    }
+  }, [chartView, vocalPlacement]);
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {
@@ -375,6 +461,8 @@ function ViewportPanel({
         onDrumPlacementKindChange={setDrumPlacementKind}
         notePlacementType={notePlacementType}
         onNotePlacementTypeChange={setNotePlacementType}
+        vocalPlacement={vocalPlacement}
+        onVocalPlacementChange={setVocalPlacement}
       />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {showTrackList && <TrackList viewportId={session.id} />}

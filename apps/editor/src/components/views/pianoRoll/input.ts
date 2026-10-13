@@ -4,7 +4,7 @@ import { HeaderHeight } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import type { NoteEditingController } from "./noteEditing";
-import type { NoteGeometryCache } from "./noteGeometry";
+import { screenRectOf, type NoteGeometryCache } from "./noteGeometry";
 import {
   PointerButton,
   type PointerButton as PointerButtonType,
@@ -353,7 +353,7 @@ export class PianoRollInputController {
         } else {
           this.coordinates.zoomVertical(
             this.coordinates.getZoomFactor(-event.deltaY),
-            pos.y - HeaderHeight,
+            pos.y - (this.coordinates.getGridTop?.() ?? HeaderHeight),
           );
         }
         break;
@@ -386,14 +386,10 @@ export class PianoRollInputController {
       height: pointer.position.y - this.clickStart.y,
     };
     for (const geo of this.geometry.geometry) {
-      const screenRect = this.coordinates.toScreenSpace({
-        x: geo.x,
-        y: geo.y,
-        width: geo.width,
-        height: geo.height,
-      });
-      if (!selection.intersects(screenRect)) selection.delete(geo.note);
-      else selection.add(geo.note);
+      const screenRect = screenRectOf(geo, this.coordinates);
+      if (!screenRect || !selection.intersects(screenRect)) {
+        selection.delete(geo.note);
+      } else selection.add(geo.note);
     }
   }
 

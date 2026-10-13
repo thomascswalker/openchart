@@ -25,8 +25,29 @@ const GlobalViewConfigSchema = BaseTrackViewConfigSchema.extend({
   notes: z.record(z.string(), z.number()),
 });
 
+/**
+ * Vocal-only settings. Special note pitches (phrases, percussion, pitchless)
+ * live in `notes` like every other instrument so `getPhrasePitch` and the
+ * MIDI mapping stay config-driven; this block holds the pitched range and the
+ * choice of which pitchless pitch the Place tool writes.
+ */
+const VocalTrackConfigSchema = z.object({
+  /** Inclusive pitched-note range. Default C2 (36) to C6 (84), with C4 = 60. */
+  range: z.object({
+    low: z.number().int().min(0).max(127),
+    high: z.number().int().min(0).max(127),
+  }),
+  /** `notes` key of the pitch that new pitchless notes are written to. */
+  pitchlessPlacement: z
+    .union([z.literal("pitchlessHigh"), z.literal("pitchlessLow")])
+    .default("pitchlessHigh"),
+});
+
 const InstrumentTrackViewConfigSchema = BaseTrackViewConfigSchema.extend({
   type: z.literal("instrument"),
+  /** False for instruments without Easy/Medium/Hard/Expert charts (vocals). */
+  hasDifficulties: z.boolean().optional(),
+  vocals: VocalTrackConfigSchema.optional(),
   offsets: z.optional(
     z.object({
       expert: z.number().int().default(96),
@@ -53,6 +74,7 @@ export type InstrumentTrackViewConfig = z.infer<
   typeof InstrumentTrackViewConfigSchema
 >;
 export type TrackViewConfig = z.infer<typeof TrackViewConfigSchema>;
+export type VocalTrackConfig = z.infer<typeof VocalTrackConfigSchema>;
 export type SongViewConfig = z.infer<typeof SongViewConfigSchema>;
 
 export interface TrackDescriptor {
@@ -85,6 +107,23 @@ export function describeTrack(config: TrackViewConfig): TrackDescriptor {
   };
 }
 
+/** True when a configured instrument has Easy-Expert difficulty charts. */
+export function hasDifficulties(config: TrackViewConfig): boolean {
+  return config.type !== "instrument"
+    ? false
+    : (config as InstrumentTrackViewConfig).hasDifficulties !== false;
+}
+
+/** True when the configured track uses the vocal data model. */
+export function isVocalTrackConfig(
+  config: TrackViewConfig,
+): config is InstrumentTrackViewConfig & { vocals: VocalTrackConfig } {
+  return (
+    config.type === "instrument" &&
+    (config as InstrumentTrackViewConfig).vocals !== undefined
+  );
+}
+
 export function loadConfig(content: string): SongViewConfig | undefined {
   const data = JSON.parse(content);
   try {
@@ -96,3 +135,29 @@ export function loadConfig(content: string): SongViewConfig | undefined {
 }
 
 export const defaultConfig = loadConfig(JSON.stringify(defaultConfigData))!;
+
+/**
+ * Looks up a configured track by display name or key. Used by services that
+ * only know the viewport's instrument string (e.g. to force the Piano Roll for
+ * instruments without difficulties).
+ */
+export function findTrackConfig(
+  nameOrKey: string,
+  config: SongViewConfig = defaultConfig,
+): TrackViewConfig | undefined {
+  return config.tracks.find(
+    (track) =>
+      track.name === nameOrKey || describeTrack(track).key === nameOrKey,
+  );
+}
+
+/** True when the named instrument can only be edited in the Piano Roll. */
+export function requiresPianoRoll(
+  nameOrKey: string,
+  config: SongViewConfig = defaultConfig,
+): boolean {
+  const track = findTrackConfig(nameOrKey, config);
+  return track !== undefined && track.type === "instrument"
+    ? !hasDifficulties(track)
+    : false;
+}

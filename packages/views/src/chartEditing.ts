@@ -2,13 +2,22 @@ import type { MidiMetaEvent, MidiNote, MidiTrack } from "@openchart/core";
 import { MetaType } from "@openchart/core";
 import type { TrackDescriptor } from "./config.js";
 
-export type EditablePhraseKind = "stagepower" | "solo";
+export type EditablePhraseKind =
+  "stagepower" | "solo" | "vocal" | "power-window";
 
 export interface NotePhrase {
   start: number;
   end: number;
-  kind: "stagepower" | "solo" | "forced-strum" | "forced-hopo" | "forced-tap";
+  kind: EditablePhraseKind | "forced-strum" | "forced-hopo" | "forced-tap";
 }
+
+/** `notes` config key that stores each editable phrase's MIDI pitch. */
+export const PHRASE_NOTE_KEYS: Record<EditablePhraseKind, string> = {
+  stagepower: "power",
+  solo: "solo",
+  vocal: "vocalPhrase",
+  "power-window": "powerWindow",
+};
 
 export interface MidiNotePhrase extends NotePhrase {
   note: MidiNote;
@@ -18,8 +27,7 @@ export function getPhrasePitch(
   descriptor: TrackDescriptor,
   kind: EditablePhraseKind,
 ): number | null {
-  const key = kind === "stagepower" ? "power" : "solo";
-  const pitch = descriptor.config.notes[key];
+  const pitch = descriptor.config.notes[PHRASE_NOTE_KEYS[kind]];
   return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 ? pitch : null;
 }
 

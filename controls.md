@@ -2,16 +2,18 @@
 
 ## General
 
-| Hotkey                 | Description         |
-| ---------------------- | ------------------- |
-| **`M`**                | Toggle metronome    |
-| **`Spacebar`**         | Play/pause          |
-| **`Ctrl + O`**         | Open file           |
-| **`Ctrl + N`**         | New file            |
-| **`Ctrl + S`**         | Save file           |
-| **`Ctrl + Shift + S`** | Save file as        |
-| **`Ctrl + ,`**         | Open settings       |
-| **`Escape`**           | Close dialog window |
+| Hotkey                 | Description                 |
+| ---------------------- | --------------------------- |
+| **`M`**                | Toggle metronome            |
+| **`N`**                | Toggle highway clap         |
+| **`P`**                | Toggle vocal pitch feedback |
+| **`Spacebar`**         | Play/pause                  |
+| **`Ctrl + O`**         | Open file                   |
+| **`Ctrl + N`**         | New file                    |
+| **`Ctrl + S`**         | Save file                   |
+| **`Ctrl + Shift + S`** | Save file as                |
+| **`Ctrl + ,`**         | Open settings               |
+| **`Escape`**           | Close dialog window         |
 
 ## Piano Roll
 
@@ -21,6 +23,23 @@
 | **`LMB + Drag`** | Mouse over note      | Move note(s)       |
 | **`LMB + Drag`** | Mouse over note edge | Modify note length |
 | **`RMB + Drag`** |                      | Marquee select     |
+
+### Vocals
+
+See [Vocals](docs/vocals.md) for the full editing model.
+
+| Action           | Context               | Description                              |
+| ---------------- | --------------------- | ---------------------------------------- |
+| **`LMB + Drag`** | Grid                  | Add note of the selected type            |
+| **`LMB + Drag`** | Pinned lane           | Add phrase, percussion or pitchless note |
+| **`Enter`**      | Lyric input           | Commit lyric                             |
+| **`Escape`**     | Lyric input, new note | Remove the new note                      |
+| **`Tab`**        | Lyric input           | Commit and edit the next note's lyric    |
+| **`Up/Down`**    | Note(s) selected      | Transpose pitched notes                  |
+| **`R`**          |                       | Toggle stagepower phrase tool            |
+| **`T`**          |                       | Toggle vocal phrase tool                 |
+| **`Y`**          |                       | Toggle power window tool                 |
+| **`P`**          |                       | Toggle vocal pitch feedback              |
 
 ## Highway
 

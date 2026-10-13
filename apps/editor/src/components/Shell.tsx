@@ -24,6 +24,11 @@ const Shell = () => {
     () => playbackService.getSnapshot().isClapEnabled,
     () => playbackService.getSnapshot().isClapEnabled,
   );
+  const isVocalPitchFeedbackEnabled = useSyncExternalStore(
+    playbackService.subscribe,
+    () => playbackService.getSnapshot().isVocalPitchFeedbackEnabled,
+    () => playbackService.getSnapshot().isVocalPitchFeedbackEnabled,
+  );
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
   useLayoutEffect(() => {
     clipboard.sync();
@@ -52,6 +57,9 @@ const Shell = () => {
             break;
           case "n":
             action = "playback.toggle-clap";
+            break;
+          case "p":
+            action = "playback.toggle-vocal-pitch-feedback";
             break;
         }
       } else {
@@ -106,7 +114,9 @@ const Shell = () => {
             ? isMetronomeEnabled
             : command === "playback.toggle-clap"
               ? isClapEnabled
-              : false
+              : command === "playback.toggle-vocal-pitch-feedback"
+                ? isVocalPitchFeedbackEnabled
+                : false
         }
         onCommand={runMenuCommand}
       />

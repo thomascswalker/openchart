@@ -1,9 +1,17 @@
-import type {
-  Midi,
-  MidiTrack,
-  TempoChange,
-  TimeSignatureChange,
+import {
+  MetaType,
+  type Midi,
+  type MidiChannelEvent,
+  type MidiTrack,
+  type TempoChange,
+  type TimeSignatureChange,
 } from "@openchart/core";
+import {
+  getVocalNotes,
+  setVocalLyric,
+  validateVocalTrack,
+  vocalKindNeedsLyric,
+} from "@openchart/views";
 import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
@@ -11,13 +19,32 @@ import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import { PianoRollInputController } from "./input";
+import { PianoRollLabels } from "./labels";
 import { NoteDataStore } from "./noteData";
 import { NoteEditingController } from "./noteEditing";
 import { NoteGeometryCache } from "./noteGeometry";
 import { PointerContext } from "./pointer";
+import { GENERIC_PROFILE, type PianoRollProfile } from "./profile";
 import { PianoRollRenderer } from "./rendering";
 import { SelectionContext } from "./selection";
-import type { PianoRollCamera, PianoRollContext, PianoRollNote } from "./types";
+import type {
+  PianoRollCamera,
+  PianoRollContext,
+  PianoRollNote,
+  VocalMarks,
+  VocalPlacement,
+} from "./types";
+
+/** Serializable vertical/zoom camera, persisted in ViewportCameraState. */
+export interface PianoRollCameraState {
+  profile: PianoRollProfile["id"];
+  y: number;
+  v: number;
+  h: number;
+}
+
+const DEFAULT_CAMERA = { y: 84, v: 18 } as const;
+const EMPTY_MARKS: VocalMarks = { missingLyric: new Set(), missingTicks: [] };
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public constructor(engineOptions?: EngineOptions) {
@@ -32,7 +59,29 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     0.1,
     1000,
   );
-  private readonly camera: PianoRollCamera = { x: 0, y: 84, h: 120, v: 18 };
+  private readonly camera: PianoRollCamera = {
+    x: 0,
+    y: DEFAULT_CAMERA.y,
+    h: 120,
+    v: DEFAULT_CAMERA.v,
+  };
+  private profile: PianoRollProfile = GENERIC_PROFILE;
+  /** Vertical camera remembered per profile across instrument switches. */
+  private readonly profileCameras = new Map<
+    PianoRollProfile["id"],
+    { y: number; v: number }
+  >();
+  private pendingRangeFit = false;
+  private vocalPlacement: VocalPlacement = {
+    noteKind: "pitched",
+    phrase: null,
+  };
+  private vocalMarksKey: { track: MidiTrack; revision: number } | null = null;
+  private vocalMarks: VocalMarks = EMPTY_MARKS;
+
+  /** Audition hook for vocal pitch feedback on place/move. */
+  public onNotePreview: ((notes: readonly PianoRollNote[]) => void) | null =
+    null;
 
   private readonly keyboardWidth = 64;
   private readonly pointer = new PointerContext();
@@ -45,6 +94,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       getPpqn: () => this.getPpqn(),
       getState: () => this.state,
       getTempoChanges: () => this.tempoChanges,
+      getProfile: () => this.profile,
     },
     this.camera,
     this.keyboardWidth,
@@ -54,12 +104,21 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getMidi: () => this.state.midi,
     getPpqn: () => this.getPpqn(),
     getSelectedTrack: () => this.getSelectedTrack(),
+    getSelectedTrackIndex: () => this.getSelectedTrackIndex(),
+    getProfile: () => this.profile,
+    getVocalPlacement: () => this.vocalPlacement,
+    getVocalMarks: () => this.getVocalMarks(),
     getTrackNotes: (midi, trackIndex) =>
       this.noteData.getTrackNotes(midi, trackIndex),
     getCurrentNotes: () => this.noteData.currentNotes,
     getTempoChanges: () => this.tempoChanges,
     getTimeSignatureChanges: () => this.timeSignatureChanges,
-    getTextEvents: () => this.getSelectedTrack()?.getTextEvents() ?? [],
+    getTextEvents: () => {
+      const events = this.getSelectedTrack()?.getTextEvents() ?? [];
+      return this.profile.header.textLane === "lyrics"
+        ? events.filter(({ event }) => event.type === MetaType.Lyric)
+        : events;
+    },
     getCamera: () => this.camera,
     getKeyboardWidth: () => this.keyboardWidth,
     getViewport: () => ({ width: this.lastWidth, height: this.lastHeight }),
@@ -73,6 +132,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     invalidateTempoCache: () => {
       this.tempoCacheMidi = null;
     },
+    rollbackEdit: () => this.onEditRollback?.() ?? false,
+    promptLyric: (tick, handlers) => this.header.promptText(tick, handlers),
+    cancelLyricPrompt: () => this.header.cancelPrompt(),
+    editNextLyric: (afterTick) => this.editNextLyric(afterTick),
+    previewNotes: (notes) => this.onNotePreview?.(notes),
   };
   private readonly editing = new NoteEditingController(
     this.context,
@@ -82,6 +146,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.context,
     this.coordinates,
   );
+  private readonly labels = new PianoRollLabels(this.context, this.coordinates);
   private readonly renderer = new PianoRollRenderer(
     this.context,
     this.coordinates,
@@ -110,6 +175,80 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private lastHeight = 1;
   private lastNotifiedCameraX: number | null = null;
   private lastNotifiedCameraH: number | null = null;
+  private lastNotifiedCameraY: number | null = null;
+  private lastNotifiedCameraV: number | null = null;
+
+  public getProfile(): PianoRollProfile {
+    return this.profile;
+  }
+
+  /**
+   * Switches pitch range, pinned lanes, editing and header behaviour without
+   * rebuilding the renderer (which would reset the camera), mirroring
+   * HighwayView.setMode().
+   */
+  public setProfile(profile: PianoRollProfile): void {
+    if (profile === this.profile) return;
+    this.input.cancelNoteEditing();
+    this.profileCameras.set(this.profile.id, {
+      y: this.camera.y,
+      v: this.camera.v,
+    });
+    this.profile = profile;
+    this.selection.clear();
+    this.geometry.clear();
+    this.noteData.clear();
+    this.vocalMarksKey = null;
+    const saved = this.profileCameras.get(profile.id);
+    if (saved) {
+      this.camera.y = saved.y;
+      this.camera.v = saved.v;
+      this.camera.y = this.coordinates.clampPitch(this.camera.y);
+    } else if (profile.id === "vocals") {
+      this.fitPitchRange();
+    } else {
+      this.camera.y = DEFAULT_CAMERA.y;
+      this.camera.v = DEFAULT_CAMERA.v;
+    }
+    this.render();
+  }
+
+  public setVocalPlacement(placement: VocalPlacement): void {
+    this.vocalPlacement = placement;
+  }
+
+  /** Fits the profile's pitch range (C2-C6 for vocals) into the viewport. */
+  public fitPitchRange(): void {
+    if (this.lastHeight <= 1) {
+      this.pendingRangeFit = true;
+      return;
+    }
+    this.pendingRangeFit = false;
+    this.coordinates.fitPitchRange(this.lastHeight);
+    this.render();
+  }
+
+  public getCameraState(): PianoRollCameraState {
+    return {
+      profile: this.profile.id,
+      y: this.camera.y,
+      v: this.camera.v,
+      h: this.camera.h,
+    };
+  }
+
+  /** Restores a persisted camera if it was saved for the current profile. */
+  public applyCameraState(state: unknown): boolean {
+    if (!isPianoRollCameraState(state) || state.profile !== this.profile.id) {
+      return false;
+    }
+    this.pendingRangeFit = false;
+    this.camera.v = state.v;
+    this.camera.h = state.h;
+    this.camera.y = this.coordinates.clampPitch(state.y);
+    this.render();
+    return true;
+  }
 
   public getPointerContext(): PointerContext {
     return this.pointer;
@@ -149,6 +288,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     await super.mount(host);
     if (!this.canvas) return;
     this.header.mount(host);
+    this.labels.mount(host);
   }
 
   protected override get renderScene(): THREE.Scene {
@@ -168,6 +308,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public override destroy(): void {
     this.input.detach();
     this.header.destroy();
+    this.labels.destroy();
     this.canvas = null;
     this.geometry.clear();
     this.noteData.clear();
@@ -187,14 +328,23 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.threeCamera.updateProjectionMatrix();
     this.input.setViewport(width, height);
     this.updateTempoCache();
+    if (this.pendingRangeFit && height > 1) {
+      this.pendingRangeFit = false;
+      this.coordinates.fitPitchRange(height);
+    }
     this.renderer.draw(width, height, this.playheadTick);
+    this.labels.draw(height);
 
     if (
       this.camera.x !== this.lastNotifiedCameraX ||
-      this.camera.h !== this.lastNotifiedCameraH
+      this.camera.h !== this.lastNotifiedCameraH ||
+      this.camera.y !== this.lastNotifiedCameraY ||
+      this.camera.v !== this.lastNotifiedCameraV
     ) {
       this.lastNotifiedCameraX = this.camera.x;
       this.lastNotifiedCameraH = this.camera.h;
+      this.lastNotifiedCameraY = this.camera.y;
+      this.lastNotifiedCameraV = this.camera.v;
       this.notifyCameraChange();
     }
   }
@@ -253,9 +403,85 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private getSelectedTrack(): MidiTrack | null {
     const midi = this.state.midi;
+    if (!midi) return null;
     const trackIndex = this.state.selectedTrackIndex;
-    if (!midi || trackIndex === null) return null;
-    return midi.tracks[trackIndex] ?? null;
+    if (trackIndex !== null) return midi.tracks[trackIndex] ?? null;
+    // A profile's track may be created mid-gesture (first vocal note), before
+    // the viewport has re-resolved selectedTrackIndex.
+    return this.profile.trackName
+      ? (midi.getTrack(this.profile.trackName) ?? null)
+      : null;
+  }
+
+  private getSelectedTrackIndex(): number | null {
+    const midi = this.state.midi;
+    const track = this.getSelectedTrack();
+    if (!midi || !track) return null;
+    const index = midi.tracks.indexOf(track);
+    return index >= 0 ? index : null;
+  }
+
+  /** Missing-lyric marks, recomputed only when the track's revision moves. */
+  private getVocalMarks(): VocalMarks {
+    const layout = this.profile.vocal;
+    const track = this.getSelectedTrack();
+    if (!layout || !track) return EMPTY_MARKS;
+    const revision = track.getNoteRevision();
+    if (
+      this.vocalMarksKey?.track === track &&
+      this.vocalMarksKey.revision === revision
+    ) {
+      return this.vocalMarks;
+    }
+    const missingLyric = new Set<MidiChannelEvent>();
+    const missingTicks: number[] = [];
+    for (const issue of validateVocalTrack(track, layout)) {
+      if (issue.type !== "missing-lyric") continue;
+      missingLyric.add(issue.note.noteOn);
+      missingTicks.push(issue.tick);
+    }
+    this.vocalMarksKey = { track, revision };
+    this.vocalMarks = { missingLyric, missingTicks };
+    return this.vocalMarks;
+  }
+
+  /**
+   * Tab from a lyric: open the next pitched/pitchless note's lyric for
+   * editing, or prompt for one when it has none, scrolling it into view.
+   */
+  private editNextLyric(afterTick: number): void {
+    const layout = this.profile.vocal;
+    const track = this.getSelectedTrack();
+    if (!layout || !track || this.state.isPlaying) return;
+    const next = getVocalNotes(track, layout)
+      .filter((item) => vocalKindNeedsLyric(item.kind))
+      .find((item) => item.note.start > afterTick);
+    if (!next) return;
+
+    const x = this.coordinates.screenXForTick(next.note.start);
+    if (x < this.keyboardWidth || x > this.lastWidth - 80) {
+      this.coordinates.setCameraTick(
+        next.note.start - this.getVisibleTickSpan() / 4,
+      );
+    }
+    const tick = next.note.start;
+    if (next.lyric) {
+      this.header.editTextAt(tick);
+    } else {
+      const write = (text: string): boolean => {
+        const ok = setVocalLyric(track, layout, next.note, text);
+        if (ok) this.onNotesChanged?.();
+        return ok;
+      };
+      this.header.promptText(tick, {
+        onCommit: write,
+        onCancel: () => {},
+        onTab: (text) => {
+          if (write(text)) this.editNextLyric(tick);
+        },
+      });
+    }
+    this.render();
   }
 
   private updateTempoCache(): void {
@@ -272,3 +498,18 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 }
 
 export type { PianoRollNote } from "./types";
+
+function isPianoRollCameraState(value: unknown): value is PianoRollCameraState {
+  if (typeof value !== "object" || value === null) return false;
+  const state = value as Record<string, unknown>;
+  return (
+    (state.profile === "generic" || state.profile === "vocals") &&
+    [state.y, state.v, state.h].every(
+      (item) => typeof item === "number" && Number.isFinite(item),
+    )
+  );
+}
+
+export { GENERIC_PROFILE, profileForInstrument } from "./profile";
+export type { PianoRollProfile } from "./profile";
+export type { VocalPlacement } from "./types";

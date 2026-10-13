@@ -18,4 +18,36 @@ describe("ViewportService", () => {
     expect(service.getSnapshot().snapDenominator).toBe(8);
     expect(listener).toHaveBeenCalledTimes(3);
   });
+
+  it("forces the Piano Roll when Vocals is selected from any view", () => {
+    const service = new ViewportService();
+    const id = service.addViewport("highway")!;
+    expect(service.getSnapshot().activeViewId).toBe("highway");
+
+    // e.g. the Highway's instrument buttons.
+    service.updateViewport(id, { instrument: "VOCALS", trackKey: "vocals" });
+    expect(service.getViewport(id)?.view).toBe("piano-roll");
+    expect(service.getSnapshot().activeViewId).toBe("piano-roll");
+
+    // The Highway can't be selected while Vocals is the instrument.
+    service.updateViewport(id, { view: "highway" });
+    expect(service.getViewport(id)?.view).toBe("piano-roll");
+
+    // Other instruments still switch freely.
+    service.updateViewport(id, {
+      instrument: "LEAD GUITAR",
+      trackKey: "lead-guitar",
+    });
+    service.updateViewport(id, { view: "highway" });
+    expect(service.getViewport(id)?.view).toBe("highway");
+  });
+
+  it("keeps camera-only updates from touching the active view id", () => {
+    const service = new ViewportService();
+    const id = service.getSnapshot().activeViewportId;
+    service.setActiveView("custom");
+    service.updateViewport(id, { camera: { tick: 480 } });
+    expect(service.getSnapshot().activeViewId).toBe("custom");
+    expect(service.getViewport(id)?.camera.tick).toBe(480);
+  });
 });

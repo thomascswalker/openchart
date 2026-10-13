@@ -13,7 +13,7 @@ import {
   HeaderTempoLaneHeight,
 } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
-import type { PianoRollContext } from "./types";
+import type { LyricPromptHandlers, PianoRollContext } from "./types";
 
 type HeaderLane = "tempo" | "timeSignature" | "text";
 
@@ -58,6 +58,9 @@ export class HeaderController {
   private editingMarkerKey: string | null = null;
   private editingMarker: { lane: HeaderLane; tick: number } | null = null;
   private draggingText: TextMidiEvent | null = null;
+  /** Active inline lyric prompt (vocal note creation or Tab navigation). */
+  private prompt: { tick: number; handlers: LyricPromptHandlers } | null = null;
+  private promptKey: string | null = null;
 
   public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
     this.context = context;
@@ -87,6 +90,69 @@ export class HeaderController {
     this.hoveredMarker = null;
     this.editingMarkerKey = null;
     this.editingMarker = null;
+    this.prompt = null;
+    this.promptKey = null;
+  }
+
+  private get options() {
+    return this.context.getProfile().header;
+  }
+
+  public get isPrompting(): boolean {
+    return this.prompt !== null;
+  }
+
+  /**
+   * Opens the inline text input at `tick` for a lyric. Used right after a
+   * vocal note is created and when Tab moves to a note with no lyric yet.
+   */
+  public promptText(tick: number, handlers: LyricPromptHandlers): void {
+    if (this.prompt) this.cancelPrompt();
+    this.editingMarker = null;
+    this.prompt = { tick, handlers };
+    this.promptKey = null;
+    this.syncEditControls();
+  }
+
+  /** Closes the prompt without committing (e.g. playback started). */
+  public cancelPrompt(): void {
+    const prompt = this.prompt;
+    if (!prompt) return;
+    this.prompt = null;
+    this.promptKey = null;
+    this.editInput?.blur();
+    prompt.handlers.onCancel();
+    this.syncEditControls();
+  }
+
+  /** Opens the edit input on the existing text event at `tick`. */
+  public editTextAt(tick: number): void {
+    if (this.prompt) this.cancelPrompt();
+    this.editingMarker = { lane: "text", tick };
+    this.editingMarkerKey = null;
+    this.syncEditControls();
+  }
+
+  private finishPrompt(mode: "commit" | "tab" | "blur"): void {
+    const prompt = this.prompt;
+    const input = this.editInput;
+    if (!prompt || !input) return;
+    const text = input.value;
+    if (mode === "commit" && !text.trim()) return;
+    this.prompt = null;
+    this.promptKey = null;
+    // Blur first so the blur handler can't apply this text to whatever the
+    // handlers open next (Tab opens the following lyric).
+    if (mode !== "blur" && document.activeElement === input) input.blur();
+    if (!text.trim()) {
+      prompt.handlers.onCancel();
+    } else if (mode === "tab" && prompt.handlers.onTab) {
+      prompt.handlers.onTab(text);
+    } else if (!prompt.handlers.onCommit(text)) {
+      prompt.handlers.onCancel();
+    }
+    this.syncEditControls();
+    this.context.requestRender();
   }
 
   public getEditInput(): HTMLInputElement | null {
@@ -152,7 +218,7 @@ export class HeaderController {
       const current = this.effectiveTimeSignatureAt(tick);
       midi.addTimeSignatureChange(tick, current.numerator, current.denominator);
       changed = true;
-    } else {
+    } else if (this.options.createOnClick) {
       const track = this.context.getSelectedTrack();
       if (track) {
         track.addTextEvent(MetaType.Marker, tick, "[section New]");
@@ -186,7 +252,7 @@ export class HeaderController {
         changed = midi.removeTempoChangeAt(marker.tick);
       } else if (lane === "timeSignature") {
         changed = midi.removeTimeSignatureChangeAt(marker.tick);
-      } else {
+      } else if (this.options.deleteText) {
         const text = this.findTextMarkerNear(x);
         if (text)
           changed =
@@ -201,7 +267,11 @@ export class HeaderController {
   }
 
   public beginDrag(point: CanvasPoint): void {
-    if (this.context.getState().isPlaying || this.laneAt(point.y) !== "text")
+    if (
+      this.context.getState().isPlaying ||
+      this.laneAt(point.y) !== "text" ||
+      !this.options.dragText
+    )
       return;
     this.draggingText = this.findTextMarkerNear(point.x)?.event ?? null;
     if (this.draggingText) this.context.beginEdit();
@@ -262,6 +332,7 @@ export class HeaderController {
       this.context.getTextEvents().filter(inView),
       HeaderHeight - 12,
       (change) => change.event.data.text,
+      this.options.clipLabels,
     );
     this.syncEditControls();
   }
@@ -272,6 +343,7 @@ export class HeaderController {
     changes: T[],
     y: number,
     formatText: (change: T) => string,
+    clip = false,
   ): void {
     changes.forEach((change, index) => {
       let label = instance[index];
@@ -299,6 +371,20 @@ export class HeaderController {
         highlight.style.height = `${HeaderMarkerLabelHeight}px`;
       }
       label.textContent = formatText(change);
+      if (clip) {
+        // Lyrics are dense: stop each label at the next one's X.
+        const next = changes[index + 1];
+        const nextX = next
+          ? this.coordinates.screenXForTick(next.tick)
+          : Number.POSITIVE_INFINITY;
+        label.style.maxWidth = Number.isFinite(nextX)
+          ? `${Math.max(0, nextX - x - 4)}px`
+          : "";
+        label.style.overflow = "hidden";
+        label.style.textOverflow = "clip";
+      } else {
+        label.style.maxWidth = "";
+      }
       label.style.left = `${x + 3}px`;
       label.style.top = `${y}px`;
       label.style.display =
@@ -403,6 +489,31 @@ export class HeaderController {
       if (this.hoveredMarker) this.editingMarker = { ...this.hoveredMarker };
     });
     input.addEventListener("keydown", (event) => {
+      if (this.prompt) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          this.finishPrompt("commit");
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          this.cancelPrompt();
+        } else if (event.key === "Tab") {
+          event.preventDefault();
+          this.finishPrompt("tab");
+        }
+        return;
+      }
+      if (
+        event.key === "Tab" &&
+        this.context.getProfile().editing === "vocal" &&
+        this.editingMarker?.lane === "text"
+      ) {
+        event.preventDefault();
+        const tick = this.editingMarker.tick;
+        this.commitEdit(input.value);
+        input.blur();
+        this.context.editNextLyric(tick);
+        return;
+      }
       if (event.key === "Enter") {
         event.preventDefault();
         this.commitEdit(input.value);
@@ -415,6 +526,10 @@ export class HeaderController {
       }
     });
     input.addEventListener("blur", () => {
+      if (this.prompt) {
+        this.finishPrompt("blur");
+        return;
+      }
       if (this.editingMarker) this.commitEdit(input.value);
       this.syncEditControls();
     });
@@ -440,6 +555,7 @@ export class HeaderController {
     const midi = this.context.getMidi();
     const marker = this.hoveredMarker;
     if (!midi || !marker) return;
+    if (marker.lane === "text" && !this.options.deleteText) return;
     let changed = false;
     if (marker.lane === "tempo")
       changed = midi.removeTempoChangeAt(marker.tick);
@@ -529,6 +645,25 @@ export class HeaderController {
     const input = this.editInput;
     const deleteButton = this.deleteButton;
     if (!input || !deleteButton) return;
+    if (this.prompt) {
+      const x = this.coordinates.screenXForTick(this.prompt.tick);
+      input.style.left = `${x}px`;
+      input.style.top = `${HeaderHeight - 12}px`;
+      input.style.display = "block";
+      input.placeholder = "lyric";
+      deleteButton.style.display = "none";
+      const key = `prompt:${this.prompt.tick}`;
+      if (key !== this.promptKey) {
+        this.promptKey = key;
+        input.value = this.prompt.handlers.initialText ?? "";
+      }
+      if (document.activeElement !== input) {
+        input.focus();
+        input.select();
+      }
+      return;
+    }
+    input.placeholder = "";
     const marker = this.editingMarker ?? this.hoveredMarker;
     const focused = document.activeElement === input;
     if (!marker) {
@@ -552,7 +687,8 @@ export class HeaderController {
     input.style.display = "block";
     deleteButton.style.left = `${x + inputWidth + 2}px`;
     deleteButton.style.top = `${y}px`;
-    deleteButton.style.display = "block";
+    deleteButton.style.display =
+      marker.lane === "text" && !this.options.deleteText ? "none" : "block";
     const key = `${marker.lane}:${marker.tick}`;
     if (key !== this.editingMarkerKey) {
       this.editingMarkerKey = key;

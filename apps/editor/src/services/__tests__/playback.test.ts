@@ -269,6 +269,27 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
+  it("toggles vocal pitch feedback, starting the engine in the gesture", () => {
+    const service = new PlaybackService();
+    configure(service);
+    expect(service.getSnapshot().isVocalPitchFeedbackEnabled).toBe(false);
+    expect(engine.configure).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vocalFeedbackEnabled: false, vocalNotes: [] }),
+    );
+
+    service.toggleVocalPitchFeedback();
+    expect(service.getSnapshot().isVocalPitchFeedbackEnabled).toBe(true);
+    expect(engine.ensureStarted).toHaveBeenCalledTimes(1);
+    expect(engine.configure).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vocalFeedbackEnabled: true }),
+    );
+
+    service.toggleVocalPitchFeedback();
+    expect(service.getSnapshot().isVocalPitchFeedbackEnabled).toBe(false);
+    expect(engine.ensureStarted).toHaveBeenCalledTimes(1);
+    service.dispose();
+  });
+
   it("gates highway feedback on the active view and previews notes", () => {
     const service = new PlaybackService();
     configure(service);

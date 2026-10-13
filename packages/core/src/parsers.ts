@@ -1,6 +1,6 @@
 import { Parser } from "binary-parser/dist/binary_parser.js";
 import { TrackEventType } from "./types.js";
-import { isTwoByteMessage, formatTrackEvents } from "./util.js";
+import { decodeText, isTwoByteMessage, formatTrackEvents } from "./util.js";
 
 let currentRunningStatus = 0;
 
@@ -26,11 +26,14 @@ const vlqParser = new Parser().array("bytes", {
   },
 });
 
-const textEventParser = new Parser().string("text", {
+// Text payloads are read as raw bytes and decoded as UTF-8 with a Latin-1
+// fallback (see decodeText), so lyrics such as "é", CJK or emoji survive a
+// load/save round trip. `length` is the byte count from the meta header.
+const textEventParser = new Parser().buffer("text", {
   length: function (this: any): number {
     return this.$parent.length;
   },
-  encoding: "ascii",
+  formatter: (bytes: Uint8Array) => decodeText(bytes),
 });
 
 const tempoEventParser = new Parser().array("microsecondsPerQuarterNote", {

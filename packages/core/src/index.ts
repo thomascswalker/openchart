@@ -19,4 +19,10 @@ export {
   TempoChange,
   TimeSignatureChange,
 } from "./midi.js";
-export { ticksToMs, msToTicks } from "./util.js";
+export {
+  ticksToMs,
+  msToTicks,
+  encodeText,
+  decodeText,
+  textByteLength,
+} from "./util.js";

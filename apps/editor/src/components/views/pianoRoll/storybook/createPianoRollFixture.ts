@@ -1,6 +1,8 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/core";
+import { SongView } from "@openchart/views";
 
-export type PianoRollFixtureVariant = "populated" | "empty" | "dense";
+export type PianoRollFixtureVariant =
+  "populated" | "empty" | "dense" | "vocals" | "vocals-empty";
 
 function addNoteAt(
   track: MidiTrack,
@@ -14,9 +16,47 @@ function addNoteAt(
   track.addNote(pitch, startDelta, velocity, durationTicks, insertAt);
 }
 
+/**
+ * A short sung line on the VOCALS track: pitched notes with lyrics (one
+ * deliberately missing, to show the validation colour), a pitchless and a
+ * percussion note, and one phrase of each kind.
+ */
+function createVocalsFixture(withNotes: boolean): Midi {
+  const midi = new Midi();
+  midi.header.division = 480;
+  const conductor = new MidiTrack("CONDUCTOR");
+  midi.tracks.push(conductor);
+  midi.addTempoChange(0, 500_000);
+  midi.addTimeSignatureChange(0, 4, 2);
+  const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
+  vocals.ensureTrack();
+  if (!withNotes) return midi;
+
+  vocals.addPhrase("vocal", 0, 3_840);
+  vocals.addPhrase("power-window", 1_920, 3_840);
+  vocals.addPhrase("stagepower", 2_880, 3_840);
+  const line: Array<[number, number, number, string | undefined]> = [
+    [60, 0, 360, "Sing"],
+    [62, 480, 240, "a"],
+    [64, 720, 720, "song,"],
+    [67, 1_920, 480, "é-"],
+    [67, 2_400, 240, "+"],
+    [65, 2_880, 480, undefined],
+  ];
+  for (const [pitch, start, duration, lyric] of line) {
+    vocals.addPitched(pitch, start, start + duration, lyric);
+  }
+  vocals.addPitchless(3_360, 3_600, "hey!");
+  vocals.addPercussion(3_600, 3_720);
+  return midi;
+}
+
 export function createPianoRollFixture(
   variant: PianoRollFixtureVariant = "populated",
 ): Midi {
+  if (variant === "vocals" || variant === "vocals-empty") {
+    return createVocalsFixture(variant === "vocals");
+  }
   const midi = new Midi();
   midi.header.division = 480;
 

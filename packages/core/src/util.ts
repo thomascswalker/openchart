@@ -108,10 +108,35 @@ export function writeUInt32BE(
   target[offset + 3] = value & 0xff;
 }
 
-function asciiBytes(value: string): Uint8Array {
-  const result = new Uint8Array(value.length);
-  writeAscii(result, 0, value);
-  return result;
+const utf8Encoder = new TextEncoder();
+const strictUtf8Decoder = new TextDecoder("utf-8", { fatal: true });
+
+/** Encodes text-meta payloads (lyrics, markers, track names) as UTF-8. ASCII
+ * is a strict subset, so existing ASCII charts serialize byte-for-byte. */
+export function encodeText(value: string): Uint8Array {
+  return utf8Encoder.encode(value);
+}
+
+/** Byte length of a text-meta payload once encoded. MIDI meta `length`
+ * fields count bytes, not UTF-16 code units. */
+export function textByteLength(value: string): number {
+  return encodeText(value).length;
+}
+
+/**
+ * Decodes a text-meta payload. Valid UTF-8 (including plain ASCII) decodes
+ * as UTF-8; anything else falls back to Latin-1 so legacy charts written by
+ * single-byte tools keep their accented characters instead of turning into
+ * replacement characters.
+ */
+export function decodeText(bytes: Uint8Array): string {
+  try {
+    return strictUtf8Decoder.decode(bytes);
+  } catch {
+    let text = "";
+    for (const byte of bytes) text += String.fromCharCode(byte);
+    return text;
+  }
 }
 
 export function encodeVariableLengthValue(value: number): Uint8Array {
@@ -180,7 +205,9 @@ export function encodeMetaPayload(
     case MetaType.Lyric:
     case MetaType.Marker:
     case MetaType.CuePoint:
-      return asciiBytes(payload.text ?? "");
+    case 0x08:
+    case 0x09:
+      return encodeText(payload.text ?? "");
 
     case 0x20:
       return new Uint8Array([
@@ -262,7 +289,7 @@ export function decodeMetaPayload(
     case MetaType.CuePoint:
     case 0x08:
     case 0x09:
-      return { text: String.fromCharCode(...bytes) };
+      return { text: decodeText(bytes) };
 
     case 0x20:
       requireLength(1);
