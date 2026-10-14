@@ -109,13 +109,13 @@ const Button = ({
   /* Joined class name */
   const buttonClassName: string = classNames(
     styles["ui-button"],
+    className,
     isCheckable && isChecked && styles["ui-button-checked"],
-    flat && styles["ui-button-flat"],
     icon &&
       (children
         ? styles["ui-button-icon-label"]
         : styles["ui-button-icon-only"]),
-    className,
+    flat && styles["ui-button-flat"],
   );
 
   return (
@@ -146,12 +146,18 @@ const Button = ({
 
 type CloseButtonProps = ButtonProps;
 
-const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
+const CloseButton = ({
+  onClick,
+  disabled = false,
+  ...props
+}: CloseButtonProps) => {
   return (
     <Button
       onClick={onClick}
-      icon={<RemoveIcon size={16} />}
+      flat={true}
+      icon={<RemoveIcon size={16} disabled={disabled} />}
       className={styles["ui-button-close"]}
+      disabled={disabled}
       {...props}
     />
   );

@@ -12,6 +12,9 @@ describe("ViewportService", () => {
     expect(service.getSnapshot().viewportSessions).toHaveLength(2);
     expect(service.getSnapshot().activeViewportId).toBe(id);
 
+    service.focusViewport(id!);
+    expect(listener).toHaveBeenCalledTimes(1);
+
     service.setSnapEnabled(false);
     service.setSnapDenominator(8);
     expect(service.getSnapshot().snapEnabled).toBe(false);

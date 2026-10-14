@@ -348,6 +348,17 @@ button:disabled {
   padding: 3px 7px;
   font-size: 11px;
 }
+.viewport-panel__actions button:last-child {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  padding: 0;
+  flex: 0 0 24px;
+  background: transparent;
+}
 .viewport-panel__controls {
   display: flex;
   flex-direction: column;

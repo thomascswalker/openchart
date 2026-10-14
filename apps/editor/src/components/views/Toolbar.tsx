@@ -31,7 +31,9 @@ import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
 import { runAction } from "../../actions/execute";
 import { SnapDenominators } from "../views/pianoRoll/constants";
-import { Checkbox, ToolButton } from "../shared/Button";
+import { Button, Checkbox } from "../shared/Button";
+import type { ButtonProps } from "../shared/Button";
+import type { IconProps } from "../shared/Icon/Icon";
 import {
   Difficulty,
   InstrumentType,
@@ -107,6 +109,31 @@ interface ToolbarProps {
   vocalPlacement: VocalPlacement;
   onVocalPlacementChange: (placement: VocalPlacement) => void;
 }
+
+type ToolbarButtonProps = Omit<ButtonProps, "icon"> & {
+  icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
+};
+
+const ToolbarButton = ({
+  icon: Icon,
+  disabled = false,
+  ...props
+}: ToolbarButtonProps) => (
+  <Button
+    {...props}
+    icon={<Icon width={20} height={20} disabled={disabled} />}
+    disabled={disabled}
+    width={24}
+    height={24}
+    minWidth={0}
+    minHeight={0}
+    maxWidth={24}
+    maxHeight={24}
+    borderRadius={4}
+    border="none"
+    padding={0}
+  />
+);
 
 const Toolbar = ({
   session,
@@ -189,14 +216,14 @@ const Toolbar = ({
       alignItems={"center"}
     >
       {/* View Selection */}
-      <ToolButton
-        Icon={PianoIcon}
+      <ToolbarButton
+        icon={PianoIcon}
         aria-label="Piano Roll"
         checked={activeViewId === "piano-roll"}
         onClick={() => handleViewChange("piano-roll")}
       />
-      <ToolButton
-        Icon={Highway3dIcon}
+      <ToolbarButton
+        icon={Highway3dIcon}
         aria-label="Highway"
         disabled={pianoRollOnly}
         checked={activeViewId === "highway"}
@@ -249,10 +276,10 @@ const Toolbar = ({
             maxWidth={120}
           />
           <VerticalSeparator />
-          {VOCAL_PHRASES.map(([phrase, icon, title]) => (
-            <ToolButton
+          {VOCAL_PHRASES.map(([phrase, Icon, title]) => (
+            <ToolbarButton
               key={phrase}
-              Icon={icon}
+              icon={Icon}
               aria-label={title.replace(/ \(.\)$/, "")}
               checked={vocalPlacement.phrase === phrase}
               onClick={() =>
@@ -264,8 +291,8 @@ const Toolbar = ({
             />
           ))}
           <VerticalSeparator />
-          <ToolButton
-            Icon={VolumeIcon}
+          <ToolbarButton
+            icon={VolumeIcon}
             aria-label="Vocal pitch feedback"
             checked={isVocalFeedbackEnabled}
             onClick={() => runAction("playback.toggle-vocal-pitch-feedback")}
@@ -278,27 +305,28 @@ const Toolbar = ({
           {getNoteTypeComponent()}
           <VerticalSeparator />
 
-          <ToolButton
-            Icon={CursorIcon}
+          <ToolbarButton
+            icon={CursorIcon}
             aria-label="Select, move, and edit sustains"
             checked={highwayMode === "select"}
             onClick={() => onHighwayModeChange("select")}
           />
-          <ToolButton
-            Icon={PencilIcon}
+          <ToolbarButton
+            icon={PencilIcon}
             aria-label="Place notes"
             checked={highwayMode === "place"}
             onClick={() => onHighwayModeChange("place")}
           />
-          <ToolButton
-            Icon={EraserIcon}
+          <ToolbarButton
+            icon={EraserIcon}
             aria-label="Remove notes"
             checked={highwayMode === "remove"}
             onClick={() => onHighwayModeChange("remove")}
           />
 
           <VerticalSeparator />
-          <ToolButton
+          <ToolbarButton
+            icon={StagepowerIcon}
             checked={highwayMode === "stagepower"}
             aria-label="Stagepower phrase"
             onClick={() =>
@@ -306,23 +334,22 @@ const Toolbar = ({
                 highwayMode === "stagepower" ? "select" : "stagepower",
               )
             }
-            Icon={StagepowerIcon}
           />
-          <ToolButton
+          <ToolbarButton
+            icon={SoloIcon}
             checked={highwayMode === "solo"}
             aria-label="Solo phrase"
             onClick={() =>
               onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
             }
-            Icon={SoloIcon}
           />
 
           <VerticalSeparator />
 
-          {Object.values(Instruments).map(([instrument, icon]) => (
-            <ToolButton
+          {Object.values(Instruments).map(([instrument, Icon]) => (
+            <ToolbarButton
               key={instrument}
-              Icon={icon}
+              icon={Icon}
               aria-label={`Select ${instrument}`}
               disabled={
                 !!midiData &&
@@ -340,24 +367,20 @@ const Toolbar = ({
 
           <VerticalSeparator />
 
-          {Difficulties.map(([difficulty, icon]) => (
-            <ToolButton
+          {Difficulties.map(([difficulty, Icon]) => (
+            <ToolbarButton
               key={difficulty}
-              Icon={icon}
+              icon={Icon}
               checked={session.difficulty === difficulty}
               onClick={() =>
                 runAction("editor.update-viewport", session.id, { difficulty })
               }
-            ></ToolButton>
+            />
           ))}
         </Fragment>
       )}
     </Section>
   );
 };
-
-function startCaseName(name: string): string {
-  return name.charAt(0) + name.slice(1).toLowerCase();
-}
 
 export default Toolbar;

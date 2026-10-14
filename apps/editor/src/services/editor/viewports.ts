@@ -136,8 +136,12 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   };
 
   public readonly focusViewport = (id: string): void => {
-    this.activeViewportId = id;
     const session = this.viewportSessions.find((item) => item.id === id);
+    if (this.activeViewportId === id && session?.view === this.activeViewId) {
+      return;
+    }
+
+    this.activeViewportId = id;
     if (session) this.activeViewId = session.view;
     this.publish();
   };

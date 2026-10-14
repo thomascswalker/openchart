@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -40,7 +41,7 @@ import {
 } from "./views/pianoRoll";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./views/Toolbar";
-import { Button, Checkbox, CloseButton, ToolButton } from "./shared/Button";
+import { Button, Checkbox, CloseButton } from "./shared/Button";
 import { Popup } from "./shared/Popup";
 import { Slider } from "./shared/Slider";
 import { Text } from "./shared/Text";
@@ -361,13 +362,18 @@ function ViewportPanel({
     return () => activeChartView.set(null);
   }, [active, activeChartView, chartView]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (chartView instanceof HighwayView) {
       chartView.setMode(highwayMode);
+    }
+  }, [chartView, highwayMode]);
+
+  useEffect(() => {
+    if (chartView instanceof HighwayView) {
       chartView.setDrumPlacementKind(drumPlacementKind);
       chartView.setNotePlacementType(notePlacementType);
     }
-  }, [chartView, highwayMode, drumPlacementKind, notePlacementType]);
+  }, [chartView, drumPlacementKind, notePlacementType]);
 
   useEffect(() => {
     if (!(chartView instanceof PianoRollView)) return;
@@ -472,10 +478,17 @@ function ViewportPanel({
             <div className="viewport-panel__highway-settings">
               <Popup
                 trigger={
-                  <ToolButton
-                    Icon={SettingsIcon}
+                  <Button
+                    icon={<SettingsIcon width={20} height={20} />}
                     border="none"
                     borderRadius={32}
+                    width={24}
+                    height={24}
+                    minWidth={0}
+                    minHeight={0}
+                    maxWidth={24}
+                    maxHeight={24}
+                    padding={0}
                   />
                 }
                 title="Viewport Settings"

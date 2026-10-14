@@ -66,8 +66,13 @@
   cursor: pointer;
   padding: var(--space-med);
   aspect-ratio: 1 / 1;
+  min-width: 16px;
+  min-height: 16px;
   max-width: 32px;
   max-height: 32px;
+  display: flex;
+  flex-shrink: 1;
+  padding: 0;
 }
 
 .ui-button-close:hover:not(:disabled) {
