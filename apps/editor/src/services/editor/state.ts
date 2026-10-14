@@ -5,6 +5,7 @@ export interface EditorStateSnapshot {
   debugVisible: boolean;
   projectVisible: boolean;
   settingsVisible: boolean;
+  aboutVisible: boolean;
 }
 
 export class EditorStateService extends IStatefulService<EditorStateSnapshot> {
@@ -15,6 +16,7 @@ export class EditorStateService extends IStatefulService<EditorStateSnapshot> {
       debugVisible: false,
       projectVisible: false,
       settingsVisible: false,
+      aboutVisible: false,
     };
   }
 
@@ -24,6 +26,7 @@ export class EditorStateService extends IStatefulService<EditorStateSnapshot> {
       debugVisible: false,
       projectVisible: false,
       settingsVisible: false,
+      aboutVisible: false,
     };
     this.notify();
   };
@@ -56,6 +59,13 @@ export class EditorStateService extends IStatefulService<EditorStateSnapshot> {
       return;
     }
     this.update({ settingsVisible });
+  };
+
+  public readonly setAboutVisible = (aboutVisible: boolean): void => {
+    if (this._snapshot.aboutVisible === aboutVisible) {
+      return;
+    }
+    this.update({ aboutVisible });
   };
 
   private update(change: Partial<EditorStateSnapshot>): void {

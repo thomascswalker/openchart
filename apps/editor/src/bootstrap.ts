@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import Platform from "./platform";
 import { DocumentService } from "./services/document";
 import { EditorStateService } from "./services/editor/state";
@@ -11,4 +12,7 @@ export function bootstrap(): void {
   Platform.services.get<EditorStateService>("editor.state").reset();
   Platform.services.get<DocumentService>("document").reset();
   Platform.services.get<ViewportService>("editor.viewports").reset();
+
+  // Desktop-only features (e.g. the updater) are gated on this flag.
+  Platform.context.set("platform.is-tauri", isTauri());
 }
