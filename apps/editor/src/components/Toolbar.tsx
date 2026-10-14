@@ -1,4 +1,4 @@
-import { Section } from "../shared/Section";
+import { Section } from "./shared/Section";
 import {
   BassIcon,
   CursorIcon,
@@ -20,20 +20,23 @@ import {
   PhraseIcon,
   ActivateIcon,
   VolumeIcon,
-} from "../shared/Icon/Icon";
-import { VerticalSeparator } from "../shared/Separator";
-import { Dropdown } from "../shared/Dropdown";
+  LockIcon,
+  UnlockIcon,
+  SnapIcon,
+} from "./shared/Icon/Icon";
+import { VerticalSeparator } from "./shared/Separator";
+import { Dropdown } from "./shared/Dropdown";
 import type {
   ViewportKind,
   ViewportSession,
-} from "../../services/editor/viewports";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
-import { runAction } from "../../actions/execute";
-import { SnapDenominators } from "../views/pianoRoll/constants";
-import { Button, Checkbox } from "../shared/Button";
-import type { ButtonProps } from "../shared/Button";
-import type { IconProps } from "../shared/Icon/Icon";
+} from "../services/editor/viewports";
+import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
+import { runAction } from "../actions/execute";
+import { SnapDenominators } from "./views/pianoRoll/constants";
+import { Button, Checkbox } from "./shared/Button";
+import type { ButtonProps } from "./shared/Button";
+import type { IconProps } from "./shared/Icon/Icon";
 import {
   Difficulty,
   InstrumentType,
@@ -42,14 +45,14 @@ import {
   type VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
-import { usePlaybackSelector } from "../../hooks/usePlayback";
-import type { VocalPlacement } from "./pianoRoll";
+import { usePlaybackSelector } from "../hooks/usePlayback";
+import type { VocalPlacement } from "./views/pianoRoll";
 import { Fragment } from "react";
 import type {
   DrumPlacementKind,
   HighwayMode,
   HighwayNotePlacementType,
-} from "./highway";
+} from "./views/highway";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -156,6 +159,7 @@ const Toolbar = ({
     activeViewId: globalView,
     snapEnabled,
     snapDenominator,
+    lockCursor,
   } = useViewportSnapshot();
 
   const activeViewId = session.view ?? globalView;
@@ -231,33 +235,31 @@ const Toolbar = ({
       />
 
       <VerticalSeparator />
+      <ToolbarButton
+        icon={lockCursor ? LockIcon : UnlockIcon}
+        aria-label="Lock/Unlock Cursor"
+        checked={lockCursor}
+        onChecked={(state) => runAction("editor.set-lock-cursor", state)}
+      />
 
       {/* Tools */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          maxWidth: "95px",
-          gap: 8,
-        }}
-      >
-        <Checkbox
-          checked={snapEnabled}
-          onChange={(event) =>
-            runAction("editor.set-snap-enabled", Boolean(event.target.checked))
-          }
-        />
-        <Dropdown
-          disabled={!snapEnabled}
-          value={String(snapDenominator)}
-          onChange={(value) =>
-            runAction("editor.set-snap-denominator", Number(value))
-          }
-          minWidth="70px"
-          options={SNAP_OPTIONS}
-        />
-      </div>
+      <ToolbarButton
+        icon={SnapIcon}
+        checked={snapEnabled}
+        onChecked={(state) => runAction("editor.set-snap-enabled", state)}
+      />
+      <Dropdown
+        disabled={!snapEnabled}
+        value={String(snapDenominator)}
+        onChange={(value) =>
+          runAction("editor.set-snap-denominator", Number(value))
+        }
+        minWidth="70px"
+        maxWidth="70px"
+        options={SNAP_OPTIONS}
+      />
 
+      {/* Note Type */}
       {activeViewId === "piano-roll" && pianoRollOnly && (
         <Fragment>
           <VerticalSeparator />

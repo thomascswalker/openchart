@@ -40,6 +40,7 @@ export interface ViewportSnapshot {
   activeViewId: string;
   snapEnabled: boolean;
   snapDenominator: number;
+  lockCursor: boolean;
 }
 
 const DEFAULT_VIEWPORT_ID = "viewport-1";
@@ -68,6 +69,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   private activeViewId = "piano-roll";
   private snapEnabled = true;
   private snapDenominator = 4;
+  private lockCursor = false;
 
   constructor() {
     super();
@@ -81,6 +83,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
     this.activeViewId = "piano-roll";
     this.snapEnabled = true;
     this.snapDenominator = 4;
+    this.lockCursor = false;
     this.publish();
   };
 
@@ -179,6 +182,12 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
     this.publish();
   };
 
+  public readonly setLockCursor = (locked: boolean): void => {
+    if (this.lockCursor === locked) return;
+    this.lockCursor = locked;
+    this.publish();
+  };
+
   public readonly setSnapDenominator = (denominator: number): void => {
     if (this.snapDenominator === denominator) return;
     this.snapDenominator = denominator;
@@ -202,6 +211,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
       activeViewId: this.activeViewId,
       snapEnabled: this.snapEnabled,
       snapDenominator: this.snapDenominator,
+      lockCursor: this.lockCursor,
     };
   }
 

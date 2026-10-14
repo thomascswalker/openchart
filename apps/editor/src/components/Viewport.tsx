@@ -40,7 +40,7 @@ import {
   type VocalPlacement,
 } from "./views/pianoRoll";
 import { TrackList } from "./Tracklist";
-import Toolbar from "./views/Toolbar";
+import Toolbar from "./Toolbar";
 import { Button, Checkbox, CloseButton } from "./shared/Button";
 import { Popup } from "./shared/Popup";
 import { Slider } from "./shared/Slider";
