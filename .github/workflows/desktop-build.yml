@@ -163,8 +163,9 @@ jobs:
 
       - name: Generate updater manifest
         run: |
+          version="$(node -p "require('./package.json').version")"
           node apps/desktop/scripts/generate-latest-json.mjs \
-            --version "0.1.${{ github.run_number }}" \
+            --version "$version" \
             --tag "build-${{ github.sha }}" \
             --repo "$GITHUB_REPOSITORY" \
             --assets release-assets \
