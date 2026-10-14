@@ -48,6 +48,7 @@ export function Runtime({ children }: RuntimeProps) {
       "dialog.debug-open": editorStore.debugVisible,
       "dialog.project-open": editorStore.projectVisible,
       "dialog.settings-open": editorStore.settingsVisible,
+      "dialog.about-open": editorStore.aboutVisible,
       "editor.can-add-viewport": canAddViewport,
       "editor.can-close-viewport": canCloseViewport,
     });
@@ -59,6 +60,7 @@ export function Runtime({ children }: RuntimeProps) {
     editorStore.debugVisible,
     editorStore.projectVisible,
     editorStore.settingsVisible,
+    editorStore.aboutVisible,
     canAddViewport,
     canCloseViewport,
   ]);

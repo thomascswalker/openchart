@@ -6,12 +6,16 @@ import { isTypingTarget } from "../util/html";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
+import { AboutDialog } from "./dialogs/AboutDialog";
+import { UpdateDialog } from "./dialogs/UpdateDialog";
 import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
+import { UpdaterService } from "../services/updater";
 
 const Shell = () => {
-  const { debugVisible, projectVisible, settingsVisible } = useEditorState();
+  const { debugVisible, projectVisible, settingsVisible, aboutVisible } =
+    useEditorState();
   const { services, actions } = usePlatform();
   const playbackService = services.get<PlaybackService>("playback");
   const isMetronomeEnabled = useSyncExternalStore(
@@ -28,6 +32,12 @@ const Shell = () => {
     playbackService.subscribe,
     () => playbackService.getSnapshot().isVocalPitchFeedbackEnabled,
     () => playbackService.getSnapshot().isVocalPitchFeedbackEnabled,
+  );
+  const updater = services.get<UpdaterService>("updater");
+  const updaterStatus = useSyncExternalStore(
+    updater.subscribe,
+    () => updater.getSnapshot().status,
+    () => updater.getSnapshot().status,
   );
   const clipboard = services.get<EditorClipboardService>("editor.clipboard");
   useLayoutEffect(() => {
@@ -126,6 +136,8 @@ const Shell = () => {
       />
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}
+      {aboutVisible ? <AboutDialog /> : null}
+      {updaterStatus !== "idle" ? <UpdateDialog /> : null}
     </div>
   );
 };

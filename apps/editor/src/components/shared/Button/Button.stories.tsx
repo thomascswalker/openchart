@@ -2,8 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CursorIcon } from "../Icon/Icon";
 import { Button } from "./Button";
-import { CloseButton } from "./CloseButton";
-import { ToolButton } from "./ToolButton";
+import { CloseButton } from "./Button";
 
 const meta = {
   title: "Shared/Buttons",
@@ -17,31 +16,44 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ButtonVariantsView = () => {
-  const [active, setActive] = useState(false);
+  const [checked, setChecked] = useState(true);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Button active={active} onClick={() => setActive(!active)}>
-        Toggle active
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "start",
+        gap: 32,
+      }}
+    >
+      <Button>Normal</Button>
+      <Button disabled>Disabled</Button>
+      <Button flat>Flat</Button>
+      <Button checked={checked} onChecked={(state) => setChecked(state)}>
+        External checkable
       </Button>
-      <CloseButton ariaLabel="Close example" onClick={() => setActive(false)} />
-      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool" />
-      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool with text">
+      <Button checkable defaultChecked>
+        Internal checkable
+      </Button>
+      <CloseButton aria-label="Close example" />
+      <Button icon={<CursorIcon size={24} />} aria-label="Cursor tool" />
+      <Button icon={<CursorIcon size={24} />} aria-label="Cursor tool">
         Cursor
-      </ToolButton>
+      </Button>
     </div>
   );
 };
 
 export const Default: Story = {};
 
-export const Active: Story = {
-  args: { active: true, children: "Active" },
+export const Checked: Story = {
+  args: { checkable: true, defaultChecked: true, children: "Checked" },
 };
 
 export const Disabled: Story = {
   args: { disabled: true, children: "Disabled" },
 };
 
-export const ButtonVariants: Story = {
+export const Variants: Story = {
   render: () => <ButtonVariantsView />,
 };

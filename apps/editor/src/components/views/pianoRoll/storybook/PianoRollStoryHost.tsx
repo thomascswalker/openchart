@@ -101,6 +101,7 @@ export function PianoRollStoryHost({
       selectedInstrument: SELECTED_INSTRUMENT,
       selectedDifficulty: SELECTED_DIFFICULTY,
       snap,
+      lockCursor: false,
       isPlaying: snapshot.isPlaying,
     }),
     [midi, selectedTrackIndex, snap, snapshot.isPlaying, SELECTED_INSTRUMENT],

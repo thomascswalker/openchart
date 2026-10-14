@@ -12,6 +12,7 @@ export interface ChartViewState {
   selectedInstrument: string;
   selectedDifficulty: Difficulty;
   snap: SnapSettings;
+  lockCursor: boolean;
   /** Note mutations are disabled while the shared transport is playing. */
   isPlaying: boolean;
 }
@@ -65,6 +66,7 @@ export abstract class AbstractChartView<T> {
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
+    lockCursor: false,
     isPlaying: false,
   };
 

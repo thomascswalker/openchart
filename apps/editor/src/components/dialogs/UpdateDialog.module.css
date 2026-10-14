@@ -1,0 +1,45 @@
+.dialog {
+  gap: 12px;
+}
+
+.body {
+  gap: 8px;
+  padding: 0;
+}
+
+.notes {
+  max-height: 160px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #3d3d3d;
+  border-radius: 3px;
+  background: #202020;
+  font-family: inherit;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.warning {
+  color: #f0b45a;
+}
+
+.progress {
+  width: 100%;
+}
+
+.actions {
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 12px 0 0;
+  border-top: 1px solid #3d3d3d;
+}
+
+.actions > * {
+  flex: initial;
+  min-width: 72px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 13px;
+}

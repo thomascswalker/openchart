@@ -2,7 +2,11 @@
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
-        .setup(|_app| {
+        .plugin(tauri_plugin_process::init())
+        .setup(|app| {
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
             Ok(())
         })
         .run(tauri::generate_context!())

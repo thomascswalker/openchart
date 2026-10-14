@@ -16,6 +16,7 @@ function createController(
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
+    lockCursor: false,
     isPlaying: false,
   };
   const coordinates = new HighwayCoordinateSystem(

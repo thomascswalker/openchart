@@ -60,9 +60,9 @@ const DropdownButton = ({
         borderBottomRightRadius={0}
         border="none"
         className={styles["dropdown-button__value"]}
-        active={isActive}
+        checked={isActive}
         disabled={disabled}
-        ariaLabel={ariaLabel ?? label}
+        aria-label={ariaLabel ?? label}
         onClick={toggle}
         maxHeight={20}
       >

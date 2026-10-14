@@ -57,6 +57,7 @@ describe("phrase screen hit bounds", () => {
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
+    lockCursor: false,
     isPlaying: false,
   };
   const camera = new THREE.PerspectiveCamera(45, 4 / 3, 0.1, 64);

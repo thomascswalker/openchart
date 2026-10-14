@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,8 +40,8 @@ import {
   type VocalPlacement,
 } from "./views/pianoRoll";
 import { TrackList } from "./Tracklist";
-import Toolbar from "./views/Toolbar";
-import { Button, Checkbox, CloseButton, ToolButton } from "./shared/Button";
+import Toolbar from "./Toolbar";
+import { Button, Checkbox, CloseButton } from "./shared/Button";
 import { Popup } from "./shared/Popup";
 import { Slider } from "./shared/Slider";
 import { Text } from "./shared/Text";
@@ -160,8 +161,13 @@ function ViewportPanel({
 }) {
   const { midi: midiData } = useDocumentSnapshot();
   const { settings, applySetting } = useApplicationSettings();
-  const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
-    useViewportSnapshot();
+  const {
+    viewportSessions,
+    maxViewportCount,
+    snapEnabled,
+    snapDenominator,
+    lockCursor,
+  } = useViewportSnapshot();
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
   const setActiveView = usePlaybackSelector((s) => s.setActiveView);
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);
@@ -208,9 +214,11 @@ function ViewportPanel({
   useEffect(() => {
     if (!chartView) return;
     const cameraTick = getCameraTick();
-    if (cameraTick) chartView.setCameraTick(cameraTick);
+    if (cameraTick !== chartView.getCameraTick()) {
+      chartView.setCameraTick(cameraTick);
+    }
     updateCameraData(articleRef.current, chartView);
-  }, [chartView]);
+  }, [chartView, session.camera.tick]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -348,12 +356,17 @@ function ViewportPanel({
     const sync = (): void => {
       const { playbackTick } = playback.getSnapshot();
       chartView.setPlayheadTick(playbackTick);
+      if (!active) return;
       const cameraTick = chartView.getCameraTickForPlayhead(playbackTick);
-      if (cameraTick !== null) chartView.setCameraTick(cameraTick);
+      if (cameraTick !== null && cameraTick !== getCameraTick()) {
+        runAction("editor.update-viewport", session.id, {
+          camera: { tick: cameraTick },
+        });
+      }
     };
     sync();
     return playback.subscribe(sync);
-  }, [chartView, isPlaying]); // Re-sync when playback starts or stops.
+  }, [active, chartView, isPlaying, session.id]); // Re-sync when playback starts or stops.
 
   useEffect(() => {
     if (!active) return;
@@ -361,13 +374,18 @@ function ViewportPanel({
     return () => activeChartView.set(null);
   }, [active, activeChartView, chartView]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (chartView instanceof HighwayView) {
       chartView.setMode(highwayMode);
+    }
+  }, [chartView, highwayMode]);
+
+  useEffect(() => {
+    if (chartView instanceof HighwayView) {
       chartView.setDrumPlacementKind(drumPlacementKind);
       chartView.setNotePlacementType(notePlacementType);
     }
-  }, [chartView, highwayMode, drumPlacementKind, notePlacementType]);
+  }, [chartView, drumPlacementKind, notePlacementType]);
 
   useEffect(() => {
     if (!(chartView instanceof PianoRollView)) return;
@@ -430,8 +448,7 @@ function ViewportPanel({
         </p>
         <div className="viewport-panel__actions">
           <Button
-            title="Split to the right"
-            ariaLabel={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
+            aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
             onClick={() =>
               runAction("editor.add-viewport", session.view, session.id)
             }
@@ -473,10 +490,17 @@ function ViewportPanel({
             <div className="viewport-panel__highway-settings">
               <Popup
                 trigger={
-                  <ToolButton
-                    Icon={SettingsIcon}
+                  <Button
+                    icon={<SettingsIcon width={20} height={20} />}
                     border="none"
                     borderRadius={32}
+                    width={24}
+                    height={24}
+                    minWidth={0}
+                    minHeight={0}
+                    maxWidth={24}
+                    maxHeight={24}
+                    padding={0}
                   />
                 }
                 title="Viewport Settings"
@@ -524,6 +548,7 @@ function ViewportPanel({
               selectedInstrument: session.instrument,
               selectedDifficulty: session.difficulty,
               snap: { enabled: snapEnabled, denominator: snapDenominator },
+              lockCursor,
               isPlaying,
             }}
             onReady={handleReady}
