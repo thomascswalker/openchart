@@ -191,7 +191,7 @@ const Popup = ({ trigger, title, children, width, onOpen }: PopupProps) => {
     })
   ) : (
     <Button
-      ariaLabel={title}
+      aria-label={title}
       aria-haspopup="dialog"
       aria-expanded={open}
       aria-controls={open ? id : undefined}

@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 
 export const ViewportSettings: Story = {
   args: {
-    trigger: <Button ariaLabel="Viewport settings">V</Button>,
+    trigger: <Button aria-label="Viewport settings">V</Button>,
     title: "Viewport Settings",
     width: 280,
     children: (

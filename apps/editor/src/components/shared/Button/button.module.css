@@ -1,4 +1,9 @@
 /* Base */
+
+.ui-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .ui-button {
   display: inline-flex;
   align-items: center;
@@ -9,25 +14,24 @@
 
   min-width: 32px;
   min-height: 32px;
-  padding: 6px 12px;
+  padding: var(--space-med) var(--space-large);
 
   border: 1px solid var(--border);
   border-radius: 4px;
 
   cursor: pointer;
 
-  transition: all 0.15s ease-in-out;
-}
-
-/* Flat */
-.ui-button-flat {
-  background: transparent;
-  border: none;
+  transition: all 0.1s ease-in-out;
 }
 
 /* Hover (enabled) */
 .ui-button:hover:not(:disabled) {
-  background: var(--neutral-70);
+  background: var(--primary-hover);
+}
+
+/* Active */
+.ui-button:active:not(:disabled) {
+  background: var(--primary-active);
 }
 
 /* Base disabled */
@@ -37,46 +41,58 @@
   background: var(--neutral-90);
 }
 
-/* Active */
-.ui-button-active {
+/* Checked */
+.ui-button-checked {
   background-color: var(--secondary);
 }
 
-/* Active hover */
-.ui-button-active:hover:not(:disabled) {
+/* Hover */
+.ui-button-checked:hover:not(:disabled) {
   background-color: var(--secondary-hover);
 }
 
-.ui-button-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-
-  min-width: 24px;
-  min-height: 24px;
-  max-width: 24px;
-  max-height: 24px;
-  padding: 0px;
-
-  border: 1px solid transparent;
-  background: transparent;
-
-  color: var(--neutral-50);
-  font-size: 16px;
-  cursor: pointer;
-  flex-shrink: 0;
+.ui-button-checked:active:not(:disabled) {
+  background: var(--secondary-active);
 }
 
-.ui-button-close:hover {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #ef4444;
+/* Flat */
+.ui-button-flat {
+  background: transparent;
+  border: none;
+}
+
+.ui-button-close {
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: var(--space-med);
+  aspect-ratio: 1 / 1;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 32px;
+  max-height: 32px;
+  display: flex;
+  flex-shrink: 1;
+  padding: 0;
+}
+
+.ui-button-close:hover:not(:disabled) {
+  border: 1px solid var(--red-80);
+  background: var(--red-90);
+}
+
+.ui-button-close:active:not(:disabled) {
+  background: var(--red-70);
 }
 
 .ui-button-close:hover(:disabled) {
   background: var(--neutral-50);
 }
 
-.ui-button-close:active {
-  background: rgba(239, 68, 68, 0.3);
+.ui-button-icon-only {
+  padding: var(--space-med);
+}
+
+.ui-button-icon-label {
+  padding: var(--space-med) var(--space-large) var(--space-med)
+    var(--space-large);
 }

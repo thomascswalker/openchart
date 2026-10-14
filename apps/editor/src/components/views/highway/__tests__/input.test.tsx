@@ -16,6 +16,7 @@ function createHarness(
     phraseMode?: "solo" | "stagepower" | null;
     sustain?: boolean;
     cameraTick?: number;
+    lockCursor?: boolean;
   } = {},
 ) {
   const state: ChartViewState = {
@@ -24,6 +25,7 @@ function createHarness(
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
+    lockCursor: options.lockCursor ?? false,
     isPlaying: false,
   };
   const canvas = document.createElement("canvas");
@@ -311,11 +313,34 @@ describe("HighwayInputController note interaction", () => {
     );
 
     expect(harness.context.setCameraTick).toHaveBeenCalledWith(960);
+    expect(harness.context.requestSeek).not.toHaveBeenCalled();
     expect(harness.input.getGhostNoteLocation()).toMatchObject({
       lane: 0,
       tick: 240,
     });
     expect(harness.input.getHoveredNoteOn()).toBe(noteOn);
+  });
+
+  it("moves the cursor with wheel scrolling when cursor lock is enabled", () => {
+    const harness = createHarness({
+      phraseMode: null,
+      cameraTick: 480,
+      lockCursor: true,
+    });
+    detachInput = () => harness.input.detach();
+
+    harness.canvas.dispatchEvent(
+      new WheelEvent("wheel", {
+        bubbles: true,
+        cancelable: true,
+        deltaY: 100,
+        clientX: 300,
+        clientY: 200,
+      }),
+    );
+
+    expect(harness.context.setCameraTick).toHaveBeenCalledWith(960);
+    expect(harness.context.requestSeek).toHaveBeenCalledWith(480);
   });
 
   it("keeps click placement on a sustain available in Place mode", () => {

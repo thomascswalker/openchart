@@ -42,7 +42,7 @@ describe("Popup", () => {
   it("opens accessibly, closes on a second trigger press, and dismisses on Escape", () => {
     const { container, root } = render(
       <Popup
-        trigger={<Button ariaLabel="Viewport settings">Settings</Button>}
+        trigger={<Button aria-label="Viewport settings">Settings</Button>}
         title="Viewport Settings"
       >
         <input aria-label="Lighting" />
@@ -80,7 +80,7 @@ describe("Popup", () => {
     const { container, root } = render(
       <>
         <Popup
-          trigger={<Button ariaLabel="Viewport settings">Settings</Button>}
+          trigger={<Button aria-label="Viewport settings">Settings</Button>}
           title="View"
         >
           <input aria-label="Lighting" />
@@ -106,7 +106,7 @@ describe("Popup", () => {
   it("flips above and shifts left when the trigger is near the viewport edges", () => {
     const { container, root } = render(
       <Popup
-        trigger={<Button ariaLabel="Viewport settings">Settings</Button>}
+        trigger={<Button aria-label="Viewport settings">Settings</Button>}
         title="View"
       >
         <input aria-label="Lighting" />

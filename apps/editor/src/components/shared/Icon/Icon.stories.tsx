@@ -1,55 +1,42 @@
 import type { ComponentType } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { IconProps } from "./Icon";
-import {
-  BassIcon,
-  CursorIcon,
-  DrumsIcon,
-  EraserIcon,
-  FivepadIcon,
-  FourpadIcon,
-  GuitarIcon,
-  Highway3dIcon,
-  SnapIcon,
-  NoteIcon,
-  PianoIcon,
-  VocalsIcon,
-} from "./Icon";
+import * as allIcons from "./Icon";
+import { Text } from "../Text";
+
+const { default: Icon, ...moduleIcons } = allIcons;
 
 const icons: Array<{
   name: string;
   Icon: ComponentType<Omit<IconProps, "svg">>;
-}> = [
-  { name: "Cursor", Icon: CursorIcon },
-  { name: "Eraser", Icon: EraserIcon },
-  { name: "Note", Icon: NoteIcon },
-  { name: "Snap", Icon: SnapIcon },
-  { name: "Piano", Icon: PianoIcon },
-  { name: "Highway 3D", Icon: Highway3dIcon },
-  { name: "Guitar", Icon: GuitarIcon },
-  { name: "Four Pad", Icon: FourpadIcon },
-  { name: "Five Pad", Icon: FivepadIcon },
-  { name: "Bass", Icon: BassIcon },
-  { name: "Drums", Icon: DrumsIcon },
-  { name: "Vocals", Icon: VocalsIcon },
-];
+}> = Object.entries(moduleIcons).map(([name, component]) => ({
+  name: name.substring(0, name.indexOf("Icon")),
+  Icon: component as React.ComponentType<any>,
+}));
 
 const meta = {
   title: "Shared/Icons",
+  component: Icon,
   parameters: {
-    controls: { disable: true },
+    controls: {},
   },
-} satisfies Meta;
+  argTypes: {
+    size: {
+      control: { type: "inline-radio" },
+      options: [16, 24, 32, 48],
+    },
+  },
+} satisfies Meta<typeof Icon>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<{ size: number }>;
 
 export const Gallery: Story = {
-  render: () => (
+  render: (args) => (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
         gap: 16,
       }}
     >
@@ -64,10 +51,12 @@ export const Gallery: Story = {
             border: "1px solid var(--neutral-60)",
           }}
         >
-          <Icon width={32} height={32} />
-          <span>{name}</span>
+          {/* Forwards the active radio value to the icon */}
+          <Icon size={args.size} />
+          <Text>{name}</Text>
         </div>
       ))}
     </div>
   ),
+  args: { size: 24 },
 };

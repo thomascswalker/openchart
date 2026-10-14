@@ -1,4 +1,5 @@
-import { Section } from "../shared/Section";
+import { Section } from "./shared/Section";
+import styles from "./toolbar.module.css";
 import {
   BassIcon,
   CursorIcon,
@@ -20,18 +21,23 @@ import {
   PhraseIcon,
   ActivateIcon,
   VolumeIcon,
-} from "../shared/Icon/Icon";
-import { VerticalSeparator } from "../shared/Separator";
-import { Dropdown } from "../shared/Dropdown";
+  LockIcon,
+  UnlockIcon,
+  SnapIcon,
+} from "./shared/Icon/Icon";
+import { VerticalSeparator } from "./shared/Separator";
+import { Dropdown } from "./shared/Dropdown";
 import type {
   ViewportKind,
   ViewportSession,
-} from "../../services/editor/viewports";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
-import { runAction } from "../../actions/execute";
-import { SnapDenominators } from "../views/pianoRoll/constants";
-import { Checkbox, ToolButton } from "../shared/Button";
+} from "../services/editor/viewports";
+import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
+import { runAction } from "../actions/execute";
+import { SnapDenominators } from "./views/pianoRoll/constants";
+import { Button } from "./shared/Button";
+import type { ButtonProps } from "./shared/Button";
+import type { IconProps } from "./shared/Icon/Icon";
 import {
   Difficulty,
   InstrumentType,
@@ -40,14 +46,14 @@ import {
   type VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
-import { usePlaybackSelector } from "../../hooks/usePlayback";
-import type { VocalPlacement } from "./pianoRoll";
+import { usePlaybackSelector } from "../hooks/usePlayback";
+import type { VocalPlacement } from "./views/pianoRoll";
 import { Fragment } from "react";
 import type {
   DrumPlacementKind,
   HighwayMode,
   HighwayNotePlacementType,
-} from "./highway";
+} from "./views/highway";
 
 const Instruments = [
   [InstrumentType.Lead, GuitarIcon],
@@ -108,6 +114,31 @@ interface ToolbarProps {
   onVocalPlacementChange: (placement: VocalPlacement) => void;
 }
 
+type ToolbarButtonProps = Omit<ButtonProps, "icon"> & {
+  icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
+};
+
+const ToolbarButton = ({
+  icon: Icon,
+  disabled = false,
+  ...props
+}: ToolbarButtonProps) => (
+  <Button
+    {...props}
+    icon={<Icon width={20} height={20} disabled={disabled} />}
+    disabled={disabled}
+    width={24}
+    height={24}
+    minWidth={0}
+    minHeight={0}
+    maxWidth={24}
+    maxHeight={24}
+    borderRadius={4}
+    border="none"
+    padding={0}
+  />
+);
+
 const Toolbar = ({
   session,
   onViewChange,
@@ -129,6 +160,7 @@ const Toolbar = ({
     activeViewId: globalView,
     snapEnabled,
     snapDenominator,
+    lockCursor,
   } = useViewportSnapshot();
 
   const activeViewId = session.view ?? globalView;
@@ -167,7 +199,6 @@ const Toolbar = ({
     return (
       <Dropdown
         aria-label="Note type"
-        title="Note type"
         disabled={disabled}
         value={value}
         onChange={onChange}
@@ -180,6 +211,7 @@ const Toolbar = ({
 
   return (
     <Section
+      className={styles.toolbar}
       backgroundColor="var(--primary)"
       borderBottom="var(--border-primary)"
       padding={2}
@@ -190,59 +222,51 @@ const Toolbar = ({
       alignItems={"center"}
     >
       {/* View Selection */}
-      <ToolButton
-        Icon={PianoIcon}
-        ariaLabel="Piano Roll"
-        active={activeViewId === "piano-roll"}
+      <ToolbarButton
+        icon={PianoIcon}
+        aria-label="Piano Roll"
+        checked={activeViewId === "piano-roll"}
         onClick={() => handleViewChange("piano-roll")}
       />
-      <ToolButton
-        Icon={Highway3dIcon}
-        title={
-          pianoRollOnly
-            ? `${startCaseName(session.instrument)} has no difficulties and is edited in the Piano Roll`
-            : "Highway"
-        }
-        ariaLabel="Highway"
+      <ToolbarButton
+        icon={Highway3dIcon}
+        aria-label="Highway"
         disabled={pianoRollOnly}
-        active={activeViewId === "highway"}
+        checked={activeViewId === "highway"}
         onClick={() => handleViewChange("highway")}
       />
 
       <VerticalSeparator />
+      <ToolbarButton
+        icon={lockCursor ? LockIcon : UnlockIcon}
+        aria-label="Lock/Unlock Cursor"
+        checked={lockCursor}
+        onChecked={(state) => runAction("editor.set-lock-cursor", state)}
+      />
 
       {/* Tools */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          maxWidth: "95px",
-          gap: 8,
-        }}
-      >
-        <Checkbox
-          checked={snapEnabled}
-          onChange={(event) =>
-            runAction("editor.set-snap-enabled", Boolean(event.target.checked))
-          }
-        />
-        <Dropdown
-          disabled={!snapEnabled}
-          value={String(snapDenominator)}
-          onChange={(value) =>
-            runAction("editor.set-snap-denominator", Number(value))
-          }
-          minWidth="70px"
-          options={SNAP_OPTIONS}
-        />
-      </div>
+      <ToolbarButton
+        icon={SnapIcon}
+        checked={snapEnabled}
+        onChecked={(state) => runAction("editor.set-snap-enabled", state)}
+      />
+      <Dropdown
+        disabled={!snapEnabled}
+        value={String(snapDenominator)}
+        onChange={(value) =>
+          runAction("editor.set-snap-denominator", Number(value))
+        }
+        minWidth="70px"
+        maxWidth="70px"
+        options={SNAP_OPTIONS}
+      />
 
+      {/* Note Type */}
       {activeViewId === "piano-roll" && pianoRollOnly && (
         <Fragment>
           <VerticalSeparator />
           <Dropdown
             aria-label="Vocal note type"
-            title="Vocal note type"
             disabled={vocalPlacement.phrase !== null}
             value={vocalPlacement.noteKind}
             onChange={(value: string) =>
@@ -256,13 +280,12 @@ const Toolbar = ({
             maxWidth={120}
           />
           <VerticalSeparator />
-          {VOCAL_PHRASES.map(([phrase, icon, title]) => (
-            <ToolButton
+          {VOCAL_PHRASES.map(([phrase, Icon, title]) => (
+            <ToolbarButton
               key={phrase}
-              Icon={icon}
-              title={title}
-              ariaLabel={title.replace(/ \(.\)$/, "")}
-              active={vocalPlacement.phrase === phrase}
+              icon={Icon}
+              aria-label={title.replace(/ \(.\)$/, "")}
+              checked={vocalPlacement.phrase === phrase}
               onClick={() =>
                 onVocalPlacementChange({
                   ...vocalPlacement,
@@ -272,11 +295,10 @@ const Toolbar = ({
             />
           ))}
           <VerticalSeparator />
-          <ToolButton
-            Icon={VolumeIcon}
-            title="Vocal pitch feedback (P)"
-            ariaLabel="Vocal pitch feedback"
-            active={isVocalFeedbackEnabled}
+          <ToolbarButton
+            icon={VolumeIcon}
+            aria-label="Vocal pitch feedback"
+            checked={isVocalFeedbackEnabled}
             onClick={() => runAction("playback.toggle-vocal-pitch-feedback")}
           />
         </Fragment>
@@ -287,62 +309,57 @@ const Toolbar = ({
           {getNoteTypeComponent()}
           <VerticalSeparator />
 
-          <ToolButton
-            Icon={CursorIcon}
-            title="Select, move, and edit sustains (Q)"
-            ariaLabel="Select, move, and edit sustains"
-            active={highwayMode === "select"}
+          <ToolbarButton
+            icon={CursorIcon}
+            aria-label="Select, move, and edit sustains"
+            checked={highwayMode === "select"}
             onClick={() => onHighwayModeChange("select")}
           />
-          <ToolButton
-            Icon={PencilIcon}
-            title="Place notes (W)"
-            ariaLabel="Place notes"
-            active={highwayMode === "place"}
+          <ToolbarButton
+            icon={PencilIcon}
+            aria-label="Place notes"
+            checked={highwayMode === "place"}
             onClick={() => onHighwayModeChange("place")}
           />
-          <ToolButton
-            Icon={EraserIcon}
-            title="Remove notes (E)"
-            ariaLabel="Remove notes"
-            active={highwayMode === "remove"}
+          <ToolbarButton
+            icon={EraserIcon}
+            aria-label="Remove notes"
+            checked={highwayMode === "remove"}
             onClick={() => onHighwayModeChange("remove")}
           />
 
           <VerticalSeparator />
-          <ToolButton
-            active={highwayMode === "stagepower"}
-            title="Stagepower phrase (R)"
-            ariaLabel="Stagepower phrase"
+          <ToolbarButton
+            icon={StagepowerIcon}
+            checked={highwayMode === "stagepower"}
+            aria-label="Stagepower phrase"
             onClick={() =>
               onHighwayModeChange(
                 highwayMode === "stagepower" ? "select" : "stagepower",
               )
             }
-            Icon={StagepowerIcon}
           />
-          <ToolButton
-            active={highwayMode === "solo"}
-            title="Solo phrase (T)"
-            ariaLabel="Solo phrase"
+          <ToolbarButton
+            icon={SoloIcon}
+            checked={highwayMode === "solo"}
+            aria-label="Solo phrase"
             onClick={() =>
               onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
             }
-            Icon={SoloIcon}
           />
 
           <VerticalSeparator />
 
-          {Object.values(Instruments).map(([instrument, icon]) => (
-            <ToolButton
+          {Object.values(Instruments).map(([instrument, Icon]) => (
+            <ToolbarButton
               key={instrument}
-              Icon={icon}
-              ariaLabel={`Select ${instrument}`}
+              icon={Icon}
+              aria-label={`Select ${instrument}`}
               disabled={
                 !!midiData &&
                 !new SongView(midiData).getInstrumentTrackView(instrument)
               }
-              active={session.instrument === instrument}
+              checked={session.instrument === instrument}
               onClick={() =>
                 runAction("editor.update-viewport", session.id, {
                   instrument,
@@ -354,24 +371,20 @@ const Toolbar = ({
 
           <VerticalSeparator />
 
-          {Difficulties.map(([difficulty, icon]) => (
-            <ToolButton
+          {Difficulties.map(([difficulty, Icon]) => (
+            <ToolbarButton
               key={difficulty}
-              Icon={icon}
-              active={session.difficulty === difficulty}
+              icon={Icon}
+              checked={session.difficulty === difficulty}
               onClick={() =>
                 runAction("editor.update-viewport", session.id, { difficulty })
               }
-            ></ToolButton>
+            />
           ))}
         </Fragment>
       )}
     </Section>
   );
 };
-
-function startCaseName(name: string): string {
-  return name.charAt(0) + name.slice(1).toLowerCase();
-}
 
 export default Toolbar;

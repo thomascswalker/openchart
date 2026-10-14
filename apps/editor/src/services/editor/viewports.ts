@@ -40,6 +40,7 @@ export interface ViewportSnapshot {
   activeViewId: string;
   snapEnabled: boolean;
   snapDenominator: number;
+  lockCursor: boolean;
 }
 
 const DEFAULT_VIEWPORT_ID = "viewport-1";
@@ -48,6 +49,7 @@ const DEFAULT_TRACK_KEY = "lead-guitar";
 function createViewportSession(
   id: string,
   view: ViewportKind = "piano-roll",
+  cameraTick = 0,
 ): ViewportSession {
   return {
     id,
@@ -55,7 +57,7 @@ function createViewportSession(
     trackKey: DEFAULT_TRACK_KEY,
     instrument: "LEAD GUITAR",
     difficulty: Difficulty.Expert,
-    camera: { tick: 0 },
+    camera: { tick: cameraTick },
   };
 }
 
@@ -68,6 +70,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   private activeViewId = "piano-roll";
   private snapEnabled = true;
   private snapDenominator = 4;
+  private lockCursor = false;
 
   constructor() {
     super();
@@ -81,6 +84,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
     this.activeViewId = "piano-roll";
     this.snapEnabled = true;
     this.snapDenominator = 4;
+    this.lockCursor = false;
     this.publish();
   };
 
@@ -108,7 +112,11 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
       afterIndex < 0 ? this.viewportSessions.length : afterIndex + 1;
     this.viewportSessions = [
       ...this.viewportSessions.slice(0, insertAt),
-      createViewportSession(created, view),
+      createViewportSession(
+        created,
+        view,
+        this.viewportSessions[0]?.camera.tick ?? 0,
+      ),
       ...this.viewportSessions.slice(insertAt),
     ];
     this.activeViewportId = created;
@@ -136,8 +144,12 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   };
 
   public readonly focusViewport = (id: string): void => {
-    this.activeViewportId = id;
     const session = this.viewportSessions.find((item) => item.id === id);
+    if (this.activeViewportId === id && session?.view === this.activeViewId) {
+      return;
+    }
+
+    this.activeViewportId = id;
     if (session) this.activeViewId = session.view;
     this.publish();
   };
@@ -146,18 +158,27 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
     id: string,
     update: Partial<Omit<ViewportSession, "id">>,
   ): void => {
-    const previousView = this.getViewport(id)?.view;
-    this.viewportSessions = this.viewportSessions.map((session) =>
-      session.id === id
-        ? enforceViewForInstrument({
-            ...session,
-            ...update,
-            camera: update.camera
-              ? { ...session.camera, ...update.camera }
-              : session.camera,
-          })
-        : session,
-    );
+    const current = this.getViewport(id);
+    if (!current) return;
+
+    const previousView = current.view;
+    const cameraTick =
+      update.camera?.tick ?? this.viewportSessions[0]!.camera.tick;
+    this.viewportSessions = this.viewportSessions.map((session) => {
+      const updated =
+        session.id === id
+          ? enforceViewForInstrument({
+              ...session,
+              ...update,
+              camera: update.camera
+                ? { ...session.camera, ...update.camera }
+                : session.camera,
+            })
+          : session;
+      return updated.camera.tick === cameraTick
+        ? updated
+        : { ...updated, camera: { ...updated.camera, tick: cameraTick } };
+    });
     const updated = this.getViewport(id);
     if (
       id === this.activeViewportId &&
@@ -172,6 +193,12 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   public readonly setSnapEnabled = (enabled: boolean): void => {
     if (this.snapEnabled === enabled) return;
     this.snapEnabled = enabled;
+    this.publish();
+  };
+
+  public readonly setLockCursor = (locked: boolean): void => {
+    if (this.lockCursor === locked) return;
+    this.lockCursor = locked;
     this.publish();
   };
 
@@ -198,6 +225,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
       activeViewId: this.activeViewId,
       snapEnabled: this.snapEnabled,
       snapDenominator: this.snapDenominator,
+      lockCursor: this.lockCursor,
     };
   }
 

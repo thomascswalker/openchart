@@ -662,6 +662,16 @@ export class HighwayInputController {
       wheelTicksPerPixel,
     );
     this.context.setCameraTick(nextTick);
+    if (this.context.getState().lockCursor) {
+      this.context.requestSeek(
+        getHighwayWheelTick(
+          this.context.getPlayheadTick(),
+          -event.deltaY,
+          this.context.getPpqn(),
+          wheelTicksPerPixel,
+        ),
+      );
+    }
     this.updateHoveredNote(event);
     this.updateGhostLocation(event);
   };
