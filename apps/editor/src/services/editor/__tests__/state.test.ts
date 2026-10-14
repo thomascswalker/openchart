@@ -18,6 +18,7 @@ describe("EditorStateService", () => {
       debugVisible: false,
       projectVisible: true,
       settingsVisible: false,
+      aboutVisible: false,
     });
     expect(listener).toHaveBeenCalledTimes(2);
   });

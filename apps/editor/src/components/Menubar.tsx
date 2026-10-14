@@ -85,6 +85,14 @@ const MENUS: MenuDefinition[] = [
       { id: "dialog.close-debug", label: "Close Debugger" },
     ],
   },
+  {
+    id: "help",
+    label: "Help",
+    items: [
+      { id: "updater.check", label: "Check for updates..." },
+      { id: "dialog.open-about", label: "About" },
+    ],
+  },
 ];
 
 function enabledItemIndexes(

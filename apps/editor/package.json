@@ -30,6 +30,8 @@
     "@openchart/views": "^1.0.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.2",
+    "@tauri-apps/plugin-process": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
     "choices.js": "^11.2.4",
     "classnames": "^2.5.1",
     "es-toolkit": "^1.51.0",

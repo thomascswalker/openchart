@@ -151,6 +151,10 @@ npm run desktop:dev
 npm run desktop:build
 ```
 
+### Desktop Releases & Auto-Update
+
+The desktop app uses [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/). Users can run **Help → Check for updates...** to download and install the newest GitHub Release, which is published by `.github/workflows/desktop-build.yml` on every push to `main`.
+
 ### Run Tests
 
 ```bash

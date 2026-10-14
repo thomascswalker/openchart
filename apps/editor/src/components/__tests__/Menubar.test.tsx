@@ -34,6 +34,7 @@ describe("Menubar", () => {
       "Edit",
       "Playback",
       "Window",
+      "Help",
     ]);
     act(() => triggers[0].click());
     await settle();
@@ -136,6 +137,37 @@ describe("Menubar", () => {
     expect(copy).not.toBeNull();
     act(() => copy?.click());
     expect(onCommand).toHaveBeenCalledWith("clipboard.copy");
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("lists update and about commands in the Help menu", async () => {
+    const onCommand = vi.fn();
+    const { container, root } = render(
+      <Menubar canExecute={() => true} onCommand={onCommand} />,
+    );
+    const helpTrigger = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"]',
+      ),
+    ].find((trigger) => trigger.textContent === "Help")!;
+    act(() => helpTrigger.click());
+    await settle();
+    const items = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        "[role=menu] [data-command]",
+      ),
+    ];
+    expect(items.map((item) => item.textContent?.trim())).toEqual([
+      "Check for updates...",
+      "About",
+    ]);
+    expect(items.map((item) => item.dataset.command)).toEqual([
+      "updater.check",
+      "dialog.open-about",
+    ]);
+    act(() => items[1].click());
+    expect(onCommand).toHaveBeenCalledWith("dialog.open-about");
     act(() => root.unmount());
     container.remove();
   });
