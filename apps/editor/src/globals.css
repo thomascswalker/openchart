@@ -46,8 +46,10 @@
 
   --primary: var(--neutral-80);
   --primary-hover: var(--neutral-70);
+  --primary-active: var(--neutral-90);
   --secondary: var(--blue-40);
   --secondary-hover: var(--blue-30);
+  --secondary-active: var(--blue-50);
 
   /* Sizing */
   --size-very-large: 48px;

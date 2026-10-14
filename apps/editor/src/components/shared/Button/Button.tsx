@@ -15,6 +15,7 @@ import type {
   styleFn,
 } from "styled-system";
 import styles from "./button.module.css";
+import { RemoveIcon } from "../Icon/Icon";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 
@@ -45,6 +46,7 @@ interface CheckableProps {
 interface ButtonProps
   extends HTMLButtonProps, CheckableProps, StyleProps, AriaProps {
   flat?: boolean;
+  icon?: ReactNode;
   title?: string;
   tabIndex?: number;
   ref?: Ref<HTMLButtonElement>;
@@ -63,6 +65,7 @@ const Button = ({
   defaultChecked = false,
   checkable = false,
   flat = false,
+  icon = undefined,
   onKeyDown = undefined,
   onClick = undefined,
   onChecked = undefined,
@@ -108,6 +111,10 @@ const Button = ({
     styles["ui-button"],
     isCheckable && isChecked && styles["ui-button-checked"],
     flat && styles["ui-button-flat"],
+    icon &&
+      (children
+        ? styles["ui-button-icon-label"]
+        : styles["ui-button-icon-only"]),
     className,
   );
 
@@ -131,10 +138,27 @@ const Button = ({
       aria-label={ariaLabel}
       style={style}
     >
+      {icon}
       {children}
     </button>
   );
 };
+
+type CloseButtonProps = ButtonProps;
+
+const CloseButton = ({ onClick, ...props }: CloseButtonProps) => {
+  return (
+    <Button
+      onClick={onClick}
+      icon={<RemoveIcon size={16} />}
+      className={styles["ui-button-close"]}
+      {...props}
+    />
+  );
+};
+
+export { CloseButton };
+export type { CloseButtonProps };
 
 export { Button };
 export type { ButtonProps };

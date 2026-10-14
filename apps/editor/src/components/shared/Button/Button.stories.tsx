@@ -2,8 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CursorIcon } from "../Icon/Icon";
 import { Button } from "./Button";
-import { CloseButton } from "./CloseButton";
-import { ToolButton } from "./ToolButton";
+import { CloseButton } from "./Button";
 
 const meta = {
   title: "Shared/Buttons",
@@ -23,24 +22,24 @@ const ButtonVariantsView = () => {
       style={{
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
+        alignItems: "start",
         gap: 32,
       }}
     >
+      <Button>Normal</Button>
+      <Button disabled>Disabled</Button>
+      <Button flat>Flat</Button>
       <Button checked={checked} onChecked={(state) => setChecked(state)}>
         External checkable
       </Button>
       <Button checkable defaultChecked>
         Internal checkable
       </Button>
-      <CloseButton
-        aria-label="Close example"
-        onClick={() => setChecked(false)}
-      />
-      <ToolButton Icon={CursorIcon} aria-label="Cursor tool" />
-      <ToolButton Icon={CursorIcon} aria-label="Cursor tool with text">
+      <CloseButton aria-label="Close example" />
+      <Button icon={<CursorIcon size={24} />} aria-label="Cursor tool" />
+      <Button icon={<CursorIcon size={24} />} aria-label="Cursor tool">
         Cursor
-      </ToolButton>
+      </Button>
     </div>
   );
 };

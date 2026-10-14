@@ -9,6 +9,7 @@ export interface IconProps {
   svg: ComponentType<SVGProps<SVGSVGElement>>;
   width?: number;
   height?: number;
+  size?: number;
   style?: CSSProperties;
 }
 
@@ -16,8 +17,13 @@ const Icon = ({
   svg: Svg,
   width = 32,
   height = 32,
+  size = 32,
   style = undefined,
 }: IconProps) => {
+  if (size) {
+    width = size;
+    height = size;
+  }
   return <Svg width={width} height={height} style={style} />;
 };
 
