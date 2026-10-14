@@ -1,14 +1,14 @@
 import { Midi } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
-import { DocumentService } from "../document";
+import { DocumentService } from "../document/document";
 import type { FileSystemService } from "../filesystem";
-import type { ILoggerService } from "../logger";
+import type { LoggerService } from "../logger";
 
 function createDocumentService(
   fileSystem: Partial<FileSystemService> = {},
 ): DocumentService {
   return new DocumentService(
-    { debug: vi.fn(), info: vi.fn() } as unknown as ILoggerService,
+    { debug: vi.fn(), info: vi.fn() } as unknown as LoggerService,
     fileSystem as FileSystemService,
   );
 }
@@ -23,15 +23,12 @@ describe("DocumentService", () => {
 
     midi.tracks[0]?.addNote(60, 0, 100, 120);
     service.recordOpenChart();
-    expect(service.getSnapshot().canUndoMidi).toBe(true);
+    expect(service.getSnapshot().canUndo).toBe(true);
     expect(service.getSnapshot().isDirty).toBe(true);
 
     service.undoOpenChart();
-    expect(service.getSnapshot().midiData?.tracks[0]?.getNotes()).toHaveLength(
-      0,
-    );
-    expect(service.getSnapshot().canRedoMidi).toBe(true);
-    expect(service.getSnapshot().projectDocument).not.toBeNull();
+    expect(service.getSnapshot().midi?.tracks[0]?.getNotes()).toHaveLength(0);
+    expect(service.getSnapshot().canRedo).toBe(true);
   });
 
   it("does not dirty an empty edit transaction", () => {
@@ -41,7 +38,7 @@ describe("DocumentService", () => {
     service.endOpenChart();
 
     expect(service.getSnapshot().isDirty).toBe(false);
-    expect(service.getSnapshot().canUndoMidi).toBe(false);
+    expect(service.getSnapshot().canUndo).toBe(false);
   });
 
   it("opens a MIDI file and binds its filename and handle", async () => {
@@ -59,9 +56,9 @@ describe("DocumentService", () => {
     await expect(service.open()).resolves.toBe(true);
 
     const snapshot = service.getSnapshot();
-    expect(snapshot.midiData?.trackCount).toBe(1);
-    expect(snapshot.fileName).toBe("opened.mid");
-    expect(snapshot.fileHandle).toBe(handle);
+    expect(snapshot.midi?.trackCount).toBe(1);
+    expect(snapshot.file).toBe("opened.mid");
+    expect(snapshot.handle).toBe(handle);
     expect(snapshot.isDirty).toBe(false);
   });
 });

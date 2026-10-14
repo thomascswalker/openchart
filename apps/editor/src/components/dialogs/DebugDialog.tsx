@@ -246,7 +246,7 @@ function DebugPanel({
   pressedKeys: string[];
   chartView: ChartView | null;
 }) {
-  const { midiData, fileName } = useDocumentSnapshot();
+  const { midi: midiData, file: fileName } = useDocumentSnapshot();
   const { viewportSessions, activeViewportId } = useViewportSnapshot();
   const activeViewport = viewportSessions.find(
     (session) => session.id === activeViewportId,

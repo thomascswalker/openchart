@@ -4,9 +4,9 @@ import {
   ProjectValidationError,
   type ProjectValidationIssue,
   validateProjectMetadata,
-} from "../../project/projectMetadata";
+} from "../../services/project/projectMetadata";
 import { EditorStateService } from "../../services/editor/state";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document";
 
 export class ApplyProjectMetadataAction extends Action<
   [unknown],

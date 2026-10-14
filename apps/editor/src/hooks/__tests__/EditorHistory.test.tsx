@@ -6,11 +6,15 @@ import { Runtime } from "../../components/Runtime";
 import { useEditorState } from "../useEditorState";
 import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document";
 import { useDocumentSnapshot } from "../useDocumentSnapshot";
 
 function HistoryHarness() {
-  const { midiData, canUndoMidi, canRedoMidi } = useDocumentSnapshot();
+  const {
+    midi: midiData,
+    canUndo: canUndo,
+    canRedo: canRedo,
+  } = useDocumentSnapshot();
   const document = Platform.services.get<DocumentService>("document");
   const { isDirty } = useEditorState();
   const [view, setView] = useState<"highway" | "piano-roll">("highway");
@@ -29,7 +33,7 @@ function HistoryHarness() {
         {midiData?.tracks[0]?.getNotes().length ?? 0}
       </output>
       <output data-testid="history-state">
-        {`${canUndoMidi}:${canRedoMidi}:${isDirty}`}
+        {`${canUndo}:${canRedo}:${isDirty}`}
       </output>
       <output data-testid="view">{view}</output>
       <button type="button" onClick={addNote}>
@@ -45,7 +49,7 @@ function HistoryHarness() {
       >
         Switch view
       </button>
-      <button type="button" onClick={() => document.setMidiData(new Midi())}>
+      <button type="button" onClick={() => document.reset()}>
         Replace document
       </button>
       <input aria-label="Text field" />

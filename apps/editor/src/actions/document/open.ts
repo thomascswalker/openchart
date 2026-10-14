@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document";
 import { LoggerService } from "../../services/logger";
 
 export class OpenDocumentAction extends Action {

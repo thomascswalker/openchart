@@ -12,7 +12,7 @@ import {
   type PitchRange,
   type PreviewNote,
 } from "../audio/soundboard";
-import type { DocumentService } from "./document";
+import type { DocumentService } from "./document/document";
 import type { ApplicationSettings } from "./settings";
 import { IStatefulService } from "../platform/services";
 

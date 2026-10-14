@@ -4,8 +4,8 @@ import { exportMidi, serializeProject } from "../../project/projectService";
 import {
   midiFilePickerTypes,
   projectFilePickerTypes,
-} from "../../project/fileTypes";
-import { DocumentService } from "../../services/document";
+} from "../../services/document/types";
+import { DocumentService } from "../../services/document/document";
 import { FileSystemService } from "../../services/filesystem";
 import { SettingsService } from "../../services/settings";
 
@@ -19,7 +19,7 @@ export class SaveDocumentAsAction extends Action {
     const fileSystem = accessor.get<FileSystemService>("filesystem");
     const context = service.getSnapshot();
     const document = context.projectDocument;
-    if (!context.midiData?.trackCount || !document) {
+    if (!context.midi?.trackCount || !document) {
       throw new Error("There is no MIDI document to save.");
     }
 
@@ -28,7 +28,7 @@ export class SaveDocumentAsAction extends Action {
         .defaultSaveMode === "project";
     const midiExport = saveAsProject ? null : exportMidi(document);
     const suggestedName = saveAsProject
-      ? `${(context.fileName ?? context.projectMetadata.Song.Name ?? "untitled").replace(/\.(midproject|midi?)$/i, "")}.midproject`
+      ? `${(context.file ?? context.projectMetadata.Song.Name ?? "untitled").replace(/\.(midproject|midi?)$/i, "")}.midproject`
       : midiExport!.suggestedName;
     const bytes = saveAsProject
       ? await serializeProject(document)

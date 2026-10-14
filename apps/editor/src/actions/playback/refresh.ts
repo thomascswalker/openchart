@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document";
 import { PlaybackService } from "../../services/playback";
 
 export class RefreshPlaybackAction extends Action {

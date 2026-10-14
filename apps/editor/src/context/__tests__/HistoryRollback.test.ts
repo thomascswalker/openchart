@@ -1,6 +1,6 @@
 import { Midi } from "@openchart/core";
 import { describe, expect, it } from "vitest";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document.js";
 import { History } from "../History.js";
 
 function createMidi(): Midi {
@@ -53,7 +53,7 @@ describe("history transaction rollback", () => {
 
     expect(document.getData()).not.toBe(before);
     expect(document.getData()!.tracks).toHaveLength(0);
-    expect(document.getSnapshot().canUndoMidi).toBe(false);
+    expect(document.getSnapshot().canUndo).toBe(false);
     expect(published).toBeGreaterThan(0);
     expect(document.rollbackOpenChart()).toBe(false);
   });

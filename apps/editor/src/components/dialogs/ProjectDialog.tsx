@@ -4,7 +4,7 @@ import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import type {
   ProjectMetadata,
   ProjectValidationIssue,
-} from "../../project/projectMetadata";
+} from "../../services/project/projectMetadata";
 import { Input } from "../shared/Input/Input";
 import { Label, Text } from "../shared/Text";
 import { Checkbox } from "../shared/Button";

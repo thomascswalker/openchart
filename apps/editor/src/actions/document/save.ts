@@ -4,8 +4,8 @@ import { exportMidi, serializeProject } from "../../project/projectService";
 import {
   midiFilePickerTypes,
   projectFilePickerTypes,
-} from "../../project/fileTypes";
-import { DocumentService } from "../../services/document";
+} from "../../services/document/types";
+import { DocumentService } from "../../services/document/document";
 import { FileSystemService } from "../../services/filesystem";
 
 function hasMidiExtension(fileName: string): boolean {
@@ -22,29 +22,27 @@ export class SaveDocumentAction extends Action {
     const fileSystem = accessor.get<FileSystemService>("filesystem");
     const context = service.getSnapshot();
     const document = context.projectDocument;
-    if (!context.midiData?.trackCount || !document) {
+    if (!context.midi?.trackCount || !document) {
       throw new Error("There is no MIDI document to save.");
     }
-    if (!context.fileHandle) {
+    if (!context.handle) {
       await import("./save-as").then(({ SaveDocumentAsAction }) =>
         new SaveDocumentAsAction().run(accessor),
       );
       return;
     }
 
-    const saveAsMidi = hasMidiExtension(
-      context.fileName ?? context.fileHandle.name,
-    );
+    const saveAsMidi = hasMidiExtension(context.file ?? context.handle.name);
     const midiExport = saveAsMidi ? exportMidi(document) : null;
     const bytes = saveAsMidi
       ? midiExport!.bytes
       : await serializeProject(document);
     const saved = await fileSystem.write(
       bytes,
-      context.fileHandle.name,
+      context.handle.name,
       saveAsMidi ? midiFilePickerTypes : projectFilePickerTypes,
       saveAsMidi ? "audio/midi" : "application/zip",
-      context.fileHandle,
+      context.handle,
     );
     service.setFileBinding(saved.name, saved.handle);
     service.setClean();

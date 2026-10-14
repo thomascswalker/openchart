@@ -6,7 +6,7 @@ import { runAction } from "../../../actions/execute";
 import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import { Runtime } from "../../Runtime";
 import { Playback } from "../../Playback";
-import { createProjectMetadata } from "../../../project/projectMetadata";
+import { createProjectMetadata } from "../../../services/project/projectMetadata";
 import { ProjectDialog, getSections } from "../ProjectDialog";
 
 function ProjectTestShell() {

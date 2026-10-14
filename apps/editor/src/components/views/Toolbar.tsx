@@ -124,7 +124,7 @@ const Toolbar = ({
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
   const pianoRollOnly = requiresPianoRoll(session.instrument);
-  const { midiData } = useDocumentSnapshot();
+  const { midi: midiData } = useDocumentSnapshot();
   const {
     activeViewId: globalView,
     snapEnabled,

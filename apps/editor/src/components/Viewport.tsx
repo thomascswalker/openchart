@@ -158,7 +158,7 @@ function ViewportPanel({
   active: boolean;
   onChartViewChange: (sessionId: string, chartView: ChartView | null) => void;
 }) {
-  const { midiData } = useDocumentSnapshot();
+  const { midi: midiData } = useDocumentSnapshot();
   const { settings, applySetting } = useApplicationSettings();
   const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
     useViewportSnapshot();

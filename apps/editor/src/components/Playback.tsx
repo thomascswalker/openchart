@@ -12,7 +12,7 @@ import Platform from "../platform";
 import { PlaybackService } from "../services/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
-  const { midiData } = useDocumentSnapshot();
+  const { midi: midiData } = useDocumentSnapshot();
   const { viewportSessions, activeViewportId, snapEnabled, snapDenominator } =
     useViewportSnapshot();
   const activeViewport = viewportSessions.find(
