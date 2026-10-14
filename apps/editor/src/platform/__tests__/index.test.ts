@@ -3,7 +3,7 @@ import { ActionRegistry } from "../actions";
 import { ContextStore } from "../context";
 import Platform from "../index";
 import { ServiceRegistry } from "../services";
-import { DocumentService } from "../../services/document/document";
+import { DocumentService } from "../../services/document";
 import { FileSystemService } from "../../services/filesystem";
 import { LoggerService } from "../../services/logger";
 import { SettingsService } from "../../services/settings";

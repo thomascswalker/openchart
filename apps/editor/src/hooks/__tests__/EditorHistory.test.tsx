@@ -1,12 +1,11 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { Midi } from "@openchart/core";
 import { Runtime } from "../../components/Runtime";
 import { useEditorState } from "../useEditorState";
 import { executeEditorAction, runAction } from "../../actions/execute";
 import Platform from "../../platform";
-import { DocumentService } from "../../services/document/document";
+import { DocumentService } from "../../services/document";
 import { useDocumentSnapshot } from "../useDocumentSnapshot";
 
 function HistoryHarness() {
@@ -114,7 +113,7 @@ describe("editor history commands", () => {
     act(() => replaceButton.click());
     expect(
       container.querySelector('[data-testid="history-state"]')?.textContent,
-    ).toBe("false:false:true");
+    ).toBe("false:false:false");
     expect(Platform.actions.isAvailable("history.undo")).toBe(false);
 
     act(() => root.unmount());

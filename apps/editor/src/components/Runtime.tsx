@@ -8,7 +8,7 @@ import { usePlatform, useService } from "../platform";
 import { useApplicationSettings } from "../hooks/useApplicationSettings";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { DocumentService } from "../services/document/document";
+import { DocumentService } from "../services/document";
 import { EditorStateService } from "../services/editor/state";
 import { Playback } from "./Playback";
 

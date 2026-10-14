@@ -1,6 +1,7 @@
 import { Midi } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
-import { DocumentService } from "../document/document";
+import { DocumentService } from "../document";
+import { makeDefaultMetadata, metadataSchema } from "../document/schema";
 import type { FileSystemService } from "../filesystem";
 import type { LoggerService } from "../logger";
 
@@ -41,15 +42,20 @@ describe("DocumentService", () => {
     expect(service.getSnapshot().canUndo).toBe(false);
   });
 
-  it("opens a MIDI file and binds its filename and handle", async () => {
+  it("opens MIDI and its sidecar metadata and binds the folder", async () => {
     const midi = new Midi();
     midi.addTrack();
     const handle = { name: "opened.mid" } as FileSystemFileHandle;
+    const directoryHandle = {} as FileSystemDirectoryHandle;
+    const metadata = makeDefaultMetadata();
+    metadata.song.name = "Song name";
     const service = createDocumentService({
-      read: vi.fn(async () => ({
+      readMidi: vi.fn(async () => ({
         name: "opened.mid",
         bytes: midi.toBuffer(),
         handle,
+        directoryHandle,
+        metadataBytes: new TextEncoder().encode(JSON.stringify(metadata)),
       })),
     });
 
@@ -59,6 +65,8 @@ describe("DocumentService", () => {
     expect(snapshot.midi?.trackCount).toBe(1);
     expect(snapshot.file).toBe("opened.mid");
     expect(snapshot.handle).toBe(handle);
+    expect(snapshot.directoryHandle).toBe(directoryHandle);
+    expect(snapshot.metadata).toEqual(metadataSchema.parse(metadata));
     expect(snapshot.isDirty).toBe(false);
   });
 });

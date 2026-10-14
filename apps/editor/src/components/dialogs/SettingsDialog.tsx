@@ -20,7 +20,7 @@ interface SettingsField {
   id: string;
   label: string;
   control: SettingsControl;
-  path: `${"saving" | "feedback" | "history" | "graphics"}.${string}`;
+  path: `${"feedback" | "history" | "graphics"}.${string}`;
   options?: ReadonlyArray<{ label: string; value: string }>;
   min?: number;
   max?: number;
@@ -29,16 +29,6 @@ interface SettingsField {
 
 const settingsSchema: Record<string, SettingsField[]> = {
   General: [
-    {
-      id: "defaultSaveMode",
-      label: "Default save mode",
-      control: "select",
-      path: "saving.defaultSaveMode",
-      options: [
-        { label: "Project", value: "project" },
-        { label: "MIDI", value: "midi" },
-      ],
-    },
     {
       id: "historyCapacity",
       label: "History capacity",
@@ -129,10 +119,7 @@ function getSettingValue(
   path: SettingsField["path"],
 ): string | number | boolean {
   const [group, key] = path.split(".") as [
-    keyof Pick<
-      ApplicationSettings,
-      "saving" | "feedback" | "history" | "graphics"
-    >,
+    keyof Pick<ApplicationSettings, "feedback" | "history" | "graphics">,
     string,
   ];
   return (settings[group] as Record<string, string | number | boolean>)[key];
@@ -144,10 +131,7 @@ function setSettingValue(
   value: string | number | boolean,
 ): ApplicationSettings {
   const [group, key] = path.split(".") as [
-    keyof Pick<
-      ApplicationSettings,
-      "saving" | "feedback" | "history" | "graphics"
-    >,
+    keyof Pick<ApplicationSettings, "feedback" | "history" | "graphics">,
     string,
   ];
   return {

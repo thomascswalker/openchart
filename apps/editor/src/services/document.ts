@@ -1,22 +1,24 @@
 import { Midi } from "@openchart/core";
-import { midiFilePickerTypes } from "./types";
-import { DEFAULT_HISTORY_CAPACITY, History } from "../../context/History";
-import type { FileSystemService } from "../filesystem";
-import type { LoggerService } from "../logger";
-import { IStatefulService } from "../../platform/services";
-import { makeDefaultMetadata, type Metadata } from "./schema";
+import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
+import type { FileSystemService } from "./filesystem";
+import type { LoggerService } from "./logger";
+import { IStatefulService } from "../platform/services";
+import {
+  makeDefaultMetadata,
+  metadataSchema,
+  type Metadata,
+} from "./document/schema";
 
 export interface DocumentSnapshot {
   midi: Midi | null;
   file: string | null;
   handle: FileSystemFileHandle | null;
+  directoryHandle: FileSystemDirectoryHandle | null;
   isDirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
   metadata: Metadata;
 }
-
-const openFilePickerTypes = [...midiFilePickerTypes];
 
 function hasMidiExtension(fileName: string): boolean {
   return /\.(mid|midi)$/i.test(fileName);
@@ -30,6 +32,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   #data: Midi | null = new Midi();
   #name: string | null = null;
   #handle: FileSystemFileHandle | null = null;
+  #directoryHandle: FileSystemDirectoryHandle | null = null;
   #isDirty = false;
   #metadata: Metadata = makeDefaultMetadata();
   readonly #history = new History(DEFAULT_HISTORY_CAPACITY);
@@ -43,11 +46,11 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this.update(new Midi(), null, null);
+    this.update(new Midi(), null, null, null, makeDefaultMetadata());
   };
 
   public async open(): Promise<boolean> {
-    const opened = await this.#fileSystem.read(openFilePickerTypes);
+    const opened = await this.#fileSystem.readMidi();
     if (!opened) {
       return false;
     }
@@ -56,7 +59,18 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       throw new Error("Choose a MIDI file (.mid or .midi).");
     }
 
-    this.update(new Midi(opened.bytes), opened.name, opened.handle);
+    const metadata = opened.metadataBytes
+      ? metadataSchema.parse(
+          JSON.parse(new TextDecoder().decode(opened.metadataBytes)),
+        )
+      : makeDefaultMetadata();
+    this.update(
+      new Midi(opened.bytes),
+      opened.name,
+      opened.handle,
+      opened.directoryHandle ?? null,
+      metadata,
+    );
     this.#logger.info(`Document opened: ${opened.name}`);
     return true;
   }
@@ -69,6 +83,31 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.#data = newData;
   }
 
+  public get metadata(): Metadata {
+    return this.#metadata;
+  }
+
+  public readonly setMetadata = (metadata: Metadata): void => {
+    this.#metadata = metadataSchema.parse(metadata);
+    this.#isDirty = true;
+    this.publish();
+  };
+
+  public exportMidi(): { bytes: Uint8Array; suggestedName: string } {
+    if (!this.#data) {
+      throw new Error("There is no MIDI document to export.");
+    }
+    const baseName = (
+      this.#name ??
+      this.#metadata.song.name ??
+      "untitled"
+    ).replace(/\.(mid|midi)$/i, "");
+    return {
+      bytes: this.#data.toBuffer(),
+      suggestedName: `${baseName || "untitled"}.mid`,
+    };
+  }
+
   public readonly setMidiData = (data: Midi): void => {
     this.#data = data;
     this.#history.reset(data);
@@ -79,9 +118,11 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   public readonly setFileBinding = (
     fileName: string | null,
     fileHandle: FileSystemFileHandle | null,
+    directoryHandle: FileSystemDirectoryHandle | null = null,
   ): void => {
     this.#name = fileName;
     this.#handle = fileHandle;
+    this.#directoryHandle = directoryHandle;
     this.publish();
   };
 
@@ -170,10 +211,14 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     midi: Midi,
     name: string | null,
     handle: FileSystemFileHandle | null,
+    directoryHandle: FileSystemDirectoryHandle | null,
+    metadata: Metadata,
   ): void {
     this.#data = midi;
     this.#name = name;
     this.#handle = handle;
+    this.#directoryHandle = directoryHandle;
+    this.#metadata = metadata;
     this.#isDirty = false;
     this.#history.reset(midi);
     this.publish();
@@ -184,6 +229,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       midi: this.#data,
       file: this.#name,
       handle: this.#handle,
+      directoryHandle: this.#directoryHandle,
       isDirty: this.#isDirty,
       canUndo: this.#history.canUndo,
       canRedo: this.#history.canRedo,

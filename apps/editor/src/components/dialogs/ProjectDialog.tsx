@@ -2,9 +2,9 @@ import { useState } from "react";
 import { executeEditorAction, runAction } from "../../actions/execute";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import type {
-  ProjectMetadata,
-  ProjectValidationIssue,
-} from "../../services/project/projectMetadata";
+  Metadata,
+  MetadataValidationIssue,
+} from "../../services/document/schema";
 import { Input } from "../shared/Input/Input";
 import { Label, Text } from "../shared/Text";
 import { Checkbox } from "../shared/Button";
@@ -36,9 +36,8 @@ function isPrimitive(value: unknown): value is Primitive {
   );
 }
 
-/** Derives the editor from the archive-boundary shape: primitive root keys go
- * in General, while each root object becomes its own section. */
-function getSections(metadata: ProjectMetadata): ProjectSection[] {
+/** Shows primitive root fields in General and each nested metadata object as a section. */
+function getSections(metadata: Metadata): ProjectSection[] {
   const general: ProjectField[] = [];
   const sections: ProjectSection[] = [];
 
@@ -68,41 +67,40 @@ function getSections(metadata: ProjectMetadata): ProjectSection[] {
 }
 
 function makeErrorMap(
-  issues: readonly ProjectValidationIssue[],
+  issues: readonly MetadataValidationIssue[],
 ): Record<string, string> {
   return Object.fromEntries(issues.map((issue) => [issue.path, issue.message]));
 }
 
 function updatePrimitive(
-  metadata: ProjectMetadata,
+  metadata: Metadata,
   section: string,
   key: string,
   value: Primitive,
-): ProjectMetadata {
-  const next = structuredClone(metadata) as Record<string, any>;
+): Metadata {
+  const next = structuredClone(metadata) as unknown as Record<string, unknown>;
   if (section === "General") {
     next[key] = value;
-  } else {
-    (next[section] as Record<string, Primitive>)[key] = value;
+  } else if (isRecord(next[section])) {
+    next[section][key] = value;
   }
-  return next as ProjectMetadata;
+  return next as Metadata;
 }
 
 const ProjectDialog = () => {
-  const { projectMetadata } = useDocumentSnapshot();
-  const [draft, setDraft] = useState<ProjectMetadata>(projectMetadata);
+  const { metadata } = useDocumentSnapshot();
+  const [draft, setDraft] = useState<Metadata>(metadata);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const sections = getSections(draft);
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(projectMetadata);
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(metadata);
 
   const close = (): void => {
     runAction("dialog.close-project");
   };
   const apply = async (): Promise<boolean> => {
-    const issues = await executeEditorAction<readonly ProjectValidationIssue[]>(
-      "document.apply-project-metadata",
-      draft,
-    );
+    const issues = await executeEditorAction<
+      readonly MetadataValidationIssue[]
+    >("document.apply-project-metadata", draft);
     setErrors(makeErrorMap(issues));
     return issues.length === 0;
   };
@@ -178,4 +176,4 @@ const ProjectDialog = () => {
   );
 };
 
-export { ProjectDialog, getSections };
+export { ProjectDialog };

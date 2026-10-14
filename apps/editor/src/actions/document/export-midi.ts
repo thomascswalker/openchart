@@ -1,8 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { exportMidi } from "../../project/projectService";
-import { midiFilePickerTypes } from "../../services/document/types";
-import { DocumentService } from "../../services/document/document";
+import { DocumentService } from "../../services/document";
 import { FileSystemService } from "../../services/filesystem";
 
 export class ExportMidiAction extends Action {
@@ -11,18 +9,17 @@ export class ExportMidiAction extends Action {
   }
 
   async run(accessor: ServicesAccessor): Promise<void> {
-    const state = accessor.get<DocumentService>("document").getSnapshot();
+    const document = accessor.get<DocumentService>("document");
+    const state = document.getSnapshot();
     const fileSystem = accessor.get<FileSystemService>("filesystem");
-    const document = state.projectDocument;
-    if (!state.midi?.trackCount || !document) {
+    if (!state.midi?.trackCount) {
       throw new Error("There is no MIDI document to export.");
     }
-    const result = exportMidi(document);
-    await fileSystem.write(
+    const result = document.exportMidi();
+    await fileSystem.writeMidi(
       result.bytes,
+      JSON.stringify(document.metadata, null, 2),
       result.suggestedName,
-      midiFilePickerTypes,
-      "audio/midi",
     );
   }
 }

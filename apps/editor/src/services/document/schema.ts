@@ -1,40 +1,62 @@
 import z from "zod";
 
+const songSchema = z.object({
+  name: z.string(),
+  artist: z.string(),
+  album: z.string(),
+  genre: z.string(),
+  year: z.number().int(),
+  albumTrack: z.optional(z.number().int().min(1).default(1)),
+  cover: z.optional(z.boolean().default(false)),
+  coverArtist: z.optional(z.string()),
+  vocalGender: z.optional(z.string()),
+});
+
+const chartSchema = z.object({
+  author: z.string(),
+  previewStart: z.number().min(0),
+  previewEnd: z.number().min(0),
+});
+
+const difficultySchema = z.object({
+  band: z.number().int(),
+  lead: z.number().int(),
+  bass: z.number().int(),
+  drums: z.number().int(),
+  vocals: z.number().int(),
+  fourPad: z.number().int(),
+  fivePad: z.number().int(),
+});
+const audioSchema = z.object({
+  song: z.optional(z.string()),
+  leadGuitar: z.optional(z.string()),
+  bassGuitar: z.optional(z.string()),
+  drums: z.optional(z.string()),
+  proDrums: z.optional(z.string()),
+  vocals: z.optional(z.string()),
+  harmony: z.optional(z.string()),
+});
+const creditsSchema = z.object({
+  publisher: z.string(),
+  writer: z.string(),
+});
+
 export const metadataSchema = z.object({
   version: z.number().int(),
   id: z.string(),
-  song: z.object({
-    name: z.string(),
-    artist: z.string(),
-    album: z.string(),
-    genre: z.string(),
-    year: z.number().int(),
-    albumTrack: z.number().int().min(1),
-    cover: z.boolean(),
-    coverArtist: z.string(),
-    vocalGender: z.string(),
-  }),
-  chart: z.object({
-    author: z.string(),
-    previewStart: z.number().min(0),
-    previewEnd: z.number().min(0),
-  }),
-  difficulty: z.object({
-    band: z.number().int(),
-    leadGuitar: z.number().int(),
-    bassGuitar: z.number().int(),
-    drums: z.number().int(),
-    proDrums: z.number().int(),
-    vocals: z.number().int(),
-    harmony: z.number().int(),
-  }),
-  credits: z.object({
-    publisher: z.string(),
-    writer: z.string(),
-  }),
+  song: songSchema,
+  chart: z.optional(chartSchema),
+  difficulty: z.optional(difficultySchema),
+  audio: z.optional(audioSchema),
+  credits: z.optional(creditsSchema),
 });
 
 export type Metadata = z.infer<typeof metadataSchema>;
+
+export interface MetadataValidationIssue {
+  path: string;
+  message: string;
+}
 
 export const makeDefaultMetadata = (): Metadata => {
   return {
@@ -46,28 +68,6 @@ export const makeDefaultMetadata = (): Metadata => {
       album: "",
       genre: "",
       year: 2026,
-      albumTrack: 0,
-      cover: false,
-      coverArtist: "",
-      vocalGender: "",
-    },
-    chart: {
-      author: "",
-      previewStart: 0,
-      previewEnd: 0,
-    },
-    difficulty: {
-      band: 0,
-      leadGuitar: 0,
-      bassGuitar: 0,
-      drums: 0,
-      proDrums: 0,
-      vocals: 0,
-      harmony: 0,
-    },
-    credits: {
-      publisher: "",
-      writer: "",
     },
   };
 };

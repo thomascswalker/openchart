@@ -75,6 +75,7 @@ describe("Application settings", () => {
       "openchart.application-settings",
       JSON.stringify({
         ...defaultApplicationSettings,
+        saving: { defaultSaveMode: "project" },
         audio: { rootPath: "/legacy", multitrack: true },
         discovery: { songRegex: "legacy" },
         feedback: {
@@ -87,6 +88,7 @@ describe("Application settings", () => {
     service.load();
     expect(service.getSnapshot()).not.toHaveProperty("audio");
     expect(service.getSnapshot()).not.toHaveProperty("discovery");
+    expect(service.getSnapshot()).not.toHaveProperty("saving");
     expect(service.getSnapshot().feedback.metronomeEnabled).toBe(true);
     expect(service.applySettings(service.getSnapshot())).toBe(true);
     const saved = JSON.parse(
@@ -94,6 +96,7 @@ describe("Application settings", () => {
     );
     expect(saved).not.toHaveProperty("audio");
     expect(saved).not.toHaveProperty("discovery");
+    expect(saved).not.toHaveProperty("saving");
   });
 
   it("validates the history capacity range", () => {
