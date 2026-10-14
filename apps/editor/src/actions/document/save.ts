@@ -29,7 +29,7 @@ export class SaveDocumentAction extends Action {
       context.file ?? suggestedName,
       context.directoryHandle,
     );
-    document.bindFile(saved.name, saved.handle, saved.directoryHandle ?? null);
+    document.rebind(saved.name, saved.handle, saved.directoryHandle ?? null);
     document.isDirty = false;
   }
 }

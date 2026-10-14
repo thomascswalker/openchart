@@ -35,8 +35,8 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   #logger: LoggerService;
   #fileSystem: FileSystemService;
   #data: Midi | null = new Midi();
-  #name: string | null = null;
-  #handle: FileSystemFileHandle | null = null;
+  #fileName: string | null = null;
+  #fileHandle: FileSystemFileHandle | null = null;
   #directoryHandle: FileSystemDirectoryHandle | null = null;
   #isDirty = false;
   #metadata: Metadata = makeDefaultMetadata();
@@ -97,17 +97,12 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       throw new Error("Choose a MIDI file (.mid or .midi).");
     }
 
-    const metadata = opened.metadataBytes
-      ? metadataSchema.parse(
-          JSON.parse(new TextDecoder().decode(opened.metadataBytes)),
-        )
-      : makeDefaultMetadata();
     this.update(
       new Midi(opened.bytes),
       opened.name,
       opened.handle,
       opened.directoryHandle ?? null,
-      metadata,
+      makeDefaultMetadata(),
     );
     this.#logger.info(`Document opened: ${opened.name}`);
     return true;
@@ -118,7 +113,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       throw new Error("There is no MIDI document to export.");
     }
     const baseName = (
-      this.#name ??
+      this.#fileName ??
       this.#metadata.song.name ??
       "untitled"
     ).replace(/\.(mid|midi)$/i, "");
@@ -128,13 +123,13 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     };
   }
 
-  public readonly bindFile = (
+  public readonly rebind = (
     fileName: string | null,
     fileHandle: FileSystemFileHandle | null,
     directoryHandle: FileSystemDirectoryHandle | null = null,
   ): void => {
-    this.#name = fileName;
-    this.#handle = fileHandle;
+    this.#fileName = fileName;
+    this.#fileHandle = fileHandle;
     this.#directoryHandle = directoryHandle;
     this.publish();
   };
@@ -209,8 +204,8 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     metadata: Metadata,
   ): void {
     this.#data = midi;
-    this.#name = name;
-    this.#handle = handle;
+    this.#fileName = name;
+    this.#fileHandle = handle;
     this.#directoryHandle = directoryHandle;
     this.#metadata = metadata;
     this.#isDirty = false;
@@ -221,8 +216,8 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   private publish(): void {
     this._snapshot = {
       midi: this.#data,
-      file: this.#name,
-      handle: this.#handle,
+      file: this.#fileName,
+      handle: this.#fileHandle,
       directoryHandle: this.#directoryHandle,
       isDirty: this.#isDirty,
       canUndo: this.#history.canUndo,

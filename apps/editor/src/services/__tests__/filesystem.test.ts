@@ -73,48 +73,23 @@ describe("FileSystemService", () => {
     expect(anchor.click).not.toHaveBeenCalled();
   });
 
-  it("reads and writes MIDI metadata beside the selected MIDI file", async () => {
-    const storedFiles = new Map<string, Uint8Array>([
-      ["chart.mid", new Uint8Array([0x4d, 0x54, 0x68, 0x64])],
-      ["info.json", new TextEncoder().encode('{"version":1}')],
-    ]);
-    const makeFileHandle = (name: string): FileSystemFileHandle =>
-      ({
-        name,
-        kind: "file",
-        async getFile() {
-          return {
-            name,
-            arrayBuffer: async () =>
-              storedFiles.get(name)!.slice().buffer as ArrayBuffer,
-          } as File;
-        },
-        async createWritable() {
-          let bytes = new Uint8Array();
-          return {
-            async write(value: ArrayBuffer) {
-              bytes = new Uint8Array(value);
-            },
-            async close() {
-              storedFiles.set(name, bytes);
-            },
-          };
-        },
-      }) as unknown as FileSystemFileHandle;
-    const midiHandle = makeFileHandle("chart.mid");
-    const metadataHandle = makeFileHandle("info.json");
-    const directoryHandle = {
-      async *values() {
-        yield midiHandle;
-        yield metadataHandle;
+  it("opens a MIDI file directly without selecting its containing folder", async () => {
+    const bytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
+    const midiHandle = {
+      name: "chart.mid",
+      async getFile() {
+        return {
+          name: "chart.mid",
+          arrayBuffer: async () => bytes.slice().buffer,
+        } as File;
       },
-      async getFileHandle(name: string) {
-        return makeFileHandle(name);
-      },
-    } as unknown as FileSystemDirectoryHandle;
-
+    } as unknown as FileSystemFileHandle;
+    const showOpenFilePicker = vi.fn(async () => [midiHandle]);
+    const showDirectoryPicker = vi.fn();
     vi.stubGlobal("window", {
-      showDirectoryPicker: vi.fn(async () => directoryHandle),
+      showOpenFilePicker,
+      showSaveFilePicker: vi.fn(),
+      showDirectoryPicker,
     });
     const service = new FileSystemService({
       debug: vi.fn(),
@@ -127,21 +102,17 @@ describe("FileSystemService", () => {
 
     const opened = await service.readMidi();
     expect(opened?.name).toBe("chart.mid");
-    expect(opened?.metadataBytes).toBeInstanceOf(Uint8Array);
-    expect(new TextDecoder().decode(opened!.metadataBytes!)).toBe(
-      '{"version":1}',
-    );
-
-    const saved = await service.writeMidi(
-      new Uint8Array([1, 2, 3]),
-      '{"version":2}',
-      "chart.mid",
-      directoryHandle,
-    );
-    expect(saved.directoryHandle).toBe(directoryHandle);
-    expect(storedFiles.get("chart.mid")).toEqual(new Uint8Array([1, 2, 3]));
-    expect(new TextDecoder().decode(storedFiles.get("info.json"))).toBe(
-      '{"version":2}',
-    );
+    expect(opened?.bytes).toEqual(bytes);
+    expect(opened?.handle).toBe(midiHandle);
+    expect(opened?.directoryHandle).toBeUndefined();
+    expect(showOpenFilePicker).toHaveBeenCalledWith({
+      types: [
+        {
+          description: "MIDI files",
+          accept: { "audio/midi": [".mid", ".midi"] },
+        },
+      ],
+    });
+    expect(showDirectoryPicker).not.toHaveBeenCalled();
   });
 });

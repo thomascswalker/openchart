@@ -26,7 +26,7 @@ export class OpenDocumentAction extends Action {
       await document.open();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        logger.info("Closed open file dialog");
+        logger.info(`Closed open file dialog: ${error.message}`);
         return;
       }
       if (error instanceof Error) {

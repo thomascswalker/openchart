@@ -6,7 +6,6 @@ export interface LoadFile {
   bytes: Uint8Array;
   handle: FileSystemFileHandle | null;
   directoryHandle?: FileSystemDirectoryHandle | null;
-  metadataBytes?: Uint8Array | null;
 }
 
 export interface SaveFile {
@@ -20,10 +19,6 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
-}
-
-function isNotFoundError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "NotFoundError";
 }
 
 export class FileSystemService extends IService {
@@ -58,138 +53,13 @@ export class FileSystemService extends IService {
     await writable.close();
   }
 
-  private async readMidiDirectory(
-    directoryHandle: FileSystemDirectoryHandle,
-  ): Promise<LoadFile | null> {
-    const midiHandles: FileSystemFileHandle[] = [];
-    for await (const handle of directoryHandle.values()) {
-      if (handle.kind === "file" && /\.(mid|midi)$/i.test(handle.name)) {
-        midiHandles.push(handle as FileSystemFileHandle);
-      }
-    }
-
-    const midiHandle = this.selectMidiHandle(midiHandles);
-    if (!midiHandle) return null;
-
-    const midiFile = await midiHandle.getFile();
-    let metadataBytes: Uint8Array | null = null;
-    try {
-      const metadataHandle = await directoryHandle.getFileHandle("info.json");
-      const metadataFile = await metadataHandle.getFile();
-      metadataBytes = new Uint8Array(await metadataFile.arrayBuffer());
-    } catch (error) {
-      if (!isNotFoundError(error)) throw error;
-    }
-
-    const opened: LoadFile = {
-      name: midiHandle.name,
-      bytes: new Uint8Array(await midiFile.arrayBuffer()),
-      handle: midiHandle,
-      directoryHandle,
-      metadataBytes,
-    };
-    this._logger.info(`File loaded: ${opened.name}`);
-    return opened;
-  }
-
-  private selectMidiHandle(
-    handles: FileSystemFileHandle[],
-  ): FileSystemFileHandle | null {
-    if (handles.length === 0) {
-      throw new Error("The selected folder does not contain a MIDI file.");
-    }
-    if (handles.length === 1) return handles[0]!;
-
-    const selectedName = window.prompt(
-      `Choose a MIDI file from the selected folder:\n${handles
-        .map((handle) => handle.name)
-        .join("\n")}`,
-      handles[0]!.name,
-    );
-    if (!selectedName) return null;
-    const selected = handles.find((handle) => handle.name === selectedName);
-    if (!selected) {
-      throw new Error("Choose one of the MIDI files listed.");
-    }
-    return selected;
-  }
-
-  private async readMidiFolderInput(): Promise<LoadFile | null> {
-    return new Promise((resolve, reject) => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = ".mid,.midi,.json";
-      input.setAttribute("webkitdirectory", "");
-      input.onchange = () => {
-        const files = Array.from(input.files ?? []);
-        input.remove();
-        const midiFiles = files.filter((file) =>
-          /\.(mid|midi)$/i.test(file.name),
-        );
-        if (midiFiles.length === 0) {
-          reject(
-            new Error("The selected folder does not contain a MIDI file."),
-          );
-          return;
-        }
-
-        let midiFile = midiFiles[0]!;
-        if (midiFiles.length > 1) {
-          const selectedName = window.prompt(
-            `Choose a MIDI file from the selected folder:\n${midiFiles
-              .map((file) => file.name)
-              .join("\n")}`,
-            midiFile.name,
-          );
-          if (!selectedName) {
-            resolve(null);
-            return;
-          }
-          const selected = midiFiles.find((file) => file.name === selectedName);
-          if (!selected) {
-            reject(new Error("Choose one of the MIDI files listed."));
-            return;
-          }
-          midiFile = selected;
-        }
-
-        const parentPath = midiFile.webkitRelativePath
-          .split("/")
-          .slice(0, -1)
-          .join("/");
-        const metadataPath = parentPath
-          ? `${parentPath}/info.json`
-          : "info.json";
-        const metadataFile = files.find(
-          (file) => file.webkitRelativePath === metadataPath,
-        );
-        void Promise.all([
-          midiFile.arrayBuffer(),
-          metadataFile?.arrayBuffer(),
-        ]).then(([bytes, metadataBytes]) => {
-          const opened: LoadFile = {
-            name: midiFile.name,
-            bytes: new Uint8Array(bytes),
-            handle: null,
-            directoryHandle: null,
-            metadataBytes: metadataBytes ? new Uint8Array(metadataBytes) : null,
-          };
-          this._logger.info(`File loaded: ${opened.name}`);
-          resolve(opened);
-        }, reject);
-      };
-      input.click();
-    });
-  }
-
   public async readMidi(): Promise<LoadFile | null> {
-    if (typeof window.showDirectoryPicker === "function") {
-      const directoryHandle = await window.showDirectoryPicker({
-        mode: "readwrite",
-      });
-      return this.readMidiDirectory(directoryHandle);
-    }
-    return this.readMidiFolderInput();
+    return this.read([
+      {
+        description: "MIDI files",
+        accept: { "audio/midi": [".mid", ".midi"] },
+      },
+    ]);
   }
 
   public async writeMidi(

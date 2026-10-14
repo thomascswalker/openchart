@@ -22,7 +22,7 @@ export class SaveDocumentAsAction extends Action {
       JSON.stringify(document.metadata, null, 2),
       suggestedName,
     );
-    document.bindFile(saved.name, saved.handle, saved.directoryHandle ?? null);
+    document.rebind(saved.name, saved.handle, saved.directoryHandle ?? null);
     document.isDirty = false;
   }
 }
