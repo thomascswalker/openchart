@@ -1,7 +1,5 @@
-import { Midi } from "@openchart/core";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { createProjectMetadata } from "../../project/projectMetadata";
 import { DocumentService } from "../../services/document";
 
 export class NewDocumentAction extends Action {
@@ -19,10 +17,6 @@ export class NewDocumentAction extends Action {
     ) {
       return;
     }
-    document.setMidiData(new Midi());
-    document.setProjectMetadata(createProjectMetadata());
-    document.setFileName(null);
-    document.setFileHandle(null);
-    document.setClean();
+    document.new();
   }
 }

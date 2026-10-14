@@ -5,8 +5,13 @@ import {
 } from "../project/projectMetadata";
 import {
   createProjectDocument,
+  deserializeProject,
   type ProjectDocument,
 } from "../project/projectService";
+import {
+  midiFilePickerTypes,
+  projectFilePickerTypes,
+} from "../project/fileTypes";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
 import type { FileSystemService } from "./filesystem";
 import type { ILoggerService } from "./logger";
@@ -21,6 +26,12 @@ export interface DocumentSnapshot {
   isDirty: boolean;
   canUndoMidi: boolean;
   canRedoMidi: boolean;
+}
+
+const openFilePickerTypes = [...midiFilePickerTypes, ...projectFilePickerTypes];
+
+function hasMidiExtension(fileName: string): boolean {
+  return /\.(mid|midi)$/i.test(fileName);
 }
 
 export class DocumentService extends IStatefulService<DocumentSnapshot> {
@@ -55,10 +66,43 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
 
   public readonly new = (): void => {
     const data = new Midi();
-    data.addTrack();
     this.replaceDocument(data, createProjectMetadata(), null, null, false);
     this._logger.debug("New document created and marked as clean.");
   };
+
+  public async open(): Promise<boolean> {
+    const opened = await this._fileSystem.read(openFilePickerTypes);
+    if (!opened) return false;
+
+    let midiData: Midi;
+    let projectMetadata: ProjectMetadata;
+    if (/\.midproject$/i.test(opened.name)) {
+      const project = await deserializeProject(opened.bytes, {
+        fileName: opened.name,
+        fileHandle: opened.handle,
+      });
+      midiData = project.midi;
+      projectMetadata = project.metadata;
+    } else {
+      if (!hasMidiExtension(opened.name)) {
+        throw new Error("Choose a MIDI file (.mid or .midi).");
+      }
+      midiData = new Midi(opened.bytes);
+      projectMetadata = createProjectMetadata(
+        opened.name.replace(/\.midi?$/i, ""),
+      );
+    }
+
+    this.replaceDocument(
+      midiData,
+      projectMetadata,
+      opened.name,
+      opened.handle,
+      false,
+    );
+    this._logger.info(`Document opened: ${opened.name}`);
+    return true;
+  }
 
   public readonly setMidiData = (data: Midi): void => {
     this.midiData = data;
@@ -72,14 +116,11 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
-  public readonly setFileName = (fileName: string | null): void => {
-    this.fileName = fileName;
-    this.publish();
-  };
-
-  public readonly setFileHandle = (
+  public readonly setFileBinding = (
+    fileName: string | null,
     fileHandle: FileSystemFileHandle | null,
   ): void => {
+    this.fileName = fileName;
     this.fileHandle = fileHandle;
     this.publish();
   };
@@ -140,35 +181,6 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.history.setCapacity(capacity);
     this.publish();
   };
-
-  public async save(): Promise<boolean> {
-    if (!this.midiData) return false;
-    const success = await this._fileSystem.save(this.midiData.toBuffer());
-    if (success) {
-      this.setClean();
-    }
-    return success;
-  }
-
-  public async saveAs(filename: string): Promise<boolean> {
-    this._fileSystem.setPath(filename);
-    return this.save();
-  }
-
-  public async load(): Promise<boolean> {
-    const data = await this._fileSystem.load();
-    if (data) {
-      this.replaceDocument(
-        new Midi(data),
-        this.projectMetadata,
-        this.fileName,
-        this.fileHandle,
-        false,
-      );
-      return true;
-    }
-    return false;
-  }
 
   public isDirty(): boolean {
     return this.dirty;

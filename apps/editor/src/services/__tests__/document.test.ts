@@ -4,10 +4,12 @@ import { DocumentService } from "../document";
 import type { FileSystemService } from "../filesystem";
 import type { ILoggerService } from "../logger";
 
-function createDocumentService(): DocumentService {
+function createDocumentService(
+  fileSystem: Partial<FileSystemService> = {},
+): DocumentService {
   return new DocumentService(
-    { debug: vi.fn() } as unknown as ILoggerService,
-    {} as FileSystemService,
+    { debug: vi.fn(), info: vi.fn() } as unknown as ILoggerService,
+    fileSystem as FileSystemService,
   );
 }
 
@@ -40,5 +42,26 @@ describe("DocumentService", () => {
 
     expect(service.getSnapshot().isDirty).toBe(false);
     expect(service.getSnapshot().canUndoMidi).toBe(false);
+  });
+
+  it("opens a MIDI file and binds its filename and handle", async () => {
+    const midi = new Midi();
+    midi.addTrack();
+    const handle = { name: "opened.mid" } as FileSystemFileHandle;
+    const service = createDocumentService({
+      read: vi.fn(async () => ({
+        name: "opened.mid",
+        bytes: midi.toBuffer(),
+        handle,
+      })),
+    });
+
+    await expect(service.open()).resolves.toBe(true);
+
+    const snapshot = service.getSnapshot();
+    expect(snapshot.midiData?.trackCount).toBe(1);
+    expect(snapshot.fileName).toBe("opened.mid");
+    expect(snapshot.fileHandle).toBe(handle);
+    expect(snapshot.isDirty).toBe(false);
   });
 });

@@ -18,5 +18,6 @@ export default defineConfig(({ mode }) => {
         interval: 250,
       },
     },
+    esbuild: mode === "production" ? { drop: ["console", "debugger"] } : {},
   };
 });
