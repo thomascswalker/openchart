@@ -42,13 +42,15 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
   };
 
   public addTrack = async (id: string): Promise<void> => {
-    const data = await this.fileSystem.load(wavFilePickerTypes);
-    if (!data) {
+    const file = await this.fileSystem.read(wavFilePickerTypes);
+    if (!file) {
       this.logger.error(`No file selected for track: ${id}`);
       return;
     }
 
-    const blob = new Blob([new Uint8Array(data).buffer], { type: "audio/wav" });
+    const blob = new Blob([new Uint8Array(file.bytes).buffer], {
+      type: "audio/wav",
+    });
     const fileURL = URL.createObjectURL(blob);
     this._snapshot.mixer.addTrack(id, fileURL);
     this.logger.info(`Track added: ${id}`);

@@ -1,7 +1,16 @@
 import type { ILoggerService } from "./logger";
 import { IService } from "../platform/services";
 
-const DEFAULT_PATH = "untitled.mid";
+export interface LoadFile {
+  name: string;
+  bytes: Uint8Array;
+  handle: FileSystemFileHandle | null;
+}
+
+export interface SaveFile {
+  name: string;
+  handle: FileSystemFileHandle | null;
+}
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(
@@ -14,91 +23,107 @@ export class FileSystemService extends IService {
   static dependencies = ["logger"];
 
   private _logger: ILoggerService;
-  private _path: string;
-  private _handle: FileSystemFileHandle | null;
 
   constructor(logger: ILoggerService) {
     super();
     this._logger = logger;
-    this._path = DEFAULT_PATH;
-    this._handle = null;
   }
 
-  public readonly reset = (): void => {
-    this._path = DEFAULT_PATH;
-    this._handle = null;
-    this.notify();
-  };
+  public readonly reset = (): void => undefined;
 
-  private download(bytes: Uint8Array): void {
+  private download(bytes: Uint8Array, name: string, mimeType: string): void {
     const url = URL.createObjectURL(
-      new Blob([toArrayBuffer(bytes)], { type: "application/octet-stream" }),
+      new Blob([toArrayBuffer(bytes)], { type: mimeType }),
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = this._path;
+    anchor.download = name;
     anchor.click();
     URL.revokeObjectURL(url);
   }
 
-  public async save(
-    data: Uint8Array,
-    types: FilePickerAcceptType[] = [],
-  ): Promise<boolean> {
-    if (!this.isAccessible()) {
-      this._logger.error("File system access is not available.");
-      return false;
-    }
-    if (this._handle === null) {
-      this._handle = await window.showSaveFilePicker!({
+  public async write(
+    bytes: Uint8Array,
+    suggestedName: string,
+    types: FilePickerAcceptType[],
+    mimeType: string,
+    existingHandle: FileSystemFileHandle | null = null,
+  ): Promise<SaveFile> {
+    let saved: SaveFile;
+    if (existingHandle) {
+      const writable = await existingHandle.createWritable();
+      await writable.write(toArrayBuffer(bytes));
+      await writable.close();
+      saved = { name: existingHandle.name, handle: existingHandle };
+    } else if (this.isAccessible()) {
+      const handle = await window.showSaveFilePicker!({
         types,
-        suggestedName: this._path,
+        suggestedName,
       });
+      const writable = await handle.createWritable();
+      await writable.write(toArrayBuffer(bytes));
+      await writable.close();
+      saved = { name: handle.name, handle };
+    } else {
+      this.download(bytes, suggestedName, mimeType);
+      saved = { name: suggestedName, handle: null };
     }
-    const writeable = await this._handle.createWritable();
-    await writeable.write(toArrayBuffer(data));
-    await writeable.close();
-    this.download(data);
-    this._logger.info(`Document saved to: ${this._path}`);
-    this.notify();
-    return true;
+
+    this._logger.info(`File saved to: ${saved.name}`);
+    return saved;
   }
 
-  public async load(
+  public async read(
     types: FilePickerAcceptType[] = [],
-  ): Promise<Uint8Array | null> {
-    if (!this.isAccessible()) {
-      this._logger.error("File system access is not available.");
-      return null;
-    }
-    let data: Uint8Array | null = null;
-    await window.showOpenFilePicker!({ types }).then(async ([handle]) => {
+  ): Promise<LoadFile | null> {
+    if (this.isAccessible()) {
+      const [handle] = await window.showOpenFilePicker!({ types });
       const file = await handle.getFile();
-      const arrayBuffer = await file.arrayBuffer();
-      data = new Uint8Array(arrayBuffer);
-    });
-    if (!data) {
-      this._logger.error(`Failed to load document: ${this._path}`);
-    } else {
-      this.notify();
+      const opened: LoadFile = {
+        name: file.name,
+        bytes: new Uint8Array(await file.arrayBuffer()),
+        handle,
+      };
+      this._logger.info(`File loaded: ${opened.name}`);
+      return opened;
     }
-    return data;
+
+    const opened = await new Promise<LoadFile | null>((resolve, reject) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = types
+        .flatMap((type) => Object.values(type.accept!).flat())
+        .join(",");
+      input.onchange = () => {
+        const file = input.files?.[0];
+        input.remove();
+        if (!file) {
+          resolve(null);
+          return;
+        }
+        void file.arrayBuffer().then(
+          (buffer) =>
+            resolve({
+              name: file.name,
+              bytes: new Uint8Array(buffer),
+              handle: null,
+            }),
+          reject,
+        );
+      };
+      input.click();
+    });
+    if (opened) this._logger.info(`File loaded: ${opened.name}`);
+    return opened;
   }
 
   public isAccessible() {
     return (
       typeof window !== "undefined" &&
       typeof window.showOpenFilePicker === "function" &&
-      typeof window.showSaveFilePicker === "function"
+      typeof window.showSaveFilePicker === "function" &&
+      window.origin !== null &&
+      !(window.navigator?.userAgent ?? "").includes("Electron")
     );
-  }
-
-  public setPath(path: string) {
-    this._path = path;
-    this._logger.debug(`Document path set to: ${this._path}`);
-    this.notify();
-  }
-  public getPath() {
-    return this._path;
   }
 }

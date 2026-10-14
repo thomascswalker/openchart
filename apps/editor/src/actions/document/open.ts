@@ -1,20 +1,7 @@
-import { Midi } from "@openchart/core";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { openFile } from "../../project/fileService";
-import { createProjectMetadata } from "../../project/projectMetadata";
-import { deserializeProject } from "../../project/projectService";
-import {
-  midiFilePickerTypes,
-  projectFilePickerTypes,
-} from "../../project/fileTypes";
 import { DocumentService } from "../../services/document";
-
-const openFilePickerTypes = [...midiFilePickerTypes, ...projectFilePickerTypes];
-
-function hasMidiExtension(fileName: string): boolean {
-  return /\.(mid|midi)$/i.test(fileName);
-}
+import { LoggerService } from "../../services/logger";
 
 export class OpenDocumentAction extends Action {
   constructor() {
@@ -22,37 +9,30 @@ export class OpenDocumentAction extends Action {
   }
 
   async run(accessor: ServicesAccessor): Promise<void> {
-    const documentService = accessor.get<DocumentService>("document");
+    const logger = accessor.get<LoggerService>("logger");
+    const document = accessor.get<DocumentService>("document");
+
     if (
-      documentService.isDirty() &&
+      document.isDirty() &&
       !window.confirm(
         "This document has unsaved changes. Discard them and continue?",
       )
     ) {
+      logger.error("Exiting file open");
       return;
     }
 
-    const opened = await openFile(openFilePickerTypes);
-    if (!opened) return;
-
-    if (/\.midproject$/i.test(opened.name)) {
-      const openedDocument = await deserializeProject(opened.bytes, {
-        fileName: opened.name,
-        fileHandle: opened.handle,
-      });
-      documentService.setMidiData(openedDocument.midi);
-      documentService.setProjectMetadata(openedDocument.metadata);
-    } else {
-      if (!hasMidiExtension(opened.name)) {
-        throw new Error("Choose a MIDI file (.mid or .midi).");
+    try {
+      await document.open();
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        logger.info("Closed open file dialog");
+        return;
       }
-      documentService.setMidiData(new Midi(opened.bytes));
-      documentService.setProjectMetadata(
-        createProjectMetadata(opened.name.replace(/\.midi?$/i, "")),
-      );
+      if (error instanceof Error) {
+        logger.error(error.message);
+      }
+      throw error;
     }
-    documentService.setFileName(opened.name);
-    documentService.setFileHandle(opened.handle);
-    documentService.setClean();
   }
 }

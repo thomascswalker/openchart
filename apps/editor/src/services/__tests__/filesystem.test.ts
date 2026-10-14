@@ -28,6 +28,7 @@ describe("FileSystemService", () => {
       },
       async getFile() {
         return {
+          name: TEST_FILENAME,
           arrayBuffer: async () => storedBytes.slice().buffer,
         } as File;
       },
@@ -61,8 +62,14 @@ describe("FileSystemService", () => {
     const bytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
 
     expect(service.isAccessible()).toBe(true);
-    expect(await service.save(bytes)).toBe(true);
-    expect(await service.load()).toEqual(bytes);
-    expect(anchor.click).toHaveBeenCalledOnce();
+    await expect(
+      service.write(bytes, "export.mid", [], "audio/midi"),
+    ).resolves.toEqual({ name: TEST_FILENAME, handle: fileHandle });
+    await expect(service.read()).resolves.toEqual({
+      name: TEST_FILENAME,
+      bytes,
+      handle: fileHandle,
+    });
+    expect(anchor.click).not.toHaveBeenCalled();
   });
 });

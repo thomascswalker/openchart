@@ -1,12 +1,12 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { saveBytes } from "../../project/fileService";
 import { exportMidi, serializeProject } from "../../project/projectService";
 import {
   midiFilePickerTypes,
   projectFilePickerTypes,
 } from "../../project/fileTypes";
 import { DocumentService } from "../../services/document";
+import { FileSystemService } from "../../services/filesystem";
 import { SettingsService } from "../../services/settings";
 
 export class SaveDocumentAsAction extends Action {
@@ -16,6 +16,7 @@ export class SaveDocumentAsAction extends Action {
 
   async run(accessor: ServicesAccessor): Promise<void> {
     const service = accessor.get<DocumentService>("document");
+    const fileSystem = accessor.get<FileSystemService>("filesystem");
     const context = service.getSnapshot();
     const document = context.projectDocument;
     if (!context.midiData?.trackCount || !document) {
@@ -32,14 +33,13 @@ export class SaveDocumentAsAction extends Action {
     const bytes = saveAsProject
       ? await serializeProject(document)
       : midiExport!.bytes;
-    const saved = await saveBytes(
+    const saved = await fileSystem.write(
       bytes,
       suggestedName,
       saveAsProject ? projectFilePickerTypes : midiFilePickerTypes,
       saveAsProject ? "application/zip" : "audio/midi",
     );
-    service.setFileHandle(saved.handle);
-    service.setFileName(saved.name);
+    service.setFileBinding(saved.name, saved.handle);
     service.setClean();
   }
 }
