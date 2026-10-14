@@ -163,8 +163,5 @@ const CloseButton = ({
   );
 };
 
-export { CloseButton };
-export type { CloseButtonProps };
-
-export { Button };
-export type { ButtonProps };
+export { Button, CloseButton };
+export type { ButtonProps, CloseButtonProps };
