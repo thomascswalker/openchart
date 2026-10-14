@@ -430,8 +430,7 @@ function ViewportPanel({
         </p>
         <div className="viewport-panel__actions">
           <Button
-            title="Split to the right"
-            ariaLabel={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
+            aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
             onClick={() =>
               runAction("editor.add-viewport", session.view, session.id)
             }

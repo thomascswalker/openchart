@@ -1,4 +1,10 @@
-import type { KeyboardEventHandler, ReactNode, Ref } from "react";
+import {
+  useState,
+  type AriaAttributes,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import classNames from "classnames";
 import { space, color, layout, compose, border } from "styled-system";
 import type {
@@ -12,75 +18,116 @@ import styles from "./button.module.css";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 
-interface ButtonProps extends SpaceProps, ColorProps, LayoutProps, BorderProps {
-  disabled?: boolean;
-  active?: boolean;
+type OnClickHandler = MouseEvent<HTMLButtonElement>;
+
+type AriaProps = Pick<
+  AriaAttributes,
+  | "aria-label"
+  | "aria-controls"
+  | "aria-expanded"
+  | "aria-haspopup"
+  | "aria-selected"
+>;
+
+type HTMLButtonProps = Pick<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "type" | "disabled" | "onClick" | "onKeyDown" | "id" | "role" | "className"
+>;
+type StyleProps = SpaceProps & ColorProps & LayoutProps & BorderProps;
+
+interface CheckableProps {
+  checked?: boolean;
+  checkable?: boolean;
+  defaultChecked?: boolean;
+  onChecked?: (state: boolean) => void;
+}
+
+interface ButtonProps
+  extends HTMLButtonProps, CheckableProps, StyleProps, AriaProps {
   flat?: boolean;
   title?: string;
-  ariaLabel?: string;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
-  type?: "button" | "submit" | "reset";
-  id?: string;
-  role?: React.AriaRole;
   tabIndex?: number;
   ref?: Ref<HTMLButtonElement>;
-  "aria-controls"?: string;
-  "aria-expanded"?: boolean;
-  "aria-haspopup"?: React.AriaAttributes["aria-haspopup"];
-  "aria-selected"?: boolean;
   "data-popup-trigger"?: string;
-  className?: string;
   children?: ReactNode;
 }
 
 const Button = ({
-  disabled = false,
-  active = false,
-  flat = false,
-  title,
-  ariaLabel,
-  onKeyDown,
-  type = "button",
   id,
   role,
   tabIndex,
   ref,
+  title,
+  disabled = false,
+  checked = undefined,
+  defaultChecked = false,
+  checkable = false,
+  flat = false,
+  onKeyDown = undefined,
+  onClick = undefined,
+  onChecked = undefined,
+  type = "button",
+  "aria-label": ariaLabel,
   "aria-controls": ariaControls,
   "aria-expanded": ariaExpanded,
   "aria-haspopup": ariaHasPopup,
   "aria-selected": ariaSelected,
   "data-popup-trigger": dataPopupTrigger,
-  onClick = () => {},
   className,
   children,
   ...props
 }: ButtonProps) => {
+  /* Internal checked state */
+  const isControlled = checked !== undefined;
+  const isCheckable = checkable || isControlled;
+  const [internalChecked, setInternalChecked] =
+    useState<boolean>(defaultChecked);
+
+  const isChecked = isControlled ? checked : internalChecked;
+
+  // If `checked` is passed in, we assume that the check state is handled
+  // externally.
+  const handleOnClick = (event: OnClickHandler) => {
+    onClick?.(event);
+    if (!isCheckable) {
+      return;
+    }
+
+    const newChecked = !isChecked;
+    if (!isControlled) {
+      setInternalChecked(newChecked);
+    }
+    onChecked?.(newChecked);
+  };
+
+  /* Filtered system style */
   const style = getSystemStyles(props);
-  const buttonClassName: string = classNames(styles["ui-button"], className);
+
+  /* Joined class name */
+  const buttonClassName: string = classNames(
+    styles["ui-button"],
+    isCheckable && isChecked && styles["ui-button-checked"],
+    flat && styles["ui-button-flat"],
+    className,
+  );
 
   return (
     <button
       ref={ref}
-      className={classNames(
-        buttonClassName,
-        active && styles["ui-button-active"],
-        flat && styles["ui-button-flat"],
-      )}
-      onClick={onClick}
+      className={buttonClassName}
+      onClick={handleOnClick}
       onKeyDown={onKeyDown}
       disabled={disabled}
       type={type}
       id={id}
       role={role}
       tabIndex={tabIndex}
-      aria-pressed={active}
+      aria-pressed={checked}
       aria-controls={ariaControls}
       aria-expanded={ariaExpanded}
       aria-haspopup={ariaHasPopup}
       aria-selected={ariaSelected}
       data-popup-trigger={dataPopupTrigger}
-      title={title}
       aria-label={ariaLabel}
       style={style}
     >

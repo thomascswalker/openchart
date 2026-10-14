@@ -167,7 +167,6 @@ const Toolbar = ({
     return (
       <Dropdown
         aria-label="Note type"
-        title="Note type"
         disabled={disabled}
         value={value}
         onChange={onChange}
@@ -192,20 +191,15 @@ const Toolbar = ({
       {/* View Selection */}
       <ToolButton
         Icon={PianoIcon}
-        ariaLabel="Piano Roll"
-        active={activeViewId === "piano-roll"}
+        aria-label="Piano Roll"
+        checked={activeViewId === "piano-roll"}
         onClick={() => handleViewChange("piano-roll")}
       />
       <ToolButton
         Icon={Highway3dIcon}
-        title={
-          pianoRollOnly
-            ? `${startCaseName(session.instrument)} has no difficulties and is edited in the Piano Roll`
-            : "Highway"
-        }
-        ariaLabel="Highway"
+        aria-label="Highway"
         disabled={pianoRollOnly}
-        active={activeViewId === "highway"}
+        checked={activeViewId === "highway"}
         onClick={() => handleViewChange("highway")}
       />
 
@@ -242,7 +236,6 @@ const Toolbar = ({
           <VerticalSeparator />
           <Dropdown
             aria-label="Vocal note type"
-            title="Vocal note type"
             disabled={vocalPlacement.phrase !== null}
             value={vocalPlacement.noteKind}
             onChange={(value: string) =>
@@ -260,9 +253,8 @@ const Toolbar = ({
             <ToolButton
               key={phrase}
               Icon={icon}
-              title={title}
-              ariaLabel={title.replace(/ \(.\)$/, "")}
-              active={vocalPlacement.phrase === phrase}
+              aria-label={title.replace(/ \(.\)$/, "")}
+              checked={vocalPlacement.phrase === phrase}
               onClick={() =>
                 onVocalPlacementChange({
                   ...vocalPlacement,
@@ -274,9 +266,8 @@ const Toolbar = ({
           <VerticalSeparator />
           <ToolButton
             Icon={VolumeIcon}
-            title="Vocal pitch feedback (P)"
-            ariaLabel="Vocal pitch feedback"
-            active={isVocalFeedbackEnabled}
+            aria-label="Vocal pitch feedback"
+            checked={isVocalFeedbackEnabled}
             onClick={() => runAction("playback.toggle-vocal-pitch-feedback")}
           />
         </Fragment>
@@ -289,31 +280,27 @@ const Toolbar = ({
 
           <ToolButton
             Icon={CursorIcon}
-            title="Select, move, and edit sustains (Q)"
-            ariaLabel="Select, move, and edit sustains"
-            active={highwayMode === "select"}
+            aria-label="Select, move, and edit sustains"
+            checked={highwayMode === "select"}
             onClick={() => onHighwayModeChange("select")}
           />
           <ToolButton
             Icon={PencilIcon}
-            title="Place notes (W)"
-            ariaLabel="Place notes"
-            active={highwayMode === "place"}
+            aria-label="Place notes"
+            checked={highwayMode === "place"}
             onClick={() => onHighwayModeChange("place")}
           />
           <ToolButton
             Icon={EraserIcon}
-            title="Remove notes (E)"
-            ariaLabel="Remove notes"
-            active={highwayMode === "remove"}
+            aria-label="Remove notes"
+            checked={highwayMode === "remove"}
             onClick={() => onHighwayModeChange("remove")}
           />
 
           <VerticalSeparator />
           <ToolButton
-            active={highwayMode === "stagepower"}
-            title="Stagepower phrase (R)"
-            ariaLabel="Stagepower phrase"
+            checked={highwayMode === "stagepower"}
+            aria-label="Stagepower phrase"
             onClick={() =>
               onHighwayModeChange(
                 highwayMode === "stagepower" ? "select" : "stagepower",
@@ -322,9 +309,8 @@ const Toolbar = ({
             Icon={StagepowerIcon}
           />
           <ToolButton
-            active={highwayMode === "solo"}
-            title="Solo phrase (T)"
-            ariaLabel="Solo phrase"
+            checked={highwayMode === "solo"}
+            aria-label="Solo phrase"
             onClick={() =>
               onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
             }
@@ -337,12 +323,12 @@ const Toolbar = ({
             <ToolButton
               key={instrument}
               Icon={icon}
-              ariaLabel={`Select ${instrument}`}
+              aria-label={`Select ${instrument}`}
               disabled={
                 !!midiData &&
                 !new SongView(midiData).getInstrumentTrackView(instrument)
               }
-              active={session.instrument === instrument}
+              checked={session.instrument === instrument}
               onClick={() =>
                 runAction("editor.update-viewport", session.id, {
                   instrument,
@@ -358,7 +344,7 @@ const Toolbar = ({
             <ToolButton
               key={difficulty}
               Icon={icon}
-              active={session.difficulty === difficulty}
+              checked={session.difficulty === difficulty}
               onClick={() =>
                 runAction("editor.update-viewport", session.id, { difficulty })
               }

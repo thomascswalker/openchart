@@ -70,4 +70,6 @@ export const {
   DownIcon,
   RightIcon,
   ElipsesIcon,
+  LockIcon,
+  UnlockIcon,
 } = Icons;

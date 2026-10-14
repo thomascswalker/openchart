@@ -17,15 +17,28 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ButtonVariantsView = () => {
-  const [active, setActive] = useState(false);
+  const [checked, setChecked] = useState(true);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Button active={active} onClick={() => setActive(!active)}>
-        Toggle active
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 32,
+      }}
+    >
+      <Button checked={checked} onChecked={(state) => setChecked(state)}>
+        External checkable
       </Button>
-      <CloseButton ariaLabel="Close example" onClick={() => setActive(false)} />
-      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool" />
-      <ToolButton Icon={CursorIcon} ariaLabel="Cursor tool with text">
+      <Button checkable defaultChecked>
+        Internal checkable
+      </Button>
+      <CloseButton
+        aria-label="Close example"
+        onClick={() => setChecked(false)}
+      />
+      <ToolButton Icon={CursorIcon} aria-label="Cursor tool" />
+      <ToolButton Icon={CursorIcon} aria-label="Cursor tool with text">
         Cursor
       </ToolButton>
     </div>
@@ -34,14 +47,14 @@ const ButtonVariantsView = () => {
 
 export const Default: Story = {};
 
-export const Active: Story = {
-  args: { active: true, children: "Active" },
+export const Checked: Story = {
+  args: { checkable: true, defaultChecked: true, children: "Checked" },
 };
 
 export const Disabled: Story = {
   args: { disabled: true, children: "Disabled" },
 };
 
-export const ButtonVariants: Story = {
+export const Variants: Story = {
   render: () => <ButtonVariantsView />,
 };

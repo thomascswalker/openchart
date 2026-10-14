@@ -38,12 +38,12 @@
 }
 
 /* Active */
-.ui-button-active {
+.ui-button-checked {
   background-color: var(--secondary);
 }
 
 /* Active hover */
-.ui-button-active:hover:not(:disabled) {
+.ui-button-checked:hover:not(:disabled) {
   background-color: var(--secondary-hover);
 }
 
