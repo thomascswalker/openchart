@@ -9,7 +9,7 @@ export class RefreshPlaybackAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    const midiData = accessor.get<DocumentService>("document").getData();
+    const midiData = accessor.get<DocumentService>("document").data;
     accessor.get<PlaybackService>("playback").refresh(midiData);
   }
 }

@@ -19,8 +19,8 @@ describe("DocumentService", () => {
     const service = createDocumentService();
     const midi = new Midi();
     midi.addTrack();
-    service.setMidiData(midi);
-    service.setClean();
+    service.data = midi;
+    service.isDirty = false;
 
     midi.tracks[0]?.addNote(60, 0, 100, 120);
     service.recordOpenChart();
@@ -34,7 +34,7 @@ describe("DocumentService", () => {
 
   it("does not dirty an empty edit transaction", () => {
     const service = createDocumentService();
-    service.setClean();
+    service.isDirty = false;
     service.beginOpenChart();
     service.endOpenChart();
 

@@ -13,7 +13,7 @@ export class OpenDocumentAction extends Action {
     const document = accessor.get<DocumentService>("document");
 
     if (
-      document.isDirty() &&
+      document.isDirty &&
       !window.confirm(
         "This document has unsaved changes. Discard them and continue?",
       )

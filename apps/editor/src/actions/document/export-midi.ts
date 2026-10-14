@@ -15,11 +15,11 @@ export class ExportMidiAction extends Action {
     if (!state.midi?.trackCount) {
       throw new Error("There is no MIDI document to export.");
     }
-    const result = document.exportMidi();
+    const { bytes, suggestedName } = document.export();
     await fileSystem.writeMidi(
-      result.bytes,
+      bytes,
       JSON.stringify(document.metadata, null, 2),
-      result.suggestedName,
+      suggestedName,
     );
   }
 }

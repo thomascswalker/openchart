@@ -46,6 +46,6 @@ describe("Platform", () => {
     expect(docService).toBeInstanceOf(DocumentService);
 
     docService.reset();
-    expect(docService.isDirty()).toBe(false);
+    expect(docService.isDirty).toBe(false);
   });
 });

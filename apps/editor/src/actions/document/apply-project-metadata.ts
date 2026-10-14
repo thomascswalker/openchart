@@ -22,7 +22,7 @@ export class ApplyProjectMetadataAction extends Action<
     const document = accessor.get<DocumentService>("document");
     const result = metadataSchema.safeParse(metadata);
     if (result.success) {
-      document.setMetadata(result.data);
+      document.metadata = result.data;
       accessor.get<EditorStateService>("editor.state").clearError();
       return [];
     }

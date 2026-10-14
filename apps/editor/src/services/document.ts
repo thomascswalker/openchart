@@ -9,6 +9,10 @@ import {
   type Metadata,
 } from "./document/schema";
 
+function hasMidiExtension(fileName: string): boolean {
+  return /\.(mid|midi)$/i.test(fileName);
+}
+
 export interface DocumentSnapshot {
   midi: Midi | null;
   file: string | null;
@@ -20,8 +24,9 @@ export interface DocumentSnapshot {
   metadata: Metadata;
 }
 
-function hasMidiExtension(fileName: string): boolean {
-  return /\.(mid|midi)$/i.test(fileName);
+export interface MidiExport {
+  bytes: Uint8Array;
+  suggestedName: string;
 }
 
 export class DocumentService extends IStatefulService<DocumentSnapshot> {
@@ -42,6 +47,39 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.#logger = logger;
     this.#fileSystem = fileSystem;
     this.#history.reset(this.#data!);
+    this.publish();
+  }
+
+  public get data(): Midi {
+    return this.#data!;
+  }
+
+  public set data(data: Midi) {
+    this.#data = data;
+    this.#history.reset(this.#data);
+    this.#isDirty = true;
+    this.publish();
+  }
+
+  public get metadata(): Metadata {
+    return this.#metadata;
+  }
+
+  public set metadata(metadata: Metadata) {
+    this.#metadata = metadataSchema.parse(metadata);
+    this.#isDirty = true;
+    this.publish();
+  }
+
+  public get isDirty() {
+    return this.#isDirty;
+  }
+
+  public set isDirty(state: boolean) {
+    if (this.#isDirty === state) {
+      return;
+    }
+    this.#isDirty = state;
     this.publish();
   }
 
@@ -75,25 +113,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     return true;
   }
 
-  public get data(): Midi {
-    return this.#data!;
-  }
-
-  public set data(newData: Midi) {
-    this.#data = newData;
-  }
-
-  public get metadata(): Metadata {
-    return this.#metadata;
-  }
-
-  public readonly setMetadata = (metadata: Metadata): void => {
-    this.#metadata = metadataSchema.parse(metadata);
-    this.#isDirty = true;
-    this.publish();
-  };
-
-  public exportMidi(): { bytes: Uint8Array; suggestedName: string } {
+  public export(): MidiExport {
     if (!this.#data) {
       throw new Error("There is no MIDI document to export.");
     }
@@ -108,14 +128,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     };
   }
 
-  public readonly setMidiData = (data: Midi): void => {
-    this.#data = data;
-    this.#history.reset(data);
-    this.#isDirty = true;
-    this.publish();
-  };
-
-  public readonly setFileBinding = (
+  public readonly bindFile = (
     fileName: string | null,
     fileHandle: FileSystemFileHandle | null,
     directoryHandle: FileSystemDirectoryHandle | null = null,
@@ -125,16 +138,6 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.#directoryHandle = directoryHandle;
     this.publish();
   };
-
-  public readonly setDirty = (isDirty = true): void => {
-    if (this.#isDirty === isDirty) {
-      return;
-    }
-    this.#isDirty = isDirty;
-    this.publish();
-  };
-
-  public readonly setClean = (): void => this.setDirty(false);
 
   public readonly beginOpenChart = (): void => {
     this.#history.beginTransaction();
@@ -163,7 +166,6 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
-  /** Discards the open edit transaction, restoring the pre-edit document. */
   public readonly rollbackOpenChart = (): boolean => {
     const restored = this.#history.rollbackTransaction();
     if (!restored) {
@@ -198,14 +200,6 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.#history.setCapacity(capacity);
     this.publish();
   };
-
-  public isDirty(): boolean {
-    return this.#isDirty;
-  }
-
-  public getData(): Midi | null {
-    return this.#data;
-  }
 
   private update(
     midi: Midi,

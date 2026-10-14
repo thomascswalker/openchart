@@ -44,15 +44,15 @@ describe("history transaction rollback", () => {
     const document = new DocumentService(logger as never, {} as never);
     let published = 0;
     document.subscribe(() => published++);
-    const before = document.getData()!;
+    const before = document.data!;
 
     document.beginOpenChart();
     before.addTrack();
     document.recordOpenChart();
     expect(document.rollbackOpenChart()).toBe(true);
 
-    expect(document.getData()).not.toBe(before);
-    expect(document.getData()!.tracks).toHaveLength(0);
+    expect(document.data).not.toBe(before);
+    expect(document.data!.tracks).toHaveLength(0);
     expect(document.getSnapshot().canUndo).toBe(false);
     expect(published).toBeGreaterThan(0);
     expect(document.rollbackOpenChart()).toBe(false);

@@ -141,7 +141,9 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     super();
     // Edits publish synchronously, so the end never lags behind the document.
     this.documentUnsubscribe = documentService?.subscribe(() => {
-      if (this.configured) this.refresh(documentService.getData());
+      if (this.configured) {
+        this.refresh(documentService.data);
+      }
     });
     this._snapshot = this.buildSnapshot();
   }

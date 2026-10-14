@@ -22,18 +22,14 @@ export class SaveDocumentAction extends Action {
       return;
     }
 
-    const midiExport = document.exportMidi();
+    const { bytes, suggestedName } = document.export();
     const saved = await fileSystem.writeMidi(
-      midiExport.bytes,
+      bytes,
       JSON.stringify(document.metadata, null, 2),
-      context.file ?? midiExport.suggestedName,
+      context.file ?? suggestedName,
       context.directoryHandle,
     );
-    document.setFileBinding(
-      saved.name,
-      saved.handle,
-      saved.directoryHandle ?? null,
-    );
-    document.setClean();
+    document.bindFile(saved.name, saved.handle, saved.directoryHandle ?? null);
+    document.isDirty = false;
   }
 }

@@ -45,7 +45,7 @@ describe("UpdateDialog", () => {
   afterEach(() => {
     act(() => {
       updater().reset();
-      Platform.services.get<DocumentService>("document").setDirty(false);
+      Platform.services.get<DocumentService>("document").isDirty = false;
     });
     mocks.check.mockReset();
     mocks.relaunch.mockReset();
@@ -92,8 +92,8 @@ describe("UpdateDialog", () => {
 
   it("warns about unsaved changes when the document is dirty", async () => {
     mocks.check.mockResolvedValue(availableUpdate());
-    act(() =>
-      Platform.services.get<DocumentService>("document").setDirty(true),
+    act(
+      () => (Platform.services.get<DocumentService>("document").isDirty = true),
     );
     const { container, root } = renderDialog();
     await act(async () => updater().check());
