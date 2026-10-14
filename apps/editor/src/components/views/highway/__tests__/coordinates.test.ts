@@ -12,6 +12,7 @@ describe("HighwayCoordinateSystem", () => {
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
+    lockCursor: false,
     isPlaying: false,
   };
   let cameraTick = 100;

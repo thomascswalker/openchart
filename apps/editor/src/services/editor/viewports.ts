@@ -49,6 +49,7 @@ const DEFAULT_TRACK_KEY = "lead-guitar";
 function createViewportSession(
   id: string,
   view: ViewportKind = "piano-roll",
+  cameraTick = 0,
 ): ViewportSession {
   return {
     id,
@@ -56,7 +57,7 @@ function createViewportSession(
     trackKey: DEFAULT_TRACK_KEY,
     instrument: "LEAD GUITAR",
     difficulty: Difficulty.Expert,
-    camera: { tick: 0 },
+    camera: { tick: cameraTick },
   };
 }
 
@@ -111,7 +112,11 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
       afterIndex < 0 ? this.viewportSessions.length : afterIndex + 1;
     this.viewportSessions = [
       ...this.viewportSessions.slice(0, insertAt),
-      createViewportSession(created, view),
+      createViewportSession(
+        created,
+        view,
+        this.viewportSessions[0]?.camera.tick ?? 0,
+      ),
       ...this.viewportSessions.slice(insertAt),
     ];
     this.activeViewportId = created;
@@ -153,18 +158,27 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
     id: string,
     update: Partial<Omit<ViewportSession, "id">>,
   ): void => {
-    const previousView = this.getViewport(id)?.view;
-    this.viewportSessions = this.viewportSessions.map((session) =>
-      session.id === id
-        ? enforceViewForInstrument({
-            ...session,
-            ...update,
-            camera: update.camera
-              ? { ...session.camera, ...update.camera }
-              : session.camera,
-          })
-        : session,
-    );
+    const current = this.getViewport(id);
+    if (!current) return;
+
+    const previousView = current.view;
+    const cameraTick =
+      update.camera?.tick ?? this.viewportSessions[0]!.camera.tick;
+    this.viewportSessions = this.viewportSessions.map((session) => {
+      const updated =
+        session.id === id
+          ? enforceViewForInstrument({
+              ...session,
+              ...update,
+              camera: update.camera
+                ? { ...session.camera, ...update.camera }
+                : session.camera,
+            })
+          : session;
+      return updated.camera.tick === cameraTick
+        ? updated
+        : { ...updated, camera: { ...updated.camera, tick: cameraTick } };
+    });
     const updated = this.getViewport(id);
     if (
       id === this.activeViewportId &&

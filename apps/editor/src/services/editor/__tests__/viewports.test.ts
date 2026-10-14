@@ -55,4 +55,27 @@ describe("ViewportService", () => {
     expect(service.getSnapshot().activeViewId).toBe("custom");
     expect(service.getViewport(id)?.camera.tick).toBe(480);
   });
+
+  it("keeps every viewport on the same camera tick", () => {
+    const service = new ViewportService();
+    const firstId = service.getSnapshot().activeViewportId;
+    const secondId = service.addViewport("highway")!;
+
+    service.updateViewport(secondId, { camera: { tick: 960 } });
+    expect(
+      service
+        .getSnapshot()
+        .viewportSessions.map((session) => session.camera.tick),
+    ).toEqual([960, 960]);
+
+    const thirdId = service.addViewport("piano-roll")!;
+    expect(service.getViewport(thirdId)?.camera.tick).toBe(960);
+
+    service.updateViewport(firstId, { camera: { tick: 1200 } });
+    expect(
+      service
+        .getSnapshot()
+        .viewportSessions.map((session) => session.camera.tick),
+    ).toEqual([1200, 1200, 1200]);
+  });
 });

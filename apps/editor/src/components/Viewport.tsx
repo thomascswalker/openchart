@@ -161,8 +161,13 @@ function ViewportPanel({
 }) {
   const { midiData } = useDocumentSnapshot();
   const { settings, applySetting } = useApplicationSettings();
-  const { viewportSessions, maxViewportCount, snapEnabled, snapDenominator } =
-    useViewportSnapshot();
+  const {
+    viewportSessions,
+    maxViewportCount,
+    snapEnabled,
+    snapDenominator,
+    lockCursor,
+  } = useViewportSnapshot();
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
   const setActiveView = usePlaybackSelector((s) => s.setActiveView);
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);
@@ -209,9 +214,11 @@ function ViewportPanel({
   useEffect(() => {
     if (!chartView) return;
     const cameraTick = getCameraTick();
-    if (cameraTick) chartView.setCameraTick(cameraTick);
+    if (cameraTick !== chartView.getCameraTick()) {
+      chartView.setCameraTick(cameraTick);
+    }
     updateCameraData(articleRef.current, chartView);
-  }, [chartView]);
+  }, [chartView, session.camera.tick]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -349,12 +356,17 @@ function ViewportPanel({
     const sync = (): void => {
       const { playbackTick } = playback.getSnapshot();
       chartView.setPlayheadTick(playbackTick);
+      if (!active) return;
       const cameraTick = chartView.getCameraTickForPlayhead(playbackTick);
-      if (cameraTick !== null) chartView.setCameraTick(cameraTick);
+      if (cameraTick !== null && cameraTick !== getCameraTick()) {
+        runAction("editor.update-viewport", session.id, {
+          camera: { tick: cameraTick },
+        });
+      }
     };
     sync();
     return playback.subscribe(sync);
-  }, [chartView, isPlaying]); // Re-sync when playback starts or stops.
+  }, [active, chartView, isPlaying, session.id]); // Re-sync when playback starts or stops.
 
   useEffect(() => {
     if (!active) return;
@@ -536,6 +548,7 @@ function ViewportPanel({
               selectedInstrument: session.instrument,
               selectedDifficulty: session.difficulty,
               snap: { enabled: snapEnabled, denominator: snapDenominator },
+              lockCursor,
               isPlaying,
             }}
             onReady={handleReady}

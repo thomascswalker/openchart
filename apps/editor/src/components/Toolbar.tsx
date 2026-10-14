@@ -1,4 +1,5 @@
 import { Section } from "./shared/Section";
+import styles from "./toolbar.module.css";
 import {
   BassIcon,
   CursorIcon,
@@ -34,7 +35,7 @@ import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { runAction } from "../actions/execute";
 import { SnapDenominators } from "./views/pianoRoll/constants";
-import { Button, Checkbox } from "./shared/Button";
+import { Button } from "./shared/Button";
 import type { ButtonProps } from "./shared/Button";
 import type { IconProps } from "./shared/Icon/Icon";
 import {
@@ -210,6 +211,7 @@ const Toolbar = ({
 
   return (
     <Section
+      className={styles.toolbar}
       backgroundColor="var(--primary)"
       borderBottom="var(--border-primary)"
       padding={2}
