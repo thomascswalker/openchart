@@ -32,3 +32,6 @@ Thumbs.db
 /apps/editor/.vitest-attachments
 
 **/__screenshots__/**
+
+# Affinity Designer
+**/*.af~lock~
