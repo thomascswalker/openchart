@@ -1,8 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileSystemService } from "../filesystem";
 import { midiFilePickerTypes } from "../document/types";
+import type { LoggerService } from "../logger";
 
 const TEST_FILENAME = "test_read_write.mid";
+
+function makeMockFileSystemService() {
+  return new FileSystemService({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    reset: vi.fn(),
+    subscribe: vi.fn(() => () => {}),
+  } as unknown as LoggerService);
+}
 
 describe("FileSystemService", () => {
   afterEach(() => {
@@ -50,14 +62,7 @@ describe("FileSystemService", () => {
     });
 
     // Construct the FileSystemService instance, mocking the logger
-    const service = new FileSystemService({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      reset: vi.fn(),
-      subscribe: vi.fn(() => () => {}),
-    });
+    const service = makeMockFileSystemService();
 
     // Define the bytes to be written and read during the test
     const bytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
@@ -92,14 +97,7 @@ describe("FileSystemService", () => {
       showSaveFilePicker: vi.fn(),
       showDirectoryPicker,
     });
-    const service = new FileSystemService({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      reset: vi.fn(),
-      subscribe: vi.fn(() => () => {}),
-    });
+    const service = makeMockFileSystemService();
 
     const opened = await service.read(midiFilePickerTypes);
     expect(opened?.name).toBe("chart.mid");

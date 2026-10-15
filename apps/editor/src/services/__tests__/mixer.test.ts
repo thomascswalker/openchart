@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FileSystemService } from "../filesystem";
 import type { LoggerService } from "../logger";
-import { MixerService } from "../mixer/mixer";
+import { MixerService } from "../mixer";
 
 vi.mock("@openchart/mixer", () => ({
   default: class MockMixer {

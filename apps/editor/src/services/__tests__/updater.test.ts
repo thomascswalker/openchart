@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceRegistry } from "../../platform/services";
 import { UpdaterService } from "../updater";
-import { LoggerService, type LoggerService } from "../logger";
+import { LoggerService } from "../logger";
 
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),

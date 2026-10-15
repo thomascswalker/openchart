@@ -49,7 +49,7 @@ function changeInput(input: HTMLInputElement, value: string): void {
 }
 
 describe("ProjectDialog", () => {
-  it("validates and applies project metadata through the command layer", () => {
+  it("validates and applies project metadata through the command layer", async () => {
     const { container, root } = renderProject();
     act(() => container.querySelector<HTMLButtonElement>("button")?.click());
 
@@ -58,7 +58,14 @@ describe("ProjectDialog", () => {
         '#dialog-sections [role="option"]',
       ),
     ];
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["General", "song"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "General",
+      "song",
+      "chart",
+      "difficulty",
+      "audio",
+      "credits",
+    ]);
 
     act(() => tabs.find((tab) => tab.textContent === "song")?.click());
     const nameLabel = [...container.querySelectorAll("label")].find((label) =>
@@ -72,11 +79,11 @@ describe("ProjectDialog", () => {
         "Updated song",
       ),
     );
-    act(() =>
+    await act(async () => {
       [...container.querySelectorAll<HTMLButtonElement>("button")]
         .find((button) => button.textContent === "Apply")
-        ?.click(),
-    );
+        ?.click();
+    });
     expect(container.querySelector("output")?.textContent).toBe("Updated song");
     act(() => root.unmount());
     container.remove();

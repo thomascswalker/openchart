@@ -1,4 +1,5 @@
 import { IStatefulService } from "../platform/services";
+import z from "zod";
 
 export const APPLICATION_SETTINGS_VERSION = 1;
 const STORAGE_KEY = "openchart.application-settings";
@@ -66,6 +67,115 @@ export const defaultApplicationSettings: ApplicationSettings = {
   history: { capacity: 256 },
   graphics: { antialiasing: true, scrollSpeed: 1 },
 };
+
+const supportedOscillatorTypes = [
+  "sine",
+  "square",
+  "sawtooth",
+  "triangle",
+] as const;
+
+export const applicationSettingsSchema = z
+  .object({
+    version: z
+      .literal(APPLICATION_SETTINGS_VERSION, {
+        error: "Unsupported settings version.",
+      })
+      .meta({ hidden: true }),
+    feedback: z
+      .object({
+        metronomeEnabled: z.boolean().meta({ label: "Enable metronome" }),
+        metronomeVolume: z
+          .number()
+          .min(0, "Metronome volume must be between 0 and 1.")
+          .max(1, "Metronome volume must be between 0 and 1.")
+          .meta({ label: "Metronome volume", min: 0, max: 1 }),
+        metronomeDownbeatSound: z
+          .enum(supportedOscillatorTypes)
+          .meta({ label: "Downbeat sound" }),
+        metronomeBeatSound: z
+          .enum(supportedOscillatorTypes)
+          .meta({ label: "Beat sound" }),
+        previewVolume: z
+          .number()
+          .min(0, "Preview volume must be between 0 and 1.")
+          .max(1, "Preview volume must be between 0 and 1.")
+          .meta({ label: "Piano preview volume", min: 0, max: 1 }),
+        previewAttackMs: z
+          .number()
+          .meta({ label: "Preview attack (ms)", min: 0, step: 1 }),
+        previewReleaseMs: z
+          .number()
+          .meta({ label: "Preview release (ms)", min: 0, step: 1 }),
+        previewMaxVoices: z
+          .number()
+          .int()
+          .min(1, "Preview voice count must be at least 1.")
+          .meta({ label: "Preview max voices", min: 1, step: 1 }),
+        previewLowPitch: z.number().int().min(0).max(127).meta({
+          label: "Preview lowest MIDI pitch",
+          min: 0,
+          max: 127,
+          step: 1,
+        }),
+        previewHighPitch: z.number().int().min(0).max(127).meta({
+          label: "Preview highest MIDI pitch",
+          min: 0,
+          max: 127,
+          step: 1,
+        }),
+      })
+      .meta({ tab: "Feedback" }),
+    history: z
+      .object({
+        capacity: z
+          .number()
+          .int()
+          .min(1, "History capacity must be an integer from 1 to 1024.")
+          .max(1024, "History capacity must be an integer from 1 to 1024.")
+          .meta({ label: "History capacity", min: 1, max: 1024, step: 1 }),
+      })
+      .meta({ tab: "General" }),
+    graphics: z
+      .object({
+        antialiasing: z.boolean().meta({ label: "Antialiasing" }),
+        scrollSpeed: z
+          .number()
+          .min(
+            HIGHWAY_SCROLL_SPEED_RANGE.min,
+            `Highway visual speed must be between ${HIGHWAY_SCROLL_SPEED_RANGE.min} and ${HIGHWAY_SCROLL_SPEED_RANGE.max}.`,
+          )
+          .max(
+            HIGHWAY_SCROLL_SPEED_RANGE.max,
+            `Highway visual speed must be between ${HIGHWAY_SCROLL_SPEED_RANGE.min} and ${HIGHWAY_SCROLL_SPEED_RANGE.max}.`,
+          )
+          .meta({
+            label: "Visual speed at which the note chart scrolls.",
+            min: HIGHWAY_SCROLL_SPEED_RANGE.min,
+            max: HIGHWAY_SCROLL_SPEED_RANGE.max,
+            step: HIGHWAY_SCROLL_SPEED_RANGE.step,
+          }),
+      })
+      .meta({ tab: "Graphics" }),
+  })
+  .superRefine((settings, context) => {
+    if (
+      settings.feedback.previewLowPitch > settings.feedback.previewHighPitch
+    ) {
+      const message =
+        "Preview pitch range must be inclusive MIDI pitches 0–127.";
+      context.addIssue({
+        code: "custom",
+        path: ["feedback", "previewLowPitch"],
+        message,
+      });
+      context.addIssue({
+        code: "custom",
+        path: ["feedback", "previewHighPitch"],
+        message,
+      });
+    }
+  });
 
 export function validateApplicationSettings(
   settings: ApplicationSettings,

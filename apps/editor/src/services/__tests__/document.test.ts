@@ -61,7 +61,7 @@ describe("DocumentService", () => {
     expect(snapshot.handle).toBe(handle);
     expect(snapshot.directoryHandle).toBeNull();
     expect(snapshot.metadata).toMatchObject({
-      version: 1,
+      version: 0,
       song: {
         name: "",
         artist: "",

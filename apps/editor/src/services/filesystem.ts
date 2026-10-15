@@ -1,7 +1,7 @@
-import type { LoggerService } from "../logger";
-import { IService } from "../../platform/services";
-import type { SaveFile, LoadFile } from "./types";
-import { toArrayBuffer } from "../../util/array";
+import type { LoggerService } from "./logger";
+import { IService } from "../platform/services";
+import type { SaveFile, LoadFile } from "./filesystem/types";
+import { toArrayBuffer } from "../util/array";
 
 export class FileSystemService extends IService {
   static dependencies = ["logger"];

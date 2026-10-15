@@ -1,8 +1,8 @@
-import { IStatefulService } from "../../platform/services";
+import { IStatefulService } from "../platform/services";
 import Mixer from "@openchart/mixer";
-import type { LoggerService } from "../logger";
-import type { FileSystemService } from "../filesystem";
-import { wavFilePickerTypes, type MixerSnapshot } from "./types";
+import type { LoggerService } from "./logger";
+import type { FileSystemService } from "./filesystem";
+import { wavFilePickerTypes, type MixerSnapshot } from "./mixer/types";
 
 export class MixerService extends IStatefulService<MixerSnapshot> {
   static dependencies = ["logger", "filesystem"];
@@ -14,6 +14,10 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
     this.#logger = logger;
     this.#fileSystem = fileSystem;
     this.reset();
+  }
+
+  private get mixer() {
+    return this._snapshot.mixer;
   }
 
   public readonly reset = (): void => {
@@ -48,19 +52,23 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
     this._snapshot.mixer.removeTrack(id);
   };
 
-  public getTracks = (): string[] => this._snapshot.mixer.listTracks();
+  public getTracks = (): string[] => this.mixer.listTracks();
 
-  public play = (): void => this._snapshot.mixer.play();
+  public play = (): void => this.mixer.play();
 
-  public stop = (): void => this._snapshot.mixer.stop();
+  public stop = (): void => this.mixer.stop();
 
-  public pause = (): void => this._snapshot.mixer.pause();
+  public pause = (): void => this.mixer.pause();
 
-  public seek = (time: number) => this._snapshot.mixer.seek(time);
+  public solo = (id: string) => this.mixer.solo(id);
 
-  public seekStart = () => this._snapshot.mixer.seekStart();
+  public mute = (id: string) => this.mixer.mute(id);
 
-  public seekEnd = () => this._snapshot.mixer.seekEnd();
+  public seek = (time: number) => this.mixer.seek(time);
+
+  public seekStart = () => this.mixer.seekStart();
+
+  public seekEnd = () => this.mixer.seekEnd();
 
   private readonly publish = (): void => {
     this._snapshot = { ...this._snapshot };

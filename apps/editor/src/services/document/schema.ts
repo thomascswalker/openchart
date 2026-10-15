@@ -6,10 +6,10 @@ const songSchema = z.object({
   album: z.string(),
   genre: z.string(),
   year: z.number().int(),
-  albumTrack: z.optional(z.number().int().min(1).default(1)),
-  cover: z.optional(z.boolean().default(false)),
-  coverArtist: z.optional(z.string()),
-  vocalGender: z.optional(z.string()),
+  albumTrack: z.number().int().min(1),
+  cover: z.boolean(),
+  coverArtist: z.string(),
+  vocalGender: z.string(),
 });
 
 const chartSchema = z.object({
@@ -28,13 +28,12 @@ const difficultySchema = z.object({
   fivePad: z.number().int(),
 });
 const audioSchema = z.object({
-  song: z.optional(z.string()),
-  leadGuitar: z.optional(z.string()),
-  bassGuitar: z.optional(z.string()),
-  drums: z.optional(z.string()),
-  proDrums: z.optional(z.string()),
-  vocals: z.optional(z.string()),
-  harmony: z.optional(z.string()),
+  song: z.string(),
+  lead: z.string(),
+  bass: z.string(),
+  drums: z.string(),
+  vocals: z.string(),
+  harmony: z.string(),
 });
 const creditsSchema = z.object({
   publisher: z.string(),
@@ -45,10 +44,10 @@ export const metadataSchema = z.object({
   version: z.number().int(),
   id: z.string(),
   song: songSchema,
-  chart: z.optional(chartSchema),
-  difficulty: z.optional(difficultySchema),
-  audio: z.optional(audioSchema),
-  credits: z.optional(creditsSchema),
+  chart: chartSchema,
+  difficulty: difficultySchema,
+  audio: audioSchema,
+  credits: creditsSchema,
 });
 
 export type Metadata = z.infer<typeof metadataSchema>;
@@ -60,14 +59,44 @@ export interface MetadataValidationIssue {
 
 export const makeDefaultMetadata = (): Metadata => {
   return {
-    version: 1,
-    id: crypto.randomUUID(),
+    version: 0,
+    id: "",
     song: {
       name: "",
       artist: "",
       album: "",
       genre: "",
       year: 2026,
+      albumTrack: 1,
+      cover: false,
+      coverArtist: "",
+      vocalGender: "",
+    },
+    chart: {
+      author: "",
+      previewStart: 0,
+      previewEnd: 0,
+    },
+    difficulty: {
+      band: 1,
+      lead: 1,
+      bass: 1,
+      drums: 1,
+      vocals: 1,
+      fourPad: 1,
+      fivePad: 1,
+    },
+    audio: {
+      song: "",
+      lead: "",
+      bass: "",
+      drums: "",
+      vocals: "",
+      harmony: "",
+    },
+    credits: {
+      publisher: "",
+      writer: "",
     },
   };
 };
