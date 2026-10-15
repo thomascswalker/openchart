@@ -48,7 +48,7 @@ jobs:
         run: npm run build:desktop
 
       - name: Prepare release version
-        run: node apps/desktop/scripts/prepare-release.mjs "0.1.${{ github.run_number }}"
+        run: node apps/desktop/scripts/prepare-release.mjs
 
       - name: Build desktop application
         run: npm run desktop:build
@@ -104,7 +104,7 @@ jobs:
         run: npm run build:desktop
 
       - name: Prepare release version
-        run: node apps/desktop/scripts/prepare-release.mjs "0.1.${{ github.run_number }}"
+        run: node apps/desktop/scripts/prepare-release.mjs
 
       - name: Build desktop application
         run: npm run desktop:build
