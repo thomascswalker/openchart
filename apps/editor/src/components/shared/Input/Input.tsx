@@ -43,12 +43,10 @@ const Input = ({ className, ...props }: InputProps) => {
 };
 
 const FileInput = ({ ...props }: InputProps) => {
-  const size = "calc(var(--size-large) - 2px)";
+  const size = "var(--size-med)";
   return (
     <div style={{ display: "flex" }}>
       <Input
-        minHeight={size}
-        maxHeight={size}
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
         borderRightColor="transparent"
