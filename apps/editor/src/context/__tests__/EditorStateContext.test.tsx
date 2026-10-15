@@ -94,7 +94,7 @@ describe("editor action state", () => {
     });
     expect(
       container.querySelector('[data-testid="command-error"]')?.textContent,
-    ).toBe("This action is not available for the active document.");
+    ).toContain("Action is unavailable in this context:");
     act(() => root.unmount());
     container.remove();
   });

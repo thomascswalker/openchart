@@ -21,9 +21,7 @@ export async function runActionAsync<Result = void>(
     return await Platform.actions.executeAction<Result>(id, ...args);
   } catch (error: unknown) {
     if (error instanceof ActionUnavailableError) {
-      editorState.setError(
-        "This action is not available for the active document.",
-      );
+      editorState.setError(`Action is unavailable in this context: ${id}`);
     } else if (!(error instanceof ActionCancelledError)) {
       editorState.setError(errorMessage(error));
     }

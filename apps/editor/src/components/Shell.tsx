@@ -12,6 +12,8 @@ import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
 import { UpdaterService } from "../services/updater";
+import { Section } from "./shared/Section";
+import { Text } from "./shared/Text";
 
 const Shell = () => {
   const { error, debugVisible, projectVisible, settingsVisible, aboutVisible } =
@@ -130,15 +132,17 @@ const Shell = () => {
         }
         onCommand={runMenuCommand}
       />
-      {error ? (
-        <div role="alert" aria-live="assertive">
-          {error}
-        </div>
-      ) : null}
       <Workspace
         debugVisible={debugVisible}
         onDebugClose={() => runAction("dialog.close-debug")}
       />
+      <Section
+        minHeight={12}
+        backgroundColor={error ? "var(--red-80)" : "transparent"}
+        padding={2}
+      >
+        <Text fontSize={12}>{error || "..."}</Text>
+      </Section>
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}
       {aboutVisible ? <AboutDialog /> : null}
