@@ -1,16 +1,29 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Input } from "./Input";
+import { FileInput, Input } from "./Input";
 
 const meta = {
   title: "Shared/Input",
   component: Input,
-  args: {
-    placeholder: "Enter text",
-  },
 } satisfies Meta<typeof Input>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+const InputVariantsView = () => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "start",
+        gap: 32,
+      }}
+    >
+      <Input />
+      <FileInput />
+    </div>
+  );
+};
 
 export const Enabled: Story = {
   args: { disabled: false },
@@ -18,4 +31,8 @@ export const Enabled: Story = {
 
 export const Disabled: Story = {
   args: { disabled: true },
+};
+
+export const Variants: Story = {
+  render: () => <InputVariantsView />,
 };

@@ -40,7 +40,7 @@ function renderProject(): { container: HTMLDivElement; root: Root } {
 
 function changeInput(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
+    Object.getPrototypeOf(input),
     "value",
   )?.set;
   setter?.call(input, value);
