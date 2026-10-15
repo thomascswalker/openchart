@@ -23,9 +23,6 @@ export interface ApplicationSettings {
     previewLowPitch: number;
     previewHighPitch: number;
   };
-  saving: {
-    defaultSaveMode: "project" | "midi";
-  };
   history: {
     capacity: number;
   };
@@ -35,7 +32,7 @@ export interface ApplicationSettings {
   };
 }
 
-type ApplicationSettingGroup = "feedback" | "saving" | "history" | "graphics";
+type ApplicationSettingGroup = "feedback" | "history" | "graphics";
 export type ApplicationSettingPath = {
   [Group in ApplicationSettingGroup]: `${Group}.${Extract<
     keyof ApplicationSettings[Group],
@@ -66,7 +63,6 @@ export const defaultApplicationSettings: ApplicationSettings = {
     previewLowPitch: 36,
     previewHighPitch: 60,
   },
-  saving: { defaultSaveMode: "project" },
   history: { capacity: 256 },
   graphics: { antialiasing: true, scrollSpeed: 1 },
 };
@@ -129,9 +125,6 @@ export function validateApplicationSettings(
     errors.previewHighPitch =
       "Preview pitch range must be inclusive MIDI pitches 0–127.";
   }
-  if (!["project", "midi"].includes(settings.saving.defaultSaveMode)) {
-    errors.defaultSaveMode = "Select a valid save mode.";
-  }
   if (typeof settings.graphics.antialiasing !== "boolean") {
     errors.antialiasing = "Antialiasing must be enabled or disabled.";
   }
@@ -152,7 +145,7 @@ function readSettings(): ApplicationSettings {
     const parsed = JSON.parse(stored) as Record<string, unknown>;
     const canonicalSettings = Object.fromEntries(
       Object.entries(parsed).filter(
-        ([key]) => key !== "audio" && key !== "discovery",
+        ([key]) => key !== "audio" && key !== "discovery" && key !== "saving",
       ),
     ) as Partial<ApplicationSettings>;
     const storedFeedback = Object.fromEntries(
@@ -184,10 +177,6 @@ function readSettings(): ApplicationSettings {
       ...defaultApplicationSettings,
       ...canonicalSettings,
       feedback: { ...defaultApplicationSettings.feedback, ...storedFeedback },
-      saving: {
-        ...defaultApplicationSettings.saving,
-        ...(parsed.saving as Partial<ApplicationSettings["saving"]>),
-      },
       history: {
         ...defaultApplicationSettings.history,
         ...(parsed.history as Partial<ApplicationSettings["history"]>),

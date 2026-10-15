@@ -8,6 +8,6 @@ export class BeginOpenChartAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>("document").beginOpenChart();
+    accessor.get<DocumentService>("document").beginEdit();
   }
 }

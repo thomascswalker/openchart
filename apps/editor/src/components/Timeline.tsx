@@ -161,16 +161,16 @@ export function Timeline({ chartViews }: TimelineProps) {
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
   const doc = useDocumentSnapshot();
   const tempo = useMemo(
-    () => doc.midiData?.getTempoChanges() ?? DEFAULT_TEMPO,
+    () => doc.midi?.getTempoChanges() ?? DEFAULT_TEMPO,
     [doc],
   );
   const sigs = useMemo(
-    () => doc.midiData?.getTimeSignatureChanges() ?? NO_CHANGES,
+    () => doc.midi?.getTimeSignatureChanges() ?? NO_CHANGES,
     [doc],
   );
   const position = getTimelinePosition(
     playbackTick,
-    doc.midiData?.header.division ?? 480,
+    doc.midi?.header.division ?? 480,
     tempo,
     sigs,
   );

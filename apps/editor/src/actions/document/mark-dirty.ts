@@ -8,6 +8,6 @@ export class MarkDocumentDirtyAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>("document").setDirty();
+    accessor.get<DocumentService>("document").isDirty = true;
   }
 }

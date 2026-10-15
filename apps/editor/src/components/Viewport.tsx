@@ -37,6 +37,7 @@ import {
 import {
   PianoRollView,
   profileForInstrument,
+  type PianoRollNote,
   type VocalPlacement,
 } from "./views/pianoRoll";
 import { TrackList } from "./Tracklist";
@@ -85,7 +86,9 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
 }
 
 function updateCameraData(article: HTMLElement | null, view: ChartView): void {
-  if (!article) return;
+  if (!article) {
+    return;
+  }
   article.dataset.cameraTick = String(view.getCameraTick());
   article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
 }
@@ -159,7 +162,7 @@ function ViewportPanel({
   active: boolean;
   onChartViewChange: (sessionId: string, chartView: ChartView | null) => void;
 }) {
-  const { midiData } = useDocumentSnapshot();
+  const { midi: midiData } = useDocumentSnapshot();
   const { settings, applySetting } = useApplicationSettings();
   const {
     viewportSessions,
@@ -222,27 +225,28 @@ function ViewportPanel({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (
+      const isInvalidKey =
         event.ctrlKey ||
         event.metaKey ||
         event.altKey ||
-        isTypingTarget(event.target)
-      )
+        isTypingTarget(event.target);
+      if (isInvalidKey) {
         return;
-      if (
+      }
+
+      const isValidPianoView =
         active &&
         session.view === "piano-roll" &&
-        pianoRollProfile.editing === "vocal"
-      ) {
+        pianoRollProfile.editing === "vocal";
+
+      if (isValidPianoView) {
         const key = event.key.toLowerCase();
-        const phrase: VocalPhraseKind | null =
-          key === "r"
-            ? "stagepower"
-            : key === "t"
-              ? "vocal"
-              : key === "y"
-                ? "power-window"
-                : null;
+        const phraseKeys: Record<string, VocalPhraseKind> = {
+          r: "stagepower",
+          t: "vocal",
+          y: "power-window",
+        };
+        let phrase: VocalPhraseKind | null = phraseKeys[key] ?? null;
         if (phrase) {
           event.preventDefault();
           setVocalPlacement((current) => ({
@@ -252,20 +256,17 @@ function ViewportPanel({
           return;
         }
       }
-      if (active && session.view === "highway") {
+      const isValidHighwayView = active && session.view === "highway";
+      if (isValidHighwayView) {
         const key = event.key.toLowerCase();
-        const mode =
-          key === "q"
-            ? "select"
-            : key === "w"
-              ? "place"
-              : key === "e"
-                ? "remove"
-                : key === "r"
-                  ? "stagepower"
-                  : key === "t"
-                    ? "solo"
-                    : null;
+        const keyMap: Record<string, HighwayMode> = {
+          q: "select",
+          w: "place",
+          e: "remove",
+          r: "stagepower",
+          t: "solo",
+        };
+        const mode = keyMap[key] ?? null;
         if (mode) {
           event.preventDefault();
           setHighwayMode((current) =>
@@ -285,46 +286,51 @@ function ViewportPanel({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [active, session.view, pianoRollProfile.editing]);
 
+  const onNotesChanged = () => {
+    runAction("history.record-edit");
+    runAction("playback.refresh");
+  };
+  const onBeginEdit = () => runAction("history.begin-edit");
+  const onEndEdit = () => runAction("history.end-edit");
+  const onRollbackEdit = () => {
+    try {
+      return (
+        Platform.actions.executeAction<boolean>("history.rollback-edit") ===
+        true
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  function onNotePreview(this: PianoRollView, notes: readonly PianoRollNote[]) {
+    const playback = Platform.services.get<PlaybackService>("playback");
+    if (!playback.getSnapshot().isVocalPitchFeedbackEnabled) return;
+    playback.previewNotes(
+      notes.map((note) => ({
+        pitch: note.pitch,
+        startTick: note.tick,
+        endTick: note.tick + note.durationTicks,
+        velocity: note.velocity,
+      })),
+      // The settings preview range (36-60 by default) is narrower than
+      // the vocal range, so pass the profile's range explicitly.
+      this.getProfile().pitchRange,
+    );
+  }
+
+  /* Effect executed when the chart view or session ID change */
   useEffect(() => {
     const view = chartView;
-    if (!view) return;
-    view.onNotesChanged = () => {
-      runAction("history.record-edit");
-      runAction("playback.refresh");
-    };
-    view.onEditStart = () => {
-      runAction("history.begin-edit");
-    };
-    view.onEditEnd = () => {
-      runAction("history.end-edit");
-    };
-    // Must be synchronous: the controller reopens editing right after.
-    view.onEditRollback = () => {
-      try {
-        return (
-          Platform.actions.executeAction<boolean>("history.rollback-edit") ===
-          true
-        );
-      } catch {
-        return false;
-      }
-    };
+    if (!view) {
+      return;
+    }
+    view.onNotesChanged = onNotesChanged;
+    view.onBeginEdit = onBeginEdit;
+    view.onEndEdit = onEndEdit;
+    view.onRollbackEdit = onRollbackEdit;
     if (view instanceof PianoRollView) {
-      view.onNotePreview = (notes) => {
-        const playback = Platform.services.get<PlaybackService>("playback");
-        if (!playback.getSnapshot().isVocalPitchFeedbackEnabled) return;
-        playback.previewNotes(
-          notes.map((note) => ({
-            pitch: note.pitch,
-            startTick: note.tick,
-            endTick: note.tick + note.durationTicks,
-            velocity: note.velocity,
-          })),
-          // The settings preview range (36-60 by default) is narrower than
-          // the vocal range, so pass the profile's range explicitly.
-          view.getProfile().pitchRange,
-        );
-      };
+      view.onNotePreview = onNotePreview;
     }
     view.onSeekRequest = (tick) => runAction("playback.set-tick", tick);
     view.onSnapDenominatorChange = (denominator) =>
@@ -341,22 +347,28 @@ function ViewportPanel({
     return () => {
       unsubscribeCameraChange();
       view.onNotesChanged = null;
-      view.onEditStart = null;
-      view.onEditEnd = null;
-      view.onEditRollback = null;
-      if (view instanceof PianoRollView) view.onNotePreview = null;
+      view.onBeginEdit = null;
+      view.onEndEdit = null;
+      view.onRollbackEdit = null;
+      if (view instanceof PianoRollView) {
+        view.onNotePreview = null;
+      }
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
     };
   }, [chartView, session.id]);
 
   useEffect(() => {
-    if (!chartView) return;
+    if (!chartView) {
+      return;
+    }
     const playback = Platform.services.get<PlaybackService>("playback");
     const sync = (): void => {
       const { playbackTick } = playback.getSnapshot();
       chartView.setPlayheadTick(playbackTick);
-      if (!active) return;
+      if (!active) {
+        return;
+      }
       const cameraTick = chartView.getCameraTickForPlayhead(playbackTick);
       if (cameraTick !== null && cameraTick !== getCameraTick()) {
         runAction("editor.update-viewport", session.id, {
@@ -369,7 +381,9 @@ function ViewportPanel({
   }, [active, chartView, isPlaying, session.id]); // Re-sync when playback starts or stops.
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
     activeChartView.set(chartView);
     return () => activeChartView.set(null);
   }, [active, activeChartView, chartView]);
@@ -388,7 +402,9 @@ function ViewportPanel({
   }, [chartView, drumPlacementKind, notePlacementType]);
 
   useEffect(() => {
-    if (!(chartView instanceof PianoRollView)) return;
+    if (!(chartView instanceof PianoRollView)) {
+      return;
+    }
     // Same pattern as HighwayView.setMode(): swap behaviour on the live
     // renderer instead of recreating it, so the camera survives.
     chartView.setProfile(pianoRollProfile);
@@ -408,7 +424,9 @@ function ViewportPanel({
   }, [chartView, settings.graphics.scrollSpeed]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
     setActiveView(session.view);
     stopPreview();
   }, [active, session.view, setActiveView, stopPreview]);

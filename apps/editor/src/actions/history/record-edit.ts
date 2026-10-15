@@ -8,6 +8,6 @@ export class RecordOpenChartAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>("document").recordOpenChart();
+    accessor.get<DocumentService>("document").recordEdit();
   }
 }

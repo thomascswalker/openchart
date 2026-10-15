@@ -21,7 +21,7 @@ describe("ViewportService", () => {
     expect(service.getSnapshot().snapEnabled).toBe(false);
     expect(service.getSnapshot().snapDenominator).toBe(8);
     expect(service.getSnapshot().lockCursor).toBe(true);
-    expect(listener).toHaveBeenCalledTimes(4);
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 
   it("forces the Piano Roll when Vocals is selected from any view", () => {

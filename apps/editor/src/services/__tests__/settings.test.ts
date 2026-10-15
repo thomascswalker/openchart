@@ -33,6 +33,7 @@ describe("SettingsService", () => {
       "openchart.application-settings",
       JSON.stringify({
         ...defaultApplicationSettings,
+        saving: { defaultSaveMode: "project" },
         audio: { rootPath: "/legacy", multitrack: true },
         discovery: { songRegex: "legacy" },
         feedback: {
@@ -45,6 +46,7 @@ describe("SettingsService", () => {
     const service = new SettingsService();
     expect(service.getSnapshot()).not.toHaveProperty("audio");
     expect(service.getSnapshot()).not.toHaveProperty("discovery");
+    expect(service.getSnapshot()).not.toHaveProperty("saving");
     expect(service.getSnapshot().feedback.metronomeEnabled).toBe(true);
     expect(service.applySettings(service.getSnapshot())).toBe(true);
 
@@ -53,6 +55,7 @@ describe("SettingsService", () => {
     );
     expect(saved).not.toHaveProperty("audio");
     expect(saved).not.toHaveProperty("discovery");
+    expect(saved).not.toHaveProperty("saving");
   });
 
   it("fills graphics defaults when loading settings saved before graphics options", () => {
@@ -62,7 +65,6 @@ describe("SettingsService", () => {
           JSON.stringify({
             version: defaultApplicationSettings.version,
             feedback: defaultApplicationSettings.feedback,
-            saving: defaultApplicationSettings.saving,
             history: defaultApplicationSettings.history,
           }),
         setItem: (key: string, value: string) => values.set(key, value),

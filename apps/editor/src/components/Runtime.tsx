@@ -19,7 +19,11 @@ interface RuntimeProps {
 export function Runtime({ children }: RuntimeProps) {
   const { settings } = useApplicationSettings();
 
-  const { midiData, canUndoMidi, canRedoMidi } = useDocumentSnapshot();
+  const {
+    midi: midiData,
+    canUndo: canUndo,
+    canRedo: canRedo,
+  } = useDocumentSnapshot();
   const { viewportSessions, maxViewportCount } = useViewportSnapshot();
 
   const doc = useService<DocumentService>("document");
@@ -39,8 +43,8 @@ export function Runtime({ children }: RuntimeProps) {
   useLayoutEffect(() => {
     context.update({
       "document.has-tracks": hasTracks,
-      "history.can-undo": canUndoMidi,
-      "history.can-redo": canRedoMidi,
+      "history.can-undo": canUndo,
+      "history.can-redo": canRedo,
       "dialog.debug-open": editorStore.debugVisible,
       "dialog.project-open": editorStore.projectVisible,
       "dialog.settings-open": editorStore.settingsVisible,
@@ -51,8 +55,8 @@ export function Runtime({ children }: RuntimeProps) {
   }, [
     context,
     hasTracks,
-    canUndoMidi,
-    canRedoMidi,
+    canUndo,
+    canRedo,
     editorStore.debugVisible,
     editorStore.projectVisible,
     editorStore.settingsVisible,

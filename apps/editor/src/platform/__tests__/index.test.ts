@@ -45,7 +45,7 @@ describe("Platform", () => {
     const docService = Platform.services.get<DocumentService>("document");
     expect(docService).toBeInstanceOf(DocumentService);
 
-    docService.new();
-    expect(docService.isDirty()).toBe(false);
+    docService.reset();
+    expect(docService.isDirty).toBe(false);
   });
 });

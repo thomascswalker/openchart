@@ -176,8 +176,8 @@ export function PianoRollStoryHost({
       playback.refresh(midi);
       setRevision((current) => current + 1);
     };
-    view.onEditStart = () => setTransaction("Editing");
-    view.onEditEnd = () => setTransaction("Ready");
+    view.onBeginEdit = () => setTransaction("Editing");
+    view.onEndEdit = () => setTransaction("Ready");
     view.onSeekRequest = playback.setPlaybackTick;
     view.onSnapDenominatorChange = setSnapDenominator;
     updateCamera(view);
@@ -185,8 +185,8 @@ export function PianoRollStoryHost({
     return () => {
       unsubscribeCamera();
       view.onNotesChanged = null;
-      view.onEditStart = null;
-      view.onEditEnd = null;
+      view.onBeginEdit = null;
+      view.onEndEdit = null;
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
     };

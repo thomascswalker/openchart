@@ -251,6 +251,22 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
+  it("preserves the playback tick when undo or redo provides a MIDI clone", () => {
+    const service = new PlaybackService();
+    const originalMidi = midi();
+    configure(service, { midiData: originalMidi, documentId: 1 });
+    service.setPlaybackTick(240);
+
+    configure(service, { midiData: midi(), documentId: 1 });
+    expect(service.getSnapshot().playbackTick).toBe(240);
+    expect(engine.stop).not.toHaveBeenCalled();
+
+    configure(service, { midiData: midi(), documentId: 2 });
+    expect(service.getSnapshot().playbackTick).toBe(0);
+    expect(engine.stop).toHaveBeenCalled();
+    service.dispose();
+  });
+
   it("toggles metronome and clap, starting the engine in the gesture", () => {
     const service = new PlaybackService();
     configure(service, { settings: settings(true) });

@@ -72,4 +72,52 @@ describe("FileSystemService", () => {
     });
     expect(anchor.click).not.toHaveBeenCalled();
   });
+
+  it("opens a MIDI file directly without selecting its containing folder", async () => {
+    const bytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
+    const midiHandle = {
+      name: "chart.mid",
+      async getFile() {
+        return {
+          name: "chart.mid",
+          arrayBuffer: async () => bytes.slice().buffer,
+        } as File;
+      },
+    } as unknown as FileSystemFileHandle;
+    const showOpenFilePicker = vi.fn(async () => [midiHandle]);
+    const showDirectoryPicker = vi.fn();
+    vi.stubGlobal("window", {
+      showOpenFilePicker,
+      showSaveFilePicker: vi.fn(),
+      showDirectoryPicker,
+    });
+    const service = new FileSystemService({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      reset: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+    });
+
+    const opened = await service.read([
+      {
+        description: "MIDI files",
+        accept: { "audio/midi": [".mid", ".midi"] },
+      },
+    ]);
+    expect(opened?.name).toBe("chart.mid");
+    expect(opened?.bytes).toEqual(bytes);
+    expect(opened?.handle).toBe(midiHandle);
+    expect(opened?.directoryHandle).toBeUndefined();
+    expect(showOpenFilePicker).toHaveBeenCalledWith({
+      types: [
+        {
+          description: "MIDI files",
+          accept: { "audio/midi": [".mid", ".midi"] },
+        },
+      ],
+    });
+    expect(showDirectoryPicker).not.toHaveBeenCalled();
+  });
 });

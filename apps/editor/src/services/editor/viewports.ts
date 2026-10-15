@@ -60,6 +60,15 @@ function createViewportSession(
     camera: { tick: cameraTick },
   };
 }
+const defaultViewportSnapshot: ViewportSnapshot = {
+  viewportSessions: [createViewportSession(DEFAULT_VIEWPORT_ID)],
+  activeViewportId: DEFAULT_VIEWPORT_ID,
+  maxViewportCount: 4,
+  activeViewId: "piano-roll",
+  snapEnabled: true,
+  snapDenominator: 4,
+  lockCursor: true,
+};
 
 export class ViewportService extends IStatefulService<ViewportSnapshot> {
   private viewportSessions: ViewportSession[] = [
@@ -70,7 +79,7 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   private activeViewId = "piano-roll";
   private snapEnabled = true;
   private snapDenominator = 4;
-  private lockCursor = false;
+  private lockCursor = true;
 
   constructor() {
     super();
@@ -78,13 +87,10 @@ export class ViewportService extends IStatefulService<ViewportSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this.viewportSessions = [createViewportSession(DEFAULT_VIEWPORT_ID)];
-    this.activeViewportId = DEFAULT_VIEWPORT_ID;
-    this.maxViewportCount = 4;
-    this.activeViewId = "piano-roll";
-    this.snapEnabled = true;
-    this.snapDenominator = 4;
-    this.lockCursor = false;
+    Object.assign(this, {
+      ...defaultViewportSnapshot,
+      viewportSessions: [createViewportSession(DEFAULT_VIEWPORT_ID)],
+    });
     this.publish();
   };
 

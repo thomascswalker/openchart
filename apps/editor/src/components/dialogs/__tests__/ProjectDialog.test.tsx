@@ -6,18 +6,17 @@ import { runAction } from "../../../actions/execute";
 import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import { Runtime } from "../../Runtime";
 import { Playback } from "../../Playback";
-import { createProjectMetadata } from "../../../project/projectMetadata";
-import { ProjectDialog, getSections } from "../ProjectDialog";
+import { ProjectDialog } from "../ProjectDialog";
 
 function ProjectTestShell() {
   const { projectVisible } = useEditorState();
-  const { projectMetadata } = useDocumentSnapshot();
+  const { metadata } = useDocumentSnapshot();
   return (
     <>
       <button type="button" onClick={() => runAction("dialog.open-project")}>
         Open project
       </button>
-      <output>{projectMetadata.Song.Name}</output>
+      <output>{metadata.song.name}</output>
       {projectVisible ? <ProjectDialog /> : null}
     </>
   );
@@ -50,15 +49,6 @@ function changeInput(input: HTMLInputElement, value: string): void {
 }
 
 describe("ProjectDialog", () => {
-  it("maps primitive root keys to General and object keys to sections", () => {
-    expect(
-      getSections(createProjectMetadata()).map((section) => section.title),
-    ).toEqual(["General", "Song", "Chart", "Difficulty", "Credits"]);
-    expect(
-      getSections(createProjectMetadata())[0].fields.map((field) => field.key),
-    ).toEqual(["Version", "ID"]);
-  });
-
   it("validates and applies project metadata through the command layer", () => {
     const { container, root } = renderProject();
     act(() => container.querySelector<HTMLButtonElement>("button")?.click());
@@ -68,17 +58,11 @@ describe("ProjectDialog", () => {
         '#dialog-sections [role="option"]',
       ),
     ];
-    expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "General",
-      "Song",
-      "Chart",
-      "Difficulty",
-      "Credits",
-    ]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["General", "song"]);
 
-    act(() => tabs.find((tab) => tab.textContent === "Song")?.click());
+    act(() => tabs.find((tab) => tab.textContent === "song")?.click());
     const nameLabel = [...container.querySelectorAll("label")].find((label) =>
-      label.textContent?.startsWith("Name"),
+      label.textContent?.startsWith("name"),
     )!;
     act(() =>
       changeInput(

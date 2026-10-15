@@ -1,237 +1,350 @@
 import { Midi } from "@openchart/core";
-import {
-  createProjectMetadata,
-  type ProjectMetadata,
-} from "../project/projectMetadata";
-import {
-  createProjectDocument,
-  deserializeProject,
-  type ProjectDocument,
-} from "../project/projectService";
-import {
-  midiFilePickerTypes,
-  projectFilePickerTypes,
-} from "../project/fileTypes";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
-import type { FileSystemService } from "./filesystem";
-import type { ILoggerService } from "./logger";
+import type { FileSystemService, SaveFile } from "./filesystem";
+import type { LoggerService } from "./logger";
 import { IStatefulService } from "../platform/services";
-
-export interface DocumentSnapshot {
-  midiData: Midi | null;
-  projectDocument: ProjectDocument | null;
-  projectMetadata: ProjectMetadata;
-  fileName: string | null;
-  fileHandle: FileSystemFileHandle | null;
-  isDirty: boolean;
-  canUndoMidi: boolean;
-  canRedoMidi: boolean;
-}
-
-const openFilePickerTypes = [...midiFilePickerTypes, ...projectFilePickerTypes];
+import {
+  makeDefaultMetadata,
+  metadataSchema,
+  type Metadata,
+} from "./document/schema";
 
 function hasMidiExtension(fileName: string): boolean {
   return /\.(mid|midi)$/i.test(fileName);
 }
 
+export interface DocumentSnapshot {
+  documentId: number;
+  midi: Midi | null;
+  file: string | null;
+  handle: FileSystemFileHandle | null;
+  directoryHandle: FileSystemDirectoryHandle | null;
+  isDirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  metadata: Metadata;
+}
+
+export interface MidiExport {
+  bytes: Uint8Array;
+  suggestedName: string;
+}
+
+export interface DocumentFile {
+  name: string;
+  bytes: Uint8Array;
+  mimeType: string;
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
 export class DocumentService extends IStatefulService<DocumentSnapshot> {
   static dependencies = ["logger", "filesystem"];
 
-  private _logger: ILoggerService;
-  private _fileSystem: FileSystemService;
-  private readonly history = new History(DEFAULT_HISTORY_CAPACITY);
-  private midiData: Midi | null = new Midi();
-  private projectMetadata = createProjectMetadata();
-  private fileName: string | null = null;
-  private fileHandle: FileSystemFileHandle | null = null;
-  private dirty = false;
+  #logger: LoggerService;
+  #fileSystem: FileSystemService;
+  #data: Midi | null = new Midi();
+  #documentId = 0;
+  #fileName: string | null = null;
+  #fileHandle: FileSystemFileHandle | null = null;
+  #directoryHandle: FileSystemDirectoryHandle | null = null;
+  #isDirty = false;
+  #metadata: Metadata = makeDefaultMetadata();
+  readonly #history = new History(DEFAULT_HISTORY_CAPACITY);
 
-  constructor(logger: ILoggerService, fileSystem: FileSystemService) {
+  constructor(logger: LoggerService, fileSystem: FileSystemService) {
     super();
-    this._logger = logger;
-    this._fileSystem = fileSystem;
-    this.history.reset(this.midiData!);
-    this._snapshot = this.buildSnapshot();
+    this.#logger = logger;
+    this.#fileSystem = fileSystem;
+    this.#history.reset(this.#data!);
+    this.publish();
+  }
+
+  public get data(): Midi {
+    return this.#data!;
+  }
+
+  public set data(data: Midi) {
+    this.#data = data;
+    this.#documentId += 1;
+    this.#history.reset(this.#data);
+    this.#isDirty = true;
+    this.publish();
+  }
+
+  public get metadata(): Metadata {
+    return this.#metadata;
+  }
+
+  public set metadata(metadata: Metadata) {
+    this.#metadata = metadataSchema.parse(metadata);
+    this.#isDirty = true;
+    this.publish();
+  }
+
+  public get isDirty() {
+    return this.#isDirty;
+  }
+
+  public set isDirty(state: boolean) {
+    if (this.#isDirty === state) {
+      return;
+    }
+    this.#isDirty = state;
+    this.publish();
   }
 
   public readonly reset = (): void => {
-    this.replaceDocument(
-      new Midi(),
-      createProjectMetadata(),
-      null,
-      null,
-      false,
-    );
-  };
-
-  public readonly new = (): void => {
-    const data = new Midi();
-    this.replaceDocument(data, createProjectMetadata(), null, null, false);
-    this._logger.debug("New document created and marked as clean.");
+    this.update(new Midi(), null, null, null, makeDefaultMetadata());
   };
 
   public async open(): Promise<boolean> {
-    const opened = await this._fileSystem.read(openFilePickerTypes);
-    if (!opened) return false;
-
-    let midiData: Midi;
-    let projectMetadata: ProjectMetadata;
-    if (/\.midproject$/i.test(opened.name)) {
-      const project = await deserializeProject(opened.bytes, {
-        fileName: opened.name,
-        fileHandle: opened.handle,
-      });
-      midiData = project.midi;
-      projectMetadata = project.metadata;
-    } else {
-      if (!hasMidiExtension(opened.name)) {
-        throw new Error("Choose a MIDI file (.mid or .midi).");
-      }
-      midiData = new Midi(opened.bytes);
-      projectMetadata = createProjectMetadata(
-        opened.name.replace(/\.midi?$/i, ""),
-      );
+    const opened = await this.#fileSystem.read([
+      {
+        description: "MIDI files",
+        accept: { "audio/midi": [".mid", ".midi"] },
+      },
+    ]);
+    if (!opened) {
+      return false;
     }
 
-    this.replaceDocument(
-      midiData,
-      projectMetadata,
+    if (!hasMidiExtension(opened.name)) {
+      throw new Error("Choose a MIDI file (.mid or .midi).");
+    }
+
+    this.update(
+      new Midi(opened.bytes),
       opened.name,
       opened.handle,
-      false,
+      opened.directoryHandle ?? null,
+      makeDefaultMetadata(),
     );
-    this._logger.info(`Document opened: ${opened.name}`);
+    this.#logger.info(`Document opened: ${opened.name}`);
     return true;
   }
 
-  public readonly setMidiData = (data: Midi): void => {
-    this.midiData = data;
-    this.history.reset(data);
-    this.dirty = true;
-    this.publish();
-  };
+  public async save(): Promise<boolean> {
+    return this.saveToDirectory(this.#directoryHandle);
+  }
 
-  public readonly setProjectMetadata = (metadata: ProjectMetadata): void => {
-    this.projectMetadata = metadata;
-    this.publish();
-  };
+  public async saveAs(): Promise<boolean> {
+    return this.saveToDirectory(null);
+  }
 
-  public readonly setFileBinding = (
+  public async writeFiles(
+    files: DocumentFile[],
+    directoryHandle: FileSystemDirectoryHandle | null = null,
+  ): Promise<SaveFile> {
+    const [primaryFile] = files;
+    if (!primaryFile) {
+      throw new Error("At least one file is required.");
+    }
+
+    let targetDirectory = directoryHandle;
+    if (!targetDirectory && typeof window.showDirectoryPicker === "function") {
+      targetDirectory = await window.showDirectoryPicker({
+        mode: "readwrite",
+      });
+    }
+
+    if (!targetDirectory) {
+      for (const file of files) {
+        const url = URL.createObjectURL(
+          new Blob([toArrayBuffer(file.bytes)], { type: file.mimeType }),
+        );
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+      const saved: SaveFile = {
+        name: primaryFile.name,
+        handle: null,
+        directoryHandle: null,
+      };
+      this.#logger.info(
+        `Files saved: ${files.map((file) => file.name).join(", ")}`,
+      );
+      return saved;
+    }
+
+    const handles = await Promise.all(
+      files.map(async (file) => {
+        const handle = await targetDirectory.getFileHandle(file.name, {
+          create: true,
+        });
+        const writable = await handle.createWritable();
+        await writable.write(toArrayBuffer(file.bytes));
+        await writable.close();
+        return handle;
+      }),
+    );
+    const saved: SaveFile = {
+      name: handles[0]!.name,
+      handle: handles[0]!,
+      directoryHandle: targetDirectory,
+    };
+    this.#logger.info(
+      `Files saved: ${files.map((file) => file.name).join(", ")}`,
+    );
+    return saved;
+  }
+
+  private async saveToDirectory(
+    directoryHandle: FileSystemDirectoryHandle | null,
+  ): Promise<boolean> {
+    if (!this.#data?.trackCount) {
+      throw new Error("There is no MIDI document to save.");
+    }
+
+    const { bytes, suggestedName } = this.export();
+    const saved = await this.writeFiles(
+      [
+        {
+          name: this.#fileName ?? suggestedName,
+          bytes,
+          mimeType: "audio/midi",
+        },
+        {
+          name: "info.json",
+          bytes: new TextEncoder().encode(
+            JSON.stringify(this.#metadata, null, 2),
+          ),
+          mimeType: "application/json",
+        },
+      ],
+      directoryHandle,
+    );
+    this.rebind(saved.name, saved.handle, saved.directoryHandle ?? null);
+    this.isDirty = false;
+    return true;
+  }
+
+  public export(): MidiExport {
+    if (!this.#data) {
+      throw new Error("There is no MIDI document to export.");
+    }
+    const baseName = (
+      this.#fileName ??
+      this.#metadata.song.name ??
+      "untitled"
+    ).replace(/\.(mid|midi)$/i, "");
+    return {
+      bytes: this.#data.toBuffer(),
+      suggestedName: `${baseName || "untitled"}.mid`,
+    };
+  }
+
+  public readonly rebind = (
     fileName: string | null,
     fileHandle: FileSystemFileHandle | null,
+    directoryHandle: FileSystemDirectoryHandle | null = null,
   ): void => {
-    this.fileName = fileName;
-    this.fileHandle = fileHandle;
+    this.#fileName = fileName;
+    this.#fileHandle = fileHandle;
+    this.#directoryHandle = directoryHandle;
     this.publish();
   };
 
-  public readonly setDirty = (isDirty = true): void => {
-    if (this.dirty === isDirty) return;
-    this.dirty = isDirty;
+  public readonly beginEdit = (): void => {
+    this.#history.beginTransaction();
     this.publish();
   };
 
-  public readonly setClean = (): void => this.setDirty(false);
+  public readonly recordEdit = (): void => {
+    if (!this.#data) {
+      return;
+    }
+    const wasInTransaction = this.#history.isInTransaction;
+    this.#history.recordEdit(this.#data);
+    this.#isDirty = true;
+    if (!wasInTransaction) {
+      this.publish();
+    }
+  };
 
-  public readonly beginOpenChart = (): void => {
-    this.history.beginTransaction();
+  public readonly endEdit = (): void => {
+    if (!this.#data) {
+      return;
+    }
+    if (this.#history.endTransaction(this.#data)) {
+      this.#isDirty = true;
+    }
     this.publish();
   };
 
-  public readonly recordOpenChart = (): void => {
-    if (!this.midiData) return;
-    const wasInTransaction = this.history.isInTransaction;
-    this.history.recordEdit(this.midiData);
-    this.dirty = true;
-    if (!wasInTransaction) this.publish();
-  };
-
-  public readonly endOpenChart = (): void => {
-    if (!this.midiData) return;
-    if (this.history.endTransaction(this.midiData)) this.dirty = true;
-    this.publish();
-  };
-
-  /** Discards the open edit transaction, restoring the pre-edit document. */
-  public readonly rollbackOpenChart = (): boolean => {
-    const restored = this.history.rollbackTransaction();
-    if (!restored) return false;
-    this.midiData = restored;
+  public readonly rollbackEdit = (): boolean => {
+    const restored = this.#history.rollbackTransaction();
+    if (!restored) {
+      return false;
+    }
+    this.#data = restored;
     this.publish();
     return true;
   };
 
-  public readonly undoOpenChart = (): void => {
-    const restored = this.history.undo();
-    if (!restored) return;
-    this.midiData = restored;
-    this.dirty = true;
+  public readonly undoEdit = (): void => {
+    const restored = this.#history.undo();
+    if (!restored) {
+      return;
+    }
+    this.#data = restored;
+    this.#isDirty = true;
     this.publish();
   };
 
-  public readonly redoOpenChart = (): void => {
-    const restored = this.history.redo();
-    if (!restored) return;
-    this.midiData = restored;
-    this.dirty = true;
+  public readonly redoEdit = (): void => {
+    const restored = this.#history.redo();
+    if (!restored) {
+      return;
+    }
+    this.#data = restored;
+    this.#isDirty = true;
     this.publish();
   };
 
   public readonly setHistoryCapacity = (capacity: number): void => {
-    this.history.setCapacity(capacity);
+    this.#history.setCapacity(capacity);
     this.publish();
   };
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public getData(): Midi | null {
-    return this.midiData;
-  }
-
-  public setData(data: Midi): void {
-    this.setMidiData(data);
-  }
-
-  private replaceDocument(
-    midiData: Midi,
-    projectMetadata: ProjectMetadata,
-    fileName: string | null,
-    fileHandle: FileSystemFileHandle | null,
-    isDirty: boolean,
+  private update(
+    midi: Midi,
+    name: string | null,
+    handle: FileSystemFileHandle | null,
+    directoryHandle: FileSystemDirectoryHandle | null,
+    metadata: Metadata,
   ): void {
-    this.midiData = midiData;
-    this.projectMetadata = projectMetadata;
-    this.fileName = fileName;
-    this.fileHandle = fileHandle;
-    this.dirty = isDirty;
-    this.history.reset(midiData);
+    this.#data = midi;
+    this.#documentId += 1;
+    this.#fileName = name;
+    this.#fileHandle = handle;
+    this.#directoryHandle = directoryHandle;
+    this.#metadata = metadata;
+    this.#isDirty = false;
+    this.#history.reset(midi);
     this.publish();
   }
 
-  private buildSnapshot(): DocumentSnapshot {
-    return {
-      midiData: this.midiData,
-      projectDocument: this.midiData
-        ? createProjectDocument(
-            this.midiData,
-            this.projectMetadata,
-            { fileName: this.fileName, fileHandle: this.fileHandle },
-            this.dirty,
-          )
-        : null,
-      projectMetadata: this.projectMetadata,
-      fileName: this.fileName,
-      fileHandle: this.fileHandle,
-      isDirty: this.dirty,
-      canUndoMidi: this.history.canUndo,
-      canRedoMidi: this.history.canRedo,
-    };
-  }
-
   private publish(): void {
-    this._snapshot = this.buildSnapshot();
+    this._snapshot = {
+      documentId: this.#documentId,
+      midi: this.#data,
+      file: this.#fileName,
+      handle: this.#fileHandle,
+      directoryHandle: this.#directoryHandle,
+      isDirty: this.#isDirty,
+      canUndo: this.#history.canUndo,
+      canRedo: this.#history.canRedo,
+      metadata: this.#metadata,
+    };
     this.notify();
   }
 }

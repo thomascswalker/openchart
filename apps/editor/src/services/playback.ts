@@ -45,6 +45,7 @@ export interface PlaybackSnapshot {
 
 export interface PlaybackConfiguration {
   midiData: Midi | null | undefined;
+  documentId?: number;
   settings: ApplicationSettings;
   snapEnabled: boolean;
   snapDenominator: number;
@@ -111,6 +112,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   private engine = new Soundboard();
   private documentUnsubscribe: (() => void) | undefined;
   private midiData: Midi | null | undefined;
+  private documentId: number | undefined;
   private settings: ApplicationSettings | null = null;
   private selectedInstrument = "LEAD GUITAR";
   private selectedDifficulty: Difficulty = Difficulty.Expert;
@@ -141,7 +143,9 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     super();
     // Edits publish synchronously, so the end never lags behind the document.
     this.documentUnsubscribe = documentService?.subscribe(() => {
-      if (this.configured) this.refresh(documentService.getData());
+      if (this.configured) {
+        this.refresh(documentService.data);
+      }
     });
     this._snapshot = this.buildSnapshot();
   }
@@ -164,13 +168,17 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   };
 
   public readonly configure = (options: PlaybackConfiguration): void => {
-    const documentChanged = this.midiData !== options.midiData;
+    const documentChanged =
+      options.documentId === undefined
+        ? this.midiData !== options.midiData
+        : this.documentId !== options.documentId;
     const selectionChanged =
       documentChanged ||
       this.selectedInstrument !== options.selectedInstrument ||
       this.selectedDifficulty !== options.selectedDifficulty;
 
     this.midiData = options.midiData;
+    this.documentId = options.documentId;
     this.settings = options.settings;
     this.snapEnabled = options.snapEnabled;
     this.snapDenominator = options.snapDenominator;

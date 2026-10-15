@@ -9,7 +9,7 @@ interface TrackListProps {
 
 /** Config-driven track projection used by piano-roll panels. */
 export function TrackList({ viewportId }: TrackListProps) {
-  const { midiData } = useDocumentSnapshot();
+  const { midi: midiData } = useDocumentSnapshot();
   const { viewportSessions } = useViewportSnapshot();
   const session = viewportSessions.find((item) => item.id === viewportId);
   const songView = midiData ? new SongView(midiData) : null;

@@ -5,11 +5,13 @@ export interface LoadFile {
   name: string;
   bytes: Uint8Array;
   handle: FileSystemFileHandle | null;
+  directoryHandle?: FileSystemDirectoryHandle | null;
 }
 
 export interface SaveFile {
   name: string;
   handle: FileSystemFileHandle | null;
+  directoryHandle?: FileSystemDirectoryHandle | null;
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -22,25 +24,14 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 export class FileSystemService extends IService {
   static dependencies = ["logger"];
 
-  private _logger: ILoggerService;
+  #logger: ILoggerService;
 
   constructor(logger: ILoggerService) {
     super();
-    this._logger = logger;
+    this.#logger = logger;
   }
 
   public readonly reset = (): void => undefined;
-
-  private download(bytes: Uint8Array, name: string, mimeType: string): void {
-    const url = URL.createObjectURL(
-      new Blob([toArrayBuffer(bytes)], { type: mimeType }),
-    );
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = name;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
 
   public async write(
     bytes: Uint8Array,
@@ -50,12 +41,17 @@ export class FileSystemService extends IService {
     existingHandle: FileSystemFileHandle | null = null,
   ): Promise<SaveFile> {
     let saved: SaveFile;
+
+    // If there's an existing file handle, write back to it
     if (existingHandle) {
       const writable = await existingHandle.createWritable();
       await writable.write(toArrayBuffer(bytes));
       await writable.close();
       saved = { name: existingHandle.name, handle: existingHandle };
-    } else if (this.isAccessible()) {
+    }
+    // Otherwise check if we're in a browser environment where we can open
+    // the save file picker.
+    else if (this.isAccessible()) {
       const handle = await window.showSaveFilePicker!({
         types,
         suggestedName,
@@ -64,12 +60,14 @@ export class FileSystemService extends IService {
       await writable.write(toArrayBuffer(bytes));
       await writable.close();
       saved = { name: handle.name, handle };
-    } else {
-      this.download(bytes, suggestedName, mimeType);
+    }
+    // Otherwise attempt a download of the file directly.
+    else {
+      this.#download(bytes, suggestedName, mimeType);
       saved = { name: suggestedName, handle: null };
     }
 
-    this._logger.info(`File saved to: ${saved.name}`);
+    this.#logger.info(`File saved to: ${saved.name}`);
     return saved;
   }
 
@@ -84,7 +82,7 @@ export class FileSystemService extends IService {
         bytes: new Uint8Array(await file.arrayBuffer()),
         handle,
       };
-      this._logger.info(`File loaded: ${opened.name}`);
+      this.#logger.info(`File loaded: ${opened.name}`);
       return opened;
     }
 
@@ -113,7 +111,7 @@ export class FileSystemService extends IService {
       };
       input.click();
     });
-    if (opened) this._logger.info(`File loaded: ${opened.name}`);
+    if (opened) this.#logger.info(`File loaded: ${opened.name}`);
     return opened;
   }
 
@@ -125,5 +123,16 @@ export class FileSystemService extends IService {
       window.origin !== null &&
       !(window.navigator?.userAgent ?? "").includes("Electron")
     );
+  }
+
+  #download(bytes: Uint8Array, name: string, mimeType: string): void {
+    const url = URL.createObjectURL(
+      new Blob([toArrayBuffer(bytes)], { type: mimeType }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = name;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 }

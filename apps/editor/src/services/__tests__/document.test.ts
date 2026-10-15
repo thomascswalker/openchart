@@ -2,13 +2,13 @@ import { Midi } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../document";
 import type { FileSystemService } from "../filesystem";
-import type { ILoggerService } from "../logger";
+import type { LoggerService } from "../logger";
 
 function createDocumentService(
   fileSystem: Partial<FileSystemService> = {},
 ): DocumentService {
   return new DocumentService(
-    { debug: vi.fn(), info: vi.fn() } as unknown as ILoggerService,
+    { debug: vi.fn(), info: vi.fn() } as unknown as LoggerService,
     fileSystem as FileSystemService,
   );
 }
@@ -18,33 +18,30 @@ describe("DocumentService", () => {
     const service = createDocumentService();
     const midi = new Midi();
     midi.addTrack();
-    service.setMidiData(midi);
-    service.setClean();
+    service.data = midi;
+    service.isDirty = false;
 
     midi.tracks[0]?.addNote(60, 0, 100, 120);
-    service.recordOpenChart();
-    expect(service.getSnapshot().canUndoMidi).toBe(true);
+    service.recordEdit();
+    expect(service.getSnapshot().canUndo).toBe(true);
     expect(service.getSnapshot().isDirty).toBe(true);
 
-    service.undoOpenChart();
-    expect(service.getSnapshot().midiData?.tracks[0]?.getNotes()).toHaveLength(
-      0,
-    );
-    expect(service.getSnapshot().canRedoMidi).toBe(true);
-    expect(service.getSnapshot().projectDocument).not.toBeNull();
+    service.undoEdit();
+    expect(service.getSnapshot().midi?.tracks[0]?.getNotes()).toHaveLength(0);
+    expect(service.getSnapshot().canRedo).toBe(true);
   });
 
   it("does not dirty an empty edit transaction", () => {
     const service = createDocumentService();
-    service.setClean();
-    service.beginOpenChart();
-    service.endOpenChart();
+    service.isDirty = false;
+    service.beginEdit();
+    service.endEdit();
 
     expect(service.getSnapshot().isDirty).toBe(false);
-    expect(service.getSnapshot().canUndoMidi).toBe(false);
+    expect(service.getSnapshot().canUndo).toBe(false);
   });
 
-  it("opens a MIDI file and binds its filename and handle", async () => {
+  it("opens a MIDI file with default metadata", async () => {
     const midi = new Midi();
     midi.addTrack();
     const handle = { name: "opened.mid" } as FileSystemFileHandle;
@@ -59,9 +56,60 @@ describe("DocumentService", () => {
     await expect(service.open()).resolves.toBe(true);
 
     const snapshot = service.getSnapshot();
-    expect(snapshot.midiData?.trackCount).toBe(1);
-    expect(snapshot.fileName).toBe("opened.mid");
-    expect(snapshot.fileHandle).toBe(handle);
+    expect(snapshot.midi?.trackCount).toBe(1);
+    expect(snapshot.file).toBe("opened.mid");
+    expect(snapshot.handle).toBe(handle);
+    expect(snapshot.directoryHandle).toBeNull();
+    expect(snapshot.metadata).toMatchObject({
+      version: 1,
+      song: {
+        name: "",
+        artist: "",
+        album: "",
+        genre: "",
+      },
+    });
+    expect(snapshot.metadata.id).toEqual(expect.any(String));
     expect(snapshot.isDirty).toBe(false);
+  });
+
+  it("saves MIDI and metadata using state owned by the document", async () => {
+    const midi = new Midi();
+    midi.addTrack();
+    const writtenFiles = new Map<string, Uint8Array>();
+    const directoryHandle = {
+      async getFileHandle(name: string) {
+        return {
+          name,
+          async createWritable() {
+            let bytes = new Uint8Array();
+            return {
+              async write(value: ArrayBuffer) {
+                bytes = new Uint8Array(value);
+              },
+              async close() {
+                writtenFiles.set(name, bytes);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as FileSystemDirectoryHandle;
+    const service = createDocumentService();
+    service.data = midi;
+    service.rebind("saved.mid", null, directoryHandle);
+
+    await expect(service.save()).resolves.toBe(true);
+
+    expect(writtenFiles.get("saved.mid")).toEqual(midi.toBuffer());
+    expect(
+      JSON.parse(new TextDecoder().decode(writtenFiles.get("info.json"))),
+    ).toEqual(service.metadata);
+    expect(service.getSnapshot()).toMatchObject({
+      file: "saved.mid",
+      handle: { name: "saved.mid" },
+      directoryHandle,
+      isDirty: false,
+    });
   });
 });

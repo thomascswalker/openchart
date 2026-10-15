@@ -125,14 +125,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
     requestRender: () => this.render(),
-    beginEdit: () => this.onEditStart?.(),
-    endEdit: () => this.onEditEnd?.(),
+    beginEdit: () => this.onBeginEdit?.(),
+    endEdit: () => this.onEndEdit?.(),
     notifyNotesChanged: () => this.onNotesChanged?.(),
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     invalidateTempoCache: () => {
       this.tempoCacheMidi = null;
     },
-    rollbackEdit: () => this.onEditRollback?.() ?? false,
+    rollbackEdit: () => this.onRollbackEdit?.() ?? false,
     promptLyric: (tick, handlers) => this.header.promptText(tick, handlers),
     cancelLyricPrompt: () => this.header.cancelPrompt(),
     editNextLyric: (afterTick) => this.editNextLyric(afterTick),
