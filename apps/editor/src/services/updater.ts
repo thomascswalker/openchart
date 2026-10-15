@@ -1,5 +1,5 @@
 import type { DownloadEvent, Update } from "@tauri-apps/plugin-updater";
-import type { ILoggerService } from "./logger";
+import type { LoggerService } from "./logger";
 import { IStatefulService } from "../platform/services";
 
 export type UpdaterStatus =
@@ -48,10 +48,10 @@ function errorMessage(error: unknown): string {
 export class UpdaterService extends IStatefulService<UpdaterSnapshot> {
   static dependencies = ["logger"];
 
-  private _logger: ILoggerService;
+  private _logger: LoggerService;
   private _pending: Update | null = null;
 
-  constructor(logger: ILoggerService) {
+  constructor(logger: LoggerService) {
     super();
     this._logger = logger;
     this._snapshot = initialSnapshot();

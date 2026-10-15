@@ -1,4 +1,4 @@
-import type { ILoggerService } from "../logger";
+import type { LoggerService } from "../logger";
 import { IService } from "../../platform/services";
 import type { SaveFile, LoadFile } from "./types";
 import { toArrayBuffer } from "../../util/array";
@@ -6,9 +6,9 @@ import { toArrayBuffer } from "../../util/array";
 export class FileSystemService extends IService {
   static dependencies = ["logger"];
 
-  #logger: ILoggerService;
+  #logger: LoggerService;
 
-  constructor(logger: ILoggerService) {
+  constructor(logger: LoggerService) {
     super();
     this.#logger = logger;
   }

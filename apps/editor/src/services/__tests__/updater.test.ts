@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceRegistry } from "../../platform/services";
 import { UpdaterService } from "../updater";
-import { LoggerService, type ILoggerService } from "../logger";
+import { LoggerService, type LoggerService } from "../logger";
 
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: mocks.relaunch }));
 
 type DownloadCallback = (event: unknown) => void;
 
-function createLogger(): ILoggerService {
+function createLogger(): LoggerService {
   return {
     debug: vi.fn(),
     info: vi.fn(),
@@ -21,7 +21,7 @@ function createLogger(): ILoggerService {
     error: vi.fn(),
     reset: vi.fn(),
     subscribe: vi.fn(() => () => {}),
-  } as unknown as ILoggerService;
+  } as unknown as LoggerService;
 }
 
 function createUpdate(

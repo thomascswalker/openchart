@@ -1,4 +1,3 @@
-import type { PublicMethods } from "../util/meta";
 import { IService } from "../platform/services";
 
 export class LoggerService extends IService {
@@ -23,5 +22,3 @@ export class LoggerService extends IService {
     this.notify();
   }
 }
-
-export type ILoggerService = PublicMethods<LoggerService>;

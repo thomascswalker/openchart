@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FileSystemService } from "../filesystem";
-import type { ILoggerService } from "../logger";
-import { MixerService } from "../mixer";
+import type { LoggerService } from "../logger";
+import { MixerService } from "../mixer/mixer";
 
 vi.mock("@openchart/mixer", () => ({
   default: class MockMixer {
@@ -19,7 +19,7 @@ vi.mock("@openchart/mixer", () => ({
 describe("MixerService", () => {
   it("publishes a new snapshot when the mixer changes directly", () => {
     const service = new MixerService(
-      { info: vi.fn(), error: vi.fn() } as unknown as ILoggerService,
+      { info: vi.fn(), error: vi.fn() } as unknown as LoggerService,
       {} as FileSystemService,
     );
     const listener = vi.fn();
