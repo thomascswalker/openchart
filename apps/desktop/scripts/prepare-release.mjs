@@ -2,24 +2,21 @@
 // Stamps a release version into tauri.conf.json and enables updater
 // artifacts. Intended for CI only; local builds keep the committed config.
 //
-// Usage: node apps/desktop/scripts/prepare-release.mjs <major.minor.patch>
+// Usage: node apps/desktop/scripts/prepare-release.mjs
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const version = process.argv[2];
-if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-  console.error(
-    `Expected a numeric semver version (e.g. 0.1.42), got: ${version ?? "<none>"}`,
-  );
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const rootPackagePath = resolve(scriptDirectory, "../../../package.json");
+const { version } = JSON.parse(readFileSync(rootPackagePath, "utf8"));
+if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
+  console.error(`Invalid version in root package.json: ${version ?? "<none>"}`);
   process.exit(1);
 }
 
-const configPath = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../src-tauri/tauri.conf.json",
-);
+const configPath = resolve(scriptDirectory, "../src-tauri/tauri.conf.json");
 const config = JSON.parse(readFileSync(configPath, "utf8"));
 
 const previousVersion = config.version;

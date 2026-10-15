@@ -1,6 +1,6 @@
 {
   "name": "openchart",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "",
   "main": "index.ts",
   "private": true,
@@ -8,6 +8,7 @@
     "help": "turbo --help",
     "build": "turbo run build",
     "build:desktop": "turbo run build:desktop",
+    "lock": "npm install --package-lock-only",
     "desktop:dev": "npm run dev:desktop",
     "desktop:build": "npm run build --workspace=@openchart/desktop",
     "dev": "npm run dev:web",
