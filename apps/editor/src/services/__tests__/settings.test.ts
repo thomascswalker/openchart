@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceRegistry } from "../../platform/services";
-import {
-  defaultApplicationSettings,
-  SettingsService,
-  validateApplicationSettings,
-} from "../settings";
+import { SettingsService, validateApplicationSettings } from "../settings";
+import { defaultApplicationSettings } from "../settings/schema";
 
 describe("SettingsService", () => {
   const values = new Map<string, string>();

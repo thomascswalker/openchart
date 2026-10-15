@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { useEditorState } from "../../hooks/useEditorState";
-import { executeEditorAction, runAction } from "../../actions/execute";
+import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { Runtime } from "../../components/Runtime";
 import { usePlayback } from "../../hooks/usePlayback";
@@ -141,8 +141,8 @@ describe("editor action state", () => {
       container.querySelector('[data-testid="clap-enabled"]')?.textContent,
     ).toBe("false");
     await act(async () => {
-      await executeEditorAction("playback.toggle-metronome");
-      await executeEditorAction("playback.toggle-clap");
+      await runActionAsync("playback.toggle-metronome");
+      await runActionAsync("playback.toggle-clap");
     });
     expect(
       container.querySelector('[data-testid="metronome-enabled"]')?.textContent,

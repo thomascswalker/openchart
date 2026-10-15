@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Difficulty } from "@openchart/views";
 import { PlaybackService, snapToPreviousTimelineBoundary } from "../playback";
-import type { ApplicationSettings } from "../settings";
+import type { ApplicationSettings } from "../settings/schema";
 
 const engine = vi.hoisted(() => ({
   configure: vi.fn(),

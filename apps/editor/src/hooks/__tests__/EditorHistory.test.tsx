@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "../../components/Runtime";
 import { useEditorState } from "../useEditorState";
-import { executeEditorAction, runAction } from "../../actions/execute";
+import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { DocumentService } from "../../services/document";
 import { useDocumentSnapshot } from "../useDocumentSnapshot";
@@ -91,7 +91,7 @@ describe("editor history commands", () => {
     );
 
     await act(async () => {
-      await executeEditorAction("history.undo");
+      await runActionAsync("history.undo");
     });
     expect(
       container.querySelector('[data-testid="note-count"]')?.textContent,
@@ -101,7 +101,7 @@ describe("editor history commands", () => {
     ).toBe("false:true:true");
 
     await act(async () => {
-      await executeEditorAction("history.redo");
+      await runActionAsync("history.redo");
     });
     expect(
       container.querySelector('[data-testid="note-count"]')?.textContent,

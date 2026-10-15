@@ -4,12 +4,12 @@ import { EditorStateService } from "../../services/editor/state";
 import { DocumentService } from "../../services/document";
 import {
   metadataSchema,
-  type MetadataValidationIssue,
+  type MetadataValidationError,
 } from "../../services/document/schema";
 
 export class ApplyProjectMetadataAction extends Action<
   [unknown],
-  readonly MetadataValidationIssue[]
+  readonly MetadataValidationError[]
 > {
   constructor() {
     super({});
@@ -18,7 +18,7 @@ export class ApplyProjectMetadataAction extends Action<
   run(
     accessor: ServicesAccessor,
     metadata: unknown,
-  ): readonly MetadataValidationIssue[] {
+  ): readonly MetadataValidationError[] {
     const document = accessor.get<DocumentService>("document");
     const result = metadataSchema.safeParse(metadata);
     if (result.success) {

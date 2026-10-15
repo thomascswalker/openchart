@@ -11,7 +11,7 @@ function errorMessage(error: unknown): string {
     : "The action could not be completed.";
 }
 
-export async function executeEditorAction<Result = void>(
+export async function runActionAsync<Result = void>(
   id: string,
   ...args: unknown[]
 ): Promise<Result> {
@@ -33,5 +33,5 @@ export async function executeEditorAction<Result = void>(
 
 /** Fire-and-forget. Errors are already surfaced via editorState.setError. */
 export function runAction(id: string, ...args: unknown[]): void {
-  void executeEditorAction(id, ...args).catch(() => {});
+  void runActionAsync(id, ...args).catch(() => {});
 }

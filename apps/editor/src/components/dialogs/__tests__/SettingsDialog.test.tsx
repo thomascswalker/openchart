@@ -5,10 +5,10 @@ import { useEditorState } from "../../../hooks/useEditorState";
 import { runAction } from "../../../actions/execute";
 import Platform from "../../../platform";
 import {
-  defaultApplicationSettings,
   validateApplicationSettings,
   SettingsService,
 } from "../../../services/settings";
+import { defaultApplicationSettings } from "../../../services/settings/schema";
 import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
 import { Runtime } from "../../Runtime";
 import { SettingsDialog } from "../SettingsDialog";

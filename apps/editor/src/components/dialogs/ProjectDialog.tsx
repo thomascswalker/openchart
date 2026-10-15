@@ -1,9 +1,9 @@
-import { executeEditorAction, runAction } from "../../actions/execute";
+import { runActionAsync, runAction } from "../../actions/execute";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import {
   metadataSchema,
   type Metadata,
-  type MetadataValidationIssue,
+  type MetadataValidationErrors,
 } from "../../services/document/schema";
 import { Form } from "../shared/Form";
 
@@ -15,10 +15,11 @@ const ProjectDialog = () => {
   };
 
   const apply = async (values: Metadata): Promise<boolean> => {
-    const issues = await executeEditorAction<
-      readonly MetadataValidationIssue[]
-    >("document.apply-project-metadata", values);
-    return issues.length === 0;
+    const errors = await runActionAsync<MetadataValidationErrors>(
+      "document.apply-project-metadata",
+      values,
+    );
+    return errors.length === 0;
   };
 
   return (

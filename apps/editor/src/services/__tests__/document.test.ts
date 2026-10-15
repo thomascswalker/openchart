@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../document";
 import type { FileSystemService } from "../filesystem";
 import type { LoggerService } from "../logger";
+import { makeDefaultMetadata } from "../document/schema";
 
 function createDocumentService(
   fileSystem: Partial<FileSystemService> = {},
@@ -60,16 +61,7 @@ describe("DocumentService", () => {
     expect(snapshot.file).toBe("opened.mid");
     expect(snapshot.handle).toBe(handle);
     expect(snapshot.directoryHandle).toBeNull();
-    expect(snapshot.metadata).toMatchObject({
-      version: 0,
-      song: {
-        name: "",
-        artist: "",
-        album: "",
-        genre: "",
-      },
-    });
-    expect(snapshot.metadata.id).toEqual(expect.any(String));
+    expect(snapshot.metadata).toMatchObject(makeDefaultMetadata());
     expect(snapshot.isDirty).toBe(false);
   });
 

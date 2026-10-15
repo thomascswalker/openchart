@@ -1,5 +1,7 @@
 import z from "zod";
 
+const METADATA_SETTINGS_VERSION = 1;
+
 const songSchema = z.object({
   name: z.string(),
   artist: z.string(),
@@ -41,8 +43,11 @@ const creditsSchema = z.object({
 });
 
 export const metadataSchema = z.object({
-  version: z.number().int(),
-  id: z.string(),
+  version: z
+    .literal(METADATA_SETTINGS_VERSION, {
+      error: "Unsupported settings version.",
+    })
+    .meta({ hidden: true }),
   song: songSchema,
   chart: chartSchema,
   difficulty: difficultySchema,
@@ -52,15 +57,16 @@ export const metadataSchema = z.object({
 
 export type Metadata = z.infer<typeof metadataSchema>;
 
-export interface MetadataValidationIssue {
+export interface MetadataValidationError {
   path: string;
   message: string;
 }
 
+export type MetadataValidationErrors = readonly MetadataValidationError[];
+
 export const makeDefaultMetadata = (): Metadata => {
   return {
-    version: 0,
-    id: "",
+    version: METADATA_SETTINGS_VERSION,
     song: {
       name: "",
       artist: "",

@@ -13,7 +13,7 @@ import {
   type PreviewNote,
 } from "../audio/soundboard";
 import type { DocumentService } from "./document";
-import type { ApplicationSettings } from "./settings";
+import type { ApplicationSettings } from "./settings/schema";
 import { IStatefulService } from "../platform/services";
 
 export interface PlaybackSnapshot {

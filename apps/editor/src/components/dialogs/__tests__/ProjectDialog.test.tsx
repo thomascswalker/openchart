@@ -59,7 +59,6 @@ describe("ProjectDialog", () => {
       ),
     ];
     expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "General",
       "song",
       "chart",
       "difficulty",

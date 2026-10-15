@@ -48,7 +48,7 @@ import { Slider } from "./shared/Slider";
 import { Text } from "./shared/Text";
 import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
-import { HIGHWAY_SCROLL_SPEED_RANGE } from "../services/settings";
+import { HIGHWAY_SCROLL_SPEED_RANGE } from "../services/settings/schema";
 import {
   BassIcon,
   DrumsIcon,

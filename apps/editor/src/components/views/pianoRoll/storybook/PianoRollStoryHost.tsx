@@ -12,7 +12,7 @@ import type { ChartView } from "../../ChartViews";
 import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
 import { PianoRollView, profileForInstrument } from "../index";
 import { PlaybackService } from "../../../../services/playback";
-import { defaultApplicationSettings } from "../../../../services/settings";
+import { defaultApplicationSettings } from "../../../../services/settings/schema";
 import { Button, Checkbox } from "../../../shared/Button";
 import { Dropdown } from "../../../shared/Dropdown";
 import type { DropdownOption } from "../../../shared/Dropdown";

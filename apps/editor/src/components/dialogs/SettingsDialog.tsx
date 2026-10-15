@@ -1,9 +1,9 @@
-import { executeEditorAction, runAction } from "../../actions/execute";
+import { runActionAsync, runAction } from "../../actions/execute";
 import { useApplicationSettings } from "../../hooks/useApplicationSettings";
 import {
   applicationSettingsSchema,
   type ApplicationSettings,
-} from "../../services/settings";
+} from "../../services/settings/schema";
 import { Form } from "../shared/Form";
 
 const SettingsDialog = () => {
@@ -14,7 +14,7 @@ const SettingsDialog = () => {
   };
 
   const apply = (values: ApplicationSettings): Promise<boolean> => {
-    return executeEditorAction("settings.apply", values);
+    return runActionAsync("settings.apply", values);
   };
 
   return (
