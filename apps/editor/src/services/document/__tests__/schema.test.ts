@@ -7,7 +7,7 @@ describe("makeDefaultMetadata", () => {
       song: { name: "" },
       chart: { author: "" },
       difficulty: { band: 1 },
-      audio: { song: null },
+      audio: { root: null, song: null },
       credits: { publisher: "" },
     });
   });
@@ -21,5 +21,15 @@ describe("audio file metadata", () => {
     expect(fileSchema.safeParse("track.wav").success).toBe(true);
     expect(fileSchema.safeParse(null).success).toBe(true);
     expect(fileSchema.safeParse("track.mp3").success).toBe(false);
+  });
+
+  it("marks the audio root as a directory path and accepts legacy metadata", () => {
+    const rootSchema = metadataSchema.shape.audio.shape.root;
+    const legacy = makeDefaultMetadata() as Record<string, unknown>;
+    const audio = legacy.audio as Record<string, unknown>;
+    delete audio.root;
+
+    expect(rootSchema.meta()?.directory).toBe(true);
+    expect(metadataSchema.parse(legacy).audio.root).toBeNull();
   });
 });

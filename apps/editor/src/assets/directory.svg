@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g transform="matrix(1,0,0,1,-56,-142)">
+        <g id="directory" transform="matrix(1,0,0,1,18.76869,-66)">
+            <rect x="37.537" y="208.377" width="16" height="16" style="fill:none;"/>
+            <g transform="matrix(1.11609,0,0,0.823665,16.274972,93.222436)">
+                <path d="M20.385,145.745L30.239,145.745C31.22,145.745 32.017,147.048 32.017,148.653L32.017,154.469C32.017,156.074 31.22,157.377 30.239,157.377L22.162,157.377C21.181,157.377 20.385,156.074 20.385,154.469L20.385,146.409" style="fill:none;stroke:rgb(233,233,233);stroke-width:1.02px;"/>
+            </g>
+            <g transform="matrix(0.603778,0,0,0.400746,26.718256,150.309943)">
+                <path d="M20.385,157.1L20.385,151.615C20.385,150.01 21.072,148.707 21.919,148.707L30.482,148.707C31.329,148.707 32.017,150.01 32.017,151.615L32.017,157.1" style="fill:none;stroke:rgb(233,233,233);stroke-width:1.95px;"/>
+            </g>
+        </g>
+    </g>
+</svg>

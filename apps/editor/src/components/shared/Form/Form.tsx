@@ -19,6 +19,7 @@ interface FieldMetadata {
   label?: string;
   hidden?: boolean;
   file?: boolean;
+  directory?: boolean;
   types?: FilePickerAcceptType[];
   tab?: string;
   min?: number;
@@ -40,7 +41,7 @@ interface DialogTab {
 
 interface FormProps<T extends object> {
   title: string;
-  schema: z.ZodType<T, T>;
+  schema: z.ZodType<T, unknown>;
   values: T;
   optionsLabel: string;
   fileRootDirectory?: FileSystemDirectoryHandle | null;
@@ -108,14 +109,30 @@ const Form = <T extends object>({
   const [selectedTab, setSelectedTab] = useState(options[0] ?? "");
   const dialogRef = useRef<HTMLDivElement>(null);
   const selectedIndex = Math.max(0, options.indexOf(selectedTab));
+  const formSchema = z.custom<T>().transform((value) => schema.parse(value));
   const form = useForm({
     defaultValues: values,
-    validators: { onSubmit: schema },
+    validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
       submitSucceeded.current = await onApply(value);
       if (submitSucceeded.current) form.reset(value);
     },
   });
+
+  const getAudioRootPath = (): string | null => {
+    const values = form.store.state.values;
+    if (!("audio" in values)) return null;
+    const audio = values.audio;
+    if (
+      typeof audio !== "object" ||
+      audio === null ||
+      !("root" in audio) ||
+      typeof audio.root !== "string"
+    ) {
+      return null;
+    }
+    return audio.root;
+  };
 
   const selectTab = (tab: string): void => {
     setSelectedTab(tab);
@@ -231,19 +248,32 @@ const Form = <T extends object>({
                               <Label htmlFor={inputId}>
                                 {startCase(label)}
                               </Label>
-                              {field.metadata.file ? (
+                              {field.metadata.file ||
+                              field.metadata.directory ? (
                                 <FileInput
                                   id={inputId}
                                   className={styles.input}
                                   aria-invalid={!!error}
                                   value={typeof value === "string" ? value : ""}
                                   placeholder=""
+                                  directory={field.metadata.directory}
                                   types={field.metadata.types || []}
                                   rootDirectoryHandle={fileRootDirectory}
+                                  getRootDirectoryPath={
+                                    field.metadata.directory
+                                      ? undefined
+                                      : getAudioRootPath
+                                  }
                                   onFileChange={(file) => {
                                     fieldApi.handleChange(
                                       (file?.relativePath ??
                                         null) as typeof value,
+                                    );
+                                    setValidationErrors({});
+                                  }}
+                                  onPathChange={(path) => {
+                                    fieldApi.handleChange(
+                                      (path ?? null) as typeof value,
                                     );
                                     setValidationErrors({});
                                   }}

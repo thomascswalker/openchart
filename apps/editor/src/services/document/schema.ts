@@ -39,10 +39,13 @@ const wavRefiner = (val: string | null) => {
 };
 const zodFile = (types: FilePickerAcceptType[]) =>
   z.string().nullable().refine(wavRefiner).meta({ file: true, types });
+const zodDirectory = () =>
+  z.string().nullable().default(null).meta({ directory: true, label: "Root" });
 
 const zodWavFile = () => zodFile(wavFilePickerTypes);
 
 const audioSchema = z.object({
+  root: zodDirectory(),
   song: zodWavFile(),
   lead: zodWavFile(),
   bass: zodWavFile(),
@@ -107,6 +110,7 @@ export const makeDefaultMetadata = (): Metadata => {
       fivePad: 1,
     },
     audio: {
+      root: null,
       song: null,
       lead: null,
       bass: null,

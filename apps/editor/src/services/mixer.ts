@@ -1,18 +1,15 @@
 import { IStatefulService } from "../platform/services";
 import Mixer from "@openchart/mixer";
 import type { LoggerService } from "./logger";
-import type { FileSystemService } from "./filesystem";
-import { wavFilePickerTypes, type MixerSnapshot } from "./mixer/types";
+import type { MixerSnapshot } from "./mixer/types";
 
 export class MixerService extends IStatefulService<MixerSnapshot> {
-  static dependencies = ["logger", "filesystem"];
+  static dependencies = ["logger"];
   readonly #logger: LoggerService;
-  readonly #fileSystem: FileSystemService;
 
-  constructor(logger: LoggerService, fileSystem: FileSystemService) {
+  constructor(logger: LoggerService) {
     super();
     this.#logger = logger;
-    this.#fileSystem = fileSystem;
     this.reset();
   }
 
@@ -35,30 +32,31 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
 
   public addTrack = async (
     id: string,
-    relativePath?: string,
+    relativePath: string,
     root?: FileSystemDirectoryHandle | null,
+    audioRootPath?: string | null,
   ): Promise<void> => {
-    let bytes: Uint8Array;
-    if (relativePath && root) {
-      let directory = root;
-      const parts = relativePath.split("/").filter(Boolean);
-      const fileName = parts.pop();
-      if (!fileName) {
-        throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
-      }
-      for (const part of parts) {
-        directory = await directory.getDirectoryHandle(part);
-      }
-      const handle = await directory.getFileHandle(fileName);
-      bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
-    } else {
-      const file = await this.#fileSystem.read(wavFilePickerTypes);
-      if (!file) {
-        this.#logger.error(`No file selected for track: ${id}`);
-        return;
-      }
-      bytes = file.bytes;
+    if (!root) {
+      throw new Error(`Cannot load audio for ${id} without a project folder.`);
     }
+
+    let directory = root;
+    const parts = [
+      ...(audioRootPath ?? "").split(/[\\/]/),
+      ...relativePath.split(/[\\/]/),
+    ].filter(Boolean);
+    if (parts.some((part) => part === "." || part === "..")) {
+      throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
+    }
+    const fileName = parts.pop();
+    if (!fileName) {
+      throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
+    }
+    for (const part of parts) {
+      directory = await directory.getDirectoryHandle(part);
+    }
+    const handle = await directory.getFileHandle(fileName);
+    const bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
 
     const blob = new Blob([new Uint8Array(bytes).buffer], {
       type: "audio/wav",

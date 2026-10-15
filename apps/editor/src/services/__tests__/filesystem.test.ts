@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileSystemService } from "../filesystem";
-import { midiFilePickerTypes } from "../document/types";
+import { midiFilePickerTypes, projectFilePickerTypes } from "../document/types";
 import type { LoggerService } from "../logger";
 
 const TEST_FILENAME = "test_read_write.mid";
@@ -139,6 +139,35 @@ describe("FileSystemService", () => {
     expect(projectDirectory.resolve).toHaveBeenCalledWith(fileHandle);
   });
 
+  it("returns audio file paths relative to the selected audio root", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const fileHandle = {
+      name: "lead.wav",
+      async getFile() {
+        return {
+          name: "lead.wav",
+          arrayBuffer: async () => bytes.slice().buffer,
+        } as File;
+      },
+    } as unknown as FileSystemFileHandle;
+    const audioDirectory = {
+      resolve: vi.fn(async () => ["lead.wav"]),
+    } as unknown as FileSystemDirectoryHandle;
+    const projectDirectory = {
+      getDirectoryHandle: vi.fn(async () => audioDirectory),
+    } as unknown as FileSystemDirectoryHandle;
+    vi.stubGlobal("window", {
+      showOpenFilePicker: vi.fn(async () => [fileHandle]),
+      showSaveFilePicker: vi.fn(),
+    });
+    const service = makeMockFileSystemService();
+
+    await expect(
+      service.read([], projectDirectory, "stems"),
+    ).resolves.toMatchObject({ relativePath: "lead.wav" });
+    expect(projectDirectory.getDirectoryHandle).toHaveBeenCalledWith("stems");
+  });
+
   it("rejects files outside the supplied project directory", async () => {
     const fileHandle = {
       name: "song.wav",
@@ -161,5 +190,72 @@ describe("FileSystemService", () => {
     await expect(service.read([], projectDirectory)).rejects.toThrow(
       "Choose an audio file inside the project folder.",
     );
+  });
+
+  it("returns a selected audio directory relative to the project folder", async () => {
+    const selectedDirectory = {
+      name: "stems",
+    } as FileSystemDirectoryHandle;
+    const projectDirectory = {
+      resolve: vi.fn(async () => ["audio", "stems"]),
+    } as unknown as FileSystemDirectoryHandle;
+    vi.stubGlobal("window", {
+      showDirectoryPicker: vi.fn(async () => selectedDirectory),
+    });
+    const service = makeMockFileSystemService();
+
+    await expect(service.readDirectory(projectDirectory)).resolves.toEqual({
+      name: "stems",
+      relativePath: "audio/stems",
+      handle: selectedDirectory,
+    });
+  });
+
+  it("loads notes.mid next to the selected project JSON file", async () => {
+    const metadataBytes = new TextEncoder().encode("{}");
+    const midiBytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
+    const metadataHandle = {
+      name: "info.json",
+      async getFile() {
+        return {
+          name: "info.json",
+          arrayBuffer: async () => metadataBytes.slice().buffer,
+        } as File;
+      },
+    } as unknown as FileSystemFileHandle;
+    const midiHandle = {
+      name: "notes.mid",
+      async getFile() {
+        return {
+          name: "notes.mid",
+          arrayBuffer: async () => midiBytes.slice().buffer,
+        } as File;
+      },
+    } as unknown as FileSystemFileHandle;
+    const directoryHandle = {
+      resolve: vi.fn(async () => ["info.json"]),
+      getFileHandle: vi.fn(async () => midiHandle),
+    } as unknown as FileSystemDirectoryHandle;
+    const showOpenFilePicker = vi.fn(async () => [metadataHandle]);
+    const showDirectoryPicker = vi.fn(async () => directoryHandle);
+    vi.stubGlobal("window", {
+      origin: "https://example.test",
+      showOpenFilePicker,
+      showSaveFilePicker: vi.fn(),
+      showDirectoryPicker,
+    });
+    const service = makeMockFileSystemService();
+
+    await expect(service.readProject()).resolves.toEqual({
+      metadataBytes,
+      midiBytes,
+      midiHandle,
+      directoryHandle,
+    });
+    expect(showOpenFilePicker).toHaveBeenCalledWith({
+      types: projectFilePickerTypes,
+    });
+    expect(showDirectoryPicker).toHaveBeenCalledWith({ mode: "read" });
+    expect(directoryHandle.getFileHandle).toHaveBeenCalledWith("notes.mid");
   });
 });

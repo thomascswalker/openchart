@@ -1,7 +1,13 @@
 import type { LoggerService } from "./logger";
 import { IService } from "../platform/services";
-import type { SaveFile, LoadFile } from "./filesystem/types";
+import type {
+  LoadDirectory,
+  LoadFile,
+  ProjectFiles,
+  SaveFile,
+} from "./filesystem/types";
 import { toArrayBuffer } from "../util/array";
+import { midiFilePickerTypes, projectFilePickerTypes } from "./document/types";
 
 export class FileSystemService extends IService {
   static dependencies = ["logger"];
@@ -56,19 +62,27 @@ export class FileSystemService extends IService {
   public async read(
     types: FilePickerAcceptType[] = [],
     relativeTo?: FileSystemDirectoryHandle,
+    relativePath?: string,
   ): Promise<LoadFile | null> {
     if (this.isAccessible()) {
       const [handle] = await window.showOpenFilePicker!({ types });
       const file = await handle.getFile();
-      const relativePath = relativeTo
-        ? await relativeTo.resolve(handle)
+      const baseDirectory = relativeTo
+        ? await this.resolveDirectory(relativeTo, relativePath)
+        : null;
+      const resolvedPath = baseDirectory
+        ? await baseDirectory.resolve(handle)
         : undefined;
-      if (relativeTo && !relativePath) {
-        throw new Error("Choose an audio file inside the project folder.");
+      if (baseDirectory && !resolvedPath) {
+        throw new Error(
+          relativePath
+            ? "Choose an audio file inside the selected audio root folder."
+            : "Choose an audio file inside the project folder.",
+        );
       }
       const opened: LoadFile = {
         name: file.name,
-        ...(relativePath ? { relativePath: relativePath.join("/") } : {}),
+        ...(resolvedPath ? { relativePath: resolvedPath.join("/") } : {}),
         bytes: new Uint8Array(await file.arrayBuffer()),
         handle,
       };
@@ -113,6 +127,68 @@ export class FileSystemService extends IService {
     return opened;
   }
 
+  public async readDirectory(
+    relativeTo: FileSystemDirectoryHandle,
+  ): Promise<LoadDirectory> {
+    if (typeof window.showDirectoryPicker !== "function") {
+      throw new Error(
+        "This browser does not support selecting a project audio folder.",
+      );
+    }
+    const handle = await window.showDirectoryPicker({ mode: "read" });
+    const relativePath = await relativeTo.resolve(handle);
+    if (!relativePath) {
+      throw new Error("Choose an audio root folder inside the project folder.");
+    }
+    return {
+      name: handle.name,
+      relativePath: relativePath.join("/"),
+      handle,
+    };
+  }
+
+  public async readProject(): Promise<ProjectFiles | null> {
+    const metadataFile = await this.read(projectFilePickerTypes);
+    if (!metadataFile) return null;
+    if (!/\.json$/i.test(metadataFile.name)) {
+      throw new Error("Choose a project metadata file (.json).");
+    }
+    if (typeof window.showDirectoryPicker !== "function") {
+      throw new Error(
+        "This browser cannot access notes.mid next to the selected project file.",
+      );
+    }
+
+    const directoryHandle = await window.showDirectoryPicker({ mode: "read" });
+    if (metadataFile.handle) {
+      const relativePath = await directoryHandle.resolve(metadataFile.handle);
+      if (!relativePath || relativePath.length !== 1) {
+        throw new Error(
+          "Choose the folder containing the selected project metadata file.",
+        );
+      }
+    }
+
+    const midiHandle = await directoryHandle.getFileHandle("notes.mid");
+    const midiFile = await midiHandle.getFile();
+    const fileAccepts = midiFilePickerTypes.some((type) =>
+      Object.values(type.accept ?? {})
+        .flat()
+        .some((extension) => midiFile.name.toLowerCase().endsWith(extension)),
+    );
+    if (!fileAccepts) {
+      throw new Error("The project folder does not contain notes.mid.");
+    }
+
+    this.#logger.info(`Project loaded: ${metadataFile.name}`);
+    return {
+      metadataBytes: metadataFile.bytes,
+      midiBytes: new Uint8Array(await midiFile.arrayBuffer()),
+      midiHandle,
+      directoryHandle,
+    };
+  }
+
   public isAccessible() {
     return (
       typeof window !== "undefined" &&
@@ -121,6 +197,17 @@ export class FileSystemService extends IService {
       window.origin !== null &&
       !(window.navigator?.userAgent ?? "").includes("Electron")
     );
+  }
+
+  private async resolveDirectory(
+    root: FileSystemDirectoryHandle,
+    path?: string,
+  ): Promise<FileSystemDirectoryHandle> {
+    let directory = root;
+    for (const part of (path ?? "").split(/[\\/]/).filter(Boolean)) {
+      directory = await directory.getDirectoryHandle(part);
+    }
+    return directory;
   }
 
   #download(bytes: Uint8Array, name: string, mimeType: string): void {

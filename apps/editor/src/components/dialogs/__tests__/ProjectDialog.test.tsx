@@ -66,6 +66,21 @@ describe("ProjectDialog", () => {
       "Credits",
     ]);
 
+    act(() => tabs.find((tab) => tab.textContent === "Audio")?.click());
+    expect(
+      [...container.querySelectorAll("label")].some((label) =>
+        label.textContent?.startsWith("Root"),
+      ),
+    ).toBe(true);
+    const rootInput = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent?.startsWith("Root"),
+    );
+    expect(
+      container.ownerDocument
+        .getElementById(rootInput?.htmlFor ?? "")
+        ?.parentElement?.querySelector("button"),
+    ).not.toBeNull();
+
     act(() => tabs.find((tab) => tab.textContent === "Song")?.click());
     const nameLabel = [...container.querySelectorAll("label")].find((label) =>
       label.textContent?.startsWith("Name"),
