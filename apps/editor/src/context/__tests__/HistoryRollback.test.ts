@@ -46,15 +46,15 @@ describe("history transaction rollback", () => {
     document.subscribe(() => published++);
     const before = document.data!;
 
-    document.beginOpenChart();
+    document.beginEdit();
     before.addTrack();
-    document.recordOpenChart();
-    expect(document.rollbackOpenChart()).toBe(true);
+    document.recordEdit();
+    expect(document.rollbackEdit()).toBe(true);
 
     expect(document.data).not.toBe(before);
     expect(document.data!.tracks).toHaveLength(0);
     expect(document.getSnapshot().canUndo).toBe(false);
     expect(published).toBeGreaterThan(0);
-    expect(document.rollbackOpenChart()).toBe(false);
+    expect(document.rollbackEdit()).toBe(false);
   });
 });

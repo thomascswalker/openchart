@@ -8,6 +8,6 @@ export class EndOpenChartAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>("document").endOpenChart();
+    accessor.get<DocumentService>("document").endEdit();
   }
 }

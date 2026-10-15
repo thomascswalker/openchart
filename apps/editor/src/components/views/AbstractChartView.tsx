@@ -226,13 +226,13 @@ export abstract class AbstractChartView<T> {
   public onNotesChanged: (() => void) | null = null;
 
   /** Bracket continuous MIDI edits so a gesture becomes one history entry. */
-  public onEditStart: (() => void) | null = null;
-  public onEditEnd: (() => void) | null = null;
+  public onBeginEdit: (() => void) | null = null;
+  public onEndEdit: (() => void) | null = null;
   /**
    * Abandon the open edit transaction and restore the document to its state
    * before onEditStart. Returns false when no history service handles it.
    */
-  public onEditRollback: (() => boolean) | null = null;
+  public onRollbackEdit: (() => boolean) | null = null;
 
   /** Notified when the user clicks (without dragging) to seek to a tick, if supported. */
   public onSeekRequest: ((tick: number) => void) | null = null;

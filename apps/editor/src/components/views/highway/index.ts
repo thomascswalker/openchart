@@ -94,8 +94,8 @@ export class HighwayView
     canShowNotePlacementPreview: () => this.input.canShowNotePlacementPreview(),
     getCanvas: () => this.canvas,
     requestRender: () => this.render(),
-    beginEdit: () => this.onEditStart?.(),
-    endEdit: () => this.onEditEnd?.(),
+    beginEdit: () => this.onBeginEdit?.(),
+    endEdit: () => this.onEndEdit?.(),
     notifyNotesChanged: () => this.onNotesChanged?.(),
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     changeSnapDenominator: (denominator) =>

@@ -12,7 +12,7 @@ import Platform from "../platform";
 import { PlaybackService } from "../services/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
-  const { midi: midiData } = useDocumentSnapshot();
+  const { midi: midiData, documentId } = useDocumentSnapshot();
   const { viewportSessions, activeViewportId, snapEnabled, snapDenominator } =
     useViewportSnapshot();
   const activeViewport = viewportSessions.find(
@@ -48,6 +48,7 @@ export function Playback({ children }: { children: ReactNode }) {
   useEffect(() => {
     playbackService.configure({
       midiData,
+      documentId,
       settings,
       snapEnabled,
       snapDenominator,
@@ -57,6 +58,7 @@ export function Playback({ children }: { children: ReactNode }) {
     });
   }, [
     midiData,
+    documentId,
     playbackService,
     selectedDifficulty,
     selectedInstrument,

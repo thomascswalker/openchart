@@ -1,6 +1,6 @@
 import { Midi } from "@openchart/core";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
-import type { FileSystemService } from "./filesystem";
+import type { FileSystemService, SaveFile } from "./filesystem";
 import type { LoggerService } from "./logger";
 import { IStatefulService } from "../platform/services";
 import {
@@ -14,6 +14,7 @@ function hasMidiExtension(fileName: string): boolean {
 }
 
 export interface DocumentSnapshot {
+  documentId: number;
   midi: Midi | null;
   file: string | null;
   handle: FileSystemFileHandle | null;
@@ -29,12 +30,26 @@ export interface MidiExport {
   suggestedName: string;
 }
 
+export interface DocumentFile {
+  name: string;
+  bytes: Uint8Array;
+  mimeType: string;
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
 export class DocumentService extends IStatefulService<DocumentSnapshot> {
   static dependencies = ["logger", "filesystem"];
 
   #logger: LoggerService;
   #fileSystem: FileSystemService;
   #data: Midi | null = new Midi();
+  #documentId = 0;
   #fileName: string | null = null;
   #fileHandle: FileSystemFileHandle | null = null;
   #directoryHandle: FileSystemDirectoryHandle | null = null;
@@ -56,6 +71,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
 
   public set data(data: Midi) {
     this.#data = data;
+    this.#documentId += 1;
     this.#history.reset(this.#data);
     this.#isDirty = true;
     this.publish();
@@ -88,7 +104,12 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   };
 
   public async open(): Promise<boolean> {
-    const opened = await this.#fileSystem.readMidi();
+    const opened = await this.#fileSystem.read([
+      {
+        description: "MIDI files",
+        accept: { "audio/midi": [".mid", ".midi"] },
+      },
+    ]);
     if (!opened) {
       return false;
     }
@@ -105,6 +126,104 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       makeDefaultMetadata(),
     );
     this.#logger.info(`Document opened: ${opened.name}`);
+    return true;
+  }
+
+  public async save(): Promise<boolean> {
+    return this.saveToDirectory(this.#directoryHandle);
+  }
+
+  public async saveAs(): Promise<boolean> {
+    return this.saveToDirectory(null);
+  }
+
+  public async writeFiles(
+    files: DocumentFile[],
+    directoryHandle: FileSystemDirectoryHandle | null = null,
+  ): Promise<SaveFile> {
+    const [primaryFile] = files;
+    if (!primaryFile) {
+      throw new Error("At least one file is required.");
+    }
+
+    let targetDirectory = directoryHandle;
+    if (!targetDirectory && typeof window.showDirectoryPicker === "function") {
+      targetDirectory = await window.showDirectoryPicker({
+        mode: "readwrite",
+      });
+    }
+
+    if (!targetDirectory) {
+      for (const file of files) {
+        const url = URL.createObjectURL(
+          new Blob([toArrayBuffer(file.bytes)], { type: file.mimeType }),
+        );
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+      const saved: SaveFile = {
+        name: primaryFile.name,
+        handle: null,
+        directoryHandle: null,
+      };
+      this.#logger.info(
+        `Files saved: ${files.map((file) => file.name).join(", ")}`,
+      );
+      return saved;
+    }
+
+    const handles = await Promise.all(
+      files.map(async (file) => {
+        const handle = await targetDirectory.getFileHandle(file.name, {
+          create: true,
+        });
+        const writable = await handle.createWritable();
+        await writable.write(toArrayBuffer(file.bytes));
+        await writable.close();
+        return handle;
+      }),
+    );
+    const saved: SaveFile = {
+      name: handles[0]!.name,
+      handle: handles[0]!,
+      directoryHandle: targetDirectory,
+    };
+    this.#logger.info(
+      `Files saved: ${files.map((file) => file.name).join(", ")}`,
+    );
+    return saved;
+  }
+
+  private async saveToDirectory(
+    directoryHandle: FileSystemDirectoryHandle | null,
+  ): Promise<boolean> {
+    if (!this.#data?.trackCount) {
+      throw new Error("There is no MIDI document to save.");
+    }
+
+    const { bytes, suggestedName } = this.export();
+    const saved = await this.writeFiles(
+      [
+        {
+          name: this.#fileName ?? suggestedName,
+          bytes,
+          mimeType: "audio/midi",
+        },
+        {
+          name: "info.json",
+          bytes: new TextEncoder().encode(
+            JSON.stringify(this.#metadata, null, 2),
+          ),
+          mimeType: "application/json",
+        },
+      ],
+      directoryHandle,
+    );
+    this.rebind(saved.name, saved.handle, saved.directoryHandle ?? null);
+    this.isDirty = false;
     return true;
   }
 
@@ -134,12 +253,12 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
-  public readonly beginOpenChart = (): void => {
+  public readonly beginEdit = (): void => {
     this.#history.beginTransaction();
     this.publish();
   };
 
-  public readonly recordOpenChart = (): void => {
+  public readonly recordEdit = (): void => {
     if (!this.#data) {
       return;
     }
@@ -151,7 +270,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     }
   };
 
-  public readonly endOpenChart = (): void => {
+  public readonly endEdit = (): void => {
     if (!this.#data) {
       return;
     }
@@ -161,7 +280,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
-  public readonly rollbackOpenChart = (): boolean => {
+  public readonly rollbackEdit = (): boolean => {
     const restored = this.#history.rollbackTransaction();
     if (!restored) {
       return false;
@@ -171,7 +290,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     return true;
   };
 
-  public readonly undoOpenChart = (): void => {
+  public readonly undoEdit = (): void => {
     const restored = this.#history.undo();
     if (!restored) {
       return;
@@ -181,7 +300,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     this.publish();
   };
 
-  public readonly redoOpenChart = (): void => {
+  public readonly redoEdit = (): void => {
     const restored = this.#history.redo();
     if (!restored) {
       return;
@@ -204,6 +323,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
     metadata: Metadata,
   ): void {
     this.#data = midi;
+    this.#documentId += 1;
     this.#fileName = name;
     this.#fileHandle = handle;
     this.#directoryHandle = directoryHandle;
@@ -215,6 +335,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
 
   private publish(): void {
     this._snapshot = {
+      documentId: this.#documentId,
       midi: this.#data,
       file: this.#fileName,
       handle: this.#fileHandle,

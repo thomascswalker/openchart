@@ -1,7 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import { DocumentService } from "../../services/document";
-import { FileSystemService } from "../../services/filesystem";
 
 export class SaveDocumentAction extends Action {
   constructor() {
@@ -10,26 +9,6 @@ export class SaveDocumentAction extends Action {
 
   async run(accessor: ServicesAccessor): Promise<void> {
     const document = accessor.get<DocumentService>("document");
-    const fileSystem = accessor.get<FileSystemService>("filesystem");
-    const context = document.getSnapshot();
-    if (!context.midi?.trackCount) {
-      throw new Error("There is no MIDI document to save.");
-    }
-    if (!context.directoryHandle) {
-      await import("./save-as").then(({ SaveDocumentAsAction }) =>
-        new SaveDocumentAsAction().run(accessor),
-      );
-      return;
-    }
-
-    const { bytes, suggestedName } = document.export();
-    const saved = await fileSystem.writeMidi(
-      bytes,
-      JSON.stringify(document.metadata, null, 2),
-      context.file ?? suggestedName,
-      context.directoryHandle,
-    );
-    document.rebind(saved.name, saved.handle, saved.directoryHandle ?? null);
-    document.isDirty = false;
+    await document.save();
   }
 }

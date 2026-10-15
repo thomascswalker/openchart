@@ -9,6 +9,6 @@ export class RollbackOpenChartAction extends Action<[], boolean> {
   }
 
   run(accessor: ServicesAccessor): boolean {
-    return accessor.get<DocumentService>("document").rollbackOpenChart();
+    return accessor.get<DocumentService>("document").rollbackEdit();
   }
 }

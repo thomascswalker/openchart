@@ -290,9 +290,9 @@ function ViewportPanel({
     runAction("history.record-edit");
     runAction("playback.refresh");
   };
-  const onEditStart = () => runAction("history.begin-edit");
-  const onEditEnd = () => runAction("history.end-edit");
-  const onEditRollback = () => {
+  const onBeginEdit = () => runAction("history.begin-edit");
+  const onEndEdit = () => runAction("history.end-edit");
+  const onRollbackEdit = () => {
     try {
       return (
         Platform.actions.executeAction<boolean>("history.rollback-edit") ===
@@ -326,9 +326,9 @@ function ViewportPanel({
       return;
     }
     view.onNotesChanged = onNotesChanged;
-    view.onEditStart = onEditStart;
-    view.onEditEnd = onEditEnd;
-    view.onEditRollback = onEditRollback;
+    view.onBeginEdit = onBeginEdit;
+    view.onEndEdit = onEndEdit;
+    view.onRollbackEdit = onRollbackEdit;
     if (view instanceof PianoRollView) {
       view.onNotePreview = onNotePreview;
     }
@@ -347,9 +347,9 @@ function ViewportPanel({
     return () => {
       unsubscribeCameraChange();
       view.onNotesChanged = null;
-      view.onEditStart = null;
-      view.onEditEnd = null;
-      view.onEditRollback = null;
+      view.onBeginEdit = null;
+      view.onEndEdit = null;
+      view.onRollbackEdit = null;
       if (view instanceof PianoRollView) {
         view.onNotePreview = null;
       }

@@ -100,7 +100,12 @@ describe("FileSystemService", () => {
       subscribe: vi.fn(() => () => {}),
     });
 
-    const opened = await service.readMidi();
+    const opened = await service.read([
+      {
+        description: "MIDI files",
+        accept: { "audio/midi": [".mid", ".midi"] },
+      },
+    ]);
     expect(opened?.name).toBe("chart.mid");
     expect(opened?.bytes).toEqual(bytes);
     expect(opened?.handle).toBe(midiHandle);
