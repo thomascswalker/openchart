@@ -47,23 +47,46 @@ const Input = ({ className, ...props }: InputProps) => {
 
 interface FileInputProps extends InputProps {
   types?: FilePickerAcceptType[];
+  rootDirectoryHandle?: FileSystemDirectoryHandle | null;
   onFileChange?: (file: LoadFile | null) => void;
+  onFileError?: (error: Error) => void;
 }
 
-const FileInput = ({ types = [], onFileChange, ...props }: FileInputProps) => {
+const FileInput = ({
+  types = [],
+  rootDirectoryHandle,
+  onFileChange,
+  onFileError,
+  ...props
+}: FileInputProps) => {
   const [file, setFile] = useState<LoadFile | undefined>(undefined);
   const hasFile = Boolean(file || props.value);
   const size = "var(--size-med)";
 
-  const handleOnClick = () => {
-    const fs = Platform.services.get<FileSystemService>("filesystem");
-    fs.read(types).then((loadedFile) => {
+  const handleOnClick = async () => {
+    try {
+      if (!rootDirectoryHandle) {
+        throw new Error("Save the project to a folder before selecting audio.");
+      }
+      const fs = Platform.services.get<FileSystemService>("filesystem");
+      const loadedFile = await fs.read(types, rootDirectoryHandle);
       if (!loadedFile) {
         return;
       }
+      if (!loadedFile.relativePath) {
+        throw new Error(
+          "The selected audio file has no path relative to the project folder.",
+        );
+      }
       setFile(loadedFile);
       onFileChange?.(loadedFile);
-    });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      const fileError =
+        error instanceof Error ? error : new Error(String(error));
+      if (onFileError) onFileError(fileError);
+      else throw fileError;
+    }
   };
 
   const handleOnClose = () => {
@@ -74,12 +97,12 @@ const FileInput = ({ types = [], onFileChange, ...props }: FileInputProps) => {
   return (
     <div style={{ display: "flex" }}>
       <Input
-        value={file?.name}
+        {...props}
+        value={file?.relativePath ?? props.value}
         readOnly
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
         borderRightColor="transparent"
-        {...props}
       />
       <Button
         minHeight={size}

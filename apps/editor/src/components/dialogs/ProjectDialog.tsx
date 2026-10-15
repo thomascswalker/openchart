@@ -8,7 +8,7 @@ import {
 import { Form } from "../shared/Form";
 
 const ProjectDialog = () => {
-  const { metadata } = useDocumentSnapshot();
+  const { metadata, directoryHandle } = useDocumentSnapshot();
 
   const close = (): void => {
     runAction("dialog.close-project");
@@ -28,6 +28,7 @@ const ProjectDialog = () => {
       schema={metadataSchema}
       values={metadata}
       optionsLabel="Project sections"
+      fileRootDirectory={directoryHandle}
       onApply={apply}
       onClose={close}
     />

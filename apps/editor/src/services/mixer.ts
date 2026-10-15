@@ -33,14 +33,34 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
     this.notify();
   };
 
-  public addTrack = async (id: string): Promise<void> => {
-    const file = await this.#fileSystem.read(wavFilePickerTypes);
-    if (!file) {
-      this.#logger.error(`No file selected for track: ${id}`);
-      return;
+  public addTrack = async (
+    id: string,
+    relativePath?: string,
+    root?: FileSystemDirectoryHandle | null,
+  ): Promise<void> => {
+    let bytes: Uint8Array;
+    if (relativePath && root) {
+      let directory = root;
+      const parts = relativePath.split("/").filter(Boolean);
+      const fileName = parts.pop();
+      if (!fileName) {
+        throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
+      }
+      for (const part of parts) {
+        directory = await directory.getDirectoryHandle(part);
+      }
+      const handle = await directory.getFileHandle(fileName);
+      bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+    } else {
+      const file = await this.#fileSystem.read(wavFilePickerTypes);
+      if (!file) {
+        this.#logger.error(`No file selected for track: ${id}`);
+        return;
+      }
+      bytes = file.bytes;
     }
 
-    const blob = new Blob([new Uint8Array(file.bytes).buffer], {
+    const blob = new Blob([new Uint8Array(bytes).buffer], {
       type: "audio/wav",
     });
     const fileURL = URL.createObjectURL(blob);

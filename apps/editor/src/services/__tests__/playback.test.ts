@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Difficulty } from "@openchart/views";
 import { PlaybackService, snapToPreviousTimelineBoundary } from "../playback";
+import type { MixerService } from "../mixer";
 import type { ApplicationSettings } from "../settings/schema";
 
 const engine = vi.hoisted(() => ({
@@ -113,6 +114,40 @@ describe("PlaybackService", () => {
     service.setPlaybackTick(240);
     expect(engine.seek).toHaveBeenCalledWith(240);
     service.dispose();
+  });
+
+  it("keeps mixer transport and position in sync with playback controls", () => {
+    const mixer = {
+      play: vi.fn(),
+      pause: vi.fn(),
+      stop: vi.fn(),
+      seek: vi.fn(),
+    } as unknown as MixerService;
+    const service = new PlaybackService(undefined, mixer);
+    configure(service);
+
+    service.setPlaybackTick(240);
+    expect(mixer.seek).toHaveBeenLastCalledWith(0.25);
+
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn(() => 1),
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    service.play();
+    expect(mixer.play).toHaveBeenCalledOnce();
+
+    service.pause();
+    expect(mixer.pause).toHaveBeenCalledOnce();
+    expect(mixer.seek).toHaveBeenLastCalledWith(0.25);
+
+    service.seekEnd();
+    expect(mixer.seek).toHaveBeenLastCalledWith(1);
+    service.reset();
+    expect(mixer.stop).toHaveBeenCalledOnce();
+
+    service.dispose();
+    vi.unstubAllGlobals();
   });
 
   it("requires MIDI events and advances on the tempo-aware MIDI clock", () => {

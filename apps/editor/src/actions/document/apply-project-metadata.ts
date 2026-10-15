@@ -36,7 +36,11 @@ export class ApplyProjectMetadataAction extends Action<
 
         mixer.removeTrack(track);
         if (nextPath) {
-          await mixer.addTrack(track);
+          await mixer.addTrack(
+            track,
+            nextPath,
+            document.snapshot.directoryHandle,
+          );
         }
       }
 

@@ -1,5 +1,5 @@
 import { Midi } from "@openchart/core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../document";
 import type { FileSystemService } from "../filesystem";
 import type { LoggerService } from "../logger";
@@ -15,6 +15,10 @@ function createDocumentService(
 }
 
 describe("DocumentService", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("owns MIDI data, project metadata, dirty state, and history", () => {
     const service = createDocumentService();
     const midi = new Midi();
@@ -103,5 +107,42 @@ describe("DocumentService", () => {
       directoryHandle,
       isDirty: false,
     });
+  });
+
+  it("creates and writes the project files in the directory chosen by Save As", async () => {
+    const midi = new Midi();
+    midi.addTrack();
+    const writtenFiles = new Map<string, Uint8Array>();
+    const directoryHandle = {
+      async getFileHandle(name: string) {
+        return {
+          name,
+          async createWritable() {
+            let bytes = new Uint8Array();
+            return {
+              async write(value: ArrayBuffer) {
+                bytes = new Uint8Array(value);
+              },
+              async close() {
+                writtenFiles.set(name, bytes);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as FileSystemDirectoryHandle;
+    vi.stubGlobal("window", {
+      showDirectoryPicker: vi.fn(async () => directoryHandle),
+    });
+    const service = createDocumentService();
+    service.data = midi;
+
+    await expect(service.saveAs()).resolves.toBe(true);
+
+    expect([...writtenFiles.keys()]).toEqual(["untitled.mid", "info.json"]);
+    expect(writtenFiles.get("untitled.mid")).toEqual(midi.toBuffer());
+    expect(
+      JSON.parse(new TextDecoder().decode(writtenFiles.get("info.json"))),
+    ).toEqual(service.metadata);
   });
 });

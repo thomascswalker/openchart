@@ -166,17 +166,16 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       return saved;
     }
 
-    const handles = await Promise.all(
-      files.map(async (file) => {
-        const handle = await targetDirectory.getFileHandle(file.name, {
-          create: true,
-        });
-        const writable = await handle.createWritable();
-        await writable.write(toArrayBuffer(file.bytes));
-        await writable.close();
-        return handle;
-      }),
-    );
+    const handles: FileSystemFileHandle[] = [];
+    for (const file of files) {
+      const handle = await targetDirectory.getFileHandle(file.name, {
+        create: true,
+      });
+      const writable = await handle.createWritable();
+      await writable.write(toArrayBuffer(file.bytes));
+      await writable.close();
+      handles.push(handle);
+    }
     const saved: SaveFile = {
       name: handles[0]!.name,
       handle: handles[0]!,

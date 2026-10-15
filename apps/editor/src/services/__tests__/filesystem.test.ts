@@ -109,4 +109,57 @@ describe("FileSystemService", () => {
     });
     expect(showDirectoryPicker).not.toHaveBeenCalled();
   });
+
+  it("returns a path relative to the supplied project directory", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const fileHandle = {
+      name: "song.wav",
+      async getFile() {
+        return {
+          name: "song.wav",
+          arrayBuffer: async () => bytes.slice().buffer,
+        } as File;
+      },
+    } as unknown as FileSystemFileHandle;
+    const projectDirectory = {
+      resolve: vi.fn(async () => ["audio", "song.wav"]),
+    } as unknown as FileSystemDirectoryHandle;
+    vi.stubGlobal("window", {
+      showOpenFilePicker: vi.fn(async () => [fileHandle]),
+      showSaveFilePicker: vi.fn(),
+    });
+    const service = makeMockFileSystemService();
+
+    await expect(service.read([], projectDirectory)).resolves.toMatchObject({
+      name: "song.wav",
+      relativePath: "audio/song.wav",
+      bytes,
+      handle: fileHandle,
+    });
+    expect(projectDirectory.resolve).toHaveBeenCalledWith(fileHandle);
+  });
+
+  it("rejects files outside the supplied project directory", async () => {
+    const fileHandle = {
+      name: "song.wav",
+      async getFile() {
+        return {
+          name: "song.wav",
+          arrayBuffer: async () => new ArrayBuffer(0),
+        } as File;
+      },
+    } as unknown as FileSystemFileHandle;
+    const projectDirectory = {
+      resolve: vi.fn(async () => null),
+    } as unknown as FileSystemDirectoryHandle;
+    vi.stubGlobal("window", {
+      showOpenFilePicker: vi.fn(async () => [fileHandle]),
+      showSaveFilePicker: vi.fn(),
+    });
+    const service = makeMockFileSystemService();
+
+    await expect(service.read([], projectDirectory)).rejects.toThrow(
+      "Choose an audio file inside the project folder.",
+    );
+  });
 });

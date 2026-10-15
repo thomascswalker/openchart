@@ -43,6 +43,7 @@ interface FormProps<T extends object> {
   schema: z.ZodType<T, T>;
   values: T;
   optionsLabel: string;
+  fileRootDirectory?: FileSystemDirectoryHandle | null;
   onApply: (values: T) => Promise<boolean>;
   onClose: () => void;
 }
@@ -94,6 +95,7 @@ const Form = <T extends object>({
   schema,
   values,
   optionsLabel,
+  fileRootDirectory,
   onApply,
   onClose,
 }: FormProps<T>) => {
@@ -237,11 +239,19 @@ const Form = <T extends object>({
                                   value={typeof value === "string" ? value : ""}
                                   placeholder=""
                                   types={field.metadata.types || []}
+                                  rootDirectoryHandle={fileRootDirectory}
                                   onFileChange={(file) => {
                                     fieldApi.handleChange(
-                                      (file?.name ?? null) as typeof value,
+                                      (file?.relativePath ??
+                                        null) as typeof value,
                                     );
                                     setValidationErrors({});
+                                  }}
+                                  onFileError={(fileError) => {
+                                    setValidationErrors((previous) => ({
+                                      ...previous,
+                                      [field.name]: fileError.message,
+                                    }));
                                   }}
                                 />
                               ) : field.schema instanceof z.ZodEnum ? (

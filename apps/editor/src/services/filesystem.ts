@@ -55,12 +55,20 @@ export class FileSystemService extends IService {
 
   public async read(
     types: FilePickerAcceptType[] = [],
+    relativeTo?: FileSystemDirectoryHandle,
   ): Promise<LoadFile | null> {
     if (this.isAccessible()) {
       const [handle] = await window.showOpenFilePicker!({ types });
       const file = await handle.getFile();
+      const relativePath = relativeTo
+        ? await relativeTo.resolve(handle)
+        : undefined;
+      if (relativeTo && !relativePath) {
+        throw new Error("Choose an audio file inside the project folder.");
+      }
       const opened: LoadFile = {
         name: file.name,
+        ...(relativePath ? { relativePath: relativePath.join("/") } : {}),
         bytes: new Uint8Array(await file.arrayBuffer()),
         handle,
       };
@@ -79,6 +87,14 @@ export class FileSystemService extends IService {
         input.remove();
         if (!file) {
           resolve(null);
+          return;
+        }
+        if (relativeTo) {
+          reject(
+            new Error(
+              "This browser cannot resolve a file path relative to the project folder.",
+            ),
+          );
           return;
         }
         void file.arrayBuffer().then(

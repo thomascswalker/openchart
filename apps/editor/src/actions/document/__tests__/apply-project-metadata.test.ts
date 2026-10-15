@@ -8,7 +8,11 @@ describe("ApplyProjectMetadataAction", () => {
     const previousMetadata = makeDefaultMetadata();
     previousMetadata.audio.lead = "old-lead.wav";
     previousMetadata.audio.bass = "bass.wav";
-    const document = { metadata: previousMetadata };
+    const root = {} as FileSystemDirectoryHandle;
+    const document = {
+      metadata: previousMetadata,
+      snapshot: { directoryHandle: root },
+    };
     const removeTrack = vi.fn();
     const addTrack = vi.fn().mockResolvedValue(undefined);
     const clearError = vi.fn();
@@ -31,7 +35,7 @@ describe("ApplyProjectMetadataAction", () => {
 
     expect(issues).toEqual([]);
     expect(removeTrack.mock.calls).toEqual([["lead"], ["bass"]]);
-    expect(addTrack.mock.calls).toEqual([["lead"]]);
+    expect(addTrack.mock.calls).toEqual([["lead", "new-lead.wav", root]]);
     expect(document.metadata).toEqual(metadata);
     expect(clearError).toHaveBeenCalledOnce();
     expect(setError).not.toHaveBeenCalled();

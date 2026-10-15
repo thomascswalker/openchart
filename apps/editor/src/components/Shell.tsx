@@ -14,7 +14,7 @@ import { PlaybackService } from "../services/playback";
 import { UpdaterService } from "../services/updater";
 
 const Shell = () => {
-  const { debugVisible, projectVisible, settingsVisible, aboutVisible } =
+  const { error, debugVisible, projectVisible, settingsVisible, aboutVisible } =
     useEditorState();
   const { services, actions } = usePlatform();
   const playbackService = services.get<PlaybackService>("playback");
@@ -130,6 +130,11 @@ const Shell = () => {
         }
         onCommand={runMenuCommand}
       />
+      {error ? (
+        <div role="alert" aria-live="assertive">
+          {error}
+        </div>
+      ) : null}
       <Workspace
         debugVisible={debugVisible}
         onDebugClose={() => runAction("dialog.close-debug")}
