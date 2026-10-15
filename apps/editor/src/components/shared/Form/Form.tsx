@@ -239,7 +239,7 @@ const Form = <T extends object>({
                                   types={field.metadata.types || []}
                                   onFileChange={(file) => {
                                     fieldApi.handleChange(
-                                      file.name as typeof value,
+                                      (file?.name ?? null) as typeof value,
                                     );
                                     setValidationErrors({});
                                   }}

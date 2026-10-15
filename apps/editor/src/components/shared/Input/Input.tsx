@@ -1,7 +1,7 @@
 import { useState, type InputHTMLAttributes } from "react";
 import classNames from "classnames";
 import styles from "./input.module.css";
-import { Button } from "../Button";
+import { Button, CloseButton } from "../Button";
 import {
   border,
   color,
@@ -47,11 +47,12 @@ const Input = ({ className, ...props }: InputProps) => {
 
 interface FileInputProps extends InputProps {
   types?: FilePickerAcceptType[];
-  onFileChange?: (file: LoadFile) => void;
+  onFileChange?: (file: LoadFile | null) => void;
 }
 
 const FileInput = ({ types = [], onFileChange, ...props }: FileInputProps) => {
   const [file, setFile] = useState<LoadFile | undefined>(undefined);
+  const hasFile = Boolean(file || props.value);
   const size = "var(--size-med)";
 
   const handleOnClick = () => {
@@ -63,6 +64,11 @@ const FileInput = ({ types = [], onFileChange, ...props }: FileInputProps) => {
       setFile(loadedFile);
       onFileChange?.(loadedFile);
     });
+  };
+
+  const handleOnClose = () => {
+    setFile(undefined);
+    onFileChange?.(null);
   };
 
   return (
@@ -83,10 +89,24 @@ const FileInput = ({ types = [], onFileChange, ...props }: FileInputProps) => {
         border="1px solid transparent"
         borderTopLeftRadius={0}
         borderBottomLeftRadius={0}
+        borderTopRightRadius={0}
+        borderBottomRightRadius={0}
         onClick={handleOnClick}
       >
         F
       </Button>
+      <CloseButton
+        minHeight={size}
+        minWidth={size}
+        maxHeight={size}
+        maxWidth={size}
+        borderTopLeftRadius={0}
+        borderBottomLeftRadius={0}
+        disabled={!hasFile}
+        aria-label="Clear selected file"
+        title="Clear selected file"
+        onClick={handleOnClose}
+      />
     </div>
   );
 };

@@ -59,16 +59,16 @@ describe("ProjectDialog", () => {
       ),
     ];
     expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "song",
-      "chart",
-      "difficulty",
-      "audio",
-      "credits",
+      "Song",
+      "Chart",
+      "Difficulty",
+      "Audio",
+      "Credits",
     ]);
 
-    act(() => tabs.find((tab) => tab.textContent === "song")?.click());
+    act(() => tabs.find((tab) => tab.textContent === "Song")?.click());
     const nameLabel = [...container.querySelectorAll("label")].find((label) =>
-      label.textContent?.startsWith("name"),
+      label.textContent?.startsWith("Name"),
     )!;
     act(() =>
       changeInput(

@@ -185,9 +185,9 @@ describe("Application settings", () => {
     });
     expect(document.activeElement).toBe(tabs[1]);
     expect(container.textContent).toContain("Enable metronome");
-    expect(container.textContent).toContain("Metronome volume");
-    expect(container.textContent).toContain("Downbeat sound");
-    expect(container.textContent).toContain("Beat sound");
+    expect(container.textContent).toContain("Metronome Volume");
+    expect(container.textContent).toContain("Downbeat Sound");
+    expect(container.textContent).toContain("Beat Sound");
     expect(container.textContent).not.toMatch(/WAV|Audio Folder|Multitrack/);
     const metronome = container.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',
