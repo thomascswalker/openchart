@@ -1,25 +1,7 @@
-import type { ILoggerService } from "./logger";
-import { IService } from "../platform/services";
-
-export interface LoadFile {
-  name: string;
-  bytes: Uint8Array;
-  handle: FileSystemFileHandle | null;
-  directoryHandle?: FileSystemDirectoryHandle | null;
-}
-
-export interface SaveFile {
-  name: string;
-  handle: FileSystemFileHandle | null;
-  directoryHandle?: FileSystemDirectoryHandle | null;
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-}
+import type { ILoggerService } from "../logger";
+import { IService } from "../../platform/services";
+import type { SaveFile, LoadFile } from "./types";
+import { toArrayBuffer } from "../../util/array";
 
 export class FileSystemService extends IService {
   static dependencies = ["logger"];

@@ -1,13 +1,12 @@
 import { Midi } from "@openchart/core";
-import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
-import type { FileSystemService, SaveFile } from "./filesystem";
-import type { LoggerService } from "./logger";
-import { IStatefulService } from "../platform/services";
-import {
-  makeDefaultMetadata,
-  metadataSchema,
-  type Metadata,
-} from "./document/schema";
+import { DEFAULT_HISTORY_CAPACITY, History } from "../../context/History";
+import type { FileSystemService } from "../filesystem";
+import type { SaveFile } from "../filesystem/types";
+import type { LoggerService } from "../logger";
+import { IStatefulService } from "../../platform/services";
+import { makeDefaultMetadata, metadataSchema, type Metadata } from "./schema";
+import { midiFilePickerTypes } from "./types";
+import { toArrayBuffer } from "../../util/array";
 
 function hasMidiExtension(fileName: string): boolean {
   return /\.(mid|midi)$/i.test(fileName);
@@ -34,13 +33,6 @@ export interface DocumentFile {
   name: string;
   bytes: Uint8Array;
   mimeType: string;
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
 }
 
 export class DocumentService extends IStatefulService<DocumentSnapshot> {
@@ -104,12 +96,7 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   };
 
   public async open(): Promise<boolean> {
-    const opened = await this.#fileSystem.read([
-      {
-        description: "MIDI files",
-        accept: { "audio/midi": [".mid", ".midi"] },
-      },
-    ]);
+    const opened = await this.#fileSystem.read(midiFilePickerTypes);
     if (!opened) {
       return false;
     }

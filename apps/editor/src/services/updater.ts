@@ -18,7 +18,6 @@ export interface UpdaterSnapshot {
   notes: string | null;
   downloadedBytes: number;
   totalBytes: number | null;
-  /** Which step failed when status is "error". */
   errorPhase: "check" | "install" | null;
   error: string | null;
 }

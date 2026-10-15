@@ -1,6 +1,6 @@
 import { Midi } from "@openchart/core";
 import { describe, expect, it } from "vitest";
-import { DocumentService } from "../../services/document.js";
+import { DocumentService } from "../../services/document/index.js";
 import { History } from "../History.js";
 
 function createMidi(): Midi {

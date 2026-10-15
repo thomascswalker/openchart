@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileSystemService } from "../filesystem";
+import { midiFilePickerTypes } from "../document/types";
 
 const TEST_FILENAME = "test_read_write.mid";
 
@@ -100,23 +101,13 @@ describe("FileSystemService", () => {
       subscribe: vi.fn(() => () => {}),
     });
 
-    const opened = await service.read([
-      {
-        description: "MIDI files",
-        accept: { "audio/midi": [".mid", ".midi"] },
-      },
-    ]);
+    const opened = await service.read(midiFilePickerTypes);
     expect(opened?.name).toBe("chart.mid");
     expect(opened?.bytes).toEqual(bytes);
     expect(opened?.handle).toBe(midiHandle);
     expect(opened?.directoryHandle).toBeUndefined();
     expect(showOpenFilePicker).toHaveBeenCalledWith({
-      types: [
-        {
-          description: "MIDI files",
-          accept: { "audio/midi": [".mid", ".midi"] },
-        },
-      ],
+      types: midiFilePickerTypes,
     });
     expect(showDirectoryPicker).not.toHaveBeenCalled();
   });
