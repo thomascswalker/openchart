@@ -40,7 +40,7 @@ function renderProject(): { container: HTMLDivElement; root: Root } {
 
 function changeInput(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
+    Object.getPrototypeOf(input),
     "value",
   )?.set;
   setter?.call(input, value);
@@ -49,7 +49,7 @@ function changeInput(input: HTMLInputElement, value: string): void {
 }
 
 describe("ProjectDialog", () => {
-  it("validates and applies project metadata through the command layer", () => {
+  it("validates and applies project metadata through the command layer", async () => {
     const { container, root } = renderProject();
     act(() => container.querySelector<HTMLButtonElement>("button")?.click());
 
@@ -58,11 +58,32 @@ describe("ProjectDialog", () => {
         '#dialog-sections [role="option"]',
       ),
     ];
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["General", "song"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Song",
+      "Chart",
+      "Difficulty",
+      "Audio",
+      "Credits",
+    ]);
 
-    act(() => tabs.find((tab) => tab.textContent === "song")?.click());
+    act(() => tabs.find((tab) => tab.textContent === "Audio")?.click());
+    expect(
+      [...container.querySelectorAll("label")].some((label) =>
+        label.textContent?.startsWith("Root"),
+      ),
+    ).toBe(true);
+    const rootInput = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent?.startsWith("Root"),
+    );
+    expect(
+      container.ownerDocument
+        .getElementById(rootInput?.htmlFor ?? "")
+        ?.parentElement?.querySelector("button"),
+    ).not.toBeNull();
+
+    act(() => tabs.find((tab) => tab.textContent === "Song")?.click());
     const nameLabel = [...container.querySelectorAll("label")].find((label) =>
-      label.textContent?.startsWith("name"),
+      label.textContent?.startsWith("Name"),
     )!;
     act(() =>
       changeInput(
@@ -72,11 +93,11 @@ describe("ProjectDialog", () => {
         "Updated song",
       ),
     );
-    act(() =>
+    await act(async () => {
       [...container.querySelectorAll<HTMLButtonElement>("button")]
         .find((button) => button.textContent === "Apply")
-        ?.click(),
-    );
+        ?.click();
+    });
     expect(container.querySelector("output")?.textContent).toBe("Updated song");
     act(() => root.unmount());
     container.remove();

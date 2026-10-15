@@ -35,6 +35,7 @@ const MENUS: MenuDefinition[] = [
         label: "Save As…",
         accelerator: "Ctrl/Cmd+Shift+S",
       },
+      { id: "document.import-midi", label: "Import" },
       { id: "document.export-midi", label: "Export" },
       { id: "dialog.open-project", label: "Project..." },
       {
@@ -303,8 +304,6 @@ export function Menubar({
         {menus.map((menu, menuIndex) => {
           const isOpen = openMenu === menu.id;
           const menuId = `menu-${menu.id}`;
-          const itemRefList = itemRefs.current[menu.id] ?? [];
-          itemRefs.current[menu.id] = itemRefList;
 
           return (
             <div className="midi-menubar__menu" key={menu.id}>
@@ -340,7 +339,9 @@ export function Menubar({
                     return (
                       <button
                         ref={(element) => {
-                          itemRefList[itemIndex] = element;
+                          const refs = itemRefs.current[menu.id] ?? [];
+                          refs[itemIndex] = element;
+                          itemRefs.current[menu.id] = refs;
                         }}
                         key={item.id}
                         type="button"

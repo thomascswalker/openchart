@@ -1,71 +1,14 @@
 import { IStatefulService } from "../platform/services";
-
-export const APPLICATION_SETTINGS_VERSION = 1;
-const STORAGE_KEY = "openchart.application-settings";
-
-export const HIGHWAY_SCROLL_SPEED_RANGE = {
-  min: 0.5,
-  max: 4,
-  step: 0.1,
-} as const;
-
-export interface ApplicationSettings {
-  version: typeof APPLICATION_SETTINGS_VERSION;
-  feedback: {
-    metronomeEnabled: boolean;
-    metronomeVolume: number;
-    metronomeDownbeatSound: OscillatorType;
-    metronomeBeatSound: OscillatorType;
-    previewVolume: number;
-    previewAttackMs: number;
-    previewReleaseMs: number;
-    previewMaxVoices: number;
-    previewLowPitch: number;
-    previewHighPitch: number;
-  };
-  history: {
-    capacity: number;
-  };
-  graphics: {
-    antialiasing: boolean;
-    scrollSpeed: number;
-  };
-}
-
-type ApplicationSettingGroup = "feedback" | "history" | "graphics";
-export type ApplicationSettingPath = {
-  [Group in ApplicationSettingGroup]: `${Group}.${Extract<
-    keyof ApplicationSettings[Group],
-    string
-  >}`;
-}[ApplicationSettingGroup];
-
-type ApplicationSettingValue<Path extends ApplicationSettingPath> =
-  Path extends `${infer Group}.${infer Key}`
-    ? Group extends ApplicationSettingGroup
-      ? Key extends keyof ApplicationSettings[Group]
-        ? ApplicationSettings[Group][Key]
-        : never
-      : never
-    : never;
-
-export const defaultApplicationSettings: ApplicationSettings = {
-  version: APPLICATION_SETTINGS_VERSION,
-  feedback: {
-    metronomeEnabled: false,
-    metronomeVolume: 0.35,
-    metronomeDownbeatSound: "square",
-    metronomeBeatSound: "sine",
-    previewVolume: 0.25,
-    previewAttackMs: 8,
-    previewReleaseMs: 80,
-    previewMaxVoices: 8,
-    previewLowPitch: 36,
-    previewHighPitch: 60,
-  },
-  history: { capacity: 256 },
-  graphics: { antialiasing: true, scrollSpeed: 1 },
-};
+import {
+  APPLICATION_SETTINGS_VERSION,
+  HIGHWAY_SCROLL_SPEED_RANGE,
+  STORAGE_KEY,
+  defaultApplicationSettings,
+  type ApplicationSettingGroup,
+  type ApplicationSettingPath,
+  type ApplicationSettingValue,
+  type ApplicationSettings,
+} from "./settings/schema";
 
 export function validateApplicationSettings(
   settings: ApplicationSettings,

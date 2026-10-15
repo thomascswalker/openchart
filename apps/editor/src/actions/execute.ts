@@ -11,7 +11,7 @@ function errorMessage(error: unknown): string {
     : "The action could not be completed.";
 }
 
-export async function executeEditorAction<Result = void>(
+export async function runActionAsync<Result = void>(
   id: string,
   ...args: unknown[]
 ): Promise<Result> {
@@ -21,9 +21,7 @@ export async function executeEditorAction<Result = void>(
     return await Platform.actions.executeAction<Result>(id, ...args);
   } catch (error: unknown) {
     if (error instanceof ActionUnavailableError) {
-      editorState.setError(
-        "This action is not available for the active document.",
-      );
+      editorState.setError(`Action is unavailable in this context: ${id}`);
     } else if (!(error instanceof ActionCancelledError)) {
       editorState.setError(errorMessage(error));
     }
@@ -33,5 +31,5 @@ export async function executeEditorAction<Result = void>(
 
 /** Fire-and-forget. Errors are already surfaced via editorState.setError. */
 export function runAction(id: string, ...args: unknown[]): void {
-  void executeEditorAction(id, ...args).catch(() => {});
+  void runActionAsync(id, ...args).catch(() => {});
 }

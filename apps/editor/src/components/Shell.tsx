@@ -12,9 +12,11 @@ import { usePlatform } from "../platform";
 import { EditorClipboardService } from "../services/editor/clipboard";
 import { PlaybackService } from "../services/playback";
 import { UpdaterService } from "../services/updater";
+import { Section } from "./shared/Section";
+import { Text } from "./shared/Text";
 
 const Shell = () => {
-  const { debugVisible, projectVisible, settingsVisible, aboutVisible } =
+  const { error, debugVisible, projectVisible, settingsVisible, aboutVisible } =
     useEditorState();
   const { services, actions } = usePlatform();
   const playbackService = services.get<PlaybackService>("playback");
@@ -134,6 +136,13 @@ const Shell = () => {
         debugVisible={debugVisible}
         onDebugClose={() => runAction("dialog.close-debug")}
       />
+      <Section
+        minHeight={12}
+        backgroundColor={error ? "var(--red-80)" : "transparent"}
+        padding={2}
+      >
+        <Text fontSize={12}>{error || "..."}</Text>
+      </Section>
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}
       {aboutVisible ? <AboutDialog /> : null}

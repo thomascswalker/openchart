@@ -1,0 +1,90 @@
+.form .body {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+  gap: 0;
+  padding: 0;
+}
+
+.form .navigation {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  overflow-y: auto;
+  padding: 0 0 0 0;
+  border-right: 1px solid #4b4b4b;
+  background: #202020;
+}
+
+.form .panel {
+  display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 0;
+  min-width: 0;
+  overflow: auto;
+  padding-left: 16px;
+}
+
+.form .field:global(.ui-section) {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 0;
+}
+
+.form .field > :global(label:not(.ui-checkbox-label)) {
+  color: #ccc;
+  font-size: 13px;
+}
+
+.form .input,
+.form .dropdown {
+  width: 100%;
+}
+
+.form .dropdown :global(.choices),
+.form .dropdown :global(.choices__inner) {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.form .field :global(.ui-checkbox-label span) {
+  color: #ccc;
+  font-size: 13px;
+}
+
+.form .input:disabled {
+  background: var(--neutral-80);
+  color: var(--neutral-50);
+  font-style: italic;
+}
+
+.form .field :global([role="alert"]) {
+  margin: 0;
+  color: #ff9d9d;
+  font-size: 12px;
+}
+
+.form .actions {
+  flex-direction: row;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 12px 0 0;
+  border-top: 1px solid #3d3d3d;
+  justify-content: flex-end;
+}
+
+.form .actions > * {
+  flex: initial;
+  min-width: 72px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.form {
+  gap: 12px;
+}

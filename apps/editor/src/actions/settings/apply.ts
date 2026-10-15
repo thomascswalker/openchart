@@ -1,4 +1,4 @@
-import type { ApplicationSettings } from "../../services/settings";
+import type { ApplicationSettings } from "../../services/settings/schema";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import { SettingsService } from "../../services/settings";

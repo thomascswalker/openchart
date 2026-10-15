@@ -1,7 +1,7 @@
 import { SongView } from "@openchart/views";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { executeEditorAction } from "../actions/execute";
+import { runActionAsync } from "../actions/execute";
 
 interface TrackListProps {
   viewportId: string;
@@ -45,9 +45,9 @@ export function TrackList({ viewportId }: TrackListProps) {
                 selected ? "track-row track-row--selected" : "track-row"
               }
               onClick={() => {
-                void executeEditorAction("editor.focus-viewport", viewportId)
+                void runActionAsync("editor.focus-viewport", viewportId)
                   .then(() =>
-                    executeEditorAction("editor.update-viewport", viewportId, {
+                    runActionAsync("editor.update-viewport", viewportId, {
                       trackKey: descriptor.key,
                       instrument: descriptor.name,
                     }),
@@ -69,9 +69,9 @@ export function TrackList({ viewportId }: TrackListProps) {
             key={`unmapped-${index}`}
             className="track-row"
             onClick={() => {
-              void executeEditorAction("editor.focus-viewport", viewportId)
+              void runActionAsync("editor.focus-viewport", viewportId)
                 .then(() =>
-                  executeEditorAction("editor.update-viewport", viewportId, {
+                  runActionAsync("editor.update-viewport", viewportId, {
                     trackKey: `unmapped-${index}`,
                     instrument: track.name,
                   }),

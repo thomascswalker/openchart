@@ -13,7 +13,8 @@ import {
   type PreviewNote,
 } from "../audio/soundboard";
 import type { DocumentService } from "./document";
-import type { ApplicationSettings } from "./settings";
+import type { MixerService } from "./mixer";
+import type { ApplicationSettings } from "./settings/schema";
 import { IStatefulService } from "../platform/services";
 
 export interface PlaybackSnapshot {
@@ -107,7 +108,7 @@ export function notesForVocalFeedback(
 }
 
 export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
-  static dependencies = ["document"];
+  static dependencies = ["document", "mixer"];
 
   private engine = new Soundboard();
   private documentUnsubscribe: (() => void) | undefined;
@@ -138,9 +139,11 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   private animationFrame: number | null = null;
   private lastFrameMs: number | null = null;
   private configured = false;
+  private readonly mixerService?: MixerService;
 
-  constructor(documentService?: DocumentService) {
+  constructor(documentService?: DocumentService, mixerService?: MixerService) {
     super();
+    this.mixerService = mixerService;
     // Edits publish synchronously, so the end never lags behind the document.
     this.documentUnsubscribe = documentService?.subscribe(() => {
       if (this.configured) {
@@ -151,7 +154,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this.stopPlayback();
+    this.stopPlayback(true);
     this.engine.stopPreview();
     this.midiData = null;
     this.selectedInstrument = "LEAD GUITAR";
@@ -203,8 +206,9 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.configureEngine();
 
     if (this.configured && documentChanged) {
-      this.stopPlayback();
+      this.stopPlayback(true);
       this.playbackTick = 0;
+      this.syncMixerPosition();
     }
     this.configured = true;
     this.refresh();
@@ -250,6 +254,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       this.midiPlaybackEndTick = 0;
     }
     this.canPlay = hasEvents;
+    if (!this.isPlaying) this.syncMixerPosition();
     this.publish();
   };
 
@@ -258,6 +263,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     if (nextTick === this.playbackTick) return;
     this.playbackTick = nextTick;
     this.engine.seek(this.playbackTick);
+    this.syncMixerPosition();
     this.publish();
   };
 
@@ -267,6 +273,8 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     if (totalTicks > 0 && this.playbackTick >= totalTicks) {
       this.setPlaybackTick(0);
     }
+    this.syncMixerPosition();
+    this.mixerService?.play();
     this.isPlaying = true;
     this.engine.start(this.playbackTick);
     this.lastFrameMs = null;
@@ -286,6 +294,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
         ),
       );
     }
+    this.syncMixerPosition();
   };
 
   public readonly togglePlay = (): void => {
@@ -359,7 +368,7 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
   public readonly stopPreview = (): void => this.engine.stopPreview();
 
   public dispose(): void {
-    this.stopPlayback();
+    this.stopPlayback(true);
     this.engine.dispose();
     this.documentUnsubscribe?.();
     this.listeners.clear();
@@ -430,9 +439,11 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     return this.feedbackSettings;
   }
 
-  private stopPlayback(): void {
+  private stopPlayback(stopMixer = false): void {
     this.isPlaying = false;
     this.engine.stop();
+    if (stopMixer) this.mixerService?.stop();
+    else this.mixerService?.pause();
     if (this.animationFrame !== null) {
       cancelAnimationFrame(this.animationFrame);
       this.animationFrame = null;
@@ -461,11 +472,18 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
     this.engine.updateTick(this.playbackTick);
     this.publish();
     if (totalTicks > 0 && this.playbackTick >= totalTicks) {
-      this.stopPlayback();
+      this.stopPlayback(true);
       return;
     }
     this.requestNextFrame();
+    this.syncMixerPosition();
   };
+
+  private syncMixerPosition(): void {
+    const timeSeconds =
+      ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) / 1000;
+    this.mixerService?.seek(timeSeconds);
+  }
 
   private totalTimelineTicks(): number {
     return this.midiPlaybackEndTick;

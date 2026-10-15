@@ -1,8 +1,9 @@
 import { Midi } from "@openchart/core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../document";
 import type { FileSystemService } from "../filesystem";
 import type { LoggerService } from "../logger";
+import { makeDefaultMetadata } from "../document/schema";
 
 function createDocumentService(
   fileSystem: Partial<FileSystemService> = {},
@@ -14,6 +15,10 @@ function createDocumentService(
 }
 
 describe("DocumentService", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("owns MIDI data, project metadata, dirty state, and history", () => {
     const service = createDocumentService();
     const midi = new Midi();
@@ -41,15 +46,19 @@ describe("DocumentService", () => {
     expect(service.getSnapshot().canUndo).toBe(false);
   });
 
-  it("opens a MIDI file with default metadata", async () => {
+  it("opens metadata JSON with adjacent notes.mid", async () => {
     const midi = new Midi();
     midi.addTrack();
-    const handle = { name: "opened.mid" } as FileSystemFileHandle;
+    const handle = { name: "notes.mid" } as FileSystemFileHandle;
+    const directoryHandle = {} as FileSystemDirectoryHandle;
+    const metadata = makeDefaultMetadata();
+    metadata.song.name = "Opened project";
     const service = createDocumentService({
-      read: vi.fn(async () => ({
-        name: "opened.mid",
-        bytes: midi.toBuffer(),
-        handle,
+      readProject: vi.fn(async () => ({
+        metadataBytes: new TextEncoder().encode(JSON.stringify(metadata)),
+        midiBytes: midi.toBuffer(),
+        midiHandle: handle,
+        directoryHandle,
       })),
     });
 
@@ -57,19 +66,10 @@ describe("DocumentService", () => {
 
     const snapshot = service.getSnapshot();
     expect(snapshot.midi?.trackCount).toBe(1);
-    expect(snapshot.file).toBe("opened.mid");
+    expect(snapshot.file).toBe("notes.mid");
     expect(snapshot.handle).toBe(handle);
-    expect(snapshot.directoryHandle).toBeNull();
-    expect(snapshot.metadata).toMatchObject({
-      version: 1,
-      song: {
-        name: "",
-        artist: "",
-        album: "",
-        genre: "",
-      },
-    });
-    expect(snapshot.metadata.id).toEqual(expect.any(String));
+    expect(snapshot.directoryHandle).toBe(directoryHandle);
+    expect(snapshot.metadata).toEqual(metadata);
     expect(snapshot.isDirty).toBe(false);
   });
 
@@ -101,15 +101,52 @@ describe("DocumentService", () => {
 
     await expect(service.save()).resolves.toBe(true);
 
-    expect(writtenFiles.get("saved.mid")).toEqual(midi.toBuffer());
+    expect(writtenFiles.get("notes.mid")).toEqual(midi.toBuffer());
     expect(
       JSON.parse(new TextDecoder().decode(writtenFiles.get("info.json"))),
     ).toEqual(service.metadata);
     expect(service.getSnapshot()).toMatchObject({
-      file: "saved.mid",
-      handle: { name: "saved.mid" },
+      file: "notes.mid",
+      handle: { name: "notes.mid" },
       directoryHandle,
       isDirty: false,
     });
+  });
+
+  it("creates and writes the project files in the directory chosen by Save As", async () => {
+    const midi = new Midi();
+    midi.addTrack();
+    const writtenFiles = new Map<string, Uint8Array>();
+    const directoryHandle = {
+      async getFileHandle(name: string) {
+        return {
+          name,
+          async createWritable() {
+            let bytes = new Uint8Array();
+            return {
+              async write(value: ArrayBuffer) {
+                bytes = new Uint8Array(value);
+              },
+              async close() {
+                writtenFiles.set(name, bytes);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as FileSystemDirectoryHandle;
+    vi.stubGlobal("window", {
+      showDirectoryPicker: vi.fn(async () => directoryHandle),
+    });
+    const service = createDocumentService();
+    service.data = midi;
+
+    await expect(service.saveAs()).resolves.toBe(true);
+
+    expect([...writtenFiles.keys()]).toEqual(["notes.mid", "info.json"]);
+    expect(writtenFiles.get("notes.mid")).toEqual(midi.toBuffer());
+    expect(
+      JSON.parse(new TextDecoder().decode(writtenFiles.get("info.json"))),
+    ).toEqual(service.metadata);
   });
 });

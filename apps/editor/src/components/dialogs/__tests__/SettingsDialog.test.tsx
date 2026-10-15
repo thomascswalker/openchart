@@ -5,10 +5,10 @@ import { useEditorState } from "../../../hooks/useEditorState";
 import { runAction } from "../../../actions/execute";
 import Platform from "../../../platform";
 import {
-  defaultApplicationSettings,
   validateApplicationSettings,
   SettingsService,
 } from "../../../services/settings";
+import { defaultApplicationSettings } from "../../../services/settings/schema";
 import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
 import { Runtime } from "../../Runtime";
 import { SettingsDialog } from "../SettingsDialog";
@@ -45,7 +45,7 @@ function renderSettings(): { container: HTMLDivElement; root: Root } {
 
 function changeInput(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
+    Object.getPrototypeOf(input),
     "value",
   )?.set;
   setter?.call(input, value);
@@ -185,9 +185,9 @@ describe("Application settings", () => {
     });
     expect(document.activeElement).toBe(tabs[1]);
     expect(container.textContent).toContain("Enable metronome");
-    expect(container.textContent).toContain("Metronome volume");
-    expect(container.textContent).toContain("Downbeat sound");
-    expect(container.textContent).toContain("Beat sound");
+    expect(container.textContent).toContain("Metronome Volume");
+    expect(container.textContent).toContain("Downbeat Sound");
+    expect(container.textContent).toContain("Beat Sound");
     expect(container.textContent).not.toMatch(/WAV|Audio Folder|Multitrack/);
     const metronome = container.querySelector<HTMLInputElement>(
       'input[type="checkbox"]',

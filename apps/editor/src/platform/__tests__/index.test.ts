@@ -32,6 +32,7 @@ describe("Platform", () => {
       "editor.viewports",
       "filesystem",
       "logger",
+      "mixer",
       "playback",
       "settings",
     ];

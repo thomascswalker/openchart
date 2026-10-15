@@ -1,7 +1,11 @@
+.ui-input:focus {
+  outline: none;
+}
+
 .ui-input {
   box-sizing: border-box;
   font-family: var(--font-primary);
-  /* font-size: var(--font-size); */
+  font-size: var(--font-size);
   font-weight: var(--font-weight);
   padding: 0.5rem 1rem;
   line-height: 1;
@@ -10,7 +14,7 @@
   border-radius: var(--radius-small);
   background: var(--neutral-90);
   color: var(--white);
-  max-height: var(--size-large);
+  max-height: var(--size-med);
 }
 
 .ui-input:disabled {

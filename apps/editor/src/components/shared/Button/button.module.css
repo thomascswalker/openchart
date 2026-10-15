@@ -12,8 +12,8 @@
 
   background: var(--primary);
 
-  min-width: 32px;
-  min-height: 32px;
+  min-width: var(--size-large);
+  min-height: var(--size-large);
   padding: var(--space-med) var(--space-large);
 
   border: 1px solid var(--border);

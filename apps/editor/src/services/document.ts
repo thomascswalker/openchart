@@ -1,6 +1,7 @@
 import { Midi } from "@openchart/core";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
-import type { FileSystemService, SaveFile } from "./filesystem";
+import type { FileSystemService } from "./filesystem";
+import type { SaveFile } from "./filesystem/types";
 import type { LoggerService } from "./logger";
 import { IStatefulService } from "../platform/services";
 import {
@@ -8,10 +9,7 @@ import {
   metadataSchema,
   type Metadata,
 } from "./document/schema";
-
-function hasMidiExtension(fileName: string): boolean {
-  return /\.(mid|midi)$/i.test(fileName);
-}
+import { toArrayBuffer } from "../util/array";
 
 export interface DocumentSnapshot {
   documentId: number;
@@ -34,13 +32,6 @@ export interface DocumentFile {
   name: string;
   bytes: Uint8Array;
   mimeType: string;
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
 }
 
 export class DocumentService extends IStatefulService<DocumentSnapshot> {
@@ -104,28 +95,23 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
   };
 
   public async open(): Promise<boolean> {
-    const opened = await this.#fileSystem.read([
-      {
-        description: "MIDI files",
-        accept: { "audio/midi": [".mid", ".midi"] },
-      },
-    ]);
+    const opened = await this.#fileSystem.readProject();
     if (!opened) {
       return false;
     }
 
-    if (!hasMidiExtension(opened.name)) {
-      throw new Error("Choose a MIDI file (.mid or .midi).");
-    }
+    const metadata = metadataSchema.parse(
+      JSON.parse(new TextDecoder().decode(opened.metadataBytes)),
+    );
 
     this.update(
-      new Midi(opened.bytes),
-      opened.name,
-      opened.handle,
-      opened.directoryHandle ?? null,
-      makeDefaultMetadata(),
+      new Midi(opened.midiBytes),
+      "notes.mid",
+      opened.midiHandle,
+      opened.directoryHandle,
+      metadata,
     );
-    this.#logger.info(`Document opened: ${opened.name}`);
+    this.#logger.info("Project opened from metadata JSON.");
     return true;
   }
 
@@ -175,17 +161,16 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       return saved;
     }
 
-    const handles = await Promise.all(
-      files.map(async (file) => {
-        const handle = await targetDirectory.getFileHandle(file.name, {
-          create: true,
-        });
-        const writable = await handle.createWritable();
-        await writable.write(toArrayBuffer(file.bytes));
-        await writable.close();
-        return handle;
-      }),
-    );
+    const handles: FileSystemFileHandle[] = [];
+    for (const file of files) {
+      const handle = await targetDirectory.getFileHandle(file.name, {
+        create: true,
+      });
+      const writable = await handle.createWritable();
+      await writable.write(toArrayBuffer(file.bytes));
+      await writable.close();
+      handles.push(handle);
+    }
     const saved: SaveFile = {
       name: handles[0]!.name,
       handle: handles[0]!,
@@ -204,11 +189,11 @@ export class DocumentService extends IStatefulService<DocumentSnapshot> {
       throw new Error("There is no MIDI document to save.");
     }
 
-    const { bytes, suggestedName } = this.export();
+    const { bytes } = this.export();
     const saved = await this.writeFiles(
       [
         {
-          name: this.#fileName ?? suggestedName,
+          name: "notes.mid",
           bytes,
           mimeType: "audio/midi",
         },

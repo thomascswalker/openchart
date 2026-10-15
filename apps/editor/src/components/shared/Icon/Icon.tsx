@@ -136,5 +136,6 @@ export const {
   ElipsesIcon,
   LockIcon,
   UnlockIcon,
+  DirectoryIcon,
 } = icons;
 export default Icon;

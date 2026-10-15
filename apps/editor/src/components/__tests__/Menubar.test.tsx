@@ -38,6 +38,13 @@ describe("Menubar", () => {
     ]);
     act(() => triggers[0].click());
     await settle();
+    const fileItems = [
+      ...container.querySelectorAll<HTMLButtonElement>("[data-command]"),
+    ].map((button) => button.textContent?.trim());
+    expect(fileItems.indexOf("Import")).toBeLessThan(
+      fileItems.indexOf("Export"),
+    );
+    expect(fileItems).toContain("Import");
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),

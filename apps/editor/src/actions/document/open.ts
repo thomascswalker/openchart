@@ -2,6 +2,8 @@ import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import { DocumentService } from "../../services/document";
 import { LoggerService } from "../../services/logger";
+import { MixerService } from "../../services/mixer";
+import { ApplyProjectMetadataAction } from "./apply-project-metadata";
 
 export class OpenDocumentAction extends Action {
   constructor() {
@@ -23,7 +25,21 @@ export class OpenDocumentAction extends Action {
     }
 
     try {
-      await document.open();
+      const opened = await document.open();
+      if (!opened) return;
+
+      accessor.get<MixerService>("mixer").reset();
+      const issues = await new ApplyProjectMetadataAction().run(
+        accessor,
+        document.metadata,
+        true,
+      );
+      if (issues.length > 0) {
+        throw new Error(
+          issues.map((issue) => `${issue.path}: ${issue.message}`).join("\n"),
+        );
+      }
+      document.isDirty = false;
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         logger.info(`Closed open file dialog: ${error.message}`);

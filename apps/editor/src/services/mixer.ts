@@ -1,72 +1,92 @@
 import { IStatefulService } from "../platform/services";
 import Mixer from "@openchart/mixer";
-import type { ILoggerService } from "./logger";
-import type { FileSystemService } from "./filesystem";
-
-export const wavFilePickerTypes: FilePickerAcceptType[] = [
-  {
-    description: "WAV file",
-    accept: { "audio/wav": [".wav"] },
-  },
-];
-
-type MixerInstance = InstanceType<typeof Mixer>;
-
-export interface MixerSnapshot {
-  readonly mixer: MixerInstance;
-}
+import type { LoggerService } from "./logger";
+import type { MixerSnapshot } from "./mixer/types";
 
 export class MixerService extends IStatefulService<MixerSnapshot> {
-  static dependencies = ["logger", "filesystem"];
-  private readonly logger: ILoggerService;
-  private readonly fileSystem: FileSystemService;
+  static dependencies = ["logger"];
+  readonly #logger: LoggerService;
 
-  constructor(logger: ILoggerService, fileSystem: FileSystemService) {
+  constructor(logger: LoggerService) {
     super();
-    this.logger = logger;
-    this.fileSystem = fileSystem;
+    this.#logger = logger;
     this.reset();
+  }
+
+  private get mixer() {
+    return this._snapshot.mixer;
   }
 
   public readonly reset = (): void => {
     const mixer = new Mixer();
     mixer.onPlay = (event) =>
-      this.logger.info(`Mixer playback started: ${JSON.stringify(event)}`);
+      this.#logger.info(`Mixer playback started: ${JSON.stringify(event)}`);
     mixer.onPause = (event) =>
-      this.logger.info(`Mixer playback paused: ${JSON.stringify(event)}`);
+      this.#logger.info(`Mixer playback paused: ${JSON.stringify(event)}`);
     mixer.onStop = (event) =>
-      this.logger.info(`Mixer playback stopped: ${JSON.stringify(event)}`);
+      this.#logger.info(`Mixer playback stopped: ${JSON.stringify(event)}`);
     mixer.onChange = this.publish;
     this._snapshot = { mixer };
     this.notify();
   };
 
-  public addTrack = async (id: string): Promise<void> => {
-    const file = await this.fileSystem.read(wavFilePickerTypes);
-    if (!file) {
-      this.logger.error(`No file selected for track: ${id}`);
-      return;
+  public addTrack = async (
+    id: string,
+    relativePath: string,
+    root?: FileSystemDirectoryHandle | null,
+    audioRootPath?: string | null,
+  ): Promise<void> => {
+    if (!root) {
+      throw new Error(`Cannot load audio for ${id} without a project folder.`);
     }
 
-    const blob = new Blob([new Uint8Array(file.bytes).buffer], {
+    let directory = root;
+    const parts = [
+      ...(audioRootPath ?? "").split(/[\\/]/),
+      ...relativePath.split(/[\\/]/),
+    ].filter(Boolean);
+    if (parts.some((part) => part === "." || part === "..")) {
+      throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
+    }
+    const fileName = parts.pop();
+    if (!fileName) {
+      throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
+    }
+    for (const part of parts) {
+      directory = await directory.getDirectoryHandle(part);
+    }
+    const handle = await directory.getFileHandle(fileName);
+    const bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+
+    const blob = new Blob([new Uint8Array(bytes).buffer], {
       type: "audio/wav",
     });
     const fileURL = URL.createObjectURL(blob);
     this._snapshot.mixer.addTrack(id, fileURL);
-    this.logger.info(`Track added: ${id}`);
+    this.#logger.info(`Track added: ${id}`);
   };
 
   public removeTrack = (id: string): void => {
     this._snapshot.mixer.removeTrack(id);
   };
 
-  public getTracks = (): string[] => this._snapshot.mixer.listTracks();
+  public getTracks = (): string[] => this.mixer.listTracks();
 
-  public play = (): void => this._snapshot.mixer.play();
+  public play = (): void => this.mixer.play();
 
-  public stop = (): void => this._snapshot.mixer.stop();
+  public stop = (): void => this.mixer.stop();
 
-  public pause = (): void => this._snapshot.mixer.pause();
+  public pause = (): void => this.mixer.pause();
+
+  public solo = (id: string) => this.mixer.solo(id);
+
+  public mute = (id: string) => this.mixer.mute(id);
+
+  public seek = (time: number) => this.mixer.seek(time);
+
+  public seekStart = () => this.mixer.seekStart();
+
+  public seekEnd = () => this.mixer.seekEnd();
 
   private readonly publish = (): void => {
     this._snapshot = { ...this._snapshot };
