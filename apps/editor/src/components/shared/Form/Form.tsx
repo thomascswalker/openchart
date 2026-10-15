@@ -3,12 +3,13 @@ import { useForm } from "@tanstack/react-form";
 import z from "zod";
 import { Button, Checkbox } from "../Button";
 import { Dropdown } from "../Dropdown";
-import { Input } from "../Input/Input";
+import { FileInput, Input } from "../Input/Input";
 import { Section } from "../Section";
 import { Label, Text } from "../Text";
 import { Modal } from "../Modal/Modal";
 import { ListView } from "../ListView";
 import styles from "./form.module.css";
+import { startCase } from "es-toolkit";
 
 type FieldPath<T> = {
   [K in keyof T & string]: T[K] extends object ? `${K}.${FieldPath<T[K]>}` : K;
@@ -17,6 +18,8 @@ type FieldPath<T> = {
 interface FieldMetadata {
   label?: string;
   hidden?: boolean;
+  file?: boolean;
+  types?: FilePickerAcceptType[];
   tab?: string;
   min?: number;
   max?: number;
@@ -99,7 +102,7 @@ const Form = <T extends object>({
     Record<string, string>
   >({});
   const tabs = getTabs(schema);
-  const options = tabs.map((tab) => tab.title);
+  const options = tabs.map((tab) => startCase(tab.title));
   const [selectedTab, setSelectedTab] = useState(options[0] ?? "");
   const dialogRef = useRef<HTMLDivElement>(null);
   const selectedIndex = Math.max(0, options.indexOf(selectedTab));
@@ -223,8 +226,25 @@ const Form = <T extends object>({
                             />
                           ) : (
                             <>
-                              <Label htmlFor={inputId}>{label}</Label>
-                              {field.schema instanceof z.ZodEnum ? (
+                              <Label htmlFor={inputId}>
+                                {startCase(label)}
+                              </Label>
+                              {field.metadata.file ? (
+                                <FileInput
+                                  id={inputId}
+                                  className={styles.input}
+                                  aria-invalid={!!error}
+                                  value={typeof value === "string" ? value : ""}
+                                  placeholder=""
+                                  types={field.metadata.types || []}
+                                  onFileChange={(file) => {
+                                    fieldApi.handleChange(
+                                      file.name as typeof value,
+                                    );
+                                    setValidationErrors({});
+                                  }}
+                                />
+                              ) : field.schema instanceof z.ZodEnum ? (
                                 <Dropdown
                                   id={inputId}
                                   className={styles.dropdown}

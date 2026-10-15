@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import { useState, type InputHTMLAttributes } from "react";
 import classNames from "classnames";
 import styles from "./input.module.css";
 import { Button } from "../Button";
@@ -14,6 +14,9 @@ import {
   type SpaceProps,
   type styleFn,
 } from "styled-system";
+import Platform from "../../../platform";
+import type { FileSystemService } from "../../../services/filesystem";
+import type { LoadFile } from "../../../services/filesystem/types";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);
@@ -42,11 +45,31 @@ const Input = ({ className, ...props }: InputProps) => {
   return <input {...htmlProps} className={inputClassName} style={style} />;
 };
 
-const FileInput = ({ ...props }: InputProps) => {
+interface FileInputProps extends InputProps {
+  types?: FilePickerAcceptType[];
+  onFileChange?: (file: LoadFile) => void;
+}
+
+const FileInput = ({ types = [], onFileChange, ...props }: FileInputProps) => {
+  const [file, setFile] = useState<LoadFile | undefined>(undefined);
   const size = "var(--size-med)";
+
+  const handleOnClick = () => {
+    const fs = Platform.services.get<FileSystemService>("filesystem");
+    fs.read(types).then((loadedFile) => {
+      if (!loadedFile) {
+        return;
+      }
+      setFile(loadedFile);
+      onFileChange?.(loadedFile);
+    });
+  };
+
   return (
     <div style={{ display: "flex" }}>
       <Input
+        value={file?.name}
+        readOnly
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
         borderRightColor="transparent"
@@ -60,6 +83,7 @@ const FileInput = ({ ...props }: InputProps) => {
         border="1px solid transparent"
         borderTopLeftRadius={0}
         borderBottomLeftRadius={0}
+        onClick={handleOnClick}
       >
         F
       </Button>

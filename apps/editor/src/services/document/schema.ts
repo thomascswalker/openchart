@@ -1,4 +1,5 @@
 import z from "zod";
+import { wavFilePickerTypes } from "../mixer/types";
 
 const METADATA_SETTINGS_VERSION = 1;
 
@@ -29,14 +30,27 @@ const difficultySchema = z.object({
   fourPad: z.number().int(),
   fivePad: z.number().int(),
 });
+
+const wavRefiner = (val: string | null) => {
+  if (!val) {
+    return true;
+  }
+  return /\.wav$/i.test(val);
+};
+const zodFile = (types: FilePickerAcceptType[]) =>
+  z.string().nullable().refine(wavRefiner).meta({ file: true, types });
+
+const zodWavFile = () => zodFile(wavFilePickerTypes);
+
 const audioSchema = z.object({
-  song: z.string(),
-  lead: z.string(),
-  bass: z.string(),
-  drums: z.string(),
-  vocals: z.string(),
-  harmony: z.string(),
+  song: zodWavFile(),
+  lead: zodWavFile(),
+  bass: zodWavFile(),
+  drums: zodWavFile(),
+  vocals: zodWavFile(),
+  harmony: zodWavFile(),
 });
+
 const creditsSchema = z.object({
   publisher: z.string(),
   writer: z.string(),
@@ -93,12 +107,12 @@ export const makeDefaultMetadata = (): Metadata => {
       fivePad: 1,
     },
     audio: {
-      song: "",
-      lead: "",
-      bass: "",
-      drums: "",
-      vocals: "",
-      harmony: "",
+      song: null,
+      lead: null,
+      bass: null,
+      drums: null,
+      vocals: null,
+      harmony: null,
     },
     credits: {
       publisher: "",
