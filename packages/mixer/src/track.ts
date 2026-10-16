@@ -1,5 +1,6 @@
 import AudioSample from "@openchart/audio";
 import type {
+  AudioEngine,
   AudioEvent,
   AudioEventCallback,
   AudioEventData,
@@ -15,9 +16,10 @@ class Track implements Disposable {
   #volumeScale: number = 1;
   #eventListeners = new Map<AudioEvent, AudioEventCallback>();
 
-  constructor(filename: string) {
+  constructor(filename: string, engine?: AudioEngine) {
     this.#filename = filename;
     this.#audio = AudioSample.load(filename, {
+      engine,
       onLoaded: (event) => this.#emit("loaded", event),
       onPlay: (event) => this.#emit("play", event),
       onPause: (event) => this.#emit("pause", event),
@@ -25,6 +27,11 @@ class Track implements Disposable {
       onEnded: (event) => this.#emit("ended", event),
     });
     this.#volume = 1;
+    // Nothing awaits `ready`, so surface load failures instead of leaving an
+    // unhandled rejection.
+    void Promise.resolve(this.#audio.ready).catch((error: unknown) => {
+      console.error(`Failed to load audio track "${filename}"`, error);
+    });
   }
 
   [Symbol.dispose]() {
@@ -61,8 +68,9 @@ class Track implements Disposable {
     this.muted = !this.muted;
   }
 
-  public play() {
-    this.#audio.play();
+  /** `when` is an engine context time; share it across tracks to align them. */
+  public play(offset?: number, when?: number): boolean {
+    return this.#audio.play(offset, when);
   }
 
   #on(eventType: AudioEvent, callback: AudioEventCallback) {
@@ -101,8 +109,13 @@ class Track implements Disposable {
     return this.#audio.currentTime;
   }
 
-  public seek(time: number) {
-    this.#audio.seek(time);
+  public seek(time: number, when?: number): boolean {
+    // A stem shorter than the mixer is parked at its own end.
+    const duration = this.duration;
+    return this.#audio.seek(
+      duration > 0 ? Math.min(time, duration) : time,
+      when,
+    );
   }
 
   public get duration(): number {
@@ -110,11 +123,11 @@ class Track implements Disposable {
   }
 
   public pause() {
-    this.#audio.pause();
+    return this.#audio.pause();
   }
 
   public stop() {
-    this.#audio.stop();
+    return this.#audio.stop();
   }
 
   #updateVolume() {

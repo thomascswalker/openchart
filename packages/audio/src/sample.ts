@@ -1,7 +1,19 @@
+import {
+  AudioEngine,
+  FADE_IN_SECONDS,
+  FADE_OUT_STOP_AFTER,
+  FADE_OUT_TIME_CONSTANT,
+  START_LEAD_SECONDS,
+} from "./engine.js";
 import type { AudioEventCallback } from "./events.js";
 
 export interface AudioSampleOptions {
   initialVolume?: number;
+  /**
+   * Shared engine to play through. Samples that share an engine share one
+   * AudioContext and clock. When omitted, the sample owns a private engine.
+   */
+  engine?: AudioEngine;
   onLoaded?: AudioEventCallback;
   onPlay?: AudioEventCallback;
   onPause?: AudioEventCallback;
@@ -9,14 +21,30 @@ export interface AudioSampleOptions {
   onEnded?: AudioEventCallback;
 }
 
-const defaultAudioSampleOptions: Required<AudioSampleOptions> = {
-  initialVolume: 1,
-  onLoaded: () => {},
-  onPlay: () => {},
-  onPause: () => {},
-  onStop: () => {},
-  onEnded: () => {},
-};
+const defaultAudioSampleOptions: Required<Omit<AudioSampleOptions, "engine">> =
+  {
+    initialVolume: 1,
+    onLoaded: () => {},
+    onPlay: () => {},
+    onPause: () => {},
+    onStop: () => {},
+    onEnded: () => {},
+  };
+
+/* One scheduled playback of the buffer, with its own fade envelope */
+interface Voice {
+  source: AudioBufferSourceNode;
+  envelope: GainNode;
+}
+
+function disconnectVoice(voice: Voice): void {
+  try {
+    voice.source.disconnect();
+    voice.envelope.disconnect();
+  } catch {
+    // Already disconnected.
+  }
+}
 
 class AudioSample {
   /* Indicates whether the audio sample has been loaded */
@@ -26,17 +54,21 @@ class AudioSample {
   /* The volume level for playback */
   #volume: number = 1;
 
-  /* The audio context for playback */
-  #context: AudioContext | null = null;
+  /* The engine (shared context, master bus) this sample plays through */
+  readonly #engine: AudioEngine;
+  /* Whether this sample created the engine and must dispose it */
+  readonly #ownsEngine: boolean;
   /* The raw audio data */
   #data: AudioBuffer | null = null;
-  /* The source node for audio playback */
-  #sourceNode: AudioBufferSourceNode | null = null;
-  /* The gain node for controlling volume */
+  /* Per-sample volume control, feeding the engine's master bus */
   #gain: GainNode | null = null;
-  /* The time at which the current source started in the audio context */
+  /* The voice currently playing (a source node is one-shot, so each start makes one) */
+  #voice: Voice | null = null;
+  /* Context time at which the current voice's offset applies */
   #startContextTime: number = 0;
-  /* The playback position when no source is currently playing */
+  /* Buffer position (seconds) at #startContextTime */
+  #startOffset: number = 0;
+  /* The playback position when no voice is currently playing */
   #playbackOffset: number = 0;
   #isPlaying: boolean = false;
   #disposed: boolean = false;
@@ -58,6 +90,8 @@ class AudioSample {
   private constructor(filename: string, options?: AudioSampleOptions) {
     // Merge the default options with the provided options to ensure all required fields are set
     const combinedOptions = { ...defaultAudioSampleOptions, ...options };
+    this.#engine = options?.engine ?? new AudioEngine();
+    this.#ownsEngine = options?.engine === undefined;
     this.#volume = combinedOptions.initialVolume;
     this.#onLoaded = combinedOptions.onLoaded;
     this.#onPlay = combinedOptions.onPlay;
@@ -95,7 +129,6 @@ class AudioSample {
     if (this.#disposed) {
       return;
     }
-    this.#ensureContext();
     const buffer =
       typeof window !== "undefined"
         ? await this.#readFromBrowser()
@@ -103,12 +136,8 @@ class AudioSample {
     if (this.#disposed) {
       return;
     }
-    const context = this.#context;
-    if (!context) {
-      throw new Error("Audio context was not initialized");
-    }
     try {
-      this.#data = await context.decodeAudioData(buffer);
+      this.#data = await this.#engine.decode(buffer);
     } catch (error) {
       if (!this.#disposed) {
         throw error;
@@ -145,16 +174,26 @@ class AudioSample {
   }
 
   get context(): AudioContext | null {
-    return this.#context;
+    return this.#disposed || this.#engine.disposed
+      ? null
+      : this.#engine.context;
   }
 
+  /** The engine this sample plays through. */
+  get engine(): AudioEngine {
+    return this.#engine;
+  }
+
+  /**
+   * Position in the buffer, derived from the audio clock rather than any
+   * timer, so it is exactly where the sound is.
+   */
   get currentTime(): number {
-    if (this.#isPlaying && this.#context) {
+    if (this.#isPlaying && !this.#engine.disposed) {
+      const elapsed = Math.max(0, this.#engine.now - this.#startContextTime);
       return Math.min(
-        this.#playbackOffset +
-          this.#context.currentTime -
-          this.#startContextTime,
-        this.#data?.duration ?? this.#playbackOffset,
+        this.#startOffset + elapsed,
+        this.#data?.duration ?? this.#startOffset,
       );
     }
     return this.#playbackOffset;
@@ -175,71 +214,108 @@ class AudioSample {
   set volume(value: number) {
     this.#volume = value;
     if (this.#gain) {
-      this.#gain.gain.value = value;
+      this.#engine.smooth(this.#gain.gain, value);
     }
   }
 
-  #ensureContext(): void {
-    if (this.#context === null) {
-      this.#context = new AudioContext();
-    }
-
+  #ensureGain(): GainNode {
     if (this.#gain === null) {
-      this.#gain = this.#context.createGain();
+      const context = this.#engine.context;
+      this.#gain = context.createGain();
       this.#gain.gain.value = this.#volume;
-      this.#gain.connect(this.#context.destination);
+      this.#gain.connect(this.#engine.input);
     }
+    return this.#gain;
   }
 
-  #startSource(offset: number): void {
-    this.#ensureContext();
-    if (!this.#context || !this.#data || !this.#gain) {
+  /**
+   * Starts a new voice at context time `when`, `offset` seconds into the
+   * buffer. The voice fades in so a start at an arbitrary offset cannot click.
+   */
+  #startVoice(offset: number, when: number): void {
+    if (!this.#data || this.#engine.disposed) {
       return;
     }
+    const context = this.#engine.context;
+    const gain = this.#ensureGain();
 
-    const source = this.#context.createBufferSource();
+    const source = context.createBufferSource();
     source.buffer = this.#data;
-    source.connect(this.#gain);
+    const envelope = context.createGain();
+    try {
+      envelope.gain.value = 0;
+      envelope.gain.setValueAtTime(0, when);
+      envelope.gain.linearRampToValueAtTime(1, when + FADE_IN_SECONDS);
+    } catch {
+      // If the fade cannot be scheduled, play at full gain rather than silent.
+      envelope.gain.value = 1;
+    }
+    source.connect(envelope);
+    envelope.connect(gain);
+
+    const voice: Voice = { source, envelope };
     source.onended = () => {
-      if (this.#sourceNode !== source) {
+      disconnectVoice(voice);
+      if (this.#voice !== voice) {
         return;
       }
-      this.#sourceNode = null;
+      this.#voice = null;
       this.#isPlaying = false;
       this.#playbackOffset = this.duration;
       this.#onEnded({ data: null });
       this.#onStop({ data: null });
     };
 
-    this.#sourceNode = source;
+    this.#voice = voice;
+    this.#startOffset = offset;
+    this.#startContextTime = when;
     this.#playbackOffset = offset;
-    this.#startContextTime = this.#context.currentTime;
     this.#isPlaying = true;
-    source.start(0, offset);
-    void this.#context.resume().catch((error: unknown) => {
+    source.start(when, offset);
+    void this.#engine.resume().catch((error: unknown) => {
       console.error("Error resuming audio context", error);
     });
   }
 
-  #stopSource(): void {
-    const source = this.#sourceNode;
-    this.#sourceNode = null;
+  /** Fades the current voice out instead of cutting it mid-waveform. */
+  #stopVoice(): void {
+    const voice = this.#voice;
+    this.#voice = null;
     this.#isPlaying = false;
-    if (source) {
-      source.onended = null;
-      source.stop();
+    if (!voice) {
+      return;
+    }
+    voice.source.onended = () => disconnectVoice(voice);
+    try {
+      const now = this.#engine.now;
+      voice.envelope.gain.cancelScheduledValues(now);
+      voice.envelope.gain.setTargetAtTime(0, now, FADE_OUT_TIME_CONSTANT);
+      voice.source.stop(now + FADE_OUT_STOP_AFTER);
+    } catch {
+      try {
+        voice.source.stop();
+      } catch {
+        // Never started or already stopped.
+      }
+      disconnectVoice(voice);
     }
   }
 
   public reload() {
-    this.#loadFile();
+    void this.#loadFile().catch((error: unknown) => {
+      console.error("Error reloading audio sample", error);
+    });
   }
 
   public async reloadAsync() {
     return this.#loadFile();
   }
 
-  public play(offset?: number): boolean {
+  /**
+   * Starts playback. `when` is a context time (see `engine.now`); passing the
+   * same value to several samples starts them sample-aligned.
+   */
+  public play(offset?: number, when?: number): boolean {
     if (!this.isValid) {
       return false;
     }
@@ -256,7 +332,10 @@ class AudioSample {
     ) {
       return false;
     }
-    this.#startSource(startOffset);
+    this.#startVoice(
+      startOffset,
+      when ?? this.#engine.now + START_LEAD_SECONDS,
+    );
     this.#onPlay({ data: null });
     return true;
   }
@@ -266,7 +345,7 @@ class AudioSample {
       return false;
     }
     this.#playbackOffset = this.currentTime;
-    this.#stopSource();
+    this.#stopVoice();
     this.#onPause({ data: null });
     return true;
   }
@@ -275,7 +354,7 @@ class AudioSample {
     if (!this.isValid) {
       return false;
     }
-    this.#stopSource();
+    this.#stopVoice();
     this.#playbackOffset = 0;
     this.#onStop({ data: null });
     return true;
@@ -286,18 +365,20 @@ class AudioSample {
       return;
     }
     this.#disposed = true;
-    this.#stopSource();
-    const context = this.#context;
-    this.#context = null;
+    this.#stopVoice();
+    try {
+      this.#gain?.disconnect();
+    } catch {
+      // Already disconnected.
+    }
     this.#gain = null;
-    if (context && context.state !== "closed") {
-      void context.close().catch((error: unknown) => {
-        console.error("Error closing audio context", error);
-      });
+    if (this.#ownsEngine) {
+      this.#engine.dispose();
     }
   }
 
-  public seek(time: number): boolean {
+  /** Jumps to `time`. While playing, the new position starts at `when`. */
+  public seek(time: number, when?: number): boolean {
     if (
       this.#disposed ||
       !this.isValid ||
@@ -308,10 +389,10 @@ class AudioSample {
       return false;
     }
     const wasPlaying = this.#isPlaying;
-    this.#stopSource();
+    this.#stopVoice();
     this.#playbackOffset = time;
     if (wasPlaying) {
-      this.#startSource(time);
+      this.#startVoice(time, when ?? this.#engine.now + START_LEAD_SECONDS);
     }
     return true;
   }

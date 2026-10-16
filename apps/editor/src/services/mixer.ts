@@ -18,6 +18,15 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
   }
 
   public readonly reset = (): void => {
+    // Release the previous mixer's tracks, object URLs, and AudioContext.
+    // Each mixer owns a context; dropping one without disposing leaks it.
+    const previous = this._snapshot?.mixer;
+    if (previous) {
+      for (const id of previous.listTracks()) {
+        this.#revokeTrackUrl(id, previous);
+      }
+      previous.dispose?.();
+    }
     const mixer = new Mixer();
     mixer.onPlay = (event) =>
       this.#logger.info(`Mixer playback started: ${JSON.stringify(event)}`);
@@ -56,21 +65,41 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
       directory = await directory.getDirectoryHandle(part);
     }
     const handle = await directory.getFileHandle(fileName);
-    const bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
-
-    const blob = new Blob([new Uint8Array(bytes).buffer], {
-      type: "audio/wav",
-    });
+    // A File is already a Blob, so wrap it directly instead of copying the
+    // bytes through an ArrayBuffer and two Uint8Arrays.
+    const file = await handle.getFile();
+    const blob = new Blob([file], { type: "audio/wav" });
     const fileURL = URL.createObjectURL(blob);
     this._snapshot.mixer.addTrack(id, fileURL);
     this.#logger.info(`Track added: ${id}`);
   };
 
   public removeTrack = (id: string): void => {
+    this.#revokeTrackUrl(id, this.mixer);
     this._snapshot.mixer.removeTrack(id);
   };
 
+  #revokeTrackUrl(id: string, mixer: MixerSnapshot["mixer"]): void {
+    const filename = mixer.getTrack(id)?.filename;
+    if (filename?.startsWith("blob:")) {
+      URL.revokeObjectURL(filename);
+    }
+  }
+
   public getTracks = (): string[] => this.mixer.listTracks();
+
+  /** Playback position in seconds, derived from the audio clock. */
+  public get currentTime(): number {
+    return this.mixer.currentTime;
+  }
+
+  /**
+   * The position while audio is actually playing and the audio clock is
+   * running; `null` when the audio cannot be used as the time source.
+   */
+  public get clockTime(): number | null {
+    return this.mixer.clockTime;
+  }
 
   public play = (): void => this.mixer.play();
 

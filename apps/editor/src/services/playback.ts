@@ -459,7 +459,21 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
 
   private readonly step = (frameTimeMs: number): void => {
     const totalTicks = this.totalTimelineTicks();
-    if (this.lastFrameMs !== null) {
+    // While audio is playing, the audio clock is the single source of truth
+    // for the playhead: the tick is derived from it, and the mixer is never
+    // re-seeked from here (restarting a stem every frame is what made playback
+    // crunchy). With no audio, or once the stems have ended, the MIDI-only
+    // clock keeps advancing from the last tick using the frame time.
+    const audioSeconds = this.mixerService?.clockTime ?? null;
+    if (audioSeconds !== null) {
+      const nextTick = msToTicks(
+        audioSeconds * 1000,
+        this.ppqn,
+        this.tempoChanges,
+      );
+      this.playbackTick =
+        totalTicks > 0 && nextTick >= totalTicks ? totalTicks : nextTick;
+    } else if (this.lastFrameMs !== null) {
       const elapsedMs = frameTimeMs - this.lastFrameMs;
       const currentMs =
         ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) + elapsedMs;
@@ -476,9 +490,12 @@ export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
       return;
     }
     this.requestNextFrame();
-    this.syncMixerPosition();
   };
 
+  /**
+   * Positions the mixer at the playhead. Only for discontinuities (seek, play
+   * start, pause snap): during playback the audio drives the playhead instead.
+   */
   private syncMixerPosition(): void {
     const timeSeconds =
       ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) / 1000;

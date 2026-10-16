@@ -48,7 +48,8 @@ mixer.solo("backing"); // Mutes every other track.
 ```
 
 Use `listTracks()` to retrieve the track IDs. `removeTrack(id)` disposes the
-track's audio context and removes it from the mixer.
+track and removes it from the mixer. Call `mixer.dispose()` when you are
+done with the mixer; it releases every track and the shared audio context.
 
 ## Respond to mixer events
 
@@ -66,3 +67,28 @@ mixer.onChange = () => {
   console.log("Time:", mixer.currentTime);
 };
 ```
+
+## Playback position and the audio clock
+
+All tracks play through one shared `AudioEngine` (one `AudioContext`), and the
+mixer is the transport. `play()` and `seek()` schedule every track at the same
+context time, so stems stay sample-aligned, and `mixer.currentTime` is derived
+from that clock (minus the output latency), so it is the single source of truth
+for the playback position.
+
+```ts
+mixer.play();
+function frame() {
+  // Read the position; never re-seek the mixer to "stay in sync" while playing.
+  const seconds = mixer.clockTime ?? lastKnownSeconds; // null if the clock is not running
+  requestAnimationFrame(frame);
+}
+```
+
+`seek()` is for real jumps (the user moved the playhead). Calling it every
+animation frame restarts every stem each time and is audible as crackle.
+`clockTime` is `null` while paused or while the audio context is suspended.
+
+Gain changes (volume, mute, solo) and every start/stop are smoothed with short
+fades to avoid clicks, and the master bus has a soft clipper so stems that sum
+past full scale saturate gently rather than hard-clipping.
