@@ -50,6 +50,7 @@ interface ButtonProps
   title?: string;
   tabIndex?: number;
   ref?: Ref<HTMLButtonElement>;
+  "data-command"?: string;
   "data-popup-trigger"?: string;
   children?: ReactNode;
 }
@@ -75,6 +76,7 @@ const Button = ({
   "aria-expanded": ariaExpanded,
   "aria-haspopup": ariaHasPopup,
   "aria-selected": ariaSelected,
+  "data-command": dataCommand,
   "data-popup-trigger": dataPopupTrigger,
   className,
   children,
@@ -134,6 +136,7 @@ const Button = ({
       aria-expanded={ariaExpanded}
       aria-haspopup={ariaHasPopup}
       aria-selected={ariaSelected}
+      data-command={dataCommand}
       data-popup-trigger={dataPopupTrigger}
       aria-label={ariaLabel}
       style={style}

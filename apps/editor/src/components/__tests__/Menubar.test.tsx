@@ -44,6 +44,9 @@ describe("Menubar", () => {
     expect(fileItems.indexOf("Import")).toBeLessThan(
       fileItems.indexOf("Export"),
     );
+    expect(
+      container.querySelectorAll('[role="menu"] [role="separator"]'),
+    ).toHaveLength(2);
     expect(fileItems).toContain("Import");
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
@@ -112,6 +115,12 @@ describe("Menubar", () => {
     ].find((button) => button.dataset.command === "document.save")!;
     expect(save.disabled).toBe(true);
     expect(document.activeElement?.textContent).toContain("Save As");
+    act(() =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      ),
+    );
+    expect(document.activeElement?.textContent).toContain("Import");
 
     act(() =>
       document.activeElement?.dispatchEvent(

@@ -12,6 +12,9 @@
   color: var(--text-primary);
   margin: 0;
 }
+.ui-text-disabled {
+  color: var(--text-disabled);
+}
 
 .ui-heading {
   font-size: var(--heading-font-size);
