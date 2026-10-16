@@ -109,10 +109,11 @@ test("AudioSample.play schedules at the requested context time and fades in", as
     return node;
   });
 
-  expect(sample.play(1.5, 42)).toBe(true);
+  const offset = sample.duration / 2;
+  expect(sample.play(offset, 42)).toBe(true);
 
   expect(starts).toHaveLength(1);
-  expect(starts[0]).toHaveBeenCalledWith(42, 1.5);
+  expect(starts[0]).toHaveBeenCalledWith(42, offset);
 });
 
 test("AudioSamples sharing an engine share one AudioContext", async () => {

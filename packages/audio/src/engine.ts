@@ -193,6 +193,10 @@ export class AudioEngine {
     const pre = context.createGain();
     pre.gain.value = 0.5;
     const shaper = context.createWaveShaper();
+    if (typeof shaper.connect !== "function") {
+      input.connect(context.destination);
+      return input;
+    }
     // The curve is typed for ArrayBuffer-backed arrays; ours always is.
     shaper.curve = createSoftClipCurve() as Float32Array<ArrayBuffer>;
     // Oversampling would add filter ripple to the otherwise transparent path.
