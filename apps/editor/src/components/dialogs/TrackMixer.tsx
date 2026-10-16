@@ -1,7 +1,7 @@
 import { useSnapshot } from "../../platform";
 import { Section } from "../shared/Section";
-import { Text, H2, H6 } from "../shared/Text";
-import Mixer from "@openchart/mixer";
+import { Text, H6 } from "../shared/Text";
+import type { Track as MixerTrack } from "@openchart/mixer";
 import { HorizontalSeparator } from "../shared/Separator";
 import type { MixerSnapshot } from "../../services/mixer/types";
 import { Button } from "../shared/Button";
@@ -118,13 +118,13 @@ const TrackButton = ({
 
 interface TrackProps {
   name?: string;
-  track: Mixer.Track;
+  track: MixerTrack;
   index: number;
   hasSoloedTrack: boolean;
   masterMuted: boolean;
-  onVolumeChange?: (track: Mixer.Track, value: number) => void;
-  onMuteClick?: (track: Mixer.Track) => void;
-  onSoloClick?: (track: Mixer.Track) => void;
+  onVolumeChange?: (track: MixerTrack, value: number) => void;
+  onMuteClick?: (track: MixerTrack) => void;
+  onSoloClick?: (track: MixerTrack) => void;
 }
 
 const Track = ({
@@ -202,21 +202,20 @@ const Track = ({
 
 const TrackMixer = () => {
   const mixer = useSnapshot<MixerSnapshot>("mixer").mixer;
-  const trackCount = Object.values(mixer.tracks).length;
   const hasSoloedTrack = Object.values(mixer.tracks).some(
     (track) => track.soloed,
   );
   const padding = "8px"; // --space-med
 
-  const handleMuteClick = (track: Mixer.Track) => {
+  const handleMuteClick = (track: MixerTrack) => {
     mixer.toggleMute(track);
   };
 
-  const handleSoloClick = (track: Mixer.Track) => {
+  const handleSoloClick = (track: MixerTrack) => {
     mixer.toggleSolo(track);
   };
 
-  const handleVolumeChange = (track: Mixer.Track, volume: number) => {
+  const handleVolumeChange = (track: MixerTrack, volume: number) => {
     mixer.setTrackVolume(track, volume);
   };
 

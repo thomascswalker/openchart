@@ -2,7 +2,6 @@ import { ActionRegistry } from "./actions";
 import { ContextStore } from "./context";
 import {
   ServiceRegistry,
-  StatefulService,
   type IService,
   type IStatefulService,
 } from "./services";

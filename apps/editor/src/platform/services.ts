@@ -104,7 +104,7 @@ export class ServiceRegistry {
   public createAccessor(): ServicesAccessor {
     return {
       get: <T>(serviceId: string): T => {
-        const service = this.get<T>(serviceId);
+        const service = this.get(serviceId);
         if (!service) {
           throw new Error(`Service not found: ${serviceId}`);
         }

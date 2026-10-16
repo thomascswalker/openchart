@@ -5,7 +5,6 @@ import type {
   AudioEvent,
   AudioEventCallback,
 } from "@openchart/audio";
-import Track from "./track";
 
 export interface MixerOptions {
   /** Share an existing engine; otherwise the mixer creates (and owns) one. */
@@ -372,9 +371,5 @@ class Mixer {
   }
 }
 
-namespace Mixer {
-  export type Track = TrackClass;
-  export const Track = TrackClass;
-}
-
+export { TrackClass as Track };
 export default Mixer;
