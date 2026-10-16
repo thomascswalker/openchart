@@ -25,7 +25,7 @@ export async function loadSong(page: Page): Promise<void> {
   await page.goto("/");
   await page.getByRole("menuitem", { name: "File" }).click();
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("menuitem", { name: /^Open/ }).click();
+  await page.getByRole("menuitem", { name: /^Import/ }).click();
   await (await chooser).setFiles(SONG_PATH);
   await expect(
     page.locator('output[aria-label^="Playback position"]'),

@@ -136,7 +136,7 @@ test("instanced note capacity grows beyond the legacy pool without drops", async
   await page.goto("/");
   await page.getByRole("menuitem", { name: "File" }).click();
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("menuitem", { name: /^Open/ }).click();
+  await page.getByRole("menuitem", { name: /^Import/ }).click();
   await (
     await chooser
   ).setFiles({
