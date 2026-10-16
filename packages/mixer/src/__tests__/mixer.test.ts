@@ -132,3 +132,112 @@ test("Mixer forwards events to listeners for existing and future tracks", () => 
   expect(pause).toHaveBeenCalledWith({ data: "paused" });
   expect(stop).toHaveBeenCalledWith({ data: "stopped" });
 });
+
+type ClockedEngine = { now: number; outputLatency: number; disposed: boolean };
+
+test("Mixer position follows the audio clock, minus output latency", () => {
+  const mixer = new Mixer();
+  const engine = mixer.engine as unknown as ClockedEngine;
+  mixer.addTrack("track1", "sample.wav");
+  mixer.seek(2);
+  mixer.play();
+  expect(mixer.playing).toBe(true);
+
+  // Playback is scheduled 30 ms ahead; the position holds until it starts.
+  engine.now = 0.01;
+  expect(mixer.currentTime).toBe(2);
+
+  engine.now = 0.53;
+  expect(mixer.currentTime).toBeCloseTo(2.5, 6);
+  expect(mixer.clockTime).toBeCloseTo(2.5, 6);
+
+  engine.outputLatency = 0.1;
+  expect(mixer.currentTime).toBeCloseTo(2.4, 6);
+
+  mixer.pause();
+  expect(mixer.currentTime).toBeCloseTo(2.4, 6);
+  expect(mixer.clockTime).toBeNull();
+});
+
+test("Mixer starts every track at one shared audio-clock time", () => {
+  const mixer = new Mixer();
+  const engine = mixer.engine as unknown as ClockedEngine;
+  mixer.addTrack("track1", "sample.wav");
+  const first = audioInstances.at(-1)!;
+  mixer.addTrack("track2", "sample.wav");
+  const second = audioInstances.at(-1)!;
+  const firstPlay = vi.spyOn(first, "play");
+  const secondPlay = vi.spyOn(second, "play");
+
+  engine.now = 4;
+  mixer.seek(1.5);
+  mixer.play();
+
+  expect(firstPlay).toHaveBeenCalledWith(1.5, expect.closeTo(4.03, 6));
+  expect(secondPlay).toHaveBeenCalledWith(1.5, expect.closeTo(4.03, 6));
+});
+
+test("Seeking while playing restarts each track once, at a shared time", () => {
+  const mixer = new Mixer();
+  const engine = mixer.engine as unknown as ClockedEngine;
+  mixer.addTrack("track1", "sample.wav");
+  const first = audioInstances.at(-1)!;
+  mixer.addTrack("track2", "sample.wav");
+  const second = audioInstances.at(-1)!;
+  mixer.play();
+  const firstSeek = vi.spyOn(first, "seek");
+  const secondSeek = vi.spyOn(second, "seek");
+
+  engine.now = 2;
+  mixer.seek(8);
+
+  expect(firstSeek).toHaveBeenCalledTimes(1);
+  expect(firstSeek).toHaveBeenCalledWith(8, expect.closeTo(2.03, 6));
+  expect(secondSeek).toHaveBeenCalledWith(8, expect.closeTo(2.03, 6));
+  engine.now = 2.53;
+  expect(mixer.currentTime).toBeCloseTo(8.5, 6);
+});
+
+test("Reading the position never touches the tracks", () => {
+  const mixer = new Mixer();
+  const engine = mixer.engine as unknown as ClockedEngine;
+  mixer.addTrack("track1", "sample.wav");
+  const audio = audioInstances.at(-1)!;
+  mixer.play();
+  const seek = vi.spyOn(audio, "seek");
+  const play = vi.spyOn(audio, "play");
+
+  for (let frame = 0; frame < 600; frame++) {
+    engine.now += 1 / 60;
+    void mixer.currentTime;
+    void mixer.clockTime;
+  }
+
+  expect(seek).not.toHaveBeenCalled();
+  expect(play).not.toHaveBeenCalled();
+});
+
+test("The transport stops once every track has ended", () => {
+  const mixer = new Mixer();
+  mixer.addTrack("track1", "sample.wav");
+  const audio = audioInstances.at(-1)!;
+  mixer.play();
+  expect(mixer.playing).toBe(true);
+
+  audio.playing = false;
+  audio.emit("ended", null);
+
+  expect(mixer.playing).toBe(false);
+  expect(mixer.clockTime).toBeNull();
+});
+
+test("Disposing the mixer disposes its owned engine and tracks", () => {
+  const mixer = new Mixer();
+  const engine = mixer.engine as unknown as ClockedEngine;
+  mixer.addTrack("track1", "sample.wav");
+
+  mixer.dispose();
+
+  expect(engine.disposed).toBe(true);
+  expect(mixer.listTracks()).toEqual([]);
+});

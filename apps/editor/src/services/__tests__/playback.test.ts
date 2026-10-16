@@ -150,6 +150,60 @@ describe("PlaybackService", () => {
     vi.unstubAllGlobals();
   });
 
+  it("follows the audio clock and never re-seeks the mixer while playing", () => {
+    let clockTime: number | null = 0.25;
+    const seek = vi.fn();
+    const mixer = {
+      play: vi.fn(),
+      pause: vi.fn(),
+      stop: vi.fn(),
+      seek,
+      get clockTime() {
+        return clockTime;
+      },
+    } as unknown as MixerService;
+    const service = new PlaybackService(undefined, mixer);
+    configure(service);
+    service.setPlaybackTick(240);
+
+    let frame: FrameRequestCallback | undefined;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((callback: FrameRequestCallback) => {
+        frame = callback;
+        return 1;
+      }),
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    service.play();
+    seek.mockClear();
+
+    // 120 BPM at 480 PPQN: 0.5 s is one quarter note, i.e. 480 ticks. The
+    // frame timestamps are deliberately irregular; only the audio matters.
+    clockTime = 0.5;
+    frame?.(0);
+    expect(service.getSnapshot().playbackTick).toBe(480);
+    clockTime = 0.75;
+    frame?.(7);
+    frame?.(40);
+    expect(service.getSnapshot().playbackTick).toBe(720);
+
+    // Many frames of playback must not restart the stems even once.
+    for (let i = 0; i < 60; i++) frame?.(100 + i * 16);
+    expect(seek).not.toHaveBeenCalled();
+
+    // Once the audio is no longer the clock (ended, or suspended context),
+    // the playhead keeps moving on the frame time from where it was.
+    // The last frame above was at 100 + 59 * 16 = 1044 ms; 500 ms later is one
+    // more quarter note (480 ticks) past the audio's last tick.
+    clockTime = null;
+    frame?.(1_544);
+    expect(service.getSnapshot().playbackTick).toBe(1_200);
+
+    service.dispose();
+    vi.unstubAllGlobals();
+  });
+
   it("requires MIDI events and advances on the tempo-aware MIDI clock", () => {
     const service = new PlaybackService();
     configure(service, { midiData: midi([]) });

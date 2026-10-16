@@ -1,6 +1,7 @@
-import { expect, test, vi } from "vitest";
+import { expect, test, vi, type MockInstance } from "vitest";
 import { fileURLToPath } from "node:url";
 import AudioSample from "../sample.js";
+import { AudioEngine } from "../engine.js";
 
 test("AudioSample loads the sample file", async () => {
   expect(AudioSample).toBeDefined();
@@ -91,4 +92,57 @@ test("AudioSample reload and reloadAsync methods work", async () => {
   source.reload();
   await source.reloadAsync();
   expect(source.isValid).toBe(true);
+});
+
+test("AudioSample.play schedules at the requested context time and fades in", async () => {
+  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const sample = await AudioSample.loadAsync(filename);
+  const context = sample.context;
+  if (!context) {
+    throw new Error("Audio context was not initialized");
+  }
+  const starts: MockInstance[] = [];
+  const createBufferSource = context.createBufferSource.bind(context);
+  vi.spyOn(context, "createBufferSource").mockImplementation(() => {
+    const node = createBufferSource();
+    starts.push(vi.spyOn(node, "start"));
+    return node;
+  });
+
+  expect(sample.play(1.5, 42)).toBe(true);
+
+  expect(starts).toHaveLength(1);
+  expect(starts[0]).toHaveBeenCalledWith(42, 1.5);
+});
+
+test("AudioSamples sharing an engine share one AudioContext", async () => {
+  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const engine = new AudioEngine();
+  const first = await AudioSample.loadAsync(filename, { engine });
+  const second = await AudioSample.loadAsync(filename, { engine });
+
+  expect(first.context).toBe(second.context);
+  expect(first.engine).toBe(engine);
+
+  // Disposing a sample must not close a context it does not own.
+  first.dispose();
+  expect(engine.disposed).toBe(false);
+  expect(second.context).not.toBeNull();
+  engine.dispose();
+});
+
+test("AudioSample volume changes are smoothed instead of stepped", async () => {
+  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const sample = await AudioSample.loadAsync(filename);
+  expect(sample.play()).toBe(true);
+  const context = sample.context;
+  if (!context) {
+    throw new Error("Audio context was not initialized");
+  }
+  const smooth = vi.spyOn(sample.engine, "smooth");
+
+  sample.volume = 0.25;
+
+  expect(sample.volume).toBe(0.25);
+  expect(smooth).toHaveBeenCalledWith(expect.anything(), 0.25);
 });
