@@ -161,12 +161,15 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Read package version
+        id: package-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Generate updater manifest
         run: |
-          version="$(node -p "require('./package.json').version")"
           node apps/desktop/scripts/generate-latest-json.mjs \
-            --version "$version" \
-            --tag "build-${{ github.sha }}" \
+            --version "${{ steps.package-version.outputs.version }}" \
+            --tag "v-${{ steps.package-version.outputs.version }}" \
             --repo "$GITHUB_REPOSITORY" \
             --assets release-assets \
             --out release-assets/latest.json
@@ -174,6 +177,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: v-${{ steps.package-version.outputs.version }}
           RELEASE_TAG: build-${{ github.sha }}
           MERGE_COMMIT: ${{ github.sha }}
         run: |
@@ -186,6 +190,6 @@ jobs:
           gh release create "$RELEASE_TAG" "${release_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$MERGE_COMMIT" \
-            --title "OpenChart Desktop $RELEASE_TAG" \
+            --title "$RELEASE_VERSION" \
             --generate-notes \
             --latest
