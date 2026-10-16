@@ -1,5 +1,5 @@
 import type { LoggerService } from "./logger";
-import { IService } from "../platform/services";
+import { Service } from "../platform/services";
 import type {
   LoadDirectory,
   LoadFile,
@@ -9,7 +9,7 @@ import type {
 import { toArrayBuffer } from "../util/array";
 import { midiFilePickerTypes, projectFilePickerTypes } from "./document/types";
 
-export class FileSystemService extends IService {
+export class FileSystemService extends Service {
   static dependencies = ["logger"];
 
   #logger: LoggerService;

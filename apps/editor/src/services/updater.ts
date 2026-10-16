@@ -1,6 +1,6 @@
 import type { DownloadEvent, Update } from "@tauri-apps/plugin-updater";
 import type { LoggerService } from "./logger";
-import { IStatefulService } from "../platform/services";
+import { StatefulService } from "../platform/services";
 
 export type UpdaterStatus =
   | "idle"
@@ -45,7 +45,7 @@ function errorMessage(error: unknown): string {
  * Wraps the Tauri updater plugin. The plugin modules are imported lazily so
  * the web build never loads them.
  */
-export class UpdaterService extends IStatefulService<UpdaterSnapshot> {
+export class UpdaterService extends StatefulService<UpdaterSnapshot> {
   static dependencies = ["logger"];
 
   private _logger: LoggerService;

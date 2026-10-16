@@ -15,7 +15,7 @@ import {
 import type { DocumentService } from "./document";
 import type { MixerService } from "./mixer";
 import type { ApplicationSettings } from "./settings/schema";
-import { IStatefulService } from "../platform/services";
+import { StatefulService } from "../platform/services";
 
 export interface PlaybackSnapshot {
   isPlaying: boolean;
@@ -107,7 +107,7 @@ export function notesForVocalFeedback(
   return view?.getNotes("pitched").map((item) => item.note) ?? [];
 }
 
-export class PlaybackService extends IStatefulService<PlaybackSnapshot> {
+export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   static dependencies = ["document", "mixer"];
 
   private engine = new Soundboard();

@@ -1,9 +1,9 @@
-import { IStatefulService } from "../platform/services";
+import { StatefulService } from "../platform/services";
 import Mixer from "@openchart/mixer";
 import type { LoggerService } from "./logger";
 import type { MixerSnapshot } from "./mixer/types";
 
-export class MixerService extends IStatefulService<MixerSnapshot> {
+export class MixerService extends StatefulService<MixerSnapshot> {
   static dependencies = ["logger"];
   readonly #logger: LoggerService;
 
