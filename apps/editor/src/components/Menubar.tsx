@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Button } from "./shared/Button";
+import { HorizontalSeparator } from "./shared/Separator";
+import { Text } from "./shared/Text";
 
 export type MenuCommandId = string;
 
-interface MenuItemDefinition {
+interface MenuCommandDefinition {
+  type?: "item";
   id: MenuCommandId;
   label: string;
-  accelerator?: string;
+  shortcut?: string;
   checkable?: boolean;
 }
+
+interface MenuSeparatorDefinition {
+  type: "separator";
+}
+
+type MenuItemDefinition = MenuCommandDefinition | MenuSeparatorDefinition;
 
 interface MenuDefinition {
   id: string;
@@ -28,20 +38,22 @@ const MENUS: MenuDefinition[] = [
     label: "File",
     items: [
       { id: "document.new", label: "New" },
-      { id: "document.open", label: "Open", accelerator: "Ctrl/Cmd+O" },
-      { id: "document.save", label: "Save", accelerator: "Ctrl/Cmd+S" },
+      { id: "document.open", label: "Open", shortcut: "Ctrl/Cmd+O" },
+      { id: "document.save", label: "Save", shortcut: "Ctrl/Cmd+S" },
       {
         id: "document.save-as",
         label: "Save As…",
-        accelerator: "Ctrl/Cmd+Shift+S",
+        shortcut: "Ctrl/Cmd+Shift+S",
       },
+      { type: "separator" },
       { id: "document.import-midi", label: "Import" },
       { id: "document.export-midi", label: "Export" },
+      { type: "separator" },
       { id: "dialog.open-project", label: "Project..." },
       {
         id: "dialog.open-settings",
         label: "Settings...",
-        accelerator: "Ctrl/Cmd+,",
+        shortcut: "Ctrl/Cmd+,",
       },
     ],
   },
@@ -49,9 +61,9 @@ const MENUS: MenuDefinition[] = [
     id: "edit",
     label: "Edit",
     items: [
-      { id: "clipboard.cut", label: "Cut", accelerator: "Ctrl/Cmd+X" },
-      { id: "clipboard.copy", label: "Copy", accelerator: "Ctrl/Cmd+C" },
-      { id: "clipboard.paste", label: "Paste", accelerator: "Ctrl/Cmd+V" },
+      { id: "clipboard.cut", label: "Cut", shortcut: "Ctrl/Cmd+X" },
+      { id: "clipboard.copy", label: "Copy", shortcut: "Ctrl/Cmd+C" },
+      { id: "clipboard.paste", label: "Paste", shortcut: "Ctrl/Cmd+V" },
     ],
   },
   {
@@ -61,19 +73,19 @@ const MENUS: MenuDefinition[] = [
       {
         id: "playback.toggle-metronome",
         label: "Metronome",
-        accelerator: "M",
+        shortcut: "M",
         checkable: true,
       },
       {
         id: "playback.toggle-clap",
         label: "Highway Clap",
-        accelerator: "N",
+        shortcut: "N",
         checkable: true,
       },
       {
         id: "playback.toggle-vocal-pitch-feedback",
         label: "Vocal Pitch Feedback",
-        accelerator: "P",
+        shortcut: "P",
         checkable: true,
       },
     ],
@@ -101,7 +113,7 @@ function enabledItemIndexes(
   canExecute: (command: MenuCommandId) => boolean,
 ): number[] {
   return items.reduce<number[]>((indexes, item, index) => {
-    if (canExecute(item.id)) indexes.push(index);
+    if (item.type !== "separator" && canExecute(item.id)) indexes.push(index);
     return indexes;
   }, []);
 }
@@ -304,72 +316,100 @@ export function Menubar({
         {menus.map((menu, menuIndex) => {
           const isOpen = openMenu === menu.id;
           const menuId = `menu-${menu.id}`;
+          const handleMenuClick = () => {
+            setActiveTrigger(menuIndex);
+            if (isOpen) closeMenu(false);
+            else {
+              const enabled = enabledItemIndexes(menu.items, canExecute);
+              openMenuAt(menuIndex, enabled[0] ?? 0);
+            }
+          };
+          const size = "24px";
 
           return (
             <div className="midi-menubar__menu" key={menu.id}>
-              <button
+              <Button
                 ref={(element) => {
                   triggerRefs.current[menuIndex] = element;
                 }}
-                type="button"
+                flat
                 role="menuitem"
                 aria-haspopup="menu"
                 aria-expanded={isOpen}
                 aria-controls={isOpen ? menuId : undefined}
                 className="midi-menubar__trigger"
                 tabIndex={activeTrigger === menuIndex ? 0 : -1}
-                onFocus={() => setActiveTrigger(menuIndex)}
-                onClick={() => {
-                  setActiveTrigger(menuIndex);
-                  if (isOpen) closeMenu(false);
-                  else {
-                    const enabled = enabledItemIndexes(menu.items, canExecute);
-                    openMenuAt(menuIndex, enabled[0] ?? 0);
-                  }
-                }}
+                onClick={handleMenuClick}
                 onKeyDown={(event) => handleTriggerKeyDown(event, menuIndex)}
+                height={size}
+                minHeight={size}
+                maxHeight={size}
               >
                 {menu.label}
-              </button>
+              </Button>
               {isOpen ? (
                 <div id={menuId} className="midi-menubar__popup" role="menu">
                   {menu.items.map((item, itemIndex) => {
+                    if (item.type === "separator") {
+                      return (
+                        <HorizontalSeparator
+                          key={`separator-${itemIndex}`}
+                          thickness={1}
+                          marginY={0}
+                          marginX={0}
+                          minWidth="100%"
+                        />
+                      );
+                    }
+
                     const disabled = !canExecute(item.id);
                     const checked = isChecked?.(item.id) ?? false;
+                    const handleItemClick = () => {
+                      if (disabled) return;
+                      onCommand(item.id);
+                      closeMenu(true);
+                    };
                     return (
-                      <button
+                      <Button
                         ref={(element) => {
                           const refs = itemRefs.current[menu.id] ?? [];
                           refs[itemIndex] = element;
                           itemRefs.current[menu.id] = refs;
                         }}
                         key={item.id}
-                        type="button"
+                        flat
                         role={item.checkable ? "menuitemcheckbox" : "menuitem"}
                         className="midi-menubar__item"
                         disabled={disabled}
                         aria-disabled={disabled}
                         aria-checked={item.checkable ? checked : undefined}
                         data-command={item.id}
-                        onClick={() => {
-                          if (disabled) return;
-                          onCommand(item.id);
-                          closeMenu(true);
-                        }}
+                        onClick={handleItemClick}
                         onKeyDown={(event) =>
                           handleItemKeyDown(event, menuIndex, itemIndex)
                         }
+                        height={size}
+                        maxWidth={"calc(100% - 4px)"}
+                        minHeight={size}
+                        maxHeight={size}
+                        paddingX="var(--size-med)"
+                        marginY="1px"
+                        marginX="2px"
                       >
-                        <span>
+                        <Text
+                          disabled={disabled}
+                          textAlign="left"
+                          flexWrap={"nowrap"}
+                        >
                           {checked ? "✓ " : ""}
                           {item.label}
-                        </span>
-                        {item.accelerator ? (
-                          <span className="midi-menubar__accelerator">
-                            {item.accelerator}
-                          </span>
-                        ) : null}
-                      </button>
+                        </Text>
+                        {item.shortcut && (
+                          <Text disabled={disabled} textAlign="right">
+                            {item.shortcut}
+                          </Text>
+                        )}
+                      </Button>
                     );
                   })}
                 </div>

@@ -20,14 +20,25 @@ interface TextProps
     BorderProps,
     FlexWrapProps,
     SizeProps {
+  role?: React.AriaRole;
+  disabled?: boolean;
   className?: string;
   children: React.ReactNode;
-  role?: React.AriaRole;
 }
 
-const Text = ({ className, children, role, ...props }: TextProps) => {
+const Text = ({
+  disabled = false,
+  className,
+  children,
+  role,
+  ...props
+}: TextProps) => {
   const style = getTextSystemStyles(props);
-  const textClassName = classNames(styles["ui-text"], className);
+  const textClassName = classNames(
+    styles["ui-text"],
+    disabled ? styles["ui-text-disabled"] : null,
+    className,
+  );
 
   return (
     <span className={textClassName} role={role} style={style}>
