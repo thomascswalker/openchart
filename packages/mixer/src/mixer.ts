@@ -28,6 +28,7 @@ class Mixer {
   #offset: number = 0;
   #startedAt: number = 0;
   #masterVolume: number = 1;
+  #masterMuted: boolean = false;
   #eventListeners = new Map<AudioEvent, AudioEventCallback[]>();
   #trackEventHandlers = new Map<AudioEvent, AudioEventCallback>();
   #onChange?: () => void;
@@ -50,7 +51,7 @@ class Mixer {
     )?.[0];
     replacedTrack?.[Symbol.dispose]();
     const track = new TrackClass(id, filename, this.#engine);
-    track.volumeScale = this.#masterVolume;
+    track.volumeScale = this.#effectiveMasterVolume;
     this.#tracks[id] = track;
     this.#applySoloState(wasSoloed ? id : otherSoloedId);
     this.#attachTrackEvents(track);
@@ -99,9 +100,25 @@ class Mixer {
   }
   public set masterVolume(value: number) {
     this.#masterVolume = value;
-    for (const key in this.#tracks) {
-      this.#tracks[key].volumeScale = value;
+    this.#updateTrackVolumeScales();
+    this.#notifyChange();
+  }
+
+  public get masterMuted(): boolean {
+    return this.#masterMuted;
+  }
+
+  public toggleMasterMute(): void {
+    this.#masterMuted = !this.#masterMuted;
+    this.#updateTrackVolumeScales();
+    this.#notifyChange();
+  }
+
+  public setTrackVolume(track: TrackClass, value: number): void {
+    if (this.#findTrackId(track) === undefined) {
+      return;
     }
+    track.volume = value;
     this.#notifyChange();
   }
 
@@ -292,6 +309,16 @@ class Mixer {
         key === soloedId,
         soloedId !== undefined && key !== soloedId,
       );
+    }
+  }
+
+  get #effectiveMasterVolume(): number {
+    return this.#masterMuted ? 0 : this.#masterVolume;
+  }
+
+  #updateTrackVolumeScales(): void {
+    for (const key in this.#tracks) {
+      this.#tracks[key].volumeScale = this.#effectiveMasterVolume;
     }
   }
 

@@ -51,6 +51,10 @@ class Track implements Disposable {
   }
 
   public get volume(): number {
+    return this.#volume;
+  }
+
+  public get effectiveVolume(): number {
     return this.#isSilent ? 0 : this.#volume * this.#volumeScale;
   }
 
@@ -149,7 +153,7 @@ class Track implements Disposable {
   }
 
   #updateVolume() {
-    this.#audio.volume = this.#isSilent ? 0 : this.#volume * this.#volumeScale;
+    this.#audio.volume = this.effectiveVolume;
   }
 
   get #isSilent(): boolean {
