@@ -1,6 +1,6 @@
 {
   "name": "openchart",
-  "version": "1.5.3",
+  "version": "0.1.54",
   "description": "",
   "main": "index.ts",
   "private": true,

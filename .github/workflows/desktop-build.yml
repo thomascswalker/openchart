@@ -169,7 +169,7 @@ jobs:
         run: |
           node apps/desktop/scripts/generate-latest-json.mjs \
             --version "${{ steps.package-version.outputs.version }}" \
-            --tag "v-${{ steps.package-version.outputs.version }}" \
+            --tag "v${{ steps.package-version.outputs.version }}" \
             --repo "$GITHUB_REPOSITORY" \
             --assets release-assets \
             --out release-assets/latest.json
@@ -177,8 +177,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: v-${{ steps.package-version.outputs.version }}
-          RELEASE_TAG: build-${{ github.sha }}
+          RELEASE_VERSION: v${{ steps.package-version.outputs.version }}
           MERGE_COMMIT: ${{ github.sha }}
         run: |
           mapfile -d '' release_files < <(find release-assets -type f -print0)
@@ -187,7 +186,7 @@ jobs:
             exit 1
           fi
 
-          gh release create "$RELEASE_TAG" "${release_files[@]}" \
+          gh release create "$RELEASE_VERSION" "${release_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$MERGE_COMMIT" \
             --title "$RELEASE_VERSION" \
