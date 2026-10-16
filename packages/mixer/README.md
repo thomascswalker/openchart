@@ -35,6 +35,9 @@ Tracks are addressed by the IDs supplied to `addTrack`. The per-track `volume`
 is multiplied by `masterVolume`; muting silences a track without discarding its
 volume setting.
 
+The track class is also available on the default `Mixer` export as
+`Mixer.Track`; its instance type can be referenced as `Mixer.Track`.
+
 ```ts
 const backing = mixer.getTrack("backing");
 if (backing) {

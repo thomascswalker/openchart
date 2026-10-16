@@ -1,4 +1,4 @@
-import Track, { type TrackId } from "./track";
+import TrackClass, { type TrackId } from "./track";
 import { AudioEngine, START_LEAD_SECONDS } from "@openchart/audio";
 import type {
   AudioEngineOptions,
@@ -21,7 +21,7 @@ export interface MixerOptions {
 class Mixer {
   readonly #engine: AudioEngine;
   readonly #ownsEngine: boolean;
-  #tracks: Record<TrackId, Track> = {};
+  #tracks: Record<TrackId, TrackClass> = {};
   /* Transport state: `#offset` is the position (seconds) at context time `#startedAt` */
   #playing: boolean = false;
   #offset: number = 0;
@@ -43,7 +43,7 @@ class Mixer {
 
   public addTrack(id: TrackId, filename: string) {
     this.#tracks[id]?.[Symbol.dispose]();
-    const track = new Track(filename, this.#engine);
+    const track = new TrackClass(filename, this.#engine);
     track.volumeScale = this.#masterVolume;
     this.#tracks[id] = track;
     this.#attachTrackEvents(track);
@@ -71,11 +71,11 @@ class Mixer {
     }
   }
 
-  public getTrack(id: TrackId): Track | undefined {
+  public getTrack(id: TrackId): TrackClass | undefined {
     return this.#tracks[id];
   }
 
-  public get tracks(): Record<TrackId, Track> {
+  public get tracks(): Record<TrackId, TrackClass> {
     return this.#tracks;
   }
 
@@ -176,7 +176,7 @@ class Mixer {
     this.#eventListeners.set(eventType, listeners);
   }
 
-  #attachTrackEvents(track: Track): void {
+  #attachTrackEvents(track: TrackClass): void {
     const onLoaded = this.#getTrackEventHandler("loaded");
     track.onLoaded = (event) => {
       this.#joinTransport(track);
@@ -266,7 +266,7 @@ class Mixer {
   }
 
   /** A stem that finishes loading mid-playback joins at the current position. */
-  #joinTransport(track: Track): void {
+  #joinTransport(track: TrackClass): void {
     if (!this.#playing) {
       return;
     }
@@ -313,6 +313,11 @@ class Mixer {
   #notifyChange(): void {
     this.#onChange?.();
   }
+}
+
+namespace Mixer {
+  export type Track = TrackClass;
+  export const Track = TrackClass;
 }
 
 export default Mixer;
