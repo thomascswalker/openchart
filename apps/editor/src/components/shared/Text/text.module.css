@@ -12,6 +12,7 @@
   color: var(--text-primary);
   margin: 0;
 }
+
 .ui-text-disabled {
   color: var(--text-disabled);
 }
@@ -19,6 +20,10 @@
 .ui-heading {
   font-size: var(--heading-font-size);
   font-weight: var(--heading-font-weight);
+}
+
+.ui-heading-disabled {
+  color: var(--text-disabled);
 }
 
 .ui-h1 {

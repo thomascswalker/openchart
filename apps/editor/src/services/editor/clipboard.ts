@@ -1,5 +1,5 @@
 import Platform from "../../platform";
-import { IService } from "../../platform/services";
+import { Service } from "../../platform/services";
 import { ActiveChartViewService } from "./activeChartView";
 
 export interface ClipboardView {
@@ -11,7 +11,7 @@ export interface ClipboardView {
   pasteClipboard: () => void;
 }
 
-export class EditorClipboardService extends IService {
+export class EditorClipboardService extends Service {
   static dependencies = ["editor.active-chart-view"];
   private readonly activeChartView: ActiveChartViewService;
 

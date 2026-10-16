@@ -1,9 +1,9 @@
-import { IStatefulService } from "../platform/services";
-import Mixer from "@openchart/mixer";
+import { StatefulService } from "../platform/services";
+import Mixer, { type Track } from "@openchart/mixer";
 import type { LoggerService } from "./logger";
 import type { MixerSnapshot } from "./mixer/types";
 
-export class MixerService extends IStatefulService<MixerSnapshot> {
+export class MixerService extends StatefulService<MixerSnapshot> {
   static dependencies = ["logger"];
   readonly #logger: LoggerService;
 
@@ -74,6 +74,11 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
     this.#logger.info(`Track added: ${id}`);
   };
 
+  public addTrackFromUrl = (id: string, url: string): void => {
+    this._snapshot.mixer.addTrack(id, url);
+    this.#logger.info(`Track added: ${id}`);
+  };
+
   public removeTrack = (id: string): void => {
     this.#revokeTrackUrl(id, this.mixer);
     this._snapshot.mixer.removeTrack(id);
@@ -86,7 +91,8 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
     }
   }
 
-  public getTracks = (): string[] => this.mixer.listTracks();
+  public getTracks = () => this.mixer.tracks;
+  public listTracks = (): string[] => this.mixer.listTracks();
 
   /** Playback position in seconds, derived from the audio clock. */
   public get currentTime(): number {
@@ -107,9 +113,9 @@ export class MixerService extends IStatefulService<MixerSnapshot> {
 
   public pause = (): void => this.mixer.pause();
 
-  public solo = (id: string) => this.mixer.solo(id);
+  public toggleSolo = (track: Track) => this.mixer.toggleSolo(track);
 
-  public mute = (id: string) => this.mixer.mute(id);
+  public toggleMute = (track: Track) => this.mixer.toggleMute(track);
 
   public seek = (time: number) => this.mixer.seek(time);
 

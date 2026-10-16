@@ -1,5 +1,5 @@
 import { Difficulty, requiresPianoRoll } from "@openchart/views";
-import { IStatefulService } from "../../platform/services";
+import { StatefulService } from "../../platform/services";
 
 export type ViewportKind = "piano-roll" | "highway";
 
@@ -70,7 +70,7 @@ const defaultViewportSnapshot: ViewportSnapshot = {
   lockCursor: true,
 };
 
-export class ViewportService extends IStatefulService<ViewportSnapshot> {
+export class ViewportService extends StatefulService<ViewportSnapshot> {
   private viewportSessions: ViewportSession[] = [
     createViewportSession(DEFAULT_VIEWPORT_ID),
   ];

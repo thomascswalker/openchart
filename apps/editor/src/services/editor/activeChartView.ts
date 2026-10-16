@@ -1,7 +1,7 @@
 import type { ChartView } from "../../components/views/ChartViews";
-import { IStatefulService } from "../../platform/services";
+import { StatefulService } from "../../platform/services";
 
-export class ActiveChartViewService extends IStatefulService<ChartView | null> {
+export class ActiveChartViewService extends StatefulService<ChartView | null> {
   constructor() {
     super();
     this._snapshot = null;

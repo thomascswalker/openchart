@@ -1,4 +1,4 @@
-import { IStatefulService } from "../platform/services";
+import { StatefulService } from "../platform/services";
 import {
   APPLICATION_SETTINGS_VERSION,
   HIGHWAY_SCROLL_SPEED_RANGE,
@@ -138,7 +138,7 @@ function readSettings(): ApplicationSettings {
   }
 }
 
-export class SettingsService extends IStatefulService<ApplicationSettings> {
+export class SettingsService extends StatefulService<ApplicationSettings> {
   constructor() {
     super();
     this._snapshot = readSettings();

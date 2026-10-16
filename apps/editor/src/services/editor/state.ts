@@ -1,4 +1,4 @@
-import { IStatefulService } from "../../platform/services";
+import { StatefulService } from "../../platform/services";
 
 export interface EditorStateSnapshot {
   error: string | null;
@@ -8,7 +8,7 @@ export interface EditorStateSnapshot {
   aboutVisible: boolean;
 }
 
-export class EditorStateService extends IStatefulService<EditorStateSnapshot> {
+export class EditorStateService extends StatefulService<EditorStateSnapshot> {
   constructor() {
     super();
     this._snapshot = {

@@ -1,0 +1,137 @@
+.ui-track-mixer-track:hover:not(:disabled) {
+  background-color: var(--neutral-80);
+}
+
+.ui-track-mixer-button {
+  font-weight: 800;
+}
+
+.ui-track-mixer-reset-button {
+  color: var(--text-primary);
+}
+
+.ui-track-mixer-volume-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  accent-color: transparent;
+  background: transparent;
+}
+
+.ui-track-mixer-volume-control > .ui-track-mixer-volume-slider {
+  width: 100%;
+}
+
+.ui-track-mixer-volume-control {
+  position: relative;
+  display: flex;
+}
+
+.ui-track-mixer-volume-tooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  z-index: 1;
+  padding: 2px 5px;
+  border: 1px solid var(--neutral-60);
+  border-radius: 2px;
+  background: var(--neutral-95);
+  color: var(--text-primary);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+}
+
+.ui-track-mixer-volume-control:hover .ui-track-mixer-volume-tooltip,
+.ui-track-mixer-volume-control:focus-within .ui-track-mixer-volume-tooltip {
+  opacity: 1;
+}
+
+.ui-track-mixer-volume-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #000;
+}
+
+.ui-track-mixer-volume-slider::-moz-range-track,
+.ui-track-mixer-volume-slider::-moz-range-progress {
+  height: 2px;
+  background: #000;
+}
+
+.ui-track-mixer-volume-slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 16px;
+  margin-top: -7px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #333;
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    #888 0%,
+    #ddd 22%,
+    #777 30%,
+    #eee 40%,
+    #ccc 60%,
+    #777 70%,
+    #ddd 78%,
+    #888 100%
+  );
+}
+
+.ui-track-mixer-volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 14px;
+  border: 1px solid #333;
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    #888 0%,
+    #ddd 22%,
+    #777 30%,
+    #eee 40%,
+    #ccc 60%,
+    #777 70%,
+    #ddd 78%,
+    #888 100%
+  );
+}
+
+.ui-track-mixer-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.ui-track-mixer-solo-button {
+  color: var(--yellow-50);
+}
+
+.ui-track-mixer-solo-button[aria-pressed="true"] {
+  color: var(--text-primary);
+  background-color: var(--yellow-70);
+}
+
+.ui-track-mixer-solo-button[aria-pressed="true"]:hover {
+  background-color: var(--yellow-60);
+}
+
+.ui-track-mixer-solo-button[aria-pressed="true"]:hover:active {
+  background-color: var(--yellow-80);
+}
+
+.ui-track-mixer-mute-button {
+  color: var(--red-60);
+}
+
+.ui-track-mixer-mute-button[aria-pressed="true"] {
+  color: var(--text-primary);
+  background-color: var(--red-70);
+}
+
+.ui-track-mixer-mute-button[aria-pressed="true"]:hover {
+  background-color: var(--red-60);
+}
+
+.ui-track-mixer-mute-button[aria-pressed="true"]:hover:active {
+  background-color: var(--red-80);
+}

@@ -15,7 +15,15 @@ const getSystemStyles: styleFn = compose(space, color, layout, border, size);
 
 type HTMLInputRangeProps = Pick<
   InputHTMLAttributes<HTMLInputElement>,
-  "disabled" | "min" | "max" | "step" | "value" | "onInput" | "onChange"
+  | "className"
+  | "disabled"
+  | "min"
+  | "max"
+  | "step"
+  | "value"
+  | "aria-valuetext"
+  | "onInput"
+  | "onChange"
 >;
 
 export interface SliderProps
@@ -33,6 +41,8 @@ const Slider = ({
   max = 2.0,
   step = 0.1,
   value = 1.0,
+  "aria-valuetext": ariaValueText,
+  className,
   onInput = () => {},
   onChange = () => {},
   ...systemProps
@@ -44,9 +54,10 @@ const Slider = ({
     max={max}
     step={step}
     value={value}
+    aria-valuetext={ariaValueText}
     onInput={onInput}
     onChange={onChange}
-    className={classNames(styles.slider)}
+    className={classNames(styles.slider, className)}
     style={getSystemStyles(systemProps)}
   />
 );

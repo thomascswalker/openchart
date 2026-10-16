@@ -18,6 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      "@typescript-eslint/no-namespace": "error",
+    },
   },
   {
     files: ["e2e/**/*.ts", "playwright.config.ts"],

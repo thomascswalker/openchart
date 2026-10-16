@@ -111,8 +111,8 @@ const Button = ({
   /* Joined class name */
   const buttonClassName: string = classNames(
     styles["ui-button"],
-    className,
     isCheckable && isChecked && styles["ui-button-checked"],
+    className,
     icon &&
       (children
         ? styles["ui-button-icon-label"]

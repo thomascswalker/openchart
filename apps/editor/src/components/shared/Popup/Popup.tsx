@@ -13,12 +13,14 @@ import { createPortal } from "react-dom";
 import { Button } from "../Button";
 import styles from "./popup.module.css";
 import { Heading } from "../Text";
+import { HorizontalSeparator } from "../Separator";
 
 interface PopupProps {
   trigger: ReactNode;
   title: string;
   width?: CSSProperties["width"];
   onOpen?: () => void;
+  onClose?: () => void;
   children: ReactNode;
 }
 
@@ -48,7 +50,14 @@ const FOCUSABLE_SELECTOR =
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), Math.max(min, max));
 
-const Popup = ({ trigger, title, children, width, onOpen }: PopupProps) => {
+const Popup = ({
+  trigger,
+  title,
+  children,
+  width,
+  onOpen,
+  onClose,
+}: PopupProps) => {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<PopupPosition | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -145,6 +154,7 @@ const Popup = ({ trigger, title, children, width, onOpen }: PopupProps) => {
         !popupRef.current?.contains(target)
       ) {
         setOpen(false);
+        onClose?.();
       }
     };
 
@@ -152,6 +162,7 @@ const Popup = ({ trigger, title, children, width, onOpen }: PopupProps) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       setOpen(false);
+      onClose?.();
       getTriggerElement()?.focus();
     };
 
@@ -215,7 +226,16 @@ const Popup = ({ trigger, title, children, width, onOpen }: PopupProps) => {
             role="dialog"
             style={popupStyle}
           >
-            <Heading level={5}>{title}</Heading>
+            <div
+              style={{
+                padding: "6px",
+                paddingLeft: "12px",
+                backgroundColor: "var(--primary)",
+              }}
+            >
+              <Heading level={5}>{title}</Heading>
+            </div>
+            <HorizontalSeparator thickness={1} width="100%" maxWidth="100vw" />
             {children}
           </div>,
           document.body,

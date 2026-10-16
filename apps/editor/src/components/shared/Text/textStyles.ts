@@ -8,6 +8,7 @@ import {
   flexWrap,
   fontSize,
   size,
+  verticalAlign,
 } from "styled-system";
 
 const getTextSystemStyles: styleFn = compose(
@@ -18,6 +19,7 @@ const getTextSystemStyles: styleFn = compose(
   flexWrap,
   fontSize,
   size,
+  verticalAlign,
 );
 
 export { getTextSystemStyles };

@@ -3,7 +3,7 @@ import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
 import type { FileSystemService } from "./filesystem";
 import type { SaveFile } from "./filesystem/types";
 import type { LoggerService } from "./logger";
-import { IStatefulService } from "../platform/services";
+import { StatefulService } from "../platform/services";
 import {
   makeDefaultMetadata,
   metadataSchema,
@@ -34,7 +34,7 @@ export interface DocumentFile {
   mimeType: string;
 }
 
-export class DocumentService extends IStatefulService<DocumentSnapshot> {
+export class DocumentService extends StatefulService<DocumentSnapshot> {
   static dependencies = ["logger", "filesystem"];
 
   #logger: LoggerService;

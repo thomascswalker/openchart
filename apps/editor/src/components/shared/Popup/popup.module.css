@@ -4,12 +4,11 @@
   box-sizing: border-box;
   min-width: min(260px, calc(100vw - 16px));
   max-width: calc(100vw - 16px);
-  padding: var(--space-large);
+  padding: none;
   overflow: auto;
   border: var(--border-primary);
   border-radius: var(--radius-small);
   background: var(--neutral-85);
-  box-shadow: 0 8px 20px rgb(0 0 0 / 40%);
   color: var(--text-primary);
   text-align: left;
   gap: var(--size-med);

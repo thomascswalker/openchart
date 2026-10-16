@@ -1,6 +1,6 @@
-import { IService } from "../platform/services";
+import { Service } from "../platform/services";
 
-export class LoggerService extends IService {
+export class LoggerService extends Service {
   static dependencies = [];
 
   public readonly reset = (): void => this.notify();

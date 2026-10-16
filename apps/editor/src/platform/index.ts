@@ -1,7 +1,11 @@
 import { ActionRegistry } from "./actions";
 import { ContextStore } from "./context";
-import { ServiceRegistry } from "./services";
-import { createContext, useContext } from "react";
+import {
+  ServiceRegistry,
+  type IService,
+  type IStatefulService,
+} from "./services";
+import { createContext, useContext, useSyncExternalStore } from "react";
 
 const serviceModules = import.meta.glob<Record<string, unknown>>(
   ["../services/**/*.ts", "!../services/**/__tests__/**"],
@@ -25,9 +29,19 @@ const Platform = {
 const PlatformContext = createContext(Platform);
 const PlatformProvider = PlatformContext.Provider;
 
-function useService<T>(serviceId: string): T {
+function useService<T extends IService>(serviceId: string): T {
   const platform = useContext(PlatformContext);
   return platform.services.get(serviceId) as T;
+}
+
+function useSnapshot<T>(serviceId: string): T {
+  const platform = useContext(PlatformContext);
+  const service: IStatefulService = platform.services.get(serviceId);
+  return useSyncExternalStore(
+    service.subscribe,
+    service.getSnapshot,
+    service.getSnapshot,
+  ) as T;
 }
 
 function usePlatform() {
@@ -35,4 +49,10 @@ function usePlatform() {
 }
 
 export default Platform;
-export { PlatformContext, PlatformProvider, useService, usePlatform };
+export {
+  PlatformContext,
+  PlatformProvider,
+  useService,
+  usePlatform,
+  useSnapshot,
+};

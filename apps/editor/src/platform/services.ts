@@ -3,7 +3,7 @@ import { moduleId, type ModuleCollection } from "./modules";
 export type Listener = () => void;
 export type Subscription = (listener: () => void) => () => void;
 
-export abstract class IService {
+export abstract class Service {
   protected readonly listeners = new Set<Listener>();
 
   public abstract readonly reset: () => void;
@@ -20,7 +20,9 @@ export abstract class IService {
   }
 }
 
-export abstract class IStatefulService<T> extends IService {
+export type IService = InstanceType<typeof Service>;
+
+export abstract class StatefulService<T> extends Service {
   protected _snapshot!: T;
 
   public get snapshot(): T {
@@ -30,11 +32,13 @@ export abstract class IStatefulService<T> extends IService {
   public readonly getSnapshot = (): T => this._snapshot;
 }
 
+export type IStatefulService = InstanceType<typeof StatefulService>;
+
 export interface ServicesAccessor {
   get<T>(serviceId: string): T;
 }
 
-type ServiceConstructor = new (...dependencies: unknown[]) => IService;
+type ServiceConstructor = new (...dependencies: unknown[]) => Service;
 
 export class ServiceRegistry {
   private ctors = new Map<string, ServiceConstructor>();
@@ -50,7 +54,7 @@ export class ServiceRegistry {
       const serviceClasses = Object.values(modules[filepath]).filter(
         (candidate): candidate is ServiceConstructor =>
           typeof candidate === "function" &&
-          candidate.prototype instanceof IService,
+          candidate.prototype instanceof Service,
       );
       if (!serviceClasses.length) {
         continue;
@@ -77,7 +81,7 @@ export class ServiceRegistry {
     return this.ctors.has(id);
   }
 
-  public get<T>(id: string): T {
+  public get<T extends IService>(id: string): T {
     if (this.instances.has(id)) {
       return this.instances.get(id) as T;
     }
@@ -100,7 +104,7 @@ export class ServiceRegistry {
   public createAccessor(): ServicesAccessor {
     return {
       get: <T>(serviceId: string): T => {
-        const service = this.get<T>(serviceId);
+        const service = this.get(serviceId);
         if (!service) {
           throw new Error(`Service not found: ${serviceId}`);
         }
