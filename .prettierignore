@@ -6,3 +6,4 @@ apps/editor/playwright-report
 apps/editor/test-results
 package-lock.json
 apps/desktop/src-tauri/gen/**
+**/*.wxs
