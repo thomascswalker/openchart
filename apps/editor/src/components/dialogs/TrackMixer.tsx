@@ -9,6 +9,7 @@ import { Slider, type SliderProps } from "../shared/Slider";
 import styles from "./TrackMixer.module.css";
 import classNames from "classnames";
 import type { ReactNode } from "react";
+import { startCase } from "es-toolkit";
 
 interface VolumeSliderProps extends Omit<
   SliderProps,
@@ -106,6 +107,7 @@ const TrackButton = ({
       aria-label={ariaLabel}
       onClick={onClick}
       disabled={disabled}
+      flat
       className={classNames(
         styles["ui-track-mixer-button"],
         styles[`ui-track-mixer-${type}-button`],
@@ -139,14 +141,17 @@ const Track = ({
 }: TrackProps) => {
   const enabled =
     !masterMuted && (track.soloed || (!hasSoloedTrack && !track.muted));
-  const backgroundColor = enabled ? "var(--neutral-85)" : "var(--neutral-90)";
 
   return (
-    <Section flexDirection="row" minHeight="64px" padding={0}>
+    <Section
+      flexDirection="row"
+      minHeight="64px"
+      padding={0}
+      className={styles["ui-track-mixer-track"]}
+    >
       <Section
         maxWidth="var(--size-med)"
         padding={0}
-        backgroundColor={backgroundColor}
         flexDirection="row"
         alignItems="center"
       >
@@ -159,10 +164,9 @@ const Track = ({
         paddingLeft={"8px"}
         alignItems="center"
         flexDirection="row"
-        backgroundColor={backgroundColor}
       >
         <Text textAlign="left" verticalAlign="middle" disabled={!enabled}>
-          {name}
+          {startCase(name || "")}
         </Text>
         <Section minWidth="200px" flexDirection="row">
           <VolumeSlider
@@ -205,7 +209,6 @@ const TrackMixer = () => {
   const hasSoloedTrack = Object.values(mixer.tracks).some(
     (track) => track.soloed,
   );
-  const padding = "8px"; // --space-med
 
   const handleMuteClick = (track: MixerTrack) => {
     mixer.toggleMute(track);
@@ -220,7 +223,7 @@ const TrackMixer = () => {
   };
 
   return (
-    <Section padding={padding}>
+    <Section padding={0} gap="0">
       <Section
         flexDirection="row"
         minHeight="64px"
@@ -228,9 +231,8 @@ const TrackMixer = () => {
         backgroundColor="var(--neutral-85)"
       >
         <Section
-          padding={0}
           paddingLeft="16px"
-          paddingRight="8px"
+          paddingRight="16px"
           alignItems="center"
           flexDirection="row"
         >
@@ -261,12 +263,18 @@ const TrackMixer = () => {
       </Section>
       <HorizontalSeparator
         thickness={1}
-        width={`calc(100% + (2 * ${padding}))`}
+        width={`calc(100%)`}
         maxWidth="100vw"
+        margin={0}
+        padding={0}
       />
-      {Object.entries(mixer.tracks).map(([name, track], index) => (
-        <div key={name}>
+      <Section paddingX="8px" paddingY="none" gap="0">
+        {Object.keys(mixer.tracks).length === 0 && (
+          <Text textAlign="center">No audio tracks loaded</Text>
+        )}
+        {Object.entries(mixer.tracks).map(([name, track], index) => (
           <Track
+            key={name}
             name={name}
             track={track}
             index={index}
@@ -276,8 +284,8 @@ const TrackMixer = () => {
             onSoloClick={handleSoloClick}
             onVolumeChange={handleVolumeChange}
           />
-        </div>
-      ))}
+        ))}
+      </Section>
     </Section>
   );
 };

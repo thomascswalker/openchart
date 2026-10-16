@@ -42,13 +42,9 @@ import {
 } from "./views/pianoRoll";
 import { TrackList } from "./Tracklist";
 import Toolbar from "./Toolbar";
-import { Button, Checkbox, CloseButton } from "./shared/Button";
-import { Popup } from "./shared/Popup";
-import { Slider } from "./shared/Slider";
-import { Text } from "./shared/Text";
+import { Button, CloseButton } from "./shared/Button";
 import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
-import { HIGHWAY_SCROLL_SPEED_RANGE } from "../services/settings/schema";
 import {
   BassIcon,
   DrumsIcon,
@@ -59,8 +55,9 @@ import {
   PianoIcon,
   SplitIcon,
   VocalsIcon,
-  SettingsIcon,
 } from "./shared/Icon/Icon";
+import { ViewportSettings } from "./ViewportSettings";
+import { MixerSettings } from "./MixerSettings";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
@@ -163,7 +160,7 @@ function ViewportPanel({
   onChartViewChange: (sessionId: string, chartView: ChartView | null) => void;
 }) {
   const { midi: midiData } = useDocumentSnapshot();
-  const { settings, applySetting } = useApplicationSettings();
+  const { settings } = useApplicationSettings();
   const {
     viewportSessions,
     maxViewportCount,
@@ -505,56 +502,9 @@ function ViewportPanel({
           style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
         >
           {session.view === "highway" && (
-            <div className="viewport-panel__highway-settings">
-              <Popup
-                trigger={
-                  <Button
-                    icon={<SettingsIcon width={20} height={20} />}
-                    border="none"
-                    borderRadius={32}
-                    width={24}
-                    height={24}
-                    minWidth={0}
-                    minHeight={0}
-                    maxWidth={24}
-                    maxHeight={24}
-                    padding={0}
-                  />
-                }
-                title="Viewport Settings"
-                width={280}
-              >
-                <div
-                  style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}
-                >
-                  <Text>Antialiasing</Text>
-                  <Checkbox
-                    label=""
-                    checked={settings.graphics.antialiasing}
-                    onChange={(event) =>
-                      applySetting(
-                        "graphics.antialiasing",
-                        Boolean(event.target.checked),
-                      )
-                    }
-                  />
-                  <Text>Scroll Speed</Text>
-                  <Slider
-                    aria-label="Scroll speed"
-                    value={String(settings.graphics.scrollSpeed)}
-                    onInput={(event) =>
-                      applySetting(
-                        "graphics.scrollSpeed",
-                        Number(event.currentTarget.value),
-                      )
-                    }
-                    step={HIGHWAY_SCROLL_SPEED_RANGE.step}
-                    min={HIGHWAY_SCROLL_SPEED_RANGE.min}
-                    max={HIGHWAY_SCROLL_SPEED_RANGE.max}
-                    width="100%"
-                  />
-                </div>
-              </Popup>
+            <div>
+              <ViewportSettings />
+              <MixerSettings />
             </div>
           )}
           <ChartViewHost

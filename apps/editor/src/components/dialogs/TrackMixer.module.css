@@ -1,5 +1,8 @@
+.ui-track-mixer-track:hover:not(:disabled) {
+  background-color: var(--neutral-80);
+}
+
 .ui-track-mixer-button {
-  background-color: var(--primary);
   font-weight: 800;
 }
 

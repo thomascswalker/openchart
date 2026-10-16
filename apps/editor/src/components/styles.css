@@ -192,6 +192,13 @@ button:disabled {
   left: 20px;
 }
 
+.viewport-panel__mixer-settings {
+  position: absolute;
+  z-index: 2;
+  top: 56px;
+  left: 20px;
+}
+
 .viewport-panel__settings-trigger {
   width: 28px;
   min-width: 28px;
