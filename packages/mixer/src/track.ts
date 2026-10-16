@@ -9,14 +9,18 @@ import type {
 type TrackId = string;
 
 class Track implements Disposable {
+  #id: string;
   #audio: AudioSample;
   #filename: string;
   #muted: boolean = false;
+  #soloed: boolean = false;
+  #soloSuppressed: boolean = false;
   #volume: number;
   #volumeScale: number = 1;
   #eventListeners = new Map<AudioEvent, AudioEventCallback>();
 
-  constructor(filename: string, engine?: AudioEngine) {
+  constructor(id: string, filename: string, engine?: AudioEngine) {
+    this.#id = id;
     this.#filename = filename;
     this.#audio = AudioSample.load(filename, {
       engine,
@@ -38,12 +42,16 @@ class Track implements Disposable {
     this.#audio.dispose();
   }
 
+  public get id(): string {
+    return this.#id;
+  }
+
   public get filename(): string {
     return this.#filename;
   }
 
   public get volume(): number {
-    return this.#muted ? 0 : this.#volume * this.#volumeScale;
+    return this.#isSilent ? 0 : this.#volume * this.#volumeScale;
   }
 
   public set volume(value: number) {
@@ -64,8 +72,18 @@ class Track implements Disposable {
     this.#updateVolume();
   }
 
+  public get soloed(): boolean {
+    return this.#soloed;
+  }
+
   public toggleMute() {
     this.muted = !this.muted;
+  }
+
+  public setSoloState(soloed: boolean, soloSuppressed: boolean): void {
+    this.#soloed = soloed;
+    this.#soloSuppressed = soloSuppressed;
+    this.#updateVolume();
   }
 
   /** `when` is an engine context time; share it across tracks to align them. */
@@ -131,7 +149,11 @@ class Track implements Disposable {
   }
 
   #updateVolume() {
-    this.#audio.volume = this.#muted ? 0 : this.#volume * this.#volumeScale;
+    this.#audio.volume = this.#isSilent ? 0 : this.#volume * this.#volumeScale;
+  }
+
+  get #isSilent(): boolean {
+    return this.#soloSuppressed || (this.#muted && !this.#soloed);
   }
 }
 export default Track;

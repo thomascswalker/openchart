@@ -1,0 +1,42 @@
+.ui-track-mixer-button {
+  background-color: var(--primary);
+  font-weight: 800;
+}
+
+.ui-track-mixer-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.ui-track-mixer-solo-button {
+  color: var(--yellow-50);
+}
+
+.ui-track-mixer-solo-button[aria-pressed="true"] {
+  color: var(--text-primary);
+  background-color: var(--yellow-70);
+}
+
+.ui-track-mixer-solo-button[aria-pressed="true"]:hover {
+  background-color: var(--yellow-60);
+}
+
+.ui-track-mixer-solo-button[aria-pressed="true"]:hover:active {
+  background-color: var(--yellow-80);
+}
+
+.ui-track-mixer-mute-button {
+  color: var(--red-60);
+}
+
+.ui-track-mixer-mute-button[aria-pressed="true"] {
+  color: var(--text-primary);
+  background-color: var(--red-70);
+}
+
+.ui-track-mixer-mute-button[aria-pressed="true"]:hover {
+  background-color: var(--red-60);
+}
+
+.ui-track-mixer-mute-button[aria-pressed="true"]:hover:active {
+  background-color: var(--red-80);
+}

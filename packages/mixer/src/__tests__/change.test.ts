@@ -9,8 +9,8 @@ test("Mixer reports changes from operations", () => {
 
   mixer.addTrack("track1", "sample.wav");
   mixer.masterVolume = 0.5;
-  mixer.mute("track1");
-  mixer.solo("track1");
+  mixer.toggleMute(mixer.tracks["track1"]);
+  mixer.toggleSolo(mixer.tracks["track1"]);
   mixer.seek(1);
   mixer.seekStart();
   mixer.seekEnd();

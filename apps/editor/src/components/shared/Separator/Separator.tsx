@@ -55,7 +55,7 @@ const Separator = ({
   );
 
   const separatorStyle: CSSProperties = {
-    backgroundColor: "var(--neutral-60)",
+    backgroundColor: "var(--border-color-primary)",
     width,
     height,
     minWidth: width,

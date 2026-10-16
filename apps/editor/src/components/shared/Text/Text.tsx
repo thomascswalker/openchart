@@ -7,6 +7,7 @@ import type {
   FlexWrapProps,
   FontSizeProps,
   SizeProps,
+  VerticalAlignProps,
 } from "styled-system";
 import styles from "./text.module.css";
 import { getTextSystemStyles } from "./textStyles";
@@ -14,6 +15,7 @@ import { getTextSystemStyles } from "./textStyles";
 interface TextProps
   extends
     TextAlignProps,
+    VerticalAlignProps,
     FontSizeProps,
     FontWeightProps,
     TextColorProps,

@@ -14,18 +14,20 @@ const Heading = ({
   className,
   children,
   level = 1,
+  disabled = false,
   ...props
 }: HeadingProps) => {
   const safeLevel = Math.min(Math.max(level, 1), 6);
   const style = getTextSystemStyles(props);
   const headingClassName = classNames(
     styles["ui-heading"],
+    disabled ? styles["ui-heading-disabled"] : null,
     styles[`ui-h${safeLevel}`],
     className,
   );
   const HeadingTag = `h${safeLevel}` as keyof JSX.IntrinsicElements;
   return (
-    <HeadingTag className={headingClassName} style={style}>
+    <HeadingTag disabled={disabled} className={headingClassName} style={style}>
       {children}
     </HeadingTag>
   );

@@ -113,9 +113,9 @@ export class MixerService extends StatefulService<MixerSnapshot> {
 
   public pause = (): void => this.mixer.pause();
 
-  public solo = (id: string) => this.mixer.solo(id);
+  public toggleSolo = (track: Mixer.Track) => this.mixer.toggleSolo(track);
 
-  public mute = (id: string) => this.mixer.mute(id);
+  public toggleMute = (track: Mixer.Track) => this.mixer.toggleMute(track);
 
   public seek = (time: number) => this.mixer.seek(time);
 

@@ -43,6 +43,15 @@
   --green-70: hsl(150, 90%, 30%);
   --green-80: hsl(150, 90%, 20%);
   --green-90: hsl(150, 90%, 10%);
+  --yellow-10: hsl(55, 88%, 90%);
+  --yellow-20: hsl(55, 90%, 80%);
+  --yellow-30: hsl(55, 90%, 70%);
+  --yellow-40: hsl(55, 90%, 60%);
+  --yellow-50: hsl(55, 90%, 50%);
+  --yellow-60: hsl(55, 90%, 40%);
+  --yellow-70: hsl(55, 90%, 30%);
+  --yellow-80: hsl(55, 90%, 20%);
+  --yellow-90: hsl(55, 90%, 10%);
 
   --primary: var(--neutral-80);
   --primary-hover: var(--neutral-70);
@@ -72,7 +81,8 @@
   --radius-none: 0px;
 
   /* Border */
-  --border-primary: 1px solid var(--neutral-60);
+  --border-color-primary: var(--neutral-60);
+  --border-primary: 1px solid var(--border-color-primary);
 
   /* Text */
   --text-primary: var(--neutral-10);

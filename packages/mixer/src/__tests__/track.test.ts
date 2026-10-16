@@ -3,19 +3,20 @@ import Track from "../track.js";
 import { audioInstances } from "./audioMock.js";
 
 test("Track can instantiate", () => {
-  const track = new Track("sample.wav");
+  const track = new Track("track1", "sample.wav");
   expect(track).toBeDefined();
 });
 
 test("Track loads file", () => {
   const filename = "sample.wav";
-  const track = new Track(filename);
+  const track = new Track("track1", filename);
   expect(track.filename).toBe(filename);
+  expect(track.id).toBe("track1");
 });
 
 test("Track mutes and unmutes, preserving volume", () => {
   const filename = "sample.wav";
-  const track = new Track(filename);
+  const track = new Track("track1", filename);
   const initialVolume = track.volume;
   track.muted = true;
   expect(track.muted).toBe(true);
@@ -26,7 +27,7 @@ test("Track mutes and unmutes, preserving volume", () => {
 });
 
 test("Track volume scaling is preserved while muted", () => {
-  const track = new Track("sample.wav");
+  const track = new Track("track1", "sample.wav");
   track.volumeScale = 0.5;
   track.muted = true;
   expect(track.volume).toBe(0);
@@ -39,7 +40,7 @@ test("Track volume scaling is preserved while muted", () => {
 });
 
 test("Track forwards audio callbacks", () => {
-  const track = new Track("sample.wav");
+  const track = new Track("track1", "sample.wav");
   const audio = audioInstances.at(-1)!;
   const callback = vi.fn();
 
