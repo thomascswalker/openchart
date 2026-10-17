@@ -1,6 +1,6 @@
 {
   "name": "openchart",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "",
   "main": "index.ts",
   "private": true,
@@ -13,7 +13,6 @@
     "desktop:build": "npm run build --workspace=@openchart/desktop",
     "dev": "npm run dev:web",
     "dev:web": "turbo run dev --filter=@openchart/editor",
-    "dev:geometry": "npm run dev:geometry --workspace=@openchart/editor",
     "dev:desktop": "npm run dev --workspace=@openchart/desktop",
     "storybook": "npm run storybook --workspace=@openchart/editor",
     "build-storybook": "npm run build-storybook --workspace=@openchart/editor",
