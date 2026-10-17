@@ -1,6 +1,29 @@
-.ui-tab {
+.ui-tab-container {
   background-color: var(--primary-dark);
-  padding: var(--size-med);
-  gap: var(--size-med);
+  gap: none;
   display: flex;
+  flex-direction: column;
+  padding: none;
+}
+
+.ui-tab-list {
+  background-color: var(--primary-dark);
+  padding: none;
+  gap: none;
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid var(--border-color-primary);
+}
+
+.ui-tab-list-button-active {
+  background-color: var(--secondary);
+}
+.ui-tab-list-button-inactive {
+  background-color: var(--primary);
+}
+.ui-tab-body {
+  background-color: var(--primary-dark);
+  padding: var(--size-small);
+  display: flex;
+  flex-direction: column;
 }

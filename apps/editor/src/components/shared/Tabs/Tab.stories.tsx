@@ -1,21 +1,34 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import Tab from "./Tab";
+import Tabs from "./Tab";
 import { Button } from "../Button";
 
 const meta = {
-  title: "Shared/Tab",
-  component: Tab,
-} satisfies Meta<typeof Tab>;
+  title: "Shared/Tabs",
+  component: Tabs,
+} satisfies Meta<typeof Tabs>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
+    options: ["Tab1", "Tab2", "Tab3"],
     children: [
-      <Button>Button 1</Button>,
-      <Button>Button 2</Button>,
-      <Button>Button 3</Button>,
+      <>
+        <Button>Test 1</Button>
+        <Button>Test 2</Button>
+        <Button>Test 3</Button>
+      </>,
+      <>
+        <Button>Test 4</Button>
+        <Button>Test 5</Button>
+        <Button>Test 6</Button>
+      </>,
+      <>
+        <Button>Test 7</Button>
+        <Button>Test 8</Button>
+        <Button>Test 9</Button>
+      </>,
     ],
   },
 };
