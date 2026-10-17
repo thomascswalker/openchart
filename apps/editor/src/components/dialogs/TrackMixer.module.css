@@ -4,6 +4,7 @@
 
 .ui-track-mixer-button {
   font-weight: 800;
+  border: var(--border-primary);
 }
 
 .ui-track-mixer-reset-button {

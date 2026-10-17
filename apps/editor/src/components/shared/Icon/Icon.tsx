@@ -137,5 +137,7 @@ export const {
   LockIcon,
   UnlockIcon,
   DirectoryIcon,
+  MixerIcon,
+  ResetIcon,
 } = icons;
 export default Icon;

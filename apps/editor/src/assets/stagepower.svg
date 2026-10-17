@@ -1,17 +1,1 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
-    <g transform="matrix(1,0,0,1,-112,-26)">
-        <g id="stagepower" transform="matrix(0.016,0,0,0.016,-360.531908,26.377021)">
-            <rect x="29555" y="0" width="1000" height="1000" style="fill:none;"/>
-            <g>
-                <g transform="matrix(1.185379,0,0,1.109953,21947.57439,-1376.162913)">
-                    <path d="M6839.524,1326.253L6971.812,1546.664L7222.315,1604.367L7053.571,1798.291L7076.102,2054.365L6839.524,1953.805L6602.946,2054.365L6625.477,1798.291L6456.732,1604.367L6707.236,1546.664L6839.524,1326.253Z" style="fill:none;stroke:rgb(233,233,233);stroke-width:54.43px;"/>
-                </g>
-                <g transform="matrix(0.374744,0,0,0.374744,29876.060037,364.749691)">
-                    <circle cx="477.499" cy="487.937" r="399.801" style="fill:rgb(233,233,233);stroke:rgb(233,233,233);stroke-width:166.78px;"/>
-                </g>
-            </g>
-        </g>
-    </g>
-</svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg width="100%" height="100%" viewBox="0 0 71 71" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;"><rect id="stagepower" x="1.45" y="1.571" width="66.667" height="66.667" style="fill:none;"/><g><path d="M34.784,7.965l10.454,16.31l19.796,4.27l-13.335,14.35l1.781,18.949l-18.696,-7.441l-18.696,7.441l1.781,-18.949l-13.335,-14.35l19.796,-4.27l10.454,-16.31Z" style="fill:none;stroke:#e9e9e9;stroke-width:4.17px;"/><circle cx="34.784" cy="38.078" r="9.988" style="fill:#e9e9e9;stroke:#e9e9e9;stroke-width:4.17px;"/></g></svg>

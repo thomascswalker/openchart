@@ -11,7 +11,7 @@ export const ViewportSettings = () => {
 
   return (
     <PopupButton
-      icon={<SettingsIcon width={20} height={20} />}
+      icon={<SettingsIcon />}
       className="viewport-panel__highway-settings"
       title="Viewport Settings"
       width={280}

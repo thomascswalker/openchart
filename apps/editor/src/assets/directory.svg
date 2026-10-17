@@ -1,15 +1,1 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
-    <g transform="matrix(1,0,0,1,-56,-142)">
-        <g id="directory" transform="matrix(1,0,0,1,18.76869,-66)">
-            <rect x="37.537" y="208.377" width="16" height="16" style="fill:none;"/>
-            <g transform="matrix(1.11609,0,0,0.823665,16.274972,93.222436)">
-                <path d="M20.385,145.745L30.239,145.745C31.22,145.745 32.017,147.048 32.017,148.653L32.017,154.469C32.017,156.074 31.22,157.377 30.239,157.377L22.162,157.377C21.181,157.377 20.385,156.074 20.385,154.469L20.385,146.409" style="fill:none;stroke:rgb(233,233,233);stroke-width:1.02px;"/>
-            </g>
-            <g transform="matrix(0.603778,0,0,0.400746,26.718256,150.309943)">
-                <path d="M20.385,157.1L20.385,151.615C20.385,150.01 21.072,148.707 21.919,148.707L30.482,148.707C31.329,148.707 32.017,150.01 32.017,151.615L32.017,157.1" style="fill:none;stroke:rgb(233,233,233);stroke-width:1.95px;"/>
-            </g>
-        </g>
-    </g>
-</svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg width="100%" height="100%" viewBox="0 0 71 71" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;"><rect id="directory" x="1.275" y="1.571" width="66.667" height="66.667" style="fill:none;"/><path d="M7.478,21.947l45.827,0c4.563,0 8.267,4.472 8.267,9.98l0,19.961c0,5.508 -3.704,9.98 -8.267,9.98l-37.56,0c-4.563,0 -8.267,-4.472 -8.267,-9.98l0,-27.66" style="fill:none;stroke:#e9e9e9;stroke-width:4.17px;"/><path d="M7.478,21.947l0,-9.159c0,-2.68 1.73,-4.856 3.861,-4.856l21.542,0c2.131,0 3.861,2.176 3.861,4.856l0,9.159" style="fill:none;stroke:#e9e9e9;stroke-width:4.17px;"/></svg>

@@ -4,12 +4,13 @@ import { Text, H6 } from "../shared/Text";
 import type { Track as MixerTrack } from "@openchart/mixer";
 import { HorizontalSeparator } from "../shared/Separator";
 import type { MixerSnapshot } from "../../services/mixer/types";
-import { Button } from "../shared/Button";
+import { Button, type ButtonProps } from "../shared/Button";
 import { Slider, type SliderProps } from "../shared/Slider";
 import styles from "./TrackMixer.module.css";
 import classNames from "classnames";
 import type { ReactNode } from "react";
 import { startCase } from "es-toolkit";
+import { ResetIcon } from "../shared/Icon/Icon";
 
 interface VolumeSliderProps extends Omit<
   SliderProps,
@@ -80,17 +81,18 @@ const VolumeSlider = ({ value, onChange, ...props }: VolumeSliderProps) => {
   );
 };
 
-interface TrackButtonProps {
+interface TrackButtonProps extends Omit<ButtonProps, "type"> {
   type: "solo" | "mute" | "reset";
   checked?: boolean;
   onClick: () => void;
   disabled?: boolean;
   ariaLabel?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 const TrackButton = ({
   type,
+  icon,
   checked,
   onClick,
   disabled = false,
@@ -99,6 +101,7 @@ const TrackButton = ({
 }: TrackButtonProps) => {
   return (
     <Button
+      icon={icon}
       width={24}
       height={24}
       maxWidth={24}
@@ -176,12 +179,11 @@ const Track = ({
           />
           <TrackButton
             type="reset"
+            icon={<ResetIcon />}
             ariaLabel="Reset track volume"
             disabled={masterMuted}
             onClick={() => onVolumeChange?.(track, 1)}
-          >
-            R
-          </TrackButton>
+          />
           <TrackButton
             type="solo"
             checked={track.soloed}
@@ -247,11 +249,10 @@ const TrackMixer = () => {
           </Section>
           <TrackButton
             type="reset"
+            icon={<ResetIcon />}
             ariaLabel="Reset master volume"
             onClick={() => setMasterVolume(mixer, 1)}
-          >
-            R
-          </TrackButton>
+          />
           <TrackButton
             type="mute"
             checked={mixer.masterMuted}

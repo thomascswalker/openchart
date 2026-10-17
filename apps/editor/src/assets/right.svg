@@ -1,12 +1,1 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 17 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
-    <g transform="matrix(1,0,0,1,-93,-124)">
-        <g id="right" transform="matrix(1,0,0,1,-47.23131,0)">
-            <rect x="141.075" y="124" width="16" height="16" style="fill:none;"/>
-            <g transform="matrix(0,-0.928444,0.568678,0,74.009279,226.55597)">
-                <path d="M94.843,125L101.843,139L108.843,125" style="fill:none;stroke:rgb(233,233,233);stroke-width:1.3px;"/>
-            </g>
-        </g>
-    </g>
-</svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg width="100%" height="100%" viewBox="0 0 71 67" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;"><rect id="right" x="3.514" y="0" width="66.667" height="66.667" style="fill:none;"/><path d="M20.261,60.413l33.173,-27.08l-33.173,-27.08" style="fill:none;stroke:#e9e9e9;stroke-width:4.17px;"/></svg>
