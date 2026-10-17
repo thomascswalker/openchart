@@ -6,7 +6,6 @@
   "homepage": "https://thomascswalker.github.io/openchart",
   "scripts": {
     "dev": "vite",
-    "dev:geometry": "vite --open /geometry.html",
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "check-types": "tsc -b",
