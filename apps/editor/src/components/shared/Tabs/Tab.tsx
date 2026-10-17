@@ -11,6 +11,8 @@ import classNames from "classnames";
 import styles from "./Tab.module.css";
 import { Button } from "../Button";
 
+type Orientation = "horizontal" | "vertical";
+type Alignment = "top" | "right" | "bottom" | "left";
 type Styles = FlexProps & ColorProps & BorderProps & LayoutProps;
 const getSystemStyle: styleFn = compose(flex, color, border, layout);
 
@@ -24,20 +26,31 @@ const TabBody = ({ children }: TabBodyProps) => {
 
 interface TabListProps extends Styles {
   options?: string[];
+  orientation?: Orientation;
+  alignment?: Alignment;
   activeIndex: number;
   onClick?: (index: number) => void;
 }
 
-const TabList = ({ options, activeIndex, onClick }: TabListProps) => {
-  const tabListClassName = classNames(styles["ui-tab-list"]);
+const TabList = ({
+  options,
+  orientation = "horizontal",
+  alignment = "top",
+  activeIndex,
+  onClick,
+}: TabListProps) => {
+  const tabListClassName = classNames(
+    styles["ui-tab-list"],
+    styles[`ui-tab-list-${orientation}`],
+    styles[`ui-tab-list-${alignment}`],
+  );
   return (
     <div className={tabListClassName}>
       {options?.map((o: string, index) => (
         <Button
+          key={index}
           onClick={() => onClick?.(index)}
           checked={index === activeIndex}
-          borderBottomLeftRadius={0}
-          borderBottomRightRadius={0}
         >
           {o}
         </Button>
@@ -48,20 +61,21 @@ const TabList = ({ options, activeIndex, onClick }: TabListProps) => {
 
 interface TabsProps extends Styles {
   options?: string[];
-  children?: ReactNode[];
+  alignment?: Alignment;
   onTabChange?: (index: number) => void;
+  children?: ReactNode[];
 }
 
 const TabContainer = ({
-  onTabChange,
   options = [],
+  alignment = "top",
+  onTabChange,
   children = [],
   ...props
 }: TabsProps) => {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const tabStyle = getSystemStyle(props);
-  const tabClassName = classNames(styles["ui-tab-container"]);
 
   const handleTabClick = (index: number) => {
     setActiveTabIndex(index);
@@ -78,10 +92,19 @@ const TabContainer = ({
     }
   }, [children]);
 
+  const orientation: Orientation =
+    alignment === "top" || alignment === "bottom" ? "horizontal" : "vertical";
+  const tabClassName = classNames(
+    styles["ui-tab-container"],
+    styles[`ui-tab-container-${alignment}`],
+  );
+
   return (
     <div className={tabClassName} style={tabStyle}>
       <TabList
         options={options}
+        orientation={orientation}
+        alignment={alignment}
         activeIndex={activeTabIndex}
         onClick={handleTabClick}
       />

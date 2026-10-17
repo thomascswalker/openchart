@@ -2,8 +2,23 @@
   background-color: var(--primary-dark);
   gap: none;
   display: flex;
-  flex-direction: column;
   padding: none;
+}
+
+.ui-tab-container-top {
+  flex-direction: column;
+}
+
+.ui-tab-container-right {
+  flex-direction: row-reverse;
+}
+
+.ui-tab-container-bottom {
+  flex-direction: column-reverse;
+}
+
+.ui-tab-container-left {
+  flex-direction: row;
 }
 
 .ui-tab-list {
@@ -11,8 +26,50 @@
   padding: none;
   gap: none;
   display: flex;
+}
+
+.ui-tab-list-horizontal {
   flex-direction: row;
+}
+
+.ui-tab-list-vertical {
+  flex-direction: column;
+}
+
+.ui-tab-list-top {
   border-bottom: 1px solid var(--border-color-primary);
+}
+
+.ui-tab-list-right {
+  border-left: 1px solid var(--border-color-primary);
+}
+
+.ui-tab-list-bottom {
+  border-top: 1px solid var(--border-color-primary);
+}
+
+.ui-tab-list-left {
+  border-right: 1px solid var(--border-color-primary);
+}
+
+.ui-tab-list-top > button {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.ui-tab-list-right > button {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.ui-tab-list-bottom > button {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.ui-tab-list-left > button {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .ui-tab-list-button-active {
