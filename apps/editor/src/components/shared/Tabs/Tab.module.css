@@ -1,0 +1,6 @@
+.ui-tab {
+  background-color: var(--primary-dark);
+  padding: var(--size-med);
+  gap: var(--size-med);
+  display: flex;
+}
