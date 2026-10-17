@@ -1,0 +1,17 @@
+.ui-box {
+  padding: var(--size-med);
+  gap: var(--size-med);
+  display: flex;
+}
+
+.ui-box-align-items-start {
+  justify-content: flex-start;
+}
+
+.ui-box-align-items-equal {
+  justify-content: space-around;
+}
+
+.ui-box-align-items-end {
+  justify-content: flex-end;
+}
