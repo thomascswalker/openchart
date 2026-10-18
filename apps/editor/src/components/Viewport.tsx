@@ -58,6 +58,7 @@ import {
 } from "./shared/Icon/Icon";
 import { ViewportSettings } from "./ViewportSettings";
 import { MixerSettings } from "./MixerSettings";
+import CommandPanel from "./CommandPanel";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
@@ -497,16 +498,16 @@ function ViewportPanel({
         onVocalPlacementChange={setVocalPlacement}
       />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {showTrackList && <TrackList viewportId={session.id} />}
+        <CommandPanel />
         <div
           style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
         >
-          {session.view === "highway" && (
+          {/* {session.view === "highway" && (
             <div>
               <ViewportSettings />
               <MixerSettings />
             </div>
-          )}
+          )} */}
           <ChartViewHost
             createRenderer={activeView.createRenderer}
             engineOptions={engineOptions}

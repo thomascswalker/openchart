@@ -10,6 +10,7 @@ import type {
 import classNames from "classnames";
 import styles from "./Tab.module.css";
 import { Button } from "../Button";
+import type { Icon } from "../Icon/Icon";
 
 type Orientation = "horizontal" | "vertical";
 type Alignment = "top" | "right" | "bottom" | "left";
@@ -25,7 +26,7 @@ const TabBody = ({ children }: TabBodyProps) => {
 };
 
 interface TabListProps extends Styles {
-  options?: string[];
+  options?: ReactNode[];
   orientation?: Orientation;
   alignment?: Alignment;
   activeIndex: number;
@@ -46,7 +47,7 @@ const TabList = ({
   );
   return (
     <div className={tabListClassName}>
-      {options?.map((o: string, index) => (
+      {options?.map((o: ReactNode, index) => (
         <Button
           key={index}
           onClick={() => onClick?.(index)}
@@ -60,7 +61,7 @@ const TabList = ({
 };
 
 interface TabsProps extends Styles {
-  options?: string[];
+  options?: ReactNode[];
   alignment?: Alignment;
   onTabChange?: (index: number) => void;
   children?: ReactNode[];

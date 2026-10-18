@@ -140,4 +140,5 @@ export const {
   MixerIcon,
   ResetIcon,
 } = icons;
+export { type Icon };
 export default Icon;

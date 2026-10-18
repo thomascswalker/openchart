@@ -7,6 +7,7 @@ import {
   padding,
   margin,
   space,
+  flexDirection,
   compose,
 } from "styled-system";
 import type {
@@ -17,6 +18,7 @@ import type {
   BorderProps,
   LayoutProps,
   SpaceProps,
+  FlexDirectionProps,
   styleFn,
 } from "styled-system";
 import classNames from "classnames";
@@ -28,6 +30,7 @@ type Styles = FlexProps &
   LayoutProps &
   PaddingProps &
   MarginProps &
+  FlexDirectionProps &
   SpaceProps;
 
 type ItemAlignment = "start" | "equal" | "end";
@@ -46,6 +49,7 @@ const getSystemStyle: styleFn = compose(
   padding,
   margin,
   space,
+  flexDirection,
 );
 
 const Box = ({
