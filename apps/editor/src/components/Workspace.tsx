@@ -1,4 +1,3 @@
-import CommandPanel from "./CommandPanel";
 import { Viewport } from "./Viewport";
 import { DebugWindow } from "./dialogs/DebugDialog";
 

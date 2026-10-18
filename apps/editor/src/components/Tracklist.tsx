@@ -3,6 +3,9 @@ import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { runActionAsync } from "../actions/execute";
 import Box from "./shared/Box";
+import { Button } from "./shared/Button";
+import { Text } from "./shared/Text";
+import styles from "./TrackList.module.css";
 
 /** Config-driven track projection used by piano-roll panels. */
 export function TrackList() {
@@ -23,14 +26,21 @@ export function TrackList() {
   }
 
   return (
-    <Box display="flex" flexDirection="column">
+    <Box
+      className={styles.trackList}
+      display="flex"
+      flexDirection="column"
+      alignItems="start"
+      minHeight={0}
+      padding={0}
+    >
       {descriptors.map((descriptor, index) => {
         const selected = session.trackKey === descriptor.key;
         return (
-          <button
-            type="button"
+          <Button
             key={descriptor.key}
-            className={selected ? "track-row track-row--selected" : "track-row"}
+            className={styles.trackRow}
+            checked={selected}
             onClick={() => {
               void runActionAsync("editor.focus-viewport", activeViewportId)
                 .then(() =>
@@ -41,20 +51,17 @@ export function TrackList() {
                 )
                 .catch(() => {});
             }}
-            aria-pressed={selected}
           >
-            <span className="track-row__header">
-              <span className="track-row__number">{index + 1}</span>
-              <span className="track-row__name">{descriptor.name}</span>
-            </span>
-          </button>
+            <Text className={styles.trackNumber}>{index + 1}</Text>
+            <Text className={styles.trackName}>{descriptor.name}</Text>
+          </Button>
         );
       })}
       {unmapped.map((track, index) => (
-        <button
-          type="button"
+        <Button
           key={`unmapped-${index}`}
-          className="track-row"
+          className={styles.trackRow}
+          checked={session.trackKey === `unmapped-${index}`}
           onClick={() => {
             void runActionAsync("editor.focus-viewport", activeViewportId)
               .then(() =>
@@ -67,16 +74,14 @@ export function TrackList() {
           }}
           aria-label={`Unmapped track ${track.name || index + 1}`}
         >
-          <span className="track-row__header">
-            <span className="track-row__number">?</span>
-            <span className="track-row__name">
-              {track.name || `Track ${index + 1}`} (Other)
-            </span>
-          </span>
-        </button>
+          <Text className={styles.trackNumber}>?</Text>
+          <Text className={styles.trackName}>
+            {track.name || `Track ${index + 1}`} (Other)
+          </Text>
+        </Button>
       ))}
       {!descriptors.length && !unmapped.length ? (
-        <div className="track-list--empty">No MIDI file loaded.</div>
+        <Text className={styles.emptyState}>No MIDI file loaded.</Text>
       ) : null}
     </Box>
   );

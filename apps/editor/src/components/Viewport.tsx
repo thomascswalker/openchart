@@ -40,7 +40,6 @@ import {
   type PianoRollNote,
   type VocalPlacement,
 } from "./views/pianoRoll";
-import { TrackList } from "./Tracklist";
 import Toolbar from "./Toolbar";
 import { Button, CloseButton } from "./shared/Button";
 import { isTypingTarget } from "../util/html";
@@ -56,8 +55,6 @@ import {
   SplitIcon,
   VocalsIcon,
 } from "./shared/Icon/Icon";
-import { ViewportSettings } from "./ViewportSettings";
-import { MixerSettings } from "./MixerSettings";
 import CommandPanel from "./CommandPanel";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
@@ -439,8 +436,6 @@ function ViewportPanel({
       camera: { tick: playbackTick },
     });
   };
-
-  const showTrackList = session.view === "piano-roll";
 
   return (
     <article

@@ -10,7 +10,6 @@ import type {
 import classNames from "classnames";
 import styles from "./Tab.module.css";
 import { Button } from "../Button";
-import type { Icon } from "../Icon/Icon";
 
 type Orientation = "horizontal" | "vertical";
 type Alignment = "top" | "right" | "bottom" | "left";
