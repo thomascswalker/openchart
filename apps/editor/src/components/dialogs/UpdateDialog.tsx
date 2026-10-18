@@ -134,19 +134,21 @@ const UpdateDialog = () => {
       }}
     >
       <Modal.Header title="Check for Updates" onClick={dismiss} />
-      <Section className={styles.body} aria-live="polite">
-        {body}
-      </Section>
-      {actions ? (
-        <Section
-          className={styles.actions}
-          flexDirection="row"
-          alignItems="center"
-          justifyContent="flex-end"
-        >
-          {actions}
+      <Modal.Body>
+        <Section className={styles.body} aria-live="polite">
+          {body}
         </Section>
-      ) : null}
+        {actions ? (
+          <Section
+            className={styles.actions}
+            flexDirection="row"
+            alignItems="center"
+            justifyContent="flex-end"
+          >
+            {actions}
+          </Section>
+        ) : null}
+      </Modal.Body>
     </Modal>
   );
 };

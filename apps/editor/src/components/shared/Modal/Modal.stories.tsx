@@ -29,13 +29,15 @@ const ModalExample = () => {
           }}
         >
           <Modal.Header title="Example dialog" onClick={() => setOpen(false)} />
-          <Section>
-            <Label>
-              Project name
-              <input defaultValue="Untitled project" />
-            </Label>
-            <Text>This example shows the dialog with a form control.</Text>
-          </Section>
+          <Modal.Body>
+            <Section>
+              <Label>
+                Project name
+                <input defaultValue="Untitled project" />
+              </Label>
+              <Text>This example shows the dialog with a form control.</Text>
+            </Section>
+          </Modal.Body>
         </Modal>
       )}
     </>

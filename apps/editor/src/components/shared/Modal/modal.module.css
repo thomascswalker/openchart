@@ -10,23 +10,40 @@
 .ui-modal {
   display: flex;
   flex-direction: column;
-  gap: var(--space-large);
-  width: min(420px, calc(100% - 32px));
-  padding: var(--space-large);
-  border: var(--border-primary);
-  border-radius: var(--radius-large);
-  background: var(--neutral-85);
+  gap: 0;
+  min-width: 50vw;
+  max-width: 50vw;
+  min-height: 60vh;
+  max-height: 60vh;
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--radius-small);
+  background: var(--primary-darker);
   box-shadow: 0 12px 28px rgb(0 0 0 / 45%);
   color: var(--text-primary);
   text-align: left;
 }
 
 .ui-modal-fixed {
-  width: min(var(--modal-width), calc(100vw - (2 * var(--modal-margin))));
-  height: min(var(--modal-height), calc(100vh - (2 * var(--modal-margin))));
+  width: var(--modal-width);
+  min-width: var(--modal-width);
+  max-width: var(--modal-width);
+  height: var(--modal-height);
+  min-height: var(--modal-height);
+  max-height: var(--modal-height);
 }
 
-.ui-modal h2 {
+.ui-modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   margin: 0;
-  color: var(--text-primary);
+  width: 100%;
+  overflow: auto;
+}
+
+.ui-modal-header {
+  border-bottom: var(--border-primary);
+  background-color: var(--primary-dark);
 }

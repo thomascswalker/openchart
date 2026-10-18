@@ -191,177 +191,180 @@ const Form = <T extends object>({
           dialogRef={dialogRef}
           onKeyDown={onKeyDown}
           className={styles.form}
-          size={{ width: 760, height: 480, margin: 32 }}
           onBackdropClick={(event) => {
             if (event.target === event.currentTarget) onClose();
           }}
         >
           <Modal.Header title={title} onClick={onClose} />
-          <Section className={styles.body}>
-            <ListView
-              id="dialog-sections"
-              className={styles.navigation}
-              options={options}
-              value={selectedTab}
-              ariaLabel={optionsLabel}
-              onChange={selectTab}
-            />
-            <Section
-              className={styles.panel}
-              role="region"
-              id="dialog-panel"
-              aria-labelledby={`dialog-sections-option-${selectedIndex}`}
-            >
-              {tabs[selectedIndex]?.fields.map((field) => {
-                const inputId = `dialog-field-${field.name}`;
+          <Modal.Body>
+            <Section className={styles.body}>
+              <ListView
+                id="dialog-sections"
+                className={styles.navigation}
+                options={options}
+                value={selectedTab}
+                ariaLabel={optionsLabel}
+                onChange={selectTab}
+              />
+              <Section
+                className={styles.panel}
+                role="region"
+                id="dialog-panel"
+                aria-labelledby={`dialog-sections-option-${selectedIndex}`}
+              >
+                {tabs[selectedIndex]?.fields.map((field) => {
+                  const inputId = `dialog-field-${field.name}`;
 
-                return (
-                  <form.Field
-                    key={field.name}
-                    name={field.name as FieldPath<T>}
-                  >
-                    {(fieldApi) => {
-                      const value = fieldApi.state.value;
-                      const error =
-                        validationErrors[field.name] ??
-                        (fieldApi.state.meta.errors[0]
-                          ? String(fieldApi.state.meta.errors[0])
-                          : undefined);
-                      const label = field.metadata.label ?? field.key;
+                  return (
+                    <form.Field
+                      key={field.name}
+                      name={field.name as FieldPath<T>}
+                    >
+                      {(fieldApi) => {
+                        const value = fieldApi.state.value;
+                        const error =
+                          validationErrors[field.name] ??
+                          (fieldApi.state.meta.errors[0]
+                            ? String(fieldApi.state.meta.errors[0])
+                            : undefined);
+                        const label = field.metadata.label ?? field.key;
 
-                      return (
-                        <Section className={styles.field}>
-                          {typeof value === "boolean" ? (
-                            <Checkbox
-                              checked={value}
-                              label={label}
-                              aria-invalid={!!error}
-                              onChange={(event) => {
-                                fieldApi.handleChange(
-                                  event.target.checked as typeof value,
-                                );
-                                setValidationErrors({});
-                              }}
-                            />
-                          ) : (
-                            <>
-                              <Label htmlFor={inputId}>
-                                {startCase(label)}
-                              </Label>
-                              {field.metadata.file ||
-                              field.metadata.directory ? (
-                                <FileInput
-                                  id={inputId}
-                                  className={styles.input}
-                                  aria-invalid={!!error}
-                                  value={typeof value === "string" ? value : ""}
-                                  placeholder=""
-                                  directory={field.metadata.directory}
-                                  types={field.metadata.types || []}
-                                  rootDirectoryHandle={fileRootDirectory}
-                                  getRootDirectoryPath={
-                                    field.metadata.directory
-                                      ? undefined
-                                      : getAudioRootPath
-                                  }
-                                  onFileChange={(file) => {
-                                    fieldApi.handleChange(
-                                      (file?.relativePath ??
-                                        null) as typeof value,
-                                    );
-                                    setValidationErrors({});
-                                  }}
-                                  onPathChange={(path) => {
-                                    fieldApi.handleChange(
-                                      (path ?? null) as typeof value,
-                                    );
-                                    setValidationErrors({});
-                                  }}
-                                  onFileError={(fileError) => {
-                                    setValidationErrors((previous) => ({
-                                      ...previous,
-                                      [field.name]: fileError.message,
-                                    }));
-                                  }}
-                                />
-                              ) : field.schema instanceof z.ZodEnum ? (
-                                <Dropdown
-                                  id={inputId}
-                                  className={styles.dropdown}
-                                  aria-invalid={!!error}
-                                  value={String(value)}
-                                  options={field.schema.options.map(
-                                    (option) => {
-                                      const value = String(option);
-                                      return { value, label: value };
-                                    },
-                                  )}
-                                  onChange={(nextValue) => {
-                                    fieldApi.handleChange(
-                                      nextValue as typeof value,
-                                    );
-                                    setValidationErrors({});
-                                  }}
-                                />
-                              ) : (
-                                <Input
-                                  id={inputId}
-                                  className={styles.input}
-                                  type={
-                                    typeof value === "number"
-                                      ? "number"
-                                      : "text"
-                                  }
-                                  min={field.metadata.min}
-                                  max={field.metadata.max}
-                                  step={field.metadata.step ?? "any"}
-                                  aria-invalid={!!error}
-                                  value={
-                                    typeof value === "number"
-                                      ? value
-                                      : String(value)
-                                  }
-                                  placeholder=""
-                                  onChange={(event) => {
-                                    fieldApi.handleChange(
-                                      (typeof value === "number"
-                                        ? Number(event.target.value)
-                                        : event.target.value) as typeof value,
-                                    );
-                                    setValidationErrors({});
-                                  }}
-                                />
-                              )}
-                            </>
-                          )}
-                          {error ? <Text role="alert">{error}</Text> : null}
-                        </Section>
-                      );
-                    }}
-                  </form.Field>
-                );
-              })}
+                        return (
+                          <Section className={styles.field}>
+                            {typeof value === "boolean" ? (
+                              <Checkbox
+                                checked={value}
+                                label={label}
+                                aria-invalid={!!error}
+                                onChange={(event) => {
+                                  fieldApi.handleChange(
+                                    event.target.checked as typeof value,
+                                  );
+                                  setValidationErrors({});
+                                }}
+                              />
+                            ) : (
+                              <>
+                                <Label htmlFor={inputId}>
+                                  {startCase(label)}
+                                </Label>
+                                {field.metadata.file ||
+                                field.metadata.directory ? (
+                                  <FileInput
+                                    id={inputId}
+                                    className={styles.input}
+                                    aria-invalid={!!error}
+                                    value={
+                                      typeof value === "string" ? value : ""
+                                    }
+                                    placeholder=""
+                                    directory={field.metadata.directory}
+                                    types={field.metadata.types || []}
+                                    rootDirectoryHandle={fileRootDirectory}
+                                    getRootDirectoryPath={
+                                      field.metadata.directory
+                                        ? undefined
+                                        : getAudioRootPath
+                                    }
+                                    onFileChange={(file) => {
+                                      fieldApi.handleChange(
+                                        (file?.relativePath ??
+                                          null) as typeof value,
+                                      );
+                                      setValidationErrors({});
+                                    }}
+                                    onPathChange={(path) => {
+                                      fieldApi.handleChange(
+                                        (path ?? null) as typeof value,
+                                      );
+                                      setValidationErrors({});
+                                    }}
+                                    onFileError={(fileError) => {
+                                      setValidationErrors((previous) => ({
+                                        ...previous,
+                                        [field.name]: fileError.message,
+                                      }));
+                                    }}
+                                  />
+                                ) : field.schema instanceof z.ZodEnum ? (
+                                  <Dropdown
+                                    id={inputId}
+                                    className={styles.dropdown}
+                                    aria-invalid={!!error}
+                                    value={String(value)}
+                                    options={field.schema.options.map(
+                                      (option) => {
+                                        const value = String(option);
+                                        return { value, label: value };
+                                      },
+                                    )}
+                                    onChange={(nextValue) => {
+                                      fieldApi.handleChange(
+                                        nextValue as typeof value,
+                                      );
+                                      setValidationErrors({});
+                                    }}
+                                  />
+                                ) : (
+                                  <Input
+                                    id={inputId}
+                                    className={styles.input}
+                                    type={
+                                      typeof value === "number"
+                                        ? "number"
+                                        : "text"
+                                    }
+                                    min={field.metadata.min}
+                                    max={field.metadata.max}
+                                    step={field.metadata.step ?? "any"}
+                                    aria-invalid={!!error}
+                                    value={
+                                      typeof value === "number"
+                                        ? value
+                                        : String(value)
+                                    }
+                                    placeholder=""
+                                    onChange={(event) => {
+                                      fieldApi.handleChange(
+                                        (typeof value === "number"
+                                          ? Number(event.target.value)
+                                          : event.target.value) as typeof value,
+                                      );
+                                      setValidationErrors({});
+                                    }}
+                                  />
+                                )}
+                              </>
+                            )}
+                            {error ? <Text role="alert">{error}</Text> : null}
+                          </Section>
+                        );
+                      }}
+                    </form.Field>
+                  );
+                })}
+              </Section>
             </Section>
-          </Section>
-          <Section
-            className={styles.actions}
-            flexDirection="row"
-            alignItems="center"
-            justifyContent="flex-end"
-          >
-            <Button onClick={onClose}>Cancel</Button>
-            <Button onClick={apply} disabled={!isDirty}>
-              Apply
-            </Button>
-            <Button
-              onClick={async () => {
-                if (await apply()) onClose();
-              }}
-              disabled={!isDirty}
+            <Section
+              className={styles.actions}
+              flexDirection="row"
+              alignItems="center"
+              justifyContent="flex-end"
             >
-              OK
-            </Button>
-          </Section>
+              <Button onClick={onClose}>Cancel</Button>
+              <Button onClick={apply} disabled={!isDirty}>
+                Apply
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (await apply()) onClose();
+                }}
+                disabled={!isDirty}
+              >
+                OK
+              </Button>
+            </Section>
+          </Modal.Body>
         </Modal>
       )}
     </form.Subscribe>

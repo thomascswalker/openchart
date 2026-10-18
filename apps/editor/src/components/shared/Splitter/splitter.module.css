@@ -31,9 +31,31 @@
   position: relative;
   z-index: 1;
   flex: 0 0 5px;
-  background: var(--border-color-primary);
+  background: var(--primary-light);
   outline: none;
   touch-action: none;
+}
+
+.grip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.horizontal .grip {
+  flex-direction: column;
+}
+
+.gripDot {
+  flex: 0 0 3px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-disabled);
 }
 
 .horizontal .separator {
@@ -46,12 +68,12 @@
 
 .separator:hover,
 .separator:focus-visible {
-  background: var(--text-primary);
+  background: var(--primary-lighter);
 }
 
 .horizontal:has(> .pane:first-child [data-collapsed="true"])
   > .pane:first-child {
   flex: 0 0 max-content !important;
   width: max-content;
-  min-width: 0;
+  min-width: 0 !important;
 }

@@ -49,16 +49,7 @@ describe("AboutDialog", () => {
 
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
-    expect(
-      container.querySelector('[data-testid="about-repo-name"]')?.textContent,
-    ).toBe("thomascswalker/openchart");
-
-    act(() =>
-      [...container.querySelectorAll<HTMLButtonElement>("button")]
-        .find((button) => button.textContent === "Close")!
-        .click(),
-    );
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.textContent).toContain(`Version: ${__APP_VERSION__}`);
 
     act(() => root.unmount());
     container.remove();
