@@ -9,7 +9,13 @@ function renderTabs(collapsible: boolean) {
   const root: Root = createRoot(container);
   act(() => {
     root.render(
-      <Tabs collapsible={collapsible} options={["Tracks", "Mixer"]}>
+      <Tabs
+        collapsible={collapsible}
+        options={[
+          { title: "Tracks", icon: "Tracks", component: () => null },
+          { title: "Mixer", icon: "Mixer", component: () => null },
+        ]}
+      >
         {[
           <div key="tracks">Track content</div>,
           <div key="mixer">Mixer content</div>,

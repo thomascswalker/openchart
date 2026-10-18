@@ -42,6 +42,7 @@ import {
 } from "./views/pianoRoll";
 import Toolbar from "./Toolbar";
 import { Button, CloseButton } from "./shared/Button";
+import Splitter from "./shared/Splitter";
 import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
 import {
@@ -492,7 +493,7 @@ function ViewportPanel({
         vocalPlacement={vocalPlacement}
         onVocalPlacementChange={setVocalPlacement}
       />
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <Splitter orientation="horizontal" initialSize={400}>
         <CommandPanel session={session} />
         <div
           style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
@@ -518,7 +519,7 @@ function ViewportPanel({
             onReady={handleReady}
           />
         </div>
-      </div>
+      </Splitter>
     </article>
   );
 }

@@ -1,0 +1,57 @@
+.splitter {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.horizontal {
+  flex-direction: row;
+}
+
+.vertical {
+  flex-direction: column;
+}
+
+.pane {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pane:last-child {
+  flex: 1 1 0;
+}
+
+.separator {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 5px;
+  background: var(--border-color-primary);
+  outline: none;
+  touch-action: none;
+}
+
+.horizontal .separator {
+  cursor: col-resize;
+}
+
+.vertical .separator {
+  cursor: row-resize;
+}
+
+.separator:hover,
+.separator:focus-visible {
+  background: var(--text-primary);
+}
+
+.horizontal:has(> .pane:first-child [data-collapsed="true"])
+  > .pane:first-child {
+  flex: 0 0 max-content !important;
+  width: max-content;
+  min-width: 0;
+}

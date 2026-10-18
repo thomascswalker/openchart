@@ -34,7 +34,7 @@ const CommandPanel = ({ session }: { session: ViewportSession }) => {
     <Box
       className={styles.commandPanel}
       padding={0}
-      maxWidth="400px"
+      maxWidth="100%"
       minWidth={0}
     >
       <Tabs
@@ -45,6 +45,7 @@ const CommandPanel = ({ session }: { session: ViewportSession }) => {
         flex={1}
         minWidth={0}
         minHeight={0}
+        maxWidth="100%"
       >
         {Object.values(options).map(({ component: Comp }) => (
           <Comp />
