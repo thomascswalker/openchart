@@ -1,0 +1,71 @@
+.trackList {
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+div.trackList {
+  gap: 0;
+  padding: 0;
+}
+
+.trackRow {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid #3a3a3a;
+  border-radius: 0;
+  background: #252525;
+  color: #eee;
+  text-align: left;
+}
+
+.trackRow:hover:not(:disabled) {
+  background: #303030;
+}
+
+.trackRow[aria-pressed="true"],
+.trackRow[aria-pressed="true"]:hover:not(:disabled) {
+  background: #333;
+}
+
+.trackNumber {
+  display: inline-flex;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  background: #444;
+  color: #aaa;
+  font-size: 12px;
+}
+
+.trackName {
+  min-width: 0;
+  overflow: hidden;
+  color: #eee;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyState {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: #777;
+}

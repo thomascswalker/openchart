@@ -40,9 +40,9 @@ import {
   type PianoRollNote,
   type VocalPlacement,
 } from "./views/pianoRoll";
-import { TrackList } from "./Tracklist";
 import Toolbar from "./Toolbar";
 import { Button, CloseButton } from "./shared/Button";
+import Splitter from "./shared/Splitter";
 import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
 import {
@@ -56,8 +56,7 @@ import {
   SplitIcon,
   VocalsIcon,
 } from "./shared/Icon/Icon";
-import { ViewportSettings } from "./ViewportSettings";
-import { MixerSettings } from "./MixerSettings";
+import CommandPanel from "./CommandPanel";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
@@ -439,8 +438,6 @@ function ViewportPanel({
     });
   };
 
-  const showTrackList = session.view === "piano-roll";
-
   return (
     <article
       ref={articleRef}
@@ -496,17 +493,17 @@ function ViewportPanel({
         vocalPlacement={vocalPlacement}
         onVocalPlacementChange={setVocalPlacement}
       />
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {showTrackList && <TrackList viewportId={session.id} />}
+      <Splitter orientation="horizontal" initialSize={400}>
+        <CommandPanel session={session} />
         <div
           style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
         >
-          {session.view === "highway" && (
+          {/* {session.view === "highway" && (
             <div>
               <ViewportSettings />
               <MixerSettings />
             </div>
-          )}
+          )} */}
           <ChartViewHost
             createRenderer={activeView.createRenderer}
             engineOptions={engineOptions}
@@ -522,7 +519,7 @@ function ViewportPanel({
             onReady={handleReady}
           />
         </div>
-      </div>
+      </Splitter>
     </article>
   );
 }

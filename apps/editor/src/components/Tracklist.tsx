@@ -1,17 +1,14 @@
 import { SongView } from "@openchart/views";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { runActionAsync } from "../actions/execute";
+import type { ViewportSession } from "../services/editor/viewports";
+import Box from "./shared/Box";
+import { Button } from "./shared/Button";
+import { Text } from "./shared/Text";
+import styles from "./TrackList.module.css";
 
-interface TrackListProps {
-  viewportId: string;
-}
-
-/** Config-driven track projection used by piano-roll panels. */
-export function TrackList({ viewportId }: TrackListProps) {
+export function TrackList({ session }: { session: ViewportSession }) {
   const { midi: midiData } = useDocumentSnapshot();
-  const { viewportSessions } = useViewportSnapshot();
-  const session = viewportSessions.find((item) => item.id === viewportId);
   const songView = midiData ? new SongView(midiData) : null;
   const allDescriptors = songView?.getTrackDescriptors() ?? [];
   const descriptors = allDescriptors.filter(
@@ -21,77 +18,66 @@ export function TrackList({ viewportId }: TrackListProps) {
   const unmapped =
     midiData?.tracks.filter((track) => !configuredNames.has(track.name)) ?? [];
 
-  if (!session) return null;
-
   return (
-    <aside
-      className="arrangement piano-roll-track-list"
-      aria-label="Configured tracks"
+    <Box
+      className={styles.trackList}
+      display="flex"
+      flexDirection="column"
+      alignItems="start"
+      minHeight={0}
+      padding={0}
     >
-      <div className="arrangement__header">
-        <strong>Tracks</strong>
-        <span className="arrangement__metadata">
-          {descriptors.length + unmapped.length}
-        </span>
-      </div>
-      <div className="track-list">
-        {descriptors.map((descriptor, index) => {
-          const selected = session.trackKey === descriptor.key;
-          return (
-            <button
-              type="button"
-              key={descriptor.key}
-              className={
-                selected ? "track-row track-row--selected" : "track-row"
-              }
-              onClick={() => {
-                void runActionAsync("editor.focus-viewport", viewportId)
-                  .then(() =>
-                    runActionAsync("editor.update-viewport", viewportId, {
-                      trackKey: descriptor.key,
-                      instrument: descriptor.name,
-                    }),
-                  )
-                  .catch(() => {});
-              }}
-              aria-pressed={selected}
-            >
-              <span className="track-row__header">
-                <span className="track-row__number">{index + 1}</span>
-                <span className="track-row__name">{descriptor.name}</span>
-              </span>
-            </button>
-          );
-        })}
-        {unmapped.map((track, index) => (
-          <button
-            type="button"
-            key={`unmapped-${index}`}
-            className="track-row"
+      {descriptors.map((descriptor, index) => {
+        const selected = session.trackKey === descriptor.key;
+        return (
+          <Button
+            key={descriptor.key}
+            className={styles.trackRow}
+            checked={selected}
+            onPointerDown={(event) => event.stopPropagation()}
             onClick={() => {
-              void runActionAsync("editor.focus-viewport", viewportId)
+              void runActionAsync("editor.focus-viewport", session.id)
                 .then(() =>
-                  runActionAsync("editor.update-viewport", viewportId, {
-                    trackKey: `unmapped-${index}`,
-                    instrument: track.name,
+                  runActionAsync("editor.update-viewport", session.id, {
+                    trackKey: descriptor.key,
+                    instrument: descriptor.name,
                   }),
                 )
                 .catch(() => {});
             }}
-            aria-label={`Unmapped track ${track.name || index + 1}`}
           >
-            <span className="track-row__header">
-              <span className="track-row__number">?</span>
-              <span className="track-row__name">
-                {track.name || `Track ${index + 1}`} (Other)
-              </span>
-            </span>
-          </button>
-        ))}
-        {!descriptors.length && !unmapped.length ? (
-          <div className="track-list--empty">No MIDI file loaded.</div>
-        ) : null}
-      </div>
-    </aside>
+            <Text className={styles.trackNumber}>{index + 1}</Text>
+            <Text className={styles.trackName}>{descriptor.name}</Text>
+          </Button>
+        );
+      })}
+      {unmapped.map((track, index) => (
+        <Button
+          key={`unmapped-${index}`}
+          className={styles.trackRow}
+          checked={session.trackKey === `unmapped-${index}`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => {
+            void runActionAsync("editor.focus-viewport", session.id)
+              .then(() =>
+                runActionAsync("editor.update-viewport", session.id, {
+                  trackKey: `unmapped-${index}`,
+                  instrument: track.name,
+                }),
+              )
+              .catch(() => {});
+          }}
+          aria-label={`Unmapped track ${track.name || index + 1}`}
+        >
+          <Text className={styles.trackNumber}>?</Text>
+          <Text className={styles.trackName}>
+            {track.name || `Track ${index + 1}`} (Other)
+          </Text>
+        </Button>
+      ))}
+      {!descriptors.length && !unmapped.length ? (
+        <Text className={styles.emptyState}>No MIDI file loaded.</Text>
+      ) : null}
+    </Box>
   );
 }

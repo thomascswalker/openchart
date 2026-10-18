@@ -1,21 +1,15 @@
 import { Section } from "./shared/Section";
 import styles from "./toolbar.module.css";
 import {
-  BassIcon,
   CursorIcon,
-  DrumsIcon,
   EraserIcon,
   EasyIcon,
   ExpertIcon,
-  GuitarIcon,
-  FourpadIcon,
-  FivepadIcon,
   HardIcon,
   Highway3dIcon,
   MediumIcon,
   PencilIcon,
   PianoIcon,
-  VocalsIcon,
   StagepowerIcon,
   SoloIcon,
   PhraseIcon,
@@ -31,7 +25,6 @@ import type {
   ViewportKind,
   ViewportSession,
 } from "../services/editor/viewports";
-import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { runAction } from "../actions/execute";
 import { SnapDenominators } from "./views/pianoRoll/constants";
@@ -42,7 +35,6 @@ import {
   Difficulty,
   InstrumentType,
   requiresPianoRoll,
-  SongView,
   type VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
@@ -54,15 +46,6 @@ import type {
   HighwayMode,
   HighwayNotePlacementType,
 } from "./views/highway";
-
-const Instruments = [
-  [InstrumentType.Lead, GuitarIcon],
-  [InstrumentType.Groove, BassIcon],
-  [InstrumentType.Drums, DrumsIcon],
-  [InstrumentType.Vocals, VocalsIcon],
-  [InstrumentType.FourPad, FourpadIcon],
-  [InstrumentType.FivePad, FivepadIcon],
-] as const;
 
 const Difficulties = [
   [Difficulty.Easy, EasyIcon],
@@ -155,7 +138,6 @@ const Toolbar = ({
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
   const pianoRollOnly = requiresPianoRoll(session.instrument);
-  const { midi: midiData } = useDocumentSnapshot();
   const {
     activeViewId: globalView,
     snapEnabled,
@@ -171,7 +153,7 @@ const Toolbar = ({
 
   const getNoteTypeComponent = () => {
     let value = "";
-    let onChange = (_: string) => {};
+    let onChange: (value: string) => void = () => {};
     let options: {
       value: string;
       label: string;
@@ -347,27 +329,6 @@ const Toolbar = ({
               onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
             }
           />
-
-          <VerticalSeparator />
-
-          {Object.values(Instruments).map(([instrument, Icon]) => (
-            <ToolbarButton
-              key={instrument}
-              icon={Icon}
-              aria-label={`Select ${instrument}`}
-              disabled={
-                !!midiData &&
-                !new SongView(midiData).getInstrumentTrackView(instrument)
-              }
-              checked={session.instrument === instrument}
-              onClick={() =>
-                runAction("editor.update-viewport", session.id, {
-                  instrument,
-                  trackKey: instrument.toLowerCase().replaceAll(" ", "-"),
-                })
-              }
-            />
-          ))}
 
           <VerticalSeparator />
 

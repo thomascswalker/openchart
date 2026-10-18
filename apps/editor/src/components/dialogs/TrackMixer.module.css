@@ -1,3 +1,90 @@
+.ui-track-mixer {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-track-mixer > * {
+  min-width: 0;
+}
+
+.ui-track-mixer-master-row {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 0 0 64px;
+  container-type: inline-size;
+}
+
+.ui-track-mixer-master-controls {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) 24px 24px;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.ui-track-mixer-master-controls > * {
+  min-width: 0;
+  flex: initial;
+}
+
+.ui-track-mixer-track-list {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.ui-track-mixer-track-list > * {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.ui-track-mixer-track {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-track-mixer-track > * {
+  min-width: 0;
+  flex: initial;
+}
+
+.ui-track-mixer-track-index {
+  justify-content: center;
+}
+
+.ui-track-mixer-track-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(40px, 1fr) repeat(3, 24px);
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-track-mixer-track-controls > * {
+  min-width: 0;
+  flex: initial;
+}
+
+.ui-track-mixer-track-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ui-track-mixer-track:hover:not(:disabled) {
   background-color: var(--neutral-80);
 }
@@ -22,9 +109,66 @@
   width: 100%;
 }
 
+@container (max-width: 220px) {
+  .ui-track-mixer-master-controls {
+    grid-template-columns: max-content minmax(0, 1fr) 24px;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
+  .ui-track-mixer-master-controls > :nth-child(2) {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+
+  .ui-track-mixer-master-controls > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .ui-track-mixer-master-controls > :nth-child(4) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .ui-track-mixer-track-controls {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 24px);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .ui-track-mixer-track-name {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .ui-track-mixer-track-controls > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .ui-track-mixer-track-controls > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .ui-track-mixer-track-controls > :nth-child(4) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .ui-track-mixer-track-controls > :nth-child(5) {
+    grid-column: 4;
+    grid-row: 2;
+  }
+}
+
 .ui-track-mixer-volume-control {
   position: relative;
   display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 
 .ui-track-mixer-volume-tooltip {
@@ -97,6 +241,11 @@
     #ddd 78%,
     #888 100%
   );
+}
+
+.ui-track-mixer-volume-control > .ui-track-mixer-volume-slider {
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .ui-track-mixer-button:hover {

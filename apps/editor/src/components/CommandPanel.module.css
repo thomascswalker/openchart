@@ -1,0 +1,12 @@
+.commandPanel {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 100%;
+  overflow: hidden;
+}
+
+.commandPanel:has([data-collapsed="true"]) {
+  width: max-content;
+  flex: 0 0 auto;
+}

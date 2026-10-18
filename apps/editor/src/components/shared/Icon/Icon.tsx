@@ -139,5 +139,7 @@ export const {
   DirectoryIcon,
   MixerIcon,
   ResetIcon,
+  TracksIcon,
 } = icons;
+export { type Icon };
 export default Icon;

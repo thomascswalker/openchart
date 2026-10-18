@@ -104,6 +104,8 @@ const TrackButton = ({
       icon={icon}
       width={24}
       height={24}
+      minWidth={24}
+      minHeight={24}
       maxWidth={24}
       maxHeight={24}
       checked={checked}
@@ -157,6 +159,7 @@ const Track = ({
         padding={0}
         flexDirection="row"
         alignItems="center"
+        className={styles["ui-track-mixer-track-index"]}
       >
         <H6 textAlign="center" verticalAlign="middle" disabled={!enabled}>
           {index}
@@ -167,40 +170,44 @@ const Track = ({
         paddingLeft={"8px"}
         alignItems="center"
         flexDirection="row"
+        className={styles["ui-track-mixer-track-controls"]}
       >
-        <Text textAlign="left" verticalAlign="middle" disabled={!enabled}>
+        <Text
+          className={styles["ui-track-mixer-track-name"]}
+          textAlign="left"
+          verticalAlign="middle"
+          disabled={!enabled}
+        >
           {startCase(name || "")}
         </Text>
-        <Section minWidth="200px" flexDirection="row">
-          <VolumeSlider
-            onChange={(volume) => onVolumeChange?.(track, volume)}
-            value={track.volume}
-            disabled={!enabled}
-          />
-          <TrackButton
-            type="reset"
-            icon={<ResetIcon />}
-            ariaLabel="Reset track volume"
-            disabled={masterMuted}
-            onClick={() => onVolumeChange?.(track, 1)}
-          />
-          <TrackButton
-            type="solo"
-            checked={track.soloed}
-            disabled={masterMuted}
-            onClick={() => onSoloClick?.(track)}
-          >
-            S
-          </TrackButton>
-          <TrackButton
-            type="mute"
-            checked={track.muted}
-            disabled={masterMuted}
-            onClick={() => onMuteClick?.(track)}
-          >
-            M
-          </TrackButton>
-        </Section>
+        <VolumeSlider
+          onChange={(volume) => onVolumeChange?.(track, volume)}
+          value={track.volume}
+          disabled={!enabled}
+        />
+        <TrackButton
+          type="reset"
+          icon={<ResetIcon />}
+          ariaLabel="Reset track volume"
+          disabled={masterMuted}
+          onClick={() => onVolumeChange?.(track, 1)}
+        />
+        <TrackButton
+          type="solo"
+          checked={track.soloed}
+          disabled={masterMuted}
+          onClick={() => onSoloClick?.(track)}
+        >
+          S
+        </TrackButton>
+        <TrackButton
+          type="mute"
+          checked={track.muted}
+          disabled={masterMuted}
+          onClick={() => onMuteClick?.(track)}
+        >
+          M
+        </TrackButton>
       </Section>
     </Section>
   );
@@ -225,28 +232,28 @@ const TrackMixer = () => {
   };
 
   return (
-    <Section padding={0} gap="0">
+    <Section padding={0} gap="0" className={styles["ui-track-mixer"]}>
       <Section
         flexDirection="row"
         minHeight="64px"
         padding={0}
         backgroundColor="var(--neutral-85)"
+        className={styles["ui-track-mixer-master-row"]}
       >
         <Section
           paddingLeft="16px"
           paddingRight="16px"
           alignItems="center"
           flexDirection="row"
+          className={styles["ui-track-mixer-master-controls"]}
         >
           <Text textAlign="left" verticalAlign="middle">
             MASTER
           </Text>
-          <Section minWidth="200px" flexDirection="row">
-            <VolumeSlider
-              onChange={(volume) => setMasterVolume(mixer, volume)}
-              value={mixer.masterVolume}
-            />
-          </Section>
+          <VolumeSlider
+            onChange={(volume) => setMasterVolume(mixer, volume)}
+            value={mixer.masterVolume}
+          />
           <TrackButton
             type="reset"
             icon={<ResetIcon />}
@@ -269,7 +276,12 @@ const TrackMixer = () => {
         margin={0}
         padding={0}
       />
-      <Section paddingX="8px" paddingY="none" gap="0">
+      <Section
+        paddingX="8px"
+        paddingY="none"
+        gap="0"
+        className={styles["ui-track-mixer-track-list"]}
+      >
         {Object.keys(mixer.tracks).length === 0 && (
           <Text textAlign="center">No audio tracks loaded</Text>
         )}
