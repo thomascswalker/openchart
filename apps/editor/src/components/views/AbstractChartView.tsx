@@ -87,7 +87,7 @@ export abstract class AbstractChartView<T> {
 
     host.replaceChildren(engine.canvas);
     this.onMounted(engine);
-    engine.setSize(this.width, this.height);
+    engine.size = { width: this.width, height: this.height };
 
     // Paint once synchronously so the viewport has a useful first frame even
     // when the host is mounted between animation-frame callbacks. The
@@ -116,7 +116,7 @@ export abstract class AbstractChartView<T> {
       return;
     }
 
-    this.engine.setSize(width, height);
+    this.engine.size = { width, height };
     this.onResized(width, height);
 
     this.requestRender();

@@ -6,6 +6,7 @@ export {
   type MidiMetaEvent,
   type MidiEventId,
   type TextMidiEvent,
+  type TextEvent,
   type TextMetaType,
   type TimedMidiEvent,
 } from "./types.js";
@@ -16,8 +17,8 @@ export {
   MidiTrack,
   MidiNote,
   GetNotesOptions,
-  TempoChange,
-  TimeSignatureChange,
+  TempoEvent,
+  TimeSignatureEvent,
 } from "./midi.js";
 export {
   ticksToMs,

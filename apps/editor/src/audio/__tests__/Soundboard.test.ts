@@ -92,8 +92,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi: null,
       ppqn: 480,
-      tempoChanges: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureChanges: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
       settings: settings(),
       clapEnabled: false,
       highwayActive: false,
@@ -131,8 +131,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi,
       ppqn: 480,
-      tempoChanges: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureChanges: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
       settings: settings({ metronomeEnabled: true }),
       clapEnabled: true,
       highwayActive: true,
@@ -164,8 +164,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi: null,
       ppqn: 480,
-      tempoChanges: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureChanges: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
       settings: settings(),
       clapEnabled: false,
       highwayActive: false,
@@ -232,8 +232,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi: null,
       ppqn: 480,
-      tempoChanges: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureChanges: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
       settings: settings(),
       clapEnabled: true,
       highwayActive: true,

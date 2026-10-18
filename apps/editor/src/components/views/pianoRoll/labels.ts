@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { applyStyle } from "../../../util/css";
-import { MinimumPixelsPerSemitone } from "./constants";
+import { KeyboardWidth, MinimumPixelsPerSemitone } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
 import { pitchName } from "./profile";
 import type { PianoRollContext } from "./types";
@@ -43,7 +43,6 @@ export class PianoRollLabels {
     }
 
     const profile = this.#context.getProfile();
-    const keyboardWidth = this.#context.getKeyboardWidth();
 
     // Draw pinned lane labels
     let laneCount = 0;
@@ -61,7 +60,7 @@ export class PianoRollLabels {
         left: "0",
         top: `${y}px`,
         lineHeight: `${laneHeight}px`,
-        width: `${keyboardWidth}px`,
+        width: `${KeyboardWidth}px`,
         boxSizing: "border-box",
         paddingLeft: "4px",
         color: "#bbb",
@@ -103,10 +102,10 @@ export class PianoRollLabels {
 
         // Set style
         const style: CSSProperties = {
-          left: `${keyboardWidth * 0.68}px`,
+          left: `${KeyboardWidth * 0.68}px`,
           top: `${y}px`,
           lineHeight: `${camera.v}px`,
-          width: `${keyboardWidth * 0.3}px`,
+          width: `${KeyboardWidth * 0.3}px`,
           color: "#333",
           display: "block",
         };

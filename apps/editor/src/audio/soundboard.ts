@@ -1,8 +1,8 @@
 import type {
   Midi,
   MidiNote,
-  TempoChange,
-  TimeSignatureChange,
+  TempoEvent,
+  TimeSignatureEvent,
 } from "@openchart/core";
 import { ticksToMs } from "@openchart/core";
 import {
@@ -57,8 +57,8 @@ export interface AudioContext {
 export interface SoundboardConfigurationInput {
   midi: Midi | null | undefined;
   ppqn: number;
-  tempoChanges: TempoChange[];
-  timeSignatureChanges: TimeSignatureChange[];
+  tempoEvents: TempoEvent[];
+  timeSignatureEvents: TimeSignatureEvent[];
   settings: SoundboardSettings;
   clapEnabled: boolean;
   highwayActive: boolean;
@@ -353,7 +353,7 @@ export class Soundboard {
   private tickToMs(tick: number): number {
     const configuration = this.configuration;
     if (!configuration) return 0;
-    return ticksToMs(tick, configuration.ppqn, configuration.tempoChanges);
+    return ticksToMs(tick, configuration.ppqn, configuration.tempoEvents);
   }
 
   private needsScheduler(configuration: SoundboardConfigurationInput): boolean {
@@ -404,13 +404,13 @@ export class Soundboard {
       this.currentTick,
       LOOK_AHEAD_MS,
       configuration.ppqn,
-      configuration.tempoChanges,
+      configuration.tempoEvents,
     );
     const crossings = beatCrossings(
       this.metronomeCursorTick,
       endTick,
       configuration.ppqn,
-      configuration.timeSignatureChanges,
+      configuration.timeSignatureEvents,
     );
     for (const beat of crossings) {
       if (beat.tick < this.currentTick - 1e-5) {
@@ -455,7 +455,7 @@ export class Soundboard {
       this.currentTick,
       LOOK_AHEAD_MS,
       configuration.ppqn,
-      configuration.tempoChanges,
+      configuration.tempoEvents,
     );
     const nowMs = this.tickToMs(this.currentTick);
     const timeAt = (tick: number): number =>
@@ -654,7 +654,7 @@ export class Soundboard {
     this.pendingSounds.clear();
   }
 
-  public getBeatLength(ppqn: number, signature: TimeSignatureChange): number {
+  public getBeatLength(ppqn: number, signature: TimeSignatureEvent): number {
     return ticksPerBeat(ppqn, signature);
   }
 }

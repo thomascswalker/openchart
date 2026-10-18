@@ -1,8 +1,8 @@
 import type {
   MidiNote,
   MidiTrack,
-  TempoChange,
-  TimeSignatureChange,
+  TempoEvent,
+  TimeSignatureEvent,
 } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
 import type { CanvasPoint, CanvasRect } from "../../../../rendering/geometry";
@@ -18,7 +18,7 @@ import { SelectionContext } from "../selection";
 import type { PianoRollNote } from "../types";
 
 function makeCoordinates(
-  tempoChanges: TempoChange[] = [
+  tempoEvents: TempoEvent[] = [
     { tick: 0, microsecondsPerQuarterNote: 500_000 },
   ],
   snap = { enabled: true, denominator: 4 },
@@ -26,7 +26,7 @@ function makeCoordinates(
   return new CoordinateSystem(
     {
       getPpqn: () => 480,
-      getTempoChanges: () => tempoChanges,
+      getTempoEvents: () => tempoEvents,
       getState: () =>
         ({
           midi: null,
@@ -37,7 +37,6 @@ function makeCoordinates(
         }) as never,
     },
     { x: 0, y: 84, h: 120, v: 18 },
-    64,
   );
 }
 
@@ -86,11 +85,11 @@ describe("piano-roll coordinates", () => {
 
 describe("piano-roll grid", () => {
   it("uses the active signature's beat and measure lengths", () => {
-    const changes: TimeSignatureChange[] = [
+    const events: TimeSignatureEvent[] = [
       { tick: 0, numerator: 3, denominator: 2 },
       { tick: 1440, numerator: 4, denominator: 3 },
     ];
-    const beats = Array.from(iterateGridBeats(480, changes, 0, 2400));
+    const beats = Array.from(iterateGridBeats(480, events, 0, 2400));
     expect(
       beats.filter((beat) => beat.isMeasure).map((beat) => beat.tick),
     ).toEqual([0, 1440, 2400]);
@@ -109,7 +108,7 @@ describe("note geometry", () => {
       track: {} as MidiTrack,
       notes: [note],
       noteIndex: null,
-      tempoChanges: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
       tickWidth: 0.25,
       rowHeight: 18,
       width: 800,

@@ -44,7 +44,7 @@ function midi(
     numerator: number;
     denominator: number;
   }[] = [],
-  tempoChanges = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+  tempoEvents = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
 ): MidiData {
   const normalizedTracks = tracks.map((track) => {
     const source = track as {
@@ -67,8 +67,8 @@ function midi(
   });
   return {
     header: { division: 480 },
-    getTempoChanges: () => tempoChanges,
-    getTimeSignatureChanges: () => timeSignatures,
+    getTempoEvents: () => tempoEvents,
+    getTimeSignatureEvents: () => timeSignatures,
     tracks: normalizedTracks,
   } as unknown as MidiData;
 }

@@ -3,7 +3,7 @@ import {
   ticksToMs,
   type Midi,
   type MidiNote,
-  type TempoChange,
+  type TempoEvent,
 } from "@openchart/core";
 import { Difficulty, SongView, VocalTrackView } from "@openchart/views";
 import {
@@ -55,7 +55,7 @@ export interface PlaybackConfiguration {
   selectedTrackIndex: number | null;
 }
 
-const DEFAULT_TEMPO: TempoChange[] = [
+const DEFAULT_TEMPO: TempoEvent[] = [
   { tick: 0, microsecondsPerQuarterNote: 500_000 },
 ];
 
@@ -135,7 +135,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private midiTotalTicks = 0;
   private midiPlaybackEndTick = 0;
   private ppqn = 480;
-  private tempoChanges: TempoChange[] = DEFAULT_TEMPO;
+  private tempoEvents: TempoEvent[] = DEFAULT_TEMPO;
   private animationFrame: number | null = null;
   private lastFrameMs: number | null = null;
   private configured = false;
@@ -165,7 +165,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     this.midiTotalTicks = 0;
     this.midiPlaybackEndTick = 0;
     this.ppqn = 480;
-    this.tempoChanges = DEFAULT_TEMPO;
+    this.tempoEvents = DEFAULT_TEMPO;
     this.resetSession();
     this.publish();
   };
@@ -189,7 +189,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     this.selectedDifficulty = options.selectedDifficulty;
     this.selectedTrackIndex = options.selectedTrackIndex;
     this.ppqn = this.midiData?.header.division ?? 480;
-    this.tempoChanges = this.midiData?.getTempoChanges() ?? DEFAULT_TEMPO;
+    this.tempoEvents = this.midiData?.getTempoEvents() ?? DEFAULT_TEMPO;
     if (selectionChanged || !this.configured) {
       this.highwayNotes = notesForHighway(
         this.midiData,
@@ -218,7 +218,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     if (midiData !== undefined) {
       this.midiData = midiData;
       this.ppqn = midiData?.header.division ?? 480;
-      this.tempoChanges = midiData?.getTempoChanges() ?? DEFAULT_TEMPO;
+      this.tempoEvents = midiData?.getTempoEvents() ?? DEFAULT_TEMPO;
       this.highwayNotes = notesForHighway(
         midiData,
         this.selectedInstrument,
@@ -240,7 +240,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     }
     this.midiTotalTicks = Math.max(maxTick, hasEvents ? 1 : 0);
     if (hasEvents) {
-      const timeSignatures = this.midiData?.getTimeSignatureChanges() ?? [];
+      const timeSignatures = this.midiData?.getTimeSignatureEvents() ?? [];
       let numerator = 4;
       let denominator = 2;
       for (const change of timeSignatures) {
@@ -395,8 +395,8 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     this.engine.configure({
       midi: this.midiData,
       ppqn: this.ppqn,
-      tempoChanges: this.tempoChanges,
-      timeSignatureChanges: this.midiData?.getTimeSignatureChanges() ?? [
+      tempoEvents: this.tempoEvents,
+      timeSignatureEvents: this.midiData?.getTimeSignatureEvents() ?? [
         { tick: 0, numerator: 4, denominator: 2 },
       ],
       settings: this.getFeedbackSettings(this.settings),
@@ -469,15 +469,15 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
       const nextTick = msToTicks(
         audioSeconds * 1000,
         this.ppqn,
-        this.tempoChanges,
+        this.tempoEvents,
       );
       this.playbackTick =
         totalTicks > 0 && nextTick >= totalTicks ? totalTicks : nextTick;
     } else if (this.lastFrameMs !== null) {
       const elapsedMs = frameTimeMs - this.lastFrameMs;
       const currentMs =
-        ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) + elapsedMs;
-      const nextTick = msToTicks(currentMs, this.ppqn, this.tempoChanges);
+        ticksToMs(this.playbackTick, this.ppqn, this.tempoEvents) + elapsedMs;
+      const nextTick = msToTicks(currentMs, this.ppqn, this.tempoEvents);
       this.playbackTick =
         totalTicks > 0 && nextTick >= totalTicks ? totalTicks : nextTick;
     }
@@ -498,7 +498,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
    */
   private syncMixerPosition(): void {
     const timeSeconds =
-      ticksToMs(this.playbackTick, this.ppqn, this.tempoChanges) / 1000;
+      ticksToMs(this.playbackTick, this.ppqn, this.tempoEvents) / 1000;
     this.mixerService?.seek(timeSeconds);
   }
 

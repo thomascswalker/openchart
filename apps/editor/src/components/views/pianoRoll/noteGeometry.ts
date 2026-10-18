@@ -1,6 +1,6 @@
-import type { MidiTrack, TempoChange } from "@openchart/core";
+import type { MidiTrack, TempoEvent } from "@openchart/core";
 import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
-import { NoteResizeHandleWidth } from "./constants";
+import { KeyboardWidth, NoteResizeHandleWidth } from "./constants";
 import type { PianoRollNote } from "./types";
 import type { PianoRollNoteIndex } from "./visibility";
 import { getVisibleNoteRange } from "./visibility";
@@ -12,12 +12,10 @@ export interface NoteGeometry {
   height: number;
   radius: number;
   note: PianoRollNote;
-  /** Screen-space Y band for notes drawn in a pinned (non-scrolling) lane. */
   pinned: { y: number; height: number } | null;
 }
 
 export interface NoteGeometryCoordinates {
-  getKeyboardWidth(): number;
   getCamera(): { x: number; y: number; h: number; v: number };
   tickAtScreenX(x: number): number;
   screenXForTick(tick: number): number;
@@ -62,7 +60,7 @@ export function screenRectOf(
 interface GeometryCache {
   track: MidiTrack;
   notes: PianoRollNote[];
-  tempoChanges: TempoChange[];
+  tempoEvents: TempoEvent[];
   tickWidth: number;
   rowHeight: number;
   width: number;
@@ -89,7 +87,7 @@ export class NoteGeometryCache {
   public needsRebuild(args: {
     track: MidiTrack;
     notes: PianoRollNote[];
-    tempoChanges: TempoChange[];
+    tempoEvents: TempoEvent[];
     tickWidth: number;
     rowHeight: number;
     width: number;
@@ -102,7 +100,7 @@ export class NoteGeometryCache {
       !cache ||
       cache.track !== args.track ||
       cache.notes !== args.notes ||
-      cache.tempoChanges !== args.tempoChanges ||
+      cache.tempoEvents !== args.tempoEvents ||
       cache.tickWidth !== args.tickWidth ||
       cache.rowHeight !== args.rowHeight ||
       cache.width !== args.width ||
@@ -125,7 +123,7 @@ export class NoteGeometryCache {
     track: MidiTrack;
     notes: PianoRollNote[];
     noteIndex: PianoRollNoteIndex | null;
-    tempoChanges: TempoChange[];
+    tempoEvents: TempoEvent[];
     tickWidth: number;
     rowHeight: number;
     width: number;
@@ -137,7 +135,7 @@ export class NoteGeometryCache {
       track,
       notes,
       noteIndex,
-      tempoChanges,
+      tempoEvents,
       tickWidth,
       rowHeight,
       width,
@@ -147,14 +145,12 @@ export class NoteGeometryCache {
     } = args;
     const camera = coordinates.getCamera();
     const verticalRange = height / rowHeight;
-    const visibleWidth = Math.max(0, width - coordinates.getKeyboardWidth());
+    const visibleWidth = Math.max(0, width - KeyboardWidth);
     const startTick = Math.max(
       0,
-      coordinates.tickAtScreenX(coordinates.getKeyboardWidth() - visibleWidth),
+      coordinates.tickAtScreenX(KeyboardWidth - visibleWidth),
     );
-    const endTick = coordinates.tickAtScreenX(
-      coordinates.getKeyboardWidth() + visibleWidth * 2,
-    );
+    const endTick = coordinates.tickAtScreenX(KeyboardWidth + visibleWidth * 2);
     const minPitch = camera.y - verticalRange;
     const maxPitch = camera.y + verticalRange;
     const visibleRange = getVisibleNoteRange(
@@ -175,8 +171,7 @@ export class NoteGeometryCache {
       }
 
       const x =
-        coordinates.getKeyboardWidth() +
-        coordinates.timelineUnitsAtTick(note.tick) * camera.h;
+        KeyboardWidth + coordinates.timelineUnitsAtTick(note.tick) * camera.h;
       const y = -note.pitch * rowHeight;
       const noteWidth = Math.max(
         2,
@@ -198,7 +193,7 @@ export class NoteGeometryCache {
     this.cache = {
       track,
       notes,
-      tempoChanges,
+      tempoEvents,
       geometry,
       tickWidth,
       rowHeight,

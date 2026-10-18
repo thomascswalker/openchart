@@ -177,41 +177,39 @@ test("getNotes includes time elapsed by non-note events", () => {
   expect(track.getNotes()).toMatchObject([{ start: 120, end: 360 }]);
 });
 
-test("addTempoChange/removeTempoChangeAt", () => {
+test("addTempoEvent/removeTempoEventAt", () => {
   const midi = new Midi();
   midi.tracks = [new MidiTrack()];
 
-  midi.addTempoChange(480, 400_000);
+  midi.addTempoEvent(480, 400_000);
 
-  const changes = midi.getTempoChanges();
-  expect(changes).toContainEqual({
+  const events = midi.getTempoEvents();
+  expect(events).toContainEqual({
     tick: 480,
     microsecondsPerQuarterNote: 400_000,
   });
 
-  expect(midi.removeTempoChangeAt(480)).toBe(true);
-  expect(midi.getTempoChanges().some((change) => change.tick === 480)).toBe(
-    false,
-  );
-  expect(midi.removeTempoChangeAt(480)).toBe(false);
+  expect(midi.removeTempoEventAt(480)).toBe(true);
+  expect(midi.getTempoEvents().some((event) => event.tick === 480)).toBe(false);
+  expect(midi.removeTempoEventAt(480)).toBe(false);
 });
 
-test("addTimeSignatureChange/removeTimeSignatureChangeAt", () => {
+test("addTimeSignatureEvent/removeTimeSignatureEventAt", () => {
   const midi = new Midi();
   midi.tracks = [new MidiTrack()];
 
-  midi.addTimeSignatureChange(960, 3, 3);
+  midi.addTimeSignatureEvent(960, 3, 3);
 
-  const changes = midi.getTimeSignatureChanges();
-  expect(changes).toContainEqual({
+  const events = midi.getTimeSignatureEvents();
+  expect(events).toContainEqual({
     tick: 960,
     numerator: 3,
     denominator: 3,
   });
 
-  expect(midi.removeTimeSignatureChangeAt(960)).toBe(true);
+  expect(midi.removeTimeSignatureEventAt(960)).toBe(true);
   expect(
-    midi.getTimeSignatureChanges().some((change) => change.tick === 960),
+    midi.getTimeSignatureEvents().some((event) => event.tick === 960),
   ).toBe(false);
 });
 

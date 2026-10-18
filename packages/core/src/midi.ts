@@ -9,11 +9,12 @@ import {
   MidiMetaEvent,
   MidiSysExEvent,
   MidiEventId,
-  TempoChange,
+  TempoEvent,
   TempoMetaPayload,
   TextMetaPayload,
+  TextEvent,
   TimedMidiEvent,
-  TimeSignatureChange,
+  TimeSignatureEvent,
   TimeSignatureMetaPayload,
   TextMidiEvent,
   TextMetaType,
@@ -245,9 +246,9 @@ class MidiTrack {
     return event ? this.moveEvent(event, tick) : false;
   }
 
-  public getTextEvents(): Array<TimedMidiEvent & { event: TextMidiEvent }> {
+  public getTextEvents(): TextEvent[] {
     return this.getTimedEvents().filter(
-      (timed): timed is TimedMidiEvent & { event: TextMidiEvent } =>
+      (timed): timed is TextEvent =>
         timed.event.status === 0xff &&
         isTextMetaType((timed.event as MidiMetaEvent).type),
     );
@@ -404,7 +405,7 @@ class MidiTrack {
   /**
    * Inserts one or more events at absolute ticks in a single pass, bumping
    * any trailing EndOfTrack event so it stays last. Shared by note creation
-   * and single meta-event insertion (tempo/time-signature changes).
+   * and single meta-event insertion (tempo/time-signature events).
    */
   public insertEventsAt(entries: { tick: number; event: MidiEvent }[]): void {
     const timedEvents = this.getTimedEvents();
@@ -960,8 +961,8 @@ class Midi {
     return this.tracks.length;
   }
 
-  public getTempoChanges(): TempoChange[] {
-    const changes = (this.tracks[0]?.getTimedEvents() ?? [])
+  public getTempoEvents(): TempoEvent[] {
+    const events = (this.tracks[0]?.getTimedEvents() ?? [])
       .filter(
         (timedEvent): timedEvent is TimedMidiEvent & { event: MidiMetaEvent } =>
           timedEvent.event.status === 0xff &&
@@ -974,15 +975,15 @@ class Midi {
       }))
       .sort((a, b) => a.tick - b.tick);
 
-    if (changes.length === 0 || changes[0].tick !== 0) {
-      changes.unshift({ tick: 0, microsecondsPerQuarterNote: 500_000 });
+    if (events.length === 0 || events[0].tick !== 0) {
+      events.unshift({ tick: 0, microsecondsPerQuarterNote: 500_000 });
     }
 
-    return changes;
+    return events;
   }
 
-  public getTimeSignatureChanges(): TimeSignatureChange[] {
-    const changes = (this.tracks[0]?.getTimedEvents() ?? [])
+  public getTimeSignatureEvents(): TimeSignatureEvent[] {
+    const events = (this.tracks[0]?.getTimedEvents() ?? [])
       .filter(
         (timedEvent): timedEvent is TimedMidiEvent & { event: MidiMetaEvent } =>
           timedEvent.event.status === 0xff &&
@@ -998,18 +999,15 @@ class Midi {
       })
       .sort((a, b) => a.tick - b.tick);
 
-    if (changes.length === 0 || changes[0].tick !== 0) {
+    if (events.length === 0 || events[0].tick !== 0) {
       // Denominator is stored as a power-of-two exponent (2 == quarter note), per the MIDI spec.
-      changes.unshift({ tick: 0, numerator: 4, denominator: 2 });
+      events.unshift({ tick: 0, numerator: 4, denominator: 2 });
     }
 
-    return changes;
+    return events;
   }
 
-  public addTempoChange(
-    tick: number,
-    microsecondsPerQuarterNote: number,
-  ): void {
+  public addTempoEvent(tick: number, microsecondsPerQuarterNote: number): void {
     const track = this.tracks[0];
 
     if (!track) {
@@ -1027,7 +1025,7 @@ class Midi {
     track.insertEventsAt([{ tick, event }]);
   }
 
-  public removeTempoChangeAt(tick: number): boolean {
+  public removeTempoEventAt(tick: number): boolean {
     const track = this.tracks[0];
 
     if (!track) {
@@ -1046,7 +1044,7 @@ class Midi {
     return match ? track.removeEvent(match.event) : false;
   }
 
-  public addTimeSignatureChange(
+  public addTimeSignatureEvent(
     tick: number,
     numerator: number,
     denominator: number,
@@ -1074,7 +1072,7 @@ class Midi {
     track.insertEventsAt([{ tick, event }]);
   }
 
-  public removeTimeSignatureChangeAt(tick: number): boolean {
+  public removeTimeSignatureEventAt(tick: number): boolean {
     const track = this.tracks[0];
 
     if (!track) {
@@ -1296,6 +1294,6 @@ export {
   MidiHeader,
   MidiTrack,
   MidiNote,
-  TempoChange,
-  TimeSignatureChange,
+  TempoEvent,
+  TimeSignatureEvent,
 };

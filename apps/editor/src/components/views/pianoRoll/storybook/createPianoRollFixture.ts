@@ -26,8 +26,8 @@ function createVocalsFixture(withNotes: boolean): Midi {
   midi.header.division = 480;
   const conductor = new MidiTrack("CONDUCTOR");
   midi.tracks.push(conductor);
-  midi.addTempoChange(0, 500_000);
-  midi.addTimeSignatureChange(0, 4, 2);
+  midi.addTempoEvent(0, 500_000);
+  midi.addTimeSignatureEvent(0, 4, 2);
   const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
   vocals.ensureTrack();
   if (!withNotes) return midi;
@@ -67,8 +67,8 @@ export function createPianoRollFixture(
 
   if (variant === "empty") return midi;
 
-  midi.addTempoChange(0, 500_000);
-  midi.addTimeSignatureChange(0, 4, 2);
+  midi.addTempoEvent(0, 500_000);
+  midi.addTimeSignatureEvent(0, 4, 2);
   lead.addTextEvent(MetaType.Marker, 0, "[section Verse]");
   lead.addTextEvent(MetaType.Marker, 1_920, "[section Chorus]");
 
@@ -79,7 +79,7 @@ export function createPianoRollFixture(
     [74, 960, 960, 100],
   ];
   if (variant === "dense") {
-    midi.addTempoChange(1_920, 300_000);
+    midi.addTempoEvent(1_920, 300_000);
     leadNotes.push(
       [77, 1_440, 240, 100],
       [81, 1_680, 240, 100],

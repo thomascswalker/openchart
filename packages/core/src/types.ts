@@ -140,17 +140,16 @@ export interface TextMidiEvent extends MidiMetaEvent {
   data: TextMetaPayload;
 }
 
-export interface Marker {
-  hovered?: boolean;
-  selected?: boolean;
+export interface TextEvent extends TimedMidiEvent {
+  event: TextMidiEvent;
 }
 
-export interface TempoChange extends Marker {
+export interface TempoEvent {
   tick: number;
   microsecondsPerQuarterNote: number;
 }
 
-export interface TimeSignatureChange extends Marker {
+export interface TimeSignatureEvent {
   tick: number;
   numerator: number;
   /** Power-of-two exponent per the MIDI spec (2 == quarter note, 3 == eighth note). */

@@ -70,8 +70,8 @@ function configuration(
   return {
     midi: null,
     ppqn: 480,
-    tempoChanges: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-    timeSignatureChanges: [{ tick: 0, numerator: 4, denominator: 2 }],
+    tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+    timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
     settings: {
       metronomeEnabled: false,
       metronomeVolume: 0.4,

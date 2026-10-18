@@ -36,7 +36,7 @@ export const AlternateTrack: Story = {
   args: { variant: "populated", initialTrackIndex: 2 },
 };
 
-export const DenseTempoChange: Story = {
+export const DenseTempoEvent: Story = {
   args: { variant: "dense", initialTrackIndex: 1 },
 };
 

@@ -10,6 +10,7 @@ import {
 } from "./editingStrategy";
 import type { PianoRollContext, PianoRollNote } from "./types";
 import { VocalEditingStrategy } from "./vocalEditing";
+import { KeyboardWidth } from "./constants";
 
 export function remapNotesByIdentity(
   notes: PianoRollNote[],
@@ -447,7 +448,7 @@ export class NoteEditingController {
       return;
     }
 
-    const x = hasHovered ? anchorX : this.context.getKeyboardWidth();
+    const x = hasHovered ? anchorX : KeyboardWidth;
     const anchorTick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(x),
     );

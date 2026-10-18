@@ -2,7 +2,7 @@ import { MetaType, Midi, type MidiTrack } from "@openchart/core";
 import { SongView, validateVocalTrack } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import { CoordinateSystem } from "../coordinates";
-import { HeaderHeight } from "../constants";
+import { HeaderHeight, KeyboardWidth } from "../constants";
 import { HeaderController } from "../header";
 import { NoteDataStore } from "../noteData";
 import { NoteEditingController } from "../noteEditing";
@@ -25,9 +25,8 @@ const VOCALS = profileForInstrument("VOCALS");
 const LANE_HEIGHT = 18;
 const GRID_TOP = HeaderHeight + 5 * LANE_HEIGHT;
 const TEMPO = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }];
-const KEYBOARD = 64;
 /** Screen X of a tick at the default zoom (120 px per quarter = 480 ticks). */
-const xAt = (tick: number) => KEYBOARD + tick / 4;
+const xAt = (tick: number) => KeyboardWidth + tick / 4;
 /** Screen Y inside the grid row of a pitch, with camera.y = 84. */
 const yAt = (pitch: number) => GRID_TOP + (84 - pitch) * 18 + 5;
 /** Screen Y inside a pinned lane. */
@@ -38,13 +37,12 @@ function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
   return new CoordinateSystem(
     {
       getPpqn: () => 480,
-      getTempoChanges: () => TEMPO,
+      getTempoEvents: () => TEMPO,
       getState: () => ({ snap: { enabled: true, denominator: 4 } }) as never,
       getProfile: () => profile,
       getViewport: () => ({ height }),
     },
     { x: 0, y, h: 120, v: 18 },
-    KEYBOARD,
   );
 }
 
@@ -87,11 +85,10 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
     getVocalMarks: () => ({ missingLyric: new Set(), missingTicks: [] }),
     getTrackNotes: (m: Midi, index: number) => noteData.getTrackNotes(m, index),
     getCurrentNotes: () => noteData.currentNotes,
-    getTempoChanges: () => TEMPO,
-    getTimeSignatureChanges: () => [{ tick: 0, numerator: 4, denominator: 2 }],
+    getTempoEvents: () => TEMPO,
+    getTimeSignatureEvents: () => [{ tick: 0, numerator: 4, denominator: 2 }],
     getTextEvents: () => track()?.getTextEvents() ?? [],
     getCamera: () => coordinates.getCamera(),
-    getKeyboardWidth: () => KEYBOARD,
     getViewport: () => ({ width: 1000, height: 1000 }),
     getSelectionContext: () => selection,
     requestRender: () => {},
@@ -261,7 +258,7 @@ describe("piano-roll profiles", () => {
         track: {} as MidiTrack,
         notes: [pitched, percussion],
         noteIndex: null,
-        tempoChanges: TEMPO,
+        tempoEvents: TEMPO,
         tickWidth: 0.25,
         rowHeight: 18,
         width: 800,
@@ -298,8 +295,8 @@ describe("piano-roll profiles", () => {
           getMidi: () => midi,
           getSelectedTrack: () => track,
           getProfile: () => profile,
-          getTempoChanges: () => TEMPO,
-          getTimeSignatureChanges: () => [],
+          getTempoEvents: () => TEMPO,
+          getTimeSignatureEvents: () => [],
           getTextEvents: () => [],
           invalidateTempoCache: () => {},
           notifyNotesChanged: () => {},

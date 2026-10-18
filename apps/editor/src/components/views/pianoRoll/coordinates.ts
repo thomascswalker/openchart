@@ -1,9 +1,10 @@
-import type { TempoChange } from "@openchart/core";
+import type { TempoEvent } from "@openchart/core";
 import { msToTicks, ticksToMs } from "@openchart/core";
 import { clamp } from "es-toolkit";
 import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
 import {
   HeaderHeight,
+  KeyboardWidth,
   MaximumPixelsPerQuarter,
   MaximumPixelsPerSemitone,
   MinimumPixelsPerQuarter,
@@ -21,7 +22,7 @@ import type { PianoRollCamera, PianoRollNote } from "./types";
 
 export interface CoordinateSystemContext {
   getPpqn(): number;
-  getTempoChanges(): TempoChange[];
+  getTempoEvents(): TempoEvent[];
   getState(): ChartViewState;
   getViewport?(): { height: number };
   /** Optional so callers without a profile keep the generic 0-127 grid. */
@@ -32,16 +33,13 @@ export interface CoordinateSystemContext {
 export class CoordinateSystem {
   private readonly context: CoordinateSystemContext;
   private readonly camera: PianoRollCamera;
-  private readonly keyboardWidth: number;
 
   public constructor(
     context: CoordinateSystemContext,
     camera: PianoRollCamera,
-    keyboardWidth: number,
   ) {
     this.context = context;
     this.camera = camera;
-    this.keyboardWidth = keyboardWidth;
   }
 
   public getProfile(): PianoRollProfile {
@@ -117,13 +115,9 @@ export class CoordinateSystem {
     return this.camera;
   }
 
-  public getKeyboardWidth(): number {
-    return this.keyboardWidth;
-  }
-
   public getVisibleTickSpan(width: number): number {
-    const viewWidth = Math.max(1, width - this.keyboardWidth);
-    return this.tickAtScreenX(this.keyboardWidth + viewWidth) - this.camera.x;
+    const viewWidth = Math.max(1, width - KeyboardWidth);
+    return this.tickAtScreenX(KeyboardWidth + viewWidth) - this.camera.x;
   }
 
   public setCameraTick(tick: number): void {
@@ -168,14 +162,14 @@ export class CoordinateSystem {
       ticksToMs(
         this.camera.x,
         this.context.getPpqn(),
-        this.context.getTempoChanges(),
+        this.context.getTempoEvents(),
       ) +
-      ((x - this.keyboardWidth) / this.camera.h) * 500;
+      ((x - KeyboardWidth) / this.camera.h) * 500;
 
     return msToTicks(
       timelineMs,
       this.context.getPpqn(),
-      this.context.getTempoChanges(),
+      this.context.getTempoEvents(),
     );
   }
 
@@ -188,14 +182,14 @@ export class CoordinateSystem {
 
   public timelineUnitsAtTick(tick: number): number {
     return (
-      ticksToMs(tick, this.context.getPpqn(), this.context.getTempoChanges()) /
+      ticksToMs(tick, this.context.getPpqn(), this.context.getTempoEvents()) /
       500
     );
   }
 
   public screenXForTick(tick: number): number {
     return (
-      this.keyboardWidth +
+      KeyboardWidth +
       (this.timelineUnitsAtTick(tick) -
         this.timelineUnitsAtTick(this.camera.x)) *
         this.camera.h
@@ -224,16 +218,16 @@ export class CoordinateSystem {
   }
 
   public pan(dx: number, dy: number): void {
-    const tempoChanges = this.context.getTempoChanges();
+    const tempoEvents = this.context.getTempoEvents();
     const cameraMs = ticksToMs(
       this.camera.x,
       this.context.getPpqn(),
-      tempoChanges,
+      tempoEvents,
     );
     this.camera.x = msToTicks(
       cameraMs - (dx / this.camera.h) * 500,
       this.context.getPpqn(),
-      tempoChanges,
+      tempoEvents,
     );
     this.camera.y += dy / this.camera.v;
     this.camera.x = Math.max(0, this.camera.x);
@@ -241,13 +235,13 @@ export class CoordinateSystem {
   }
 
   public zoomHorizontal(zoomFactor: number, mouseX: number): void {
-    const rollX = mouseX - this.keyboardWidth;
+    const rollX = mouseX - KeyboardWidth;
     const anchorX = Math.max(0, rollX);
-    const anchorTick = this.tickAtScreenX(this.keyboardWidth + anchorX);
+    const anchorTick = this.tickAtScreenX(KeyboardWidth + anchorX);
     const anchorMs = ticksToMs(
       anchorTick,
       this.context.getPpqn(),
-      this.context.getTempoChanges(),
+      this.context.getTempoEvents(),
     );
     this.camera.h = clamp(
       this.camera.h * zoomFactor,
@@ -259,21 +253,21 @@ export class CoordinateSystem {
       msToTicks(
         anchorMs - (anchorX / this.camera.h) * 500,
         this.context.getPpqn(),
-        this.context.getTempoChanges(),
+        this.context.getTempoEvents(),
       ),
     );
   }
 
   public zoomAtCursor(zoomFactor: number, cursor: CanvasPoint): void {
-    const rollX = cursor.x - this.keyboardWidth;
+    const rollX = cursor.x - KeyboardWidth;
     const anchorX = Math.max(0, rollX);
     const anchorY = cursor.y - this.getGridTop();
     const anchorPitch = this.camera.y - anchorY / this.camera.v;
-    const anchorTick = this.tickAtScreenX(this.keyboardWidth + anchorX);
+    const anchorTick = this.tickAtScreenX(KeyboardWidth + anchorX);
     const anchorMs = ticksToMs(
       anchorTick,
       this.context.getPpqn(),
-      this.context.getTempoChanges(),
+      this.context.getTempoEvents(),
     );
 
     this.camera.h = clamp(
@@ -291,7 +285,7 @@ export class CoordinateSystem {
       msToTicks(
         anchorMs - (anchorX / this.camera.h) * 500,
         this.context.getPpqn(),
-        this.context.getTempoChanges(),
+        this.context.getTempoEvents(),
       ),
     );
     this.camera.y = this.clampCameraY(anchorPitch + anchorY / this.camera.v);
@@ -322,20 +316,20 @@ export class CoordinateSystem {
     );
     const minPitch = Math.min(...notes.map((note) => note.pitch));
     const maxPitch = Math.max(...notes.map((note) => note.pitch));
-    const viewWidth = Math.max(1, width - this.keyboardWidth);
+    const viewWidth = Math.max(1, width - KeyboardWidth);
     const viewHeight = Math.max(1, height - this.getGridTop());
     const padding = 1.2;
     const pitchSpan = Math.max(1, maxPitch - minPitch + 1) * padding;
-    const tempoChanges = this.context.getTempoChanges();
+    const tempoEvents = this.context.getTempoEvents();
     const selectionStartMs = ticksToMs(
       minTick,
       this.context.getPpqn(),
-      tempoChanges,
+      tempoEvents,
     );
     const selectionEndMs = ticksToMs(
       maxTick,
       this.context.getPpqn(),
-      tempoChanges,
+      tempoEvents,
     );
     const timelineSpanMs =
       Math.max(1, selectionEndMs - selectionStartMs) * padding;
@@ -357,7 +351,7 @@ export class CoordinateSystem {
       msToTicks(
         (selectionStartMs + selectionEndMs) / 2 - visibleTimelineSpanMs / 2,
         this.context.getPpqn(),
-        tempoChanges,
+        tempoEvents,
       ),
     );
     this.camera.y = this.clampCameraY(

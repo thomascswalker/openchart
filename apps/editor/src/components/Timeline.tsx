@@ -1,8 +1,8 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import {
   ticksToMs,
-  type TempoChange,
-  type TimeSignatureChange,
+  type TempoEvent,
+  type TimeSignatureEvent,
 } from "@openchart/core";
 import type { ChartView } from "./views/ChartViews";
 import { usePlaybackSelector } from "../hooks/usePlayback";
@@ -17,10 +17,10 @@ const BACKGROUND_COLOR = "#101010";
 const VIEWPORT_COLOR = "rgba(255, 255, 255, 0.12)";
 const VIEWPORT_BORDER_COLOR = "rgba(255, 255, 255, 0.35)";
 const PLAYHEAD_COLOR = "#ff3b30";
-const DEFAULT_TEMPO: TempoChange[] = [
+const DEFAULT_TEMPO: TempoEvent[] = [
   { tick: 0, microsecondsPerQuarterNote: 500_000 },
 ];
-const NO_CHANGES: TimeSignatureChange[] = [];
+const NO_EVENTS: TimeSignatureEvent[] = [];
 
 function tickToX(tick: number, width: number, timelineTicks: number): number {
   if (timelineTicks <= 0) return 0;
@@ -96,23 +96,23 @@ function formatTime(milliseconds: number): string {
 function formatMeasure(
   tick: number,
   ppqn: number,
-  changes: TimeSignatureChange[],
+  events: TimeSignatureEvent[],
 ): string {
   let measure = 1;
   let measureStart = 0;
   let numerator = 4;
   let denominatorExponent = 2;
 
-  for (const change of changes) {
-    if (change.tick > tick) break;
-    if (change.tick > measureStart) {
+  for (const event of events) {
+    if (event.tick > tick) break;
+    if (event.tick > measureStart) {
       const previousMeasureTicks =
         (ppqn * numerator * 4) / 2 ** denominatorExponent;
-      measure += Math.ceil((change.tick - measureStart) / previousMeasureTicks);
-      measureStart = change.tick;
+      measure += Math.ceil((event.tick - measureStart) / previousMeasureTicks);
+      measureStart = event.tick;
     }
-    numerator = change.numerator;
-    denominatorExponent = change.denominator;
+    numerator = event.numerator;
+    denominatorExponent = event.denominator;
   }
 
   const ticksPerQuarter = ppqn;
@@ -136,13 +136,13 @@ function formatMeasure(
 export function getTimelinePosition(
   tick: number,
   ppqn: number,
-  tempoChanges: TempoChange[],
-  timeSignatureChanges: TimeSignatureChange[],
+  tempoEvents: TempoEvent[],
+  timeSignatureEvents: TimeSignatureEvent[],
 ): TimelinePosition {
   return {
     tick: String(Math.floor(tick)),
-    time: formatTime(ticksToMs(tick, ppqn, tempoChanges)),
-    measure: formatMeasure(tick, ppqn, timeSignatureChanges),
+    time: formatTime(ticksToMs(tick, ppqn, tempoEvents)),
+    measure: formatMeasure(tick, ppqn, timeSignatureEvents),
   };
 }
 
@@ -161,11 +161,11 @@ export function Timeline({ chartViews }: TimelineProps) {
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
   const doc = useDocumentSnapshot();
   const tempo = useMemo(
-    () => doc.midi?.getTempoChanges() ?? DEFAULT_TEMPO,
+    () => doc.midi?.getTempoEvents() ?? DEFAULT_TEMPO,
     [doc],
   );
   const sigs = useMemo(
-    () => doc.midi?.getTimeSignatureChanges() ?? NO_CHANGES,
+    () => doc.midi?.getTimeSignatureEvents() ?? NO_EVENTS,
     [doc],
   );
   const position = getTimelinePosition(
