@@ -14,11 +14,7 @@ export const MaximumPixelsPerSemitone = 64;
  * Height, in pixels, of the tempo/time-signature strip above the grid.
  */
 export const HeaderHeight = 36;
-
-/**
- * Height, in pixels, of the tempo lane within the header (top half).
- */
-export const HeaderTempoLaneHeight = HeaderHeight / 2;
+export const HeaderLaneHeight = HeaderHeight / 3;
 
 /**
  * Distance, in pixels, within which a click is considered "on" a tempo/TS marker.

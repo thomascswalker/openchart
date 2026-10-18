@@ -6,6 +6,7 @@ import {
   MidiChannelEvent,
   MidiMetaEvent,
   MidiSysExEvent,
+  TextMidiEvent,
 } from "../../src/types.js";
 
 function createMidi(): Midi {
@@ -19,8 +20,8 @@ function createMidi(): Midi {
       status: 0xff,
       type: MetaType.TrackName,
       length: 19,
-      data: { text: 'Text with "quotes"\n' },
-    } as MidiMetaEvent,
+      text: 'Text with "quotes"\n',
+    } as TextMidiEvent,
     {
       deltaTime: 0,
       status: 0xff,

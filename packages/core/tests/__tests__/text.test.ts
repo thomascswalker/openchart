@@ -25,8 +25,8 @@ function lyricMidi(texts: readonly string[]): Midi {
 function lyricTexts(midi: Midi): string[] {
   return midi.tracks[0]
     .getTextEvents()
-    .filter(({ event }) => event.type === MetaType.Lyric)
-    .map(({ event }) => event.data.text);
+    .filter((event) => event.type === MetaType.Lyric)
+    .map(({ text }) => text);
 }
 
 describe("text meta encoding", () => {
@@ -58,6 +58,29 @@ describe("text meta encoding", () => {
     expect(track.updateTextEvent(event as TextMidiEvent, "日本")).toBe(true);
     expect(event.length).toBe(6);
   });
+
+  test("getTextEvents exposes editable text events without a wrapper", () => {
+    const track = new MidiTrack("VOCALS");
+    track.addTextEvent(MetaType.Lyric, 0, "first");
+
+    const [event] = track.getTextEvents();
+    expect(event).toMatchObject({
+      tick: 0,
+      type: MetaType.Lyric,
+      text: "first",
+      order: 0,
+    });
+    expect("event" in event).toBe(false);
+
+    expect(track.updateTextEvent(event, "updated")).toBe(true);
+    expect(track.getTextEvents()[0].text).toBe("updated");
+
+    const updated = track.getTextEvents()[0];
+    expect(track.moveEvent(updated, 480)).toBe(true);
+    expect(track.getTextEvents()[0].tick).toBe(480);
+    expect(track.removeEvent(track.getTextEvents()[0])).toBe(true);
+    expect(track.getTextEvents()).toEqual([]);
+  });
 });
 
 describe("text meta round trips", () => {
@@ -67,7 +90,7 @@ describe("text meta round trips", () => {
     expect(lyricTexts(restored)).toEqual(SAMPLES);
     const lengths = restored.tracks[0]
       .getTextEvents()
-      .map(({ event }) => event.length);
+      .map((event) => event.length);
     expect(lengths).toEqual(SAMPLES.map(textByteLength));
   });
 

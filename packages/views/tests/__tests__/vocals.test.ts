@@ -18,7 +18,7 @@ function vocals(midi = new Midi()): { midi: Midi; view: VocalTrackView } {
 }
 
 function lyrics(view: VocalTrackView): Array<[number, string]> {
-  return view.getLyrics().map(({ tick, event }) => [tick, event.data.text]);
+  return view.getLyrics().map(({ tick, text }) => [tick, text]);
 }
 
 describe("vocal configuration", () => {
@@ -89,9 +89,7 @@ describe("VocalTrackView editing", () => {
     const track = midi.getTrack("VOCALS")!;
     expect(track).toBeDefined();
     expect(
-      track
-        .getTextEvents()
-        .some(({ event }) => event.type === MetaType.TrackName),
+      track.getTextEvents().some((event) => event.type === MetaType.TrackName),
     ).toBe(true);
     // A saved file still maps the track back to VOCALS.
     const restored = new Midi(midi.toBuffer());
@@ -140,15 +138,15 @@ describe("VocalTrackView editing", () => {
 
     // Swap ticks: lyrics must follow their own note, not the tick.
     const moves = [
-      { note: first.note, start: 480, pitch: 100, lyric: first.lyric!.event },
-      { note: second.note, start: 0, pitch: 20, lyric: second.lyric!.event },
+      { note: first.note, start: 480, pitch: 100, lyric: first.lyric! },
+      { note: second.note, start: 0, pitch: 20, lyric: second.lyric! },
       { note: perc.note, start: 1200, pitch: 60 },
     ];
     expect(view.moveNotes(moves)).toBe(true);
 
     const notes = view.getNotes();
     const byText = new Map(
-      notes.map((item) => [item.lyric?.event.data.text ?? item.kind, item]),
+      notes.map((item) => [item.lyric?.text ?? item.kind, item]),
     );
     expect(byText.get("one")!.note).toMatchObject({ start: 480, note: 84 });
     expect(byText.get("two")!.note).toMatchObject({ start: 0, note: 36 });
@@ -190,7 +188,7 @@ describe("VocalTrackView editing", () => {
       ["orphan-lyric", 4000],
     ]);
     expect(view.repair()).toBe(1);
-    expect(view.getVocalNote(note.note)?.lyric?.event.data.text).toBe("late");
+    expect(view.getVocalNote(note.note)?.lyric?.text).toBe("late");
     expect(view.validate().map((issue) => issue.type)).toEqual([
       "orphan-lyric",
     ]);

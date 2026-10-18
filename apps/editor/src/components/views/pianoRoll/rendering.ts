@@ -82,8 +82,23 @@ export class PianoRollRenderer {
 
     const gridTop = this.#coordinates.getGridTop();
 
-    // Header background
-    this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, RenderOrder.Header);
+    // Header rows alternate shades while labels use the same gutter as pinned lanes.
+    const headerLanes = this.#header.visibleLanes;
+    const headerLaneHeight =
+      headerLanes.length > 0 ? HeaderHeight / headerLanes.length : 0;
+    if (headerLanes.length === 0) {
+      this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, RenderOrder.Header);
+    }
+    headerLanes.forEach((_, index) => {
+      this.addRect(
+        0,
+        headerLaneHeight * index,
+        width,
+        headerLaneHeight,
+        index % 2 === 0 ? 0x1c1c1c : 0x202020,
+        RenderOrder.Header,
+      );
+    });
 
     // Canvas background
     this.addRect(

@@ -1,4 +1,9 @@
-import type { MidiMetaEvent, MidiNote, MidiTrack } from "@openchart/core";
+import type {
+  MidiMetaEvent,
+  MidiNote,
+  MidiTrack,
+  TextMidiEvent,
+} from "@openchart/core";
 import { MetaType } from "@openchart/core";
 import type { TrackDescriptor } from "./config.js";
 
@@ -140,7 +145,8 @@ export function trimNoteAt(
   return track.setNoteDuration(note, Math.max(1, tick - note.start));
 }
 
-function textValue(event: MidiMetaEvent): string {
+function textValue(event: MidiMetaEvent | TextMidiEvent): string {
+  if ("text" in event) return event.text;
   return "text" in event.data && typeof event.data.text === "string"
     ? event.data.text
     : "";
@@ -154,10 +160,10 @@ export function extractSections(
     .filter(
       (item) =>
         item.event.status === 0xff &&
-        (item.event as MidiMetaEvent).type === MetaType.Marker,
+        (item.event as MidiMetaEvent | TextMidiEvent).type === MetaType.Marker,
     )
     .map((item) => ({
-      name: textValue(item.event as MidiMetaEvent),
+      name: textValue(item.event as MidiMetaEvent | TextMidiEvent),
       tick: item.tick,
     }))
     .filter((section) => /^\s*\[section\s+.+\]\s*$/i.test(section.name));

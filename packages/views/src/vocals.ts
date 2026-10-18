@@ -2,7 +2,7 @@ import {
   MetaType,
   type MidiNote,
   type MidiTrack,
-  type TextMidiEvent,
+  type TextEvent,
 } from "@openchart/core";
 import type { MidiNotePhrase } from "./chartEditing.js";
 import type { InstrumentTrackViewConfig } from "./config.js";
@@ -119,10 +119,7 @@ export function vocalPhrasePitch(
   }
 }
 
-export interface TimedLyric {
-  tick: number;
-  event: TextMidiEvent;
-}
+export type TimedLyric = TextEvent;
 
 export interface VocalNote {
   note: MidiNote;
@@ -133,10 +130,7 @@ export interface VocalNote {
 
 export function getLyrics(track: MidiTrack | undefined | null): TimedLyric[] {
   if (!track) return [];
-  return track
-    .getTextEvents()
-    .filter(({ event }) => event.type === MetaType.Lyric)
-    .map(({ tick, event }) => ({ tick, event }));
+  return track.getTextEvents().filter((event) => event.type === MetaType.Lyric);
 }
 
 interface LyricPairing {
@@ -301,10 +295,7 @@ export function addVocalNote(
   let lyric: TimedLyric | null = null;
   const text = options.lyric;
   if (vocalKindNeedsLyric(kind) && text !== undefined && text.trim()) {
-    lyric = {
-      tick: note.start,
-      event: track.addTextEvent(MetaType.Lyric, note.start, text),
-    };
+    lyric = track.addTextEvent(MetaType.Lyric, note.start, text);
   }
   return { note, kind, lyric };
 }
@@ -319,7 +310,7 @@ export interface VocalMove {
    * notes crossing each other's ticks keep their own lyric. Looked up when
    * omitted.
    */
-  lyric?: TextMidiEvent | null;
+  lyric?: TextEvent | null;
 }
 
 /**
@@ -340,7 +331,7 @@ export function moveVocalNotes(
     lyric:
       move.lyric !== undefined
         ? move.lyric
-        : (paired.get(move.note.noteOn)?.lyric?.event ?? null),
+        : (paired.get(move.note.noteOn)?.lyric ?? null),
   }));
   let changed = false;
   for (const move of resolved) {
@@ -362,7 +353,7 @@ export function moveVocalNotes(
         changed = track.setNotePitch(move.note, pitch) || changed;
       }
     }
-    if (move.lyric && track.events.includes(move.lyric)) {
+    if (move.lyric) {
       changed = track.moveEvent(move.lyric, start) || changed;
     }
   }
@@ -379,8 +370,10 @@ export function removeVocalNotes(
     getVocalNotes(track, layout).map((item) => [item.note.noteOn, item]),
   );
   const lyrics = notes
-    .map((note) => paired.get(note.noteOn)?.lyric?.event)
-    .filter((event): event is TextMidiEvent => event !== undefined);
+    .map((note) => paired.get(note.noteOn)?.lyric)
+    .filter(
+      (event): event is TextEvent => event !== null && event !== undefined,
+    );
   let changed = false;
   for (const note of notes) {
     changed = track.removeNote(note.noteOn, note.noteOff) || changed;
@@ -399,7 +392,7 @@ export function setVocalLyric(
   if (!text.trim()) return false;
   const vocal = findVocalNote(track, layout, note);
   if (!vocal || !vocalKindNeedsLyric(vocal.kind)) return false;
-  if (vocal.lyric) return track.updateTextEvent(vocal.lyric.event, text);
+  if (vocal.lyric) return track.updateTextEvent(vocal.lyric, text);
   track.addTextEvent(MetaType.Lyric, note.start, text);
   return true;
 }
@@ -460,11 +453,11 @@ export function updateVocalPhrase(
 
 export type VocalIssue =
   | { type: "missing-lyric"; tick: number; note: MidiNote }
-  | { type: "orphan-lyric"; tick: number; lyric: TextMidiEvent }
+  | { type: "orphan-lyric"; tick: number; lyric: TextEvent }
   | {
       type: "mismatched-tick";
       tick: number;
-      lyric: TextMidiEvent;
+      lyric: TextEvent;
       note: MidiNote;
     }
   | { type: "unknown-pitch"; tick: number; note: MidiNote }
@@ -508,14 +501,14 @@ export function validateVocalTrack(
       issues.push({
         type: "mismatched-tick",
         tick: orphan.tick,
-        lyric: orphan.event,
+        lyric: orphan,
         note: near.note,
       });
     } else {
       issues.push({
         type: "orphan-lyric",
         tick: orphan.tick,
-        lyric: orphan.event,
+        lyric: orphan,
       });
     }
   }

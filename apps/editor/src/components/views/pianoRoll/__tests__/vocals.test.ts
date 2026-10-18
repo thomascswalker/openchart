@@ -114,8 +114,8 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
   };
   const lyrics = () =>
     (track()?.getTextEvents() ?? [])
-      .filter(({ event }) => event.type === MetaType.Lyric)
-      .map(({ tick, event }) => [tick, event.data.text]);
+      .filter((event) => event.type === MetaType.Lyric)
+      .map(({ tick, text }) => [tick, text]);
   const drag = (from: { x: number; y: number }, toX: number) => {
     editing.beginCreate(from);
     editing.updateResize({ x: toX, y: from.y });
@@ -307,7 +307,7 @@ describe("piano-roll profiles", () => {
       header.click({ x: 300, y: HeaderHeight - 4 });
       const markers = track
         .getTextEvents()
-        .filter(({ event }) => event.type === MetaType.Marker);
+        .filter((event) => event.type === MetaType.Marker);
       expect(markers).toHaveLength(expected);
     }
   });

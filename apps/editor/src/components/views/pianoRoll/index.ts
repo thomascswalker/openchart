@@ -17,7 +17,7 @@ import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
 import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
-import { HeaderController } from "./header";
+import { HeaderController, type HeaderLane } from "./header";
 import { PianoRollInputController } from "./input";
 import { PianoRollLabels } from "./labels";
 import { NoteDataStore } from "./noteData";
@@ -119,7 +119,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getTextEvents: () => {
       const events = this.getSelectedTrack()?.getTextEvents() ?? [];
       return this.profile.header.textLane === "lyrics"
-        ? events.filter(({ event }) => event.type === MetaType.Lyric)
+        ? events.filter((event) => event.type === MetaType.Lyric)
         : events;
     },
     getCamera: () => this.camera,
@@ -148,7 +148,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.context,
     this.coordinates,
   );
-  private readonly labels = new PianoRollLabels(this.context, this.coordinates);
+  private readonly labels = new PianoRollLabels(
+    this.context,
+    this.coordinates,
+    this.header,
+  );
   private readonly renderer = new PianoRollRenderer(
     this.context,
     this.coordinates,
@@ -214,6 +218,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   public setVocalPlacement(placement: VocalPlacement): void {
     this.vocalPlacement = placement;
+  }
+
+  /** Sets the header lanes to render; all lanes are shown by default. */
+  public setHeaderLanes(lanes: readonly HeaderLane[]): void {
+    this.header.setVisibleLanes(lanes);
   }
 
   /** Fits the profile's pitch range (C2-C6 for vocals) into the viewport. */

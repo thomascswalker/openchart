@@ -2,7 +2,7 @@ import type {
   MidiChannelEvent,
   MidiNote,
   MidiTrack,
-  TextMidiEvent,
+  TextEvent,
 } from "@openchart/core";
 import {
   addVocalNote,
@@ -41,7 +41,7 @@ export class VocalEditingStrategy implements NoteEditingStrategy {
   public readonly id = "vocal";
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
-  private moveLyrics = new Map<MidiChannelEvent, TextMidiEvent | null>();
+  private moveLyrics = new Map<MidiChannelEvent, TextEvent | null>();
   private lastValidMoveTickDelta = 0;
   private lastPreviewPitch: number | null = null;
 
@@ -131,7 +131,7 @@ export class VocalEditingStrategy implements NoteEditingStrategy {
     const paired = new Map(
       getVocalNotes(track, this.layout).map((item) => [
         item.note.noteOn,
-        item.lyric?.event ?? null,
+        item.lyric ?? null,
       ]),
     );
     this.moveLyrics = new Map(
@@ -304,7 +304,7 @@ export class VocalEditingStrategy implements NoteEditingStrategy {
     const lyrics = new Map(
       getVocalNotes(this.getTrack(false), this.layout).map((item) => [
         item.note.noteOn,
-        item.lyric?.event.data.text,
+        item.lyric?.text,
       ]),
     );
     const minTick = Math.min(...notes.map((note) => note.tick));

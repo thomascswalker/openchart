@@ -345,7 +345,10 @@ export function encodeMidiEvent(event: MidiEvent): Uint8Array {
   const deltaTime = encodeVariableLengthValue(event.deltaTime);
 
   if (event.status === 0xff && "type" in event) {
-    const payload = encodeMetaPayload(event.type, event.data);
+    const payload = encodeMetaPayload(
+      event.type,
+      "text" in event ? { text: event.text } : event.data,
+    );
 
     return concatBytes([
       deltaTime,

@@ -42,11 +42,9 @@ test("clone preserves MIDI data and isolates mutable event payloads", () => {
   expect(clonedMeta).not.toBe(originalMeta);
   expect(clonedSysEx).not.toBe(originalSysEx);
 
-  (clonedMeta as { data: { text: string } }).data.text = "changed";
+  (clonedMeta as { text: string }).text = "changed";
   (clonedSysEx as { data: Uint8Array }).data[0] = 9;
-  expect((originalMeta as { data: { text: string } }).data.text).toBe(
-    "section",
-  );
+  expect((originalMeta as { text: string }).text).toBe("section");
   expect((originalSysEx as { data: Uint8Array }).data[0]).toBe(1);
 });
 

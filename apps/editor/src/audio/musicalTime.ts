@@ -5,11 +5,38 @@ import {
   type TimeSignatureEvent,
 } from "@openchart/core";
 
+export type TimeSignature = Omit<TimeSignatureEvent, "tick">;
+
 export interface BeatPosition {
   tick: number;
   measure: number;
   beat: number;
   isDownbeat: boolean;
+}
+
+/** Parses a positive tempo value in beats per minute. */
+export function parseTempoString(text: string): number | null {
+  const parsed = Number(text);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/** Parses a time signature and returns its numerator and MIDI denominator exponent. */
+export function parseTimeSignatureString(text: string): TimeSignature | null {
+  const match = /^(\d+)\s*\/\s*(\d+)$/.exec(text.trim());
+  if (!match) return null;
+  const numerator = Number(match[1]);
+  const denominatorValue = Number(match[2]);
+  const denominator = Math.round(Math.log2(denominatorValue));
+  if (
+    !Number.isInteger(numerator) ||
+    numerator <= 0 ||
+    !Number.isInteger(denominatorValue) ||
+    denominatorValue <= 0 ||
+    2 ** denominator !== denominatorValue
+  ) {
+    return null;
+  }
+  return { numerator, denominator };
 }
 
 const defaultTimeSignature: TimeSignatureEvent = {

@@ -33,10 +33,6 @@ export interface MidiChannelEvent extends BaseMidiEvent {
   data2?: number;
 }
 
-export interface TextMetaPayload {
-  text: string;
-}
-
 export interface TempoMetaPayload {
   microsecondsPerQuarterNote: number;
 }
@@ -75,7 +71,6 @@ export interface DefaultMetaPayload {
 }
 
 export type MidiMetaPayload =
-  | TextMetaPayload
   | TempoMetaPayload
   | TimeSignatureMetaPayload
   | KeySignatureMetaPayload
@@ -114,11 +109,15 @@ export interface MidiSysExEvent extends BaseMidiEvent {
   data: Uint8Array;
 }
 
-export type MidiEvent = MidiChannelEvent | MidiMetaEvent | MidiSysExEvent;
+export type MidiEvent =
+  MidiChannelEvent | MidiMetaEvent | MidiSysExEvent | TextMidiEvent;
 
-export interface TimedMidiEvent {
-  event: MidiEvent;
+export interface IEvent {
   tick: number;
+}
+
+export interface TimedMidiEvent extends IEvent {
+  event: MidiEvent;
   order: number;
 }
 
@@ -135,23 +134,20 @@ export type TextMetaType =
   | MetaType.Marker
   | MetaType.CuePoint;
 
-export interface TextMidiEvent extends MidiMetaEvent {
+export interface TextMidiEvent extends Omit<MidiMetaEvent, "data"> {
   type: TextMetaType;
-  data: TextMetaPayload;
+  text: string;
 }
 
-export interface TextEvent extends TimedMidiEvent {
-  event: TextMidiEvent;
+export interface TextEvent extends TextMidiEvent, IEvent {
+  order: number;
 }
 
-export interface TempoEvent {
-  tick: number;
+export interface TempoEvent extends IEvent {
   microsecondsPerQuarterNote: number;
 }
 
-export interface TimeSignatureEvent {
-  tick: number;
+export interface TimeSignatureEvent extends IEvent {
   numerator: number;
-  /** Power-of-two exponent per the MIDI spec (2 == quarter note, 3 == eighth note). */
   denominator: number;
 }

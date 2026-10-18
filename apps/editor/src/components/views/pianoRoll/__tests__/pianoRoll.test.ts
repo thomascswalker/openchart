@@ -6,9 +6,13 @@ import type {
 } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
 import type { CanvasPoint, CanvasRect } from "../../../../rendering/geometry";
+import {
+  parseTempoString,
+  parseTimeSignatureString,
+} from "../../../../audio/musicalTime";
 import { CoordinateSystem } from "../coordinates";
 import { HeaderHeight } from "../constants";
-import { parseTempoBpm, parseTimeSignatureInput } from "../header";
+import { DefaultHeaderLanes, HeaderController } from "../header";
 import { PianoRollInputController } from "../input";
 import { NoteGeometryCache } from "../noteGeometry";
 import { remapNotesByIdentity } from "../noteEditing";
@@ -16,6 +20,7 @@ import { PointerContext } from "../pointer";
 import { iterateGridBeats } from "../rendering";
 import { SelectionContext } from "../selection";
 import type { PianoRollNote } from "../types";
+import { applyStyle } from "../../../../util/css";
 
 function makeCoordinates(
   tempoEvents: TempoEvent[] = [
@@ -137,15 +142,52 @@ describe("note geometry", () => {
 
 describe("header input validation", () => {
   it("accepts positive tempos and power-of-two signatures only", () => {
-    expect(parseTempoBpm("120")).toBe(120);
-    expect(parseTempoBpm("0")).toBeNull();
-    expect(parseTempoBpm("fast")).toBeNull();
-    expect(parseTimeSignatureInput("7 / 8")).toEqual({
+    expect(parseTempoString("120")).toBe(120);
+    expect(parseTempoString("0")).toBeNull();
+    expect(parseTempoString("fast")).toBeNull();
+    expect(parseTimeSignatureString("7 / 8")).toEqual({
       numerator: 7,
       denominator: 3,
     });
-    expect(parseTimeSignatureInput("4/3")).toBeNull();
-    expect(parseTimeSignatureInput("4/0")).toBeNull();
+    expect(parseTimeSignatureString("4/3")).toBeNull();
+    expect(parseTimeSignatureString("4/0")).toBeNull();
+  });
+});
+
+describe("header lanes", () => {
+  it("renders all lanes by default and supports changing visibility and order", () => {
+    const requestRender = vi.fn();
+    const header = new HeaderController(
+      { requestRender } as never,
+      makeCoordinates(),
+    );
+
+    expect(DefaultHeaderLanes).toEqual(["tempo", "timeSignature", "text"]);
+    expect(header.laneAt(0)).toBe("tempo");
+    expect(header.laneAt(12)).toBe("timeSignature");
+    expect(header.laneAt(24)).toBe("text");
+    expect(header.laneAt(HeaderHeight)).toBeNull();
+
+    header.setVisibleLanes(["text", "tempo"]);
+    expect(header.laneAt(0)).toBe("text");
+    expect(header.laneAt(18)).toBe("tempo");
+    expect(header.laneAt(HeaderHeight - 1)).toBe("tempo");
+    expect(requestRender).toHaveBeenCalledOnce();
+
+    header.setVisibleLanes([]);
+    expect(header.laneAt(0)).toBeNull();
+    expect(requestRender).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("DOM styles", () => {
+  it("applies styles to the element's style declaration", () => {
+    const element = { style: {} } as HTMLElement;
+
+    applyStyle(element, { position: "absolute", top: "36px" });
+
+    expect(element.style.position).toBe("absolute");
+    expect(element.style.top).toBe("36px");
   });
 });
 

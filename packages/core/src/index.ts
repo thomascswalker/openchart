@@ -5,8 +5,9 @@ export {
   type MidiEvent,
   type MidiMetaEvent,
   type MidiEventId,
-  type TextMidiEvent,
+  type IEvent,
   type TextEvent,
+  type TextMidiEvent,
   type TextMetaType,
   type TimedMidiEvent,
 } from "./types.js";
