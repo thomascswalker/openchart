@@ -14,7 +14,6 @@ type Story = StoryObj<typeof meta>;
 const options = ["Tab1", "Tab2", "Tab3"].map((title) => ({
   title,
   icon: title,
-  component: () => null,
 }));
 const children = [
   <>

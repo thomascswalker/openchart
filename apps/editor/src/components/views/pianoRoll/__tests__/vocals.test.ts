@@ -9,7 +9,6 @@ import { NoteEditingController } from "../noteEditing";
 import { NoteGeometryCache } from "../noteGeometry";
 import {
   GENERIC_PROFILE,
-  PINNED_LANE_HEIGHT,
   pitchName,
   profileForInstrument,
   type PianoRollProfile,
@@ -23,7 +22,8 @@ import type {
 } from "../types";
 
 const VOCALS = profileForInstrument("VOCALS");
-const GRID_TOP = HeaderHeight + 5 * PINNED_LANE_HEIGHT;
+const LANE_HEIGHT = 18;
+const GRID_TOP = HeaderHeight + 5 * LANE_HEIGHT;
 const TEMPO = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }];
 const KEYBOARD = 64;
 /** Screen X of a tick at the default zoom (120 px per quarter = 480 ticks). */
@@ -32,15 +32,16 @@ const xAt = (tick: number) => KEYBOARD + tick / 4;
 const yAt = (pitch: number) => GRID_TOP + (84 - pitch) * 18 + 5;
 /** Screen Y inside a pinned lane. */
 const laneY = (index: number) =>
-  HeaderHeight + index * PINNED_LANE_HEIGHT + PINNED_LANE_HEIGHT / 2;
+  HeaderHeight + index * LANE_HEIGHT + LANE_HEIGHT / 2;
 
-function makeCoordinates(profile: PianoRollProfile, y = 84) {
+function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
   return new CoordinateSystem(
     {
       getPpqn: () => 480,
       getTempoChanges: () => TEMPO,
       getState: () => ({ snap: { enabled: true, denominator: 4 } }) as never,
       getProfile: () => profile,
+      getViewport: () => ({ height }),
     },
     { x: 0, y, h: 120, v: 18 },
     KEYBOARD,
@@ -197,12 +198,49 @@ describe("piano-roll profiles", () => {
     expect(coordinates.laneAtScreenY(GRID_TOP)).toBeNull();
     expect(coordinates.laneAtScreenY(HeaderHeight - 1)).toBeNull();
     expect(coordinates.pinnedRectForPitch(90)).toEqual({
-      y: HeaderHeight + 3 * PINNED_LANE_HEIGHT,
-      height: PINNED_LANE_HEIGHT,
+      y: HeaderHeight + 3 * LANE_HEIGHT,
+      height: LANE_HEIGHT,
     });
 
     coordinates.fitPitchRange(GRID_TOP + 49 * 10);
-    expect(coordinates.getCamera()).toMatchObject({ y: 84, v: 10 });
+    expect(coordinates.getCamera()).toMatchObject({
+      y: 84,
+      v: (GRID_TOP + 49 * 10 - HeaderHeight) / 54,
+    });
+  });
+
+  it("scales pinned lanes with the pitch rows", () => {
+    const coordinates = makeCoordinates(VOCALS);
+    coordinates.zoomVertical(2, 0);
+
+    expect(coordinates.getGridTop()).toBe(HeaderHeight + 5 * LANE_HEIGHT * 2);
+    expect(coordinates.laneRect(VOCALS.pinnedLanes[0])).toEqual({
+      y: HeaderHeight,
+      height: LANE_HEIGHT * 2,
+    });
+    expect(coordinates.laneRect(VOCALS.pinnedLanes[1]).y).toBe(
+      HeaderHeight + LANE_HEIGHT * 2,
+    );
+    expect(
+      coordinates.laneAtScreenY(
+        HeaderHeight + 3 * LANE_HEIGHT * 2 + LANE_HEIGHT,
+      )?.id,
+    ).toBe("percussion");
+  });
+
+  it("keeps the lowest keyboard pitch at the bottom of the viewport", () => {
+    const height = 1008;
+    const coordinates = makeCoordinates(VOCALS, 84, height);
+
+    coordinates.pan(0, 100_000);
+
+    const camera = coordinates.getCamera();
+    const lowestPitchBottom =
+      coordinates.getGridTop() +
+      (camera.y - VOCALS.pitchRange.low + 1) * camera.v;
+    expect(camera.y).toBeGreaterThan(VOCALS.pitchRange.low);
+    expect(lowestPitchBottom).toBeCloseTo(height);
+    expect(coordinates.pitchAtScreenY(height)).toBe(VOCALS.pitchRange.low);
   });
 
   it("hit-tests lane notes at fixed Y and clips grid notes to the grid", () => {

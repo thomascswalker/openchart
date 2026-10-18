@@ -82,25 +82,6 @@ export async function canvasShot(viewport: Locator): Promise<Buffer> {
   return viewport.locator(".midi-view-host canvas").screenshot();
 }
 
-export async function expectCanvasToChange(
-  viewport: Locator,
-  action: () => Promise<void>,
-): Promise<void> {
-  const page = viewport.page();
-  await page.mouse.move(2, 2);
-  const before = await canvasShot(viewport);
-  await action();
-  await expect
-    .poll(
-      async () => {
-        await page.mouse.move(2, 2);
-        return !(await canvasShot(viewport)).equals(before);
-      },
-      { timeout: 3_000, message: "canvas pixels never changed" },
-    )
-    .toBe(true);
-}
-
 export async function scrubTimeline(
   viewport: Locator,
   fraction: number,

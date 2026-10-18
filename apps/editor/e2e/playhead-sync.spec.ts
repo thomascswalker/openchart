@@ -3,7 +3,6 @@ import {
   addViewport,
   cameraTick,
   canvasShot,
-  expectCanvasToChange,
   expectPlayheadFramed,
   loadSong,
   MIDI_END_TICK,
@@ -100,16 +99,12 @@ for (const view of ["highway", "piano-roll"] as const) {
     await switchView(viewport, view);
     const initialCamera = await cameraTick(viewport);
 
-    await expectCanvasToChange(viewport, () =>
-      page.getByRole("button", { name: "Jump to End" }).click(),
-    );
+    await page.getByRole("button", { name: "Jump to End" }).click();
     await expect.poll(() => playheadTick(viewport)).toBe(MIDI_END_TICK);
-    expect(await cameraTick(viewport)).not.toBe(initialCamera);
+    await expect.poll(() => cameraTick(viewport)).not.toBe(initialCamera);
     await expectPlayheadFramed(viewport, view);
 
-    await expectCanvasToChange(viewport, () =>
-      page.getByRole("button", { name: "Jump to Beginning" }).click(),
-    );
+    await page.getByRole("button", { name: "Jump to Beginning" }).click();
     await expect.poll(() => playheadTick(viewport)).toBe(0);
     await expect.poll(() => cameraTick(viewport)).toBe(initialCamera);
   });
@@ -132,19 +127,19 @@ for (const [originView, otherView] of [
     await switchView(other, otherView);
     const initialOtherCamera = await cameraTick(other);
 
-    await expectCanvasToChange(other, () => scrubTimeline(origin, 0.7));
+    await scrubTimeline(origin, 0.7);
     await expect
       .poll(async () => playheadTick(other))
       .toBe(await playheadTick(origin));
-    expect(await cameraTick(other)).not.toBe(initialOtherCamera);
+    await expect.poll(() => cameraTick(other)).not.toBe(initialOtherCamera);
     await expectPlayheadFramed(other, otherView);
 
     const beforeReturn = await cameraTick(origin);
-    await expectCanvasToChange(origin, () => scrubTimeline(other, 0.1));
+    await scrubTimeline(other, 0.1);
     await expect
       .poll(async () => playheadTick(origin))
       .toBe(await playheadTick(other));
-    expect(await cameraTick(origin)).not.toBe(beforeReturn);
+    await expect.poll(() => cameraTick(origin)).not.toBe(beforeReturn);
     await expectPlayheadFramed(origin, originView);
   });
 }

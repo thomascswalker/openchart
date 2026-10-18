@@ -8,28 +8,25 @@ import styles from "./CommandPanel.module.css";
 import type { ViewportSession } from "../services/editor/viewports";
 import type { TabOption } from "./shared/Tabs/Tab";
 
-function getTabOptions(size: number, session: ViewportSession): TabOption[] {
+function getTabOptions(size: number): TabOption[] {
   return [
     {
       title: "Tracks",
       icon: <TracksIcon size={size} />,
-      component: () => <TrackList session={session} />,
     },
     {
       title: "Audio Mixer",
       icon: <MixerIcon size={size} />,
-      component: TrackMixer,
     },
     {
       title: "Viewport Settings",
       icon: <SettingsIcon size={size} />,
-      component: ViewportSettings,
     },
   ];
 }
 
 const CommandPanel = ({ session }: { session: ViewportSession }) => {
-  const options = getTabOptions(24, session);
+  const options = getTabOptions(24);
   return (
     <Box
       className={styles.commandPanel}
@@ -48,9 +45,11 @@ const CommandPanel = ({ session }: { session: ViewportSession }) => {
         minHeight={0}
         maxWidth="100%"
       >
-        {Object.values(options).map(({ component: Comp }) => (
-          <Comp />
-        ))}
+        {[
+          <TrackList key="tracks" session={session} />,
+          <TrackMixer key="mixer" />,
+          <ViewportSettings key="settings" />,
+        ]}
       </Tabs>
     </Box>
   );
