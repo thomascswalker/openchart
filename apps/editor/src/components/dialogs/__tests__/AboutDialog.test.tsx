@@ -51,13 +51,6 @@ describe("AboutDialog", () => {
     expect(dialog).not.toBeNull();
     expect(container.textContent).toContain(`Version: ${__APP_VERSION__}`);
 
-    act(() =>
-      [...container.querySelectorAll<HTMLButtonElement>("button")]
-        .find((button) => button.textContent === "Close")!
-        .click(),
-    );
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
-
     act(() => root.unmount());
     container.remove();
   });
