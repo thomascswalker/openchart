@@ -7,6 +7,19 @@ permissions:
   contents: read
 
 jobs:
+  version:
+    name: Version check
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify package version is newer than the latest version tag
+        run: node apps/desktop/scripts/verify-release-version.mjs
+
   quality:
     name: Quality checks
     runs-on: ubuntu-22.04
