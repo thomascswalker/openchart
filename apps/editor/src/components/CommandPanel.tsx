@@ -1,30 +1,35 @@
 import TrackMixer from "./dialogs/TrackMixer";
 import Box from "./shared/Box";
-import { DirectoryIcon, MixerIcon, SettingsIcon } from "./shared/Icon/Icon";
+import { MixerIcon, SettingsIcon, TracksIcon } from "./shared/Icon/Icon";
 import Tabs from "./shared/Tabs";
 import { TrackList } from "./Tracklist";
 import { ViewportSettings } from "./ViewportSettings";
 import styles from "./CommandPanel.module.css";
-import type { ReactNode } from "react";
+import type { ViewportSession } from "../services/editor/viewports";
+import type { TabOption } from "./shared/Tabs/Tab";
 
-interface TabDef {
-  icon: ReactNode;
-  component: () => ReactNode;
-}
-
-function getTabDefs(size: number): Record<string, TabDef> {
-  return {
-    track: { icon: <DirectoryIcon size={size} />, component: TrackList },
-    mixer: { icon: <MixerIcon size={size} />, component: TrackMixer },
-    viewport: {
+function getTabOptions(size: number, session: ViewportSession): TabOption[] {
+  return [
+    {
+      title: "Tracks",
+      icon: <TracksIcon size={size} />,
+      component: () => <TrackList session={session} />,
+    },
+    {
+      title: "Audio Mixer",
+      icon: <MixerIcon size={size} />,
+      component: TrackMixer,
+    },
+    {
+      title: "Viewport Settings",
       icon: <SettingsIcon size={size} />,
       component: ViewportSettings,
     },
-  };
+  ];
 }
 
-const CommandPanel = () => {
-  const defs = getTabDefs(24);
+const CommandPanel = ({ session }: { session: ViewportSession }) => {
+  const options = getTabOptions(24, session);
   return (
     <Box
       className={styles.commandPanel}
@@ -34,13 +39,14 @@ const CommandPanel = () => {
     >
       <Tabs
         alignment="left"
-        options={Object.values(defs).map((o) => o.icon)}
+        collapsible
+        options={options}
         width="100%"
         flex={1}
         minWidth={0}
         minHeight={0}
       >
-        {Object.values(defs).map(({ component: Comp }) => (
+        {Object.values(options).map(({ component: Comp }) => (
           <Comp />
         ))}
       </Tabs>

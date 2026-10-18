@@ -493,7 +493,7 @@ function ViewportPanel({
         onVocalPlacementChange={setVocalPlacement}
       />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <CommandPanel />
+        <CommandPanel session={session} />
         <div
           style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
         >

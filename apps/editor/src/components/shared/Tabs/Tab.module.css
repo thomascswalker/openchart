@@ -8,6 +8,10 @@
   border-right: 1px solid var(--border-color-primary);
 }
 
+.ui-tab-container-collapsed {
+  flex: 0 0 auto;
+}
+
 .ui-tab-container-top {
   flex-direction: column;
 }

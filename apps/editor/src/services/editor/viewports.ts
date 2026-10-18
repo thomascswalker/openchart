@@ -11,8 +11,8 @@ export interface ViewportCameraState {
 
 /**
  * Instruments without difficulties (Vocals) can only be shown in the Piano
- * Roll. Applied on every update so both the TrackList and the Highway's
- * instrument buttons land on the Piano Roll.
+ * Roll. Applied on every update so selecting one from the TrackList lands on
+ * the Piano Roll.
  */
 export function enforceViewForInstrument(
   session: ViewportSession,

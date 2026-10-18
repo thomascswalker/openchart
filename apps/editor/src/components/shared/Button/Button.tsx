@@ -32,7 +32,14 @@ type AriaProps = Pick<
 
 type HTMLButtonProps = Pick<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
-  "type" | "disabled" | "onClick" | "onKeyDown" | "id" | "role" | "className"
+  | "type"
+  | "disabled"
+  | "onClick"
+  | "onKeyDown"
+  | "onPointerDown"
+  | "id"
+  | "role"
+  | "className"
 >;
 type StyleProps = SpaceProps & ColorProps & LayoutProps & BorderProps;
 
@@ -68,6 +75,7 @@ const Button = ({
   flat = false,
   icon = undefined,
   onKeyDown = undefined,
+  onPointerDown = undefined,
   onClick = undefined,
   onChecked = undefined,
   type = "button",
@@ -130,7 +138,9 @@ const Button = ({
       type={type}
       id={id}
       role={role}
+      title={title}
       tabIndex={tabIndex}
+      onPointerDown={onPointerDown}
       aria-pressed={checked}
       aria-controls={ariaControls}
       aria-expanded={ariaExpanded}

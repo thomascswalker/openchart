@@ -5,3 +5,8 @@
   flex: 0 1 min(400px, 100%);
   overflow: hidden;
 }
+
+.commandPanel:has([data-collapsed="true"]) {
+  width: max-content;
+  flex: 0 0 auto;
+}

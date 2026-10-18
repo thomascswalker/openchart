@@ -1,17 +1,14 @@
 import { SongView } from "@openchart/views";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { runActionAsync } from "../actions/execute";
+import type { ViewportSession } from "../services/editor/viewports";
 import Box from "./shared/Box";
 import { Button } from "./shared/Button";
 import { Text } from "./shared/Text";
 import styles from "./TrackList.module.css";
 
-/** Config-driven track projection used by piano-roll panels. */
-export function TrackList() {
+export function TrackList({ session }: { session: ViewportSession }) {
   const { midi: midiData } = useDocumentSnapshot();
-  const { viewportSessions, activeViewportId } = useViewportSnapshot();
-  const session = viewportSessions.find((item) => item.id === activeViewportId);
   const songView = midiData ? new SongView(midiData) : null;
   const allDescriptors = songView?.getTrackDescriptors() ?? [];
   const descriptors = allDescriptors.filter(
@@ -20,10 +17,6 @@ export function TrackList() {
   const configuredNames = new Set(allDescriptors.map((item) => item.name));
   const unmapped =
     midiData?.tracks.filter((track) => !configuredNames.has(track.name)) ?? [];
-
-  if (!session) {
-    return null;
-  }
 
   return (
     <Box
@@ -41,10 +34,11 @@ export function TrackList() {
             key={descriptor.key}
             className={styles.trackRow}
             checked={selected}
+            onPointerDown={(event) => event.stopPropagation()}
             onClick={() => {
-              void runActionAsync("editor.focus-viewport", activeViewportId)
+              void runActionAsync("editor.focus-viewport", session.id)
                 .then(() =>
-                  runActionAsync("editor.update-viewport", activeViewportId, {
+                  runActionAsync("editor.update-viewport", session.id, {
                     trackKey: descriptor.key,
                     instrument: descriptor.name,
                   }),
@@ -62,10 +56,11 @@ export function TrackList() {
           key={`unmapped-${index}`}
           className={styles.trackRow}
           checked={session.trackKey === `unmapped-${index}`}
+          onPointerDown={(event) => event.stopPropagation()}
           onClick={() => {
-            void runActionAsync("editor.focus-viewport", activeViewportId)
+            void runActionAsync("editor.focus-viewport", session.id)
               .then(() =>
-                runActionAsync("editor.update-viewport", activeViewportId, {
+                runActionAsync("editor.update-viewport", session.id, {
                   trackKey: `unmapped-${index}`,
                   instrument: track.name,
                 }),

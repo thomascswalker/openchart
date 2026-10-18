@@ -10,6 +10,7 @@ import type {
 import classNames from "classnames";
 import styles from "./Tab.module.css";
 import { Button } from "../Button";
+import { H6 } from "../Text";
 
 type Orientation = "horizontal" | "vertical";
 type Alignment = "top" | "right" | "bottom" | "left";
@@ -17,18 +18,32 @@ type Styles = FlexProps & ColorProps & BorderProps & LayoutProps;
 const getSystemStyle: styleFn = compose(flex, color, border, layout);
 
 interface TabBodyProps extends Styles {
+  title: string;
   children?: ReactNode;
 }
 
-const TabBody = ({ children }: TabBodyProps) => {
-  return <div className={styles["ui-tab-body"]}>{children}</div>;
+const TabBody = ({ title, children }: TabBodyProps) => {
+  return (
+    <div className={styles["ui-tab-body"]}>
+      <div style={{ padding: "var(--size-small)" }}>
+        <H6>{title.toUpperCase()}</H6>
+      </div>
+      {children}
+    </div>
+  );
 };
 
+interface TabOption {
+  title: string;
+  icon: ReactNode;
+  component: () => ReactNode;
+}
+
 interface TabListProps extends Styles {
-  options?: ReactNode[];
+  options?: TabOption[];
   orientation?: Orientation;
   alignment?: Alignment;
-  activeIndex: number;
+  activeIndex: number | null;
   onClick?: (index: number) => void;
 }
 
@@ -46,13 +61,13 @@ const TabList = ({
   );
   return (
     <div className={tabListClassName}>
-      {options?.map((o: ReactNode, index) => (
+      {options?.map((o, index) => (
         <Button
           key={index}
           onClick={() => onClick?.(index)}
           checked={index === activeIndex}
         >
-          {o}
+          {o.icon}
         </Button>
       ))}
     </div>
@@ -60,8 +75,9 @@ const TabList = ({
 };
 
 interface TabsProps extends Styles {
-  options?: ReactNode[];
+  options?: TabOption[];
   alignment?: Alignment;
+  collapsible?: boolean;
   onTabChange?: (index: number) => void;
   children?: ReactNode[];
 }
@@ -69,16 +85,23 @@ interface TabsProps extends Styles {
 const TabContainer = ({
   options = [],
   alignment = "top",
+  collapsible = false,
   onTabChange,
   children = [],
   ...props
 }: TabsProps) => {
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [activeTabIndex, setActiveTabIndex] = useState<number | null>(0);
 
-  const tabStyle = getSystemStyle(props);
+  const isCollapsed = collapsible && activeTabIndex === null;
+  const tabStyle = {
+    ...getSystemStyle(props),
+    ...(isCollapsed ? { width: "max-content", flex: "0 0 auto" } : {}),
+  };
 
   const handleTabClick = (index: number) => {
-    setActiveTabIndex(index);
+    setActiveTabIndex((current) =>
+      collapsible && current === index ? null : index,
+    );
     onTabChange?.(index);
   };
 
@@ -90,17 +113,21 @@ const TabContainer = ({
     if (children.length !== options.length) {
       throw new Error("Child/Option mismatch.");
     }
-  }, [children]);
+  }, [children, options.length]);
 
   const orientation: Orientation =
     alignment === "top" || alignment === "bottom" ? "horizontal" : "vertical";
-  const tabClassName = classNames(
-    styles["ui-tab-container"],
-    styles[`ui-tab-container-${alignment}`],
-  );
+  const tabClassName = classNames(styles["ui-tab-container"], {
+    [styles[`ui-tab-container-${alignment}`]]: true,
+    [styles["ui-tab-container-collapsed"]]: isCollapsed,
+  });
 
   return (
-    <div className={tabClassName} style={tabStyle}>
+    <div
+      className={tabClassName}
+      style={tabStyle}
+      data-collapsed={isCollapsed || undefined}
+    >
       <TabList
         options={options}
         orientation={orientation}
@@ -108,10 +135,14 @@ const TabContainer = ({
         activeIndex={activeTabIndex}
         onClick={handleTabClick}
       />
-      <TabBody>{children[activeTabIndex] || null}</TabBody>
+      {activeTabIndex === null ? null : (
+        <TabBody title={options[activeTabIndex].title}>
+          {children[activeTabIndex] || null}
+        </TabBody>
+      )}
     </div>
   );
 };
 
 export default TabContainer;
-export type { TabsProps, TabListProps, TabBodyProps };
+export type { TabsProps, TabListProps, TabBodyProps, TabOption };

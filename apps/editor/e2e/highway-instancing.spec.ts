@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ChannelMessage, MetaType, Midi, MidiTrack } from "@openchart/core";
 import {
+  addViewport,
   cameraTick,
   canvasShot,
   loadSong,
@@ -103,10 +104,9 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
   await switchView(viewport, "highway");
-  await viewport.getByRole("button", { name: "Select DRUMS" }).click();
-  await expect(
-    viewport.getByRole("button", { name: "Select DRUMS" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  const drumsTrack = page.getByRole("button", { name: /DRUMS/ });
+  await drumsTrack.click();
+  await expect(drumsTrack).toHaveAttribute("aria-pressed", "true");
   const canvas = viewport.locator(".midi-view-host canvas");
   await expect
     .poll(async () => Number(await canvas.getAttribute("data-visible-notes")))
@@ -123,6 +123,30 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   expect(sceneObjects).toBeLessThan(500);
   expect(instancedCounts.kick).toBeGreaterThan(0);
   expect(instancedCounts.cymbal).toBeGreaterThan(0);
+});
+
+test("track lists show the selected track for their own viewport", async ({
+  page,
+}) => {
+  await loadSong(page);
+  const first = panel(page, 0);
+  await addViewport(first);
+  const second = panel(page, 1);
+
+  const firstDrums = first.getByRole("button", { name: /DRUMS/ });
+  const secondRhythm = second.getByRole("button", { name: /RHYTHM GUITAR/ });
+  await firstDrums.click();
+  await expect(firstDrums).toHaveAttribute("aria-pressed", "true");
+  await secondRhythm.click();
+
+  await expect(
+    first.getByRole("button", { name: /RHYTHM GUITAR/ }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(secondRhythm).toHaveAttribute("aria-pressed", "true");
+  await expect(second.getByRole("button", { name: /DRUMS/ })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
 });
 
 test("instanced note capacity grows beyond the legacy pool without drops", async ({
