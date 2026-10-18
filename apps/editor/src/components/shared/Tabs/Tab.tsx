@@ -36,7 +36,6 @@ const TabBody = ({ title, children }: TabBodyProps) => {
 interface TabOption {
   title: string;
   icon: ReactNode;
-  component: () => ReactNode;
 }
 
 interface TabListProps extends Styles {

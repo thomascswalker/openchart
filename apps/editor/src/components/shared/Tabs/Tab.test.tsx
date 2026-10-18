@@ -12,8 +12,8 @@ function renderTabs(collapsible: boolean) {
       <Tabs
         collapsible={collapsible}
         options={[
-          { title: "Tracks", icon: "Tracks", component: () => null },
-          { title: "Mixer", icon: "Mixer", component: () => null },
+          { title: "Tracks", icon: "Tracks" },
+          { title: "Mixer", icon: "Mixer" },
         ]}
       >
         {[
