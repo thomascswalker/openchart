@@ -49,6 +49,7 @@ describe("AboutDialog", () => {
 
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
+    expect(container.textContent).toContain(`Version: ${__APP_VERSION__}`);
     expect(
       container.querySelector('[data-testid="about-repo-name"]')?.textContent,
     ).toBe("thomascswalker/openchart");

@@ -31,7 +31,7 @@
   position: relative;
   z-index: 1;
   flex: 0 0 5px;
-  background: var(--border-color-primary);
+  background: var(--primary-light);
   outline: none;
   touch-action: none;
 }
@@ -46,12 +46,12 @@
 
 .separator:hover,
 .separator:focus-visible {
-  background: var(--text-primary);
+  background: var(--primary-lighter);
 }
 
 .horizontal:has(> .pane:first-child [data-collapsed="true"])
   > .pane:first-child {
   flex: 0 0 max-content !important;
   width: max-content;
-  min-width: 0;
+  min-width: 0 !important;
 }

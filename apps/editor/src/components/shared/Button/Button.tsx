@@ -157,9 +157,12 @@ const Button = ({
   );
 };
 
-type CloseButtonProps = ButtonProps;
+interface CloseButtonProps extends Omit<ButtonProps, "size"> {
+  size?: number;
+}
 
 const CloseButton = ({
+  size = 16,
   onClick,
   disabled = false,
   ...props
@@ -168,7 +171,7 @@ const CloseButton = ({
     <Button
       onClick={onClick}
       flat={true}
-      icon={<RemoveIcon size={16} disabled={disabled} />}
+      icon={<RemoveIcon size={size} disabled={disabled} />}
       className={styles["ui-button-close"]}
       disabled={disabled}
       {...props}

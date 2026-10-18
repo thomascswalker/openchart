@@ -71,9 +71,10 @@
   flex-direction: row;
   flex: 0 0 auto;
   gap: 8px;
-  padding: 12px 0 0;
-  border-top: 1px solid #3d3d3d;
+  padding: var(--size-small);
+  border-top: var(--border-primary);
   justify-content: flex-end;
+  background-color: var(--primary-dark);
 }
 
 .form .actions > * {
@@ -83,8 +84,4 @@
   padding: 4px 12px;
   border-radius: 3px;
   font-size: 13px;
-}
-
-.form {
-  gap: 12px;
 }

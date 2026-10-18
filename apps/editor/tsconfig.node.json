@@ -5,6 +5,7 @@
     "target": "es2023",
     "lib": ["ES2023"],
     "types": ["node", "wicg-file-system-access"],
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     /* Bundler mode */
     "module": "nodenext",
