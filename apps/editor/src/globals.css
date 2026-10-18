@@ -93,7 +93,7 @@
   --radius-none: 0px;
 
   /* Border */
-  --border-color-primary: var(--neutral-80);
+  --border-color-primary: var(--neutral-75);
   --border-primary: 1px solid var(--border-color-primary);
 
   /* Text */

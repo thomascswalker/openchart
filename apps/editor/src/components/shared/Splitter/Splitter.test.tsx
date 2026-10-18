@@ -43,6 +43,34 @@ describe("Splitter", () => {
     const { container, root, separator } = renderSplitter();
 
     try {
+      const grip = separator.querySelector<HTMLElement>(
+        '[aria-hidden="true"]',
+      )!;
+      const gripStyle = getComputedStyle(grip);
+      expect(grip.getAttribute("aria-hidden")).toBe("true");
+      expect(gripStyle.position).toBe("absolute");
+      expect(gripStyle.inset).toBe("0px");
+      const separatorBounds = separator.getBoundingClientRect();
+      const gripBounds = grip.getBoundingClientRect();
+      expect(gripBounds.x).toBe(separatorBounds.x);
+      expect(gripBounds.y).toBe(separatorBounds.y);
+      expect(gripBounds.width).toBe(separatorBounds.width);
+      expect(gripBounds.height).toBe(separatorBounds.height);
+      const dots = [...grip.querySelectorAll<HTMLElement>(":scope > span")];
+      expect(dots).toHaveLength(3);
+      const dotBounds = dots.map((dot) => dot.getBoundingClientRect());
+      const dotsCenterX =
+        (Math.min(...dotBounds.map(({ x }) => x)) +
+          Math.max(...dotBounds.map(({ x, width }) => x + width))) /
+        2;
+      const dotsCenterY =
+        (Math.min(...dotBounds.map(({ y }) => y)) +
+          Math.max(...dotBounds.map(({ y, height }) => y + height))) /
+        2;
+      expect(dotsCenterX).toBe(separatorBounds.x + separatorBounds.width / 2);
+      expect(dotsCenterY).toBe(separatorBounds.y + separatorBounds.height / 2);
+      expect(getComputedStyle(separator).flexBasis).toBe("5px");
+
       act(() => {
         separator.dispatchEvent(
           new PointerEvent("pointerdown", {

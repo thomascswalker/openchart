@@ -39,6 +39,7 @@ const CommandPanel = ({ session }: { session: ViewportSession }) => {
     >
       <Tabs
         alignment="left"
+        flat
         collapsible
         options={options}
         width="100%"

@@ -41,6 +41,7 @@ interface TabOption {
 
 interface TabListProps extends Styles {
   options?: TabOption[];
+  flat?: boolean;
   orientation?: Orientation;
   alignment?: Alignment;
   activeIndex: number | null;
@@ -49,6 +50,7 @@ interface TabListProps extends Styles {
 
 const TabList = ({
   options,
+  flat = false,
   orientation = "horizontal",
   alignment = "top",
   activeIndex,
@@ -64,6 +66,7 @@ const TabList = ({
       {options?.map((o, index) => (
         <Button
           key={index}
+          flat={flat && index !== activeIndex}
           onClick={() => onClick?.(index)}
           checked={index === activeIndex}
         >
@@ -76,6 +79,7 @@ const TabList = ({
 
 interface TabsProps extends Styles {
   options?: TabOption[];
+  flat?: boolean;
   alignment?: Alignment;
   collapsible?: boolean;
   onTabChange?: (index: number) => void;
@@ -84,6 +88,7 @@ interface TabsProps extends Styles {
 
 const TabContainer = ({
   options = [],
+  flat = false,
   alignment = "top",
   collapsible = false,
   onTabChange,
@@ -130,6 +135,7 @@ const TabContainer = ({
     >
       <TabList
         options={options}
+        flat={flat}
         orientation={orientation}
         alignment={alignment}
         activeIndex={activeTabIndex}

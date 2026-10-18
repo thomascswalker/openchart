@@ -133,7 +133,13 @@ function Splitter({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onKeyDown={handleKeyDown}
-      />
+      >
+        <span className={styles.grip} aria-hidden="true">
+          <span className={styles.gripDot} />
+          <span className={styles.gripDot} />
+          <span className={styles.gripDot} />
+        </span>
+      </div>
       <div
         className={styles.pane}
         style={{
