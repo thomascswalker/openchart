@@ -16,9 +16,8 @@ export type PinnedLaneId =
   "vocal-phrase" | "power-window" | "stagepower" | "percussion" | "pitchless";
 
 /**
- * A fixed-height row between the header and the pitch grid. Pinned lanes do
- * not scroll vertically, so special pitches (phrases, percussion, pitchless)
- * stay visible whatever pitch the camera shows.
+ * A row between the header and the pitch grid. Pinned lanes do not scroll
+ * vertically, and scale with the pitch rows so special pitches stay visible.
  */
 export interface LaneDef {
   id: PinnedLaneId;
@@ -50,7 +49,6 @@ export interface PianoRollProfile {
   /** Inclusive pitch range of the scrolling grid. Rows outside are dimmed. */
   pitchRange: { readonly low: number; readonly high: number };
   pinnedLanes: readonly LaneDef[];
-  laneHeight: number;
   /** Octave labels (C2…C6) on the keyboard. */
   keyboardLabels: boolean;
   editing: "generic" | "vocal";
@@ -62,14 +60,11 @@ export interface PianoRollProfile {
   laneForPitch(pitch: number): LaneDef | null;
 }
 
-export const PINNED_LANE_HEIGHT = 14;
-
 /** Reproduces the Piano Roll's original 0-127 behaviour exactly. */
 export const GENERIC_PROFILE: PianoRollProfile = Object.freeze({
   id: "generic",
   pitchRange: Object.freeze({ low: 0, high: 127 }),
   pinnedLanes: Object.freeze([]) as readonly LaneDef[],
-  laneHeight: PINNED_LANE_HEIGHT,
   keyboardLabels: false,
   editing: "generic",
   header: Object.freeze({
@@ -140,7 +135,6 @@ export function createVocalsProfile(
     id: "vocals",
     pitchRange: { ...layout.range },
     pinnedLanes: lanes,
-    laneHeight: PINNED_LANE_HEIGHT,
     keyboardLabels: true,
     editing: "vocal",
     header: {
@@ -198,6 +192,10 @@ export function pitchName(pitch: number): string {
   return `${names[((pitch % 12) + 12) % 12]}${Math.floor(pitch / 12) - 1}`;
 }
 
-export function gridTopFor(profile: PianoRollProfile, headerHeight: number) {
-  return headerHeight + profile.pinnedLanes.length * profile.laneHeight;
+export function gridTopFor(
+  profile: PianoRollProfile,
+  headerHeight: number,
+  laneHeight: number,
+) {
+  return headerHeight + profile.pinnedLanes.length * laneHeight;
 }

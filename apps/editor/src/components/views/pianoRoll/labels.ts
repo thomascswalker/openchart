@@ -43,11 +43,14 @@ export class PianoRollLabels {
       const label = this.label(this.laneLabels, laneCount++);
       label.textContent = lane.label;
       label.title = `${lane.label} (pitch ${lane.pitches.join(", ")})`;
-      label.style.left = "4px";
+      label.style.left = "0";
       label.style.top = `${y}px`;
       label.style.lineHeight = `${laneHeight}px`;
-      label.style.width = `${keyboardWidth - 6}px`;
+      label.style.width = `${keyboardWidth}px`;
+      label.style.boxSizing = "border-box";
+      label.style.paddingLeft = "4px";
       label.style.color = "#bbb";
+      label.style.backgroundColor = "#2a2a2a";
       label.style.display = "block";
     }
     this.hideFrom(this.laneLabels, laneCount);

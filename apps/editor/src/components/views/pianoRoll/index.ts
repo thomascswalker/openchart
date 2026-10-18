@@ -46,6 +46,13 @@ export interface PianoRollCameraState {
 const DEFAULT_CAMERA = { y: 84, v: 18 } as const;
 const EMPTY_MARKS: VocalMarks = { missingLyric: new Set(), missingTicks: [] };
 
+const defaultCamera = {
+  x: 0,
+  y: DEFAULT_CAMERA.y,
+  h: 120,
+  v: DEFAULT_CAMERA.v,
+};
+
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public constructor(engineOptions?: EngineOptions) {
     super(engineOptions);
@@ -59,12 +66,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     0.1,
     1000,
   );
-  private readonly camera: PianoRollCamera = {
-    x: 0,
-    y: DEFAULT_CAMERA.y,
-    h: 120,
-    v: DEFAULT_CAMERA.v,
-  };
+  private readonly camera: PianoRollCamera = { ...defaultCamera };
+  private lastCamera: PianoRollCamera = { ...defaultCamera };
   private profile: PianoRollProfile = GENERIC_PROFILE;
   /** Vertical camera remembered per profile across instrument switches. */
   private readonly profileCameras = new Map<
@@ -95,6 +98,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       getState: () => this.state,
       getTempoChanges: () => this.tempoChanges,
       getProfile: () => this.profile,
+      getViewport: () => ({ height: this.lastHeight }),
     },
     this.camera,
     this.keyboardWidth,
@@ -173,10 +177,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private playheadTick = 0;
   private lastWidth = 1;
   private lastHeight = 1;
-  private lastNotifiedCameraX: number | null = null;
-  private lastNotifiedCameraH: number | null = null;
-  private lastNotifiedCameraY: number | null = null;
-  private lastNotifiedCameraV: number | null = null;
 
   public getProfile(): PianoRollProfile {
     return this.profile;
@@ -203,12 +203,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (saved) {
       this.camera.y = saved.y;
       this.camera.v = saved.v;
-      this.camera.y = this.coordinates.clampPitch(this.camera.y);
+      this.camera.y = this.coordinates.clampCameraY(this.camera.y);
     } else if (profile.id === "vocals") {
       this.fitPitchRange();
     } else {
       this.camera.y = DEFAULT_CAMERA.y;
       this.camera.v = DEFAULT_CAMERA.v;
+      this.camera.y = this.coordinates.clampCameraY(this.camera.y);
     }
     this.render();
   }
@@ -245,7 +246,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.pendingRangeFit = false;
     this.camera.v = state.v;
     this.camera.h = state.h;
-    this.camera.y = this.coordinates.clampPitch(state.y);
+    this.camera.y = this.coordinates.clampCameraY(state.y);
     this.render();
     return true;
   }
@@ -317,34 +318,40 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   protected override draw(engine: Engine): void {
+    // Store last viewport size
     const { width, height } = engine.getSize();
     this.lastWidth = width;
     this.lastHeight = height;
+
+    // Initialize camera size, position, and proj. matrix
     this.threeCamera.left = 0;
     this.threeCamera.right = width;
     this.threeCamera.top = 0;
     this.threeCamera.bottom = height;
     this.threeCamera.position.set(0, 0, 10);
     this.threeCamera.updateProjectionMatrix();
+
+    // Update input viewport capture space
     this.input.setViewport(width, height);
+
+    // Update tempo cache
     this.updateTempoCache();
     if (this.pendingRangeFit && height > 1) {
       this.pendingRangeFit = false;
       this.coordinates.fitPitchRange(height);
     }
+    this.camera.y = this.coordinates.clampCameraY(this.camera.y);
+
+    // Draw geometry
     this.renderer.draw(width, height, this.playheadTick);
+
+    // Draw labels
     this.labels.draw(height);
 
-    if (
-      this.camera.x !== this.lastNotifiedCameraX ||
-      this.camera.h !== this.lastNotifiedCameraH ||
-      this.camera.y !== this.lastNotifiedCameraY ||
-      this.camera.v !== this.lastNotifiedCameraV
-    ) {
-      this.lastNotifiedCameraX = this.camera.x;
-      this.lastNotifiedCameraH = this.camera.h;
-      this.lastNotifiedCameraY = this.camera.y;
-      this.lastNotifiedCameraV = this.camera.v;
+    // If the camera changed, update the last camera and
+    // notify
+    if (this.camera !== this.lastCamera) {
+      this.lastCamera = { ...this.camera };
       this.notifyCameraChange();
     }
   }
@@ -416,7 +423,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private getSelectedTrackIndex(): number | null {
     const midi = this.state.midi;
     const track = this.getSelectedTrack();
-    if (!midi || !track) return null;
+    if (!midi || !track) {
+      return null;
+    }
     const index = midi.tracks.indexOf(track);
     return index >= 0 ? index : null;
   }
@@ -486,7 +495,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private updateTempoCache(): void {
     const midi = this.state.midi;
-    if (midi === this.tempoCacheMidi) return;
+    if (midi === this.tempoCacheMidi) {
+      return;
+    }
     this.tempoCacheMidi = midi;
     this.tempoChanges = midi?.getTempoChanges() ?? [
       { tick: 0, microsecondsPerQuarterNote: 500_000 },

@@ -7,6 +7,25 @@ import { NoteGeometryCache, screenRectOf } from "./noteGeometry";
 import type { PianoRollNoteKind } from "./profile";
 import type { PianoRollContext } from "./types";
 
+const RenderOrder = {
+  CanvasBackground: 0,
+  Background: 1,
+  GridHorizontal: 6,
+  GridBeat: 7,
+  GridMeasure: 8,
+  PinnedLaneTopBorder: 36,
+  Header: 35,
+  LyricMarker: 36,
+  Note: 20,
+  Selection: 21,
+  KeyboardBase: 25,
+  KeyboardWhite: 26,
+  KeyboardBlack: 27,
+  KeyboardOutOfRange: 28,
+  Playhead: 30,
+} as const;
+type RenderOrderValue = (typeof RenderOrder)[keyof typeof RenderOrder];
+
 const noteColor = 0x5d9cec;
 const noteSelectedColor = 0xff0000;
 const missingLyricColor = 0xf0ad4e;
@@ -62,16 +81,23 @@ export class PianoRollRenderer {
     this.clearScene();
 
     const gridTop = this.coordinates.getGridTop();
-    this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, 10);
-    this.addRect(0, gridTop, width, height - gridTop, 0x151515, 0);
-    this.drawPitchRows(width, height);
-    this.drawPinnedLanes(width);
+    this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, RenderOrder.Header);
+    this.addRect(
+      0,
+      gridTop,
+      width,
+      height - gridTop,
+      0x151515,
+      RenderOrder.CanvasBackground,
+    );
     this.drawGrid(width, height);
     this.drawNotes(width, height);
-    this.drawKeyboard(height);
     this.drawLyricMarkers(width);
     this.drawSelectionBox();
     this.drawCursor(width, height, playheadTick);
+    this.drawPinnedLanes(width);
+    this.drawKeyboard(height);
+    this.drawPitchRows(width, height);
     this.header.draw(width);
   }
 
@@ -82,7 +108,7 @@ export class PianoRollRenderer {
       [new THREE.Vector3(x, 0, 0.9), new THREE.Vector3(x, height, 0.9)],
       0xff0000,
       2,
-      30,
+      RenderOrder.Playhead,
     );
   }
 
@@ -101,17 +127,18 @@ export class PianoRollRenderer {
       const pitchClass = ((pitch % 12) + 12) % 12;
       const y = gridTop + topOffset + row * rowHeight;
       const inRange = pitch >= range.low && pitch <= range.high;
+      const color = !inRange
+        ? outOfRangeRowColor
+        : BlackPitchClasses.has(pitchClass)
+          ? 0x181818
+          : 0x202020;
       this.addRect(
-        this.context.getKeyboardWidth(),
-        y,
-        Math.max(0, width - this.context.getKeyboardWidth()),
-        rowHeight,
-        !inRange
-          ? outOfRangeRowColor
-          : BlackPitchClasses.has(pitchClass)
-            ? 0x181818
-            : 0x202020,
-        1,
+        this.context.getKeyboardWidth(), // x
+        y, // y
+        Math.max(0, width - this.context.getKeyboardWidth()), // width
+        rowHeight, // height
+        color, // color
+        RenderOrder.Background, // render order
       );
     }
   }
@@ -126,17 +153,39 @@ export class PianoRollRenderer {
     const topOffset = (camera.y - firstPitch) * rowHeight;
     const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
     const keyboardWidth = this.context.getKeyboardWidth();
-    this.addRect(0, gridTop, keyboardWidth, rollHeight, 0xd6d6d6, 2);
+    this.addRect(
+      0,
+      gridTop,
+      keyboardWidth,
+      rollHeight,
+      0xd6d6d6,
+      RenderOrder.KeyboardBase,
+    );
     for (let row = 0; row < rowCount; row++) {
       const pitch = firstPitch - row;
       if (pitch < 0 || pitch > 127) continue;
       const pitchClass = ((pitch % 12) + 12) % 12;
       const y = gridTop + topOffset + row * rowHeight;
       if (BlackPitchClasses.has(pitchClass)) {
-        this.addRect(0, y, keyboardWidth * 0.65, rowHeight, 0x272727, 3);
+        this.addRect(
+          0,
+          y,
+          keyboardWidth * 0.65,
+          rowHeight,
+          0x272727,
+          RenderOrder.KeyboardBlack,
+        );
       }
       if (pitch < range.low || pitch > range.high) {
-        this.addRect(0, y, keyboardWidth, rowHeight, 0x000000, 4, 0.55);
+        this.addRect(
+          0,
+          y,
+          keyboardWidth,
+          rowHeight,
+          0x000000,
+          RenderOrder.KeyboardOutOfRange,
+          0.55,
+        );
       }
       this.addLine(
         [
@@ -145,7 +194,7 @@ export class PianoRollRenderer {
         ],
         0x555555,
         1,
-        4,
+        RenderOrder.KeyboardWhite,
       );
     }
     this.addLine(
@@ -155,7 +204,7 @@ export class PianoRollRenderer {
       ],
       0x777777,
       1,
-      5,
+      RenderOrder.KeyboardWhite,
     );
   }
 
@@ -172,7 +221,7 @@ export class PianoRollRenderer {
         new THREE.Vector3(width, y, 6),
       );
     }
-    this.addLine(horizontal, 0x353535, 1, 6);
+    this.addLine(horizontal, 0x353535, 1, RenderOrder.GridHorizontal);
 
     const visibleWidth = Math.max(0, width - this.context.getKeyboardWidth());
     const visibleStart = camera.x;
@@ -196,8 +245,8 @@ export class PianoRollRenderer {
         new THREE.Vector3(x, height, 7),
       );
     }
-    this.addLine(vertical, 0x353535, 1, 7);
-    this.addLine(major, 0x555555, 2, 8);
+    this.addLine(vertical, 0x353535, 1, RenderOrder.GridBeat);
+    this.addLine(major, 0x555555, 2, RenderOrder.GridMeasure);
   }
 
   private drawNotes(width: number, height: number): void {
@@ -282,7 +331,7 @@ export class PianoRollRenderer {
         screenRect.width,
         screenRect.y + inset + screenRect.height - y,
         color,
-        20,
+        RenderOrder.Note,
         isSelected ? Math.max(style.opacity, 0.75) : style.opacity,
       );
       if (kind === "phrase:vocal") {
@@ -295,7 +344,7 @@ export class PianoRollRenderer {
           screenRect.x + screenRect.width - left,
           height - gridTop,
           style.color,
-          2,
+          RenderOrder.KeyboardBase,
           0.06,
         );
       }
@@ -316,21 +365,28 @@ export class PianoRollRenderer {
         Math.max(0, width - keyboardWidth),
         height,
         index % 2 === 0 ? 0x1a1a1a : 0x1e1e1e,
-        1,
+        RenderOrder.KeyboardBase,
       );
-      this.addRect(0, y, keyboardWidth, height, 0x2a2a2a, 2);
+      this.addRect(
+        0,
+        y,
+        keyboardWidth,
+        height,
+        0x2a2a2a,
+        RenderOrder.KeyboardBase,
+      );
       separators.push(
         new THREE.Vector3(0, y + height, 6),
         new THREE.Vector3(width, y + height, 6),
       );
     });
-    this.addLine(separators, 0x333333, 1, 6);
+    this.addLine(separators, 0x333333, 1, RenderOrder.GridHorizontal);
     const gridTop = this.coordinates.getGridTop();
     this.addLine(
       [new THREE.Vector3(0, gridTop, 9), new THREE.Vector3(width, gridTop, 9)],
       0x555555,
       1,
-      9,
+      RenderOrder.PinnedLaneTopBorder,
     );
   }
 
@@ -341,7 +397,14 @@ export class PianoRollRenderer {
     for (const tick of this.context.getVocalMarks().missingTicks) {
       const x = this.coordinates.screenXForTick(tick);
       if (x < keyboardWidth || x > width) continue;
-      this.addRect(x, HeaderHeight - 10, 3, 10, missingLyricColor, 11);
+      this.addRect(
+        x,
+        HeaderHeight - 10,
+        3,
+        10,
+        missingLyricColor,
+        RenderOrder.LyricMarker,
+      );
     }
   }
 
@@ -354,7 +417,7 @@ export class PianoRollRenderer {
       bounds.width,
       bounds.height,
       0xffffff,
-      40,
+      RenderOrder.Selection,
       0.5,
     );
   }
@@ -365,10 +428,12 @@ export class PianoRollRenderer {
     width: number,
     height: number,
     color: number,
-    renderOrder: number,
+    renderOrder: RenderOrderValue,
     opacity = 1,
   ): void {
-    if (width <= 0 || height <= 0) return;
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     const geometry = new THREE.PlaneGeometry(width, height);
     const material = new THREE.MeshBasicMaterial({
       color,
@@ -388,7 +453,7 @@ export class PianoRollRenderer {
     points: THREE.Vector3[],
     color: number,
     linewidth: number,
-    renderOrder: number,
+    renderOrder: RenderOrderValue,
   ): void {
     if (points.length < 2) return;
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
