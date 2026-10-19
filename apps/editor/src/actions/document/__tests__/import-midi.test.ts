@@ -12,10 +12,9 @@ describe("ImportMidiAction", () => {
     importedMidi.addTrack();
     const metadata = makeDefaultMetadata();
     metadata.song.name = "Keep this metadata";
-    const document = new DocumentService(
-      { info: vi.fn() } as unknown as LoggerService,
-      {} as never,
-    );
+    const document = new DocumentService({
+      info: vi.fn(),
+    } as unknown as LoggerService);
     document.metadata = metadata;
     const read = vi.fn(async () => ({
       name: "imported.mid",

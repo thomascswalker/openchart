@@ -70,7 +70,7 @@ interface VocalCreateRequest {
  * nothing crosses between the pitch grid and the pinned lanes.
  */
 export class VocalEditContext implements IEditContext {
-  public readonly id = "vocal";
+  public readonly id = "vocals";
 
   /** Supplies the profile, selected track and vocal placement. */
   private readonly context: PianoRollContext;

@@ -1,3 +1,4 @@
+import { Vector2 } from "three";
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
 import { laneCount, nearBoardZ } from "./constants";
@@ -27,16 +28,16 @@ export class HighwayCoordinateSystem {
     this.camera = camera;
   }
 
-  public getCanvasPoint(event: MouseEvent): { x: number; y: number } | null {
+  public getCanvasPoint(event: MouseEvent): Vector2 | null {
     const canvas = this.context.getCanvas();
     if (!canvas) return null;
     const bounds = canvas.getBoundingClientRect();
     if (bounds.width <= 0 || bounds.height <= 0) return null;
     const viewport = this.context.getViewport();
-    return {
-      x: ((event.clientX - bounds.left) / bounds.width) * viewport.width,
-      y: ((event.clientY - bounds.top) / bounds.height) * viewport.height,
-    };
+    return new Vector2(
+      ((event.clientX - bounds.left) / bounds.width) * viewport.width,
+      ((event.clientY - bounds.top) / bounds.height) * viewport.height,
+    );
   }
 
   public getChartLocation(
@@ -57,7 +58,7 @@ export class HighwayCoordinateSystem {
     const canvas = this.context.getCanvas();
     if (!this.getCanvasPoint(event) || !canvas) return null;
     const bounds = canvas.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
+    const ndc = new Vector2(
       ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
       -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
     );
@@ -66,11 +67,11 @@ export class HighwayCoordinateSystem {
     return this.raycaster.ray.intersectPlane(this.boardPlane, hit) ? hit : null;
   }
 
-  public worldToScreen(position: THREE.Vector3): THREE.Vector2 | null {
+  public worldToScreen(position: THREE.Vector3): Vector2 | null {
     if (!this.context.getCanvas()) return null;
     const viewport = this.context.getViewport();
     const projected = position.clone().project(this.camera);
-    return new THREE.Vector2(
+    return new Vector2(
       (projected.x + 1) * 0.5 * viewport.width,
       (1 - projected.y) * 0.5 * viewport.height,
     );
@@ -80,10 +81,7 @@ export class HighwayCoordinateSystem {
     if (!this.context.getCanvas()) return null;
     const viewport = this.context.getViewport();
     this.raycaster.setFromCamera(
-      new THREE.Vector2(
-        (x / viewport.width) * 2 - 1,
-        -(y / viewport.height) * 2 + 1,
-      ),
+      new Vector2((x / viewport.width) * 2 - 1, -(y / viewport.height) * 2 + 1),
       this.camera,
     );
     const hit = new THREE.Vector3();

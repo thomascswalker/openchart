@@ -6,6 +6,7 @@ import {
   type MidiNotePhrase,
   type ChartView,
 } from "@openchart/views";
+import { Vector2 } from "three";
 import * as THREE from "three";
 import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./geometryCatalog";
 import type { MeshKey } from "../../../rendering/registry";
@@ -18,12 +19,12 @@ import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
 export interface PhraseBoundaryProjection {
   worldStart: THREE.Vector3;
   worldEnd: THREE.Vector3;
-  screenStart: THREE.Vector2;
-  screenEnd: THREE.Vector2;
+  screenStart: Vector2;
+  screenEnd: Vector2;
 }
 
 export function getPhraseBoundaryHitOperation(
-  point: THREE.Vector2,
+  point: Vector2,
   start: PhraseBoundaryProjection,
   end: PhraseBoundaryProjection,
   threshold: number,
@@ -39,9 +40,9 @@ export function getPhraseBoundaryHitOperation(
 }
 
 function distanceToSegment(
-  point: THREE.Vector2,
-  start: THREE.Vector2,
-  end: THREE.Vector2,
+  point: Vector2,
+  start: Vector2,
+  end: Vector2,
 ): number {
   const segment = end.clone().sub(start);
   const lengthSquared = segment.lengthSq();
@@ -174,7 +175,7 @@ export class HighwayHitTester {
       if (point && start && end) {
         return (
           getPhraseBoundaryHitOperation(
-            new THREE.Vector2(point.x, point.y),
+            new Vector2(point.x, point.y),
             start,
             end,
             9,
@@ -292,7 +293,7 @@ export class HighwayHitTester {
     }
     const projected = corners
       .map((corner) => this.coordinates.worldToScreen(corner))
-      .filter((value): value is THREE.Vector2 => value !== null);
+      .filter((value): value is Vector2 => value !== null);
     if (!projected.length) return null;
     return {
       left: Math.min(...projected.map((corner) => corner.x)),
@@ -334,7 +335,7 @@ export class HighwayHitTester {
       new THREE.Vector3(x + 0.16, -0.08, this.coordinates.getNoteZ(tailEnd)),
     ]
       .map((point) => this.coordinates.worldToScreen(point))
-      .filter((value): value is THREE.Vector2 => value !== null);
+      .filter((value): value is Vector2 => value !== null);
     if (!points.length) return null;
     return {
       left: Math.min(...points.map((point) => point.x)),

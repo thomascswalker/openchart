@@ -24,7 +24,7 @@ import {
 
 /** Today's Piano Roll behaviour: any pitch 0-127, no note kinds. */
 export class DefaultEditContext implements IEditContext {
-  public readonly id = "default";
+  public readonly id = "generic";
 
   /** Supplies the selected track and document state. */
   private readonly context: PianoRollContext;

@@ -1,7 +1,7 @@
 import z from "zod";
-import { wavFilePickerTypes } from "../mixer/types";
+import { WavFilePickerTypes } from "../mixer/types";
 
-const METADATA_SETTINGS_VERSION = 1;
+const MetadataSettingsVersion = 1;
 
 const songSchema = z.object({
   name: z.string(),
@@ -42,7 +42,7 @@ const zodFile = (types: FilePickerAcceptType[]) =>
 const zodDirectory = () =>
   z.string().nullable().default(null).meta({ directory: true, label: "Root" });
 
-const zodWavFile = () => zodFile(wavFilePickerTypes);
+const zodWavFile = () => zodFile(WavFilePickerTypes);
 
 const audioSchema = z.object({
   root: zodDirectory(),
@@ -59,9 +59,9 @@ const creditsSchema = z.object({
   writer: z.string(),
 });
 
-export const metadataSchema = z.object({
+export const MetadataSchema = z.object({
   version: z
-    .literal(METADATA_SETTINGS_VERSION, {
+    .literal(MetadataSettingsVersion, {
       error: "Unsupported settings version.",
     })
     .meta({ hidden: true }),
@@ -72,7 +72,7 @@ export const metadataSchema = z.object({
   credits: creditsSchema,
 });
 
-export type Metadata = z.infer<typeof metadataSchema>;
+export type Metadata = z.infer<typeof MetadataSchema>;
 
 export interface MetadataValidationError {
   path: string;
@@ -83,7 +83,7 @@ export type MetadataValidationErrors = readonly MetadataValidationError[];
 
 export const makeDefaultMetadata = (): Metadata => {
   return {
-    version: METADATA_SETTINGS_VERSION,
+    version: MetadataSettingsVersion,
     song: {
       name: "",
       artist: "",

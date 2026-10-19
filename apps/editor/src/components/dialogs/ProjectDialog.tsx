@@ -1,7 +1,7 @@
 import { runActionAsync, runAction } from "../../actions/execute";
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import {
-  metadataSchema,
+  MetadataSchema,
   type Metadata,
   type MetadataValidationErrors,
 } from "../../services/document/schema";
@@ -25,7 +25,7 @@ const ProjectDialog = () => {
   return (
     <Form
       title="Project"
-      schema={metadataSchema}
+      schema={MetadataSchema}
       values={metadata}
       optionsLabel="Project sections"
       fileRootDirectory={directoryHandle}

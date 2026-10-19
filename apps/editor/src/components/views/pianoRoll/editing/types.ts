@@ -65,4 +65,4 @@ export interface NoteInsertion {
   durationTicks: number;
 }
 
-export type EditMode = "default" | "vocal";
+export type EditMode = "generic" | "vocals";

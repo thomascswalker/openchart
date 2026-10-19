@@ -7,7 +7,7 @@ import type {
   SaveFile,
 } from "./filesystem/types";
 import { toArrayBuffer } from "../util/array";
-import { midiFilePickerTypes, projectFilePickerTypes } from "./document/types";
+import { MidiFilePickerTypes, ProjectFilePickerTypes } from "./document/types";
 
 export class FileSystemService extends Service {
   static dependencies = ["logger"];
@@ -76,8 +76,8 @@ export class FileSystemService extends Service {
       if (baseDirectory && !resolvedPath) {
         throw new Error(
           relativePath
-            ? "Choose an audio file inside the selected audio root folder."
-            : "Choose an audio file inside the project folder.",
+            ? "Choose a file inside the audio root folder."
+            : "Choose a file inside the project folder.",
         );
       }
       const opened: LoadFile = {
@@ -123,18 +123,15 @@ export class FileSystemService extends Service {
       };
       input.click();
     });
-    if (opened) this.#logger.info(`File loaded: ${opened.name}`);
+    if (opened) {
+      this.#logger.info(`File loaded: ${opened.name}`);
+    }
     return opened;
   }
 
   public async readDirectory(
     relativeTo: FileSystemDirectoryHandle,
   ): Promise<LoadDirectory> {
-    if (typeof window.showDirectoryPicker !== "function") {
-      throw new Error(
-        "This browser does not support selecting a project audio folder.",
-      );
-    }
     const handle = await window.showDirectoryPicker({ mode: "read" });
     const relativePath = await relativeTo.resolve(handle);
     if (!relativePath) {
@@ -148,7 +145,7 @@ export class FileSystemService extends Service {
   }
 
   public async readProject(): Promise<ProjectFiles | null> {
-    const metadataFile = await this.read(projectFilePickerTypes);
+    const metadataFile = await this.read(ProjectFilePickerTypes);
     if (!metadataFile) return null;
     if (!/\.json$/i.test(metadataFile.name)) {
       throw new Error("Choose a project metadata file (.json).");
@@ -171,7 +168,7 @@ export class FileSystemService extends Service {
 
     const midiHandle = await directoryHandle.getFileHandle("notes.mid");
     const midiFile = await midiHandle.getFile();
-    const fileAccepts = midiFilePickerTypes.some((type) =>
+    const fileAccepts = MidiFilePickerTypes.some((type) =>
       Object.values(type.accept ?? {})
         .flat()
         .some((extension) => midiFile.name.toLowerCase().endsWith(extension)),

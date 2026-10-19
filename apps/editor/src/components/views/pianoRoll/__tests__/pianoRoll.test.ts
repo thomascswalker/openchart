@@ -4,25 +4,24 @@ import type {
   TempoEvent,
   TimeSignatureEvent,
 } from "@openchart/core";
-import { describe, expect, it, vi } from "vitest";
 import { Box2, Vector2 } from "three";
+import { describe, expect, it, vi } from "vitest";
 import {
   parseTempoString,
   parseTimeSignatureString,
 } from "../../../../audio/musicalTime";
 import { CoordinateSystem } from "../coordinates";
 import { HeaderHeight } from "../constants";
-import { DefaultHeaderLanes, HeaderController } from "../header";
-import { PianoRollInputController } from "../input";
+import { DefaultHeaderLanes, HeaderController } from "../controllers/header";
+import { PianoRollInputController } from "../controllers/input";
 import { NoteGeometryCache } from "../noteGeometry";
-import { remapNotesByIdentity } from "../editing/controller";
+import { remapNotesByIdentity } from "../controllers/noteEditing";
 import { PointerContext } from "../pointer";
 import { iterateGridBeats } from "../rendering";
 import { SelectionContext } from "../selection";
 import type { PianoRollNote } from "../types";
 import { applyStyle } from "../../../../util/css";
 
-/** Builds a coordinate system with a fixed camera and the given tempo map. */
 function makeCoordinates(
   tempoEvents: TempoEvent[] = [
     { tick: 0, microsecondsPerQuarterNote: 500_000 },
@@ -46,7 +45,6 @@ function makeCoordinates(
   );
 }
 
-/** Builds a piano-roll note with no backing MIDI note. */
 function makeNote(
   tick: number,
   durationTicks: number,
@@ -130,14 +128,12 @@ describe("note geometry", () => {
   });
 
   it("normalizes marquee rectangles regardless of drag direction", () => {
-    const rectangle = new Box2().setFromPoints([
-      new Vector2(100, 80),
-      new Vector2(60, 60),
-    ]);
+    const rectangle = new Box2(new Vector2(100, 80), new Vector2(60, 60));
     const selection = new SelectionContext();
     selection.bounds = rectangle;
-    expect(selection.bounds?.min).toEqual(new Vector2(60, 60));
-    expect(selection.bounds?.max).toEqual(new Vector2(100, 80));
+    expect(selection.bounds).toEqual(
+      new Box2(new Vector2(60, 60), new Vector2(100, 80)),
+    );
   });
 });
 
@@ -285,5 +281,39 @@ describe("piano-roll note creation", () => {
       y: HeaderHeight + 20,
     });
     expect(requestSeek).toHaveBeenCalledTimes(1);
+  });
+
+  it("pans the camera by the middle-button drag distance", () => {
+    const pointer = new PointerContext();
+    const pan = vi.fn();
+    const input = new PianoRollInputController(
+      {
+        getPointerContext: () => pointer,
+        requestRender: vi.fn(),
+      } as never,
+      { pan } as never,
+      {} as never,
+      {} as never,
+      { updateHover: vi.fn() } as never,
+    );
+    const controller = input as unknown as {
+      handlePointerDown: (event: PointerEvent) => void;
+      handlePointerMove: (event: PointerEvent) => void;
+    };
+
+    controller.handlePointerDown({
+      button: 1,
+      pointerId: 3,
+      clientX: 100,
+      clientY: 120,
+      preventDefault: vi.fn(),
+    } as unknown as PointerEvent);
+    controller.handlePointerMove({
+      pointerId: 3,
+      clientX: 112,
+      clientY: 135,
+    } as PointerEvent);
+
+    expect(pan).toHaveBeenCalledWith(12, 15);
   });
 });

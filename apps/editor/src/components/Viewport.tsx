@@ -26,7 +26,7 @@ import { ActiveChartViewService } from "../services/editor/activeChartView";
 import { Timeline } from "./Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import type { EngineOptions } from "../rendering/engine";
-import { CHART_VIEWS } from "./views/ChartViews";
+import { ChartViews } from "./views/ChartViews";
 import type { ChartView } from "./views/ChartViews";
 import {
   HighwayView,
@@ -186,7 +186,7 @@ function ViewportPanel({
   });
   const pianoRollProfile = profileForInstrument(session.instrument);
   const activeView =
-    CHART_VIEWS.find((view) => view.id === session.view) ?? CHART_VIEWS[0];
+    ChartViews.find((view) => view.id === session.view) ?? ChartViews[0];
   const engineOptions = useMemo<EngineOptions>(() => {
     return {
       background: 0x151515,
@@ -233,7 +233,7 @@ function ViewportPanel({
       const isValidPianoView =
         active &&
         session.view === "piano-roll" &&
-        pianoRollProfile.editing === "vocal";
+        pianoRollProfile.editing === "vocals";
 
       if (isValidPianoView) {
         const key = event.key.toLowerCase();

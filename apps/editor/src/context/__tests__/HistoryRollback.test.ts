@@ -41,7 +41,7 @@ describe("history transaction rollback", () => {
 
   it("replaces the document's MIDI and publishes on rollback", () => {
     const logger = { debug() {}, info() {}, warn() {}, error() {} };
-    const document = new DocumentService(logger as never, {} as never);
+    const document = new DocumentService(logger as never);
     let published = 0;
     document.subscribe(() => published++);
     const before = document.data!;

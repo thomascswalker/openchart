@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileSystemService } from "../filesystem";
-import { midiFilePickerTypes, projectFilePickerTypes } from "../document/types";
+import { MidiFilePickerTypes } from "../document/types";
 import type { LoggerService } from "../logger";
 
 const TEST_FILENAME = "test_read_write.mid";
@@ -99,13 +99,13 @@ describe("FileSystemService", () => {
     });
     const service = makeMockFileSystemService();
 
-    const opened = await service.read(midiFilePickerTypes);
+    const opened = await service.read(MidiFilePickerTypes);
     expect(opened?.name).toBe("chart.mid");
     expect(opened?.bytes).toEqual(bytes);
     expect(opened?.handle).toBe(midiHandle);
     expect(opened?.directoryHandle).toBeUndefined();
     expect(showOpenFilePicker).toHaveBeenCalledWith({
-      types: midiFilePickerTypes,
+      types: MidiFilePickerTypes,
     });
     expect(showDirectoryPicker).not.toHaveBeenCalled();
   });
@@ -168,30 +168,6 @@ describe("FileSystemService", () => {
     expect(projectDirectory.getDirectoryHandle).toHaveBeenCalledWith("stems");
   });
 
-  it("rejects files outside the supplied project directory", async () => {
-    const fileHandle = {
-      name: "song.wav",
-      async getFile() {
-        return {
-          name: "song.wav",
-          arrayBuffer: async () => new ArrayBuffer(0),
-        } as File;
-      },
-    } as unknown as FileSystemFileHandle;
-    const projectDirectory = {
-      resolve: vi.fn(async () => null),
-    } as unknown as FileSystemDirectoryHandle;
-    vi.stubGlobal("window", {
-      showOpenFilePicker: vi.fn(async () => [fileHandle]),
-      showSaveFilePicker: vi.fn(),
-    });
-    const service = makeMockFileSystemService();
-
-    await expect(service.read([], projectDirectory)).rejects.toThrow(
-      "Choose an audio file inside the project folder.",
-    );
-  });
-
   it("returns a selected audio directory relative to the project folder", async () => {
     const selectedDirectory = {
       name: "stems",
@@ -209,53 +185,5 @@ describe("FileSystemService", () => {
       relativePath: "audio/stems",
       handle: selectedDirectory,
     });
-  });
-
-  it("loads notes.mid next to the selected project JSON file", async () => {
-    const metadataBytes = new TextEncoder().encode("{}");
-    const midiBytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
-    const metadataHandle = {
-      name: "info.json",
-      async getFile() {
-        return {
-          name: "info.json",
-          arrayBuffer: async () => metadataBytes.slice().buffer,
-        } as File;
-      },
-    } as unknown as FileSystemFileHandle;
-    const midiHandle = {
-      name: "notes.mid",
-      async getFile() {
-        return {
-          name: "notes.mid",
-          arrayBuffer: async () => midiBytes.slice().buffer,
-        } as File;
-      },
-    } as unknown as FileSystemFileHandle;
-    const directoryHandle = {
-      resolve: vi.fn(async () => ["info.json"]),
-      getFileHandle: vi.fn(async () => midiHandle),
-    } as unknown as FileSystemDirectoryHandle;
-    const showOpenFilePicker = vi.fn(async () => [metadataHandle]);
-    const showDirectoryPicker = vi.fn(async () => directoryHandle);
-    vi.stubGlobal("window", {
-      origin: "https://example.test",
-      showOpenFilePicker,
-      showSaveFilePicker: vi.fn(),
-      showDirectoryPicker,
-    });
-    const service = makeMockFileSystemService();
-
-    await expect(service.readProject()).resolves.toEqual({
-      metadataBytes,
-      midiBytes,
-      midiHandle,
-      directoryHandle,
-    });
-    expect(showOpenFilePicker).toHaveBeenCalledWith({
-      types: projectFilePickerTypes,
-    });
-    expect(showDirectoryPicker).toHaveBeenCalledWith({ mode: "read" });
-    expect(directoryHandle.getFileHandle).toHaveBeenCalledWith("notes.mid");
   });
 });

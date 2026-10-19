@@ -1,15 +1,15 @@
-import { MetaType, Midi, type MidiTrack } from "@openchart/core";
+import { MetaType, Midi, MidiTrack } from "@openchart/core";
 import { SongView, validateVocalTrack } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
 import { CoordinateSystem } from "../coordinates";
 import { HeaderHeight, KeyboardWidth } from "../constants";
-import { HeaderController } from "../header";
+import { HeaderController } from "../controllers/header";
 import { NoteDataStore } from "../noteData";
-import { NoteEditingController } from "../editing/controller";
+import { NoteEditingController } from "../controllers/noteEditing";
 import { NoteGeometryCache } from "../noteGeometry";
 import {
-  DefaultProfile,
+  GENERIC_PROFILE,
   pitchName,
   profileForInstrument,
   type PianoRollProfile,
@@ -21,16 +21,10 @@ import type {
   PianoRollNote,
   VocalPlacement,
 } from "../types";
-import type { ChartViewState } from "../../AbstractChartView";
 
-/** The vocals profile every test in this file edits with. */
 const VOCALS = profileForInstrument("VOCALS");
-
-/** Height of one pinned lane at the default vertical zoom. */
 const LANE_HEIGHT = 18;
-/** Screen Y where the pitch grid starts below the five pinned lanes. */
 const GRID_TOP = HeaderHeight + 5 * LANE_HEIGHT;
-/** A constant 120 BPM tempo map. */
 const TEMPO = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }];
 /** Screen X of a tick at the default zoom (120 px per quarter = 480 ticks). */
 const xAt = (tick: number) => KeyboardWidth + tick / 4;
@@ -40,7 +34,6 @@ const yAt = (pitch: number) => GRID_TOP + (84 - pitch) * 18 + 5;
 const laneY = (index: number) =>
   HeaderHeight + index * LANE_HEIGHT + LANE_HEIGHT / 2;
 
-/** Builds a coordinate system for a profile, camera pitch and viewport. */
 function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
   return new CoordinateSystem(
     {
@@ -54,20 +47,18 @@ function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
   );
 }
 
-/**
- * Wires a real editing controller to a fake host that records transactions,
- * lyric prompts, previews and change notifications.
- */
-function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
-  const state: ChartViewState = {
+function harness(
+  midi = new Midi(),
+  profile: PianoRollProfile = VOCALS,
+  selectedInstrument = "VOCALS",
+) {
+  const state = {
     midi,
-    selectedTrackKey: "vocals",
-    selectedTrackIndex: null,
-    selectedInstrument: "VOCALS",
+    selectedTrackIndex: null as number | null,
+    selectedInstrument,
     selectedDifficulty: 3,
     snap: { enabled: true, denominator: 4 },
     isPlaying: false,
-    lockCursor: false,
   };
   const selection = new SelectionContext();
   const noteData = new NoteDataStore();
@@ -82,8 +73,13 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
     prompts: [] as { tick: number; handlers: LyricPromptHandlers }[],
   };
   const coordinates = makeCoordinates(profile);
-  const track = (): MidiTrack | null =>
-    profile.trackName ? (midi.getTrack(profile.trackName) ?? null) : null;
+  const track = (): MidiTrack | null => {
+    if (state.selectedTrackIndex !== null) {
+      return midi.tracks[state.selectedTrackIndex] ?? null;
+    }
+    const trackName = profile.trackName ?? state.selectedInstrument;
+    return midi.getTrack(trackName) ?? null;
+  };
   const trackIndex = () => {
     const found = track();
     return found ? midi.tracks.indexOf(found) : null;
@@ -141,6 +137,7 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
     calls,
     placement,
     selection,
+    state,
     coordinates,
     notes,
     lyrics,
@@ -149,7 +146,6 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
   };
 }
 
-/** A harness with two lyric notes ("one", "two") already on the track. */
 function seeded() {
   const midi = new Midi();
   const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
@@ -170,7 +166,7 @@ describe("piano-roll profiles", () => {
       "percussion",
       "pitchless",
     ]);
-    expect(profileForInstrument("LEAD GUITAR")).toBe(DefaultProfile);
+    expect(profileForInstrument("LEAD GUITAR")).toBe(GENERIC_PROFILE);
     expect(VOCALS.classify(85)).toBe("pitchless");
     expect(VOCALS.classify(35)).toBe("pitchless");
     expect(VOCALS.classify(111)).toBe("phrase:power-window");
@@ -179,8 +175,8 @@ describe("piano-roll profiles", () => {
     expect([36, 60, 84].map(pitchName)).toEqual(["C2", "C4", "C6"]);
   });
 
-  it("keeps the default grid identical: header origin and 0-127", () => {
-    const coordinates = makeCoordinates(DefaultProfile, 127);
+  it("keeps the generic grid identical: header origin and 0-127", () => {
+    const coordinates = makeCoordinates(GENERIC_PROFILE, 127);
     expect(coordinates.getGridTop()).toBe(HeaderHeight);
     expect(coordinates.pitchAtScreenY(HeaderHeight)).toBe(127);
     expect(coordinates.pitchAtScreenY(100_000)).toBe(0);
@@ -299,7 +295,7 @@ describe("piano-roll profiles", () => {
 
   it("does not create [section New] from the vocals header lane", () => {
     for (const [profile, expected] of [
-      [DefaultProfile, 1],
+      [GENERIC_PROFILE, 1],
       [VOCALS, 0],
     ] as const) {
       const midi = new Midi();
@@ -319,7 +315,7 @@ describe("piano-roll profiles", () => {
         } as never,
         makeCoordinates(profile),
       );
-      header.click(new Vector2(300, HeaderHeight - 4));
+      header.handleLeftClick(new Vector2(300, HeaderHeight - 4));
       const markers = track
         .getTextEvents()
         .filter((event) => event.type === MetaType.Marker);
@@ -348,6 +344,45 @@ describe("vocal note editing", () => {
     expect([h.calls.begin, h.calls.end]).toEqual([1, 1]);
     expect(h.lyrics()).toEqual([[0, "la"]]);
     expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+  });
+
+  describe("generic note editing", () => {
+    it("materializes the selected configured track for note placement", () => {
+      const h = harness(new Midi(), GENERIC_PROFILE, "LEAD GUITAR");
+      const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+
+      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+
+      expect(h.track()?.name).toBe("LEAD GUITAR");
+      expect(
+        h.notes().map((note) => [note.pitch, note.tick, note.durationTicks]),
+      ).toEqual([[60, 0, 480]]);
+    });
+
+    it("keeps an existing unmapped selected track as the placement target", () => {
+      const midi = new Midi();
+      const unmapped = new MidiTrack("Unmapped track");
+      midi.tracks.push(unmapped);
+      const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR");
+      h.state.selectedTrackIndex = 0;
+      const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+
+      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+
+      expect(midi.tracks).toEqual([unmapped]);
+      expect(h.track()).toBe(unmapped);
+      expect(h.notes().map((note) => note.pitch)).toEqual([60]);
+    });
+
+    it("does not create a fallback track without a configured instrument", () => {
+      const h = harness(new Midi(), GENERIC_PROFILE, "not configured");
+      const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+
+      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+
+      expect(h.midi.tracks).toHaveLength(0);
+      expect(h.calls.begin).toBe(0);
+    });
   });
 
   it("rolls back the whole create on Escape", () => {
@@ -447,7 +482,7 @@ describe("vocal note editing", () => {
     const h = seeded();
     h.selection.notes = h.notes();
     h.editing.copySelection();
-    h.editing.pasteClipboard(xAt(1920));
+    h.editing.pasteClipboard(xAt(1920), true);
     expect(h.lyrics()).toEqual([
       [0, "one"],
       [480, "two"],
