@@ -1,3 +1,6 @@
+import type { TempoEvent, TimeSignatureEvent } from "@openchart/core";
+import type { VocalMarks } from "./types";
+
 export const BlackPitchClasses = new Set([
   1, // C#
   3, // D#
@@ -52,3 +55,24 @@ export const SnapDenominators = [
 ] as const;
 
 export const KeyboardWidth = 64;
+
+export const ClickMovementThreshold = 4;
+
+export const EmptyMarks: VocalMarks = {
+  missingLyric: new Set(),
+  missingTicks: [],
+};
+
+export const DefaultTempoEvents: TempoEvent[] = [
+  { tick: 0, microsecondsPerQuarterNote: 500_000 },
+];
+export const DefaultTimeSignatureEvents: TimeSignatureEvent[] = [
+  { tick: 0, numerator: 4, denominator: 2 },
+];
+
+export const DefaultCamera = {
+  x: 0,
+  y: 84,
+  h: 120,
+  v: 18,
+};

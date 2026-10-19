@@ -69,10 +69,8 @@ export class Engine {
   public readonly renderer: THREE.WebGLRenderer;
   // Canvas element associated with the renderer
   public readonly canvas: HTMLCanvasElement;
-  // Current width of the rendering canvas
-  private width = 1;
-  // Current height of the rendering canvas
-  private height = 1;
+  // Current size of the rendering canvas
+  #size = new THREE.Vector2(1, 1);
   // Maximum allowed device pixel ratio
   private readonly pixelRatioCap: number;
   // Flag indicating whether the engine has been disposed
@@ -105,22 +103,24 @@ export class Engine {
 
     // Set the initial size of the renderer and canvas to [1,1] so that
     // it has a valid size immediately
-    this.size = { width: 1, height: 1 };
+    this.size = new THREE.Vector2(1, 1);
   }
 
-  public get size(): { width: number; height: number } {
-    return { width: this.width, height: this.height };
+  public get size(): THREE.Vector2 {
+    return this.#size.clone();
   }
 
-  public set size(value: { width: number; height: number }) {
-    this.width = Math.max(1, Math.floor(value.width));
-    this.height = Math.max(1, Math.floor(value.height));
+  public set size(value: THREE.Vector2) {
+    this.#size.set(
+      Math.max(1, Math.floor(value.x)),
+      Math.max(1, Math.floor(value.y)),
+    );
     const pixelRatio = Math.min(
       typeof window === "undefined" ? 1 : window.devicePixelRatio || 1,
       this.pixelRatioCap,
     );
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setSize(this.width, this.height, false);
+    this.renderer.setSize(this.#size.x, this.#size.y, false);
   }
 
   public render(scene: THREE.Scene, camera: THREE.Camera): void {

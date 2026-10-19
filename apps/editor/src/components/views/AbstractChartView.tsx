@@ -1,9 +1,9 @@
 import type { Midi } from "@openchart/core";
 import { Difficulty } from "@openchart/views";
-import { Box2, Vector2 } from "three";
 import * as THREE from "three";
-import { RenderScheduler } from "../../rendering/scheduler";
+import { Box2, Vector2 } from "three";
 import { Engine, type EngineOptions } from "../../rendering/engine";
+import { RenderScheduler } from "../../rendering/scheduler";
 import { getCameraTickForPlayhead } from "./viewNavigation";
 
 export interface ChartViewState {
@@ -13,13 +13,11 @@ export interface ChartViewState {
   selectedDifficulty: Difficulty;
   snap: SnapSettings;
   lockCursor: boolean;
-  /** Note mutations are disabled while the shared transport is playing. */
   isPlaying: boolean;
 }
 
 export interface SnapSettings {
   enabled: boolean;
-  /** Note-value denominator (4 == quarter note, 3 == triplet half note, etc). */
   denominator: number;
 }
 
@@ -87,20 +85,20 @@ export abstract class AbstractChartView<T> {
 
     host.replaceChildren(engine.canvas);
     this.onMounted(engine);
-    engine.size = { width: this.width, height: this.height };
+    engine.size = new Vector2(this.width, this.height);
 
     // Paint once synchronously so the viewport has a useful first frame even
     // when the host is mounted between animation-frame callbacks. The
     // scheduler still coalesces subsequent state and pointer updates.
     this.draw(engine);
     engine.render(this.renderScene, this.renderCamera);
-    this.requestRender();
+    this.render();
   }
 
   public update(state: ChartViewState): void {
     this.state = state;
 
-    this.requestRender();
+    this.render();
   }
 
   /** Chart renderers use this instead of reaching into React playback state. */
@@ -116,10 +114,10 @@ export abstract class AbstractChartView<T> {
       return;
     }
 
-    this.engine.size = { width, height };
+    this.engine.size = new Vector2(width, height);
     this.onResized(width, height);
 
-    this.requestRender();
+    this.render();
   }
 
   public destroy(): void {
@@ -160,14 +158,8 @@ export abstract class AbstractChartView<T> {
   }
   protected abstract draw(engine: Engine): void;
 
-  /** Coalesce all state changes into one complete render per display frame. */
-  protected requestRender(): void {
-    this.scheduler?.request();
-  }
-
-  /** Existing views call render(); keep that API while routing through the scheduler. */
   protected render(): void {
-    this.requestRender();
+    this.scheduler?.request();
   }
 
   protected toScreenSpace(value: Vector2): Vector2;

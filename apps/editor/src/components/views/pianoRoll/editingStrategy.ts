@@ -1,4 +1,5 @@
 import type { MidiChannelEvent, MidiTrack } from "@openchart/core";
+import { SongView } from "@openchart/views";
 import { clamp } from "es-toolkit";
 import { Vector2 } from "three";
 import type { CoordinateSystem } from "./coordinates";
@@ -20,28 +21,18 @@ export interface ClipboardNote {
   pitch: number;
   durationTicks: number;
   velocity: number;
-  /** Lyric copied with a vocal note; pasted back onto the same tick. */
   lyric?: string;
 }
 
 export interface CreatedNote {
   noteOn: MidiChannelEvent;
-  /** The note needs a lyric before the create gesture is complete. */
   needsLyric: boolean;
 }
 
-/**
- * Model mutations behind the Piano Roll's gestures. The controller owns
- * gesture state, selection and history bracketing; a strategy decides what
- * each gesture does to the MIDI data. The generic strategy edits raw pitches;
- * the vocal strategy routes everything through the vocal data model.
- */
-export interface NoteEditingStrategy {
+export interface IEditingStrategy {
   readonly id: "generic" | "vocal";
-  /** The track to edit, created on demand when `create` is true. */
   getTrack(create: boolean): MidiTrack | null;
   create(local: Vector2): CreatedNote | null;
-  /** Called once when a move gesture starts (e.g. to capture lyrics). */
   beginMove(targets: readonly MoveTarget[]): void;
   move(
     targets: readonly MoveTarget[],
@@ -57,7 +48,6 @@ export interface NoteEditingStrategy {
     entries: readonly ClipboardNote[],
     anchorTick: number,
   ): MidiChannelEvent[];
-  /** Vocal only: sets the lyric of a just-created note. */
   setLyric?(noteOn: MidiChannelEvent, text: string): boolean;
 }
 
@@ -74,18 +64,23 @@ function insertNote(
 }
 
 export function copyNotes(notes: readonly PianoRollNote[]): ClipboardNote[] {
-  if (notes.length === 0) return [];
+  // If there's no notes, return an empty array
+  if (notes.length === 0) {
+    return [];
+  }
+  // Get the minimum tick of the specified notes
   const minTick = Math.min(...notes.map((note) => note.tick));
+
+  // Return a copy of the specified notes with the tick converted
+  // to a tick relative to the minimum tick of the original array.
   return notes.map((note) => ({
+    ...note,
     relativeTick: note.tick - minTick,
-    pitch: note.pitch,
-    durationTicks: note.durationTicks,
-    velocity: note.velocity,
   }));
 }
 
 /** Today's Piano Roll behaviour: any pitch 0-127, no note kinds. */
-export class GenericEditingStrategy implements NoteEditingStrategy {
+export class NoteEditingStrategy implements IEditingStrategy {
   public readonly id = "generic";
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
@@ -95,12 +90,23 @@ export class GenericEditingStrategy implements NoteEditingStrategy {
     this.coordinates = coordinates;
   }
 
-  public getTrack(): MidiTrack | null {
-    return this.context.getSelectedTrack();
+  public getTrack(create = false): MidiTrack | null {
+    const selected = this.context.getSelectedTrack();
+    if (selected || !create) return selected;
+
+    const midi = this.context.getMidi();
+    if (!midi) return null;
+    const song = new SongView(midi);
+    const instrument = song.getInstrumentTrackView(
+      this.context.getState().selectedInstrument,
+    );
+    return instrument
+      ? (song.ensureMidiTrack(instrument.getKey()) ?? null)
+      : null;
   }
 
   public create(local: Vector2): CreatedNote | null {
-    const track = this.getTrack();
+    const track = this.getTrack(true);
     if (!track) return null;
     const pitch = this.coordinates.pitchAtScreenY(local.y);
     const tick = this.coordinates.snapTick(

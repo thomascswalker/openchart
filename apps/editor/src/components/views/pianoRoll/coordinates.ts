@@ -294,11 +294,7 @@ export class CoordinateSystem {
     this.camera.y = this.clampCameraY(anchorPitch + mouseY / this.camera.v);
   }
 
-  public focusSelection(
-    notes: PianoRollNote[],
-    width: number,
-    height: number,
-  ): void {
+  public focusSelection(notes: PianoRollNote[], size: Vector2): void {
     if (notes.length === 0) {
       return;
     }
@@ -309,8 +305,8 @@ export class CoordinateSystem {
     );
     const minPitch = Math.min(...notes.map((note) => note.pitch));
     const maxPitch = Math.max(...notes.map((note) => note.pitch));
-    const viewWidth = Math.max(1, width - KeyboardWidth);
-    const viewHeight = Math.max(1, height - this.getGridTop());
+    const viewWidth = Math.max(1, size.x - KeyboardWidth);
+    const viewHeight = Math.max(1, size.y - this.getGridTop());
     const padding = 1.2;
     const pitchSpan = Math.max(1, maxPitch - minPitch + 1) * padding;
     const tempoEvents = this.context.getTempoEvents();

@@ -18,7 +18,6 @@ export interface PianoRollNote {
   durationTicks: number;
   pitch: number;
   velocity: number;
-  /** Back-reference to the source note, used to keep selection stable across edits. */
   midiNote: MidiNote;
 }
 
@@ -105,4 +104,11 @@ export interface PianoRollContext {
   editNextLyric(afterTick: number): void;
   /** Audition notes (vocal pitch feedback on place/move). */
   previewNotes(notes: readonly PianoRollNote[]): void;
+}
+
+export interface PianoRollCameraState {
+  profile: PianoRollProfile["id"];
+  y: number;
+  v: number;
+  h: number;
 }

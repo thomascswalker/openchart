@@ -27,7 +27,7 @@ import type {
   ClipboardNote,
   CreatedNote,
   MoveTarget,
-  NoteEditingStrategy,
+  IEditingStrategy,
   ResizeTarget,
 } from "./editingStrategy";
 import type { PianoRollContext, PianoRollNote } from "./types";
@@ -37,7 +37,7 @@ import type { PianoRollContext, PianoRollNote } from "./types";
  * note's tick through every edit, pitched notes clamp to the vocal range and
  * nothing crosses between the pitch grid and the pinned lanes.
  */
-export class VocalEditingStrategy implements NoteEditingStrategy {
+export class VocalEditingStrategy implements IEditingStrategy {
   public readonly id = "vocal";
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;

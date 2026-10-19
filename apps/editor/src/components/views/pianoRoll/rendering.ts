@@ -2,7 +2,7 @@ import { Vector2 } from "three";
 import * as THREE from "three";
 import { BlackPitchClasses, HeaderHeight, KeyboardWidth } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
-import { HeaderController } from "./header";
+import { HeaderController } from "./controllers/header";
 import { NoteDataStore } from "./noteData";
 import { NoteGeometryCache, screenRectOf } from "./noteGeometry";
 import type { PianoRollNoteKind } from "./profile";
@@ -320,7 +320,7 @@ export class PianoRollRenderer {
     const noneSelected = selection.size === 0;
     const profile = this.#context.getProfile();
     const missingLyric =
-      profile.editing === "vocal"
+      profile.editing === "vocals"
         ? this.#context.getVocalMarks().missingLyric
         : null;
     const gridTop = this.#coordinates.getGridTop();
@@ -417,7 +417,7 @@ export class PianoRollRenderer {
 
   /** Validation colour in the header text lane for notes with no lyric. */
   private drawLyricMarkers(width: number): void {
-    if (this.#context.getProfile().editing !== "vocal") return;
+    if (this.#context.getProfile().editing !== "vocals") return;
     const keyboardWidth = KeyboardWidth;
     for (const tick of this.#context.getVocalMarks().missingTicks) {
       const x = this.#coordinates.screenXForTick(tick);

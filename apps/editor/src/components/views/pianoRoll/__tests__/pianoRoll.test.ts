@@ -12,10 +12,10 @@ import {
 } from "../../../../audio/musicalTime";
 import { CoordinateSystem } from "../coordinates";
 import { HeaderHeight } from "../constants";
-import { DefaultHeaderLanes, HeaderController } from "../header";
-import { PianoRollInputController } from "../input";
+import { DefaultHeaderLanes, HeaderController } from "../controllers/header";
+import { PianoRollInputController } from "../controllers/input";
 import { NoteGeometryCache } from "../noteGeometry";
-import { remapNotesByIdentity } from "../noteEditing";
+import { remapNotesByIdentity } from "../controllers/noteEditing";
 import { PointerContext } from "../pointer";
 import { iterateGridBeats } from "../rendering";
 import { SelectionContext } from "../selection";
@@ -281,5 +281,39 @@ describe("piano-roll note creation", () => {
       y: HeaderHeight + 20,
     });
     expect(requestSeek).toHaveBeenCalledTimes(1);
+  });
+
+  it("pans the camera by the middle-button drag distance", () => {
+    const pointer = new PointerContext();
+    const pan = vi.fn();
+    const input = new PianoRollInputController(
+      {
+        getPointerContext: () => pointer,
+        requestRender: vi.fn(),
+      } as never,
+      { pan } as never,
+      {} as never,
+      {} as never,
+      { updateHover: vi.fn() } as never,
+    );
+    const controller = input as unknown as {
+      handlePointerDown: (event: PointerEvent) => void;
+      handlePointerMove: (event: PointerEvent) => void;
+    };
+
+    controller.handlePointerDown({
+      button: 1,
+      pointerId: 3,
+      clientX: 100,
+      clientY: 120,
+      preventDefault: vi.fn(),
+    } as unknown as PointerEvent);
+    controller.handlePointerMove({
+      pointerId: 3,
+      clientX: 112,
+      clientY: 135,
+    } as PointerEvent);
+
+    expect(pan).toHaveBeenCalledWith(12, 15);
   });
 });

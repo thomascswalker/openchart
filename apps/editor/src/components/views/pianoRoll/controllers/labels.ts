@@ -1,16 +1,16 @@
 import type { CSSProperties } from "react";
-import { applyStyle } from "../../../util/css";
+import { applyStyle } from "../../../../util/css";
 import {
   HeaderHeight,
   KeyboardWidth,
   MinimumPixelsPerSemitone,
-} from "./constants";
-import type { CoordinateSystem } from "./coordinates";
+} from "../constants";
+import type { CoordinateSystem } from "../coordinates";
 import type { HeaderController, HeaderLane } from "./header";
-import { pitchName } from "./profile";
-import type { PianoRollContext } from "./types";
+import { pitchName } from "../profile";
+import type { PianoRollContext } from "../types";
 
-const LABEL_STYLE: CSSProperties = {
+const LabelStyle: CSSProperties = {
   position: "absolute",
   font: "10px sans-serif",
   whiteSpace: "nowrap",
@@ -169,7 +169,7 @@ export class PianoRollLabels {
       label = document.createElement("div");
       label.className = "piano-roll-label";
 
-      applyStyle(label, LABEL_STYLE);
+      applyStyle(label, LabelStyle);
       pool[index] = label;
       this.#host?.appendChild(label);
     }

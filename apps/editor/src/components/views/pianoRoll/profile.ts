@@ -7,6 +7,7 @@ import {
   type VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
+import type { PitchRange } from "../../../audio/soundboard";
 
 /** How a note is drawn and edited. Generic notes are plain pitched notes. */
 export type PianoRollNoteKind =
@@ -44,14 +45,16 @@ export interface PianoRollHeaderOptions {
   clipLabels: boolean;
 }
 
+export type PianoRollEditingType = "generic" | "vocals";
+
 export interface PianoRollProfile {
-  id: "generic" | "vocals";
+  id: PianoRollEditingType;
   /** Inclusive pitch range of the scrolling grid. Rows outside are dimmed. */
-  pitchRange: { readonly low: number; readonly high: number };
+  pitchRange: PitchRange;
   pinnedLanes: readonly LaneDef[];
   /** Octave labels (C2…C6) on the keyboard. */
   keyboardLabels: boolean;
-  editing: "generic" | "vocal";
+  editing: PianoRollEditingType;
   header: PianoRollHeaderOptions;
   /** MIDI track the profile edits when no track index is selected yet. */
   trackName: string | null;
@@ -136,7 +139,7 @@ export function createVocalsProfile(
     pitchRange: { ...layout.range },
     pinnedLanes: lanes,
     keyboardLabels: true,
-    editing: "vocal",
+    editing: "vocals",
     header: {
       textLane: "lyrics",
       createOnClick: false,

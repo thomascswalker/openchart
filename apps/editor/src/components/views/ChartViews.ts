@@ -15,12 +15,12 @@ export interface ChartViewDefinition {
 
 // The registry belongs to the editor application, not a single chart view.
 // Starting preload here lets switching views reuse the same immutable assets.
-export const applicationRenderAssets = new ResourceRegistry();
-void applicationRenderAssets.loadResources().catch((error) => {
-  console.error("Circular highway assets failed to preload", error);
+export const ApplicationRenderAssets = new ResourceRegistry();
+void ApplicationRenderAssets.loadResources().catch((error) => {
+  console.error("Assets failed to load: ", error);
 });
 
-export const CHART_VIEWS: ChartViewDefinition[] = [
+export const ChartViews: ChartViewDefinition[] = [
   {
     id: "piano-roll",
     name: "Piano Roll",
@@ -34,7 +34,7 @@ export const CHART_VIEWS: ChartViewDefinition[] = [
     name: "Highway",
 
     createRenderer: (engineOptions) => {
-      return new HighwayView(applicationRenderAssets, engineOptions);
+      return new HighwayView(ApplicationRenderAssets, engineOptions);
     },
   },
 ];

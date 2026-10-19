@@ -17,11 +17,11 @@ import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
-import { HeaderController, type HeaderLane } from "./header";
-import { PianoRollInputController } from "./input";
-import { PianoRollLabels } from "./labels";
+import { HeaderController, type HeaderLane } from "./controllers/header";
+import { PianoRollInputController } from "./controllers/input";
+import { PianoRollLabels } from "./controllers/labels";
 import { NoteDataStore } from "./noteData";
-import { NoteEditingController } from "./noteEditing";
+import { NoteEditingController } from "./controllers/noteEditing";
 import { NoteGeometryCache } from "./noteGeometry";
 import { PointerContext } from "./pointer";
 import { GENERIC_PROFILE, type PianoRollProfile } from "./profile";
@@ -29,30 +29,20 @@ import { PianoRollRenderer } from "./rendering";
 import { SelectionContext } from "./selection";
 import type {
   PianoRollCamera,
+  PianoRollCameraState,
   PianoRollContext,
   PianoRollNote,
   VocalMarks,
   VocalPlacement,
 } from "./types";
-import { KeyboardWidth } from "./constants";
-
-/** Serializable vertical/zoom camera, persisted in ViewportCameraState. */
-export interface PianoRollCameraState {
-  profile: PianoRollProfile["id"];
-  y: number;
-  v: number;
-  h: number;
-}
-
-const DEFAULT_CAMERA = { y: 84, v: 18 } as const;
-const EMPTY_MARKS: VocalMarks = { missingLyric: new Set(), missingTicks: [] };
-
-const defaultCamera = {
-  x: 0,
-  y: DEFAULT_CAMERA.y,
-  h: 120,
-  v: DEFAULT_CAMERA.v,
-};
+import {
+  DefaultCamera,
+  DefaultTempoEvents,
+  DefaultTimeSignatureEvents,
+  EmptyMarks,
+  KeyboardWidth,
+} from "./constants";
+import { cloneDeep } from "es-toolkit";
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public constructor(engineOptions?: EngineOptions) {
@@ -67,8 +57,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     0.1,
     1000,
   );
-  private readonly camera: PianoRollCamera = { ...defaultCamera };
-  private lastCamera: PianoRollCamera = { ...defaultCamera };
+  private readonly camera: PianoRollCamera = { ...DefaultCamera };
+  private lastCamera: PianoRollCamera = { ...DefaultCamera };
   private profile: PianoRollProfile = GENERIC_PROFILE;
   /** Vertical camera remembered per profile across instrument switches. */
   private readonly profileCameras = new Map<
@@ -81,7 +71,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     phrase: null,
   };
   private vocalMarksKey: { track: MidiTrack; revision: number } | null = null;
-  private vocalMarks: VocalMarks = EMPTY_MARKS;
+  private vocalMarks: VocalMarks = EmptyMarks;
 
   /** Audition hook for vocal pitch feedback on place/move. */
   public onNotePreview: ((notes: readonly PianoRollNote[]) => void) | null =
@@ -96,9 +86,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     {
       getPpqn: () => this.getPpqn(),
       getState: () => this.state,
-      getTempoEvents: () => this.tempoEvents,
+      getTempoEvents: () => this.#tempoEvents,
       getProfile: () => this.profile,
-      getViewport: () => ({ height: this.lastHeight }),
+      getViewport: () => ({ height: this.#lastViewportSize.y }),
     },
     this.camera,
   );
@@ -114,8 +104,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getTrackNotes: (midi, trackIndex) =>
       this.noteData.getTrackNotes(midi, trackIndex),
     getCurrentNotes: () => this.noteData.currentNotes,
-    getTempoEvents: () => this.tempoEvents,
-    getTimeSignatureEvents: () => this.timeSignatureEvents,
+    getTempoEvents: () => this.#tempoEvents,
+    getTimeSignatureEvents: () => this.#timeSignatureEvents,
     getTextEvents: () => {
       const events = this.getSelectedTrack()?.getTextEvents() ?? [];
       return this.profile.header.textLane === "lyrics"
@@ -123,7 +113,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
         : events;
     },
     getCamera: () => this.camera,
-    getViewport: () => ({ width: this.lastWidth, height: this.lastHeight }),
+    getViewport: () => ({
+      width: this.#lastViewportSize.x,
+      height: this.#lastViewportSize.y,
+    }),
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
     requestRender: () => this.render(),
@@ -132,7 +125,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     notifyNotesChanged: () => this.onNotesChanged?.(),
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     invalidateTempoCache: () => {
-      this.tempoCacheMidi = null;
+      this.#tempoCacheMidi = null;
     },
     rollbackEdit: () => this.onRollbackEdit?.() ?? false,
     promptLyric: (tick, handlers) => this.header.promptText(tick, handlers),
@@ -168,17 +161,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.header,
   );
 
-  private tempoCacheMidi: Midi | null = null;
-  private tempoEvents: TempoEvent[] = [
-    { tick: 0, microsecondsPerQuarterNote: 500_000 },
-  ];
-  private timeSignatureEvents: TimeSignatureEvent[] = [
-    { tick: 0, numerator: 4, denominator: 2 },
-  ];
-  private canvas: HTMLCanvasElement | null = null;
-  private playheadTick = 0;
-  private lastWidth = 1;
-  private lastHeight = 1;
+  #tempoCacheMidi: Midi | null = null;
+  #tempoEvents: TempoEvent[] = cloneDeep(DefaultTempoEvents);
+  #timeSignatureEvents: TimeSignatureEvent[] = cloneDeep(
+    DefaultTimeSignatureEvents,
+  );
+  #canvas: HTMLCanvasElement | null = null;
+  #playheadTick = 0;
+  #lastViewportSize = new Vector2(1, 1);
 
   public getProfile(): PianoRollProfile {
     return this.profile;
@@ -209,8 +199,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     } else if (profile.id === "vocals") {
       this.fitPitchRange();
     } else {
-      this.camera.y = DEFAULT_CAMERA.y;
-      this.camera.v = DEFAULT_CAMERA.v;
+      this.camera.y = DefaultCamera.y;
+      this.camera.v = DefaultCamera.v;
       this.camera.y = this.coordinates.clampCameraY(this.camera.y);
     }
     this.render();
@@ -227,12 +217,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   /** Fits the profile's pitch range (C2-C6 for vocals) into the viewport. */
   public fitPitchRange(): void {
-    if (this.lastHeight <= 1) {
+    if (this.#lastViewportSize.y <= 1) {
       this.pendingRangeFit = true;
       return;
     }
     this.pendingRangeFit = false;
-    this.coordinates.fitPitchRange(this.lastHeight);
+    this.coordinates.fitPitchRange(this.#lastViewportSize.y);
     this.render();
   }
 
@@ -279,7 +269,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   public override getVisibleTickSpan(): number {
-    return this.coordinates.getVisibleTickSpan(this.lastWidth);
+    return this.coordinates.getVisibleTickSpan(this.#lastViewportSize.x);
   }
 
   public override setCameraTick(tick: number): void {
@@ -288,13 +278,13 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   public override setPlayheadTick(tick: number): void {
-    this.playheadTick = tick;
+    this.#playheadTick = tick;
     this.render();
   }
 
   public override async mount(host: HTMLElement): Promise<void> {
     await super.mount(host);
-    if (!this.canvas) return;
+    if (!this.#canvas) return;
     this.header.mount(host);
     this.labels.mount(host);
   }
@@ -308,8 +298,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   protected override onMounted(engine: Engine): void {
-    this.canvas = engine.canvas;
-    this.input.attach(this.canvas);
+    this.#canvas = engine.canvas;
+    this.input.attach(this.#canvas);
     this.threeCamera.rotation.set(0, 0, 0);
   }
 
@@ -317,7 +307,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.input.detach();
     this.header.destroy();
     this.labels.destroy();
-    this.canvas = null;
+    this.#canvas = null;
     this.geometry.clear();
     this.noteData.clear();
     this.renderer.dispose();
@@ -326,9 +316,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   protected override draw(engine: Engine): void {
     // Store last viewport size
-    const { width, height } = engine.size;
-    this.lastWidth = width;
-    this.lastHeight = height;
+    const { x: width, y: height } = engine.size;
+    this.#lastViewportSize.set(width, height);
 
     // Initialize camera size, position, and proj. matrix
     this.threeCamera.left = 0;
@@ -350,7 +339,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.camera.y = this.coordinates.clampCameraY(this.camera.y);
 
     // Draw geometry
-    this.renderer.draw(width, height, this.playheadTick);
+    this.renderer.draw(width, height, this.#playheadTick);
 
     // Draw labels
     this.labels.draw(height);
@@ -373,8 +362,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public focusSelection(): void {
     this.coordinates.focusSelection(
       this.selection.notes,
-      this.lastWidth,
-      this.lastHeight,
+      this.#lastViewportSize,
     );
     this.render();
   }
@@ -404,7 +392,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   public drawCursor(width: number, height: number): void {
-    this.renderer.drawCursor(width, height, this.playheadTick);
+    this.renderer.drawCursor(width, height, this.#playheadTick);
   }
 
   protected override toScreenSpace(value: Vector2): Vector2;
@@ -421,11 +409,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (!midi) return null;
     const trackIndex = this.state.selectedTrackIndex;
     if (trackIndex !== null) return midi.tracks[trackIndex] ?? null;
-    // A profile's track may be created mid-gesture (first vocal note), before
-    // the viewport has re-resolved selectedTrackIndex.
-    return this.profile.trackName
-      ? (midi.getTrack(this.profile.trackName) ?? null)
-      : null;
+    // A configured track may be created mid-gesture before the viewport has
+    // re-resolved selectedTrackIndex.
+    const trackName = this.profile.trackName ?? this.state.selectedInstrument;
+    return trackName ? (midi.getTrack(trackName) ?? null) : null;
   }
 
   private getSelectedTrackIndex(): number | null {
@@ -442,7 +429,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private getVocalMarks(): VocalMarks {
     const layout = this.profile.vocal;
     const track = this.getSelectedTrack();
-    if (!layout || !track) return EMPTY_MARKS;
+    if (!layout || !track) return EmptyMarks;
     const revision = track.getNoteRevision();
     if (
       this.vocalMarksKey?.track === track &&
@@ -476,7 +463,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (!next) return;
 
     const x = this.coordinates.screenXForTick(next.note.start);
-    if (x < KeyboardWidth || x > this.lastWidth - 80) {
+    if (x < KeyboardWidth || x > this.#lastViewportSize.x - 80) {
       this.coordinates.setCameraTick(
         next.note.start - this.getVisibleTickSpan() / 4,
       );
@@ -503,14 +490,14 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private updateTempoCache(): void {
     const midi = this.state.midi;
-    if (midi === this.tempoCacheMidi) {
+    if (midi === this.#tempoCacheMidi) {
       return;
     }
-    this.tempoCacheMidi = midi;
-    this.tempoEvents = midi?.getTempoEvents() ?? [
+    this.#tempoCacheMidi = midi;
+    this.#tempoEvents = midi?.getTempoEvents() ?? [
       { tick: 0, microsecondsPerQuarterNote: 500_000 },
     ];
-    this.timeSignatureEvents = midi?.getTimeSignatureEvents() ?? [
+    this.#timeSignatureEvents = midi?.getTimeSignatureEvents() ?? [
       { tick: 0, numerator: 4, denominator: 2 },
     ];
   }

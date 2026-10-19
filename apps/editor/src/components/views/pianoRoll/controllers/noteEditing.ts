@@ -1,16 +1,17 @@
 import type { MidiChannelEvent } from "@openchart/core";
 import { Vector2 } from "three";
-import type { CoordinateSystem } from "./coordinates";
+import type { CoordinateSystem } from "../coordinates";
 import {
-  GenericEditingStrategy,
+  NoteEditingStrategy,
   type ClipboardNote,
   type MoveTarget,
-  type NoteEditingStrategy,
+  type IEditingStrategy,
   type ResizeTarget,
-} from "./editingStrategy";
-import type { PianoRollContext, PianoRollNote } from "./types";
-import { VocalEditingStrategy } from "./vocalEditing";
-import { KeyboardWidth } from "./constants";
+} from "../editingStrategy";
+import type { PianoRollContext, PianoRollNote } from "../types";
+import { VocalEditingStrategy } from "../vocalEditing";
+import { KeyboardWidth } from "../constants";
+import type { PianoRollEditingType } from "../profile";
 
 export function remapNotesByIdentity(
   notes: PianoRollNote[],
@@ -27,10 +28,7 @@ export function remapNotesByIdentity(
 export class NoteEditingController {
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
-  private readonly strategies: Record<
-    NoteEditingStrategy["id"],
-    NoteEditingStrategy
-  >;
+  private readonly strategies: Record<PianoRollEditingType, IEditingStrategy>;
 
   private resizing = false;
   private resizeAnchor: PianoRollNote | null = null;
@@ -61,12 +59,12 @@ export class NoteEditingController {
     this.context = context;
     this.coordinates = coordinates;
     this.strategies = {
-      generic: new GenericEditingStrategy(context, coordinates),
-      vocal: new VocalEditingStrategy(context, coordinates),
+      generic: new NoteEditingStrategy(context, coordinates),
+      vocals: new VocalEditingStrategy(context, coordinates),
     };
   }
 
-  private get strategy(): NoteEditingStrategy {
+  private get strategy(): IEditingStrategy {
     return this.strategies[this.context.getProfile().editing];
   }
 
@@ -223,7 +221,7 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked || this.awaitingLyric) {
       return;
     }
-    if (!this.strategy.getTrack(this.strategy.id === "vocal")) {
+    if (!this.strategy.getTrack(true)) {
       return;
     }
 

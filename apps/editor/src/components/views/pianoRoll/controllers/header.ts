@@ -1,5 +1,6 @@
 import {
   MetaType,
+  Midi,
   type IEvent,
   type TempoEvent,
   type TextEvent,
@@ -13,14 +14,14 @@ import {
   HeaderMarkerLabelHeight,
   HeaderMarkerLabelWidth,
   KeyboardWidth,
-} from "./constants";
-import type { CoordinateSystem } from "./coordinates";
-import type { LyricPromptHandlers, PianoRollContext } from "./types";
-import { IController } from "./controller";
+} from "../constants";
+import type { CoordinateSystem } from "../coordinates";
+import type { LyricPromptHandlers, PianoRollContext } from "../types";
+import { IController } from "../controller";
 import {
   parseTempoString,
   parseTimeSignatureString,
-} from "../../../audio/musicalTime";
+} from "../../../../audio/musicalTime";
 
 export type HeaderLane = "tempo" | "timeSignature" | "text";
 
@@ -337,53 +338,67 @@ export class HeaderController extends IController {
   }
 
   /** Adds a default marker to an empty lane at the clicked tick. */
-  public click(point: Vector2): void {
-    if (this.context.getState().isPlaying) return;
-    const midi = this.context.getMidi();
-    const lane = this.laneAt(point.y);
-    if (!midi || !lane) {
+  public handleLeftClick(point: Vector2): void {
+    if (this.context.getState().isPlaying) {
+      return;
+    }
+    const midi: Midi | null = this.context.getMidi();
+    const laneType: HeaderLane | null = this.laneAt(point.y);
+    if (!midi || !laneType) {
       return;
     }
 
-    const existing =
-      lane === "tempo"
-        ? this.findTempoEventNear(point.x)
-        : lane === "timeSignature"
-          ? this.findTimeSignatureEventNear(point.x)
-          : this.findTextEventNear(point.x);
-    if (existing) {
+    // If an event already exists at the clicked location, exit
+    if (this.findEventNear(laneType, point.x)) {
       return;
     }
 
     // Create the lane-specific default value at the snapped tick.
-    const tick = this.coordinates.snapTick(
-      this.coordinates.tickAtScreenX(point.x),
-    );
-    let changed = false;
-    if (lane === "tempo") {
-      midi.addTempoEvent(tick, this.effectiveTempoAt(tick));
+    const clickTick = this.coordinates.tickAtScreenX(point.x);
+    const snappedTick: number = this.coordinates.snapTick(clickTick);
+    let changed: boolean = false;
+
+    // Create a tempo event
+    if (laneType === "tempo") {
+      const current = this.effectiveTempoAt(snappedTick);
+      midi.addTempoEvent(snappedTick, current);
       changed = true;
-    } else if (lane === "timeSignature") {
-      const current = this.effectiveTimeSignatureAt(tick);
-      midi.addTimeSignatureEvent(tick, current.numerator, current.denominator);
+    }
+    // Create a time signature event
+    else if (laneType === "timeSignature") {
+      const current = this.effectiveTimeSignatureAt(snappedTick);
+      midi.addTimeSignatureEvent(
+        snappedTick,
+        current.numerator,
+        current.denominator,
+      );
       changed = true;
-    } else if (this.options.createOnClick) {
+    }
+    // Create a text event if we're NOT in a vocal track
+    else if (this.options.createOnClick) {
       const track = this.context.getSelectedTrack();
       if (track) {
-        track.addTextEvent(MetaType.Marker, tick, "[section New]");
+        track.addTextEvent(MetaType.Marker, snappedTick, "[section New]");
         changed = true;
       }
     }
+
+    // If the MIDI was updated, invalidate the tempo cache and notify that
+    // the notes changed
     if (changed) {
       this.context.invalidateTempoCache();
       this.context.notifyNotesChanged();
     }
+
+    // Rerender
     this.context.requestRender();
   }
 
   /** Removes the marker under the pointer when the matching lane permits deletion. */
-  public rightClick(x: number, y: number): void {
-    if (this.context.getState().isPlaying) return;
+  public handleRightPointerDown(x: number, y: number): void {
+    if (this.context.getState().isPlaying) {
+      return;
+    }
     const midi = this.context.getMidi();
     const lane = this.laneAt(y);
     if (!midi || !lane) {
@@ -445,7 +460,9 @@ export class HeaderController extends IController {
   public endDrag(): void {
     const hadDrag = this.#draggingText !== null;
     this.#draggingText = null;
-    if (hadDrag) this.context.endEdit();
+    if (hadDrag) {
+      this.context.endEdit();
+    }
   }
 
   /** Creates or updates marker labels and highlights for one lane. */
@@ -521,19 +538,28 @@ export class HeaderController extends IController {
     return highlight;
   }
 
-  /** Finds the tempo marker nearest the given horizontal coordinate. */
-  private findTempoEventNear(x: number): TempoEvent | null {
-    return this.findMarkerNear(this.context.getTempoEvents(), x);
+  private findTempoEventNear(pos: number): TempoEvent | null {
+    return this.findMarkerNear(this.context.getTempoEvents(), pos);
   }
 
-  /** Finds the time-signature marker nearest the given horizontal coordinate. */
-  private findTimeSignatureEventNear(x: number): TimeSignatureEvent | null {
-    return this.findMarkerNear(this.context.getTimeSignatureEvents(), x);
+  private findTimeSignatureEventNear(pos: number): TimeSignatureEvent | null {
+    return this.findMarkerNear(this.context.getTimeSignatureEvents(), pos);
   }
 
-  /** Finds the text marker nearest the given horizontal coordinate. */
-  private findTextEventNear(x: number): TextEvent | null {
-    return this.findMarkerNear(this.context.getTextEvents(), x);
+  private findTextEventNear(pos: number): TextEvent | null {
+    return this.findMarkerNear(this.context.getTextEvents(), pos);
+  }
+
+  private findEventNear(type: HeaderLane, pos: number): IEvent | null {
+    switch (type) {
+      case "tempo":
+        return this.findTempoEventNear(pos);
+      case "timeSignature":
+        return this.findTimeSignatureEventNear(pos);
+      case "text":
+        return this.findTextEventNear(pos);
+    }
+    return null;
   }
 
   /** Selects the closest marker whose hit area contains the given coordinate. */
@@ -622,7 +648,7 @@ export class HeaderController extends IController {
       }
       if (
         event.key === "Tab" &&
-        this.context.getProfile().editing === "vocal" &&
+        this.context.getProfile().editing === "vocals" &&
         this.#editingMarker?.lane === "text"
       ) {
         event.preventDefault();
@@ -776,9 +802,12 @@ export class HeaderController extends IController {
   private syncEditControls(): void {
     const input = this.#editInputRef;
     const deleteButton = this.#deleteButtonRef;
-    if (!input || !deleteButton) return;
+    if (!input || !deleteButton) {
+      return;
+    }
+
+    // Prompts always use the text lane and disable marker deletion.
     if (this.#prompt) {
-      // Prompts always use the text lane and disable marker deletion.
       const x = this.coordinates.screenXForTick(this.#prompt.tick);
       input.style.left = `${x}px`;
       input.style.top = `${

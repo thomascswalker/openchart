@@ -349,7 +349,7 @@ export class HighwayView
   }
 
   protected override draw(engine: Engine): void {
-    const { width, height } = engine.size;
+    const { x: width, y: height } = engine.size;
     this.viewportWidth = width;
     this.viewportHeight = height;
     this.threeCamera.aspect = width / Math.max(1, height);

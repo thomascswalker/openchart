@@ -1,12 +1,12 @@
-import { MetaType, Midi, type MidiTrack } from "@openchart/core";
+import { MetaType, Midi, MidiTrack } from "@openchart/core";
 import { SongView, validateVocalTrack } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
 import { CoordinateSystem } from "../coordinates";
 import { HeaderHeight, KeyboardWidth } from "../constants";
-import { HeaderController } from "../header";
+import { HeaderController } from "../controllers/header";
 import { NoteDataStore } from "../noteData";
-import { NoteEditingController } from "../noteEditing";
+import { NoteEditingController } from "../controllers/noteEditing";
 import { NoteGeometryCache } from "../noteGeometry";
 import {
   GENERIC_PROFILE,
@@ -47,11 +47,15 @@ function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
   );
 }
 
-function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
+function harness(
+  midi = new Midi(),
+  profile: PianoRollProfile = VOCALS,
+  selectedInstrument = "VOCALS",
+) {
   const state = {
     midi,
-    selectedTrackIndex: null,
-    selectedInstrument: "VOCALS",
+    selectedTrackIndex: null as number | null,
+    selectedInstrument,
     selectedDifficulty: 3,
     snap: { enabled: true, denominator: 4 },
     isPlaying: false,
@@ -69,8 +73,13 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
     prompts: [] as { tick: number; handlers: LyricPromptHandlers }[],
   };
   const coordinates = makeCoordinates(profile);
-  const track = (): MidiTrack | null =>
-    profile.trackName ? (midi.getTrack(profile.trackName) ?? null) : null;
+  const track = (): MidiTrack | null => {
+    if (state.selectedTrackIndex !== null) {
+      return midi.tracks[state.selectedTrackIndex] ?? null;
+    }
+    const trackName = profile.trackName ?? state.selectedInstrument;
+    return midi.getTrack(trackName) ?? null;
+  };
   const trackIndex = () => {
     const found = track();
     return found ? midi.tracks.indexOf(found) : null;
@@ -128,6 +137,7 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
     calls,
     placement,
     selection,
+    state,
     coordinates,
     notes,
     lyrics,
@@ -305,7 +315,7 @@ describe("piano-roll profiles", () => {
         } as never,
         makeCoordinates(profile),
       );
-      header.click(new Vector2(300, HeaderHeight - 4));
+      header.handleLeftClick(new Vector2(300, HeaderHeight - 4));
       const markers = track
         .getTextEvents()
         .filter((event) => event.type === MetaType.Marker);
@@ -334,6 +344,44 @@ describe("vocal note editing", () => {
     expect([h.calls.begin, h.calls.end]).toEqual([1, 1]);
     expect(h.lyrics()).toEqual([[0, "la"]]);
     expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+  });
+
+  describe("generic note editing", () => {
+    it("materializes the selected configured track for note placement", () => {
+      const h = harness(new Midi(), GENERIC_PROFILE, "LEAD GUITAR");
+      const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+
+      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+
+      expect(h.track()?.name).toBe("LEAD GUITAR");
+      expect(h.notes().map((note) => [note.pitch, note.tick, note.durationTicks]))
+        .toEqual([[60, 0, 480]]);
+    });
+
+    it("keeps an existing unmapped selected track as the placement target", () => {
+      const midi = new Midi();
+      const unmapped = new MidiTrack("Unmapped track");
+      midi.tracks.push(unmapped);
+      const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR");
+      h.state.selectedTrackIndex = 0;
+      const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+
+      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+
+      expect(midi.tracks).toEqual([unmapped]);
+      expect(h.track()).toBe(unmapped);
+      expect(h.notes().map((note) => note.pitch)).toEqual([60]);
+    });
+
+    it("does not create a fallback track without a configured instrument", () => {
+      const h = harness(new Midi(), GENERIC_PROFILE, "not configured");
+      const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+
+      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+
+      expect(h.midi.tracks).toHaveLength(0);
+      expect(h.calls.begin).toBe(0);
+    });
   });
 
   it("rolls back the whole create on Escape", () => {
