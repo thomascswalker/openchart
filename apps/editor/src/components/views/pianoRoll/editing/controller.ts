@@ -259,7 +259,7 @@ export class NoteEditingController {
     }
 
     const track = this.editContext.getTrack();
-    if (track === null) {
+    if (track === null && !this.editContext.canCreateTrack()) {
       return;
     }
 
@@ -426,7 +426,9 @@ export class NoteEditingController {
    */
   public pasteClipboard(anchorX: number | null): void {
     if (this.isNoteEditingLocked) return;
-    if (!this.editContext.getTrack()) return;
+    if (!this.editContext.getTrack() && !this.editContext.canCreateTrack()) {
+      return;
+    }
     if (this.clipboard.length === 0) return;
 
     const anchorTick = this.coordinates.snapTick(

@@ -5,6 +5,7 @@ import type {
   TextEvent,
 } from "@openchart/core";
 import {
+  SongView,
   addVocalNote,
   addVocalPhrase,
   classifyVocalPitch,
@@ -12,7 +13,6 @@ import {
   moveVocalNotes,
   removeVocalNotes,
   setVocalLyric,
-  SongView,
   vocalKindNeedsLyric,
   vocalPhraseOverlaps,
   vocalPhrasePitch,
@@ -107,6 +107,11 @@ export class VocalEditContext implements IEditContext {
     return this.context.getSelectedTrack();
   }
 
+  /** Vocal edits can materialize their configured track when needed. */
+  public canCreateTrack(): boolean {
+    return this.context.getMidi() !== null;
+  }
+
   /** Creates a phrase or note depending on the lane and toolbar placement. */
   public create(local: Vector2): CreatedNote | null {
     const lane = this.coordinates.laneAtScreenY(local.y);
@@ -131,7 +136,7 @@ export class VocalEditContext implements IEditContext {
 
   /** Captures lyrics and resets move state when a move gesture starts. */
   public beginMove(targets: readonly MoveTarget[]): void {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     const lyricsByNoteOn = new Map(
       getVocalNotes(track, this.layout).map((item) => [
         item.note.noteOn,
@@ -159,7 +164,7 @@ export class VocalEditContext implements IEditContext {
     tickDelta: number,
     pitchDelta: number,
   ): boolean {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     if (!track) return false;
 
     const appliedTickDelta = this.resolveMoveTickDelta(
@@ -181,7 +186,7 @@ export class VocalEditContext implements IEditContext {
 
   /** Resizes targets unless a phrase would then overlap another phrase. */
   public resize(targets: readonly ResizeTarget[], delta: number): boolean {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     if (!track) return false;
 
     // Phrases may not overlap a stationary phrase of the same kind.
@@ -204,7 +209,7 @@ export class VocalEditContext implements IEditContext {
 
   /** Deletes notes and phrases through the vocal data model. */
   public remove(notes: readonly PianoRollNote[]): boolean {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     if (!track) return false;
 
     return removeVocalNotes(
@@ -219,7 +224,7 @@ export class VocalEditContext implements IEditContext {
     notes: readonly PianoRollNote[],
     semitones: number,
   ): boolean {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     if (!track) return false;
 
     const moves = notes
@@ -235,7 +240,7 @@ export class VocalEditContext implements IEditContext {
 
   /** Shifts notes and phrases in time; refuses when phrases would overlap. */
   public shift(notes: readonly PianoRollNote[], deltaTicks: number): boolean {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     if (!track) return false;
 
     const delta = Math.round(deltaTicks);
@@ -264,7 +269,7 @@ export class VocalEditContext implements IEditContext {
     if (notes.length === 0) return [];
 
     const lyricsByNoteOn = new Map(
-      getVocalNotes(this.getTrack(false), this.layout).map((item) => [
+      getVocalNotes(this.getTrack(), this.layout).map((item) => [
         item.note.noteOn,
         item.lyric?.text,
       ]),
@@ -285,7 +290,7 @@ export class VocalEditContext implements IEditContext {
     entries: readonly ClipboardNote[],
     anchorTick: number,
   ): MidiChannelEvent[] {
-    const track = this.getTrack(true);
+    const track = this.getOrCreateTrack();
     if (!track) return [];
 
     const pasted: MidiChannelEvent[] = [];
@@ -299,7 +304,7 @@ export class VocalEditContext implements IEditContext {
 
   /** Writes the lyric of the note identified by `noteOn`. */
   public setLyric(noteOn: MidiChannelEvent, text: string): boolean {
-    const track = this.getTrack(false);
+    const track = this.getTrack();
     const note = track?.getNotes().find((item) => item.noteOn === noteOn);
     if (!track || !note) return false;
 
@@ -334,7 +339,7 @@ export class VocalEditContext implements IEditContext {
       return null;
     }
 
-    const track = this.getTrack(true);
+    const track = this.getOrCreateTrack();
     if (!track) return null;
 
     const created = addVocalPhrase(track, this.layout, phrase, tick, end);
@@ -356,7 +361,7 @@ export class VocalEditContext implements IEditContext {
           )
         : lane?.createPitch;
 
-    const track = this.getTrack(true);
+    const track = this.getOrCreateTrack();
     if (!track) return null;
 
     const created = addVocalNote(track, this.layout, kind, tick, end, {
@@ -379,6 +384,20 @@ export class VocalEditContext implements IEditContext {
     return laneKind === "percussion" || laneKind === "pitchless"
       ? laneKind
       : request.placementKind;
+  }
+
+  /** Returns the selected track, creating the configured vocal track on edit. */
+  private getOrCreateTrack(): MidiTrack | null {
+    const existing = this.getTrack();
+    if (existing) return existing;
+
+    const midi = this.context.getMidi();
+    const trackName = this.context.getProfile().trackName;
+    if (!midi || !trackName) return null;
+
+    return (
+      new SongView(midi).getVocalTrackView(trackName)?.ensureTrack() ?? null
+    );
   }
 
   /**

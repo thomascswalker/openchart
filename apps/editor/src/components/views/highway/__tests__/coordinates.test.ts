@@ -8,6 +8,7 @@ import { HighwayCoordinateSystem } from "../coordinates";
 describe("HighwayCoordinateSystem", () => {
   const state: ChartViewState = {
     midi: null,
+    selectedTrackKey: null,
     selectedTrackIndex: null,
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,

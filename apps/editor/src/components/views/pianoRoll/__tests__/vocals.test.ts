@@ -21,6 +21,7 @@ import type {
   PianoRollNote,
   VocalPlacement,
 } from "../types";
+import type { ChartViewState } from "../../AbstractChartView";
 
 /** The vocals profile every test in this file edits with. */
 const VOCALS = profileForInstrument("VOCALS");
@@ -58,13 +59,15 @@ function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
  * lyric prompts, previews and change notifications.
  */
 function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
-  const state = {
+  const state: ChartViewState = {
     midi,
+    selectedTrackKey: "vocals",
     selectedTrackIndex: null,
     selectedInstrument: "VOCALS",
     selectedDifficulty: 3,
     snap: { enabled: true, denominator: 4 },
     isPlaying: false,
+    lockCursor: false,
   };
   const selection = new SelectionContext();
   const noteData = new NoteDataStore();

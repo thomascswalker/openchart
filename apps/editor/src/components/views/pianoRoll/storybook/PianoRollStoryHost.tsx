@@ -136,6 +136,7 @@ export function PianoRollStoryHost({
   const state = useMemo<ChartViewState>(
     () => ({
       midi,
+      selectedTrackKey: null,
       selectedTrackIndex,
       selectedInstrument: instrument,
       selectedDifficulty: SELECTED_DIFFICULTY,

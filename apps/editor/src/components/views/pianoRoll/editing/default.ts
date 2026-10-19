@@ -42,6 +42,11 @@ export class DefaultEditContext implements IEditContext {
     return this.context.getSelectedTrack();
   }
 
+  /** The default strategy requires an existing track. */
+  public canCreateTrack(): boolean {
+    return false;
+  }
+
   /** Inserts a one-tick note at the snapped tick and pitch under `local`. */
   public create(local: Vector2): CreatedNote | null {
     const track = this.getTrack();

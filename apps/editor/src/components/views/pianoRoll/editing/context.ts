@@ -23,6 +23,9 @@ export interface IEditContext {
   /** The track to edit */
   getTrack(): MidiTrack | null;
 
+  /** Whether intentional create/paste edits can materialize a missing track. */
+  canCreateTrack(): boolean;
+
   /** Creates a note at a canvas position; null when nothing was created. */
   create(local: Vector2): CreatedNote | null;
 
