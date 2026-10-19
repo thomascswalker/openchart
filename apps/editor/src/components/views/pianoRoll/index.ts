@@ -12,9 +12,9 @@ import {
   validateVocalTrack,
   vocalKindNeedsLyric,
 } from "@openchart/views";
+import { Box2, Vector2 } from "three";
 import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
-import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
 import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
 import { HeaderController, type HeaderLane } from "./header";
@@ -407,11 +407,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.renderer.drawCursor(width, height, this.playheadTick);
   }
 
-  protected override toScreenSpace(value: CanvasPoint): CanvasPoint;
-  protected override toScreenSpace(value: CanvasRect): CanvasRect;
-  protected override toScreenSpace(
-    value: CanvasPoint | CanvasRect,
-  ): CanvasPoint | CanvasRect {
+  protected override toScreenSpace(value: Vector2): Vector2;
+  protected override toScreenSpace(value: Box2): Box2;
+  protected override toScreenSpace(value: Vector2 | Box2): Vector2 | Box2 {
+    if (value instanceof Box2) {
+      return this.coordinates.toScreenSpace(value);
+    }
     return this.coordinates.toScreenSpace(value);
   }
 

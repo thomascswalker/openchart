@@ -1,6 +1,6 @@
 import type { MidiChannelEvent, MidiTrack } from "@openchart/core";
 import { clamp } from "es-toolkit";
-import type { CanvasPoint } from "../../../rendering/geometry";
+import { Vector2 } from "three";
 import type { CoordinateSystem } from "./coordinates";
 import type { PianoRollContext, PianoRollNote } from "./types";
 
@@ -40,7 +40,7 @@ export interface NoteEditingStrategy {
   readonly id: "generic" | "vocal";
   /** The track to edit, created on demand when `create` is true. */
   getTrack(create: boolean): MidiTrack | null;
-  create(local: CanvasPoint): CreatedNote | null;
+  create(local: Vector2): CreatedNote | null;
   /** Called once when a move gesture starts (e.g. to capture lyrics). */
   beginMove(targets: readonly MoveTarget[]): void;
   move(
@@ -99,7 +99,7 @@ export class GenericEditingStrategy implements NoteEditingStrategy {
     return this.context.getSelectedTrack();
   }
 
-  public create(local: CanvasPoint): CreatedNote | null {
+  public create(local: Vector2): CreatedNote | null {
     const track = this.getTrack();
     if (!track) return null;
     const pitch = this.coordinates.pitchAtScreenY(local.y);

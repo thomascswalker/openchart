@@ -1,5 +1,5 @@
 import type { MidiChannelEvent } from "@openchart/core";
-import type { CanvasPoint } from "../../../rendering/geometry";
+import { Vector2 } from "three";
 import type { CoordinateSystem } from "./coordinates";
 import {
   GenericEditingStrategy,
@@ -110,7 +110,7 @@ export class NoteEditingController {
     this.beginGestureTransaction();
   }
 
-  public updateResize(local: CanvasPoint): void {
+  public updateResize(local: Vector2): void {
     if (this.isNoteEditingLocked) {
       return;
     }
@@ -156,7 +156,7 @@ export class NoteEditingController {
     this.beginGestureTransaction();
   }
 
-  public updateMove(local: CanvasPoint): void {
+  public updateMove(local: Vector2): void {
     if (this.isNoteEditingLocked) {
       return;
     }
@@ -219,7 +219,7 @@ export class NoteEditingController {
     this.moveSelectionKeep = new Set();
   }
 
-  public beginCreate(local: CanvasPoint): void {
+  public beginCreate(local: Vector2): void {
     if (this.isNoteEditingLocked || this.awaitingLyric) {
       return;
     }

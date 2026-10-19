@@ -5,7 +5,7 @@ import {
   type TextEvent,
   type TimeSignatureEvent,
 } from "@openchart/core";
-import type { CanvasPoint } from "../../../rendering/geometry";
+import { Vector2 } from "three";
 import {
   HeaderHeight,
   HeaderLaneHeight,
@@ -321,7 +321,7 @@ export class HeaderController extends IController {
   }
 
   /** Updates the hovered marker and synchronizes the inline controls. */
-  public updateHover(local: CanvasPoint | null): void {
+  public updateHover(local: Vector2 | null): void {
     const lane = local ? this.laneAt(local.y) : null;
     const marker =
       lane && this.context.getMidi()
@@ -337,7 +337,7 @@ export class HeaderController extends IController {
   }
 
   /** Adds a default marker to an empty lane at the clicked tick. */
-  public click(point: CanvasPoint): void {
+  public click(point: Vector2): void {
     if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
     const lane = this.laneAt(point.y);
@@ -417,7 +417,7 @@ export class HeaderController extends IController {
   }
 
   /** Starts dragging a text marker when text dragging is enabled. */
-  public beginDrag(point: CanvasPoint): void {
+  public beginDrag(point: Vector2): void {
     if (
       this.context.getState().isPlaying ||
       this.laneAt(point.y) !== "text" ||
@@ -429,7 +429,7 @@ export class HeaderController extends IController {
   }
 
   /** Moves the active text marker to the nearest snapped tick. */
-  public updateDrag(point: CanvasPoint): void {
+  public updateDrag(point: Vector2): void {
     if (!this.#draggingText || this.context.getState().isPlaying) return;
     const tick = this.coordinates.snapTickToNearest(
       this.coordinates.tickAtScreenX(point.x),

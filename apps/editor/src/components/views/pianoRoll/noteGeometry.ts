@@ -1,5 +1,5 @@
 import type { MidiTrack, TempoEvent } from "@openchart/core";
-import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
+import { Box2, Vector2 } from "three";
 import { KeyboardWidth, NoteResizeHandleWidth } from "./constants";
 import type { PianoRollNote } from "./types";
 import type { PianoRollNoteIndex } from "./visibility";
@@ -20,7 +20,7 @@ export interface NoteGeometryCoordinates {
   tickAtScreenX(x: number): number;
   screenXForTick(tick: number): number;
   timelineUnitsAtTick(tick: number): number;
-  toScreenSpace(value: CanvasRect): CanvasRect;
+  toScreenSpace(value: Box2): Box2;
   /** Optional: profiles with pinned lanes place special pitches there. */
   pinnedRectForPitch?(pitch: number): { y: number; height: number } | null;
   /** Optional: grid notes are clipped below this Y. */
@@ -35,26 +35,30 @@ export interface NoteGeometryCoordinates {
 export function screenRectOf(
   geometry: NoteGeometry,
   coordinates: NoteGeometryCoordinates,
-): CanvasRect | null {
-  const rect = coordinates.toScreenSpace({
-    x: geometry.x,
-    y: geometry.y,
-    width: geometry.width,
-    height: geometry.height,
-  });
+): Box2 | null {
+  const rect = coordinates.toScreenSpace(
+    new Box2(
+      new Vector2(geometry.x, geometry.y),
+      new Vector2(geometry.x + geometry.width, geometry.y + geometry.height),
+    ),
+  );
   if (geometry.pinned) {
-    return {
-      x: rect.x,
-      y: geometry.pinned.y + 1,
-      width: rect.width,
-      height: Math.max(1, geometry.pinned.height - 2),
-    };
+    return new Box2(
+      new Vector2(rect.min.x, geometry.pinned.y + 1),
+      new Vector2(
+        rect.max.x,
+        geometry.pinned.y + Math.max(2, geometry.pinned.height - 1),
+      ),
+    );
   }
   const gridTop = coordinates.getGridTop?.();
-  if (gridTop === undefined || rect.y >= gridTop) return rect;
-  const bottom = rect.y + rect.height;
+  if (gridTop === undefined || rect.min.y >= gridTop) return rect;
+  const bottom = rect.max.y;
   if (bottom <= gridTop) return null;
-  return { x: rect.x, y: gridTop, width: rect.width, height: bottom - gridTop };
+  return new Box2(
+    new Vector2(rect.min.x, gridTop),
+    new Vector2(rect.max.x, bottom),
+  );
 }
 
 interface GeometryCache {
@@ -207,17 +211,17 @@ export class NoteGeometryCache {
   }
 
   public hitTest(
-    point: CanvasPoint,
+    point: Vector2,
     coordinates: NoteGeometryCoordinates,
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
       const screenRect = screenRectOf(this.geometry[index], coordinates);
       if (
         screenRect &&
-        point.x >= screenRect.x &&
-        point.x <= screenRect.x + screenRect.width &&
-        point.y >= screenRect.y &&
-        point.y <= screenRect.y + screenRect.height
+        point.x >= screenRect.min.x &&
+        point.x <= screenRect.max.x &&
+        point.y >= screenRect.min.y &&
+        point.y <= screenRect.max.y
       ) {
         return this.geometry[index].note;
       }
@@ -226,7 +230,7 @@ export class NoteGeometryCache {
   }
 
   public hitTestEdge(
-    point: CanvasPoint,
+    point: Vector2,
     coordinates: NoteGeometryCoordinates,
   ): PianoRollNote | null {
     for (let index = this.geometry.length - 1; index >= 0; index--) {
@@ -234,16 +238,17 @@ export class NoteGeometryCache {
       const screenRect = screenRectOf(geometry, coordinates);
       if (
         !screenRect ||
-        point.y < screenRect.y ||
-        point.y > screenRect.y + screenRect.height
+        point.y < screenRect.min.y ||
+        point.y > screenRect.max.y
       ) {
         continue;
       }
 
-      const handleWidth = Math.min(NoteResizeHandleWidth, screenRect.width / 2);
+      const width = screenRect.max.x - screenRect.min.x;
+      const handleWidth = Math.min(NoteResizeHandleWidth, width / 2);
       if (
-        point.x >= screenRect.x + screenRect.width - handleWidth &&
-        point.x <= screenRect.x + screenRect.width
+        point.x >= screenRect.max.x - handleWidth &&
+        point.x <= screenRect.max.x
       ) {
         return geometry.note;
       }

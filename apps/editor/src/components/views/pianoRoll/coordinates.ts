@@ -1,7 +1,7 @@
 import type { TempoEvent } from "@openchart/core";
 import { msToTicks, ticksToMs } from "@openchart/core";
 import { clamp } from "es-toolkit";
-import type { CanvasPoint, CanvasRect } from "../../../rendering/geometry";
+import { Box2, Vector2 } from "three";
 import {
   HeaderHeight,
   KeyboardWidth,
@@ -196,25 +196,18 @@ export class CoordinateSystem {
     );
   }
 
-  public toScreenSpace(value: CanvasPoint): CanvasPoint;
-  public toScreenSpace(value: CanvasRect): CanvasRect;
-  public toScreenSpace(
-    value: CanvasPoint | CanvasRect,
-  ): CanvasPoint | CanvasRect {
-    const screenX =
-      value.x - this.timelineUnitsAtTick(this.camera.x) * this.camera.h;
-    const screenY = value.y + this.camera.y * this.camera.v + this.getGridTop();
-
-    if (!("width" in value)) {
-      return { x: screenX, y: screenY };
+  public toScreenSpace(value: Vector2): Vector2;
+  public toScreenSpace(value: Box2): Box2;
+  public toScreenSpace(value: Vector2 | Box2): Vector2 | Box2 {
+    const toScreenPoint = (point: Vector2): Vector2 =>
+      new Vector2(
+        point.x - this.timelineUnitsAtTick(this.camera.x) * this.camera.h,
+        point.y + this.camera.y * this.camera.v + this.getGridTop(),
+      );
+    if (value instanceof Box2) {
+      return new Box2(toScreenPoint(value.min), toScreenPoint(value.max));
     }
-
-    return {
-      x: screenX,
-      y: screenY,
-      width: value.width,
-      height: value.height,
-    };
+    return toScreenPoint(value);
   }
 
   public pan(dx: number, dy: number): void {
@@ -258,7 +251,7 @@ export class CoordinateSystem {
     );
   }
 
-  public zoomAtCursor(zoomFactor: number, cursor: CanvasPoint): void {
+  public zoomAtCursor(zoomFactor: number, cursor: Vector2): void {
     const rollX = cursor.x - KeyboardWidth;
     const anchorX = Math.max(0, rollX);
     const anchorY = cursor.y - this.getGridTop();

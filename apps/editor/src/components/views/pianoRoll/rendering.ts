@@ -1,3 +1,4 @@
+import { Vector2 } from "three";
 import * as THREE from "three";
 import { BlackPitchClasses, HeaderHeight, KeyboardWidth } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
@@ -345,12 +346,15 @@ export class PianoRollRenderer {
       // Pinned notes already sit inside their lane; grid notes keep the
       // original 1px top inset.
       const inset = geometry.pinned ? 0 : 1;
-      const y = Math.max(screenRect.y + inset, geometry.pinned ? 0 : gridTop);
+      const y = Math.max(
+        screenRect.min.y + inset,
+        geometry.pinned ? 0 : gridTop,
+      );
       this.addRect(
-        screenRect.x,
+        screenRect.min.x,
         y,
-        screenRect.width,
-        screenRect.y + inset + screenRect.height - y,
+        screenRect.max.x - screenRect.min.x,
+        screenRect.max.y + inset - y,
         color,
         RenderOrder.Note,
         isSelected ? Math.max(style.opacity, 0.75) : style.opacity,
@@ -358,11 +362,11 @@ export class PianoRollRenderer {
       if (kind === "phrase:vocal") {
         // Vocal phrases also shade the grid so phrase boundaries are visible
         // while placing notes.
-        const left = Math.max(keyboardWidth, screenRect.x);
+        const left = Math.max(keyboardWidth, screenRect.min.x);
         this.addRect(
           left,
           gridTop,
-          screenRect.x + screenRect.width - left,
+          screenRect.max.x - left,
           height - gridTop,
           style.color,
           RenderOrder.KeyboardBase,
@@ -432,11 +436,12 @@ export class PianoRollRenderer {
   private drawSelectionBox(): void {
     const bounds = this.#context.getSelectionContext().bounds;
     if (!bounds) return;
+    const size = bounds.getSize(new Vector2());
     this.addRect(
-      bounds.x,
-      bounds.y,
-      bounds.width,
-      bounds.height,
+      bounds.min.x,
+      bounds.min.y,
+      size.x,
+      size.y,
       0xffffff,
       RenderOrder.Selection,
       0.5,

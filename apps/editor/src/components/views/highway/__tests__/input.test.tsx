@@ -1,5 +1,6 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/core";
 import { Difficulty, type MidiNotePhrase } from "@openchart/views";
+import { Vector2 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ChartViewState } from "../../AbstractChartView";
 import type { HighwayContext } from "../context";
@@ -119,10 +120,8 @@ function createHarness(
       y: -0.045,
       z: -12,
     }),
-    getCanvasPoint: (event: MouseEvent) => ({
-      x: event.clientX,
-      y: event.clientY,
-    }),
+    getCanvasPoint: (event: MouseEvent) =>
+      new Vector2(event.clientX, event.clientY),
     getSnapTicks: () => 480,
   };
   const hitTesting = {

@@ -1,4 +1,4 @@
-import { point, type CanvasPoint } from "../../../rendering/geometry";
+import { Vector2 } from "three";
 
 export const PointerButton = {
   None: -1,
@@ -14,5 +14,5 @@ export type PointerButton = (typeof PointerButton)[keyof typeof PointerButton];
 export class PointerContext {
   id: number | null = null;
   button: PointerButton | null = null;
-  position: CanvasPoint = point();
+  position = new Vector2();
 }

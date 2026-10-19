@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MidiNote } from "@openchart/core";
+import { Vector2 } from "three";
 import * as THREE from "three";
 import {
   Difficulty,
@@ -20,8 +21,8 @@ function boundary(y: number): PhraseBoundaryProjection {
   return {
     worldStart: new THREE.Vector3(-3, -0.035, 0),
     worldEnd: new THREE.Vector3(3, -0.035, 0),
-    screenStart: new THREE.Vector2(100, y),
-    screenEnd: new THREE.Vector2(500, y),
+    screenStart: new Vector2(100, y),
+    screenEnd: new Vector2(500, y),
   };
 }
 
@@ -31,17 +32,17 @@ describe("phrase boundary hit testing", () => {
     const end = boundary(260);
 
     expect(
-      getPhraseBoundaryHitOperation(new THREE.Vector2(300, 205), start, end, 9),
+      getPhraseBoundaryHitOperation(new Vector2(300, 205), start, end, 9),
     ).toBe("resize-start");
     expect(
-      getPhraseBoundaryHitOperation(new THREE.Vector2(300, 256), start, end, 9),
+      getPhraseBoundaryHitOperation(new Vector2(300, 256), start, end, 9),
     ).toBe("resize-end");
   });
 
   it("does not treat the phrase body as a resize edge", () => {
     expect(
       getPhraseBoundaryHitOperation(
-        new THREE.Vector2(300, 230),
+        new Vector2(300, 230),
         boundary(200),
         boundary(260),
         9,
@@ -98,7 +99,7 @@ describe("drum note hit testing", () => {
       getNoteZ: () => 0,
       getPhysicalLaneCount: () => 4,
       worldToScreen: (point: THREE.Vector3) =>
-        new THREE.Vector2(point.x * 100, point.y * 100),
+        new Vector2(point.x * 100, point.y * 100),
     } as unknown as HighwayCoordinateSystem;
     const hitTesting = new HighwayHitTester(coordinates);
     const note = { note: 100, start: 480 } as MidiNote;
@@ -113,7 +114,7 @@ describe("drum note hit testing", () => {
     const cymbal = { note: 101, start: 480, end: 480 } as MidiNote;
     const flam = { note: 104, start: 480, end: 480 } as MidiNote;
     const coordinates = {
-      getCanvasPoint: () => ({ x: 20, y: 20 }),
+      getCanvasPoint: () => new Vector2(20, 20),
       getTickAtDepth: (depth: number) => (depth === nearBoardZ ? 0 : 1_000),
     } as unknown as HighwayCoordinateSystem;
     const hitTesting = new HighwayHitTester(coordinates);
@@ -137,13 +138,13 @@ describe("drum note hit testing", () => {
     const kick = { note: 95, start: 480, end: 480 } as MidiNote;
     const flam = { note: 104, start: 480, end: 480 } as MidiNote;
     const coordinates = {
-      getCanvasPoint: () => ({ x: 300, y: 100 }),
+      getCanvasPoint: () => new Vector2(300, 100),
       getTickAtDepth: (depth: number) => (depth === nearBoardZ ? 0 : 1_000),
       getNoteZ: () => 0,
       getLaneX: () => 0,
       getPhysicalLaneCount: () => 4,
       worldToScreen: (point: THREE.Vector3) =>
-        new THREE.Vector2((point.x + 3) * 100, (point.y + 1) * 100),
+        new Vector2((point.x + 3) * 100, (point.y + 1) * 100),
     } as unknown as HighwayCoordinateSystem;
     const hitTesting = new HighwayHitTester(coordinates);
     const chart = {

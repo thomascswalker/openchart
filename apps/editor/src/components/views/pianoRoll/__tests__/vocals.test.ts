@@ -1,5 +1,6 @@
 import { MetaType, Midi, type MidiTrack } from "@openchart/core";
 import { SongView, validateVocalTrack } from "@openchart/views";
+import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
 import { CoordinateSystem } from "../coordinates";
 import { HeaderHeight, KeyboardWidth } from "../constants";
@@ -116,9 +117,9 @@ function harness(midi = new Midi(), profile: PianoRollProfile = VOCALS) {
     (track()?.getTextEvents() ?? [])
       .filter((event) => event.type === MetaType.Lyric)
       .map(({ tick, text }) => [tick, text]);
-  const drag = (from: { x: number; y: number }, toX: number) => {
+  const drag = (from: Vector2, toX: number) => {
     editing.beginCreate(from);
-    editing.updateResize({ x: toX, y: from.y });
+    editing.updateResize(new Vector2(toX, from.y));
     editing.finishGesture();
   };
   return {
@@ -186,7 +187,7 @@ describe("piano-roll profiles", () => {
     expect(coordinates.getCamera().y).toBe(36);
     coordinates.getCamera().y = 84;
     // Row tops are measured from gridTop, not the header.
-    expect(coordinates.toScreenSpace({ x: 0, y: -60 * 18 }).y).toBe(
+    expect(coordinates.toScreenSpace(new Vector2(0, -60 * 18)).y).toBe(
       yAt(60) - 5,
     );
 
@@ -267,19 +268,19 @@ describe("piano-roll profiles", () => {
         coordinates,
       });
     rebuild();
-    expect(cache.hitTest({ x: 100, y: laneY(3) }, coordinates)).toBe(
+    expect(cache.hitTest(new Vector2(100, laneY(3)), coordinates)).toBe(
       percussion,
     );
-    expect(cache.hitTest({ x: 100, y: yAt(84) }, coordinates)).toBe(pitched);
+    expect(cache.hitTest(new Vector2(100, yAt(84)), coordinates)).toBe(pitched);
 
     // Scroll so pitch 84 is above the grid: it must not be hit in the lanes,
     // while the percussion note stays put.
     coordinates.getCamera().y = 70;
     rebuild();
-    expect(cache.hitTest({ x: 100, y: laneY(3) }, coordinates)).toBe(
+    expect(cache.hitTest(new Vector2(100, laneY(3)), coordinates)).toBe(
       percussion,
     );
-    expect(cache.hitTest({ x: 100, y: laneY(1) }, coordinates)).toBeNull();
+    expect(cache.hitTest(new Vector2(100, laneY(1)), coordinates)).toBeNull();
   });
 
   it("does not create [section New] from the vocals header lane", () => {
@@ -304,7 +305,7 @@ describe("piano-roll profiles", () => {
         } as never,
         makeCoordinates(profile),
       );
-      header.click({ x: 300, y: HeaderHeight - 4 });
+      header.click(new Vector2(300, HeaderHeight - 4));
       const markers = track
         .getTextEvents()
         .filter((event) => event.type === MetaType.Marker);
@@ -316,7 +317,7 @@ describe("piano-roll profiles", () => {
 describe("vocal note editing", () => {
   it("creates the track and a pitched note, then commits its lyric in one transaction", () => {
     const h = harness();
-    h.drag({ x: xAt(0), y: yAt(60) }, xAt(480));
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
 
     expect(h.track()).not.toBeNull();
     expect(h.notes().map((n) => [n.pitch, n.tick, n.durationTicks])).toEqual([
@@ -337,7 +338,7 @@ describe("vocal note editing", () => {
 
   it("rolls back the whole create on Escape", () => {
     const h = harness();
-    h.drag({ x: xAt(0), y: yAt(60) }, xAt(480));
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.calls.prompts[0].handlers.onCancel();
     expect(h.calls.rollback).toBe(1);
     // The rollback closes the transaction itself; no endEdit follows.
@@ -348,7 +349,7 @@ describe("vocal note editing", () => {
   it("removes the note by hand when no history rollback is available", () => {
     const h = harness();
     h.calls.rollbackHandled = false;
-    h.drag({ x: xAt(0), y: yAt(60) }, xAt(480));
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.calls.prompts[0].handlers.onCancel();
     expect(h.notes()).toEqual([]);
     expect(h.lyrics()).toEqual([]);
@@ -357,7 +358,7 @@ describe("vocal note editing", () => {
 
   it("rolls back a pending lyric when playback cancels the gesture", () => {
     const h = harness();
-    h.drag({ x: xAt(0), y: yAt(60) }, xAt(480));
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.editing.cancelGesture();
     expect(h.calls.rollback).toBe(1);
     expect(h.editing.isAwaitingLyric).toBe(false);
@@ -365,8 +366,8 @@ describe("vocal note editing", () => {
 
   it("creates lane kinds by dragging in their lane, without a lyric prompt", () => {
     const h = harness();
-    h.drag({ x: xAt(0), y: laneY(3) }, xAt(240));
-    h.drag({ x: xAt(480), y: laneY(4) }, xAt(720));
+    h.drag(new Vector2(xAt(0), laneY(3)), xAt(240));
+    h.drag(new Vector2(xAt(480), laneY(4)), xAt(720));
     expect(h.notes().map((n) => n.pitch)).toEqual([90, 85]);
     // Percussion: no prompt. Pitchless: prompt.
     expect(h.calls.prompts.map((p) => p.tick)).toEqual([480]);
@@ -375,11 +376,11 @@ describe("vocal note editing", () => {
   it("uses the toolbar kind and phrase mode in the grid", () => {
     const h = harness();
     h.placement.noteKind = "percussion";
-    h.drag({ x: xAt(0), y: yAt(60) }, xAt(480));
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.placement.phrase = "vocal";
-    h.drag({ x: xAt(0), y: yAt(60) }, xAt(960));
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(960));
     // An overlapping phrase of the same kind is rejected.
-    h.drag({ x: xAt(480), y: yAt(60) }, xAt(1440));
+    h.drag(new Vector2(xAt(480), yAt(60)), xAt(1440));
     expect(h.notes().map((n) => [n.pitch, n.tick, n.durationTicks])).toEqual([
       [90, 0, 480],
       [96, 0, 960],
@@ -392,7 +393,7 @@ describe("vocal note editing", () => {
     const h = seeded();
     const first = h.notes().find((n) => n.pitch === 60)!;
     h.editing.beginMove(first);
-    h.editing.updateMove({ x: xAt(1440) + 1, y: yAt(62) });
+    h.editing.updateMove(new Vector2(xAt(1440) + 1, yAt(62)));
     h.editing.finishGesture();
     expect(h.lyrics()).toEqual([
       [480, "two"],
@@ -403,7 +404,7 @@ describe("vocal note editing", () => {
 
     // Dragging up into the lanes clamps at C6 instead of leaving the grid.
     h.editing.beginMove(moved);
-    h.editing.updateMove({ x: xAt(1440) + 1, y: laneY(2) });
+    h.editing.updateMove(new Vector2(xAt(1440) + 1, laneY(2)));
     h.editing.finishGesture();
     expect(h.notes().find((n) => n.tick === 1440)!.pitch).toBe(84);
   });
@@ -412,7 +413,7 @@ describe("vocal note editing", () => {
     const h = seeded();
     const percussion = h.notes().find((n) => n.pitch === 90)!;
     h.editing.beginMove(percussion);
-    h.editing.updateMove({ x: xAt(1440) + 1, y: yAt(50) });
+    h.editing.updateMove(new Vector2(xAt(1440) + 1, yAt(50)));
     h.editing.finishGesture();
     expect(h.notes().find((n) => n.tick === 1440)!.pitch).toBe(90);
   });

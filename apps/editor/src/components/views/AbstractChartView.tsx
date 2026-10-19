@@ -1,9 +1,9 @@
 import type { Midi } from "@openchart/core";
 import { Difficulty } from "@openchart/views";
+import { Box2, Vector2 } from "three";
 import * as THREE from "three";
 import { RenderScheduler } from "../../rendering/scheduler";
 import { Engine, type EngineOptions } from "../../rendering/engine";
-import type { CanvasPoint, CanvasRect } from "../../rendering/geometry";
 import { getCameraTickForPlayhead } from "./viewNavigation";
 
 export interface ChartViewState {
@@ -170,11 +170,9 @@ export abstract class AbstractChartView<T> {
     this.requestRender();
   }
 
-  protected toScreenSpace(value: CanvasPoint): CanvasPoint;
-  protected toScreenSpace(value: CanvasRect): CanvasRect;
-  protected toScreenSpace(
-    value: CanvasPoint | CanvasRect,
-  ): CanvasPoint | CanvasRect {
+  protected toScreenSpace(value: Vector2): Vector2;
+  protected toScreenSpace(value: Box2): Box2;
+  protected toScreenSpace(value: Vector2 | Box2): Vector2 | Box2 {
     return value;
   }
 

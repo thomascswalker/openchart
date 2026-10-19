@@ -21,7 +21,7 @@ import {
   type VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
-import type { CanvasPoint } from "../../../rendering/geometry";
+import { Vector2 } from "three";
 import type { CoordinateSystem } from "./coordinates";
 import type {
   ClipboardNote,
@@ -75,7 +75,7 @@ export class VocalEditingStrategy implements NoteEditingStrategy {
     return classification.type === "note" ? classification.kind : null;
   }
 
-  public create(local: CanvasPoint): CreatedNote | null {
+  public create(local: Vector2): CreatedNote | null {
     const lane = this.coordinates.laneAtScreenY(local.y);
     const placement = this.context.getVocalPlacement();
     const tick = this.coordinates.snapTick(

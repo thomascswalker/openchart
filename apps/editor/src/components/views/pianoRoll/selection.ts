@@ -1,16 +1,17 @@
-import { normalizeRect, type CanvasRect } from "../../../rendering/geometry";
+import { Box2 } from "three";
 import type { PianoRollNote } from "./types";
 
 export class SelectionContext {
-  #bounds: CanvasRect | null = null;
+  #bounds: Box2 | null = null;
   #notes: Set<PianoRollNote> = new Set();
 
-  public get bounds(): CanvasRect | null {
+  public get bounds(): Box2 | null {
     return this.#bounds;
   }
 
-  public set bounds(value: CanvasRect | null) {
-    this.#bounds = value !== null ? normalizeRect(value) : value;
+  public set bounds(value: Box2 | null) {
+    this.#bounds =
+      value !== null ? new Box2().setFromPoints([value.min, value.max]) : value;
   }
 
   public get notes(): PianoRollNote[] {
@@ -34,16 +35,11 @@ export class SelectionContext {
     this.#notes.clear();
   }
 
-  public intersects(rect: CanvasRect): boolean {
+  public intersects(rect: Box2): boolean {
     if (this.#bounds === null) {
       return false;
     }
-    return (
-      this.#bounds.x < rect.x + rect.width &&
-      this.#bounds.x + this.#bounds.width > rect.x &&
-      this.#bounds.y < rect.y + rect.height &&
-      this.#bounds.y + this.#bounds.height > rect.y
-    );
+    return this.#bounds.intersectsBox(rect);
   }
 
   public isSelected(note: PianoRollNote): boolean {
