@@ -1,7 +1,12 @@
 import type { CSSProperties } from "react";
 import { applyStyle } from "../../../util/css";
-import { MinimumPixelsPerSemitone } from "./constants";
+import {
+  HeaderHeight,
+  KeyboardWidth,
+  MinimumPixelsPerSemitone,
+} from "./constants";
 import type { CoordinateSystem } from "./coordinates";
+import type { HeaderController, HeaderLane } from "./header";
 import { pitchName } from "./profile";
 import type { PianoRollContext } from "./types";
 
@@ -16,13 +21,20 @@ const LABEL_STYLE: CSSProperties = {
 export class PianoRollLabels {
   readonly #context: PianoRollContext;
   readonly #coordinates: CoordinateSystem;
+  readonly #header: HeaderController;
   #host: HTMLElement | null = null;
   readonly #keyLabels: HTMLDivElement[] = [];
   readonly #laneLabels: HTMLDivElement[] = [];
+  readonly #headerLaneLabels: HTMLDivElement[] = [];
 
-  public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
+  public constructor(
+    context: PianoRollContext,
+    coordinates: CoordinateSystem,
+    header: HeaderController,
+  ) {
     this.#context = context;
     this.#coordinates = coordinates;
+    this.#header = header;
   }
 
   public mount(host: HTMLElement): void {
@@ -32,8 +44,10 @@ export class PianoRollLabels {
   public destroy(): void {
     this.#keyLabels.forEach((label) => label.remove());
     this.#laneLabels.forEach((label) => label.remove());
+    this.#headerLaneLabels.forEach((label) => label.remove());
     this.#keyLabels.length = 0;
     this.#laneLabels.length = 0;
+    this.#headerLaneLabels.length = 0;
     this.#host = null;
   }
 
@@ -43,7 +57,23 @@ export class PianoRollLabels {
     }
 
     const profile = this.#context.getProfile();
-    const keyboardWidth = this.#context.getKeyboardWidth();
+
+    const headerLanes = this.#header.visibleLanes;
+    headerLanes.forEach((lane, index) => {
+      const label = this.label(this.#headerLaneLabels, index);
+      label.textContent = this.headerLaneLabel(lane);
+      applyStyle(label, {
+        left: "0",
+        top: `${(HeaderHeight / headerLanes.length) * index}px`,
+        lineHeight: `${HeaderHeight / headerLanes.length}px`,
+        width: `${KeyboardWidth}px`,
+        boxSizing: "border-box",
+        paddingLeft: "4px",
+        color: "#bbb",
+        backgroundColor: "#2a2a2a",
+        display: "block",
+      });
+    });
 
     // Draw pinned lane labels
     let laneCount = 0;
@@ -61,7 +91,7 @@ export class PianoRollLabels {
         left: "0",
         top: `${y}px`,
         lineHeight: `${laneHeight}px`,
-        width: `${keyboardWidth}px`,
+        width: `${KeyboardWidth}px`,
         boxSizing: "border-box",
         paddingLeft: "4px",
         color: "#bbb",
@@ -103,10 +133,10 @@ export class PianoRollLabels {
 
         // Set style
         const style: CSSProperties = {
-          left: `${keyboardWidth * 0.68}px`,
+          left: `${KeyboardWidth * 0.68}px`,
           top: `${y}px`,
           lineHeight: `${camera.v}px`,
-          width: `${keyboardWidth * 0.3}px`,
+          width: `${KeyboardWidth * 0.3}px`,
           color: "#333",
           display: "block",
         };
@@ -118,6 +148,18 @@ export class PianoRollLabels {
     // produces fewer labels. This prevents stale text from remaining visible.
     this.hideFrom(this.#laneLabels, laneCount);
     this.hideFrom(this.#keyLabels, keyCount);
+    this.hideFrom(this.#headerLaneLabels, headerLanes.length);
+  }
+
+  private headerLaneLabel(lane: HeaderLane): string {
+    switch (lane) {
+      case "tempo":
+        return "Tempo";
+      case "timeSignature":
+        return "Time Sig";
+      case "text":
+        return "Text";
+    }
   }
 
   /* Get or make a label at the specified index. */

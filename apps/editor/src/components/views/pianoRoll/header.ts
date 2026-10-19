@@ -1,105 +1,219 @@
 import {
   MetaType,
-  type TempoChange,
-  type TextMidiEvent,
-  type TimeSignatureChange,
+  type IEvent,
+  type TempoEvent,
+  type TextEvent,
+  type TimeSignatureEvent,
 } from "@openchart/core";
 import type { CanvasPoint } from "../../../rendering/geometry";
 import {
   HeaderHeight,
+  HeaderLaneHeight,
   HeaderMarkerHitRadius,
   HeaderMarkerLabelHeight,
   HeaderMarkerLabelWidth,
-  HeaderTempoLaneHeight,
+  KeyboardWidth,
 } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
 import type { LyricPromptHandlers, PianoRollContext } from "./types";
+import { IController } from "./controller";
+import {
+  parseTempoString,
+  parseTimeSignatureString,
+} from "../../../audio/musicalTime";
 
-type HeaderLane = "tempo" | "timeSignature" | "text";
+export type HeaderLane = "tempo" | "timeSignature" | "text";
 
-export function parseTempoBpm(raw: string): number | null {
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+export const DefaultHeaderLanes: readonly HeaderLane[] = [
+  "tempo",
+  "timeSignature",
+  "text",
+];
+
+interface Range {
+  start: number;
+  end: number;
 }
 
-export function parseTimeSignatureInput(
-  raw: string,
-): { numerator: number; denominator: number } | null {
-  const match = /^(\d+)\s*\/\s*(\d+)$/.exec(raw.trim());
-  if (!match) return null;
-  const numerator = Number(match[1]);
-  const denominatorValue = Number(match[2]);
-  const denominator = Math.round(Math.log2(denominatorValue));
-  if (
-    !Number.isInteger(numerator) ||
-    numerator <= 0 ||
-    !Number.isInteger(denominatorValue) ||
-    denominatorValue <= 0 ||
-    2 ** denominator !== denominatorValue
+interface MarkerConfig {
+  name: HeaderLane;
+  instances: HTMLDivElement[];
+  events: IEvent[];
+  format: (event: IEvent) => string;
+}
+
+/** Manages header markers, inline editing, and lyric prompts for the piano roll. */
+export class HeaderController extends IController {
+  #visibleLanes: readonly HeaderLane[];
+  #hoveredMarker: { lane: HeaderLane; tick: number } | null = null;
+  #host: HTMLElement | null = null;
+  #bottomBorderRef: HTMLDivElement | null = null;
+  #editInputRef: HTMLInputElement | null = null;
+  #deleteButtonRef: HTMLButtonElement | null = null;
+  #editingMarkerKey: string | null = null;
+  #editingMarker: { lane: HeaderLane; tick: number } | null = null;
+  #draggingText: TextEvent | null = null;
+  #prompt: { tick: number; handlers: LyricPromptHandlers } | null = null;
+  #promptKey: string | null = null;
+  #width: number = 0;
+
+  readonly #tempoLabelRefs: HTMLDivElement[] = [];
+  readonly #timeSignatureLabelRefs: HTMLDivElement[] = [];
+  readonly #textLabelRefs: HTMLDivElement[] = [];
+  readonly #highlightRefs: HTMLDivElement[] = [];
+
+  public constructor(
+    context: PianoRollContext,
+    coordinates: CoordinateSystem,
+    visibleLanes: readonly HeaderLane[] = DefaultHeaderLanes,
   ) {
-    return null;
-  }
-  return { numerator, denominator };
-}
-
-/** Owns marker hit-testing, editing controls, and header rendering. */
-export class HeaderController {
-  private readonly context: PianoRollContext;
-  private readonly coordinates: CoordinateSystem;
-
-  private readonly tempoLabelInstance: HTMLDivElement[] = [];
-  private readonly timeSignatureLabelInstance: HTMLDivElement[] = [];
-  private readonly textLabelInstance: HTMLDivElement[] = [];
-  private readonly highlightInstance: HTMLDivElement[] = [];
-  private hoveredMarker: { lane: HeaderLane; tick: number } | null = null;
-  private host: HTMLElement | null = null;
-  private editInput: HTMLInputElement | null = null;
-  private deleteButton: HTMLButtonElement | null = null;
-  private editingMarkerKey: string | null = null;
-  private editingMarker: { lane: HeaderLane; tick: number } | null = null;
-  private draggingText: TextMidiEvent | null = null;
-  /** Active inline lyric prompt (vocal note creation or Tab navigation). */
-  private prompt: { tick: number; handlers: LyricPromptHandlers } | null = null;
-  private promptKey: string | null = null;
-
-  public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
-    this.context = context;
-    this.coordinates = coordinates;
+    super(context, coordinates);
+    this.#visibleLanes = [...new Set(visibleLanes)];
   }
 
-  public mount(host: HTMLElement): void {
-    this.host = host;
-    this.createEditInput();
-    this.createDeleteButton();
+  get width(): number {
+    return this.#width;
   }
 
-  public destroy(): void {
-    this.editInput?.remove();
-    this.deleteButton?.remove();
-    this.tempoLabelInstance.forEach((label) => label.remove());
-    this.timeSignatureLabelInstance.forEach((label) => label.remove());
-    this.textLabelInstance.forEach((label) => label.remove());
-    this.highlightInstance.forEach((highlight) => highlight.remove());
-    this.tempoLabelInstance.length = 0;
-    this.timeSignatureLabelInstance.length = 0;
-    this.textLabelInstance.length = 0;
-    this.highlightInstance.length = 0;
-    this.editInput = null;
-    this.deleteButton = null;
-    this.host = null;
-    this.hoveredMarker = null;
-    this.editingMarkerKey = null;
-    this.editingMarker = null;
-    this.prompt = null;
-    this.promptKey = null;
+  set width(value: number) {
+    this.#width = value;
   }
 
+  public get visibleLanes(): readonly HeaderLane[] {
+    return this.#visibleLanes;
+  }
+
+  /** Returns the active header display options from the current profile. */
   private get options() {
     return this.context.getProfile().header;
   }
 
+  /** Whether an inline lyric prompt is currently open. */
   public get isPrompting(): boolean {
-    return this.prompt !== null;
+    return this.#prompt !== null;
+  }
+
+  mount(host: HTMLElement): void {
+    this.#host = host;
+    const bottomBorder = document.createElement("div");
+    bottomBorder.style.position = "absolute";
+    bottomBorder.style.left = "0";
+    bottomBorder.style.height = "0";
+    bottomBorder.style.pointerEvents = "none";
+    bottomBorder.style.borderBottom = "var(--border-primary)";
+    host.appendChild(bottomBorder);
+    this.#bottomBorderRef = bottomBorder;
+    this.createEditInput();
+    this.createDeleteButton();
+  }
+
+  destroy(): void {
+    // Remove HTML elements
+    this.#bottomBorderRef?.remove();
+    this.#bottomBorderRef = null;
+    this.#editInputRef?.remove();
+    this.#editInputRef = null;
+    this.#deleteButtonRef?.remove();
+    this.#deleteButtonRef = null;
+    this.#tempoLabelRefs.forEach((label) => label.remove());
+    this.#tempoLabelRefs.length = 0;
+    this.#timeSignatureLabelRefs.forEach((label) => label.remove());
+    this.#timeSignatureLabelRefs.length = 0;
+    this.#textLabelRefs.forEach((label) => label.remove());
+    this.#textLabelRefs.length = 0;
+    this.#highlightRefs.forEach((highlight) => highlight.remove());
+    this.#highlightRefs.length = 0;
+
+    this.#host = null;
+    this.#hoveredMarker = null;
+    this.#editingMarkerKey = null;
+    this.#editingMarker = null;
+    this.#prompt = null;
+    this.#promptKey = null;
+  }
+
+  public draw(): void {
+    if (!this.#host) {
+      return;
+    }
+
+    if (this.#bottomBorderRef) {
+      this.#bottomBorderRef.style.top = `${HeaderHeight - 1}px`;
+      this.#bottomBorderRef.style.width = `${this.#width}px`;
+    }
+
+    // Reset highlights before marking the currently hovered marker.
+    this.#highlightRefs.forEach((highlight) => {
+      highlight.style.display = "none";
+    });
+
+    const markerConfigs = this.getMarkerConfigs();
+    markerConfigs.forEach((config) => {
+      const index = this.#visibleLanes.indexOf(config.name);
+      if (index === -1) {
+        config.instances.forEach((label) => {
+          label.style.display = "none";
+        });
+        return;
+      }
+      const y = (HeaderHeight / this.#visibleLanes.length) * index;
+      this.drawMarkers(
+        config.name,
+        config.instances,
+        config.events,
+        y,
+        config.format,
+        config.name === "text" && this.options.clipLabels,
+      );
+    });
+
+    // After drawing the markers, sync the edit controls
+    this.syncEditControls();
+  }
+
+  private getMarkerConfigs = (): MarkerConfig[] => {
+    const { start, end } = this.getVisibleRange();
+
+    const inView = (event: { tick: number }) =>
+      event.tick >= start && event.tick <= end;
+
+    const timeSignatureEvents = this.context
+      .getTimeSignatureEvents()
+      .filter(inView);
+    const textEvents = this.context.getTextEvents().filter(inView);
+    const tempoEvents = this.context.getTempoEvents().filter(inView);
+    return [
+      {
+        name: "tempo",
+        instances: this.#tempoLabelRefs,
+        events: tempoEvents,
+        format: (event: IEvent) =>
+          `\u266a=${Math.round(60_000_000 / (event as TempoEvent).microsecondsPerQuarterNote)}`,
+      },
+      {
+        name: "timeSignature",
+        instances: this.#timeSignatureLabelRefs,
+        events: timeSignatureEvents,
+        format: (event: IEvent) =>
+          `${(event as TimeSignatureEvent).numerator}/${2 ** (event as TimeSignatureEvent).denominator}`,
+      },
+      {
+        name: "text",
+        events: textEvents,
+        instances: this.#textLabelRefs,
+        format: (event: IEvent) => (event as TextEvent).text,
+      },
+    ];
+  };
+
+  /** Calculates the tick range currently visible within the header viewport. */
+  private getVisibleRange(): Range {
+    const visibleWidth = Math.max(0, this.width - KeyboardWidth);
+    const visibleStart = this.coordinates.getCamera().x;
+    const visibleEnd = this.coordinates.tickAtScreenX(
+      KeyboardWidth + visibleWidth,
+    );
+    return { start: visibleStart, end: visibleEnd };
   }
 
   /**
@@ -107,40 +221,41 @@ export class HeaderController {
    * vocal note is created and when Tab moves to a note with no lyric yet.
    */
   public promptText(tick: number, handlers: LyricPromptHandlers): void {
-    if (this.prompt) this.cancelPrompt();
-    this.editingMarker = null;
-    this.prompt = { tick, handlers };
-    this.promptKey = null;
+    if (this.#prompt) this.cancelPrompt();
+    this.#editingMarker = null;
+    this.#prompt = { tick, handlers };
+    this.#promptKey = null;
     this.syncEditControls();
   }
 
   /** Closes the prompt without committing (e.g. playback started). */
   public cancelPrompt(): void {
-    const prompt = this.prompt;
+    const prompt = this.#prompt;
     if (!prompt) return;
-    this.prompt = null;
-    this.promptKey = null;
-    this.editInput?.blur();
+    this.#prompt = null;
+    this.#promptKey = null;
+    this.#editInputRef?.blur();
     prompt.handlers.onCancel();
     this.syncEditControls();
   }
 
   /** Opens the edit input on the existing text event at `tick`. */
   public editTextAt(tick: number): void {
-    if (this.prompt) this.cancelPrompt();
-    this.editingMarker = { lane: "text", tick };
-    this.editingMarkerKey = null;
+    if (this.#prompt) this.cancelPrompt();
+    this.#editingMarker = { lane: "text", tick };
+    this.#editingMarkerKey = null;
     this.syncEditControls();
   }
 
+  /** Finishes a lyric prompt by committing, advancing with Tab, or cancelling. */
   private finishPrompt(mode: "commit" | "tab" | "blur"): void {
-    const prompt = this.prompt;
-    const input = this.editInput;
+    const prompt = this.#prompt;
+    const input = this.#editInputRef;
     if (!prompt || !input) return;
     const text = input.value;
     if (mode === "commit" && !text.trim()) return;
-    this.prompt = null;
-    this.promptKey = null;
+    this.#prompt = null;
+    this.#promptKey = null;
     // Blur first so the blur handler can't apply this text to whatever the
     // handlers open next (Tab opens the following lyric).
     if (mode !== "blur" && document.activeElement === input) input.blur();
@@ -155,40 +270,73 @@ export class HeaderController {
     this.context.requestRender();
   }
 
+  /** Returns the inline edit input, if it has been mounted. */
   public getEditInput(): HTMLInputElement | null {
-    return this.editInput;
+    return this.#editInputRef;
   }
 
+  /** Returns the marker delete button, if it has been mounted. */
   public getDeleteButton(): HTMLButtonElement | null {
-    return this.deleteButton;
+    return this.#deleteButtonRef;
   }
 
+  /** Sets the lanes rendered and hit-tested by the header. */
+  public setVisibleLanes(lanes: readonly HeaderLane[]): void {
+    const visibleLanes = [...new Set(lanes)];
+    if (
+      visibleLanes.length === this.#visibleLanes.length &&
+      visibleLanes.every((lane, index) => lane === this.#visibleLanes[index])
+    ) {
+      return;
+    }
+
+    this.#visibleLanes = visibleLanes;
+    if (
+      this.#hoveredMarker &&
+      !visibleLanes.includes(this.#hoveredMarker.lane)
+    ) {
+      this.#hoveredMarker = null;
+    }
+    if (
+      this.#editingMarker &&
+      !visibleLanes.includes(this.#editingMarker.lane)
+    ) {
+      this.#editingMarker = null;
+      this.#editingMarkerKey = null;
+    }
+    this.context.requestRender();
+  }
+
+  /** Resolves the header lane containing the given local vertical coordinate. */
   public laneAt(y: number): HeaderLane | null {
-    if (y < 0 || y >= HeaderHeight) {
+    if (y < 0 || y >= HeaderHeight || this.#visibleLanes.length === 0) {
       return null;
     }
-    return y < HeaderTempoLaneHeight
-      ? "tempo"
-      : y < HeaderHeight - 10
-        ? "timeSignature"
-        : "text";
+    const laneHeight = HeaderHeight / this.#visibleLanes.length;
+    const index = Math.min(
+      Math.floor(y / laneHeight),
+      this.#visibleLanes.length - 1,
+    );
+    return this.#visibleLanes[index];
   }
 
+  /** Updates the hovered marker and synchronizes the inline controls. */
   public updateHover(local: CanvasPoint | null): void {
     const lane = local ? this.laneAt(local.y) : null;
     const marker =
       lane && this.context.getMidi()
         ? lane === "tempo"
-          ? this.findTempoMarkerNear(local!.x)
+          ? this.findTempoEventNear(local!.x)
           : lane === "timeSignature"
-            ? this.findTimeSignatureMarkerNear(local!.x)
-            : this.findTextMarkerNear(local!.x)
+            ? this.findTimeSignatureEventNear(local!.x)
+            : this.findTextEventNear(local!.x)
         : null;
 
-    this.hoveredMarker = marker ? { lane: lane!, tick: marker.tick } : null;
+    this.#hoveredMarker = marker ? { lane: lane!, tick: marker.tick } : null;
     this.syncEditControls();
   }
 
+  /** Adds a default marker to an empty lane at the clicked tick. */
   public click(point: CanvasPoint): void {
     if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
@@ -199,24 +347,25 @@ export class HeaderController {
 
     const existing =
       lane === "tempo"
-        ? this.findTempoMarkerNear(point.x)
+        ? this.findTempoEventNear(point.x)
         : lane === "timeSignature"
-          ? this.findTimeSignatureMarkerNear(point.x)
-          : this.findTextMarkerNear(point.x);
+          ? this.findTimeSignatureEventNear(point.x)
+          : this.findTextEventNear(point.x);
     if (existing) {
       return;
     }
 
+    // Create the lane-specific default value at the snapped tick.
     const tick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(point.x),
     );
     let changed = false;
     if (lane === "tempo") {
-      midi.addTempoChange(tick, this.effectiveTempoAt(tick));
+      midi.addTempoEvent(tick, this.effectiveTempoAt(tick));
       changed = true;
     } else if (lane === "timeSignature") {
       const current = this.effectiveTimeSignatureAt(tick);
-      midi.addTimeSignatureChange(tick, current.numerator, current.denominator);
+      midi.addTimeSignatureEvent(tick, current.numerator, current.denominator);
       changed = true;
     } else if (this.options.createOnClick) {
       const track = this.context.getSelectedTrack();
@@ -232,6 +381,7 @@ export class HeaderController {
     this.context.requestRender();
   }
 
+  /** Removes the marker under the pointer when the matching lane permits deletion. */
   public rightClick(x: number, y: number): void {
     if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
@@ -242,21 +392,21 @@ export class HeaderController {
 
     const marker =
       lane === "tempo"
-        ? this.findTempoMarkerNear(x)
+        ? this.findTempoEventNear(x)
         : lane === "timeSignature"
-          ? this.findTimeSignatureMarkerNear(x)
-          : this.findTextMarkerNear(x);
+          ? this.findTimeSignatureEventNear(x)
+          : this.findTextEventNear(x);
     let changed = false;
     if (marker) {
+      // Text markers follow the profile's separate text-deletion option.
       if (lane === "tempo") {
-        changed = midi.removeTempoChangeAt(marker.tick);
+        changed = midi.removeTempoEventAt(marker.tick);
       } else if (lane === "timeSignature") {
-        changed = midi.removeTimeSignatureChangeAt(marker.tick);
+        changed = midi.removeTimeSignatureEventAt(marker.tick);
       } else if (this.options.deleteText) {
-        const text = this.findTextMarkerNear(x);
+        const text = this.findTextEventNear(x);
         if (text)
-          changed =
-            this.context.getSelectedTrack()?.removeEvent(text.event) ?? false;
+          changed = this.context.getSelectedTrack()?.removeEvent(text) ?? false;
       }
     }
     if (changed) {
@@ -266,6 +416,7 @@ export class HeaderController {
     this.context.requestRender();
   }
 
+  /** Starts dragging a text marker when text dragging is enabled. */
   public beginDrag(point: CanvasPoint): void {
     if (
       this.context.getState().isPlaying ||
@@ -273,79 +424,40 @@ export class HeaderController {
       !this.options.dragText
     )
       return;
-    this.draggingText = this.findTextMarkerNear(point.x)?.event ?? null;
-    if (this.draggingText) this.context.beginEdit();
+    this.#draggingText = this.findTextEventNear(point.x);
+    if (this.#draggingText) this.context.beginEdit();
   }
 
+  /** Moves the active text marker to the nearest snapped tick. */
   public updateDrag(point: CanvasPoint): void {
-    if (!this.draggingText || this.context.getState().isPlaying) return;
+    if (!this.#draggingText || this.context.getState().isPlaying) return;
     const tick = this.coordinates.snapTickToNearest(
       this.coordinates.tickAtScreenX(point.x),
     );
     const track = this.context.getSelectedTrack();
-    if (track?.moveEvent(this.draggingText, tick)) {
+    if (track?.moveEvent(this.#draggingText, tick)) {
       this.context.notifyNotesChanged();
       this.context.requestRender();
     }
   }
 
+  /** Ends an active text-marker drag and closes its edit transaction. */
   public endDrag(): void {
-    const hadDrag = this.draggingText !== null;
-    this.draggingText = null;
+    const hadDrag = this.#draggingText !== null;
+    this.#draggingText = null;
     if (hadDrag) this.context.endEdit();
   }
 
-  public draw(width: number): void {
-    if (!this.host) return;
-    this.host.style.background = "#1c1c1c";
-    this.host.style.borderBottom = "1px solid #555";
-
-    const visibleWidth = Math.max(0, width - this.context.getKeyboardWidth());
-    const visibleStart = this.coordinates.getCamera().x;
-    const visibleEnd = this.coordinates.tickAtScreenX(
-      this.context.getKeyboardWidth() + visibleWidth,
-    );
-    const inView = (change: { tick: number }) =>
-      change.tick >= visibleStart && change.tick <= visibleEnd;
-
-    this.highlightInstance.forEach((highlight) => {
-      highlight.style.display = "none";
-    });
-    this.drawMarkers(
-      "tempo",
-      this.tempoLabelInstance,
-      this.context.getTempoChanges().filter(inView),
-      2,
-      (change) =>
-        `\u266a=${Math.round(60_000_000 / change.microsecondsPerQuarterNote)}`,
-    );
-    this.drawMarkers(
-      "timeSignature",
-      this.timeSignatureLabelInstance,
-      this.context.getTimeSignatureChanges().filter(inView),
-      HeaderTempoLaneHeight + 2,
-      (change) => `${change.numerator}/${2 ** change.denominator}`,
-    );
-    this.drawMarkers(
-      "text",
-      this.textLabelInstance,
-      this.context.getTextEvents().filter(inView),
-      HeaderHeight - 12,
-      (change) => change.event.data.text,
-      this.options.clipLabels,
-    );
-    this.syncEditControls();
-  }
-
-  private drawMarkers<T extends { tick: number }>(
+  /** Creates or updates marker labels and highlights for one lane. */
+  private drawMarkers<T extends IEvent>(
     lane: HeaderLane,
     instance: HTMLDivElement[],
-    changes: T[],
+    events: T[],
     y: number,
-    formatText: (change: T) => string,
+    formatText: (event: T) => string,
     clip = false,
   ): void {
-    changes.forEach((change, index) => {
+    events.forEach((event, index) => {
       let label = instance[index];
       if (!label) {
         label = document.createElement("div");
@@ -355,13 +467,13 @@ export class HeaderController {
         label.style.whiteSpace = "nowrap";
         label.style.pointerEvents = "none";
         instance[index] = label;
-        this.host?.appendChild(label);
+        this.#host?.appendChild(label);
       }
 
-      const x = this.coordinates.screenXForTick(change.tick);
+      const x = this.coordinates.screenXForTick(event.tick);
       const isHovered =
-        this.hoveredMarker?.lane === lane &&
-        this.hoveredMarker.tick === change.tick;
+        this.#hoveredMarker?.lane === lane &&
+        this.#hoveredMarker.tick === event.tick;
       if (isHovered) {
         const highlight = this.getHighlight(index);
         highlight.style.display = "block";
@@ -370,10 +482,10 @@ export class HeaderController {
         highlight.style.width = `${HeaderMarkerLabelWidth}px`;
         highlight.style.height = `${HeaderMarkerLabelHeight}px`;
       }
-      label.textContent = formatText(change);
+      label.textContent = formatText(event);
       if (clip) {
         // Lyrics are dense: stop each label at the next one's X.
-        const next = changes[index + 1];
+        const next = events[index + 1];
         const nextX = next
           ? this.coordinates.screenXForTick(next.tick)
           : Number.POSITIVE_INFINITY;
@@ -387,53 +499,52 @@ export class HeaderController {
       }
       label.style.left = `${x + 3}px`;
       label.style.top = `${y}px`;
-      label.style.display =
-        x >= this.context.getKeyboardWidth() ? "block" : "none";
+      label.style.display = x >= KeyboardWidth ? "block" : "none";
     });
 
-    for (let index = changes.length; index < instance.length; index++) {
+    for (let index = events.length; index < instance.length; index++) {
       instance[index].style.display = "none";
     }
   }
 
+  /** Returns the highlight element for a marker, creating it on demand. */
   private getHighlight(index: number): HTMLDivElement {
-    let highlight = this.highlightInstance[index];
+    let highlight = this.#highlightRefs[index];
     if (!highlight) {
       highlight = document.createElement("div");
       highlight.style.position = "absolute";
       highlight.style.background = "rgba(255, 0, 0, 0.3)";
       highlight.style.pointerEvents = "none";
-      this.highlightInstance[index] = highlight;
-      this.host?.appendChild(highlight);
+      this.#highlightRefs[index] = highlight;
+      this.#host?.appendChild(highlight);
     }
     return highlight;
   }
 
-  private findTempoMarkerNear(x: number): TempoChange | null {
-    return this.findMarkerNear(this.context.getTempoChanges(), x);
+  /** Finds the tempo marker nearest the given horizontal coordinate. */
+  private findTempoEventNear(x: number): TempoEvent | null {
+    return this.findMarkerNear(this.context.getTempoEvents(), x);
   }
 
-  private findTimeSignatureMarkerNear(x: number): TimeSignatureChange | null {
-    return this.findMarkerNear(this.context.getTimeSignatureChanges(), x);
+  /** Finds the time-signature marker nearest the given horizontal coordinate. */
+  private findTimeSignatureEventNear(x: number): TimeSignatureEvent | null {
+    return this.findMarkerNear(this.context.getTimeSignatureEvents(), x);
   }
 
-  private findTextMarkerNear(
-    x: number,
-  ): { tick: number; event: TextMidiEvent } | null {
-    return this.findMarkerNear(this.context.getTextEvents(), x) as {
-      tick: number;
-      event: TextMidiEvent;
-    } | null;
+  /** Finds the text marker nearest the given horizontal coordinate. */
+  private findTextEventNear(x: number): TextEvent | null {
+    return this.findMarkerNear(this.context.getTextEvents(), x);
   }
 
+  /** Selects the closest marker whose hit area contains the given coordinate. */
   private findMarkerNear<T extends { tick: number }>(
-    changes: T[],
+    events: T[],
     x: number,
   ): T | null {
     let closest: T | null = null;
     let closestDistance = Infinity;
-    for (const change of changes) {
-      const markerX = this.coordinates.screenXForTick(change.tick);
+    for (const event of events) {
+      const markerX = this.coordinates.screenXForTick(event.tick);
       if (
         x < markerX - HeaderMarkerHitRadius ||
         x > markerX + HeaderMarkerLabelWidth
@@ -442,54 +553,61 @@ export class HeaderController {
       }
       const distance = Math.abs(markerX - x);
       if (distance < closestDistance) {
-        closest = change;
+        closest = event;
         closestDistance = distance;
       }
     }
     return closest;
   }
 
+  /** Returns the tempo value effective at the given tick. */
   private effectiveTempoAt(tick: number): number {
     let value =
-      this.context.getTempoChanges()[0]?.microsecondsPerQuarterNote ?? 500_000;
-    for (const change of this.context.getTempoChanges()) {
-      if (change.tick > tick) break;
-      value = change.microsecondsPerQuarterNote;
+      this.context.getTempoEvents()[0]?.microsecondsPerQuarterNote ?? 500_000;
+    for (const event of this.context.getTempoEvents()) {
+      if (event.tick > tick) break;
+      value = event.microsecondsPerQuarterNote;
     }
     return value;
   }
 
+  /** Returns the time signature effective at the given tick. */
   private effectiveTimeSignatureAt(tick: number): {
     numerator: number;
     denominator: number;
   } {
-    let value = this.context.getTimeSignatureChanges()[0] ?? {
+    let value = this.context.getTimeSignatureEvents()[0] ?? {
       numerator: 4,
       denominator: 2,
     };
-    for (const change of this.context.getTimeSignatureChanges()) {
-      if (change.tick > tick) break;
-      value = change;
+    for (const event of this.context.getTimeSignatureEvents()) {
+      if (event.tick > tick) break;
+      value = event;
     }
     return { numerator: value.numerator, denominator: value.denominator };
   }
 
+  /** Creates the inline input and wires its focus, keyboard, and blur behavior. */
   private createEditInput(): void {
-    if (!this.host || this.editInput) return;
+    if (!this.#host || this.#editInputRef) return;
     const input = document.createElement("input");
     input.type = "text";
     input.className = "piano-roll-header-input";
     input.style.display = "none";
+
+    // Selecting a marker on focus or click keeps the input tied to the hovered item.
     input.addEventListener("focus", () => {
-      if (!this.editingMarker && this.hoveredMarker) {
-        this.editingMarker = { ...this.hoveredMarker };
+      if (!this.#editingMarker && this.#hoveredMarker) {
+        this.#editingMarker = { ...this.#hoveredMarker };
       }
     });
     input.addEventListener("click", () => {
-      if (this.hoveredMarker) this.editingMarker = { ...this.hoveredMarker };
+      if (this.#hoveredMarker) this.#editingMarker = { ...this.#hoveredMarker };
     });
+
+    // Handle prompt navigation separately from ordinary marker editing.
     input.addEventListener("keydown", (event) => {
-      if (this.prompt) {
+      if (this.#prompt) {
         if (event.key === "Enter") {
           event.preventDefault();
           this.finishPrompt("commit");
@@ -505,10 +623,10 @@ export class HeaderController {
       if (
         event.key === "Tab" &&
         this.context.getProfile().editing === "vocal" &&
-        this.editingMarker?.lane === "text"
+        this.#editingMarker?.lane === "text"
       ) {
         event.preventDefault();
-        const tick = this.editingMarker.tick;
+        const tick = this.#editingMarker.tick;
         this.commitEdit(input.value);
         input.blur();
         this.context.editNextLyric(tick);
@@ -520,25 +638,28 @@ export class HeaderController {
         input.blur();
       } else if (event.key === "Escape") {
         event.preventDefault();
-        this.editingMarker = null;
+        this.#editingMarker = null;
         input.blur();
         this.syncEditControls();
       }
     });
+
+    // A blur commits marker edits, while lyric prompts have their own finish flow.
     input.addEventListener("blur", () => {
-      if (this.prompt) {
+      if (this.#prompt) {
         this.finishPrompt("blur");
         return;
       }
-      if (this.editingMarker) this.commitEdit(input.value);
+      if (this.#editingMarker) this.commitEdit(input.value);
       this.syncEditControls();
     });
-    this.host.appendChild(input);
-    this.editInput = input;
+    this.#host.appendChild(input);
+    this.#editInputRef = input;
   }
 
+  /** Creates the marker delete button and attaches its click handler. */
   private createDeleteButton(): void {
-    if (!this.host || this.deleteButton) return;
+    if (!this.#host || this.#deleteButtonRef) return;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "piano-roll-header-delete";
@@ -546,30 +667,31 @@ export class HeaderController {
     button.style.display = "none";
     button.addEventListener("mousedown", (event) => event.preventDefault());
     button.addEventListener("click", () => this.deleteHoveredMarker());
-    this.host.appendChild(button);
-    this.deleteButton = button;
+    this.#host.appendChild(button);
+    this.#deleteButtonRef = button;
   }
 
+  /** Deletes the currently hovered marker, respecting playback and profile settings. */
   private deleteHoveredMarker(): void {
     if (this.context.getState().isPlaying) return;
     const midi = this.context.getMidi();
-    const marker = this.hoveredMarker;
+    const marker = this.#hoveredMarker;
     if (!midi || !marker) return;
     if (marker.lane === "text" && !this.options.deleteText) return;
+
+    // Remove the selected marker through the MIDI or selected-track API.
     let changed = false;
-    if (marker.lane === "tempo")
-      changed = midi.removeTempoChangeAt(marker.tick);
+    if (marker.lane === "tempo") changed = midi.removeTempoEventAt(marker.tick);
     else if (marker.lane === "timeSignature") {
-      changed = midi.removeTimeSignatureChangeAt(marker.tick);
+      changed = midi.removeTimeSignatureEventAt(marker.tick);
     } else {
-      const text = this.findTextMarkerNear(
+      const text = this.findTextEventNear(
         this.coordinates.screenXForTick(marker.tick),
       );
       if (text)
-        changed =
-          this.context.getSelectedTrack()?.removeEvent(text.event) ?? false;
+        changed = this.context.getSelectedTrack()?.removeEvent(text) ?? false;
     }
-    this.hoveredMarker = null;
+    this.#hoveredMarker = null;
     if (changed) {
       this.context.invalidateTempoCache();
       this.context.notifyNotesChanged();
@@ -578,38 +700,46 @@ export class HeaderController {
     this.context.requestRender();
   }
 
+  /** Parses and applies the edited value to the active tempo, signature, or text marker. */
   private commitEdit(raw: string): void {
     if (this.context.getState().isPlaying) return;
+
     const midi = this.context.getMidi();
-    const marker = this.editingMarker ?? this.hoveredMarker;
+    const marker = this.#editingMarker ?? this.#hoveredMarker;
     if (!midi || !marker) return;
+
     let changed = false;
+
+    // Parse and replace the marker according to its lane.
     if (marker.lane === "tempo") {
-      const parsed = parseTempoBpm(raw);
+      const parsed = parseTempoString(raw);
       if (parsed === null) return;
-      midi.removeTempoChangeAt(marker.tick);
-      midi.addTempoChange(marker.tick, Math.round(60_000_000 / parsed));
+
+      midi.removeTempoEventAt(marker.tick);
+      midi.addTempoEvent(marker.tick, Math.round(60_000_000 / parsed));
       changed = true;
     } else if (marker.lane === "timeSignature") {
-      const parsed = parseTimeSignatureInput(raw);
+      const parsed = parseTimeSignatureString(raw);
       if (parsed === null) return;
-      midi.removeTimeSignatureChangeAt(marker.tick);
-      midi.addTimeSignatureChange(
+
+      midi.removeTimeSignatureEventAt(marker.tick);
+      midi.addTimeSignatureEvent(
         marker.tick,
         parsed.numerator,
         parsed.denominator,
       );
       changed = true;
     } else {
-      const text = this.findTextMarkerNear(
+      const text = this.findTextEventNear(
         this.coordinates.screenXForTick(marker.tick),
       );
+
       if (text)
         changed =
-          this.context.getSelectedTrack()?.updateTextEvent(text.event, raw) ??
-          false;
+          this.context.getSelectedTrack()?.updateTextEvent(text, raw) ?? false;
     }
-    this.editingMarker = null;
+
+    this.#editingMarker = null;
     if (changed) {
       this.context.invalidateTempoCache();
       this.context.notifyNotesChanged();
@@ -617,45 +747,50 @@ export class HeaderController {
     this.context.requestRender();
   }
 
+  /** Formats the current marker value for display in the inline edit input. */
   private formatMarkerValue(marker: {
     lane: HeaderLane;
     tick: number;
   }): string {
     if (marker.lane === "tempo") {
-      const change = this.context
-        .getTempoChanges()
+      const event = this.context
+        .getTempoEvents()
         .find((candidate) => candidate.tick === marker.tick);
-      return change
-        ? String(Math.round(60_000_000 / change.microsecondsPerQuarterNote))
+      return event
+        ? String(Math.round(60_000_000 / event.microsecondsPerQuarterNote))
         : "";
     }
     if (marker.lane === "text") {
       return (
-        this.findTextMarkerNear(this.coordinates.screenXForTick(marker.tick))
-          ?.event.data.text ?? ""
+        this.findTextEventNear(this.coordinates.screenXForTick(marker.tick))
+          ?.text ?? ""
       );
     }
-    const change = this.context
-      .getTimeSignatureChanges()
+    const event = this.context
+      .getTimeSignatureEvents()
       .find((candidate) => candidate.tick === marker.tick);
-    return change ? `${change.numerator}/${2 ** change.denominator}` : "";
+    return event ? `${event.numerator}/${2 ** event.denominator}` : "";
   }
 
+  /** Positions and updates the inline editor and delete button for the active state. */
   private syncEditControls(): void {
-    const input = this.editInput;
-    const deleteButton = this.deleteButton;
+    const input = this.#editInputRef;
+    const deleteButton = this.#deleteButtonRef;
     if (!input || !deleteButton) return;
-    if (this.prompt) {
-      const x = this.coordinates.screenXForTick(this.prompt.tick);
+    if (this.#prompt) {
+      // Prompts always use the text lane and disable marker deletion.
+      const x = this.coordinates.screenXForTick(this.#prompt.tick);
       input.style.left = `${x}px`;
-      input.style.top = `${HeaderHeight - 12}px`;
+      input.style.top = `${
+        this.laneTop("text") ?? HeaderHeight - HeaderLaneHeight
+      }px`;
       input.style.display = "block";
       input.placeholder = "lyric";
       deleteButton.style.display = "none";
-      const key = `prompt:${this.prompt.tick}`;
-      if (key !== this.promptKey) {
-        this.promptKey = key;
-        input.value = this.prompt.handlers.initialText ?? "";
+      const key = `prompt:${this.#prompt.tick}`;
+      if (key !== this.#promptKey) {
+        this.#promptKey = key;
+        input.value = this.#prompt.handlers.initialText ?? "";
       }
       if (document.activeElement !== input) {
         input.focus();
@@ -663,24 +798,23 @@ export class HeaderController {
       }
       return;
     }
+
     input.placeholder = "";
-    const marker = this.editingMarker ?? this.hoveredMarker;
+    const marker = this.#editingMarker ?? this.#hoveredMarker;
     const focused = document.activeElement === input;
+
     if (!marker) {
       if (!focused) {
         input.style.display = "none";
         deleteButton.style.display = "none";
-        this.editingMarkerKey = null;
+        this.#editingMarkerKey = null;
       }
       return;
     }
+
+    // Position controls based on the marker lane and keep the value in sync on selection changes.
     const x = this.coordinates.screenXForTick(marker.tick);
-    const y =
-      marker.lane === "tempo"
-        ? 2
-        : marker.lane === "timeSignature"
-          ? HeaderTempoLaneHeight + 2
-          : HeaderHeight - 12;
+    const y = this.laneTop(marker.lane) ?? HeaderHeight - HeaderLaneHeight;
     const inputWidth = input.getBoundingClientRect().width || 48;
     input.style.left = `${x}px`;
     input.style.top = `${y}px`;
@@ -690,13 +824,21 @@ export class HeaderController {
     deleteButton.style.display =
       marker.lane === "text" && !this.options.deleteText ? "none" : "block";
     const key = `${marker.lane}:${marker.tick}`;
-    if (key !== this.editingMarkerKey) {
-      this.editingMarkerKey = key;
+    if (key !== this.#editingMarkerKey) {
+      this.#editingMarkerKey = key;
       input.value = this.formatMarkerValue(marker);
     }
-    if (this.editingMarker && document.activeElement !== input) {
+    if (this.#editingMarker && document.activeElement !== input) {
       input.focus();
       input.select();
     }
+  }
+
+  private laneTop(lane: HeaderLane): number | null {
+    const index = this.#visibleLanes.indexOf(lane);
+    if (index === -1) {
+      return null;
+    }
+    return (HeaderHeight / this.#visibleLanes.length) * index;
   }
 }

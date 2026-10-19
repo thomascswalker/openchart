@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BlackPitchClasses, HeaderHeight } from "./constants";
+import { BlackPitchClasses, HeaderHeight, KeyboardWidth } from "./constants";
 import type { CoordinateSystem } from "./coordinates";
 import { HeaderController } from "./header";
 import { NoteDataStore } from "./noteData";
@@ -48,12 +48,16 @@ const kindStyles: Record<
 
 /** Owns the Three scene objects and piano-roll draw order. */
 export class PianoRollRenderer {
-  private readonly scene = new THREE.Scene();
-  private readonly context: PianoRollContext;
-  private readonly coordinates: CoordinateSystem;
-  private readonly noteData: NoteDataStore;
-  private readonly geometry: NoteGeometryCache;
-  private readonly header: HeaderController;
+  readonly #scene = new THREE.Scene();
+  readonly #context: PianoRollContext;
+  readonly #coordinates: CoordinateSystem;
+  readonly #noteData: NoteDataStore;
+  readonly #geometry: NoteGeometryCache;
+  readonly #header: HeaderController;
+
+  get scene(): THREE.Scene {
+    return this.#scene;
+  }
 
   public constructor(
     context: PianoRollContext,
@@ -62,15 +66,11 @@ export class PianoRollRenderer {
     geometry: NoteGeometryCache,
     header: HeaderController,
   ) {
-    this.context = context;
-    this.coordinates = coordinates;
-    this.noteData = noteData;
-    this.geometry = geometry;
-    this.header = header;
-  }
-
-  public getScene(): THREE.Scene {
-    return this.scene;
+    this.#context = context;
+    this.#coordinates = coordinates;
+    this.#noteData = noteData;
+    this.#geometry = geometry;
+    this.#header = header;
   }
 
   public dispose(): void {
@@ -80,8 +80,27 @@ export class PianoRollRenderer {
   public draw(width: number, height: number, playheadTick: number): void {
     this.clearScene();
 
-    const gridTop = this.coordinates.getGridTop();
-    this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, RenderOrder.Header);
+    const gridTop = this.#coordinates.getGridTop();
+
+    // Header rows alternate shades while labels use the same gutter as pinned lanes.
+    const headerLanes = this.#header.visibleLanes;
+    const headerLaneHeight =
+      headerLanes.length > 0 ? HeaderHeight / headerLanes.length : 0;
+    if (headerLanes.length === 0) {
+      this.addRect(0, 0, width, HeaderHeight, 0x1c1c1c, RenderOrder.Header);
+    }
+    headerLanes.forEach((_, index) => {
+      this.addRect(
+        0,
+        headerLaneHeight * index,
+        width,
+        headerLaneHeight,
+        index % 2 === 0 ? 0x1c1c1c : 0x202020,
+        RenderOrder.Header,
+      );
+    });
+
+    // Canvas background
     this.addRect(
       0,
       gridTop,
@@ -98,12 +117,14 @@ export class PianoRollRenderer {
     this.drawPinnedLanes(width);
     this.drawKeyboard(height);
     this.drawPitchRows(width, height);
-    this.header.draw(width);
+
+    this.#header.width = width;
+    this.#header.draw();
   }
 
   public drawCursor(width: number, height: number, playheadTick: number): void {
-    const x = this.coordinates.screenXForTick(playheadTick);
-    if (x < this.context.getKeyboardWidth() || x >= width) return;
+    const x = this.#coordinates.screenXForTick(playheadTick);
+    if (x < KeyboardWidth || x >= width) return;
     this.addLine(
       [new THREE.Vector3(x, 0, 0.9), new THREE.Vector3(x, height, 0.9)],
       0xff0000,
@@ -113,11 +134,11 @@ export class PianoRollRenderer {
   }
 
   private drawPitchRows(width: number, height: number): void {
-    const rowHeight = this.coordinates.getCamera().v;
-    const gridTop = this.coordinates.getGridTop();
-    const range = this.coordinates.getPitchRange();
+    const rowHeight = this.#coordinates.getCamera().v;
+    const gridTop = this.#coordinates.getGridTop();
+    const range = this.#coordinates.getPitchRange();
     const rollHeight = Math.max(0, height - gridTop);
-    const camera = this.coordinates.getCamera();
+    const camera = this.#coordinates.getCamera();
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
     const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
@@ -133,9 +154,9 @@ export class PianoRollRenderer {
           ? 0x181818
           : 0x202020;
       this.addRect(
-        this.context.getKeyboardWidth(), // x
+        KeyboardWidth, // x
         y, // y
-        Math.max(0, width - this.context.getKeyboardWidth()), // width
+        Math.max(0, width - KeyboardWidth), // width
         rowHeight, // height
         color, // color
         RenderOrder.Background, // render order
@@ -144,15 +165,15 @@ export class PianoRollRenderer {
   }
 
   private drawKeyboard(height: number): void {
-    const rowHeight = this.coordinates.getCamera().v;
-    const gridTop = this.coordinates.getGridTop();
-    const range = this.coordinates.getPitchRange();
+    const rowHeight = this.#coordinates.getCamera().v;
+    const gridTop = this.#coordinates.getGridTop();
+    const range = this.#coordinates.getPitchRange();
     const rollHeight = Math.max(0, height - gridTop);
-    const camera = this.coordinates.getCamera();
+    const camera = this.#coordinates.getCamera();
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
     const rowCount = Math.ceil(rollHeight / rowHeight) + 2;
-    const keyboardWidth = this.context.getKeyboardWidth();
+    const keyboardWidth = KeyboardWidth;
     this.addRect(
       0,
       gridTop,
@@ -209,35 +230,35 @@ export class PianoRollRenderer {
   }
 
   private drawGrid(width: number, height: number): void {
-    const rowHeight = this.coordinates.getCamera().v;
-    const camera = this.coordinates.getCamera();
+    const rowHeight = this.#coordinates.getCamera().v;
+    const camera = this.#coordinates.getCamera();
     const firstPitch = Math.ceil(camera.y);
     const topOffset = (camera.y - firstPitch) * rowHeight;
-    const gridTop = this.coordinates.getGridTop();
+    const gridTop = this.#coordinates.getGridTop();
     const horizontal: THREE.Vector3[] = [];
     for (let y = gridTop + topOffset; y <= height + rowHeight; y += rowHeight) {
       horizontal.push(
-        new THREE.Vector3(this.context.getKeyboardWidth(), y, 6),
+        new THREE.Vector3(KeyboardWidth, y, 6),
         new THREE.Vector3(width, y, 6),
       );
     }
     this.addLine(horizontal, 0x353535, 1, RenderOrder.GridHorizontal);
 
-    const visibleWidth = Math.max(0, width - this.context.getKeyboardWidth());
+    const visibleWidth = Math.max(0, width - KeyboardWidth);
     const visibleStart = camera.x;
-    const visibleEnd = this.coordinates.tickAtScreenX(
-      this.context.getKeyboardWidth() + visibleWidth,
+    const visibleEnd = this.#coordinates.tickAtScreenX(
+      KeyboardWidth + visibleWidth,
     );
     // this.drawSnapGrid(height, visibleStart, visibleEnd);
     const vertical: THREE.Vector3[] = [];
     const major: THREE.Vector3[] = [];
     for (const { tick, isMeasure } of iterateGridBeats(
-      this.context.getPpqn(),
-      this.context.getTimeSignatureChanges(),
+      this.#context.getPpqn(),
+      this.#context.getTimeSignatureEvents(),
       visibleStart,
       visibleEnd,
     )) {
-      const x = this.coordinates.screenXForTick(tick);
+      const x = this.#coordinates.screenXForTick(tick);
       const target = isMeasure ? major : vertical;
       // Beat lines run through the pinned lanes so phrases align to the grid.
       target.push(
@@ -250,68 +271,68 @@ export class PianoRollRenderer {
   }
 
   private drawNotes(width: number, height: number): void {
-    const midi = this.context.getMidi();
-    const track = this.context.getSelectedTrack();
+    const midi = this.#context.getMidi();
+    const track = this.#context.getSelectedTrack();
     if (!midi || !track) {
-      this.geometry.clear();
-      this.noteData.clear();
-      this.scene.userData.visibleNotes = 0;
-      this.scene.userData.visibleSustains = 0;
+      this.#geometry.clear();
+      this.#noteData.clear();
+      this.#scene.userData.visibleNotes = 0;
+      this.#scene.userData.visibleSustains = 0;
       return;
     }
-    const camera = this.coordinates.getCamera();
-    const tickWidth = camera.h / this.context.getPpqn();
+    const camera = this.#coordinates.getCamera();
+    const tickWidth = camera.h / this.#context.getPpqn();
     const rowHeight = camera.v;
     const noteHeight = Math.max(1, rowHeight - 2);
-    const trackIndex = this.context.getSelectedTrackIndex();
+    const trackIndex = this.#context.getSelectedTrackIndex();
     if (trackIndex === null) return;
-    const notes = this.context.getTrackNotes(midi, trackIndex);
-    const visibleEnd = this.coordinates.tickAtScreenX(width);
+    const notes = this.#context.getTrackNotes(midi, trackIndex);
+    const visibleEnd = this.#coordinates.tickAtScreenX(width);
     if (
-      this.geometry.needsRebuild({
+      this.#geometry.needsRebuild({
         track,
         notes,
-        tempoChanges: this.context.getTempoChanges(),
+        tempoEvents: this.#context.getTempoEvents(),
         tickWidth,
         rowHeight,
         width,
         height,
         visibleEnd,
-        coordinates: this.coordinates,
+        coordinates: this.#coordinates,
       })
     ) {
-      this.geometry.rebuild({
+      this.#geometry.rebuild({
         track,
         notes,
-        noteIndex: this.noteData.currentIndex,
-        tempoChanges: this.context.getTempoChanges(),
+        noteIndex: this.#noteData.currentIndex,
+        tempoEvents: this.#context.getTempoEvents(),
         tickWidth,
         rowHeight,
         width,
         height,
         noteHeight,
-        coordinates: this.coordinates,
+        coordinates: this.#coordinates,
       });
     }
-    const selection = this.context.getSelectionContext();
+    const selection = this.#context.getSelectionContext();
     const allSelected = selection.size > 0 && selection.size >= notes.length;
     const noneSelected = selection.size === 0;
-    const profile = this.context.getProfile();
+    const profile = this.#context.getProfile();
     const missingLyric =
       profile.editing === "vocal"
-        ? this.context.getVocalMarks().missingLyric
+        ? this.#context.getVocalMarks().missingLyric
         : null;
-    const gridTop = this.coordinates.getGridTop();
-    const keyboardWidth = this.context.getKeyboardWidth();
-    this.scene.userData.visibleNotes = this.geometry.geometry.length;
-    this.scene.userData.visibleSustains = 0;
-    for (const geometry of this.geometry.geometry) {
+    const gridTop = this.#coordinates.getGridTop();
+    const keyboardWidth = KeyboardWidth;
+    this.#scene.userData.visibleNotes = this.#geometry.geometry.length;
+    this.#scene.userData.visibleSustains = 0;
+    for (const geometry of this.#geometry.geometry) {
       const isSelected = allSelected
         ? true
         : noneSelected
           ? false
           : selection.isSelected(geometry.note);
-      const screenRect = screenRectOf(geometry, this.coordinates);
+      const screenRect = screenRectOf(geometry, this.#coordinates);
       if (!screenRect) continue;
       const kind = profile.classify(geometry.note.pitch);
       const style = kindStyles[kind];
@@ -353,12 +374,12 @@ export class PianoRollRenderer {
 
   /** Fixed rows under the header for phrases, percussion and pitchless. */
   private drawPinnedLanes(width: number): void {
-    const lanes = this.context.getProfile().pinnedLanes;
+    const lanes = this.#context.getProfile().pinnedLanes;
     if (lanes.length === 0) return;
-    const keyboardWidth = this.context.getKeyboardWidth();
+    const keyboardWidth = KeyboardWidth;
     const separators: THREE.Vector3[] = [];
     lanes.forEach((lane, index) => {
-      const { y, height } = this.coordinates.laneRect(lane);
+      const { y, height } = this.#coordinates.laneRect(lane);
       this.addRect(
         keyboardWidth,
         y,
@@ -381,7 +402,7 @@ export class PianoRollRenderer {
       );
     });
     this.addLine(separators, 0x333333, 1, RenderOrder.GridHorizontal);
-    const gridTop = this.coordinates.getGridTop();
+    const gridTop = this.#coordinates.getGridTop();
     this.addLine(
       [new THREE.Vector3(0, gridTop, 9), new THREE.Vector3(width, gridTop, 9)],
       0x555555,
@@ -392,10 +413,10 @@ export class PianoRollRenderer {
 
   /** Validation colour in the header text lane for notes with no lyric. */
   private drawLyricMarkers(width: number): void {
-    if (this.context.getProfile().editing !== "vocal") return;
-    const keyboardWidth = this.context.getKeyboardWidth();
-    for (const tick of this.context.getVocalMarks().missingTicks) {
-      const x = this.coordinates.screenXForTick(tick);
+    if (this.#context.getProfile().editing !== "vocal") return;
+    const keyboardWidth = KeyboardWidth;
+    for (const tick of this.#context.getVocalMarks().missingTicks) {
+      const x = this.#coordinates.screenXForTick(tick);
       if (x < keyboardWidth || x > width) continue;
       this.addRect(
         x,
@@ -409,7 +430,7 @@ export class PianoRollRenderer {
   }
 
   private drawSelectionBox(): void {
-    const bounds = this.context.getSelectionContext().bounds;
+    const bounds = this.#context.getSelectionContext().bounds;
     if (!bounds) return;
     this.addRect(
       bounds.x,
@@ -446,7 +467,7 @@ export class PianoRollRenderer {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x + width / 2, y + height / 2, renderOrder / 100);
     mesh.renderOrder = renderOrder;
-    this.scene.add(mesh);
+    this.#scene.add(mesh);
   }
 
   private addLine(
@@ -462,11 +483,11 @@ export class PianoRollRenderer {
     material.depthWrite = false;
     const line = new THREE.LineSegments(geometry, material);
     line.renderOrder = renderOrder;
-    this.scene.add(line);
+    this.#scene.add(line);
   }
 
   private clearScene(): void {
-    for (const object of this.scene.children) {
+    for (const object of this.#scene.children) {
       object.traverse((child) => {
         const mesh = child as THREE.Mesh;
         mesh.geometry?.dispose();
@@ -475,13 +496,13 @@ export class PianoRollRenderer {
         else material?.dispose();
       });
     }
-    this.scene.clear();
+    this.#scene.clear();
   }
 }
 
 export function* iterateGridBeats(
   ppqn: number,
-  segments: import("@openchart/core").TimeSignatureChange[],
+  segments: import("@openchart/core").TimeSignatureEvent[],
   startTick: number,
   endTick: number,
 ): Generator<{ tick: number; isMeasure: boolean }> {

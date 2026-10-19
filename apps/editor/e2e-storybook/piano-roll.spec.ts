@@ -5,7 +5,7 @@ const POPULATED_STORY =
 const EMPTY_STORY =
   "/iframe.html?id=views-piano-roll--empty-chart&viewMode=story";
 const TEMPO_STORY =
-  "/iframe.html?id=views-piano-roll--dense-tempo-change&viewMode=story";
+  "/iframe.html?id=views-piano-roll--dense-tempo-event&viewMode=story";
 const VOCALS_STORY = "/iframe.html?id=views-piano-roll--vocals&viewMode=story";
 
 /** Vocals layout: keyboard width, then 120 px per quarter (4 ticks/px). */
@@ -174,6 +174,7 @@ test("playback advances according to the active MIDI tempo", async ({
   page,
 }) => {
   await page.goto(TEMPO_STORY);
+  await expect(page.getByTestId("piano-roll-story")).toBeVisible();
   const tickReadout = page.getByTestId("current-tick");
 
   const measureTicksPerMillisecond = async (startTick: number) => {

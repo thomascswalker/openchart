@@ -105,16 +105,16 @@ export class Engine {
 
     // Set the initial size of the renderer and canvas to [1,1] so that
     // it has a valid size immediately
-    this.setSize(1, 1);
+    this.size = { width: 1, height: 1 };
   }
 
-  public getSize(): { width: number; height: number } {
+  public get size(): { width: number; height: number } {
     return { width: this.width, height: this.height };
   }
 
-  public setSize(width: number, height: number): void {
-    this.width = Math.max(1, Math.floor(width));
-    this.height = Math.max(1, Math.floor(height));
+  public set size(value: { width: number; height: number }) {
+    this.width = Math.max(1, Math.floor(value.width));
+    this.height = Math.max(1, Math.floor(value.height));
     const pixelRatio = Math.min(
       typeof window === "undefined" ? 1 : window.devicePixelRatio || 1,
       this.pixelRatioCap,

@@ -3,8 +3,8 @@ import {
   type Midi,
   type MidiChannelEvent,
   type MidiTrack,
-  type TempoChange,
-  type TimeSignatureChange,
+  type TempoEvent,
+  type TimeSignatureEvent,
 } from "@openchart/core";
 import {
   getVocalNotes,
@@ -17,7 +17,7 @@ import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type CanvasPoint, type CanvasRect } from "../../../rendering/geometry";
 import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
-import { HeaderController } from "./header";
+import { HeaderController, type HeaderLane } from "./header";
 import { PianoRollInputController } from "./input";
 import { PianoRollLabels } from "./labels";
 import { NoteDataStore } from "./noteData";
@@ -34,6 +34,7 @@ import type {
   VocalMarks,
   VocalPlacement,
 } from "./types";
+import { KeyboardWidth } from "./constants";
 
 /** Serializable vertical/zoom camera, persisted in ViewportCameraState. */
 export interface PianoRollCameraState {
@@ -86,7 +87,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public onNotePreview: ((notes: readonly PianoRollNote[]) => void) | null =
     null;
 
-  private readonly keyboardWidth = 64;
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
 
@@ -96,12 +96,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     {
       getPpqn: () => this.getPpqn(),
       getState: () => this.state,
-      getTempoChanges: () => this.tempoChanges,
+      getTempoEvents: () => this.tempoEvents,
       getProfile: () => this.profile,
       getViewport: () => ({ height: this.lastHeight }),
     },
     this.camera,
-    this.keyboardWidth,
   );
   private readonly context: PianoRollContext = {
     getState: () => this.state,
@@ -115,16 +114,15 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getTrackNotes: (midi, trackIndex) =>
       this.noteData.getTrackNotes(midi, trackIndex),
     getCurrentNotes: () => this.noteData.currentNotes,
-    getTempoChanges: () => this.tempoChanges,
-    getTimeSignatureChanges: () => this.timeSignatureChanges,
+    getTempoEvents: () => this.tempoEvents,
+    getTimeSignatureEvents: () => this.timeSignatureEvents,
     getTextEvents: () => {
       const events = this.getSelectedTrack()?.getTextEvents() ?? [];
       return this.profile.header.textLane === "lyrics"
-        ? events.filter(({ event }) => event.type === MetaType.Lyric)
+        ? events.filter((event) => event.type === MetaType.Lyric)
         : events;
     },
     getCamera: () => this.camera,
-    getKeyboardWidth: () => this.keyboardWidth,
     getViewport: () => ({ width: this.lastWidth, height: this.lastHeight }),
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
@@ -150,7 +148,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.context,
     this.coordinates,
   );
-  private readonly labels = new PianoRollLabels(this.context, this.coordinates);
+  private readonly labels = new PianoRollLabels(
+    this.context,
+    this.coordinates,
+    this.header,
+  );
   private readonly renderer = new PianoRollRenderer(
     this.context,
     this.coordinates,
@@ -167,10 +169,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   );
 
   private tempoCacheMidi: Midi | null = null;
-  private tempoChanges: TempoChange[] = [
+  private tempoEvents: TempoEvent[] = [
     { tick: 0, microsecondsPerQuarterNote: 500_000 },
   ];
-  private timeSignatureChanges: TimeSignatureChange[] = [
+  private timeSignatureEvents: TimeSignatureEvent[] = [
     { tick: 0, numerator: 4, denominator: 2 },
   ];
   private canvas: HTMLCanvasElement | null = null;
@@ -216,6 +218,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   public setVocalPlacement(placement: VocalPlacement): void {
     this.vocalPlacement = placement;
+  }
+
+  /** Sets the header lanes to render; all lanes are shown by default. */
+  public setHeaderLanes(lanes: readonly HeaderLane[]): void {
+    this.header.setVisibleLanes(lanes);
   }
 
   /** Fits the profile's pitch range (C2-C6 for vocals) into the viewport. */
@@ -293,7 +300,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   protected override get renderScene(): THREE.Scene {
-    return this.renderer.getScene();
+    return this.renderer.scene;
   }
 
   protected override get renderCamera(): THREE.Camera {
@@ -319,7 +326,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   protected override draw(engine: Engine): void {
     // Store last viewport size
-    const { width, height } = engine.getSize();
+    const { width, height } = engine.size;
     this.lastWidth = width;
     this.lastHeight = height;
 
@@ -468,7 +475,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (!next) return;
 
     const x = this.coordinates.screenXForTick(next.note.start);
-    if (x < this.keyboardWidth || x > this.lastWidth - 80) {
+    if (x < KeyboardWidth || x > this.lastWidth - 80) {
       this.coordinates.setCameraTick(
         next.note.start - this.getVisibleTickSpan() / 4,
       );
@@ -499,10 +506,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return;
     }
     this.tempoCacheMidi = midi;
-    this.tempoChanges = midi?.getTempoChanges() ?? [
+    this.tempoEvents = midi?.getTempoEvents() ?? [
       { tick: 0, microsecondsPerQuarterNote: 500_000 },
     ];
-    this.timeSignatureChanges = midi?.getTimeSignatureChanges() ?? [
+    this.timeSignatureEvents = midi?.getTimeSignatureEvents() ?? [
       { tick: 0, numerator: 4, denominator: 2 },
     ];
   }

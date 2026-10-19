@@ -83,11 +83,11 @@ import { Midi, MidiTrack } from "@openchart/core";
 const midi = new Midi();
 midi.tracks.push(new MidiTrack("Conductor"));
 
-midi.addTempoChange(0, 500_000); // 120 BPM
-midi.addTimeSignatureChange(0, 4, 2); // 4/4
+midi.addTempoEvent(0, 500_000); // 120 BPM
+midi.addTimeSignatureEvent(0, 4, 2); // 4/4
 
-console.log(midi.getTempoChanges());
-console.log(midi.getTimeSignatureChanges());
+console.log(midi.getTempoEvents());
+console.log(midi.getTimeSignatureEvents());
 ```
 
 ## Convert between ticks and milliseconds
@@ -102,7 +102,7 @@ import { Midi, MidiTrack, msToTicks, ticksToMs } from "@openchart/core";
 
 const midi = new Midi();
 midi.tracks.push(new MidiTrack("Conductor"));
-const tempoChanges = midi.getTempoChanges();
-const ticks = msToTicks(1_000, midi.header.division, tempoChanges);
-const milliseconds = ticksToMs(ticks, midi.header.division, tempoChanges);
+const tempoEvents = midi.getTempoEvents();
+const ticks = msToTicks(1_000, midi.header.division, tempoEvents);
+const milliseconds = ticksToMs(ticks, midi.header.division, tempoEvents);
 ```

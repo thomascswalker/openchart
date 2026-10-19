@@ -1,9 +1,11 @@
 import {
   msToTicks,
   ticksToMs,
-  type TempoChange,
-  type TimeSignatureChange,
+  type TempoEvent,
+  type TimeSignatureEvent,
 } from "@openchart/core";
+
+export type TimeSignature = Omit<TimeSignatureEvent, "tick">;
 
 export interface BeatPosition {
   tick: number;
@@ -12,22 +14,47 @@ export interface BeatPosition {
   isDownbeat: boolean;
 }
 
-const defaultTimeSignature: TimeSignatureChange = {
+/** Parses a positive tempo value in beats per minute. */
+export function parseTempoString(text: string): number | null {
+  const parsed = Number(text);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/** Parses a time signature and returns its numerator and MIDI denominator exponent. */
+export function parseTimeSignatureString(text: string): TimeSignature | null {
+  const match = /^(\d+)\s*\/\s*(\d+)$/.exec(text.trim());
+  if (!match) return null;
+  const numerator = Number(match[1]);
+  const denominatorValue = Number(match[2]);
+  const denominator = Math.round(Math.log2(denominatorValue));
+  if (
+    !Number.isInteger(numerator) ||
+    numerator <= 0 ||
+    !Number.isInteger(denominatorValue) ||
+    denominatorValue <= 0 ||
+    2 ** denominator !== denominatorValue
+  ) {
+    return null;
+  }
+  return { numerator, denominator };
+}
+
+const defaultTimeSignature: TimeSignatureEvent = {
   tick: 0,
   numerator: 4,
   denominator: 2,
 };
 
 function normalizeTimeSignatures(
-  changes: TimeSignatureChange[],
-): TimeSignatureChange[] {
-  const sorted = [...changes]
+  events: TimeSignatureEvent[],
+): TimeSignatureEvent[] {
+  const sorted = [...events]
     .filter(
-      (change) =>
-        Number.isFinite(change.tick) &&
-        Number.isFinite(change.numerator) &&
-        Number.isFinite(change.denominator) &&
-        change.numerator > 0,
+      (event) =>
+        Number.isFinite(event.tick) &&
+        Number.isFinite(event.numerator) &&
+        Number.isFinite(event.denominator) &&
+        event.numerator > 0,
     )
     .sort((a, b) => a.tick - b.tick);
 
@@ -40,9 +67,9 @@ function normalizeTimeSignatures(
 
 function signatureAtTick(
   tick: number,
-  changes: TimeSignatureChange[],
-): { change: TimeSignatureChange; index: number } {
-  const normalized = normalizeTimeSignatures(changes);
+  events: TimeSignatureEvent[],
+): { event: TimeSignatureEvent; index: number } {
+  const normalized = normalizeTimeSignatures(events);
   let index = 0;
 
   for (let candidate = 1; candidate < normalized.length; candidate++) {
@@ -50,13 +77,13 @@ function signatureAtTick(
     index = candidate;
   }
 
-  return { change: normalized[index], index };
+  return { event: normalized[index], index };
 }
 
 /** Number of ticks occupied by one beat for a MIDI time-signature exponent. */
 export function ticksPerBeat(
   ppqn: number,
-  signature: TimeSignatureChange,
+  signature: TimeSignatureEvent,
 ): number {
   return ppqn * (4 / 2 ** signature.denominator);
 }
@@ -65,14 +92,14 @@ export function ticksPerBeat(
 export function tickToBeatPosition(
   tick: number,
   ppqn: number,
-  changes: TimeSignatureChange[],
+  events: TimeSignatureEvent[],
 ): BeatPosition {
   const safeTick = Math.max(0, tick);
-  const normalized = normalizeTimeSignatures(changes);
-  const { change, index } = signatureAtTick(safeTick, normalized);
-  const beatLength = ticksPerBeat(ppqn, change);
-  const measureLength = beatLength * change.numerator;
-  const localTick = Math.max(0, safeTick - change.tick);
+  const normalized = normalizeTimeSignatures(events);
+  const { event, index } = signatureAtTick(safeTick, normalized);
+  const beatLength = ticksPerBeat(ppqn, event);
+  const measureLength = beatLength * event.numerator;
+  const localTick = Math.max(0, safeTick - event.tick);
   const measure = index + Math.floor(localTick / measureLength);
   const beat = Math.floor((localTick % measureLength) / beatLength);
 
@@ -87,45 +114,46 @@ export function tickToBeatPosition(
 /**
  * Return beat boundaries crossed by (fromTick, toTick]. A fresh playback
  * start may pass fromTick just below zero to include the beat at tick zero.
- * A time-signature change starts a new measure at its own tick.
+ * A time-signature event starts a new measure at its own tick.
  */
 export function beatCrossings(
   fromTick: number,
   toTick: number,
   ppqn: number,
-  changes: TimeSignatureChange[],
+  events: TimeSignatureEvent[],
 ): BeatPosition[] {
   if (toTick < fromTick) return [];
 
-  const normalized = normalizeTimeSignatures(changes);
+  const normalized = normalizeTimeSignatures(events);
   const result: BeatPosition[] = [];
   const epsilon = 1e-7;
 
   for (let index = 0; index < normalized.length; index++) {
-    const change = normalized[index];
-    const nextChange = normalized[index + 1]?.tick ?? Number.POSITIVE_INFINITY;
-    const segmentStart = Math.max(change.tick, fromTick);
-    const segmentEnd = Math.min(nextChange, toTick);
+    const event = normalized[index];
+    const nextEventTick =
+      normalized[index + 1]?.tick ?? Number.POSITIVE_INFINITY;
+    const segmentStart = Math.max(event.tick, fromTick);
+    const segmentEnd = Math.min(nextEventTick, toTick);
     if (segmentStart > segmentEnd) continue;
 
-    const beatLength = ticksPerBeat(ppqn, change);
+    const beatLength = ticksPerBeat(ppqn, event);
     const firstBeat = Math.max(
       0,
-      Math.ceil((segmentStart - change.tick - epsilon) / beatLength),
+      Math.ceil((segmentStart - event.tick - epsilon) / beatLength),
     );
     const lastBeat =
-      Number.isFinite(nextChange) && segmentEnd >= nextChange
-        ? Math.ceil((nextChange - change.tick) / beatLength) - 1
-        : Math.floor((segmentEnd - change.tick + epsilon) / beatLength);
+      Number.isFinite(nextEventTick) && segmentEnd >= nextEventTick
+        ? Math.ceil((nextEventTick - event.tick) / beatLength) - 1
+        : Math.floor((segmentEnd - event.tick + epsilon) / beatLength);
 
     for (let beatIndex = firstBeat; beatIndex <= lastBeat; beatIndex++) {
-      const tick = change.tick + beatIndex * beatLength;
+      const tick = event.tick + beatIndex * beatLength;
       if (tick < fromTick - epsilon || tick > toTick + epsilon) continue;
       result.push({
         tick,
-        measure: index + Math.floor(beatIndex / change.numerator),
-        beat: beatIndex % change.numerator,
-        isDownbeat: beatIndex % change.numerator === 0,
+        measure: index + Math.floor(beatIndex / event.numerator),
+        beat: beatIndex % event.numerator,
+        isDownbeat: beatIndex % event.numerator === 0,
       });
     }
   }
@@ -137,8 +165,8 @@ export function tickWindowForLookAhead(
   tick: number,
   lookAheadMs: number,
   ppqn: number,
-  tempoChanges: TempoChange[],
+  tempoEvents: TempoEvent[],
 ): number {
-  const currentMs = ticksToMs(tick, ppqn, tempoChanges);
-  return msToTicks(currentMs + lookAheadMs, ppqn, tempoChanges);
+  const currentMs = ticksToMs(tick, ppqn, tempoEvents);
+  return msToTicks(currentMs + lookAheadMs, ppqn, tempoEvents);
 }

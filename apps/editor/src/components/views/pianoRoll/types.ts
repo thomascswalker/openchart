@@ -3,10 +3,9 @@ import type {
   MidiChannelEvent,
   MidiNote,
   MidiTrack,
-  TimedMidiEvent,
-  TextMidiEvent,
-  TempoChange,
-  TimeSignatureChange,
+  TextEvent,
+  TempoEvent,
+  TimeSignatureEvent,
 } from "@openchart/core";
 import type { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
@@ -22,8 +21,6 @@ export interface PianoRollNote {
   /** Back-reference to the source note, used to keep selection stable across edits. */
   midiNote: MidiNote;
 }
-
-export type PianoRollTextEvent = TimedMidiEvent & { event: TextMidiEvent };
 
 export interface PianoRollCamera {
   /**
@@ -87,11 +84,10 @@ export interface PianoRollContext {
   getVocalMarks(): VocalMarks;
   getTrackNotes(midi: Midi, trackIndex: number): PianoRollNote[];
   getCurrentNotes(): PianoRollNote[];
-  getTempoChanges(): TempoChange[];
-  getTimeSignatureChanges(): TimeSignatureChange[];
-  getTextEvents(): PianoRollTextEvent[];
+  getTempoEvents(): TempoEvent[];
+  getTimeSignatureEvents(): TimeSignatureEvent[];
+  getTextEvents(): TextEvent[];
   getCamera(): PianoRollCamera;
-  getKeyboardWidth(): number;
   getViewport(): { width: number; height: number };
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;

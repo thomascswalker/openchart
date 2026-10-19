@@ -227,8 +227,8 @@ export function PianoRollStoryHost({
       data-profile={profile.id}
       data-lyrics={JSON.stringify(
         (midi.tracks[selectedTrackIndex]?.getTextEvents() ?? [])
-          .filter(({ event }) => event.type === MetaType.Lyric)
-          .map(({ tick, event }) => [tick, event.data.text]),
+          .filter((event) => event.type === MetaType.Lyric)
+          .map(({ tick, text }) => [tick, text]),
       )}
       data-note-data={noteData}
     >

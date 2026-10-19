@@ -7,33 +7,33 @@ import {
 } from "../musicalTime";
 
 describe("musical playback positions", () => {
-  const tempoChanges = [
+  const tempoEvents = [
     { tick: 0, microsecondsPerQuarterNote: 500_000 },
     { tick: 960, microsecondsPerQuarterNote: 1_000_000 },
   ];
   const timeSignatures = [{ tick: 0, numerator: 4, denominator: 2 }];
 
   it("crosses beats using tempo-aware look-ahead", () => {
-    const endTick = tickWindowForLookAhead(900, 100, 480, tempoChanges);
+    const endTick = tickWindowForLookAhead(900, 100, 480, tempoEvents);
     expect(endTick).toBe(978);
     expect(beatCrossings(900, 960, 480, timeSignatures)).toEqual([
       { tick: 960, measure: 0, beat: 2, isDownbeat: false },
     ]);
-    expect(ticksToMs(endTick, 480, tempoChanges)).toBe(1_037.5);
+    expect(ticksToMs(endTick, 480, tempoEvents)).toBe(1_037.5);
   });
 
-  it("starts a new downbeat at a time-signature change", () => {
-    const changes = [
+  it("starts a new downbeat at a time-signature event", () => {
+    const events = [
       { tick: 0, numerator: 4, denominator: 2 },
       { tick: 1_920, numerator: 3, denominator: 2 },
     ];
-    expect(tickToBeatPosition(2_400, 480, changes)).toEqual({
+    expect(tickToBeatPosition(2_400, 480, events)).toEqual({
       tick: 2_400,
       measure: 1,
       beat: 1,
       isDownbeat: false,
     });
-    expect(beatCrossings(1_900, 2_400, 480, changes)).toEqual([
+    expect(beatCrossings(1_900, 2_400, 480, events)).toEqual([
       { tick: 1_920, measure: 1, beat: 0, isDownbeat: true },
       { tick: 2_400, measure: 1, beat: 1, isDownbeat: false },
     ]);
