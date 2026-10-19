@@ -3,11 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService, type OpenedProject } from "../document";
 import type { LoggerService } from "../logger";
 import { makeDefaultMetadata } from "../document/schema";
-import { ProjectFilePickerTypes } from "../document/types";
 
 const DefaultOpenedProject: OpenedProject = {
-  metadataBytes: new Uint8Array(),
-  metadataHandle: {} as FileSystemFileHandle,
+  projectBytes: new Uint8Array(),
+  projectHandle: {} as FileSystemFileHandle,
   midiBytes: new Uint8Array(),
   midiHandle: {} as FileSystemFileHandle,
   directoryHandle: {} as FileSystemDirectoryHandle,
@@ -71,8 +70,8 @@ describe("DocumentService", () => {
     metadata.song.name = "Opened project";
 
     const openedProject: OpenedProject = {
-      metadataHandle,
-      metadataBytes: new TextEncoder().encode(JSON.stringify(metadata)),
+      projectHandle: metadataHandle,
+      projectBytes: new TextEncoder().encode(JSON.stringify(metadata)),
       midiHandle,
       midiBytes: midi.toBuffer() as Uint8Array<ArrayBuffer>,
       directoryHandle,
@@ -130,15 +129,16 @@ describe("DocumentService", () => {
     });
   });
 
-  it("loads notes.mid next to the selected project JSON file", async () => {
-    const metadataBytes = new TextEncoder().encode("{}");
+  it("loads info.json and notes.mid from the selected project directory", async () => {
+    const projectBytes = new TextEncoder().encode("{}");
     const midiBytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
-    const metadataHandle = {
+
+    const projectHandle = {
       name: "info.json",
       async getFile() {
         return {
           name: "info.json",
-          arrayBuffer: async () => metadataBytes.slice().buffer,
+          arrayBuffer: async () => projectBytes.slice().buffer,
         } as File;
       },
     } as unknown as FileSystemFileHandle;
@@ -152,15 +152,12 @@ describe("DocumentService", () => {
       },
     } as unknown as FileSystemFileHandle;
     const directoryHandle = {
-      resolve: vi.fn(async () => ["info.json"]),
-      getFileHandle: vi.fn(async () => midiHandle),
+      getFileHandle: vi.fn(async (name: string) =>
+        name === "info.json" ? projectHandle : midiHandle,
+      ),
     } as unknown as FileSystemDirectoryHandle;
-    const showOpenFilePicker = vi.fn(async () => [metadataHandle]);
     const showDirectoryPicker = vi.fn(async () => directoryHandle);
     vi.stubGlobal("window", {
-      origin: "https://example.test",
-      showOpenFilePicker,
-      showSaveFilePicker: vi.fn(),
       showDirectoryPicker,
     });
 
@@ -171,16 +168,17 @@ describe("DocumentService", () => {
       error: vi.fn(),
     } as unknown as LoggerService);
     await expect(service.readProject()).resolves.toEqual({
-      metadataBytes,
+      projectBytes,
       midiBytes,
-      metadataHandle,
+      projectHandle,
       midiHandle,
       directoryHandle,
     });
-    expect(showOpenFilePicker).toHaveBeenCalledWith({
-      types: ProjectFilePickerTypes,
-    });
     expect(showDirectoryPicker).toHaveBeenCalledWith({ mode: "read" });
+    expect(directoryHandle.getFileHandle).toHaveBeenNthCalledWith(
+      1,
+      "info.json",
+    );
     expect(directoryHandle.getFileHandle).toHaveBeenCalledWith("notes.mid");
   });
 

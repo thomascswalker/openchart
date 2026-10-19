@@ -23,9 +23,9 @@ function progressLabel(snapshot: UpdaterSnapshot): string {
       100,
       Math.floor((downloadedBytes / totalBytes) * 100),
     );
-    return `Downloading update… ${percent}%`;
+    return `Downloading update... ${percent}%`;
   }
-  return `Downloading update… ${formatMegabytes(downloadedBytes)}`;
+  return `Downloading update... ${formatMegabytes(downloadedBytes)}`;
 }
 
 const UpdateDialog = () => {
@@ -56,7 +56,7 @@ const UpdateDialog = () => {
 
   switch (snapshot.status) {
     case "checking":
-      body = <Text role="status">Checking for updates…</Text>;
+      body = <Text role="status">Checking for updates...</Text>;
       break;
     case "up-to-date":
       body = (
@@ -110,7 +110,7 @@ const UpdateDialog = () => {
       break;
     case "installing":
       body = (
-        <Text role="status">Installing update… OpenChart will restart.</Text>
+        <Text role="status">Installing update... OpenChart will restart.</Text>
       );
       break;
     case "error":

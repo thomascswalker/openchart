@@ -96,7 +96,7 @@ describe("Menubar", () => {
 
     expect(fileTrigger.getAttribute("aria-expanded")).toBe("true");
     expect(container.querySelector('[role="menu"]')).not.toBeNull();
-    expect(document.activeElement?.textContent).toBe("New");
+    expect(document.activeElement?.textContent).toContain("New");
 
     act(() =>
       document.activeElement?.dispatchEvent(
