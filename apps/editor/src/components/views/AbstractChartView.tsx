@@ -8,6 +8,7 @@ import { getCameraTickForPlayhead } from "./viewNavigation";
 
 export interface ChartViewState {
   midi: Midi | null;
+  selectedTrackKey: string | null;
   selectedTrackIndex: number | null;
   selectedInstrument: string;
   selectedDifficulty: Difficulty;
@@ -60,6 +61,7 @@ export abstract class AbstractChartView<T> {
 
   protected state: ChartViewState = {
     midi: null,
+    selectedTrackKey: null,
     selectedTrackIndex: null,
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,

@@ -95,8 +95,8 @@ export class NoteEditingController {
     this.context = context;
     this.coordinates = coordinates;
     this.modes = {
-      default: new DefaultEditContext(context, coordinates),
-      vocal: new VocalEditContext(context, coordinates),
+      generic: new DefaultEditContext(context, coordinates),
+      vocals: new VocalEditContext(context, coordinates),
     };
   }
 

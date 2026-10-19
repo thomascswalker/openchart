@@ -12,6 +12,11 @@ export const MinimumPixelsPerQuarter = 20;
 export const MaximumPixelsPerQuarter = 2000;
 export const MinimumPixelsPerSemitone = 6;
 export const MaximumPixelsPerSemitone = 64;
+export const MinimumMidiPitch = 0;
+export const MaximumMidiPitch = 127;
+export const DefaultNoteVelocity = 100;
+export const NewNoteDurationTicks = 1;
+export const MinimumNoteWidthPixels = 2;
 
 /**
  * Height, in pixels, of the tempo/time-signature strip above the grid.
