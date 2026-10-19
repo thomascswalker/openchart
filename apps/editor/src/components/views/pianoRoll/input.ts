@@ -501,7 +501,9 @@ export class PianoRollInputController {
   /** Ends the active gesture; an unmoved empty press seeks the playhead. */
   private readonly handlePointerUp = (event: PointerEvent): void => {
     const pointer = this.context.getPointerContext();
-    if (pointer.id === null || event.pointerId !== pointer.id) return;
+    if (pointer.id === null || event.pointerId !== pointer.id) {
+      return;
+    }
 
     // Release the pointer.
     if (this.canvas?.hasPointerCapture(event.pointerId)) {
@@ -526,7 +528,9 @@ export class PianoRollInputController {
 
   /** Seeks to the pressed tick when an empty press ended without dragging. */
   private seekToPendingCreateStart(): void {
-    if (!this.pendingCreateStart) return;
+    if (!this.pendingCreateStart) {
+      return;
+    }
 
     this.context.requestSeek(
       this.coordinates.snapTickToNearest(

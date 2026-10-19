@@ -3,10 +3,6 @@ import type { ServicesAccessor } from "../../platform/services";
 import { DocumentService } from "../../services/document";
 
 export class NewDocumentAction extends Action {
-  constructor() {
-    super({});
-  }
-
   run(accessor: ServicesAccessor): void {
     const document = accessor.get<DocumentService>("document");
     if (

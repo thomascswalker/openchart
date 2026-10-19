@@ -259,7 +259,6 @@ function DebugPanel({
       : null;
   const {
     isPlaying,
-    canPlay,
     playbackTick: playheadTick,
     totalTimelineTicks: totalTicks,
   } = usePlayback();
@@ -336,8 +335,6 @@ function DebugPanel({
       <section className="debug-panel__section">
         <h2>Playback context</h2>
         <dl>
-          <dt>Can play</dt>
-          <dd>{canPlay ? "yes" : "no"}</dd>
           <dt>Current tick</dt>
           <dd>{formatNumber(playheadTick)}</dd>
           <dt>Maximum tick</dt>

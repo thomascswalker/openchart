@@ -312,14 +312,13 @@ export function PianoRollStoryHost({
         <Button
           type="button"
           onClick={snapshot.isPlaying ? snapshot.pause : snapshot.play}
-          disabled={!snapshot.canPlay}
         >
           {snapshot.isPlaying ? "Pause" : "Play"}
         </Button>
         <Button
           type="button"
           onClick={snapshot.seekStart}
-          disabled={!snapshot.canPlay || snapshot.isPlaying}
+          disabled={snapshot.isPlaying}
         >
           Seek to Start
         </Button>
@@ -332,7 +331,7 @@ export function PianoRollStoryHost({
             min="0"
             placeholder=""
             value={snapshot.playbackTick}
-            disabled={!snapshot.canPlay || snapshot.isPlaying}
+            disabled={snapshot.isPlaying}
             onChange={(event) => {
               const tick = Number(event.target.value);
               if (Number.isFinite(tick)) snapshot.setPlaybackTick(tick);

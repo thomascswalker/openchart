@@ -12,10 +12,6 @@ export class ApplyProjectMetadataAction extends Action<
   [unknown, boolean?],
   readonly MetadataValidationError[]
 > {
-  constructor() {
-    super({});
-  }
-
   async run(
     accessor: ServicesAccessor,
     metadata: unknown,
