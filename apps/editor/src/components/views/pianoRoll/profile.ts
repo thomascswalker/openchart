@@ -52,7 +52,7 @@ export interface PianoRollProfile {
   /** Inclusive pitch range of the scrolling grid. Rows outside are dimmed. */
   pitchRange: PitchRange;
   pinnedLanes: readonly LaneDef[];
-  /** Octave labels (C2…C6) on the keyboard. */
+  /** Octave labels (C2...C6) on the keyboard. */
   keyboardLabels: boolean;
   editing: PianoRollEditingType;
   header: PianoRollHeaderOptions;

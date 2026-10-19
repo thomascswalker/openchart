@@ -8,7 +8,6 @@ import {
   MetadataSchema,
   type Metadata,
 } from "./document/schema";
-import { MidiFilePickerTypes, ProjectFilePickerTypes } from "./document/types";
 import { toArrayBuffer } from "../util/array";
 import { SongView } from "@openchart/views";
 
@@ -23,6 +22,7 @@ function createDefaultMidi() {
   return midi;
 }
 
+const ProjectFileName = "info.json";
 const MidiFileName = "notes.mid";
 
 export interface DocumentSnapshot {
@@ -49,8 +49,8 @@ export interface DocumentFile {
 }
 
 export interface OpenedProject {
-  metadataBytes: Uint8Array<ArrayBufferLike>;
-  metadataHandle: FileSystemFileHandle;
+  projectBytes: Uint8Array<ArrayBufferLike>;
+  projectHandle: FileSystemFileHandle;
   midiBytes: Uint8Array<ArrayBuffer>;
   midiHandle: FileSystemFileHandle;
   directoryHandle: FileSystemDirectoryHandle;
@@ -123,7 +123,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
         }
         this.#logger.info("Project directory opened...");
         const metadata = MetadataSchema.parse(
-          JSON.parse(new TextDecoder().decode(project.metadataBytes)),
+          JSON.parse(new TextDecoder().decode(project.projectBytes)),
         );
 
         this.update(
@@ -145,47 +145,28 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public async readProject(): Promise<OpenedProject | null> {
-    const [metadataHandle] = await window.showOpenFilePicker!({
-      types: ProjectFilePickerTypes,
-    });
-    if (!metadataHandle) {
-      return null;
-    }
-    const metadataFile = await metadataHandle.getFile();
-    if (!/\.json$/i.test(metadataFile.name)) {
-      throw new Error("Choose a project metadata file (.json).");
-    }
-    if (typeof window.showDirectoryPicker !== "function") {
-      throw new Error(
-        "This browser cannot access notes.mid next to the selected project file.",
-      );
-    }
-
     const directoryHandle = await window.showDirectoryPicker({
       mode: "read",
     });
-    const relativePath = await directoryHandle.resolve(metadataHandle);
-    if (!relativePath || relativePath.length !== 1) {
-      throw new Error(
-        "Choose the folder containing the selected project metadata file.",
-      );
-    }
 
-    const midiFileHandle = await directoryHandle.getFileHandle(MidiFileName);
+    const projectHandle = await directoryHandle
+      .getFileHandle(ProjectFileName)
+      .catch(() => {
+        throw new Error(`${ProjectFileName} not found.`);
+      });
+    const projectFile = await projectHandle.getFile();
+
+    const midiFileHandle = await directoryHandle
+      .getFileHandle(MidiFileName)
+      .catch(() => {
+        throw new Error(`${MidiFileName} not found.`);
+      });
     const midiFile = await midiFileHandle.getFile();
-    const fileAccepts = MidiFilePickerTypes.some((type) =>
-      Object.values(type.accept ?? {})
-        .flat()
-        .some((extension) => midiFile.name.toLowerCase().endsWith(extension)),
-    );
-    if (!fileAccepts) {
-      throw new Error("The project folder does not contain notes.mid.");
-    }
 
-    this.#logger.info(`Project loaded: ${metadataFile.name}`);
+    this.#logger.info(`Project loaded: ${projectFile.name}`);
     return {
-      metadataBytes: new Uint8Array(await metadataFile.arrayBuffer()),
-      metadataHandle,
+      projectBytes: new Uint8Array(await projectFile.arrayBuffer()),
+      projectHandle: projectHandle,
       midiBytes: new Uint8Array(await midiFile.arrayBuffer()),
       midiHandle: midiFileHandle,
       directoryHandle,

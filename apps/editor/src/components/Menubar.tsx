@@ -37,12 +37,12 @@ const MENUS: MenuDefinition[] = [
     id: "file",
     label: "File",
     items: [
-      { id: "document.new", label: "New" },
-      { id: "document.open", label: "Open", shortcut: "Ctrl/Cmd+O" },
+      { id: "document.new", label: "New Project" },
+      { id: "document.open", label: "Open Project...", shortcut: "Ctrl/Cmd+O" },
       { id: "document.save", label: "Save", shortcut: "Ctrl/Cmd+S" },
       {
         id: "document.save-as",
-        label: "Save As…",
+        label: "Save As...",
         shortcut: "Ctrl/Cmd+Shift+S",
       },
       { type: "separator" },

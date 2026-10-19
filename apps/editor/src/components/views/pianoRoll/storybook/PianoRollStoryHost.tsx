@@ -379,7 +379,7 @@ export function PianoRollStoryHost({
         >
           {webGLSupported === null ? (
             <Text className="piano-roll-story__status" role="status">
-              Checking WebGL support…
+              Checking WebGL support...
             </Text>
           ) : null}
           <ChartViewHost
