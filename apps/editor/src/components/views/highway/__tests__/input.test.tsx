@@ -21,6 +21,7 @@ function createHarness(
 ) {
   const state: ChartViewState = {
     midi: null,
+    selectedTrackKey: null,
     selectedTrackIndex: null,
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,

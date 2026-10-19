@@ -7,10 +7,6 @@ import { LoggerService } from "../../services/logger";
 import { midiFilePickerTypes } from "../../services/document/types";
 
 export class ImportMidiAction extends Action {
-  constructor() {
-    super({});
-  }
-
   async run(accessor: ServicesAccessor): Promise<void> {
     const logger = accessor.get<LoggerService>("logger");
     const document = accessor.get<DocumentService>("document");

@@ -7,10 +7,6 @@ export class ApplySettingsAction extends Action<
   [ApplicationSettings],
   boolean
 > {
-  constructor() {
-    super({});
-  }
-
   run(accessor: ServicesAccessor, settings: ApplicationSettings): boolean {
     return accessor.get<SettingsService>("settings").applySettings(settings);
   }

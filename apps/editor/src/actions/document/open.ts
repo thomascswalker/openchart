@@ -6,10 +6,6 @@ import { MixerService } from "../../services/mixer";
 import { ApplyProjectMetadataAction } from "./apply-project-metadata";
 
 export class OpenDocumentAction extends Action {
-  constructor() {
-    super({});
-  }
-
   async run(accessor: ServicesAccessor): Promise<void> {
     const logger = accessor.get<LoggerService>("logger");
     const document = accessor.get<DocumentService>("document");

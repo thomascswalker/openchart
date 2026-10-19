@@ -1,7 +1,7 @@
 # Shared Components
 
 Components in the [`shared`](../apps/editor/src/components/shared) folder are
-intended to be generic and not implementation-specific.
+intended to be default and not implementation-specific.
 
 ## Components
 
@@ -93,7 +93,7 @@ A semantic heading component that renders a configurable level from `h1` to `h6`
 
 ### Header ❌
 
-No generic shared Header component is present.
+No default shared Header component is present.
 
 ### Input ✅
 
@@ -113,7 +113,7 @@ No shared Table component is present.
 
 ### Panel ❌
 
-No generic shared Panel component is present.
+No default shared Panel component is present.
 
 ### Tabs ❌
 

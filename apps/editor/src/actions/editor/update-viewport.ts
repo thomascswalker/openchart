@@ -8,10 +8,6 @@ import {
 export class UpdateViewportAction extends Action<
   [string, Partial<Omit<ViewportSession, "id">>]
 > {
-  constructor() {
-    super({});
-  }
-
   run(
     accessor: ServicesAccessor,
     id: string,

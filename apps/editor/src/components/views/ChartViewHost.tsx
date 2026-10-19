@@ -9,7 +9,6 @@ interface ChartViewHostProps {
   engineOptions?: EngineOptions;
   state: ChartViewState;
   onSelectionChange?: (count: number) => void;
-  /** Called with the mounted renderer instance, and again with null when it's torn down. */
   onReady?: (view: ChartView | null) => void;
 }
 

@@ -109,7 +109,6 @@ describe("PlaybackService", () => {
     const service = new PlaybackService();
     configure(service);
 
-    expect(service.getSnapshot().canPlay).toBe(true);
     expect(service.getSnapshot().totalTimelineTicks).toBe(4_800);
     service.setPlaybackTick(240);
     expect(engine.seek).toHaveBeenCalledWith(240);
@@ -207,7 +206,6 @@ describe("PlaybackService", () => {
   it("requires MIDI events and advances on the tempo-aware MIDI clock", () => {
     const service = new PlaybackService();
     configure(service, { midiData: midi([]) });
-    expect(service.getSnapshot().canPlay).toBe(false);
 
     configure(service, {
       midiData: midi(

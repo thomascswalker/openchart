@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PianoRollStoryHost } from "./storybook/PianoRollStoryHost";
 
+/** Storybook metadata for the piano roll view. */
 const meta = {
   title: "Views/Piano Roll",
   component: PianoRollStoryHost,
@@ -24,18 +25,22 @@ Delete, arrow keys, C, X, V, or F; Storybook may otherwise handle shortcuts.
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** A guitar track with notes, fully editable. */
 export const PopulatedEditable: Story = {
   args: { variant: "populated", initialTrackIndex: 1 },
 };
 
+/** A chart with no notes, for testing creation from scratch. */
 export const EmptyChart: Story = {
   args: { variant: "empty", initialTrackIndex: 1 },
 };
 
+/** The same chart viewed on a different track. */
 export const AlternateTrack: Story = {
   args: { variant: "populated", initialTrackIndex: 2 },
 };
 
+/** Extra notes and a mid-song tempo change. */
 export const DenseTempoEvent: Story = {
   args: { variant: "dense", initialTrackIndex: 1 },
 };
@@ -50,6 +55,7 @@ export const Vocals: Story = {
   args: { variant: "vocals", initialTrackIndex: 1, instrument: "VOCALS" },
 };
 
+/** The vocals profile with an empty track. */
 export const VocalsEmpty: Story = {
   args: { variant: "vocals-empty", initialTrackIndex: 1, instrument: "VOCALS" },
 };
