@@ -3,23 +3,21 @@ import { Difficulty } from "@openchart/views";
 import * as THREE from "three";
 import { RenderScheduler } from "../../rendering/scheduler";
 import { Engine, type EngineOptions } from "../../rendering/engine";
-import type { CanvasPoint, CanvasRect } from "../../rendering/geometry";
 import { getCameraTickForPlayhead } from "./viewNavigation";
 
 export interface ChartViewState {
   midi: Midi | null;
+  selectedTrackKey: string | null;
   selectedTrackIndex: number | null;
   selectedInstrument: string;
   selectedDifficulty: Difficulty;
   snap: SnapSettings;
   lockCursor: boolean;
-  /** Note mutations are disabled while the shared transport is playing. */
   isPlaying: boolean;
 }
 
 export interface SnapSettings {
   enabled: boolean;
-  /** Note-value denominator (4 == quarter note, 3 == triplet half note, etc). */
   denominator: number;
 }
 
@@ -62,6 +60,7 @@ export abstract class AbstractChartView<T> {
 
   protected state: ChartViewState = {
     midi: null,
+    selectedTrackKey: null,
     selectedTrackIndex: null,
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,
@@ -170,11 +169,11 @@ export abstract class AbstractChartView<T> {
     this.requestRender();
   }
 
-  protected toScreenSpace(value: CanvasPoint): CanvasPoint;
-  protected toScreenSpace(value: CanvasRect): CanvasRect;
+  protected toScreenSpace(value: THREE.Vector2): THREE.Vector2;
+  protected toScreenSpace(value: THREE.Box2): THREE.Box2;
   protected toScreenSpace(
-    value: CanvasPoint | CanvasRect,
-  ): CanvasPoint | CanvasRect {
+    value: THREE.Vector2 | THREE.Box2,
+  ): THREE.Vector2 | THREE.Box2 {
     return value;
   }
 

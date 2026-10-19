@@ -10,6 +10,18 @@ import {
   type Metadata,
 } from "./document/schema";
 import { toArrayBuffer } from "../util/array";
+import { SongView } from "@openchart/views";
+
+function createDefaultMidi() {
+  const midi = new Midi();
+  const view = new SongView(midi);
+  view.getTrackDescriptors().map((desc) => {
+    const index = midi.addTrack();
+    const track = midi.tracks[index];
+    track.name = desc.name;
+  });
+  return midi;
+}
 
 export interface DocumentSnapshot {
   documentId: number;
@@ -91,7 +103,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this.update(new Midi(), null, null, null, makeDefaultMetadata());
+    this.update(createDefaultMidi(), null, null, null, makeDefaultMetadata());
   };
 
   public async open(): Promise<boolean> {

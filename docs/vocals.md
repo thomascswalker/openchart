@@ -51,7 +51,7 @@ single-byte tools fall back to Latin-1 when their bytes are not valid UTF-8.
 The Piano Roll is customised through a `PianoRollProfile`
 ([`profile.ts`](../apps/editor/src/components/views/pianoRoll/profile.ts)),
 applied with `PianoRollView.setProfile()` so switching instruments does not
-rebuild the renderer or reset the camera. The generic profile reproduces the
+rebuild the renderer or reset the camera. The default profile reproduces the
 original 0-127 behaviour.
 
 The vocals profile:

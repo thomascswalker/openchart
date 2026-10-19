@@ -5,7 +5,7 @@ import type {
   TimeSignatureEvent,
 } from "@openchart/core";
 import { describe, expect, it, vi } from "vitest";
-import type { CanvasPoint, CanvasRect } from "../../../../rendering/geometry";
+import { Box2, Vector2 } from "three";
 import {
   parseTempoString,
   parseTimeSignatureString,
@@ -15,13 +15,14 @@ import { HeaderHeight } from "../constants";
 import { DefaultHeaderLanes, HeaderController } from "../header";
 import { PianoRollInputController } from "../input";
 import { NoteGeometryCache } from "../noteGeometry";
-import { remapNotesByIdentity } from "../noteEditing";
+import { remapNotesByIdentity } from "../editing/controller";
 import { PointerContext } from "../pointer";
 import { iterateGridBeats } from "../rendering";
 import { SelectionContext } from "../selection";
 import type { PianoRollNote } from "../types";
 import { applyStyle } from "../../../../util/css";
 
+/** Builds a coordinate system with a fixed camera and the given tempo map. */
 function makeCoordinates(
   tempoEvents: TempoEvent[] = [
     { tick: 0, microsecondsPerQuarterNote: 500_000 },
@@ -45,6 +46,7 @@ function makeCoordinates(
   );
 }
 
+/** Builds a piano-roll note with no backing MIDI note. */
 function makeNote(
   tick: number,
   durationTicks: number,
@@ -81,7 +83,7 @@ describe("piano-roll coordinates", () => {
 
   it("keeps the cursor's timeline position fixed while zooming", () => {
     const coordinates = makeCoordinates();
-    const cursor: CanvasPoint = { x: 300, y: 120 };
+    const cursor = new Vector2(300, 120);
     const before = coordinates.tickAtScreenX(cursor.x);
     coordinates.zoomAtCursor(2, cursor);
     expect(coordinates.tickAtScreenX(cursor.x)).toBeCloseTo(before, 8);
@@ -122,21 +124,20 @@ describe("note geometry", () => {
       coordinates,
     });
 
-    expect(cache.hitTest({ x: 100, y: 475 }, coordinates)).toBe(note);
-    expect(cache.hitTestEdge({ x: 183, y: 475 }, coordinates)).toBe(note);
-    expect(cache.hitTest({ x: 500, y: 100 }, coordinates)).toBeNull();
+    expect(cache.hitTest(new Vector2(100, 475), coordinates)).toBe(note);
+    expect(cache.hitTestEdge(new Vector2(183, 475), coordinates)).toBe(note);
+    expect(cache.hitTest(new Vector2(500, 100), coordinates)).toBeNull();
   });
 
   it("normalizes marquee rectangles regardless of drag direction", () => {
-    const rectangle: CanvasRect = {
-      x: 100,
-      y: 80,
-      width: -40,
-      height: -20,
-    };
+    const rectangle = new Box2().setFromPoints([
+      new Vector2(100, 80),
+      new Vector2(60, 60),
+    ]);
     const selection = new SelectionContext();
     selection.bounds = rectangle;
-    expect(selection.bounds).toEqual({ x: 60, y: 60, width: 40, height: 20 });
+    expect(selection.bounds?.min).toEqual(new Vector2(60, 60));
+    expect(selection.bounds?.max).toEqual(new Vector2(100, 80));
   });
 });
 
