@@ -1,15 +1,17 @@
 import { Midi } from "@openchart/core";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
-import type { FileSystemService } from "./filesystem";
 import type { SaveFile } from "./filesystem/types";
 import type { LoggerService } from "./logger";
 import { StatefulService } from "../platform/services";
 import {
   makeDefaultMetadata,
-  metadataSchema,
+  MetadataSchema,
   type Metadata,
 } from "./document/schema";
+import { MidiFilePickerTypes, ProjectFilePickerTypes } from "./document/types";
 import { toArrayBuffer } from "../util/array";
+
+const MidiFileName = "notes.mid";
 
 export interface DocumentSnapshot {
   documentId: number;
@@ -34,11 +36,18 @@ export interface DocumentFile {
   mimeType: string;
 }
 
+export interface OpenedProject {
+  metadataBytes: Uint8Array<ArrayBufferLike>;
+  metadataHandle: FileSystemFileHandle;
+  midiBytes: Uint8Array<ArrayBuffer>;
+  midiHandle: FileSystemFileHandle;
+  directoryHandle: FileSystemDirectoryHandle;
+}
+
 export class DocumentService extends StatefulService<DocumentSnapshot> {
-  static dependencies = ["logger", "filesystem"];
+  static dependencies = ["logger"];
 
   #logger: LoggerService;
-  #fileSystem: FileSystemService;
   #data: Midi | null = new Midi();
   #documentId = 0;
   #fileName: string | null = null;
@@ -48,10 +57,9 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   #metadata: Metadata = makeDefaultMetadata();
   readonly #history = new History(DEFAULT_HISTORY_CAPACITY);
 
-  constructor(logger: LoggerService, fileSystem: FileSystemService) {
+  constructor(logger: LoggerService) {
     super();
     this.#logger = logger;
-    this.#fileSystem = fileSystem;
     this.#history.reset(this.#data!);
     this.publish();
   }
@@ -73,7 +81,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public set metadata(metadata: Metadata) {
-    this.#metadata = metadataSchema.parse(metadata);
+    this.#metadata = MetadataSchema.parse(metadata);
     this.#isDirty = true;
     this.publish();
   }
@@ -95,24 +103,81 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   };
 
   public async open(): Promise<boolean> {
-    const opened = await this.#fileSystem.readProject();
-    if (!opened) {
-      return false;
+    return await this.readProject()
+      .then((project) => {
+        if (!project) {
+          this.#logger.error("Failed to open document.");
+          return false;
+        }
+        this.#logger.info("Project directory opened...");
+        const metadata = MetadataSchema.parse(
+          JSON.parse(new TextDecoder().decode(project.metadataBytes)),
+        );
+
+        this.update(
+          new Midi(project.midiBytes),
+          "notes.mid",
+          project.midiHandle,
+          project.directoryHandle,
+          metadata,
+        );
+        this.#logger.info("Project opened from metadata JSON.");
+        return true;
+      })
+      .catch((e) => {
+        if (e.name !== "AbortError") {
+          this.#logger.error(`Unable to open document: ${e}`);
+        }
+        return false;
+      });
+  }
+
+  public async readProject(): Promise<OpenedProject | null> {
+    const [metadataHandle] = await window.showOpenFilePicker!({
+      types: ProjectFilePickerTypes,
+    });
+    if (!metadataHandle) {
+      return null;
+    }
+    const metadataFile = await metadataHandle.getFile();
+    if (!/\.json$/i.test(metadataFile.name)) {
+      throw new Error("Choose a project metadata file (.json).");
+    }
+    if (typeof window.showDirectoryPicker !== "function") {
+      throw new Error(
+        "This browser cannot access notes.mid next to the selected project file.",
+      );
     }
 
-    const metadata = metadataSchema.parse(
-      JSON.parse(new TextDecoder().decode(opened.metadataBytes)),
-    );
+    const directoryHandle = await window.showDirectoryPicker({
+      mode: "read",
+    });
+    const relativePath = await directoryHandle.resolve(metadataHandle);
+    if (!relativePath || relativePath.length !== 1) {
+      throw new Error(
+        "Choose the folder containing the selected project metadata file.",
+      );
+    }
 
-    this.update(
-      new Midi(opened.midiBytes),
-      "notes.mid",
-      opened.midiHandle,
-      opened.directoryHandle,
-      metadata,
+    const midiFileHandle = await directoryHandle.getFileHandle(MidiFileName);
+    const midiFile = await midiFileHandle.getFile();
+    const fileAccepts = MidiFilePickerTypes.some((type) =>
+      Object.values(type.accept ?? {})
+        .flat()
+        .some((extension) => midiFile.name.toLowerCase().endsWith(extension)),
     );
-    this.#logger.info("Project opened from metadata JSON.");
-    return true;
+    if (!fileAccepts) {
+      throw new Error("The project folder does not contain notes.mid.");
+    }
+
+    this.#logger.info(`Project loaded: ${metadataFile.name}`);
+    return {
+      metadataBytes: new Uint8Array(await metadataFile.arrayBuffer()),
+      metadataHandle,
+      midiBytes: new Uint8Array(await midiFile.arrayBuffer()),
+      midiHandle: midiFileHandle,
+      directoryHandle,
+    };
   }
 
   public async save(): Promise<boolean> {

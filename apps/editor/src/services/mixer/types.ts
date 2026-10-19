@@ -1,6 +1,6 @@
 import Mixer from "@openchart/mixer";
 
-export const wavFilePickerTypes: FilePickerAcceptType[] = [
+export const WavFilePickerTypes: FilePickerAcceptType[] = [
   {
     description: "WAV file",
     accept: { "audio/wav": [".wav"] },

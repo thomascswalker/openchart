@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeDefaultMetadata, metadataSchema } from "../schema";
+import { makeDefaultMetadata, MetadataSchema } from "../schema";
 
 describe("makeDefaultMetadata", () => {
   it("populates defaults for every nested metadata object", () => {
@@ -15,7 +15,7 @@ describe("makeDefaultMetadata", () => {
 
 describe("audio file metadata", () => {
   it("marks audio paths as files and validates WAV extensions", () => {
-    const fileSchema = metadataSchema.shape.audio.shape.song;
+    const fileSchema = MetadataSchema.shape.audio.shape.song;
 
     expect(fileSchema.meta()?.file).toBe(true);
     expect(fileSchema.safeParse("track.wav").success).toBe(true);
@@ -24,12 +24,12 @@ describe("audio file metadata", () => {
   });
 
   it("marks the audio root as a directory path and accepts legacy metadata", () => {
-    const rootSchema = metadataSchema.shape.audio.shape.root;
+    const rootSchema = MetadataSchema.shape.audio.shape.root;
     const legacy = makeDefaultMetadata() as Record<string, unknown>;
     const audio = legacy.audio as Record<string, unknown>;
     delete audio.root;
 
     expect(rootSchema.meta()?.directory).toBe(true);
-    expect(metadataSchema.parse(legacy).audio.root).toBeNull();
+    expect(MetadataSchema.parse(legacy).audio.root).toBeNull();
   });
 });

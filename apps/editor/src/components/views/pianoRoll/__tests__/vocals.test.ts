@@ -354,8 +354,9 @@ describe("vocal note editing", () => {
       h.drag(new Vector2(xAt(0), genericY), xAt(480));
 
       expect(h.track()?.name).toBe("LEAD GUITAR");
-      expect(h.notes().map((note) => [note.pitch, note.tick, note.durationTicks]))
-        .toEqual([[60, 0, 480]]);
+      expect(
+        h.notes().map((note) => [note.pitch, note.tick, note.durationTicks]),
+      ).toEqual([[60, 0, 480]]);
     });
 
     it("keeps an existing unmapped selected track as the placement target", () => {

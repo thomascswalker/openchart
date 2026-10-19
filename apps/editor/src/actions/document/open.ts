@@ -26,7 +26,9 @@ export class OpenDocumentAction extends Action {
 
     try {
       const opened = await document.open();
-      if (!opened) return;
+      if (!opened) {
+        return;
+      }
 
       accessor.get<MixerService>("mixer").reset();
       const issues = await new ApplyProjectMetadataAction().run(
@@ -41,12 +43,12 @@ export class OpenDocumentAction extends Action {
       }
       document.isDirty = false;
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        logger.info(`Closed open file dialog: ${error.message}`);
-        return;
-      }
       if (error instanceof Error) {
-        logger.error(error.message);
+        if (error.name === "AbortError") {
+          logger.debug("Closed open file dialog");
+          return;
+        }
+        logger.error(`An error occurred: ${error.message}`);
       }
       throw error;
     }

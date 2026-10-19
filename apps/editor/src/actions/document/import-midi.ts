@@ -4,7 +4,7 @@ import type { ServicesAccessor } from "../../platform/services";
 import { DocumentService } from "../../services/document";
 import type { FileSystemService } from "../../services/filesystem";
 import { LoggerService } from "../../services/logger";
-import { midiFilePickerTypes } from "../../services/document/types";
+import { MidiFilePickerTypes } from "../../services/document/types";
 
 export class ImportMidiAction extends Action {
   constructor() {
@@ -17,7 +17,7 @@ export class ImportMidiAction extends Action {
     const fileSystem = accessor.get<FileSystemService>("filesystem");
 
     try {
-      const imported = await fileSystem.read(midiFilePickerTypes);
+      const imported = await fileSystem.read(MidiFilePickerTypes);
       if (!imported) return;
       if (!/\.(mid|midi)$/i.test(imported.name)) {
         throw new Error("Choose a MIDI file (.mid or .midi).");
