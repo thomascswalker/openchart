@@ -10,6 +10,18 @@ import {
 } from "./document/schema";
 import { MidiFilePickerTypes, ProjectFilePickerTypes } from "./document/types";
 import { toArrayBuffer } from "../util/array";
+import { SongView } from "@openchart/views";
+
+function createDefaultMidi() {
+  const midi = new Midi();
+  const view = new SongView(midi);
+  view.getTrackDescriptors().map((desc) => {
+    const index = midi.addTrack();
+    const track = midi.tracks[index];
+    track.name = desc.name;
+  });
+  return midi;
+}
 
 const MidiFileName = "notes.mid";
 
@@ -99,7 +111,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this.update(new Midi(), null, null, null, makeDefaultMetadata());
+    this.update(createDefaultMidi(), null, null, null, makeDefaultMetadata());
   };
 
   public async open(): Promise<boolean> {

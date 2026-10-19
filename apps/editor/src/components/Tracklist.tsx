@@ -6,17 +6,20 @@ import Box from "./shared/Box";
 import { Button } from "./shared/Button";
 import { Text } from "./shared/Text";
 import styles from "./TrackList.module.css";
+import { useMemo } from "react";
+import type { MidiTrack } from "@openchart/core";
 
 export function TrackList({ session }: { session: ViewportSession }) {
-  const { midi: midiData } = useDocumentSnapshot();
-  const songView = midiData ? new SongView(midiData) : null;
-  const allDescriptors = songView?.getTrackDescriptors() ?? [];
-  const descriptors = allDescriptors.filter(
-    (item) => item.visible && item.name !== "CHART HEADER",
-  );
-  const configuredNames = new Set(allDescriptors.map((item) => item.name));
-  const unmapped =
-    midiData?.tracks.filter((track) => !configuredNames.has(track.name)) ?? [];
+  const { midi } = useDocumentSnapshot();
+  if (!midi) {
+    return <Text>No MIDI data</Text>;
+  }
+  const view = useMemo(() => new SongView(midi), []);
+
+  const getTrackKey = (track: MidiTrack) => {
+    const desc = view.getTrackDescriptors();
+    return desc.find((d) => d.name === track.name)?.key;
+  };
 
   return (
     <Box
@@ -27,11 +30,15 @@ export function TrackList({ session }: { session: ViewportSession }) {
       minHeight={0}
       padding={0}
     >
-      {descriptors.map((descriptor, index) => {
-        const selected = session.trackKey === descriptor.key;
+      {midi.tracks.map((track, index) => {
+        const key = getTrackKey(track);
+        if (!key) {
+          return null;
+        }
+        const selected = session.trackKey === key;
         return (
           <Button
-            key={descriptor.key}
+            key={key}
             className={styles.trackRow}
             checked={selected}
             onPointerDown={(event) => event.stopPropagation()}
@@ -39,45 +46,18 @@ export function TrackList({ session }: { session: ViewportSession }) {
               void runActionAsync("editor.focus-viewport", session.id)
                 .then(() =>
                   runActionAsync("editor.update-viewport", session.id, {
-                    trackKey: descriptor.key,
-                    instrument: descriptor.name,
+                    trackKey: key,
+                    instrument: track.name,
                   }),
                 )
                 .catch(() => {});
             }}
           >
             <Text className={styles.trackNumber}>{index + 1}</Text>
-            <Text className={styles.trackName}>{descriptor.name}</Text>
+            <Text className={styles.trackName}>{track.name}</Text>
           </Button>
         );
       })}
-      {unmapped.map((track, index) => (
-        <Button
-          key={`unmapped-${index}`}
-          className={styles.trackRow}
-          checked={session.trackKey === `unmapped-${index}`}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => {
-            void runActionAsync("editor.focus-viewport", session.id)
-              .then(() =>
-                runActionAsync("editor.update-viewport", session.id, {
-                  trackKey: `unmapped-${index}`,
-                  instrument: track.name,
-                }),
-              )
-              .catch(() => {});
-          }}
-          aria-label={`Unmapped track ${track.name || index + 1}`}
-        >
-          <Text className={styles.trackNumber}>?</Text>
-          <Text className={styles.trackName}>
-            {track.name || `Track ${index + 1}`} (Other)
-          </Text>
-        </Button>
-      ))}
-      {!descriptors.length && !unmapped.length ? (
-        <Text className={styles.emptyState}>No MIDI file loaded.</Text>
-      ) : null}
     </Box>
   );
 }

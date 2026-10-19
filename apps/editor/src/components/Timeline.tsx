@@ -148,7 +148,6 @@ export function getTimelinePosition(
 
 export function Timeline({ chartViews }: TimelineProps) {
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
-  const canPlay = usePlaybackSelector((s) => s.canPlay);
   const playbackTick = usePlaybackSelector((s) => s.playbackTick);
   const totalTimelineTicks = usePlaybackSelector((s) => s.totalTimelineTicks);
 
@@ -214,7 +213,7 @@ export function Timeline({ chartViews }: TimelineProps) {
   }, [chartViews]);
 
   const scrubToClientX = (clientX: number): void => {
-    if (!canPlay || timelineTicks <= 0) {
+    if (timelineTicks <= 0) {
       return;
     }
 
@@ -319,7 +318,7 @@ export function Timeline({ chartViews }: TimelineProps) {
         <button
           type="button"
           onClick={() => runAction("playback.seek-start")}
-          disabled={!canPlay || isPlaying}
+          disabled={isPlaying}
           aria-label="Jump to Beginning"
         >
           ◀|
@@ -327,7 +326,6 @@ export function Timeline({ chartViews }: TimelineProps) {
         <button
           type="button"
           onClick={() => runAction("playback.toggle")}
-          disabled={!canPlay}
           aria-label="Play/Pause"
         >
           {isPlaying ? "⏸" : "▶"}
@@ -335,7 +333,7 @@ export function Timeline({ chartViews }: TimelineProps) {
         <button
           type="button"
           onClick={() => runAction("playback.seek-end")}
-          disabled={!canPlay || isPlaying}
+          disabled={isPlaying}
           aria-label="Jump to End"
         >
           |▶

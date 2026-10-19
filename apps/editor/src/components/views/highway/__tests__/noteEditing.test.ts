@@ -45,6 +45,7 @@ describe("HighwayNoteEditingController", () => {
     notes.forEach((note) => selection.add(note.noteOn));
     const state: ChartViewState = {
       midi: null,
+      selectedTrackKey: null,
       selectedTrackIndex: null,
       selectedInstrument: "LEAD GUITAR",
       selectedDifficulty: Difficulty.Expert,

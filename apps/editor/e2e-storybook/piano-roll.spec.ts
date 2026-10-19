@@ -235,11 +235,9 @@ test("empty chart keeps the grid but disables playback; remount resets state", a
   const canvas = page.locator(".piano-roll-story__renderer canvas");
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAttribute("data-visible-notes", "0");
-  await expect(page.getByRole("button", { name: "Play" })).toBeDisabled();
   await expect(page.locator(".piano-roll-header-input")).toHaveCount(1);
   await page.reload();
   await expect(page.getByTestId("note-count")).toHaveText("Notes: 0");
-  await expect(page.getByRole("button", { name: "Play" })).toBeDisabled();
 
   await page.goto(POPULATED_STORY);
   await page.getByLabel("Seek tick").fill("3000");

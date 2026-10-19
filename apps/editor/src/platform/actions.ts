@@ -31,7 +31,7 @@ export class ActionCancelledError extends Error {
 export abstract class Action<Args extends unknown[] = [], Result = void> {
   public options: ActionOptions;
 
-  constructor(options: ActionOptions) {
+  constructor(options: ActionOptions = {}) {
     this.options = options;
   }
   abstract run(

@@ -28,11 +28,6 @@ export function Playback({ children }: { children: ReactNode }) {
   const selectedInstrument = activeViewport?.instrument ?? "LEAD GUITAR";
   const selectedDifficulty = activeViewport?.difficulty ?? Difficulty.Expert;
   const playbackService = Platform.services.get<PlaybackService>("playback");
-  const canPlay = useSyncExternalStore(
-    playbackService.subscribe,
-    () => playbackService.getSnapshot().canPlay,
-    () => playbackService.getSnapshot().canPlay,
-  );
   const isPlaying = useSyncExternalStore(
     playbackService.subscribe,
     () => playbackService.getSnapshot().isPlaying,
@@ -40,10 +35,9 @@ export function Playback({ children }: { children: ReactNode }) {
   );
 
   useLayoutEffect(() => {
-    Platform.context.set("playback.can-play", canPlay);
     Platform.context.set("playback.is-playing", isPlaying);
-    Platform.context.set("playback.can-seek", canPlay && !isPlaying);
-  }, [canPlay, isPlaying]);
+    Platform.context.set("playback.can-seek", !isPlaying);
+  }, [isPlaying]);
 
   useEffect(() => {
     playbackService.configure({

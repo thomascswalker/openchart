@@ -1,4 +1,4 @@
-import { MetaType, Midi } from "@openchart/core";
+import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/core";
 import { Difficulty, type VocalNoteKind } from "@openchart/views";
 import {
   useCallback,
@@ -25,18 +25,27 @@ import {
 } from "./createPianoRollFixture";
 import "./PianoRollStoryHost.css";
 
+/** Instrument whose profile is used when a story names none. */
 const DEFAULT_INSTRUMENT = "LEAD GUITAR";
+
+/** Note types offered by the vocal toolbar dropdown. */
 const VOCAL_KIND_OPTIONS: DropdownOption[] = [
   { value: "pitched", label: "Pitched" },
   { value: "percussion", label: "Percussion" },
   { value: "pitchless", label: "Pitchless" },
 ];
+/** Difficulty reported to the view; the piano roll ignores it. */
 const SELECTED_DIFFICULTY = Difficulty.Expert;
+
+/** Snap denominators offered by the toolbar dropdown. */
 const SNAP_OPTIONS: DropdownOption[] = [2, 4, 8, 16].map((denominator) => ({
   value: String(denominator),
   label: `1/${denominator}`,
 }));
+/** Creates the view under test for the chart host. */
 const createPianoRollRenderer = (): PianoRollView => new PianoRollView();
+
+/** Settings with the metronome off, so stories stay quiet. */
 const silentStorySettings = {
   ...defaultApplicationSettings,
   feedback: {
@@ -45,29 +54,59 @@ const silentStorySettings = {
   },
 };
 
+/** Props of the story host. */
 interface PianoRollStoryHostProps {
+  /** Which fixture document to load. */
   variant: PianoRollFixtureVariant;
+
+  /** Track selected when the story opens. */
   initialTrackIndex?: number;
+
   /** Instrument whose Piano Roll profile is applied (e.g. "VOCALS"). */
   instrument?: string;
 }
 
+/** Camera readout shown in the diagnostics bar. */
 interface CameraDiagnostics {
+  /** Tick at the left edge of the viewport. */
   tick: number;
+
+  /** Ticks visible across the viewport. */
   visibleTickSpan: number;
 }
 
+/** True when the browser can create a WebGL context. */
 function webGLAvailable(): boolean {
   const canvas = document.createElement("canvas");
   return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
 }
 
+/** Serializes a track's notes for the `data-note-data` test attribute. */
+function serializeNotes(notes: readonly MidiNote[]): string {
+  return JSON.stringify(
+    notes.map(({ note, start, end, velocity }) => ({
+      pitch: note,
+      start,
+      duration: end - start,
+      velocity,
+    })),
+  );
+}
+
+/** Serializes a track's lyrics as `[tick, text]` pairs for tests. */
+function serializeLyrics(track: MidiTrack | undefined): string {
+  const lyrics = (track?.getTextEvents() ?? []).filter(
+    (event) => event.type === MetaType.Lyric,
+  );
+  return JSON.stringify(lyrics.map(({ tick, text }) => [tick, text]));
+}
+
+/** Mounts a real piano-roll view on an in-memory chart with toolbar controls. */
 export function PianoRollStoryHost({
   variant,
   initialTrackIndex = 1,
   instrument = DEFAULT_INSTRUMENT,
 }: PianoRollStoryHostProps) {
-  const SELECTED_INSTRUMENT = instrument;
   const profile = profileForInstrument(instrument);
   const [vocalKind, setVocalKind] = useState<VocalNoteKind>("pitched");
   const [midi] = useState<Midi>(() => createPianoRollFixture(variant));
@@ -97,14 +136,15 @@ export function PianoRollStoryHost({
   const state = useMemo<ChartViewState>(
     () => ({
       midi,
+      selectedTrackKey: null,
       selectedTrackIndex,
-      selectedInstrument: SELECTED_INSTRUMENT,
+      selectedInstrument: instrument,
       selectedDifficulty: SELECTED_DIFFICULTY,
       snap,
       lockCursor: false,
       isPlaying: snapshot.isPlaying,
     }),
-    [midi, selectedTrackIndex, snap, snapshot.isPlaying, SELECTED_INSTRUMENT],
+    [midi, selectedTrackIndex, snap, snapshot.isPlaying, instrument],
   );
   const updateCamera = useCallback((activeView: ChartView) => {
     setCamera({
@@ -116,21 +156,24 @@ export function PianoRollStoryHost({
     setView(readyView);
   }, []);
 
+  // Probe WebGL once so the story can explain a missing context.
   useEffect(() => {
     setWebGLSupported(webGLAvailable());
   }, []);
 
+  // Tell the playback service this story is the piano roll.
   useEffect(() => {
     playback.setActiveView("piano-roll");
   }, [playback]);
 
+  // Keep playback in step with the selected track and snap settings.
   useEffect(() => {
     playback.configure({
       midiData: midi,
       settings: silentStorySettings,
       snapEnabled,
       snapDenominator,
-      selectedInstrument: SELECTED_INSTRUMENT,
+      selectedInstrument: instrument,
       selectedDifficulty: SELECTED_DIFFICULTY,
       selectedTrackIndex,
     });
@@ -140,15 +183,17 @@ export function PianoRollStoryHost({
     selectedTrackIndex,
     snapDenominator,
     snapEnabled,
-    SELECTED_INSTRUMENT,
+    instrument,
   ]);
 
+  // Push the instrument profile and vocal toolbar choice into the view.
   useEffect(() => {
     if (!(view instanceof PianoRollView)) return;
     view.setProfile(profile);
     view.setVocalPlacement({ noteKind: vocalKind, phrase: null });
   }, [profile, view, vocalKind]);
 
+  // Release audio resources when the story unmounts.
   useEffect(
     () => () => {
       playback.dispose();
@@ -156,6 +201,7 @@ export function PianoRollStoryHost({
     [playback],
   );
 
+  // Follow the playback cursor with the playhead and, if locked, the camera.
   useEffect(() => {
     if (!view) return;
     const syncPlayback = (): void => {
@@ -167,6 +213,7 @@ export function PianoRollStoryHost({
     syncPlayback();
   }, [playback, snapshot.playbackTick, view]);
 
+  // Wire the view's callbacks to story state, and unwire on cleanup.
   useEffect(() => {
     if (!view) return;
     const unsubscribeCamera = view.subscribeCameraChange(() =>
@@ -204,14 +251,7 @@ export function PianoRollStoryHost({
     [midi],
   );
   const notes = midi.tracks[selectedTrackIndex]?.getNotes() ?? [];
-  const noteData = JSON.stringify(
-    notes.map(({ note, start, end, velocity }) => ({
-      pitch: note,
-      start,
-      duration: end - start,
-      velocity,
-    })),
-  );
+  const noteData = serializeNotes(notes);
 
   return (
     <Section
@@ -225,11 +265,7 @@ export function PianoRollStoryHost({
       data-visible-tick-span={camera.visibleTickSpan}
       data-revision={revision}
       data-profile={profile.id}
-      data-lyrics={JSON.stringify(
-        (midi.tracks[selectedTrackIndex]?.getTextEvents() ?? [])
-          .filter((event) => event.type === MetaType.Lyric)
-          .map(({ tick, text }) => [tick, text]),
-      )}
+      data-lyrics={serializeLyrics(midi.tracks[selectedTrackIndex])}
       data-note-data={noteData}
     >
       <div
@@ -276,14 +312,13 @@ export function PianoRollStoryHost({
         <Button
           type="button"
           onClick={snapshot.isPlaying ? snapshot.pause : snapshot.play}
-          disabled={!snapshot.canPlay}
         >
           {snapshot.isPlaying ? "Pause" : "Play"}
         </Button>
         <Button
           type="button"
           onClick={snapshot.seekStart}
-          disabled={!snapshot.canPlay || snapshot.isPlaying}
+          disabled={snapshot.isPlaying}
         >
           Seek to Start
         </Button>
@@ -296,7 +331,7 @@ export function PianoRollStoryHost({
             min="0"
             placeholder=""
             value={snapshot.playbackTick}
-            disabled={!snapshot.canPlay || snapshot.isPlaying}
+            disabled={snapshot.isPlaying}
             onChange={(event) => {
               const tick = Number(event.target.value);
               if (Number.isFinite(tick)) snapshot.setPlaybackTick(tick);

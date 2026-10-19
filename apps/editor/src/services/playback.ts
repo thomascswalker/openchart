@@ -19,7 +19,6 @@ import { StatefulService } from "../platform/services";
 
 export interface PlaybackSnapshot {
   isPlaying: boolean;
-  canPlay: boolean;
   playbackTick: number;
   totalTimelineTicks: number;
   isMetronomeEnabled: boolean;
@@ -130,7 +129,6 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private snapEnabled = true;
   private snapDenominator = 4;
   private isPlaying = false;
-  private canPlay = false;
   private playbackTick = 0;
   private midiTotalTicks = 0;
   private midiPlaybackEndTick = 0;
@@ -253,8 +251,9 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     } else {
       this.midiPlaybackEndTick = 0;
     }
-    this.canPlay = hasEvents;
-    if (!this.isPlaying) this.syncMixerPosition();
+    if (!this.isPlaying) {
+      this.syncMixerPosition();
+    }
     this.publish();
   };
 
@@ -268,7 +267,6 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   };
 
   public readonly play = (): void => {
-    if (!this.canPlay) return;
     const totalTicks = this.totalTimelineTicks();
     if (totalTicks > 0 && this.playbackTick >= totalTicks) {
       this.setPlaybackTick(0);
@@ -509,7 +507,6 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private buildSnapshot(): PlaybackSnapshot {
     return {
       isPlaying: this.isPlaying,
-      canPlay: this.canPlay,
       playbackTick: this.playbackTick,
       totalTimelineTicks: this.totalTimelineTicks(),
       isMetronomeEnabled: this.metronomeEnabled,

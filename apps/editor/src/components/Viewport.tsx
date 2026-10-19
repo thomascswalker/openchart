@@ -498,17 +498,12 @@ function ViewportPanel({
         <div
           style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
         >
-          {/* {session.view === "highway" && (
-            <div>
-              <ViewportSettings />
-              <MixerSettings />
-            </div>
-          )} */}
           <ChartViewHost
             createRenderer={activeView.createRenderer}
             engineOptions={engineOptions}
             state={{
               midi: midiData,
+              selectedTrackKey: session.trackKey,
               selectedTrackIndex,
               selectedInstrument: session.instrument,
               selectedDifficulty: session.difficulty,

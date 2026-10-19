@@ -54,6 +54,7 @@ describe("phrase boundary hit testing", () => {
 describe("phrase screen hit bounds", () => {
   const state: ChartViewState = {
     midi: null,
+    selectedTrackKey: null,
     selectedTrackIndex: null,
     selectedInstrument: "LEAD GUITAR",
     selectedDifficulty: Difficulty.Expert,

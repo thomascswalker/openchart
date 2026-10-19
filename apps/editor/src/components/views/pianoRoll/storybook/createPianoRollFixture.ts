@@ -1,9 +1,11 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/core";
 import { SongView } from "@openchart/views";
 
+/** Which sample document a story loads. */
 export type PianoRollFixtureVariant =
   "populated" | "empty" | "dense" | "vocals" | "vocals-empty";
 
+/** Inserts a note at an absolute tick, keeping the track ordered. */
 function addNoteAt(
   track: MidiTrack,
   pitch: number,
@@ -11,6 +13,7 @@ function addNoteAt(
   durationTicks: number,
   velocity = 100,
 ): void {
+  // Notes are stored as deltas, so convert the absolute tick first.
   const insertAt = track.getInsertionIndexAt(startTick);
   const startDelta = startTick - track.getAbsoluteTickAt(insertAt);
   track.addNote(pitch, startDelta, velocity, durationTicks, insertAt);
@@ -35,6 +38,7 @@ function createVocalsFixture(withNotes: boolean): Midi {
   vocals.addPhrase("vocal", 0, 3_840);
   vocals.addPhrase("power-window", 1_920, 3_840);
   vocals.addPhrase("stagepower", 2_880, 3_840);
+  // Sung line as [pitch, start tick, duration ticks, lyric].
   const line: Array<[number, number, number, string | undefined]> = [
     [60, 0, 360, "Sing"],
     [62, 480, 240, "a"],
@@ -51,6 +55,10 @@ function createVocalsFixture(withNotes: boolean): Midi {
   return midi;
 }
 
+/**
+ * Builds the sample MIDI document for a story: a populated or empty
+ * guitar/bass chart, a dense variant with a tempo change, or a vocals chart.
+ */
 export function createPianoRollFixture(
   variant: PianoRollFixtureVariant = "populated",
 ): Midi {
@@ -72,6 +80,7 @@ export function createPianoRollFixture(
   lead.addTextEvent(MetaType.Marker, 0, "[section Verse]");
   lead.addTextEvent(MetaType.Marker, 1_920, "[section Chorus]");
 
+  // Lead notes as [pitch, start tick, duration ticks, velocity].
   const leadNotes: Array<[number, number, number, number]> = [
     [72, 0, 480, 104],
     [76, 240, 720, 96],
