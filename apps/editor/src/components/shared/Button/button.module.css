@@ -5,6 +5,7 @@
 }
 
 .ui-button {
+  color: var(--text-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
