@@ -17,6 +17,10 @@
   color: var(--text-disabled);
 }
 
+.ui-text-mono {
+  font-family: var(--font-mono);
+}
+
 .ui-heading {
   font-size: var(--heading-font-size);
   font-weight: var(--heading-font-weight);

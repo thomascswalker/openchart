@@ -24,12 +24,14 @@ interface TextProps
     SizeProps {
   role?: React.AriaRole;
   disabled?: boolean;
+  mono?: boolean;
   className?: string;
   children: React.ReactNode;
 }
 
 const Text = ({
   disabled = false,
+  mono = false,
   className,
   children,
   role,
@@ -39,11 +41,12 @@ const Text = ({
   const textClassName = classNames(
     styles["ui-text"],
     disabled ? styles["ui-text-disabled"] : null,
+    mono ? styles["ui-text-mono"] : null,
     className,
   );
 
   return (
-    <span className={textClassName} role={role} style={style}>
+    <span role={role} className={textClassName} style={style}>
       {children}
     </span>
   );
