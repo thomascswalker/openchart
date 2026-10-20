@@ -7,6 +7,14 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
+  // Selects the "storybook" entries of package.json "imports" (e.g. #usePlayback).
+  viteFinal: (viteConfig) => ({
+    ...viteConfig,
+    resolve: {
+      ...viteConfig.resolve,
+      conditions: ["storybook", ...(viteConfig.resolve?.conditions ?? [])],
+    },
+  }),
 };
 
 export default config;

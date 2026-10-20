@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import { useResizeObserver } from "usehooks-ts";
-import { usePlaybackSelector } from "../../../hooks/usePlayback";
+import { usePlaybackSelector } from "#usePlayback";
 import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import styles from "./Timeline.module.css";
 import {

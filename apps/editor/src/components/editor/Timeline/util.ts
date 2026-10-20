@@ -80,9 +80,8 @@ function formatTime(milliseconds: number): string {
   const seconds = totalSeconds % 60;
   const totalMinutes = Math.floor(totalSeconds / 60);
   const minutes = totalMinutes % 60;
-  const hours = Math.floor(totalMinutes / 60);
   const fraction = String(centiseconds % 100).padStart(2, "0");
-  const clock = [hours, minutes, seconds]
+  const clock = [minutes, seconds]
     .map((part) => String(part).padStart(2, "0"))
     .join(":");
 

@@ -70,5 +70,13 @@
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
+  },
+  "imports": {
+    "#usePlaybackMock": "./src/hooks/usePlayback.mock.ts",
+    "#usePlayback": {
+      "types": "./src/hooks/usePlayback.ts",
+      "storybook": "./src/hooks/usePlayback.mock",
+      "default": "./src/hooks/usePlayback"
+    }
   }
 }

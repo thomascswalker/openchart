@@ -4,10 +4,9 @@ import type {
   TextColorProps,
   FontWeightProps,
   BorderProps,
-  FlexWrapProps,
   FontSizeProps,
   SizeProps,
-  VerticalAlignProps,
+  FlexboxProps,
 } from "styled-system";
 import styles from "./text.module.css";
 import { getTextSystemStyles } from "./textStyles";
@@ -15,12 +14,11 @@ import { getTextSystemStyles } from "./textStyles";
 interface TextProps
   extends
     TextAlignProps,
-    VerticalAlignProps,
+    FlexboxProps,
     FontSizeProps,
     FontWeightProps,
     TextColorProps,
     BorderProps,
-    FlexWrapProps,
     SizeProps {
   role?: React.AriaRole;
   disabled?: boolean;
