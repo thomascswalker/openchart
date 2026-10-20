@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PianoRollStoryHost } from "./storybook/PianoRollStoryHost";
+import { PianoRollStoryHost } from "./PianoRollStoryHost";
 
 /** Storybook metadata for the piano roll view. */
 const meta = {

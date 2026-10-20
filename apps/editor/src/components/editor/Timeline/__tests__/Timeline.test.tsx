@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTimelinePosition } from "../Timeline";
+import { getTimelinePosition } from "../util";
 
 const tempoEvents = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }];
 

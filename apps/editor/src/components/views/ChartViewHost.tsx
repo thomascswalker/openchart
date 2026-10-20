@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef } from "react";
 
 import type { ChartViewState } from "./AbstractChartView";
-import type { ChartView, ChartViewFactory } from "./ChartViews";
+import type { AnyChartView, ChartViewFactory } from "./ChartViews";
 import type { EngineOptions } from "../../rendering/engine";
 
 interface ChartViewHostProps {
@@ -9,7 +9,7 @@ interface ChartViewHostProps {
   engineOptions?: EngineOptions;
   state: ChartViewState;
   onSelectionChange?: (count: number) => void;
-  onReady?: (view: ChartView | null) => void;
+  onReady?: (view: AnyChartView | null) => void;
 }
 
 export function ChartViewHost({
@@ -20,12 +20,12 @@ export function ChartViewHost({
 }: ChartViewHostProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
-  const viewRef = useRef<ChartView | null>(null);
+  const viewRef = useRef<AnyChartView | null>(null);
   const lastSizeRef = useRef<{ width: number; height: number } | null>(null);
   const pushState = useEffectEvent(() => {
     viewRef.current?.update(state);
   });
-  const notifyReady = useEffectEvent((view: ChartView | null) => {
+  const notifyReady = useEffectEvent((view: AnyChartView | null) => {
     onReady?.(view);
   });
 

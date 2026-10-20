@@ -1,7 +1,7 @@
-import type { ChartView } from "../../components/views/ChartViews";
+import type { AnyChartView } from "../../components/views/ChartViews";
 import { StatefulService } from "../../platform/services";
 
-export class ActiveChartViewService extends StatefulService<ChartView | null> {
+export class ActiveChartViewService extends StatefulService<AnyChartView | null> {
   constructor() {
     super();
     this._snapshot = null;
@@ -9,7 +9,7 @@ export class ActiveChartViewService extends StatefulService<ChartView | null> {
 
   public readonly reset = (): void => this.set(null);
 
-  public readonly set = (view: ChartView | null): void => {
+  public readonly set = (view: AnyChartView | null): void => {
     if (view !== this._snapshot) {
       this._snapshot = view;
       this.notify();

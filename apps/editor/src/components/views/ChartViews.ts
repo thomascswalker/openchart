@@ -3,8 +3,8 @@ import { HighwayView } from "./highway";
 import { ResourceRegistry } from "../../rendering/registry";
 import type { EngineOptions } from "../../rendering/engine";
 
-export type ChartView = PianoRollView | HighwayView;
-export type ChartViewFactory = (engineOptions?: EngineOptions) => ChartView;
+export type AnyChartView = PianoRollView | HighwayView;
+export type ChartViewFactory = (engineOptions?: EngineOptions) => AnyChartView;
 
 export interface ChartViewDefinition {
   id: string;

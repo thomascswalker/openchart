@@ -1,0 +1,67 @@
+/* Timeline (minimap-style playhead + scrub bar) */
+
+.timeline {
+  display: flex;
+  align-items: stretch;
+
+  height: 48px;
+  padding: 6px 12px;
+  gap: 8px;
+
+  flex-shrink: 0;
+
+  border-top: 1px solid #444;
+  background: #1c1c1c;
+
+  overflow: hidden;
+}
+
+.timeline__controls {
+  display: flex;
+  align-items: center;
+
+  gap: 4px;
+
+  flex-shrink: 0;
+}
+
+.timeline__position {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  color: #ddd;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline__position-item {
+  display: grid;
+  gap: 1px;
+}
+
+.timeline__position-label {
+  color: #888;
+  font-family: inherit;
+  font-size: 9px;
+}
+
+.timeline__track {
+  position: relative;
+
+  flex: 1;
+
+  min-width: 0;
+
+  overflow: hidden;
+}
+
+.timeline__canvas {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  cursor: pointer;
+}

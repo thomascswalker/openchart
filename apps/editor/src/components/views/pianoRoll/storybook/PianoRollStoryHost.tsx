@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { ChartViewHost } from "../../ChartViewHost";
-import type { ChartView } from "../../ChartViews";
+import type { AnyChartView } from "../../ChartViews";
 import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
 import { PianoRollView, profileForInstrument } from "../index";
 import { PlaybackService } from "../../../../services/playback";
@@ -115,7 +115,7 @@ export function PianoRollStoryHost({
     useState(initialTrackIndex);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapDenominator, setSnapDenominator] = useState(4);
-  const [view, setView] = useState<ChartView | null>(null);
+  const [view, setView] = useState<AnyChartView | null>(null);
   const [camera, setCamera] = useState<CameraDiagnostics>({
     tick: 0,
     visibleTickSpan: 0,
@@ -146,13 +146,13 @@ export function PianoRollStoryHost({
     }),
     [midi, selectedTrackIndex, snap, snapshot.isPlaying, instrument],
   );
-  const updateCamera = useCallback((activeView: ChartView) => {
+  const updateCamera = useCallback((activeView: AnyChartView) => {
     setCamera({
       tick: activeView.getCameraTick(),
       visibleTickSpan: activeView.getVisibleTickSpan(),
     });
   }, []);
-  const onReady = useCallback((readyView: ChartView | null) => {
+  const onReady = useCallback((readyView: AnyChartView | null) => {
     setView(readyView);
   }, []);
 
