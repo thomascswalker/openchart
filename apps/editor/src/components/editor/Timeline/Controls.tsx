@@ -57,24 +57,30 @@ const Controls = ({ position, isPlaying }: ControlsProps) => {
       action: "playback.seek-start",
       width: ActionButtonWidth,
       label: Rewind,
+      ariaLabel: "Jump to Beginning",
       disabled: isPlaying,
     },
     {
       action: "playback.toggle",
       width: ActionButtonWidth,
       label: isPlaying ? Pause : Play,
+      ariaLabel: "Play/Pause",
       disabled: false,
     },
     {
       action: "playback.seek-end",
       width: ActionButtonWidth,
       label: FastForward,
+      ariaLabel: "Jump to End",
       disabled: isPlaying,
     },
   ];
   return (
     <div className={styles["controls"]}>
-      <div className={styles["clock"]}>
+      <output
+        className={styles["clock"]}
+        aria-label={`Playback position: tick ${position.tick}, time ${position.time}, measure ${position.measure}`}
+      >
         <ClockItem label="TICK" value={position.tick} width={ClockItemWidth} />
         <ClockItem label="TIME" value={position.time} width={ClockItemWidth} />
         <ClockItem
@@ -82,13 +88,14 @@ const Controls = ({ position, isPlaying }: ControlsProps) => {
           value={position.measure}
           width={ClockItemWidth}
         />
-      </div>
-      {buttons.map(({ action, width, label, disabled }) => (
+      </output>
+      {buttons.map(({ action, width, label, ariaLabel, disabled }) => (
         <Button
           key={action}
           onClick={() => runAction(action)}
           disabled={disabled}
           width={width}
+          aria-label={ariaLabel}
         >
           {label}
         </Button>
