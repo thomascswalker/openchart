@@ -1,0 +1,74 @@
+/* Timeline (minimap-style playhead + scrub bar) */
+
+.timeline {
+  display: flex;
+  align-items: stretch;
+
+  height: 48px;
+  gap: 8px;
+
+  flex-shrink: 0;
+
+  border-top: 1px solid #444;
+  background: #1c1c1c;
+
+  overflow: hidden;
+
+  user-select: none;
+}
+
+.controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.clock {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  border-right: 1px solid var(--border-color-primary);
+  margin-right: 4px;
+}
+
+/* Add border to all clock items except the last one */
+.clock > *:not(:last-child) {
+  border-right: 1px solid var(--border-color-primary);
+}
+
+.clock-item {
+  display: grid;
+  gap: 1px;
+  height: 100%;
+  padding: 6px 0px 6px 0px;
+}
+
+.clock-label {
+  font-size: 10px;
+}
+
+.clock-value {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 6px 6px 6px 0px;
+}
+
+.canvas {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: var(--border-primary);
+  border-radius: var(--radius-small);
+}

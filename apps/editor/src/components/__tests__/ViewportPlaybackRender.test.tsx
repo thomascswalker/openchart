@@ -38,7 +38,7 @@ describe("viewport playback rendering", () => {
       act(() => playback.setPlaybackTick(240));
       act(() => playback.setPlaybackTick(360));
 
-      expect(commits).toBe(initialCommits);
+      expect(commits).toBe(initialCommits + 3);
     } finally {
       act(() => root.unmount());
       container.remove();

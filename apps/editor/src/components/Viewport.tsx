@@ -23,11 +23,11 @@ import { runAction } from "../actions/execute";
 import Platform from "../platform";
 import { PlaybackService } from "../services/playback";
 import { ActiveChartViewService } from "../services/editor/activeChartView";
-import { Timeline } from "./Timeline";
+import { Timeline } from "./editor/Timeline/Timeline";
 import { ChartViewHost } from "./views/ChartViewHost";
 import type { EngineOptions } from "../rendering/engine";
 import { ChartViews } from "./views/ChartViews";
-import type { ChartView } from "./views/ChartViews";
+import type { AnyChartView } from "./views/ChartViews";
 import {
   HighwayView,
   type DrumPlacementKind,
@@ -81,7 +81,10 @@ function InstrumentIcon({ instrument }: { instrument: string }) {
   }
 }
 
-function updateCameraData(article: HTMLElement | null, view: ChartView): void {
+function updateCameraData(
+  article: HTMLElement | null,
+  view: AnyChartView,
+): void {
   if (!article) {
     return;
   }
@@ -113,22 +116,31 @@ function trackIndexForSession(
 
 export const Viewport = () => {
   const { viewportSessions, activeViewportId } = useViewportSnapshot();
-  const [chartViews, setChartViews] = useState<Map<string, ChartView>>(
+  const [chartViews, setChartViews] = useState<Map<string, AnyChartView>>(
     () => new Map(),
   );
+
   const handleChartViewChange = useCallback(
-    (sessionId: string, chartView: ChartView | null) => {
+    (sessionId: string, chartView: AnyChartView | null) => {
       setChartViews((current) => {
-        if (chartView && current.get(sessionId) === chartView) return current;
-        if (!chartView && !current.has(sessionId)) return current;
+        if (chartView && current.get(sessionId) === chartView) {
+          return current;
+        }
+        if (!chartView && !current.has(sessionId)) {
+          return current;
+        }
         const next = new Map(current);
-        if (chartView) next.set(sessionId, chartView);
-        else next.delete(sessionId);
+        if (chartView) {
+          next.set(sessionId, chartView);
+        } else {
+          next.delete(sessionId);
+        }
         return next;
       });
     },
     [],
   );
+
   const chartViewList = useMemo(() => [...chartViews.values()], [chartViews]);
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
@@ -156,7 +168,10 @@ function ViewportPanel({
 }: {
   session: ViewportSession;
   active: boolean;
-  onChartViewChange: (sessionId: string, chartView: ChartView | null) => void;
+  onChartViewChange: (
+    sessionId: string,
+    chartView: AnyChartView | null,
+  ) => void;
 }) {
   const { midi: midiData } = useDocumentSnapshot();
   const { settings } = useApplicationSettings();
@@ -174,7 +189,7 @@ function ViewportPanel({
   const activeChartView = Platform.services.get<ActiveChartViewService>(
     "editor.active-chart-view",
   );
-  const [chartView, setChartView] = useState<ChartView | null>(null);
+  const [chartView, setChartView] = useState<AnyChartView | null>(null);
   const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
   const [drumPlacementKind, setDrumPlacementKind] =
     useState<DrumPlacementKind>("pad");
@@ -198,7 +213,7 @@ function ViewportPanel({
     ? trackIndexForSession(midiData, session)
     : null;
 
-  const handleReady = (view: ChartView | null): void => {
+  const handleReady = (view: AnyChartView | null): void => {
     setChartView(view);
   };
 

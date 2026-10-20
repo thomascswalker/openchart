@@ -8,7 +8,7 @@ import {
   isCameraDebugView,
   type CameraDebugState,
 } from "../views/AbstractChartView";
-import type { ChartView } from "../views/ChartViews";
+import type { AnyChartView } from "../views/ChartViews";
 
 interface DebugWindowProps {
   onClose: () => void;
@@ -93,7 +93,7 @@ function cameraDraftToState(draft: CameraDraft): CameraDebugState | null {
   };
 }
 
-function CameraDebugSection({ chartView }: { chartView: ChartView | null }) {
+function CameraDebugSection({ chartView }: { chartView: AnyChartView | null }) {
   const cameraView = isCameraDebugView(chartView) ? chartView : null;
   const [draft, setDraft] = useState<CameraDraft | null>(() => {
     const state = cameraView?.getCameraDebugState() ?? null;
@@ -175,8 +175,8 @@ interface HighwayPerformanceDiagnostics {
   batchCapacities: Record<string, number>;
 }
 
-function getHighwayDiagnosticsSource(chartView: ChartView | null):
-  | (ChartView & {
+function getHighwayDiagnosticsSource(chartView: AnyChartView | null):
+  | (AnyChartView & {
       getPerformanceDiagnostics: () => HighwayPerformanceDiagnostics;
     })
   | null {
@@ -185,7 +185,7 @@ function getHighwayDiagnosticsSource(chartView: ChartView | null):
     "getPerformanceDiagnostics" in chartView &&
     typeof chartView.getPerformanceDiagnostics === "function"
   ) {
-    return chartView as ChartView & {
+    return chartView as AnyChartView & {
       getPerformanceDiagnostics: () => HighwayPerformanceDiagnostics;
     };
   }
@@ -195,7 +195,7 @@ function getHighwayDiagnosticsSource(chartView: ChartView | null):
 function HighwayPerformanceSection({
   chartView,
 }: {
-  chartView: ChartView | null;
+  chartView: AnyChartView | null;
 }) {
   const source = getHighwayDiagnosticsSource(chartView);
   const [diagnostics, setDiagnostics] =
@@ -244,7 +244,7 @@ function DebugPanel({
   onClose: () => void;
   events: DebugEvent[];
   pressedKeys: string[];
-  chartView: ChartView | null;
+  chartView: AnyChartView | null;
 }) {
   const { midi: midiData, file: fileName } = useDocumentSnapshot();
   const { viewportSessions, activeViewportId } = useViewportSnapshot();

@@ -161,7 +161,7 @@ const Track = ({
         alignItems="center"
         className={styles["ui-track-mixer-track-index"]}
       >
-        <H6 textAlign="center" verticalAlign="middle" disabled={!enabled}>
+        <H6 textAlign="center" disabled={!enabled}>
           {index}
         </H6>
       </Section>
@@ -175,7 +175,6 @@ const Track = ({
         <Text
           className={styles["ui-track-mixer-track-name"]}
           textAlign="left"
-          verticalAlign="middle"
           disabled={!enabled}
         >
           {startCase(name || "")}
@@ -247,9 +246,7 @@ const TrackMixer = () => {
           flexDirection="row"
           className={styles["ui-track-mixer-master-controls"]}
         >
-          <Text textAlign="left" verticalAlign="middle">
-            MASTER
-          </Text>
+          <Text textAlign="left">MASTER</Text>
           <VolumeSlider
             onChange={(volume) => setMasterVolume(mixer, volume)}
             value={mixer.masterVolume}

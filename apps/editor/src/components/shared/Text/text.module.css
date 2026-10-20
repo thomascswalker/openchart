@@ -6,15 +6,22 @@
 .ui-h4,
 .ui-h5,
 .ui-h6 {
+  display: inline-flex;
+  align-items: center;
   font-family: var(--font-primary);
   font-size: var(--font-size);
   font-weight: var(--font-weight);
   color: var(--text-primary);
   margin: 0;
+  line-height: 1;
 }
 
 .ui-text-disabled {
   color: var(--text-disabled);
+}
+
+.ui-text-mono {
+  font-family: var(--font-mono);
 }
 
 .ui-heading {

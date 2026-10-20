@@ -1,10 +1,4 @@
 body {
-  margin: 0;
+  color: var(--text-primary);
   background-color: var(--primary-dark);
-}
-
-.storybook-stage {
-  box-sizing: border-box;
-  min-height: 100vh;
-  padding: 24px;
 }
