@@ -2,13 +2,14 @@ import {
   ChannelMessage,
   MetaType,
   Midi,
+  addRandomChannelEvents,
+  addRandomMetaEvents,
   getStatusString,
   type MidiChannelEvent,
   type MidiMetaEvent,
 } from "@openchart/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import DataTable, { createAppColumnHelper } from "../DataTable";
-import { random } from "../../../../util/random";
 
 const meta = {
   title: "Shared/DataTable",
@@ -37,24 +38,17 @@ const midiMetaEvent: MidiMetaEvent = {
 };
 type MidiMetaEventHeader = (keyof MidiMetaEvent & { tick?: string })[];
 
+const makeTrack = () => {
+  const midi = new Midi();
+  return midi.tracks[midi.addTrack()];
+};
+
 const makeChannelEvents = (
   headers: MidiChannelEventHeader,
   rowCount: number,
 ) => {
-  const midi = new Midi();
-  const index = midi.addTrack();
-  const track = midi.tracks[index];
-
-  let offset = 0;
-  function createNote(pitch: number, length: number) {
-    track.addNote(pitch, offset, 100, offset + length);
-    offset += length;
-  }
-  const minPitch = 50;
-  const maxPitch = 72;
-  for (let i = 0; i < rowCount; i++) {
-    createNote(random(minPitch, maxPitch), 480);
-  }
+  const track = makeTrack();
+  addRandomChannelEvents(track, rowCount);
 
   return track.getTimedEvents().map(({ event, tick }) => {
     const row: Record<string, string> = { tick: String(tick) };
@@ -66,25 +60,8 @@ const makeChannelEvents = (
 };
 
 const makeMetaEvents = (headers: MidiMetaEventHeader, rowCount: number) => {
-  const midi = new Midi();
-  const index = midi.addTrack();
-  const track = midi.tracks[index];
-
-  for (let i = 0; i < rowCount; i++) {
-    const tick = i * 120;
-    const choice = Math.floor(Math.random() * 3);
-    switch (choice) {
-      case 0:
-        track.addTempoEvent(tick, random(60, 180));
-        break;
-      case 1:
-        track.addTimeSignatureEvent(tick);
-        break;
-      case 2:
-        track.addTextEvent(MetaType.TextEvent, tick, "Text!");
-        break;
-    }
-  }
+  const track = makeTrack();
+  addRandomMetaEvents(track, rowCount);
 
   return track.getTimedEvents().map(({ event, tick }) => {
     const row: Record<string, string> = { tick: String(tick) };
