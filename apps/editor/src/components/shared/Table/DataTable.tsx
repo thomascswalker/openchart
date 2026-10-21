@@ -2,6 +2,8 @@ import Table from "./Table";
 import { tableFeatures, createTableHook } from "@tanstack/react-table";
 import type { ColumnDef, TableFeatures } from "@tanstack/react-table";
 import { useMemo } from "react";
+import { Text } from "../../shared/Text";
+import { vars } from "../../../util/css";
 
 const Features = tableFeatures({});
 
@@ -53,15 +55,23 @@ const DataTable = ({ key, data, columnDefs }: DataTableProps) => {
         ))}
       </Table.Head>
       <Table.Body>
-        {table.getRowModel().rows.map((row) => (
-          <Table.Row key={row.id}>
-            {row.getAllCells().map((cell) => (
-              <Table.Cell key={cell.id}>
-                <table.FlexRender cell={cell} />
-              </Table.Cell>
-            ))}
-          </Table.Row>
-        ))}
+        {data.length === 0 ? (
+          <tr>
+            <td colSpan={columns.length} style={{ textAlign: "center" }}>
+              <Text color={vars("text-disabled")}>No events</Text>
+            </td>
+          </tr>
+        ) : (
+          table.getRowModel().rows.map((row) => (
+            <Table.Row key={row.id}>
+              {row.getAllCells().map((cell) => (
+                <Table.Cell key={cell.id}>
+                  <table.FlexRender cell={cell} />
+                </Table.Cell>
+              ))}
+            </Table.Row>
+          ))
+        )}
       </Table.Body>
     </Table>
   );

@@ -42,7 +42,6 @@ import {
 } from "./views/pianoRoll";
 import Toolbar from "./Toolbar";
 import { Button, CloseButton } from "./shared/Button";
-import Splitter from "./shared/Splitter";
 import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
 import {
@@ -56,7 +55,7 @@ import {
   SplitIcon,
   VocalsIcon,
 } from "./shared/Icon/Icon";
-import CommandPanel from "./CommandPanel";
+import { TrackList } from "./Tracklist";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
@@ -508,10 +507,33 @@ function ViewportPanel({
         vocalPlacement={vocalPlacement}
         onVocalPlacementChange={setVocalPlacement}
       />
-      <Splitter orientation="horizontal" initialSize={400}>
-        <CommandPanel session={session} />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flex: "1 1 0",
+          minHeight: 0,
+          width: "100%",
+        }}
+      >
         <div
-          style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0 }}
+          style={{
+            display: "flex",
+            flex: "0 0 30%",
+            minWidth: 110,
+            maxWidth: 200,
+            minHeight: 0,
+          }}
+        >
+          <TrackList session={session} />
+        </div>
+        <div
+          style={{
+            position: "relative",
+            flex: "1 1 0",
+            minWidth: 0,
+            minHeight: 0,
+          }}
         >
           <ChartViewHost
             createRenderer={activeView.createRenderer}
@@ -529,7 +551,7 @@ function ViewportPanel({
             onReady={handleReady}
           />
         </div>
-      </Splitter>
+      </div>
     </article>
   );
 }

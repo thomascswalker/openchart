@@ -41,6 +41,8 @@ export interface ViewportSnapshot {
   snapEnabled: boolean;
   snapDenominator: number;
   lockCursor: boolean;
+  getViewport: (id: string) => ViewportSession | undefined;
+  getActiveViewport: () => ViewportSession | undefined;
 }
 
 const DEFAULT_VIEWPORT_ID = "viewport-1";
@@ -68,6 +70,12 @@ const defaultViewportSnapshot: ViewportSnapshot = {
   snapEnabled: true,
   snapDenominator: 4,
   lockCursor: true,
+  getViewport: (id: string) =>
+    defaultViewportSnapshot.viewportSessions.find((v) => v.id === id),
+  getActiveViewport: () =>
+    defaultViewportSnapshot.viewportSessions.find(
+      (v) => v.id === defaultViewportSnapshot.activeViewportId,
+    ),
 };
 
 export class ViewportService extends StatefulService<ViewportSnapshot> {
@@ -87,10 +95,13 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
   }
 
   public readonly reset = (): void => {
-    Object.assign(this, {
-      ...defaultViewportSnapshot,
-      viewportSessions: [createViewportSession(DEFAULT_VIEWPORT_ID)],
-    });
+    this.viewportSessions = [createViewportSession(DEFAULT_VIEWPORT_ID)];
+    this.activeViewportId = defaultViewportSnapshot.activeViewportId;
+    this.maxViewportCount = defaultViewportSnapshot.maxViewportCount;
+    this.activeViewId = defaultViewportSnapshot.activeViewId;
+    this.snapEnabled = defaultViewportSnapshot.snapEnabled;
+    this.snapDenominator = defaultViewportSnapshot.snapDenominator;
+    this.lockCursor = defaultViewportSnapshot.lockCursor;
     this.publish();
   };
 
@@ -220,8 +231,13 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     this.publish();
   };
 
-  public readonly getViewport = (id: string): ViewportSession | undefined =>
-    this.viewportSessions.find((item) => item.id === id);
+  public readonly getViewport = (id: string): ViewportSession | undefined => {
+    return this.viewportSessions.find((item) => item.id === id);
+  };
+
+  public readonly getActiveViewport = (): ViewportSession | undefined => {
+    return this.getViewport(this.activeViewportId);
+  };
 
   private buildSnapshot(): ViewportSnapshot {
     return {
@@ -232,6 +248,8 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
       snapEnabled: this.snapEnabled,
       snapDenominator: this.snapDenominator,
       lockCursor: this.lockCursor,
+      getViewport: (id: string) => this.getViewport(id),
+      getActiveViewport: () => this.getViewport(this.activeViewportId),
     };
   }
 

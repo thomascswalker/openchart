@@ -7,7 +7,7 @@ import {
   padding,
   margin,
   space,
-  flexDirection,
+  flexbox,
   compose,
 } from "styled-system";
 import type {
@@ -18,7 +18,7 @@ import type {
   BorderProps,
   LayoutProps,
   SpaceProps,
-  FlexDirectionProps,
+  FlexboxProps,
   styleFn,
 } from "styled-system";
 import classNames from "classnames";
@@ -31,7 +31,7 @@ type Styles = FlexProps &
   LayoutProps &
   PaddingProps &
   MarginProps &
-  FlexDirectionProps &
+  FlexboxProps &
   SpaceProps &
   GapProps;
 
@@ -51,7 +51,7 @@ const getSystemStyle: styleFn = compose(
   padding,
   margin,
   space,
-  flexDirection,
+  flexbox,
   gap,
 );
 

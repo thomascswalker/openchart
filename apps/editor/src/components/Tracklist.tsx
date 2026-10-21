@@ -9,7 +9,11 @@ import styles from "./TrackList.module.css";
 import { useMemo } from "react";
 import type { MidiTrack } from "@openchart/core";
 
-export function TrackList({ session }: { session: ViewportSession }) {
+interface TrackListProps {
+  session?: ViewportSession;
+}
+
+export function TrackList({ session }: TrackListProps) {
   const { midi } = useDocumentSnapshot();
   if (!midi) {
     return <Text>No MIDI data</Text>;
@@ -35,7 +39,7 @@ export function TrackList({ session }: { session: ViewportSession }) {
         if (!key) {
           return null;
         }
-        const selected = session.trackKey === key;
+        const selected = session?.trackKey === key;
         return (
           <Button
             key={key}
@@ -43,14 +47,16 @@ export function TrackList({ session }: { session: ViewportSession }) {
             checked={selected}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => {
-              void runActionAsync("editor.focus-viewport", session.id)
-                .then(() =>
-                  runActionAsync("editor.update-viewport", session.id, {
-                    trackKey: key,
-                    instrument: track.name,
-                  }),
-                )
-                .catch(() => {});
+              if (session) {
+                void runActionAsync("editor.focus-viewport", session.id)
+                  .then(() =>
+                    runActionAsync("editor.update-viewport", session.id, {
+                      trackKey: key,
+                      instrument: track.name,
+                    }),
+                  )
+                  .catch(() => {});
+              }
             }}
           >
             <Text className={styles.trackNumber}>{index + 1}</Text>

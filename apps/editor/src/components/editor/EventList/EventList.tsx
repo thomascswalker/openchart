@@ -3,7 +3,6 @@ import {
   MetaType,
   MidiTrack,
   getStatusString,
-  type Midi,
   type MidiChannelEvent,
   type MidiMetaEvent,
   type MidiSysExEvent,
@@ -11,11 +10,17 @@ import {
 import { DataTable } from "../../shared/Table";
 import { useEffect, useMemo, useState } from "react";
 import Box from "../../shared/Box";
+import { Text } from "../../shared/Text";
 import { Dropdown, type DropdownOption } from "../../shared/Dropdown";
 import { createAppColumnHelper } from "../../shared/Table/DataTable";
 import { startCase } from "es-toolkit";
 import { Label } from "../../shared/Text";
 import { Section } from "../../shared/Section";
+import { vars } from "../../../util/css";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { SongView } from "@openchart/views";
+import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { HorizontalSeparator } from "../../shared/Separator";
 
 type EventType = "channel" | "meta" | "sysex";
 type Row = Record<string, any>;
@@ -108,55 +113,88 @@ const eventTypeOptions: DropdownOption[] = (
   value: key,
 }));
 
-interface EventListProps {
-  midi: Midi;
-}
-
-const EventList = ({ midi }: EventListProps) => {
-  const [trackOptions, setTrackOptions] = useState<DropdownOption[]>([]);
-  const [selectedTrack, setSelectedTrack] = useState<MidiTrack | null>(null);
-  const [selectedTrackName, setSelectedTrackName] = useState(
-    midi.tracks[0]?.name ?? "",
+const EventList = () => {
+  const documentSnapshot = useDocumentSnapshot();
+  const { midi } = documentSnapshot;
+  const { viewportSessions, activeViewportId } = useViewportSnapshot();
+  const view = useMemo(
+    () => (midi ? new SongView(midi) : null),
+    // A new snapshot is published on every edit, even if midi is mutated in place.
+    [midi, documentSnapshot],
   );
+
+  const [selectedTrackName, setSelectedTrackName] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    const currentSession = viewportSessions.find(
+      (session) => session.id === activeViewportId,
+    );
+    if (!currentSession) {
+      setSelectedTrackName(null);
+      return;
+    }
+    const desc = view?.getTrackDescriptors() ?? [];
+    if (!desc.length) {
+      setSelectedTrackName(null);
+      return;
+    }
+    const trackDesc = desc.find((d) => d.key === currentSession.trackKey);
+    if (!trackDesc) {
+      setSelectedTrackName(null);
+      return;
+    }
+    const trackName = midi?.getTrack(trackDesc.name)?.name;
+    setSelectedTrackName(trackName ?? null);
+  }, [viewportSessions, activeViewportId, midi, view]);
+
   const [eventType, setEventType] = useState<EventType>("channel");
   const config = eventTypeConfigs[eventType];
+
+  useEffect(() => {
+    if (selectedTrackName === null && midi?.tracks[0]?.name) {
+      setSelectedTrackName(midi.tracks[0].name);
+    }
+  }, [selectedTrackName, midi]);
+
+  const selectedTrack = useMemo<MidiTrack | null>(
+    () =>
+      midi?.tracks.find((track) => track.name === selectedTrackName) ?? null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [midi, selectedTrackName, documentSnapshot],
+  );
   const data = useMemo(
     () =>
       (selectedTrack?.getTimedEvents() ?? [])
         .filter(({ event }) => config.filter(event))
         .map((item, i) => ({ id: String(i), ...config.toRow(item) })),
-    [selectedTrack, config],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedTrack, config, documentSnapshot],
   );
 
-  useEffect(() => {
-    setTrackOptions(
-      midi.tracks.map((track) => ({ label: track.name, value: track.name })),
-    );
-  }, [midi]);
-  useEffect(() => {
-    setSelectedTrack(
-      midi.tracks.find((track) => track.name === selectedTrackName) ?? null,
-    );
-  }, [midi, selectedTrackName]);
-
   return (
-    <Box padding={0} flexDirection="column">
-      <Section flexDirection="row" padding={0}>
-        <Label justifyContent="right">Track</Label>
-        <Dropdown
-          options={trackOptions}
-          value={selectedTrackName}
-          onChange={setSelectedTrackName}
-        />
+    <Box
+      padding={vars("space-large")}
+      justifyContent="flex-start"
+      gap="0"
+      minWidth="400px"
+      flexDirection="column"
+    >
+      <Section flexDirection="column">
+        <Section flexDirection="row" padding={0}>
+          <Label justifyContent="left">Event Type:</Label>
+          <Dropdown
+            options={eventTypeOptions}
+            value={eventType}
+            onChange={(value) => setEventType(value as EventType)}
+          />
+        </Section>
+        <Section flexDirection="row" padding={0}>
+          <Label justifyContent="left">Event Count:</Label>
+          <Text>{data.length}</Text>
+        </Section>
       </Section>
-      <Section flexDirection="row" padding={0}>
-        <Label justifyContent="right">Event Type</Label>
-        <Dropdown
-          options={eventTypeOptions}
-          value={eventType}
-          onChange={(value) => setEventType(value as EventType)}
-        />
-      </Section>
+      <HorizontalSeparator marginTop={vars("space-large")} />
       <DataTable
         key={`event-list-${eventType}`}
         data={data}
