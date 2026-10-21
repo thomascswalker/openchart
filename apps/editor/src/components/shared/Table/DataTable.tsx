@@ -1,20 +1,38 @@
 import Table from "./Table";
-import { tableFeatures, useTable } from "@tanstack/react-table";
+import { tableFeatures, createTableHook } from "@tanstack/react-table";
 import type { ColumnDef, TableFeatures } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 const Features = tableFeatures({});
+
+const { createAppColumnHelper, useAppTable } = createTableHook({
+  features: Features,
+  getRowId: (row) => row.id,
+  cellComponents: {
+    "Table.Cell": Table.Cell,
+    "Table.HeaderCell": Table.HeaderCell,
+    "Table.Row": Table.Row,
+    "Table.Head": Table.Head,
+    "Table.Body": Table.Body,
+  },
+});
 
 type DataType = Record<string, any>;
 
 interface DataTableProps {
+  key: string;
   data: DataType[];
-  columns: Array<ColumnDef<TableFeatures, DataType>>;
-  features?: TableFeatures;
+  columnDefs?: ColumnDef<TableFeatures, DataType>[];
 }
 
-const DataTable = ({ data, columns, features = Features }: DataTableProps) => {
-  const table = useTable({
-    features,
+const DataTable = ({ key, data, columnDefs }: DataTableProps) => {
+  const columnHelper = createAppColumnHelper<DataType>();
+  const columns = useMemo(
+    () => columnHelper.columns(columnDefs ?? []),
+    [data, columnDefs],
+  );
+  const table = useAppTable({
+    key,
     columns,
     data,
   });
@@ -49,3 +67,4 @@ const DataTable = ({ data, columns, features = Features }: DataTableProps) => {
   );
 };
 export default DataTable;
+export { createAppColumnHelper };

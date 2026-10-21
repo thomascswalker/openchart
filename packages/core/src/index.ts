@@ -27,4 +27,5 @@ export {
   encodeText,
   decodeText,
   textByteLength,
+  getStatusString,
 } from "./util.js";

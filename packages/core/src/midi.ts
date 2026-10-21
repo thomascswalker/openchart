@@ -247,6 +247,62 @@ class MidiTrack {
     return event ? this.moveEvent(event, tick) : false;
   }
 
+  public addMetaEvent(type: MetaType, data: Uint8Array): MidiMetaEvent {
+    const event: MidiMetaEvent = {
+      deltaTime: 0,
+      status: 0xff,
+      type,
+      length: data.length,
+      data,
+    };
+    this.insertEventsAt([{ tick: 0, event }]);
+    return event;
+  }
+
+  public addTempoEvent(tick: number, bpm: number): MidiMetaEvent {
+    if (!Number.isInteger(tick) || tick < 0) {
+      throw new RangeError("tick must be a non-negative integer");
+    }
+    const microsecondsPerQuarter = Math.round(60000000 / bpm);
+    const data = new Uint8Array(3);
+    data[0] = (microsecondsPerQuarter >> 16) & 0xff;
+    data[1] = (microsecondsPerQuarter >> 8) & 0xff;
+    data[2] = microsecondsPerQuarter & 0xff;
+    const event: MidiMetaEvent = {
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: data.length,
+      data,
+    };
+    this.insertEventAt(tick, event);
+    return event;
+  }
+
+  public addTimeSignatureEvent(
+    tick: number,
+    numerator: number = 4,
+    denominator: number = 4,
+  ): MidiMetaEvent {
+    if (!Number.isInteger(tick) || tick < 0) {
+      throw new RangeError("tick must be a non-negative integer");
+    }
+    const data = new Uint8Array(4);
+    data[0] = numerator;
+    data[1] = Math.log2(denominator);
+    data[2] = 24; // MIDI Clocks per metronome click
+    data[3] = 8; // 32nd notes per 24 MIDI clocks
+    const event: MidiMetaEvent = {
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.TimeSignature,
+      length: data.length,
+      data,
+    };
+    this.insertEventAt(tick, event);
+    return event;
+  }
+
   public getTextEvents(): TextEvent[] {
     const events: TextEvent[] = [];
     for (const timed of this.getTimedEvents()) {
@@ -297,7 +353,7 @@ class MidiTrack {
       length: textByteLength(text),
       text,
     };
-    this.insertEventsAt([{ tick, event }]);
+    this.insertEventAt(tick, event);
     const order = this.events.indexOf(event);
     if (order < 0) {
       throw new Error("Inserted text event is missing from its track");

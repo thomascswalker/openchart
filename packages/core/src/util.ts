@@ -9,8 +9,54 @@ import {
 } from "./types.js";
 
 export function isTwoByteMessage(status: number): boolean {
+  if (status >= 0xf0) {
+    return false;
+  }
   const type = status & 0xf0;
   return type !== 0xc0 && type !== 0xd0;
+}
+
+export function getStatusString(status: number): string {
+  const type = status & 0xff;
+  if (type >= 0xf0) {
+    switch (type) {
+      case 0xf0:
+        return "SysEx Start";
+      case 0xf7:
+        return "SysEx End";
+      case 0xfa:
+        return "Start";
+      case 0xfb:
+        return "Continue";
+      case 0xfc:
+        return "Stop";
+      case 0xf8:
+        return "Timing Clock";
+      case 0xff:
+        return "Meta";
+      default:
+        return "System Message";
+    }
+  }
+
+  switch (type) {
+    case 0x80:
+      return "Note Off";
+    case 0x90:
+      return "Note On";
+    case 0xa0:
+      return "Polyphonic Key Pressure";
+    case 0xb0:
+      return "Control Change";
+    case 0xc0:
+      return "Program Change";
+    case 0xd0:
+      return "Channel Pressure";
+    case 0xe0:
+      return "Pitch Bend";
+    default:
+      return "Unknown";
+  }
 }
 
 export function formatTrackEvents(rawEvents: any[]): MidiEvent[] {
