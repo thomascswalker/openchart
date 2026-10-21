@@ -1,0 +1,23 @@
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ui-table-container {
+  padding: 0;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.ui-table-cell {
+  text-align: center;
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight);
+  font-size: var(--font-size);
+  border-bottom: var(--border-primary);
+}
+
+.ui-table-header-cell {
+  font-weight: bold;
+  border-bottom: 2px solid var(--border-color-primary);
+}

@@ -28,6 +28,7 @@
     "@openchart/mixer": "^1.0.0",
     "@openchart/views": "^1.0.0",
     "@tanstack/react-form": "^1.33.5",
+    "@tanstack/react-table": "^9.3.1",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.2",
     "@tauri-apps/plugin-process": "^2.0.0",
