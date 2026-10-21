@@ -2,21 +2,20 @@ import TrackMixer from "./dialogs/TrackMixer";
 import Box from "./shared/Box";
 import { MixerIcon, SettingsIcon, TracksIcon } from "./shared/Icon/Icon";
 import Tabs from "./shared/Tabs";
-import { TrackList } from "./Tracklist";
 import { ViewportSettings } from "./ViewportSettings";
 import styles from "./CommandPanel.module.css";
-import type { ViewportSession } from "../services/editor/viewports";
 import type { TabOption } from "./shared/Tabs/Tab";
+import EventList from "./editor/EventList/EventList";
 
 function getTabOptions(size: number): TabOption[] {
   return [
     {
-      title: "Tracks",
-      icon: <TracksIcon size={size} />,
-    },
-    {
       title: "Audio Mixer",
       icon: <MixerIcon size={size} />,
+    },
+    {
+      title: "Event List",
+      icon: <TracksIcon size={size} />,
     },
     {
       title: "Viewport Settings",
@@ -25,7 +24,7 @@ function getTabOptions(size: number): TabOption[] {
   ];
 }
 
-const CommandPanel = ({ session }: { session: ViewportSession }) => {
+const CommandPanel = () => {
   const options = getTabOptions(24);
   return (
     <Box
@@ -46,8 +45,8 @@ const CommandPanel = ({ session }: { session: ViewportSession }) => {
         maxWidth="100%"
       >
         {[
-          <TrackList key="tracks" session={session} />,
           <TrackMixer key="mixer" />,
+          <EventList key="event-list" />,
           <ViewportSettings key="settings" />,
         ]}
       </Tabs>

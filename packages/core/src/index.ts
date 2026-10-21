@@ -4,6 +4,7 @@ export {
   type MidiChannelEvent,
   type MidiEvent,
   type MidiMetaEvent,
+  type MidiSysExEvent,
   type MidiEventId,
   type IEvent,
   type TextEvent,
@@ -21,10 +22,12 @@ export {
   TempoEvent,
   TimeSignatureEvent,
 } from "./midi.js";
+export { addRandomChannelEvents, addRandomMetaEvents } from "./random.js";
 export {
   ticksToMs,
   msToTicks,
   encodeText,
   decodeText,
   textByteLength,
+  getStatusString,
 } from "./util.js";

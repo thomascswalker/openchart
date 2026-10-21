@@ -11,6 +11,7 @@ import classNames from "classnames";
 import styles from "./Tab.module.css";
 import { Button } from "../Button";
 import { H6 } from "../Text";
+import { vars } from "../../../util/css";
 
 type Orientation = "horizontal" | "vertical";
 type Alignment = "top" | "right" | "bottom" | "left";
@@ -25,7 +26,13 @@ interface TabBodyProps extends Styles {
 const TabBody = ({ title, children }: TabBodyProps) => {
   return (
     <div className={styles["ui-tab-body"]}>
-      <div style={{ padding: "var(--size-small)" }}>
+      <div
+        style={{
+          padding: "var(--size-small)",
+          borderBottom: vars("border-primary"),
+          backgroundColor: vars("primary-darker"),
+        }}
+      >
         <H6>{title.toUpperCase()}</H6>
       </div>
       {children}

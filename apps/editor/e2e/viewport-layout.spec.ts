@@ -5,8 +5,8 @@ test("resizes a viewport command panel by dragging its splitter", async ({
   page,
 }) => {
   await loadSong(page);
-  const viewport = panel(page, 0);
-  const splitter = viewport.getByRole("separator", { name: "Resize panels" });
+  await expect(panel(page, 0)).toBeVisible();
+  const splitter = page.getByRole("separator", { name: "Resize panels" });
   const box = await splitter.boundingBox();
   expect(box).not.toBeNull();
   await expect(splitter).toHaveAttribute("aria-valuenow", "400");

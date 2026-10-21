@@ -109,6 +109,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 2px;
+  border-bottom: var(--border-primary);
 }
 
 .midi-menubar__menu {

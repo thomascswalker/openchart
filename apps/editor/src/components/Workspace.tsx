@@ -1,18 +1,14 @@
+import CommandPanel from "./CommandPanel";
 import { Viewport } from "./Viewport";
-import { DebugWindow } from "./dialogs/DebugDialog";
+import Splitter from "./shared/Splitter";
 
-interface WorkspaceProps {
-  debugVisible: boolean;
-  onDebugClose: () => void;
-}
-
-export const Workspace = ({ debugVisible, onDebugClose }: WorkspaceProps) => {
+export const Workspace = () => {
   return (
-    <div
-      className={`midi-workspace${debugVisible ? " midi-workspace--debug" : ""}`}
-    >
-      <Viewport />
-      {debugVisible ? <DebugWindow onClose={onDebugClose} /> : null}
+    <div className={`midi-workspace`}>
+      <Splitter>
+        <CommandPanel />
+        <Viewport />
+      </Splitter>
     </div>
   );
 };

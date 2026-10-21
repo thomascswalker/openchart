@@ -16,7 +16,7 @@ import { Section } from "./shared/Section";
 import { Text } from "./shared/Text";
 
 const Shell = () => {
-  const { error, debugVisible, projectVisible, settingsVisible, aboutVisible } =
+  const { error, projectVisible, settingsVisible, aboutVisible } =
     useEditorState();
   const { services, actions } = usePlatform();
   const playbackService = services.get<PlaybackService>("playback");
@@ -132,10 +132,7 @@ const Shell = () => {
         }
         onCommand={runMenuCommand}
       />
-      <Workspace
-        debugVisible={debugVisible}
-        onDebugClose={() => runAction("dialog.close-debug")}
-      />
+      <Workspace />
       <Section
         minHeight={12}
         backgroundColor={error ? "var(--red-80)" : "transparent"}

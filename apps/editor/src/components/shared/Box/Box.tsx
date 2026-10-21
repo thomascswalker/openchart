@@ -7,7 +7,7 @@ import {
   padding,
   margin,
   space,
-  flexDirection,
+  flexbox,
   compose,
 } from "styled-system";
 import type {
@@ -18,11 +18,12 @@ import type {
   BorderProps,
   LayoutProps,
   SpaceProps,
-  FlexDirectionProps,
+  FlexboxProps,
   styleFn,
 } from "styled-system";
 import classNames from "classnames";
 import styles from "./Box.module.css";
+import { gap, type GapProps } from "../../../util/css";
 
 type Styles = FlexProps &
   ColorProps &
@@ -30,8 +31,9 @@ type Styles = FlexProps &
   LayoutProps &
   PaddingProps &
   MarginProps &
-  FlexDirectionProps &
-  SpaceProps;
+  FlexboxProps &
+  SpaceProps &
+  GapProps;
 
 type ItemAlignment = "start" | "equal" | "end";
 
@@ -49,7 +51,8 @@ const getSystemStyle: styleFn = compose(
   padding,
   margin,
   space,
-  flexDirection,
+  flexbox,
+  gap,
 );
 
 const Box = ({
