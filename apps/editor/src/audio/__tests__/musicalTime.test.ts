@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ticksToMs } from "@openchart/midi";
+import { MetaType, ticksToMs } from "@openchart/midi";
 import {
   beatCrossings,
   tickToBeatPosition,
@@ -8,8 +8,22 @@ import {
 
 describe("musical playback positions", () => {
   const tempoEvents = [
-    { tick: 0, microsecondsPerQuarterNote: 500_000 },
-    { tick: 960, microsecondsPerQuarterNote: 1_000_000 },
+    {
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: 3,
+      tick: 0,
+      microsecondsPerQuarterNote: 500_000,
+    },
+    {
+      deltaTime: 960,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: 3,
+      tick: 960,
+      microsecondsPerQuarterNote: 1_000_000,
+    },
   ];
   const timeSignatures = [{ tick: 0, numerator: 4, denominator: 2 }];
 

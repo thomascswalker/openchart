@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { MetaType } from "@openchart/midi";
 import { getTimelinePosition } from "../util";
 
-const tempoEvents = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }];
+const tempoEvents = [
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  },
+];
 
 describe("timeline position", () => {
   it("formats tick, elapsed time, and the first measure", () => {
@@ -28,7 +38,15 @@ describe("timeline position", () => {
   it("uses time-signature changes when numbering measures", () => {
     expect(
       getTimelinePosition(2400, 480, tempoEvents, [
-        { tick: 1920, numerator: 3, denominator: 2 },
+        {
+          deltaTime: 0,
+          status: 0xff,
+          type: MetaType.TimeSignature,
+          length: 4,
+          tick: 1920,
+          numerator: 3,
+          denominator: 2,
+        },
       ]).measure,
     ).toBe("2.2.00");
   });

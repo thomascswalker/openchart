@@ -1,4 +1,8 @@
-import type { TempoEvent, TimeSignatureEvent } from "@openchart/midi";
+import {
+  MetaType,
+  type TempoEvent,
+  type TimeSignatureEvent,
+} from "@openchart/midi";
 import type { VocalMarks } from "./types";
 
 export const BlackPitchClasses = new Set([
@@ -69,10 +73,25 @@ export const EmptyMarks: VocalMarks = {
 };
 
 export const DefaultTempoEvents: TempoEvent[] = [
-  { tick: 0, microsecondsPerQuarterNote: 500_000 },
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  },
 ];
 export const DefaultTimeSignatureEvents: TimeSignatureEvent[] = [
-  { tick: 0, numerator: 4, denominator: 2 },
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.TimeSignature,
+    length: 4,
+    tick: 0,
+    numerator: 4,
+    denominator: 2,
+  },
 ];
 
 export const DefaultCamera = {

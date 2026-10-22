@@ -29,14 +29,14 @@ const midiChannelEvent: MidiChannelEvent = {
 };
 type MidiChannelEventHeader = (keyof MidiChannelEvent & { tick?: string })[];
 
-const midiMetaEvent: MidiMetaEvent = {
+const midiMetaEvent: MidiMetaEvent & { bytes: Uint8Array } = {
   deltaTime: 0,
   status: 0xff,
   type: MetaType.SequenceNumber,
   length: 0,
-  data: new Uint8Array([0]),
+  bytes: new Uint8Array([0]),
 };
-type MidiMetaEventHeader = (keyof MidiMetaEvent & { tick?: string })[];
+type MidiMetaEventHeader = (keyof MidiMetaEvent | "bytes" | "tick")[];
 
 const makeTrack = () => {
   const midi = new Midi();
@@ -50,10 +50,11 @@ const makeChannelEvents = (
   const track = makeTrack();
   addRandomChannelEvents(track, rowCount);
 
-  return track.getTimedEvents().map(({ event, tick }) => {
+  return track.getTimedEvents().map((event) => {
+    const { tick } = event;
     const row: Record<string, string> = { tick: String(tick) };
     headers.forEach((header) => {
-      row[header] = String(event[header as keyof typeof event]) ?? "";
+      row[header] = String(event[header as keyof typeof event] ?? "");
     });
     return row;
   });
@@ -63,13 +64,16 @@ const makeMetaEvents = (headers: MidiMetaEventHeader, rowCount: number) => {
   const track = makeTrack();
   addRandomMetaEvents(track, rowCount);
 
-  return track.getTimedEvents().map(({ event, tick }) => {
+  return track.getTimedEvents().map((event) => {
+    const { tick } = event;
     const row: Record<string, string> = { tick: String(tick) };
     headers.forEach((header) => {
       const value =
-        header === "data" && "text" in event
+        header === "bytes" && "text" in event
           ? event.text
-          : event[header as keyof typeof event];
+          : header === "bytes" && "bytes" in event
+            ? String(event.bytes)
+            : event[header as keyof typeof event];
       row[header] = String(value);
     });
     return row;
@@ -110,7 +114,9 @@ const channelEventColumnDefs = [
   }),
 ];
 
-const metaColumnNames = Object.keys(midiMetaEvent) as (keyof MidiMetaEvent)[];
+const metaColumnNames = Object.keys(
+  midiMetaEvent,
+) as (keyof typeof midiMetaEvent)[];
 const metaColumnDefs = [
   columnHelper.accessor("tick" as "deltaTime", {
     header: "Tick",
@@ -132,7 +138,7 @@ const metaColumnDefs = [
     header: "Length",
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("data", {
+  columnHelper.accessor("bytes", {
     header: "Data",
     cell: ({ cell }) => String(cell.getValue()),
   }),

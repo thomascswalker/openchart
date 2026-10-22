@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MidiNote } from "@openchart/midi";
+import { MetaType, type MidiNote } from "@openchart/midi";
 import {
   Soundboard,
   midiPitchToFrequency,
@@ -64,14 +64,36 @@ function vocal(pitch: number, start: number, end: number): MidiNote {
   };
 }
 
+const TEMPO_EVENTS = [
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  },
+];
+const TIME_SIGNATURE_EVENTS = [
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.TimeSignature,
+    length: 4,
+    tick: 0,
+    numerator: 4,
+    denominator: 2,
+  },
+];
+
 function configuration(
   overrides: Partial<SoundboardConfigurationInput> = {},
 ): SoundboardConfigurationInput {
   return {
     midi: null,
     ppqn: 480,
-    tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-    timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
+    tempoEvents: TEMPO_EVENTS,
+    timeSignatureEvents: TIME_SIGNATURE_EVENTS,
     settings: {
       metronomeEnabled: false,
       metronomeVolume: 0.4,

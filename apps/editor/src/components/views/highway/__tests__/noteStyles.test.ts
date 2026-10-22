@@ -1,4 +1,3 @@
-import type { TimedMidiEvent } from "@openchart/midi";
 import { defaultConfig } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import {
@@ -75,16 +74,22 @@ describe("five-fret note styles", () => {
     const strum = note(98, 60);
     const sysexRanges = getTapSysExRanges([
       {
-        event: { status: 0xf0, data: new Uint8Array([0x50, 0, 1, 4]) },
+        deltaTime: 0,
+        status: 0xf0,
+        length: 4,
+        data: new Uint8Array([0x50, 0, 1, 4]),
         tick: 20,
         order: 0,
       },
       {
-        event: { status: 0xf0, data: new Uint8Array([0x50, 0, 1, 4]) },
+        deltaTime: 0,
+        status: 0xf0,
+        length: 4,
+        data: new Uint8Array([0x50, 0, 1, 4]),
         tick: 40,
         order: 1,
       },
-    ] as TimedMidiEvent[]);
+    ]);
     const styles = getFiveFretNoteStyles(
       [markerTap, phraseTap, strum],
       [note(103, 10, 10)],

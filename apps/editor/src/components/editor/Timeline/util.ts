@@ -1,4 +1,5 @@
 import {
+  MetaType,
   type TempoEvent,
   type TimeSignatureEvent,
   ticksToMs,
@@ -17,7 +18,14 @@ const ViewportBorderColor = "rgba(255, 255, 255, 0.35)";
 const PlayheadColor = "#ff3b30";
 
 export const DefaultTempo: TempoEvent[] = [
-  { tick: 0, microsecondsPerQuarterNote: 500000 },
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500000,
+  },
 ];
 
 export const NoEvents: TimeSignatureEvent[] = [];

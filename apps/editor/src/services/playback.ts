@@ -1,4 +1,5 @@
 import {
+  MetaType,
   msToTicks,
   ticksToMs,
   type Midi,
@@ -55,7 +56,14 @@ export interface PlaybackConfiguration {
 }
 
 const DEFAULT_TEMPO: TempoEvent[] = [
-  { tick: 0, microsecondsPerQuarterNote: 500_000 },
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  },
 ];
 
 export function snapToPreviousTimelineBoundary(
@@ -395,7 +403,15 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
       ppqn: this.ppqn,
       tempoEvents: this.tempoEvents,
       timeSignatureEvents: this.midiData?.getTimeSignatureEvents() ?? [
-        { tick: 0, numerator: 4, denominator: 2 },
+        {
+          deltaTime: 0,
+          status: 0xff,
+          type: MetaType.TimeSignature,
+          length: 4,
+          tick: 0,
+          numerator: 4,
+          denominator: 2,
+        },
       ],
       settings: this.getFeedbackSettings(this.settings),
       clapEnabled: this.clapEnabled,
