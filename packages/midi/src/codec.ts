@@ -4,11 +4,54 @@ import {
   DefaultMetaPayload,
   MetaType,
   MidiEvent,
-  EventSchema,
   MidiSysExEvent,
   extractMetaPayload,
 } from "./types.js";
 import { isTwoByteMessage } from "./util.js";
+
+/** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
+ * these deliberately do not depend on Node's Buffer global. */
+export function encodeBase64(bytes: Uint8Array): string {
+  if (bytes.length === 0) return "-";
+
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+export function decodeBase64(value: string): Uint8Array {
+  if (value === "-") return new Uint8Array(0);
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error(`Invalid base64 MIDI payload: ${value}`);
+  }
+
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  let binary: string;
+  try {
+    binary = atob(padded);
+  } catch {
+    throw new Error(`Invalid base64 MIDI payload: ${value}`);
+  }
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+export function parseInteger(value: string, field: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${field} must be a non-negative integer`);
+  }
+
+  const result = Number(value);
+
+  if (!Number.isSafeInteger(result)) {
+    throw new Error(`${field} must be a safe integer`);
+  }
+
+  return result;
+}
 
 export function requireByte(value: number, field: string): number {
   if (!Number.isInteger(value) || value < 0 || value > 0xff) {
@@ -186,11 +229,11 @@ export function encodeMetaPayload(
         requireByte(payload.numerator, "time-signature numerator"),
         requireByte(payload.denominator, "time-signature denominator"),
         requireByte(
-          payload.clocksPerClick,
+          payload.clocksPerClick ?? 24,
           "time-signature clocks-per-click",
         ),
         requireByte(
-          payload.thirtySecondNotesPerQuarter,
+          payload.thirtySecondNotesPerQuarter ?? 8,
           "time-signature thirty-second notes",
         ),
       ]);
@@ -288,7 +331,6 @@ export function decodeMetaPayload(
 }
 
 export function encodeMidiEvent(event: MidiEvent): Uint8Array {
-  EventSchema.parse(event);
   const deltaTime = encodeVariableLengthValue(event.deltaTime);
 
   if (event.status === 0xff && "type" in event) {

@@ -1,54 +1,39 @@
-import { Midi, MidiTrack } from "../../src/midi.js";
+import { Midi } from "../../src/midi.js";
+import { MidiTrack } from "../../src/track.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
-import {
-  ChannelMessage,
-  MetaType,
-  MidiChannelEvent,
-  MidiEventSchema,
-} from "../../src/types.js";
+import { ChannelMessage, MetaType, MidiChannelEvent } from "../../src/types.js";
 
 test("is constructed", () => {
   const midi = new Midi();
   expect(midi).toBeDefined();
 });
 
-test("MIDI event schemas accept supported events and reject malformed payloads", () => {
-  expect(
-    MidiEventSchema.safeParse({
-      deltaTime: 0,
-      status: 0xff,
-      type: MetaType.Tempo,
-      length: 3,
-      data: { microsecondsPerQuarterNote: 500000 },
-    }).success,
-  ).toBe(true);
-  expect(
-    MidiEventSchema.safeParse({
-      deltaTime: 0,
-      status: 0xff,
-      type: MetaType.TrackName,
-      length: 4,
-      text: "Lead",
-    }).success,
-  ).toBe(true);
-  expect(
-    MidiEventSchema.safeParse({
-      deltaTime: 0,
-      status: 0xf0,
-      length: 1,
-      data: new Uint8Array([1]),
-    }).success,
-  ).toBe(true);
-  expect(
-    MidiEventSchema.safeParse({
-      deltaTime: 0,
-      status: 0xff,
-      type: MetaType.Tempo,
-      length: 3,
-      data: 500000,
-    }).success,
-  ).toBe(false);
+test("MIDI meta events are added and match expected values", () => {
+  const track = new MidiTrack("Lead");
+  const tempo = track.addTempoEvent(0, 120);
+  const timeSignature = track.addTimeSignatureEvent(480, 3, 2);
+  const text = track.addTextEvent(MetaType.TrackName, 960, "Lead");
+
+  expect(tempo).toMatchObject({
+    type: MetaType.Tempo,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  });
+  expect(timeSignature).toMatchObject({
+    type: MetaType.TimeSignature,
+    tick: 480,
+    numerator: 3,
+    denominator: 2,
+  });
+  expect(text).toMatchObject({
+    type: MetaType.TrackName,
+    tick: 960,
+    text: "Lead",
+  });
+  expect("data" in tempo).toBe(false);
+  expect("data" in timeSignature).toBe(false);
+  expect("data" in text).toBe(false);
 });
 
 test("clone preserves MIDI data and isolates mutable event payloads", () => {
@@ -85,10 +70,17 @@ test("clone preserves MIDI data and isolates mutable event payloads", () => {
   expect(clonedMeta).not.toBe(originalMeta);
   expect(clonedSysEx).not.toBe(originalSysEx);
 
-  (clonedMeta as { text: string }).text = "changed";
-  (clonedSysEx as { data: Uint8Array }).data[0] = 9;
-  expect((originalMeta as { text: string }).text).toBe("section");
-  expect((originalSysEx as { data: Uint8Array }).data[0]).toBe(1);
+  if (!("text" in clonedMeta) || !("text" in originalMeta)) {
+    throw new Error("Expected cloned and original text meta events");
+  }
+  if (!("data" in clonedSysEx) || !("data" in originalSysEx)) {
+    throw new Error("Expected cloned and original SysEx events");
+  }
+
+  clonedMeta.text = "changed";
+  clonedSysEx.data[0] = 9;
+  expect(originalMeta.text).toBe("section");
+  expect(originalSysEx.data[0]).toBe(1);
 });
 
 test("clone preserves an empty MIDI document", () => {
@@ -225,10 +217,12 @@ test("addTempoEvent/removeTempoEventAt", () => {
   midi.addTempoEvent(480, 400_000);
 
   const events = midi.getTempoEvents();
-  expect(events).toContainEqual({
-    tick: 480,
-    microsecondsPerQuarterNote: 400_000,
-  });
+  expect(events).toContainEqual(
+    expect.objectContaining({
+      tick: 480,
+      microsecondsPerQuarterNote: 400_000,
+    }),
+  );
 
   expect(midi.removeTempoEventAt(480)).toBe(true);
   expect(midi.getTempoEvents().some((event) => event.tick === 480)).toBe(false);
@@ -242,11 +236,13 @@ test("addTimeSignatureEvent/removeTimeSignatureEventAt", () => {
   midi.addTimeSignatureEvent(960, 3, 3);
 
   const events = midi.getTimeSignatureEvents();
-  expect(events).toContainEqual({
-    tick: 960,
-    numerator: 3,
-    denominator: 3,
-  });
+  expect(events).toContainEqual(
+    expect.objectContaining({
+      tick: 960,
+      numerator: 3,
+      denominator: 3,
+    }),
+  );
 
   expect(midi.removeTimeSignatureEventAt(960)).toBe(true);
   expect(

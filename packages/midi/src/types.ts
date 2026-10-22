@@ -268,6 +268,13 @@ export type TextMidiEvent = z.infer<typeof TextEventSchema>;
 export type TempoEvent = z.infer<typeof TempoEventSchema>;
 export type TimeSignatureEvent = z.infer<typeof TimeSignatureEventSchema>;
 
+export function sortEvents(
+  a: Pick<TimedMidiEvent, "tick"> & { order?: number },
+  b: Pick<TimedMidiEvent, "tick"> & { order?: number },
+) {
+  return a.tick - b.tick || (a.order || 0) - (b.order || 0);
+}
+
 export function extractMetaPayload(event: MidiMetaEvent): MidiMetaPayload {
   const excludedKeys = ["deltaTime", "status", "type"];
   const payload: Record<string, any> = {};
@@ -297,3 +304,26 @@ export const DefaultTimeSignatureEvent: TimeSignatureEvent = {
   numerator: 4,
   denominator: 2,
 };
+
+export interface TimedEventRecord {
+  event: MidiEvent;
+  tick: number;
+  order: number;
+}
+
+export interface MidiNote {
+  note: number;
+  velocity: number;
+  start: number;
+  end: number;
+  noteOn: MidiChannelEvent;
+  noteOff: MidiChannelEvent;
+  previous?: MidiNote;
+}
+
+export interface GetNotesOptions {
+  pitch?: {
+    low: number;
+    high: number;
+  };
+}
