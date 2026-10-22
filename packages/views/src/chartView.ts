@@ -3,8 +3,8 @@ import {
   Midi,
   MidiNote,
   MidiTrack,
-  type TextEvent,
-} from "@openchart/core";
+  type TextMidiEvent,
+} from "@openchart/midi";
 import type { MidiNotePhrase } from "./chartEditing.js";
 import {
   defaultConfig,
@@ -428,7 +428,7 @@ export class VocalTrackView extends InstrumentTrackView {
     return getLyrics(this.track);
   }
 
-  public getLyricFor(note: MidiNote): TextEvent | null {
+  public getLyricFor(note: MidiNote): TextMidiEvent | null {
     return this.getVocalNote(note)?.lyric ?? null;
   }
 

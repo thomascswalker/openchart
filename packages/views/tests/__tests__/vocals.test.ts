@@ -1,7 +1,7 @@
 import path from "path";
 import * as fs from "fs";
 import { fileURLToPath } from "url";
-import { MetaType, Midi, MidiTrack } from "@openchart/core";
+import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import { getPhrasePitch } from "../../src/chartEditing.js";
 import { SongView, VocalTrackView } from "../../src/chartView.js";

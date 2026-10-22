@@ -1,4 +1,4 @@
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 import { SongView } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import { notesForVocalFeedback } from "../playback";

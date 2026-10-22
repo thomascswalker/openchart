@@ -1,4 +1,4 @@
-import type { Midi, MidiNote, MidiTrack } from "@openchart/core";
+import type { Midi, MidiNote, MidiTrack } from "@openchart/midi";
 import { buildNoteIndex, type PianoRollNoteIndex } from "./visibility";
 import type { PianoRollNote } from "./types";
 

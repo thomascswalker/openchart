@@ -3,9 +3,9 @@ import {
   Midi,
   type IEvent,
   type TempoEvent,
-  type TextEvent,
+  type TextMidiEvent,
   type TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import { Vector2 } from "three";
 import {
   HeaderHeight,
@@ -53,7 +53,7 @@ export class HeaderController extends IController {
   #deleteButtonRef: HTMLButtonElement | null = null;
   #editingMarkerKey: string | null = null;
   #editingMarker: { lane: HeaderLane; tick: number } | null = null;
-  #draggingText: TextEvent | null = null;
+  #draggingText: TextMidiEvent | null = null;
   #prompt: { tick: number; handlers: LyricPromptHandlers } | null = null;
   #promptKey: string | null = null;
   #width: number = 0;
@@ -202,7 +202,7 @@ export class HeaderController extends IController {
         name: "text",
         events: textEvents,
         instances: this.#textLabelRefs,
-        format: (event: IEvent) => (event as TextEvent).text,
+        format: (event: IEvent) => (event as TextMidiEvent).text,
       },
     ];
   };
@@ -546,7 +546,7 @@ export class HeaderController extends IController {
     return this.findMarkerNear(this.context.getTimeSignatureEvents(), pos);
   }
 
-  private findTextEventNear(pos: number): TextEvent | null {
+  private findTextEventNear(pos: number): TextMidiEvent | null {
     return this.findMarkerNear(this.context.getTextEvents(), pos);
   }
 

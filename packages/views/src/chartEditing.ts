@@ -3,8 +3,8 @@ import type {
   MidiNote,
   MidiTrack,
   TextMidiEvent,
-} from "@openchart/core";
-import { MetaType } from "@openchart/core";
+} from "@openchart/midi";
+import { MetaType } from "@openchart/midi";
 import type { TrackDescriptor } from "./config.js";
 
 export type EditablePhraseKind =
@@ -146,10 +146,7 @@ export function trimNoteAt(
 }
 
 function textValue(event: MidiMetaEvent | TextMidiEvent): string {
-  if ("text" in event) return event.text;
-  return "text" in event.data && typeof event.data.text === "string"
-    ? event.data.text
-    : "";
+  return "text" in event ? event.text : "";
 }
 
 export function extractSections(

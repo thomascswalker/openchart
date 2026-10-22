@@ -1,4 +1,4 @@
-import type { MidiChannelEvent } from "@openchart/core";
+import type { MidiChannelEvent } from "@openchart/midi";
 
 export class SelectionContext {
   private readonly selected = new Set<MidiChannelEvent>();

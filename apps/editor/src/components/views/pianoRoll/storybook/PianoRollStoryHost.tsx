@@ -1,4 +1,4 @@
-import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/core";
+import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
 import { Difficulty, type VocalNoteKind } from "@openchart/views";
 import {
   useCallback,

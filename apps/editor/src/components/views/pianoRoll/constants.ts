@@ -1,4 +1,4 @@
-import type { TempoEvent, TimeSignatureEvent } from "@openchart/core";
+import type { TempoEvent, TimeSignatureEvent } from "@openchart/midi";
 import type { VocalMarks } from "./types";
 
 export const BlackPitchClasses = new Set([

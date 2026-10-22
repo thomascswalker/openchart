@@ -3,7 +3,7 @@ import {
   ticksToMs,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 
 export type TimeSignature = Omit<TimeSignatureEvent, "tick">;
 

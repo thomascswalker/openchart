@@ -1,4 +1,4 @@
-import { MetaType, MidiTrack } from "@openchart/core";
+import { MetaType, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import {
   addNotePhrase,

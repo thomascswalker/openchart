@@ -1,4 +1,4 @@
-import type { MidiTrack, TempoEvent } from "@openchart/core";
+import type { MidiTrack, TempoEvent } from "@openchart/midi";
 import { Box2, Vector2 } from "three";
 import { KeyboardWidth, NoteResizeHandleWidth } from "./constants";
 import type { PianoRollNote } from "./types";

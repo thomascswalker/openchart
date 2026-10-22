@@ -6,7 +6,7 @@ import {
   type MidiChannelEvent,
   type MidiMetaEvent,
   type MidiSysExEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import { DataTable } from "../../shared/Table";
 import { useEffect, useMemo, useState } from "react";
 import Box from "../../shared/Box";

@@ -1,4 +1,4 @@
-import { MetaType, Midi, MidiTrack } from "@openchart/core";
+import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { SongView, validateVocalTrack } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";

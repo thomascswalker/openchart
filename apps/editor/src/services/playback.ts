@@ -4,7 +4,7 @@ import {
   type Midi,
   type MidiNote,
   type TempoEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import { Difficulty, SongView, VocalTrackView } from "@openchart/views";
 import {
   Soundboard,

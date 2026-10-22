@@ -13,7 +13,7 @@ names.
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 import { Difficulty, Note, SongView } from "@openchart/views";
 
 const midi = new Midi(new Uint8Array(await readFile("song.mid")));
@@ -86,7 +86,7 @@ The `chartEditing` helpers operate directly on a `MidiTrack`. They can add,
 move, resize, and remove special-note phrases, and find section marker events.
 
 ```ts
-import { MidiTrack } from "@openchart/core";
+import { MidiTrack } from "@openchart/midi";
 import { addNotePhrase, findSection, updateNotePhrase } from "@openchart/views";
 
 const track = new MidiTrack("LEAD GUITAR");

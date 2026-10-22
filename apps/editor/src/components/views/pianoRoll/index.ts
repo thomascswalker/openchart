@@ -5,7 +5,7 @@ import {
   type MidiTrack,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import {
   getVocalNotes,
   setVocalLyric,

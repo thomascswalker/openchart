@@ -7,7 +7,7 @@ import {
   getStatusString,
   type MidiChannelEvent,
   type MidiMetaEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import DataTable, { createAppColumnHelper } from "../DataTable";
 

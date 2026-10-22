@@ -1,4 +1,4 @@
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
 import type { ServicesAccessor } from "../../../platform/services";
 import { DocumentService } from "../../../services/document";

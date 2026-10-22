@@ -1,4 +1,4 @@
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

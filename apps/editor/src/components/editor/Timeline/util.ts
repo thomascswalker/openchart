@@ -2,7 +2,7 @@ import {
   type TempoEvent,
   type TimeSignatureEvent,
   ticksToMs,
-} from "@openchart/core";
+} from "@openchart/midi";
 import type { AnyChartView } from "../../views/ChartViews";
 
 export interface TimelinePosition {

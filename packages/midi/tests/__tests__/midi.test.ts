@@ -1,11 +1,54 @@
 import { Midi, MidiTrack } from "../../src/midi.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
-import { ChannelMessage, MidiChannelEvent } from "../../src/types.js";
+import {
+  ChannelMessage,
+  MetaType,
+  MidiChannelEvent,
+  MidiEventSchema,
+} from "../../src/types.js";
 
 test("is constructed", () => {
   const midi = new Midi();
   expect(midi).toBeDefined();
+});
+
+test("MIDI event schemas accept supported events and reject malformed payloads", () => {
+  expect(
+    MidiEventSchema.safeParse({
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: 3,
+      data: { microsecondsPerQuarterNote: 500000 },
+    }).success,
+  ).toBe(true);
+  expect(
+    MidiEventSchema.safeParse({
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.TrackName,
+      length: 4,
+      text: "Lead",
+    }).success,
+  ).toBe(true);
+  expect(
+    MidiEventSchema.safeParse({
+      deltaTime: 0,
+      status: 0xf0,
+      length: 1,
+      data: new Uint8Array([1]),
+    }).success,
+  ).toBe(true);
+  expect(
+    MidiEventSchema.safeParse({
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: 3,
+      data: 500000,
+    }).success,
+  ).toBe(false);
 });
 
 test("clone preserves MIDI data and isolates mutable event payloads", () => {

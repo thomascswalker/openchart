@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Midi } from "@openchart/core";
+import type { Midi } from "@openchart/midi";
 import {
   Difficulty,
   InstrumentType,

@@ -3,7 +3,7 @@ import type {
   MidiTrack,
   TempoEvent,
   TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import { Box2, Vector2 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import {

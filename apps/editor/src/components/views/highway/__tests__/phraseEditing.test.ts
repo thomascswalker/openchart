@@ -1,4 +1,4 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/core";
+import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import { Difficulty, type MidiNotePhrase } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";

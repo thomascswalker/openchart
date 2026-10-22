@@ -1,4 +1,4 @@
-import { MetaType, Midi, MidiTrack } from "@openchart/core";
+import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { SongView } from "@openchart/views";
 
 /** Which sample document a story loads. */

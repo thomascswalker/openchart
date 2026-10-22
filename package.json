@@ -23,7 +23,7 @@
     "check": "npm run lint && npm run format:check",
     "test": "turbo run test",
     "check-types": "turbo run check-types --filter=!@openchart/desktop",
-    "test:core": "turbo run test --filter=@openchart/core",
+    "test:core": "turbo run test --filter=@openchart/midi",
     "test:views": "turbo run test --filter=@openchart/views",
     "test:mixer": "turbo run test --filter=@openchart/mixer",
     "test:storybook": "npm run test:storybook --workspace=@openchart/editor",

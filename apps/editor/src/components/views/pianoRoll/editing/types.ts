@@ -1,4 +1,4 @@
-import type { MidiChannelEvent } from "@openchart/core";
+import type { MidiChannelEvent } from "@openchart/midi";
 import type { PianoRollNote } from "../types";
 
 /** A note being resized, with the duration it had when the gesture began. */

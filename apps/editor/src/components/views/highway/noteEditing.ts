@@ -1,4 +1,4 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/core";
+import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import type { ChartView } from "@openchart/views";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";

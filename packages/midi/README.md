@@ -1,6 +1,6 @@
-# `@openchart/core`
+# `@openchart/midi`
 
-`@openchart/core` parses, edits, and writes Standard MIDI Files. It exposes the
+`@openchart/midi` parses, edits, and writes Standard MIDI Files. It exposes the
 `Midi` and `MidiTrack` classes along with MIDI event types and tick/time
 conversion utilities.
 
@@ -12,7 +12,7 @@ pass the serialized bytes to `writeFile`.
 
 ```ts
 import { readFile, writeFile } from "node:fs/promises";
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 
 const midi = new Midi(new Uint8Array(await readFile("song.mid")));
 await writeFile("copy.mid", midi.toBuffer());
@@ -26,7 +26,7 @@ start position. With the default 480 ticks per quarter note, each note below
 lasts one quarter note.
 
 ```ts
-import { MidiTrack } from "@openchart/core";
+import { MidiTrack } from "@openchart/midi";
 
 const track = new MidiTrack("Lead");
 
@@ -78,7 +78,7 @@ denominator is stored as a power-of-two exponent (`2` means quarter note).
 These events are placed on the first MIDI track.
 
 ```ts
-import { Midi, MidiTrack } from "@openchart/core";
+import { Midi, MidiTrack } from "@openchart/midi";
 
 const midi = new Midi();
 midi.tracks.push(new MidiTrack("Conductor"));
@@ -96,9 +96,9 @@ Use the file's ticks-per-quarter-note division and the active tempo to convert
 between timeline positions.
 
 ```ts
-import { msToTicks, ticksToMs } from "@openchart/core";
+import { msToTicks, ticksToMs } from "@openchart/midi";
 
-import { Midi, MidiTrack, msToTicks, ticksToMs } from "@openchart/core";
+import { Midi, MidiTrack, msToTicks, ticksToMs } from "@openchart/midi";
 
 const midi = new Midi();
 midi.tracks.push(new MidiTrack("Conductor"));

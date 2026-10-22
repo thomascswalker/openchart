@@ -1,4 +1,4 @@
-import type { TimedMidiEvent } from "@openchart/core";
+import type { TimedMidiEvent } from "@openchart/midi";
 import { defaultConfig } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import {

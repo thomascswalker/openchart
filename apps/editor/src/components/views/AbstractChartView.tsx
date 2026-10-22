@@ -1,4 +1,4 @@
-import type { Midi } from "@openchart/core";
+import type { Midi } from "@openchart/midi";
 import { Difficulty } from "@openchart/views";
 import * as THREE from "three";
 import { Box2, Vector2 } from "three";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MidiNote } from "@openchart/core";
+import type { MidiNote } from "@openchart/midi";
 import {
   Soundboard,
   midiPitchToFrequency,

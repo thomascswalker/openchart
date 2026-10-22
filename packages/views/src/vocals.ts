@@ -2,8 +2,8 @@ import {
   MetaType,
   type MidiNote,
   type MidiTrack,
-  type TextEvent,
-} from "@openchart/core";
+  type TextMidiEvent,
+} from "@openchart/midi";
 import type { MidiNotePhrase } from "./chartEditing.js";
 import type { InstrumentTrackViewConfig } from "./config.js";
 
@@ -119,7 +119,7 @@ export function vocalPhrasePitch(
   }
 }
 
-export type TimedLyric = TextEvent;
+export type TimedLyric = TextMidiEvent;
 
 export interface VocalNote {
   note: MidiNote;
@@ -310,7 +310,7 @@ export interface VocalMove {
    * notes crossing each other's ticks keep their own lyric. Looked up when
    * omitted.
    */
-  lyric?: TextEvent | null;
+  lyric?: TextMidiEvent | null;
 }
 
 /**
@@ -372,7 +372,7 @@ export function removeVocalNotes(
   const lyrics = notes
     .map((note) => paired.get(note.noteOn)?.lyric)
     .filter(
-      (event): event is TextEvent => event !== null && event !== undefined,
+      (event): event is TextMidiEvent => event !== null && event !== undefined,
     );
   let changed = false;
   for (const note of notes) {
@@ -453,11 +453,11 @@ export function updateVocalPhrase(
 
 export type VocalIssue =
   | { type: "missing-lyric"; tick: number; note: MidiNote }
-  | { type: "orphan-lyric"; tick: number; lyric: TextEvent }
+  | { type: "orphan-lyric"; tick: number; lyric: TextMidiEvent }
   | {
       type: "mismatched-tick";
       tick: number;
-      lyric: TextEvent;
+      lyric: TextMidiEvent;
       note: MidiNote;
     }
   | { type: "unknown-pitch"; tick: number; note: MidiNote }
