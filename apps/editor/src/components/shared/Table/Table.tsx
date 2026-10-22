@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import Box from "../Box";
 import styles from "./Table.module.css";
 import classNames from "classnames";
@@ -13,10 +13,16 @@ const Cell = ({ children }: CellProps) => {
 
 interface RowProps {
   children?: ReactNode;
+  ref?: (element: HTMLTableRowElement | null) => void;
+  "data-index"?: number;
 }
 
-const Row = ({ children }: RowProps) => {
-  return <tr>{children}</tr>;
+const Row = ({ children, ref, "data-index": dataIndex }: RowProps) => {
+  return (
+    <tr ref={ref} data-index={dataIndex}>
+      {children}
+    </tr>
+  );
 };
 
 interface HeaderCellProps {
@@ -47,13 +53,13 @@ interface TableProps {
   children?: ReactNode;
 }
 
-const Table = ({ children }: TableProps) => {
+const Table = forwardRef<HTMLDivElement, TableProps>(({ children }, ref) => {
   return (
-    <Box className={styles["ui-table-container"]}>
+    <Box ref={ref} className={styles["ui-table-container"]}>
       <table className={styles["ui-table"]}>{children}</table>
     </Box>
   );
-};
+});
 
 const _Table = Object.assign(Table, {
   Head,

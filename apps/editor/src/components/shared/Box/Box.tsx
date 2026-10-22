@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import {
   flex,
   color,
@@ -38,6 +38,7 @@ type Styles = FlexProps &
 type ItemAlignment = "start" | "equal" | "end";
 
 interface BoxProps extends Styles {
+  ref?: HTMLDivElement;
   alignItems?: ItemAlignment;
   children?: ReactNode;
   className?: string;
@@ -55,24 +56,21 @@ const getSystemStyle: styleFn = compose(
   gap,
 );
 
-const Box = ({
-  alignItems = "equal",
-  children,
-  className,
-  ...props
-}: BoxProps) => {
-  const boxStyle = getSystemStyle(props);
-  const boxClassName = classNames(
-    className,
-    styles["ui-box"],
-    styles[`ui-box-align-items-${alignItems}`],
-  );
+const Box = forwardRef<HTMLDivElement, BoxProps>(
+  ({ alignItems = "equal", children, className, ...props }, ref) => {
+    const boxStyle = getSystemStyle(props);
+    const boxClassName = classNames(
+      className,
+      styles["ui-box"],
+      styles[`ui-box-align-items-${alignItems}`],
+    );
 
-  return (
-    <div className={boxClassName} style={boxStyle}>
-      {children}
-    </div>
-  );
-};
+    return (
+      <div ref={ref} className={boxClassName} style={boxStyle}>
+        {children}
+      </div>
+    );
+  },
+);
 
 export default Box;

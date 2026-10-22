@@ -175,10 +175,13 @@ const EventList = () => {
   return (
     <Box
       padding={vars("space-large")}
+      paddingBottom={0}
       justifyContent="flex-start"
       gap="0"
       minWidth="400px"
+      flex={1}
       flexDirection="column"
+      minHeight={0}
     >
       <Section flexDirection="column">
         <Section flexDirection="row" padding={0}>
