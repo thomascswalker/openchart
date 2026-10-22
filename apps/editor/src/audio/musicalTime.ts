@@ -1,11 +1,17 @@
 import {
+  MetaType,
   msToTicks,
   ticksToMs,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 
-export type TimeSignature = Omit<TimeSignatureEvent, "tick">;
+export type Tempo = Pick<TempoEvent, "tick" | "microsecondsPerQuarterNote">;
+export type TimeSignature = Pick<
+  TimeSignatureEvent,
+  "numerator" | "denominator"
+>;
+type TimedTimeSignature = TimeSignature & Pick<TimeSignatureEvent, "tick">;
 
 export interface BeatPosition {
   tick: number;
@@ -39,15 +45,15 @@ export function parseTimeSignatureString(text: string): TimeSignature | null {
   return { numerator, denominator };
 }
 
-const defaultTimeSignature: TimeSignatureEvent = {
+const defaultTimeSignature: TimedTimeSignature = {
   tick: 0,
   numerator: 4,
   denominator: 2,
 };
 
 function normalizeTimeSignatures(
-  events: TimeSignatureEvent[],
-): TimeSignatureEvent[] {
+  events: TimedTimeSignature[],
+): TimedTimeSignature[] {
   const sorted = [...events]
     .filter(
       (event) =>
@@ -67,8 +73,8 @@ function normalizeTimeSignatures(
 
 function signatureAtTick(
   tick: number,
-  events: TimeSignatureEvent[],
-): { event: TimeSignatureEvent; index: number } {
+  events: TimedTimeSignature[],
+): { event: TimedTimeSignature; index: number } {
   const normalized = normalizeTimeSignatures(events);
   let index = 0;
 
@@ -83,7 +89,7 @@ function signatureAtTick(
 /** Number of ticks occupied by one beat for a MIDI time-signature exponent. */
 export function ticksPerBeat(
   ppqn: number,
-  signature: TimeSignatureEvent,
+  signature: TimedTimeSignature,
 ): number {
   return ppqn * (4 / 2 ** signature.denominator);
 }
@@ -92,7 +98,7 @@ export function ticksPerBeat(
 export function tickToBeatPosition(
   tick: number,
   ppqn: number,
-  events: TimeSignatureEvent[],
+  events: TimedTimeSignature[],
 ): BeatPosition {
   const safeTick = Math.max(0, tick);
   const normalized = normalizeTimeSignatures(events);
@@ -120,7 +126,7 @@ export function beatCrossings(
   fromTick: number,
   toTick: number,
   ppqn: number,
-  events: TimeSignatureEvent[],
+  events: TimedTimeSignature[],
 ): BeatPosition[] {
   if (toTick < fromTick) return [];
 
@@ -165,8 +171,15 @@ export function tickWindowForLookAhead(
   tick: number,
   lookAheadMs: number,
   ppqn: number,
-  tempoEvents: TempoEvent[],
+  tempoEvents: Tempo[],
 ): number {
-  const currentMs = ticksToMs(tick, ppqn, tempoEvents);
-  return msToTicks(currentMs + lookAheadMs, ppqn, tempoEvents);
+  const midiTempoEvents: TempoEvent[] = tempoEvents.map((event) => ({
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    ...event,
+  }));
+  const currentMs = ticksToMs(tick, ppqn, midiTempoEvents);
+  return msToTicks(currentMs + lookAheadMs, ppqn, midiTempoEvents);
 }

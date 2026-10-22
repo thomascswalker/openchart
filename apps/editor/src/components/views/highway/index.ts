@@ -1,4 +1,4 @@
-import type { Midi, MidiNote } from "@openchart/core";
+import type { Midi, MidiNote } from "@openchart/midi";
 import type { EditablePhraseKind } from "@openchart/views";
 import { ChartView, SongView } from "@openchart/views";
 import * as THREE from "three";

@@ -1,115 +1,72 @@
 import { MAX_VARIABLE_LENGTH_VALUE } from "./constants.js";
 import {
-  MidiEvent,
   MidiMetaPayload,
   DefaultMetaPayload,
   MetaType,
+  MidiEvent,
   MidiSysExEvent,
-  TempoEvent,
+  extractMetaPayload,
 } from "./types.js";
+import { isTwoByteMessage } from "./util.js";
 
-export function isTwoByteMessage(status: number): boolean {
-  if (status >= 0xf0) {
-    return false;
-  }
-  const type = status & 0xf0;
-  return type !== 0xc0 && type !== 0xd0;
+/** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
+ * these deliberately do not depend on Node's Buffer global. */
+export function encodeBase64(bytes: Uint8Array): string {
+  if (bytes.length === 0) return "-";
+
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }
 
-export function getStatusString(status: number): string {
-  const type = status & 0xff;
-  if (type >= 0xf0) {
-    switch (type) {
-      case 0xf0:
-        return "SysEx Start";
-      case 0xf7:
-        return "SysEx End";
-      case 0xfa:
-        return "Start";
-      case 0xfb:
-        return "Continue";
-      case 0xfc:
-        return "Stop";
-      case 0xf8:
-        return "Timing Clock";
-      case 0xff:
-        return "Meta";
-      default:
-        return "System Message";
-    }
+export function decodeBase64(value: string): Uint8Array {
+  if (value === "-") return new Uint8Array(0);
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error(`Invalid base64 MIDI payload: ${value}`);
   }
 
-  switch (type) {
-    case 0x80:
-      return "Note Off";
-    case 0x90:
-      return "Note On";
-    case 0xa0:
-      return "Polyphonic Key Pressure";
-    case 0xb0:
-      return "Control Change";
-    case 0xc0:
-      return "Program Change";
-    case 0xd0:
-      return "Channel Pressure";
-    case 0xe0:
-      return "Pitch Bend";
-    default:
-      return "Unknown";
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  let binary: string;
+  try {
+    binary = atob(padded);
+  } catch {
+    throw new Error(`Invalid base64 MIDI payload: ${value}`);
   }
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
-export function formatTrackEvents(rawEvents: any[]): MidiEvent[] {
-  return rawEvents.map((record) => {
-    const result: any = {
-      deltaTime: record.deltaTime,
-      status: record.status,
-    };
+export function parseInteger(value: string, field: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${field} must be a non-negative integer`);
+  }
 
-    if (record.channel !== undefined) {
-      result.channel = record.channel;
-    }
+  const result = Number(value);
 
-    if (record.messageType !== undefined) {
-      result.messageType = record.messageType;
-    }
+  if (!Number.isSafeInteger(result)) {
+    throw new Error(`${field} must be a safe integer`);
+  }
 
-    if (record.statusByte < 0x80) {
-      result.data1 = record.statusByte;
+  return result;
+}
 
-      if (record.event && record.event.data2 !== undefined) {
-        result.data2 = record.event.data2;
-      }
-    } else if (record.status >= 0x80 && record.status < 0xf0) {
-      if (record.event) {
-        if (record.event.data1 !== undefined) {
-          result.data1 = record.event.data1;
-        }
+export function requireByte(value: number, field: string): number {
+  if (!Number.isInteger(value) || value < 0 || value > 0xff) {
+    throw new RangeError(`${field} must be an unsigned byte`);
+  }
 
-        if (record.event.data2 !== undefined) {
-          result.data2 = record.event.data2;
-        }
-      }
-    } else {
-      if (record.event) {
-        if (record.event.type !== undefined) {
-          result.type = record.event.type;
-        }
+  return value;
+}
 
-        if (record.event.length !== undefined) {
-          result.length = record.event.length;
-        }
+export function requireSignedByte(value: number, field: string): number {
+  if (!Number.isInteger(value) || value < -0x80 || value > 0x7f) {
+    throw new RangeError(`${field} must fit in a signed byte`);
+  }
 
-        if (record.event.data !== undefined) {
-          result.data = record.event.data;
-        } else {
-          result.data = record.event;
-        }
-      }
-    }
-
-    return result as MidiEvent;
-  });
+  return value < 0 ? value + 0x100 : value;
 }
 
 export function concatBytes(chunks: Uint8Array[]): Uint8Array {
@@ -153,28 +110,27 @@ export function writeUInt32BE(
   target[offset + 2] = (value >>> 8) & 0xff;
   target[offset + 3] = value & 0xff;
 }
-
 const utf8Encoder = new TextEncoder();
 const strictUtf8Decoder = new TextDecoder("utf-8", { fatal: true });
-
 /** Encodes text-meta payloads (lyrics, markers, track names) as UTF-8. ASCII
  * is a strict subset, so existing ASCII charts serialize byte-for-byte. */
+
 export function encodeText(value: string): Uint8Array {
   return utf8Encoder.encode(value);
 }
-
 /** Byte length of a text-meta payload once encoded. MIDI meta `length`
  * fields count bytes, not UTF-16 code units. */
+
 export function textByteLength(value: string): number {
   return encodeText(value).length;
 }
-
 /**
  * Decodes a text-meta payload. Valid UTF-8 (including plain ASCII) decodes
  * as UTF-8; anything else falls back to Latin-1 so legacy charts written by
  * single-byte tools keep their accented characters instead of turning into
  * replacement characters.
  */
+
 export function decodeText(bytes: Uint8Array): string {
   try {
     return strictUtf8Decoder.decode(bytes);
@@ -207,22 +163,6 @@ export function encodeVariableLengthValue(value: number): Uint8Array {
   return new Uint8Array(bytes);
 }
 
-export function requireByte(value: number, field: string): number {
-  if (!Number.isInteger(value) || value < 0 || value > 0xff) {
-    throw new RangeError(`${field} must be an unsigned byte`);
-  }
-
-  return value;
-}
-
-export function requireSignedByte(value: number, field: string): number {
-  if (!Number.isInteger(value) || value < -0x80 || value > 0x7f) {
-    throw new RangeError(`${field} must fit in a signed byte`);
-  }
-
-  return value < 0 ? value + 0x100 : value;
-}
-
 export function encodeMetaPayload(
   type: number,
   data: MidiMetaPayload,
@@ -244,7 +184,7 @@ export function encodeMetaPayload(
       return result;
     }
 
-    case MetaType.TextEvent:
+    case MetaType.TextMidiEvent:
     case MetaType.Copyright:
     case MetaType.TrackName:
     case MetaType.InstrumentName:
@@ -288,9 +228,12 @@ export function encodeMetaPayload(
       return new Uint8Array([
         requireByte(payload.numerator, "time-signature numerator"),
         requireByte(payload.denominator, "time-signature denominator"),
-        requireByte(payload.clocksPerClick, "time-signature clocks-per-click"),
         requireByte(
-          payload.thirtySecondNotesPerQuarter,
+          payload.clocksPerClick ?? 24,
+          "time-signature clocks-per-click",
+        ),
+        requireByte(
+          payload.thirtySecondNotesPerQuarter ?? 8,
           "time-signature thirty-second notes",
         ),
       ]);
@@ -307,8 +250,8 @@ export function encodeMetaPayload(
       );
   }
 }
-
 /** Decodes raw MIDI meta-event bytes into the payload shape used by this library. */
+
 export function decodeMetaPayload(
   type: number,
   bytes: Uint8Array,
@@ -326,7 +269,7 @@ export function decodeMetaPayload(
       requireLength(2);
       return { sequenceNumber: (bytes[0] << 8) | bytes[1] };
 
-    case MetaType.TextEvent:
+    case MetaType.TextMidiEvent:
     case MetaType.Copyright:
     case MetaType.TrackName:
     case MetaType.InstrumentName:
@@ -391,10 +334,7 @@ export function encodeMidiEvent(event: MidiEvent): Uint8Array {
   const deltaTime = encodeVariableLengthValue(event.deltaTime);
 
   if (event.status === 0xff && "type" in event) {
-    const payload = encodeMetaPayload(
-      event.type,
-      "text" in event ? { text: event.text } : event.data,
-    );
+    const payload = encodeMetaPayload(event.type, extractMetaPayload(event));
 
     return concatBytes([
       deltaTime,
@@ -436,57 +376,55 @@ export function encodeMidiEvent(event: MidiEvent): Uint8Array {
   return concatBytes([deltaTime, new Uint8Array(bytes)]);
 }
 
-/** Converts an absolute MIDI tick to milliseconds, honoring tempo events along the way. */
-export function ticksToMs(
-  tick: number,
-  ppqn: number,
-  tempoEvents: TempoEvent[],
-): number {
-  let ms = 0;
-  let previousTick = 0;
-  let microsecondsPerQuarterNote = 500_000;
+export function formatTrackEvents(rawEvents: any[]): MidiEvent[] {
+  return rawEvents.map((record) => {
+    const result: any = {
+      deltaTime: record.deltaTime,
+      status: record.status,
+    };
 
-  for (const event of tempoEvents) {
-    if (event.tick >= tick) {
-      break;
+    if (record.channel !== undefined) {
+      result.channel = record.channel;
     }
 
-    ms +=
-      ((event.tick - previousTick) * microsecondsPerQuarterNote) / ppqn / 1000;
-    previousTick = event.tick;
-    microsecondsPerQuarterNote = event.microsecondsPerQuarterNote;
-  }
-
-  ms += ((tick - previousTick) * microsecondsPerQuarterNote) / ppqn / 1000;
-
-  return ms;
-}
-
-/** Converts milliseconds to an absolute MIDI tick, honoring tempo events along the way. */
-export function msToTicks(
-  ms: number,
-  ppqn: number,
-  tempoEvents: TempoEvent[],
-): number {
-  let remainingMs = ms;
-  let previousTick = 0;
-  let microsecondsPerQuarterNote = 500_000;
-
-  for (const event of tempoEvents) {
-    const segmentMs =
-      ((event.tick - previousTick) * microsecondsPerQuarterNote) / ppqn / 1000;
-
-    if (segmentMs >= remainingMs) {
-      break;
+    if (record.messageType !== undefined) {
+      result.messageType = record.messageType;
     }
 
-    remainingMs -= segmentMs;
-    previousTick = event.tick;
-    microsecondsPerQuarterNote = event.microsecondsPerQuarterNote;
-  }
+    if (record.statusByte < 0x80) {
+      result.data1 = record.statusByte;
 
-  const ticks =
-    previousTick + (remainingMs * 1000 * ppqn) / microsecondsPerQuarterNote;
+      if (record.event && record.event.data2 !== undefined) {
+        result.data2 = record.event.data2;
+      }
+    } else if (record.status >= 0x80 && record.status < 0xf0) {
+      if (record.event) {
+        if (record.event.data1 !== undefined) {
+          result.data1 = record.event.data1;
+        }
 
-  return Math.max(0, ticks);
+        if (record.event.data2 !== undefined) {
+          result.data2 = record.event.data2;
+        }
+      }
+    } else {
+      if (record.event) {
+        if (record.event.type !== undefined) {
+          result.type = record.event.type;
+        }
+
+        if (record.event.length !== undefined) {
+          result.length = record.event.length;
+        }
+
+        if (record.event.data !== undefined) {
+          result.data = record.event.data;
+        } else {
+          result.data = record.event;
+        }
+      }
+    }
+
+    return result as MidiEvent;
+  });
 }

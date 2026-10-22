@@ -1,4 +1,4 @@
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
 import type { SaveFile } from "./filesystem/types";
 import type { LoggerService } from "./logger";

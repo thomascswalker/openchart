@@ -8,7 +8,7 @@ TypeScript application (web/desktop) and libraries for editing and reviewing MID
 
 | Type    | Name                 | Description                                                                                                                                                                     |
 | ------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Package | `@openchart/core`    | Core MIDI parsing (read/write) library.                                                                                                                                         |
+| Package | `@openchart/midi`    | Core MIDI parsing (read/write) library.                                                                                                                                         |
 | Package | `@openchart/views`   | MIDI view library providing non-owning "views" of MIDI data. These views provide an abstraction of the MIDI data in order to more easily interface with a specific MIDI schema. |
 | Package | `@openchart/mixer`   | Provides a simple audio mixing class for managing multitrack audio in a DAW-like environment.                                                                                   |
 | App     | `@openchart/editor`  | React + Three.js web-based MIDI editor app.                                                                                                                                     |
@@ -126,12 +126,12 @@ npm run build --workspace=@openchart/editor
 ### Piano Roll Storybook Harness
 
 Run these commands from the repository root. Build the package exports first;
-the editor imports `@openchart/core` and `@openchart/views` from their `dist`
+the editor imports `@openchart/midi` and `@openchart/views` from their `dist`
 directories.
 
 ```bash
 npm ci
-npm run build --workspace=@openchart/core
+npm run build --workspace=@openchart/midi
 npm run build --workspace=@openchart/views
 npm run storybook                    # open http://localhost:6006, then Views/Piano Roll
 npm run build-storybook
@@ -167,6 +167,6 @@ npm run test
 
 Package-specific API documentation and examples:
 
-- [`@openchart/core`](packages/core/README.md) — read, edit, and write Standard MIDI Files.
+- [`@openchart/midi`](packages/core/README.md) — read, edit, and write Standard MIDI Files.
 - [`@openchart/views`](packages/views/README.md) — create chart-oriented views and edit instrument charts.
 - [`@openchart/mixer`](packages/mixer/README.md) — mix and control multitrack audio.

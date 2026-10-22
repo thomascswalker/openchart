@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Midi, MidiTrack } from "../../src/midi.js";
+import { Midi } from "../../src/midi.js";
 import { MetaType, type TextMidiEvent } from "../../src/types.js";
 import {
   decodeMetaPayload,
@@ -7,7 +7,8 @@ import {
   encodeMetaPayload,
   encodeText,
   textByteLength,
-} from "../../src/util.js";
+} from "../../src/codec.js";
+import { MidiTrack } from "../../src/track.js";
 
 const SAMPLES = ["plain", "café", "é", "日本語の歌", "🎤 sing", "naïve+"];
 

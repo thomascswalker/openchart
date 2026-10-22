@@ -1,11 +1,11 @@
-import type {
-  MidiMetaEvent,
-  MidiNote,
-  MidiTrack,
-  TextMidiEvent,
-} from "@openchart/core";
-import { MetaType } from "@openchart/core";
+import type { MidiNote, MidiTrack } from "@openchart/midi";
+import { MetaType } from "@openchart/midi";
 import type { TrackDescriptor } from "./config.js";
+
+export interface SectionMarker {
+  name: string;
+  tick: number;
+}
 
 export type EditablePhraseKind =
   "stagepower" | "solo" | "vocal" | "power-window";
@@ -145,25 +145,12 @@ export function trimNoteAt(
   return track.setNoteDuration(note, Math.max(1, tick - note.start));
 }
 
-function textValue(event: MidiMetaEvent | TextMidiEvent): string {
-  if ("text" in event) return event.text;
-  return "text" in event.data && typeof event.data.text === "string"
-    ? event.data.text
-    : "";
-}
-
-export function extractSections(
-  track: MidiTrack,
-): Array<{ name: string; tick: number }> {
-  return track
-    .getTimedEvents()
-    .filter(
-      (item) =>
-        item.event.status === 0xff &&
-        (item.event as MidiMetaEvent | TextMidiEvent).type === MetaType.Marker,
-    )
+export function extractSections(track: MidiTrack): SectionMarker[] {
+  const textEvents = track.getTextEvents();
+  return textEvents
+    .filter((item) => item.type === MetaType.Marker)
     .map((item) => ({
-      name: textValue(item.event as MidiMetaEvent | TextMidiEvent),
+      name: item.text,
       tick: item.tick,
     }))
     .filter((section) => /^\s*\[section\s+.+\]\s*$/i.test(section.name));
@@ -173,7 +160,7 @@ export function findSection(
   track: MidiTrack,
   tick: number,
   direction: -1 | 1,
-): { name: string; tick: number } | null {
+): SectionMarker | null {
   const sections = extractSections(track).sort((a, b) => a.tick - b.tick);
   return direction > 0
     ? (sections.find((section) => section.tick > tick) ?? null)

@@ -1,4 +1,4 @@
-import type { MidiEvent, TimedMidiEvent } from "@openchart/core";
+import type { TimedMidiEvent } from "@openchart/midi";
 
 export interface GuitarNoteLike {
   note: number;
@@ -21,11 +21,17 @@ interface SysExEventLike {
   data: Uint8Array;
 }
 
-function isSysExEvent(event: MidiEvent): event is MidiEvent & SysExEventLike {
-  return event.status === 0xf0 || event.status === 0xf7;
+function isSysExEvent(
+  event: TimedMidiEvent,
+): event is TimedMidiEvent & SysExEventLike {
+  return (
+    (event.status === 0xf0 || event.status === 0xf7) &&
+    "data" in event &&
+    event.data instanceof Uint8Array
+  );
 }
 
-function isTapSysEx(event: MidiEvent): boolean {
+function isTapSysEx(event: TimedMidiEvent): boolean {
   if (!isSysExEvent(event)) return false;
   const data = event.data;
   return data.some(
@@ -42,12 +48,12 @@ export function getTapSysExRanges(
 ): TickRange[] {
   const ranges: TickRange[] = [];
   let phraseStart: number | null = null;
-  for (const { event, tick } of events) {
+  for (const event of events) {
     if (!isTapSysEx(event)) continue;
     if (phraseStart === null) {
-      phraseStart = tick;
+      phraseStart = event.tick;
     } else {
-      ranges.push({ start: phraseStart, end: tick });
+      ranges.push({ start: phraseStart, end: event.tick });
       phraseStart = null;
     }
   }

@@ -5,7 +5,7 @@ import {
   type MidiTrack,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import {
   getVocalNotes,
   setVocalLyric,
@@ -494,11 +494,9 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       return;
     }
     this.#tempoCacheMidi = midi;
-    this.#tempoEvents = midi?.getTempoEvents() ?? [
-      { tick: 0, microsecondsPerQuarterNote: 500_000 },
-    ];
+    this.#tempoEvents = midi?.getTempoEvents() ?? [...DefaultTempoEvents];
     this.#timeSignatureEvents = midi?.getTimeSignatureEvents() ?? [
-      { tick: 0, numerator: 4, denominator: 2 },
+      ...DefaultTimeSignatureEvents,
     ];
   }
 }

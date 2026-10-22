@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ChannelMessage, MetaType, Midi, MidiTrack } from "@openchart/core";
+import { ChannelMessage, MetaType, Midi, MidiTrack } from "@openchart/midi";
 import {
   addViewport,
   cameraTick,

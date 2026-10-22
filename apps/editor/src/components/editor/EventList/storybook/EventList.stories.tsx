@@ -4,7 +4,7 @@ import {
   addRandomMetaEvents,
   addRandomChannelEvents,
   Midi,
-} from "@openchart/core";
+} from "@openchart/midi";
 
 const meta = {
   title: "Editor/Event List",

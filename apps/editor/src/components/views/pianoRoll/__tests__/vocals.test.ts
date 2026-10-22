@@ -1,4 +1,4 @@
-import { MetaType, Midi, MidiTrack } from "@openchart/core";
+import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
 import { SongView, validateVocalTrack } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
@@ -25,7 +25,16 @@ import type {
 const VOCALS = profileForInstrument("VOCALS");
 const LANE_HEIGHT = 18;
 const GRID_TOP = HeaderHeight + 5 * LANE_HEIGHT;
-const TEMPO = [{ tick: 0, microsecondsPerQuarterNote: 500_000 }];
+const TEMPO: TempoEvent[] = [
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  },
+];
 /** Screen X of a tick at the default zoom (120 px per quarter = 480 ticks). */
 const xAt = (tick: number) => KeyboardWidth + tick / 4;
 /** Screen Y inside the grid row of a pitch, with camera.y = 84. */

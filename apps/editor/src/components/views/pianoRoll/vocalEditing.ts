@@ -2,8 +2,8 @@ import type {
   MidiChannelEvent,
   MidiNote,
   MidiTrack,
-  TextEvent,
-} from "@openchart/core";
+  TextMidiEvent,
+} from "@openchart/midi";
 import {
   addVocalNote,
   addVocalPhrase,
@@ -41,7 +41,7 @@ export class VocalEditingStrategy implements IEditingStrategy {
   public readonly id = "vocal";
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
-  private moveLyrics = new Map<MidiChannelEvent, TextEvent | null>();
+  private moveLyrics = new Map<MidiChannelEvent, TextMidiEvent | null>();
   private lastValidMoveTickDelta = 0;
   private lastPreviewPitch: number | null = null;
 

@@ -1,4 +1,4 @@
-import type { MidiChannelEvent } from "@openchart/core";
+import type { MidiChannelEvent } from "@openchart/midi";
 import { Vector2 } from "three";
 import type { CoordinateSystem } from "../coordinates";
 import {

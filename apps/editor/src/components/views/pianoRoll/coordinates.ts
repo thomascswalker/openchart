@@ -1,5 +1,5 @@
-import type { TempoEvent } from "@openchart/core";
-import { msToTicks, ticksToMs } from "@openchart/core";
+import type { TempoEvent } from "@openchart/midi";
+import { msToTicks, ticksToMs } from "@openchart/midi";
 import { clamp } from "es-toolkit";
 import { Box2, Vector2 } from "three";
 import {

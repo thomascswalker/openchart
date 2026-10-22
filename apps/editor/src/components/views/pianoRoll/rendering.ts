@@ -507,7 +507,7 @@ export class PianoRollRenderer {
 
 export function* iterateGridBeats(
   ppqn: number,
-  segments: import("@openchart/core").TimeSignatureEvent[],
+  segments: import("@openchart/midi").TimeSignatureEvent[],
   startTick: number,
   endTick: number,
 ): Generator<{ tick: number; isMeasure: boolean }> {

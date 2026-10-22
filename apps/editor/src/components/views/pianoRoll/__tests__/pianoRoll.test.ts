@@ -1,9 +1,10 @@
-import type {
-  MidiNote,
-  MidiTrack,
-  TempoEvent,
-  TimeSignatureEvent,
-} from "@openchart/core";
+import {
+  MetaType,
+  type MidiNote,
+  type MidiTrack,
+  type TempoEvent,
+  type TimeSignatureEvent,
+} from "@openchart/midi";
 import { Box2, Vector2 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -24,7 +25,14 @@ import { applyStyle } from "../../../../util/css";
 
 function makeCoordinates(
   tempoEvents: TempoEvent[] = [
-    { tick: 0, microsecondsPerQuarterNote: 500_000 },
+    {
+      deltaTime: 0,
+      status: 0xff,
+      type: MetaType.Tempo,
+      length: 3,
+      tick: 0,
+      microsecondsPerQuarterNote: 500_000,
+    },
   ],
   snap = { enabled: true, denominator: 4 },
 ): CoordinateSystem {
@@ -62,8 +70,22 @@ function makeNote(
 describe("piano-roll coordinates", () => {
   it("round-trips ticks and pixels across tempo segments", () => {
     const coordinates = makeCoordinates([
-      { tick: 0, microsecondsPerQuarterNote: 500_000 },
-      { tick: 480, microsecondsPerQuarterNote: 1_000_000 },
+      {
+        deltaTime: 0,
+        status: 0xff,
+        type: MetaType.Tempo,
+        length: 3,
+        tick: 0,
+        microsecondsPerQuarterNote: 500_000,
+      },
+      {
+        deltaTime: 480,
+        status: 0xff,
+        type: MetaType.Tempo,
+        length: 3,
+        tick: 480,
+        microsecondsPerQuarterNote: 1_000_000,
+      },
     ]);
 
     for (const tick of [0, 240, 480, 720, 960]) {
@@ -91,8 +113,24 @@ describe("piano-roll coordinates", () => {
 describe("piano-roll grid", () => {
   it("uses the active signature's beat and measure lengths", () => {
     const events: TimeSignatureEvent[] = [
-      { tick: 0, numerator: 3, denominator: 2 },
-      { tick: 1440, numerator: 4, denominator: 3 },
+      {
+        deltaTime: 0,
+        status: 0xff,
+        type: MetaType.TimeSignature,
+        length: 4,
+        tick: 0,
+        numerator: 3,
+        denominator: 2,
+      },
+      {
+        deltaTime: 0,
+        status: 0xff,
+        type: MetaType.TimeSignature,
+        length: 4,
+        tick: 1440,
+        numerator: 4,
+        denominator: 3,
+      },
     ];
     const beats = Array.from(iterateGridBeats(480, events, 0, 2400));
     expect(
@@ -113,7 +151,16 @@ describe("note geometry", () => {
       track: {} as MidiTrack,
       notes: [note],
       noteIndex: null,
-      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
+      tempoEvents: [
+        {
+          deltaTime: 0,
+          status: 0xff,
+          type: MetaType.Tempo,
+          length: 3,
+          tick: 0,
+          microsecondsPerQuarterNote: 500_000,
+        },
+      ],
       tickWidth: 0.25,
       rowHeight: 18,
       width: 800,

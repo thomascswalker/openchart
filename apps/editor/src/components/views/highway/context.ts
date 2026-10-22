@@ -1,4 +1,4 @@
-import type { Midi, MidiChannelEvent } from "@openchart/core";
+import type { Midi, MidiChannelEvent } from "@openchart/midi";
 import type { ChartView } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
 import type { SelectionContext } from "./selection";

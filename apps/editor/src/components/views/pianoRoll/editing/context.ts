@@ -1,4 +1,4 @@
-import type { MidiChannelEvent, MidiTrack } from "@openchart/core";
+import type { MidiChannelEvent, MidiTrack } from "@openchart/midi";
 import type { Vector2 } from "three";
 import type { PianoRollNote } from "../types";
 import type {

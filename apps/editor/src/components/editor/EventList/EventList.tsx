@@ -5,8 +5,7 @@ import {
   getStatusString,
   type MidiChannelEvent,
   type MidiMetaEvent,
-  type MidiSysExEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import { DataTable } from "../../shared/Table";
 import { useEffect, useMemo, useState } from "react";
 import Box from "../../shared/Box";
@@ -24,7 +23,7 @@ import { HorizontalSeparator } from "../../shared/Separator";
 
 type EventType = "channel" | "meta" | "sysex";
 type Row = Record<string, any>;
-type TimedEvent = { event: any; tick: number };
+type TimedEvent = ReturnType<MidiTrack["getTimedEvents"]>[number];
 
 const columnHelper = createAppColumnHelper();
 const str = ({ cell }: any) => String(cell.getValue());
@@ -41,8 +40,8 @@ interface EventTypeConfig {
   columnDefs: any[];
 }
 
-const baseRow = ({ event, tick }: TimedEvent): Row => ({
-  tick,
+const baseRow = (event: TimedEvent): Row => ({
+  tick: event.tick,
   deltaTime: event.deltaTime,
   status: event.status,
 });
@@ -52,7 +51,7 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
   channel: {
     filter: (event) => event.status < 0xf0,
     toRow: (item) => {
-      const event = item.event as MidiChannelEvent;
+      const event = item as MidiChannelEvent & { tick: number };
       return {
         ...baseRow(item),
         channel: event.channel,
@@ -75,12 +74,26 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
   meta: {
     filter: (event) => event.status === 0xff,
     toRow: (item) => {
-      const event = item.event as MidiMetaEvent;
+      const event = item as MidiMetaEvent & { tick: number };
+      const payload = Object.entries(event)
+        .filter(
+          ([key]) =>
+            ![
+              "deltaTime",
+              "status",
+              "type",
+              "length",
+              "tick",
+              "order",
+            ].includes(key),
+        )
+        .map(([key, value]) => `${key}: ${String(value)}`)
+        .join(", ");
       return {
         ...baseRow(item),
         type: event.type,
         length: event.length,
-        data: "text" in event ? event.text : event.data,
+        data: payload,
       };
     },
     columnDefs: [
@@ -97,7 +110,8 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
     filter: (event) => event.status === 0xf0 || event.status === 0xf7,
     toRow: (item) => ({
       ...baseRow(item),
-      length: (item.event as MidiSysExEvent).data?.length ?? 0,
+      length:
+        "length" in item && typeof item.length === "number" ? item.length : 0,
     }),
     columnDefs: [
       ...baseColumns(),
@@ -166,7 +180,7 @@ const EventList = () => {
   const data = useMemo(
     () =>
       (selectedTrack?.getTimedEvents() ?? [])
-        .filter(({ event }) => config.filter(event))
+        .filter((event) => config.filter(event))
         .map((item, i) => ({ id: String(i), ...config.toRow(item) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedTrack, config, documentSnapshot],

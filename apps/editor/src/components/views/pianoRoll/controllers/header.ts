@@ -1,11 +1,10 @@
 import {
   MetaType,
   Midi,
-  type IEvent,
   type TempoEvent,
-  type TextEvent,
+  type TextMidiEvent,
   type TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import { Vector2 } from "three";
 import {
   HeaderHeight,
@@ -24,6 +23,7 @@ import {
 } from "../../../../audio/musicalTime";
 
 export type HeaderLane = "tempo" | "timeSignature" | "text";
+type HeaderEvent = TempoEvent | TimeSignatureEvent | TextMidiEvent;
 
 export const DefaultHeaderLanes: readonly HeaderLane[] = [
   "tempo",
@@ -39,8 +39,8 @@ interface Range {
 interface MarkerConfig {
   name: HeaderLane;
   instances: HTMLDivElement[];
-  events: IEvent[];
-  format: (event: IEvent) => string;
+  events: HeaderEvent[];
+  format: (event: HeaderEvent) => string;
 }
 
 /** Manages header markers, inline editing, and lyric prompts for the piano roll. */
@@ -53,7 +53,7 @@ export class HeaderController extends IController {
   #deleteButtonRef: HTMLButtonElement | null = null;
   #editingMarkerKey: string | null = null;
   #editingMarker: { lane: HeaderLane; tick: number } | null = null;
-  #draggingText: TextEvent | null = null;
+  #draggingText: TextMidiEvent | null = null;
   #prompt: { tick: number; handlers: LyricPromptHandlers } | null = null;
   #promptKey: string | null = null;
   #width: number = 0;
@@ -188,21 +188,21 @@ export class HeaderController extends IController {
         name: "tempo",
         instances: this.#tempoLabelRefs,
         events: tempoEvents,
-        format: (event: IEvent) =>
+        format: (event: HeaderEvent) =>
           `\u266a=${Math.round(60_000_000 / (event as TempoEvent).microsecondsPerQuarterNote)}`,
       },
       {
         name: "timeSignature",
         instances: this.#timeSignatureLabelRefs,
         events: timeSignatureEvents,
-        format: (event: IEvent) =>
+        format: (event: HeaderEvent) =>
           `${(event as TimeSignatureEvent).numerator}/${2 ** (event as TimeSignatureEvent).denominator}`,
       },
       {
         name: "text",
         events: textEvents,
         instances: this.#textLabelRefs,
-        format: (event: IEvent) => (event as TextEvent).text,
+        format: (event: HeaderEvent) => (event as TextMidiEvent).text,
       },
     ];
   };
@@ -466,7 +466,7 @@ export class HeaderController extends IController {
   }
 
   /** Creates or updates marker labels and highlights for one lane. */
-  private drawMarkers<T extends IEvent>(
+  private drawMarkers<T extends HeaderEvent>(
     lane: HeaderLane,
     instance: HTMLDivElement[],
     events: T[],
@@ -546,11 +546,11 @@ export class HeaderController extends IController {
     return this.findMarkerNear(this.context.getTimeSignatureEvents(), pos);
   }
 
-  private findTextEventNear(pos: number): TextEvent | null {
+  private findTextEventNear(pos: number): TextMidiEvent | null {
     return this.findMarkerNear(this.context.getTextEvents(), pos);
   }
 
-  private findEventNear(type: HeaderLane, pos: number): IEvent | null {
+  private findEventNear(type: HeaderLane, pos: number): HeaderEvent | null {
     switch (type) {
       case "tempo":
         return this.findTempoEventNear(pos);

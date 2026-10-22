@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MidiNote } from "@openchart/core";
+import { MetaType, type MidiNote } from "@openchart/midi";
 import {
   Soundboard,
   midiPitchToFrequency,
@@ -39,6 +39,28 @@ class FakeGain {
   public gain = new FakeParam();
   public connect(): void {}
 }
+
+const TEMPO_EVENTS = [
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.Tempo,
+    length: 3,
+    tick: 0,
+    microsecondsPerQuarterNote: 500_000,
+  },
+];
+const TIME_SIGNATURE_EVENTS = [
+  {
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.TimeSignature,
+    length: 4,
+    tick: 0,
+    numerator: 4,
+    denominator: 2,
+  },
+];
 
 function settings(
   overrides: Partial<SoundboardSettings> = {},
@@ -92,8 +114,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi: null,
       ppqn: 480,
-      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: TEMPO_EVENTS,
+      timeSignatureEvents: TIME_SIGNATURE_EVENTS,
       settings: settings(),
       clapEnabled: false,
       highwayActive: false,
@@ -131,8 +153,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi,
       ppqn: 480,
-      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: TEMPO_EVENTS,
+      timeSignatureEvents: TIME_SIGNATURE_EVENTS,
       settings: settings({ metronomeEnabled: true }),
       clapEnabled: true,
       highwayActive: true,
@@ -164,8 +186,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi: null,
       ppqn: 480,
-      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: TEMPO_EVENTS,
+      timeSignatureEvents: TIME_SIGNATURE_EVENTS,
       settings: settings(),
       clapEnabled: false,
       highwayActive: false,
@@ -232,8 +254,8 @@ describe("Soundboard", () => {
     engine.configure({
       midi: null,
       ppqn: 480,
-      tempoEvents: [{ tick: 0, microsecondsPerQuarterNote: 500_000 }],
-      timeSignatureEvents: [{ tick: 0, numerator: 4, denominator: 2 }],
+      tempoEvents: TEMPO_EVENTS,
+      timeSignatureEvents: TIME_SIGNATURE_EVENTS,
       settings: settings(),
       clapEnabled: true,
       highwayActive: true,

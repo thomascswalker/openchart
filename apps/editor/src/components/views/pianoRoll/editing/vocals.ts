@@ -2,8 +2,8 @@ import type {
   MidiChannelEvent,
   MidiNote,
   MidiTrack,
-  TextEvent,
-} from "@openchart/core";
+  TextMidiEvent,
+} from "@openchart/midi";
 import {
   SongView,
   addVocalNote,
@@ -79,7 +79,7 @@ export class VocalEditContext implements IEditContext {
   private readonly coordinates: CoordinateSystem;
 
   /** Lyric events captured when a move began, so lyrics follow their notes. */
-  private moveLyrics = new Map<MidiChannelEvent, TextEvent | null>();
+  private moveLyrics = new Map<MidiChannelEvent, TextMidiEvent | null>();
 
   /** Last horizontal offset of the current move that kept phrases valid. */
   private lastValidMoveTickDelta = 0;

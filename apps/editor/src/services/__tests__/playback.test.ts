@@ -29,7 +29,7 @@ vi.mock("@openchart/views", async (importOriginal) => ({
   }),
 }));
 
-type MidiData = import("@openchart/core").Midi;
+type MidiData = import("@openchart/midi").Midi;
 
 function settings(metronomeEnabled = false): ApplicationSettings {
   return { feedback: { metronomeEnabled } } as unknown as ApplicationSettings;

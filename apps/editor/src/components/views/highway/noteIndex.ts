@@ -1,4 +1,4 @@
-import type { MidiNote } from "@openchart/core";
+import type { MidiNote } from "@openchart/midi";
 import type { ChartView } from "@openchart/views";
 import { drumLaneCount, getDrumNoteProfile } from "./drumProfile";
 

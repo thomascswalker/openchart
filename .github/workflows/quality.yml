@@ -68,7 +68,7 @@ jobs:
 
       - name: Build Storybook package dependencies
         run: |
-          npm run build --workspace=@openchart/core
+          npm run build --workspace=@openchart/midi
           npm run build --workspace=@openchart/views
 
       - name: Build Storybook

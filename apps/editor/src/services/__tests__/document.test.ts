@@ -1,4 +1,4 @@
-import { Midi } from "@openchart/core";
+import { Midi } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService, type OpenedProject } from "../document";
 import type { LoggerService } from "../logger";

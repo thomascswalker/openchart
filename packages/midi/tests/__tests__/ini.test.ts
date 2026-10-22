@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Midi, MidiTrack } from "../../src/midi.js";
+import { Midi } from "../../src/midi.js";
 import {
   ChannelMessage,
   MetaType,
@@ -8,6 +8,7 @@ import {
   MidiSysExEvent,
   TextMidiEvent,
 } from "../../src/types.js";
+import { MidiTrack } from "../../src/track.js";
 
 function createMidi(): Midi {
   const midi = new Midi();
@@ -27,19 +28,17 @@ function createMidi(): Midi {
       status: 0xff,
       type: MetaType.Tempo,
       length: 3,
-      data: { microsecondsPerQuarterNote: 500_000 },
+      microsecondsPerQuarterNote: 500_000,
     } as MidiMetaEvent,
     {
       deltaTime: 0,
       status: 0xff,
       type: MetaType.TimeSignature,
       length: 4,
-      data: {
-        numerator: 3,
-        denominator: 3,
-        clocksPerClick: 24,
-        thirtySecondNotesPerQuarter: 8,
-      },
+      numerator: 3,
+      denominator: 3,
+      clocksPerClick: 24,
+      thirtySecondNotesPerQuarter: 8,
     } as MidiMetaEvent,
     {
       deltaTime: 120,

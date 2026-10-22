@@ -3,10 +3,10 @@ import type {
   MidiChannelEvent,
   MidiNote,
   MidiTrack,
-  TextEvent,
+  TextMidiEvent,
   TempoEvent,
   TimeSignatureEvent,
-} from "@openchart/core";
+} from "@openchart/midi";
 import type { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
 import type { PianoRollProfile } from "./profile";
@@ -85,7 +85,7 @@ export interface PianoRollContext {
   getCurrentNotes(): PianoRollNote[];
   getTempoEvents(): TempoEvent[];
   getTimeSignatureEvents(): TimeSignatureEvent[];
-  getTextEvents(): TextEvent[];
+  getTextEvents(): TextMidiEvent[];
   getCamera(): PianoRollCamera;
   getViewport(): { width: number; height: number };
   getPointerContext(): PointerContext;

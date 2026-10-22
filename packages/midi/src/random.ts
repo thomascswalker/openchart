@@ -1,5 +1,5 @@
 import { MetaType } from "./types.js";
-import type { MidiTrack } from "./midi.js";
+import type { MidiTrack } from "./track.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -52,7 +52,7 @@ export function addRandomMetaEvents(
         track.addTimeSignatureEvent(tick);
         break;
       default:
-        track.addTextEvent(MetaType.TextEvent, tick, "Text!");
+        track.addTextEvent(MetaType.TextMidiEvent, tick, "Text!");
         break;
     }
   }

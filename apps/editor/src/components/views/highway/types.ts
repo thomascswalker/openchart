@@ -1,4 +1,4 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/core";
+import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import type { EditablePhraseKind } from "@openchart/views";
 import type { DrumNoteKind } from "./drumProfile";
 

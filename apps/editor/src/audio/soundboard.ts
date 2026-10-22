@@ -3,8 +3,8 @@ import type {
   MidiNote,
   TempoEvent,
   TimeSignatureEvent,
-} from "@openchart/core";
-import { ticksToMs } from "@openchart/core";
+} from "@openchart/midi";
+import { ticksToMs } from "@openchart/midi";
 import {
   beatCrossings,
   tickWindowForLookAhead,

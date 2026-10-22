@@ -7,7 +7,7 @@ import { Button } from "./shared/Button";
 import { Text } from "./shared/Text";
 import styles from "./TrackList.module.css";
 import { useMemo } from "react";
-import type { MidiTrack } from "@openchart/core";
+import type { MidiTrack } from "@openchart/midi";
 
 interface TrackListProps {
   session?: ViewportSession;

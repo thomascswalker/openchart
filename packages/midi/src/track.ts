@@ -1,143 +1,31 @@
-// https://midimusic.github.io/tech/midispec.html
-
 import {
-  ChannelMessage,
-  MetaType,
-  MidiChannelEvent,
-  MidiEvent,
+  textByteLength,
+  encodeMidiEvent,
+  concatBytes,
+  writeAscii,
+  writeUInt32BE,
+} from "./codec.js";
+import {
   MidiFormat,
+  MidiEvent,
+  MidiNote,
+  MidiEventId,
+  TextMidiEvent,
   MidiMetaEvent,
   MidiSysExEvent,
-  MidiEventId,
-  TempoEvent,
-  TempoMetaPayload,
-  TextEvent,
+  MidiChannelEvent,
+  ChannelMessage,
   TimedMidiEvent,
+  TimedEventRecord,
+  TempoEvent,
+  MetaType,
+  sortEvents,
   TimeSignatureEvent,
-  TimeSignatureMetaPayload,
-  TextMidiEvent,
   TextMetaType,
+  GetNotesOptions,
 } from "./types.js";
-import {
-  concatBytes,
-  decodeMetaPayload,
-  encodeMidiEvent,
-  encodeMetaPayload,
-  isTwoByteMessage,
-  textByteLength,
-  writeAscii,
-  writeUInt16BE,
-  writeUInt32BE,
-} from "./util.js";
-import { trackParser } from "./parsers.js";
-import * as ini from "ini";
 
-/** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
- * these deliberately do not depend on Node's Buffer global. */
-function encodeBase64(bytes: Uint8Array): string {
-  if (bytes.length === 0) return "-";
-
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function decodeBase64(value: string): Uint8Array {
-  if (value === "-") return new Uint8Array(0);
-  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
-    throw new Error(`Invalid base64 MIDI payload: ${value}`);
-  }
-
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-  let binary: string;
-  try {
-    binary = atob(padded);
-  } catch {
-    throw new Error(`Invalid base64 MIDI payload: ${value}`);
-  }
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-function parseInteger(value: string, field: string): number {
-  if (!/^\d+$/.test(value)) {
-    throw new Error(`${field} must be a non-negative integer`);
-  }
-
-  const result = Number(value);
-
-  if (!Number.isSafeInteger(result)) {
-    throw new Error(`${field} must be a safe integer`);
-  }
-
-  return result;
-}
-
-interface MidiNote {
-  note: number;
-  velocity: number;
-  start: number;
-  end: number;
-  noteOn: MidiChannelEvent;
-  noteOff: MidiChannelEvent;
-  previous?: MidiNote;
-}
-
-function isTextMetaType(type: number): type is TextMetaType {
-  return [
-    MetaType.TextEvent,
-    MetaType.Copyright,
-    MetaType.TrackName,
-    MetaType.InstrumentName,
-    MetaType.Lyric,
-    MetaType.Marker,
-    MetaType.CuePoint,
-  ].includes(type as MetaType);
-}
-
-class MidiHeader {
-  format: MidiFormat = 1;
-  trackCount: number = 0;
-  division: number = 480;
-  isSMPTE: boolean = false;
-}
-
-export interface GetNotesOptions {
-  pitch?: {
-    low: number;
-    high: number;
-  };
-}
-
-export function getMidiEventType(
-  status: number,
-): "channel" | "meta" | "sysex" | "unknown" {
-  if (status < 0xff) {
-    return "channel";
-  } else if (status === 0xff) {
-    return "meta";
-  } else if (status === 0xf0 || status === 0xf7) {
-    return "sysex";
-  }
-  return "unknown";
-}
-
-export function getMidiEventProps(status: number): string[] {
-  const common = ["deltaTime", "status"];
-  if (status < 0xff) {
-    return common.concat("channel", "messageType", "data1", "data2");
-  } else if (status === 0xff) {
-    return common.concat("type", "length", "data");
-  } else if (status === 0xf0 || status === 0xf7) {
-    return common.concat("length", "data");
-  }
-  return common;
-}
-
-class MidiTrack {
+export class MidiTrack {
   format: MidiFormat = 0;
   name: string = "";
   events: MidiEvent[] = [];
@@ -146,7 +34,10 @@ class MidiTrack {
   private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
   private noteRevision = 0;
   private readonly eventIds = new WeakMap<object, MidiEventId>();
-  private readonly textEventSources = new WeakMap<TextEvent, TextMidiEvent>();
+  private readonly textEventSources = new WeakMap<
+    TextMidiEvent,
+    TextMidiEvent
+  >();
   private nextEventId = 1;
 
   public constructor(name: string = "") {
@@ -160,7 +51,7 @@ class MidiTrack {
       if (event.status === 0xff) {
         if ("text" in event) return { ...event };
         const metaEvent = event as MidiMetaEvent;
-        return { ...metaEvent, data: structuredClone(metaEvent.data) };
+        return { ...metaEvent };
       }
       if (event.status === 0xf0 || event.status === 0xf7) {
         const sysExEvent = event as MidiSysExEvent;
@@ -207,15 +98,19 @@ class MidiTrack {
   }
 
   public getTimedEvents(): TimedMidiEvent[] {
+    return this.getTimedEventRecords().map(({ event, tick, order }) => ({
+      ...event,
+      tick,
+      order,
+    })) as TimedMidiEvent[];
+  }
+
+  private getTimedEventRecords(): TimedEventRecord[] {
     let tick = 0;
 
     return this.events.map((event, order) => {
       tick += event.deltaTime;
-      return {
-        event,
-        tick,
-        order,
-      };
+      return { event, tick, order };
     });
   }
 
@@ -247,71 +142,86 @@ class MidiTrack {
     return event ? this.moveEvent(event, tick) : false;
   }
 
-  public addMetaEvent(type: MetaType, data: Uint8Array): MidiMetaEvent {
-    const event: MidiMetaEvent = {
-      deltaTime: 0,
-      status: 0xff,
-      type,
-      length: data.length,
-      data,
-    };
-    this.insertEventsAt([{ tick: 0, event }]);
-    return event;
-  }
-
-  public addTempoEvent(tick: number, bpm: number): MidiMetaEvent {
+  public addTempoEvent(tick: number, bpm: number): TempoEvent {
     if (!Number.isInteger(tick) || tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
-    const microsecondsPerQuarter = Math.round(60000000 / bpm);
+    const microsecondsPerQuarterNote = Math.round(60000000 / bpm);
     const data = new Uint8Array(3);
-    data[0] = (microsecondsPerQuarter >> 16) & 0xff;
-    data[1] = (microsecondsPerQuarter >> 8) & 0xff;
-    data[2] = microsecondsPerQuarter & 0xff;
-    const event: MidiMetaEvent = {
+    data[0] = (microsecondsPerQuarterNote >> 16) & 0xff;
+    data[1] = (microsecondsPerQuarterNote >> 8) & 0xff;
+    data[2] = microsecondsPerQuarterNote & 0xff;
+    const event: TempoEvent = {
+      tick,
       deltaTime: 0,
       status: 0xff,
       type: MetaType.Tempo,
       length: data.length,
-      data,
+      microsecondsPerQuarterNote,
     };
     this.insertEventAt(tick, event);
     return event;
+  }
+
+  public getTempoEvents(): TempoEvent[] {
+    return this.getTimedEventRecords()
+      .filter(
+        ({ event }) =>
+          event.status === 0xff &&
+          "type" in event &&
+          event.type === MetaType.Tempo,
+      )
+      .map(
+        ({ event, tick, order }) => ({ ...event, tick, order }) as TempoEvent,
+      )
+      .sort(sortEvents);
   }
 
   public addTimeSignatureEvent(
     tick: number,
     numerator: number = 4,
     denominator: number = 4,
-  ): MidiMetaEvent {
+  ): TimeSignatureEvent {
     if (!Number.isInteger(tick) || tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
-    const data = new Uint8Array(4);
-    data[0] = numerator;
-    data[1] = Math.log2(denominator);
-    data[2] = 24; // MIDI Clocks per metronome click
-    data[3] = 8; // 32nd notes per 24 MIDI clocks
-    const event: MidiMetaEvent = {
+    const event: TimeSignatureEvent = {
+      tick,
       deltaTime: 0,
       status: 0xff,
       type: MetaType.TimeSignature,
-      length: data.length,
-      data,
+      length: 4,
+      numerator,
+      denominator,
     };
     this.insertEventAt(tick, event);
     return event;
   }
 
-  public getTextEvents(): TextEvent[] {
-    const events: TextEvent[] = [];
-    for (const timed of this.getTimedEvents()) {
+  public getTimeSignatureEvents(): TimeSignatureEvent[] {
+    return this.getTimedEventRecords()
+      .filter(
+        ({ event }) =>
+          event.status === 0xff &&
+          "type" in event &&
+          event.type === MetaType.TimeSignature,
+      )
+      .map(
+        ({ event, tick, order }) =>
+          ({ ...event, tick, order }) as TimeSignatureEvent,
+      )
+      .sort(sortEvents);
+  }
+
+  public getTextEvents(): TextMidiEvent[] {
+    const events: TextMidiEvent[] = [];
+    for (const timed of this.getTimedEventRecords()) {
       const event = timed.event;
       if (
         event.status !== 0xff ||
         !("type" in event) ||
         !("text" in event) ||
-        !isTextMetaType(event.type)
+        !TextMetaType[event.type]
       ) {
         continue;
       }
@@ -323,9 +233,9 @@ class MidiTrack {
   private createTextEvent(
     event: TextMidiEvent,
     tick: number,
-    order: number,
-  ): TextEvent {
-    const textEvent: TextEvent = {
+    order?: number,
+  ): TextMidiEvent {
+    const textEvent: TextMidiEvent = {
       ...event,
       tick,
       order,
@@ -339,7 +249,7 @@ class MidiTrack {
     type: TextMetaType,
     tick: number,
     text: string,
-  ): TextEvent {
+  ): TextMidiEvent {
     if (!Number.isInteger(tick) || tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
@@ -347,11 +257,12 @@ class MidiTrack {
       throw new Error("Text events must contain text");
     }
     const event: TextMidiEvent = {
+      tick,
       deltaTime: 0,
       status: 0xff,
       type,
       length: textByteLength(text),
-      text,
+      text: text,
     };
     this.insertEventAt(tick, event);
     const order = this.events.indexOf(event);
@@ -379,7 +290,7 @@ class MidiTrack {
     if (!Number.isInteger(tick) || tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
-    const timedEvents = this.getTimedEvents();
+    const timedEvents = this.getTimedEventRecords();
     const timed = timedEvents.find((item) => item.event === source);
     if (!timed) return false;
     timed.tick = tick;
@@ -398,7 +309,7 @@ class MidiTrack {
   private resolveEvent(event: MidiEvent): MidiEvent | undefined {
     if (this.events.includes(event)) return event;
     if ("text" in event) {
-      const source = this.textEventSources.get(event as TextEvent);
+      const source = this.textEventSources.get(event as TextMidiEvent);
       if (source && this.events.includes(source)) return source;
     }
     return undefined;
@@ -414,7 +325,7 @@ class MidiTrack {
     );
   }
 
-  private replaceTimedEvents(timedEvents: TimedMidiEvent[]): void {
+  private replaceTimedEvents(timedEvents: TimedEventRecord[]): void {
     let previousTick = 0;
 
     for (const timedEvent of timedEvents) {
@@ -446,7 +357,7 @@ class MidiTrack {
     return this.noteRevision;
   }
 
-  private keepEndOfTrackLast(events: TimedMidiEvent[]): TimedMidiEvent[] {
+  private keepEndOfTrackLast(events: TimedEventRecord[]): TimedEventRecord[] {
     const finalTick = events
       .filter(({ event }) => !this.isEndOfTrack(event))
       .reduce((maximum, item) => Math.max(maximum, item.tick), 0);
@@ -456,7 +367,7 @@ class MidiTrack {
         item.order = Number.MAX_SAFE_INTEGER;
       }
     }
-    return events.sort((a, b) => a.tick - b.tick || a.order - b.order);
+    return events.sort(sortEvents);
   }
 
   public getAbsoluteTickAt(eventIndex: number): number {
@@ -507,7 +418,7 @@ class MidiTrack {
    * and single meta-event insertion (tempo/time-signature events).
    */
   public insertEventsAt(entries: { tick: number; event: MidiEvent }[]): void {
-    const timedEvents = this.getTimedEvents();
+    const timedEvents = this.getTimedEventRecords();
     const firstNewOrder = timedEvents.length;
 
     entries.forEach(({ tick, event }, index) => {
@@ -529,7 +440,7 @@ class MidiTrack {
       }
     }
 
-    timedEvents.sort((a, b) => a.tick - b.tick || a.order - b.order);
+    timedEvents.sort(sortEvents);
 
     this.replaceTimedEvents(timedEvents);
   }
@@ -624,7 +535,7 @@ class MidiTrack {
 
     const removed = new Set<MidiEvent>([noteOn, noteOff]);
 
-    const remaining = this.getTimedEvents().filter(
+    const remaining = this.getTimedEventRecords().filter(
       ({ event }) => !removed.has(event),
     );
 
@@ -673,7 +584,7 @@ class MidiTrack {
       return false;
     }
 
-    const timedEvents = this.getTimedEvents();
+    const timedEvents = this.getTimedEventRecords();
     const noteOnTimed = timedEvents.find(
       (timedEvent) => timedEvent.event === note.noteOn,
     );
@@ -706,7 +617,7 @@ class MidiTrack {
       }
     }
 
-    others.sort((a, b) => a.tick - b.tick || a.order - b.order);
+    others.sort(sortEvents);
 
     this.replaceTimedEvents(others);
 
@@ -732,7 +643,7 @@ class MidiTrack {
       return false;
     }
 
-    const timedEvents = this.getTimedEvents();
+    const timedEvents = this.getTimedEventRecords();
     const noteOnTimed = timedEvents.find(
       (timedEvent) => timedEvent.event === note.noteOn,
     );
@@ -772,7 +683,7 @@ class MidiTrack {
       }
     }
 
-    others.sort((a, b) => a.tick - b.tick || a.order - b.order);
+    others.sort(sortEvents);
 
     this.replaceTimedEvents(others);
 
@@ -786,7 +697,7 @@ class MidiTrack {
     const source = this.resolveEvent(event);
     if (!source) return false;
 
-    const remaining = this.getTimedEvents().filter(
+    const remaining = this.getTimedEventRecords().filter(
       (timedEvent) => timedEvent.event !== source,
     );
 
@@ -948,486 +859,3 @@ class MidiTrack {
     return concatBytes([chunk, body]);
   }
 }
-
-class Midi {
-  header: MidiHeader;
-  tracks: MidiTrack[];
-
-  public get trackCount(): number {
-    return this.tracks.length;
-  }
-
-  constructor(data: Uint8Array | undefined = undefined) {
-    this.header = new MidiHeader();
-    this.tracks = [];
-
-    if (data) {
-      this.parse(data);
-    }
-  }
-
-  public clone(): Midi {
-    const midi = new Midi();
-    midi.header = { ...this.header };
-    midi.tracks = this.tracks.map((track) => track.clone());
-    return midi;
-  }
-
-  private parse(data: Uint8Array): void {
-    // Ensure at least the main file header exists
-    if (data.length < 14) {
-      throw new Error("MIDI file is truncated");
-    }
-
-    // Data reader
-    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-
-    // Validate file header
-    const magic = String.fromCharCode(...data.subarray(0, 4));
-    const headerLength = view.getUint32(4);
-    if (magic !== "MThd" || headerLength !== 6) {
-      throw new Error("Invalid MIDI header chunk");
-    }
-    this.header.format = view.getUint16(8) as MidiFormat;
-    const declaredTrackCount = view.getUint16(10);
-    const division = view.getUint16(12);
-    this.header.division = division & 0x7fff;
-    this.header.isSMPTE = (division & 0x8000) !== 0;
-
-    // Parse tracks
-    const parsedTracks: any[] = [];
-    let offset = 14;
-    while (offset < data.length) {
-      if (data.length - offset < 8) {
-        throw new Error("MIDI track chunk header is truncated");
-      }
-      const trackMagic = String.fromCharCode(
-        ...data.subarray(offset, offset + 4),
-      );
-      const length = view.getUint32(offset + 4);
-      const chunkEnd = offset + 8 + length;
-      if (trackMagic !== "MTrk") {
-        throw new Error(`Invalid MIDI track chunk '${trackMagic}'`);
-      }
-      if (chunkEnd > data.length) {
-        throw new Error("MIDI track chunk is truncated");
-      }
-      parsedTracks.push(trackParser.parse(data.subarray(offset, chunkEnd)));
-      offset = chunkEnd;
-    }
-
-    if (parsedTracks.length === 0 && declaredTrackCount > 0) {
-      throw new Error("MIDI header declares tracks but contains none");
-    }
-    // The actual chunks are authoritative for the in-memory document. This
-    // also makes a later write repair stale header track-count metadata.
-    this.header.trackCount = parsedTracks.length;
-
-    this.tracks = parsedTracks.map((parsedTrack: any) => {
-      const track = new MidiTrack();
-
-      track.format = this.header.format;
-      track.events = (parsedTrack.events as MidiEvent[]).map((event) => {
-        if (
-          event.status === 0xff &&
-          "type" in event &&
-          "data" in event &&
-          isTextMetaType(event.type)
-        ) {
-          const { text } = event.data as { text: string };
-          return {
-            deltaTime: event.deltaTime,
-            status: 0xff,
-            type: event.type,
-            length: event.length,
-            text,
-          };
-        }
-        return event;
-      });
-
-      const trackNameEvent = track
-        .getMetaEvents()
-        .find((event) => event.type === MetaType.TrackName);
-
-      if (trackNameEvent) {
-        track.name =
-          "text" in trackNameEvent
-            ? trackNameEvent.text
-            : String((trackNameEvent.data as { text?: unknown }).text ?? "");
-      }
-
-      return track;
-    });
-  }
-
-  public getTrack(name: string): MidiTrack | undefined {
-    return this.tracks.find((track) => track.name === name);
-  }
-
-  public addTrack(): number {
-    const index = this.tracks.length;
-    const track = new MidiTrack(`Track ${index}`);
-    this.tracks.push(track);
-    this.header.trackCount = this.tracks.length;
-    return index;
-  }
-
-  public removeTrack(index: number): number {
-    this.tracks.splice(index, 1);
-    this.header.trackCount = this.tracks.length;
-    return this.tracks.length;
-  }
-
-  public getTempoEvents(): TempoEvent[] {
-    const events = (this.tracks[0]?.getTimedEvents() ?? [])
-      .filter(
-        (timedEvent): timedEvent is TimedMidiEvent & { event: MidiMetaEvent } =>
-          timedEvent.event.status === 0xff &&
-          (timedEvent.event as MidiMetaEvent).type === MetaType.Tempo,
-      )
-      .map((timedEvent) => ({
-        tick: timedEvent.tick,
-        microsecondsPerQuarterNote: (timedEvent.event.data as TempoMetaPayload)
-          .microsecondsPerQuarterNote,
-      }))
-      .sort((a, b) => a.tick - b.tick);
-
-    if (events.length === 0 || events[0].tick !== 0) {
-      events.unshift({ tick: 0, microsecondsPerQuarterNote: 500_000 });
-    }
-
-    return events;
-  }
-
-  public getTimeSignatureEvents(): TimeSignatureEvent[] {
-    const events = (this.tracks[0]?.getTimedEvents() ?? [])
-      .filter(
-        (timedEvent): timedEvent is TimedMidiEvent & { event: MidiMetaEvent } =>
-          timedEvent.event.status === 0xff &&
-          (timedEvent.event as MidiMetaEvent).type === MetaType.TimeSignature,
-      )
-      .map((timedEvent) => {
-        const payload = timedEvent.event.data as TimeSignatureMetaPayload;
-        return {
-          tick: timedEvent.tick,
-          numerator: payload.numerator,
-          denominator: payload.denominator,
-        };
-      })
-      .sort((a, b) => a.tick - b.tick);
-
-    if (events.length === 0 || events[0].tick !== 0) {
-      // Denominator is stored as a power-of-two exponent (2 == quarter note), per the MIDI spec.
-      events.unshift({ tick: 0, numerator: 4, denominator: 2 });
-    }
-
-    return events;
-  }
-
-  public addTempoEvent(tick: number, microsecondsPerQuarterNote: number): void {
-    const track = this.tracks[0];
-
-    if (!track) {
-      throw new Error("Midi file has no tracks");
-    }
-
-    const event: MidiMetaEvent = {
-      deltaTime: 0,
-      status: 0xff,
-      type: MetaType.Tempo,
-      length: 3,
-      data: { microsecondsPerQuarterNote } as TempoMetaPayload,
-    };
-
-    track.insertEventsAt([{ tick, event }]);
-  }
-
-  public removeTempoEventAt(tick: number): boolean {
-    const track = this.tracks[0];
-
-    if (!track) {
-      return false;
-    }
-
-    const match = track
-      .getTimedEvents()
-      .find(
-        (timedEvent) =>
-          timedEvent.tick === tick &&
-          timedEvent.event.status === 0xff &&
-          (timedEvent.event as MidiMetaEvent).type === MetaType.Tempo,
-      );
-
-    return match ? track.removeEvent(match.event) : false;
-  }
-
-  public addTimeSignatureEvent(
-    tick: number,
-    numerator: number,
-    denominator: number,
-  ): void {
-    const track = this.tracks[0];
-
-    if (!track) {
-      throw new Error("Midi file has no tracks");
-    }
-
-    const event: MidiMetaEvent = {
-      deltaTime: 0,
-      status: 0xff,
-      type: MetaType.TimeSignature,
-      length: 4,
-      data: {
-        numerator,
-        denominator,
-        // Standard defaults: 24 clocks per metronome click, 8 32nd-notes per quarter.
-        clocksPerClick: 24,
-        thirtySecondNotesPerQuarter: 8,
-      } as TimeSignatureMetaPayload,
-    };
-
-    track.insertEventsAt([{ tick, event }]);
-  }
-
-  public removeTimeSignatureEventAt(tick: number): boolean {
-    const track = this.tracks[0];
-
-    if (!track) {
-      return false;
-    }
-
-    const match = track
-      .getTimedEvents()
-      .find(
-        (timedEvent) =>
-          timedEvent.tick === tick &&
-          timedEvent.event.status === 0xff &&
-          (timedEvent.event as MidiMetaEvent).type === MetaType.TimeSignature,
-      );
-
-    return match ? track.removeEvent(match.event) : false;
-  }
-
-  private checkWriteable() {
-    if (
-      !Number.isInteger(this.header.format) ||
-      this.header.format < 0 ||
-      this.header.format > 2
-    ) {
-      throw new RangeError("MIDI format must be 0, 1, or 2");
-    }
-
-    if (this.header.format === MidiFormat.Single && this.trackCount !== 1) {
-      throw new Error("Format 0 MIDI files must contain exactly one track");
-    }
-
-    if (this.trackCount === 0) {
-      throw new Error("A MIDI file must contain at least one track");
-    }
-
-    if (
-      !Number.isInteger(this.header.division) ||
-      this.header.division < 0 ||
-      this.header.division > 0x7fff
-    ) {
-      throw new RangeError("MIDI division must fit in the lower 15 bits");
-    }
-  }
-
-  public toBuffer(): Uint8Array {
-    this.checkWriteable();
-
-    const division = this.header.isSMPTE
-      ? 0x8000 | this.header.division
-      : this.header.division;
-
-    const header = new Uint8Array(14);
-    writeAscii(header, 0, "MThd");
-    writeUInt32BE(header, 4, 6);
-    writeUInt16BE(header, 8, this.header.format);
-    writeUInt16BE(header, 10, this.trackCount);
-    writeUInt16BE(header, 12, division);
-
-    this.header.trackCount = this.trackCount;
-
-    return concatBytes([
-      header,
-      ...this.tracks.map((track) => track.toBuffer()),
-    ]);
-  }
-
-  public toIni(): string {
-    this.checkWriteable();
-
-    this.header.trackCount = this.trackCount;
-
-    const headerString = ini.stringify(this.header, { section: "header" });
-
-    const serializeEvent = (event: MidiEvent): string => {
-      if (event.status === 0xff) {
-        const metaEvent = event as MidiMetaEvent;
-        return [
-          event.deltaTime,
-          event.status,
-          metaEvent.type,
-          encodeBase64(
-            encodeMetaPayload(
-              metaEvent.type,
-              "text" in metaEvent ? { text: metaEvent.text } : metaEvent.data,
-            ),
-          ),
-        ].join(" ");
-      }
-
-      if (event.status === 0xf0 || event.status === 0xf7) {
-        return [
-          event.deltaTime,
-          event.status,
-          encodeBase64((event as MidiSysExEvent).data),
-        ].join(" ");
-      }
-
-      const channelEvent = event as MidiChannelEvent;
-      const status =
-        event.status >= 0x80 && event.status < 0xf0
-          ? event.status
-          : channelEvent.messageType | (channelEvent.channel & 0x0f);
-      const values = [event.deltaTime, status, channelEvent.data1];
-
-      if (isTwoByteMessage(status)) {
-        values.push(channelEvent.data2 ?? 0);
-      }
-
-      return values.join(" ");
-    };
-
-    const tracks = this.tracks.map((track) => {
-      return {
-        name: track.name,
-        e: track.events.map(serializeEvent),
-      };
-    });
-    const tracksString = ini.stringify(tracks, { section: "tracks" });
-
-    return [headerString, tracksString].join("\n");
-  }
-
-  public static fromIni(content: string): Midi {
-    const obj = ini.parse(content) as {
-      header?: Record<string, string>;
-      tracks?: Record<string, { name?: string; e?: string | string[] }>;
-    };
-    const iniHeader = obj.header;
-
-    if (!iniHeader) {
-      throw new Error("INI MIDI data is missing a header section");
-    }
-
-    const midi = new Midi();
-    midi.header = {
-      format: parseInteger(
-        iniHeader.format ?? "",
-        "header format",
-      ) as MidiFormat,
-      trackCount: parseInteger(iniHeader.trackCount ?? "", "header trackCount"),
-      division: parseInteger(iniHeader.division ?? "", "header division"),
-      isSMPTE: iniHeader.isSMPTE === "true",
-    };
-
-    const parseEvent = (record: string): MidiEvent => {
-      const values = record.trim().split(/\s+/);
-      const deltaTime = parseInteger(values[0] ?? "", "event deltaTime");
-      const status = parseInteger(values[1] ?? "", "event status");
-
-      if (status >= 0x80 && status < 0xf0) {
-        const messageType = status & 0xf0;
-        const expectedLength = isTwoByteMessage(status) ? 4 : 3;
-
-        if (values.length !== expectedLength) {
-          throw new Error(
-            `Channel event status ${status} has an invalid field count`,
-          );
-        }
-
-        const channelEvent: MidiChannelEvent = {
-          deltaTime,
-          status,
-          channel: status & 0x0f,
-          messageType: messageType as ChannelMessage,
-          data1: parseInteger(values[2], "channel event data1"),
-        };
-
-        if (isTwoByteMessage(status)) {
-          channelEvent.data2 = parseInteger(values[3], "channel event data2");
-        }
-
-        return channelEvent;
-      }
-
-      if (status === 0xff) {
-        if (values.length !== 4) {
-          throw new Error("Meta event has an invalid field count");
-        }
-
-        const type = parseInteger(values[2], "meta event type");
-        const bytes = decodeBase64(values[3]);
-        const event: MidiMetaEvent = {
-          deltaTime,
-          status: 0xff,
-          type: type as MetaType,
-          length: bytes.length,
-          data: decodeMetaPayload(type, bytes),
-        };
-        if (isTextMetaType(type)) {
-          const { text } = event.data as { text: string };
-          return {
-            deltaTime,
-            status: 0xff,
-            type: type as TextMetaType,
-            length: bytes.length,
-            text,
-          };
-        }
-        return event;
-      }
-
-      if (status === 0xf0 || status === 0xf7) {
-        if (values.length !== 3) {
-          throw new Error("SysEx event has an invalid field count");
-        }
-
-        const data = decodeBase64(values[2]);
-        return { deltaTime, status, length: data.length, data };
-      }
-
-      throw new Error(`Invalid MIDI event status: ${status}`);
-    };
-
-    for (const trackData of Object.values(obj.tracks ?? {})) {
-      const track = new MidiTrack(trackData.name ?? "");
-      const records = trackData.e === undefined ? [] : [trackData.e].flat();
-      track.format = midi.header.format;
-      track.events = records.map(parseEvent);
-      midi.tracks.push(track);
-    }
-
-    if (midi.header.trackCount !== midi.trackCount) {
-      throw new Error(
-        "INI MIDI header trackCount does not match the track sections",
-      );
-    }
-
-    return midi;
-  }
-}
-
-export {
-  Midi,
-  MidiFormat,
-  MidiHeader,
-  MidiTrack,
-  MidiNote,
-  TempoEvent,
-  TimeSignatureEvent,
-};

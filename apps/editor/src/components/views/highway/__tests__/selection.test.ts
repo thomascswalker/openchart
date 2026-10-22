@@ -1,4 +1,4 @@
-import type { MidiChannelEvent } from "@openchart/core";
+import type { MidiChannelEvent } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import { SelectionContext } from "../selection";
 

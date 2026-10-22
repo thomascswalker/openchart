@@ -1,4 +1,4 @@
-import type { MidiChannelEvent, MidiTrack } from "@openchart/core";
+import type { MidiChannelEvent, MidiTrack } from "@openchart/midi";
 import { clamp } from "es-toolkit";
 import type { Vector2 } from "three";
 import {
