@@ -279,6 +279,10 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.input.stepPlayhead(direction, extendSelection);
   }
 
+  public clearSelectionContext(): void {
+    this.input.clearSelectionContext();
+  }
+
   public clearSelectionRange(): void {
     this.input.clearKeyboardSelectionAnchor();
     this.setSelectionRange(null);

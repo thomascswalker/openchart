@@ -10,9 +10,14 @@ export class ClearSelectionAction extends Action {
   }
 
   run(accessor: ServicesAccessor): void {
-    accessor
-      .get<ActiveChartViewService>("editor.active-chart-view")
-      .getActive("highway")
-      ?.clearSelectionRange();
+    const chartView = accessor.get<ActiveChartViewService>(
+      "editor.active-chart-view",
+    );
+    const activeView = chartView.getActive("highway");
+    if (!activeView) {
+      return;
+    }
+    activeView.clearSelectionRange();
+    activeView.clearSelectionContext();
   }
 }

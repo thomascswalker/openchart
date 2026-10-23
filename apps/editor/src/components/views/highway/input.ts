@@ -137,6 +137,10 @@ export class HighwayInputController {
     this.keyboardSelectionAnchor = null;
   }
 
+  public clearSelectionContext(): void {
+    this.context.getSelectionContext().clear();
+  }
+
   public canShowNotePlacementPreview(): boolean {
     return (
       !this.context.getState().isPlaying &&

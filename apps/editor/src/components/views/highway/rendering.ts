@@ -958,11 +958,7 @@ export class HighwayRenderer {
     }
     const startZ = this.coordinates.getNoteZ(start);
     const endZ = this.coordinates.getNoteZ(end);
-    this.selectionRangeIndicator.position.set(
-      0,
-      -0.035,
-      (startZ + endZ) / 2,
-    );
+    this.selectionRangeIndicator.position.set(0, -0.035, (startZ + endZ) / 2);
     this.selectionRangeIndicator.scale.z = Math.max(
       0.03,
       Math.abs(startZ - endZ),
