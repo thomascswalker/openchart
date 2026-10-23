@@ -208,6 +208,16 @@ export class HighwayRenderer {
   private readonly laneDividers: THREE.Mesh[] = [];
   private readonly sectionMarkers: SectionMarkerInstance[] = [];
   private readonly phraseSpanGeometry = new THREE.BoxGeometry(6, 0.018, 1);
+  private readonly selectionRangeIndicator = new THREE.Mesh(
+    new THREE.BoxGeometry(6, 0.025, 1),
+    new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.3,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
   private readonly stagepowerMaterial = new THREE.MeshBasicMaterial({
     color: 0xfacc15,
     transparent: true,
@@ -283,6 +293,9 @@ export class HighwayRenderer {
   public mount(): void {
     this.scene.add(this.hoverOutline);
     this.scene.add(this.marqueeOutline);
+    this.selectionRangeIndicator.renderOrder = 3;
+    this.selectionRangeIndicator.visible = false;
+    this.scene.add(this.selectionRangeIndicator);
     this.sustainCutPreviewLine.computeLineDistances();
     this.sustainCutPreviewLine.renderOrder = 15;
     this.sustainCutPreviewLine.visible = false;
@@ -315,6 +328,7 @@ export class HighwayRenderer {
       this.scene.userData.visibleSustains = 0;
       this.hideAllObjects();
       this.hidePhraseSpans();
+      this.selectionRangeIndicator.visible = false;
       this.hidePhraseAffordances();
       this.hideSectionMarkers();
       recordDrawDuration();
@@ -328,6 +342,7 @@ export class HighwayRenderer {
         : null,
     );
     this.drawPhraseSpans(chart);
+    this.drawSelectionRange();
     this.drawSectionMarkers(chart);
     if (!this.assetsReady || !this.materials) {
       this.scene.userData.visibleNotes = 0;
@@ -546,6 +561,8 @@ export class HighwayRenderer {
     this.phraseSpanInstances.forEach((mesh) => mesh.removeFromParent());
     this.phraseSpanInstances.length = 0;
     this.phraseSpanGeometry.dispose();
+    this.selectionRangeIndicator.geometry.dispose();
+    (this.selectionRangeIndicator.material as THREE.Material).dispose();
     this.stagepowerMaterial.dispose();
     this.soloMaterial.dispose();
     this.selectedPhraseMaterial.dispose();
@@ -920,6 +937,37 @@ export class HighwayRenderer {
   private hidePhraseSpans(): void {
     this.phraseSpanInstances.forEach((mesh) => (mesh.visible = false));
     this.hidePhraseAffordances();
+  }
+
+  private drawSelectionRange(): void {
+    const range = this.context.getSelectionRange();
+    if (!range) {
+      this.selectionRangeIndicator.visible = false;
+      return;
+    }
+    const visibleStart = Math.max(
+      0,
+      this.coordinates.getTickAtDepth(nearBoardZ),
+    );
+    const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
+    const start = Math.max(visibleStart, Math.min(range.start, range.end));
+    const end = Math.min(visibleEnd, Math.max(range.start, range.end));
+    if (end < start) {
+      this.selectionRangeIndicator.visible = false;
+      return;
+    }
+    const startZ = this.coordinates.getNoteZ(start);
+    const endZ = this.coordinates.getNoteZ(end);
+    this.selectionRangeIndicator.position.set(
+      0,
+      -0.035,
+      (startZ + endZ) / 2,
+    );
+    this.selectionRangeIndicator.scale.z = Math.max(
+      0.03,
+      Math.abs(startZ - endZ),
+    );
+    this.selectionRangeIndicator.visible = true;
   }
 
   private hidePhraseAffordances(): void {

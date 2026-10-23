@@ -20,6 +20,7 @@ import {
   getPhraseModeForHighwayMode,
   type HighwayMode,
   type HighwayNotePlacementType,
+  type HighwaySelectionRange,
 } from "./types";
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
@@ -62,6 +63,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     getDrumPlacementKind: () => this.drumPlacementKind,
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
+    getSelectionRange: () => this.selectionRange,
     getSelectionContext: () => this.selection,
     getGhostNoteLocation: () => this.input.getGhostNoteLocation(),
     getHoveredNoteOn: () => this.input.getHoveredNoteOn(),
@@ -83,6 +85,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
         ),
       ),
     setPlayheadTick: (tick) => this.setPlayheadTick(tick),
+    setSelectionRange: (range) => this.setSelectionRange(range),
     updateMarqueeOutline: (marquee) => {
       this.renderer.updateMarqueeOutline(marquee);
     },
@@ -93,10 +96,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.threeCamera,
   );
   private readonly hitTesting = new HighwayHitTester(this.coordinates);
-  private readonly editing = new HighwayNoteEditingController(
-    this.context,
-    this.coordinates,
-  );
+  private readonly editing = new HighwayNoteEditingController(this.context);
   private readonly phraseEditing = new HighwayPhraseEditingController(
     this.context,
     this.coordinates,
@@ -118,6 +118,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   private cameraTick = 0;
   private scrollSpeedMultiplier = 1;
   private readonly selection = new SelectionContext();
+  private selectionRange: HighwaySelectionRange | null = null;
   private mode: HighwayMode = "select";
   private notePlacementType: HighwayNotePlacementType = "normal";
   private drumPlacementKind: DrumPlacementKind = "pad";
@@ -274,8 +275,13 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.input.releaseLaneNote(lane);
   }
 
-  public stepPlayhead(direction: -1 | 1): void {
-    this.input.stepPlayhead(direction);
+  public stepPlayhead(direction: -1 | 1, extendSelection = false): void {
+    this.input.stepPlayhead(direction, extendSelection);
+  }
+
+  public clearSelectionRange(): void {
+    this.input.clearKeyboardSelectionAnchor();
+    this.setSelectionRange(null);
   }
 
   public seekSection(direction: -1 | 1): void {
@@ -295,10 +301,26 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   }
 
   public pasteClipboard(): void {
-    this.editing.pasteClipboard(
-      this.input.getGhostNoteLocation()?.tick ?? this.playheadTick,
-      this.input.getGhostNoteLocation()?.lane ?? 0,
-    );
+    const pasted = this.editing.pasteClipboard(this.playheadTick);
+    if (pasted) this.clearSelectionRange();
+  }
+
+  private setSelectionRange(range: HighwaySelectionRange | null): void {
+    const next =
+      range === null
+        ? null
+        : {
+            start: Math.max(0, Math.min(range.start, range.end)),
+            end: Math.max(0, Math.max(range.start, range.end)),
+          };
+    if (
+      next?.start === this.selectionRange?.start &&
+      next?.end === this.selectionRange?.end
+    ) {
+      return;
+    }
+    this.selectionRange = next;
+    this.render();
   }
 
   protected override draw(engine: Engine): void {

@@ -12,6 +12,11 @@ export type HighwayMode = HighwayTool | HighwayPhraseKind;
 export type HighwayNotePlacementType =
   "normal" | "force-hopo" | "force-strum" | "tap";
 
+export interface HighwaySelectionRange {
+  start: number;
+  end: number;
+}
+
 export function getPhraseModeForHighwayMode(
   mode: HighwayMode,
 ): EditablePhraseKind | null {
@@ -20,7 +25,7 @@ export function getPhraseModeForHighwayMode(
 
 export interface HighwayClipboardNote {
   relativeTick: number;
-  relativeLane: number;
+  lane: number;
   durationTicks: number;
   velocity: number;
   drumKind?: DrumNoteKind;

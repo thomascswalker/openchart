@@ -76,6 +76,12 @@ export const highwayBindings = defineBindings("highway", {
   ...laneBindings,
 
   // Navigation
+  "highway.clear-selection": {
+    hotkey: "Escape",
+    target: "canvas",
+    name: "Clear selection range",
+    group: "Highway",
+  },
   "highway.step-playhead#forward": {
     hotkey: "ArrowUp",
     args: [1],
@@ -90,6 +96,22 @@ export const highwayBindings = defineBindings("highway", {
     target: "canvas",
     options: { requireReset: false },
     name: "Move backward",
+    group: "Highway",
+  },
+  "highway.step-playhead#forward-shift": {
+    hotkey: "Shift+ArrowUp",
+    args: [1, true],
+    target: "canvas",
+    options: { requireReset: false },
+    name: "Extend selection forward",
+    group: "Highway",
+  },
+  "highway.step-playhead#backward-shift": {
+    hotkey: "Shift+ArrowDown",
+    args: [-1, true],
+    target: "canvas",
+    options: { requireReset: false },
+    name: "Extend selection backward",
     group: "Highway",
   },
   "editor.step-snap-denominator#decrease": {
