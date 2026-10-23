@@ -4,11 +4,12 @@ import {
   ViewportService,
   type HighwayToolMode,
 } from "../../services/editor/viewports";
+import { ActiveHighway } from "../conditions";
 
 /** Selects a Highway tool (select, place, remove) in the active viewport. */
 export class SetHighwayToolAction extends Action<[HighwayToolMode]> {
   constructor() {
-    super({ condition: { "viewport.active-view": "highway" } });
+    super({ condition: ActiveHighway });
   }
 
   run(accessor: ServicesAccessor, mode: HighwayToolMode): void {

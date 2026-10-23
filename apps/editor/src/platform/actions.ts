@@ -1,3 +1,4 @@
+import { kebabCase } from "es-toolkit";
 import type { ContextStore } from "./context";
 import { moduleId, type ModuleCollection } from "./modules";
 import type { ServiceRegistry, ServicesAccessor } from "./services";
@@ -32,8 +33,17 @@ export abstract class Action<Args extends unknown[] = [], Result = void> {
   public options: ActionOptions;
 
   constructor(options: ActionOptions = {}) {
+    // If a ID is not specified in the action, build the ID from the class name
+    // (trimming `Action` if it's at the end of the class name).
+    if (!options?.id) {
+      const className = this.constructor.name;
+      const end = className.indexOf("Action");
+      const baseName = className.substring(0, end);
+      options.id = kebabCase(baseName);
+    }
     this.options = options;
   }
+
   abstract run(
     accessor: ServicesAccessor,
     ...args: Args

@@ -1,3 +1,4 @@
+import type { Action } from "../../platform/actions";
 import { StatefulService } from "../../platform/services";
 
 export interface EditorStateSnapshot {
@@ -34,6 +35,14 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
     }
     this.update({ error });
   };
+
+  public readonly setErrorFromAction = (
+    action: Action<any>,
+    error: string | null,
+  ) =>
+    this.setError(
+      `Failed to execute action ${action.options?.id || "Unknown"}: ${error}`,
+    );
 
   public readonly clearError = (): void => this.setError(null);
 

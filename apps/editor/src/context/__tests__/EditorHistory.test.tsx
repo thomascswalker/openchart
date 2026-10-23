@@ -5,7 +5,7 @@ import { Runtime } from "../../components/editor/Runtime";
 import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { DocumentService } from "../../services/document";
-import { useDocument } from "../useDocument";
+import { useDocument } from "../../hooks/useDocument";
 
 function HistoryHarness() {
   const { midi, canUndo, canRedo, isDirty } = useDocument();
