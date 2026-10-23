@@ -359,12 +359,31 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     return this.noteData.getTrackNotes(midi, trackIndex);
   }
 
+  /** Discriminant for `AnyChartView`. */
+  public readonly kind = "piano-roll" as const;
+
   public focusSelection(): void {
-    this.coordinates.focusSelection(
-      this.selection.notes,
-      this.#lastViewportSize,
-    );
-    this.render();
+    this.input.focusSelection();
+  }
+
+  public transposeSelection(semitones: number): void {
+    this.input.transposeSelection(semitones);
+  }
+
+  public moveSelection(direction: -1 | 1): void {
+    this.input.moveSelection(direction);
+  }
+
+  public selectAll(): void {
+    this.input.selectAll();
+  }
+
+  public clearSelection(): void {
+    this.input.clearSelection();
+  }
+
+  public deleteSelection(): void {
+    this.input.deleteSelection();
   }
 
   public canCopySelection(): boolean {

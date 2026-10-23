@@ -146,14 +146,14 @@ const metaColumnDefs = [
 
 export const MidiChannelEvents: Story = {
   args: {
-    key: "midi-events",
+    id: "midi-events",
     columnDefs: channelEventColumnDefs,
     data: makeChannelEvents(columnNames, 25),
   },
 };
 export const MidiMetaEvents: Story = {
   args: {
-    key: "midi-meta-events",
+    id: "midi-meta-events",
     columnDefs: metaColumnDefs,
     data: makeMetaEvents(metaColumnNames, 5),
   },

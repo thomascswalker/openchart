@@ -40,6 +40,7 @@ import {
 } from "@openchart/views";
 import { usePlaybackSelector } from "../hooks/usePlayback";
 import type { VocalPlacement } from "./views/pianoRoll";
+import { useShortcutResolver } from "../input/labels";
 import { Fragment } from "react";
 import type {
   DrumPlacementKind,
@@ -71,10 +72,11 @@ const VOCAL_NOTE_TYPE_OPTIONS: { value: VocalNoteKind; label: string }[] = [
   { value: "pitchless", label: "Pitchless" },
 ];
 
+// Shortcut hints are appended from the hotkey bindings (src/input).
 const VOCAL_PHRASES = [
-  ["vocal", PhraseIcon, "Vocal phrase (T)"],
-  ["power-window", ActivateIcon, "Power window (Y)"],
-  ["stagepower", StagepowerIcon, "Stagepower phrase (R)"],
+  ["vocal", PhraseIcon, "Vocal phrase"],
+  ["power-window", ActivateIcon, "Power window"],
+  ["stagepower", StagepowerIcon, "Stagepower phrase"],
 ] as const satisfies readonly (readonly [VocalPhraseKind, unknown, string])[];
 
 const GUITAR_NOTE_TYPE_OPTIONS = [
@@ -137,6 +139,12 @@ const Toolbar = ({
   const isVocalFeedbackEnabled = usePlaybackSelector(
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
+  const resolveShortcut = useShortcutResolver();
+  /** Tooltip text: label plus the current hotkey for the action, if any. */
+  const hint = (label: string, action: string, variant?: string): string => {
+    const shortcut = resolveShortcut(action, variant);
+    return shortcut ? `${label} (${shortcut})` : label;
+  };
   const pianoRollOnly = requiresPianoRoll(session.instrument);
   const {
     activeViewId: globalView,
@@ -266,7 +274,8 @@ const Toolbar = ({
             <ToolbarButton
               key={phrase}
               icon={Icon}
-              aria-label={title.replace(/ \(.\)$/, "")}
+              aria-label={title}
+              title={hint(title, "piano-roll.toggle-vocal-phrase", phrase)}
               checked={vocalPlacement.phrase === phrase}
               onClick={() =>
                 onVocalPlacementChange({
@@ -294,18 +303,25 @@ const Toolbar = ({
           <ToolbarButton
             icon={CursorIcon}
             aria-label="Select, move, and edit sustains"
+            title={hint(
+              "Select, move, and edit sustains",
+              "highway.set-tool",
+              "select",
+            )}
             checked={highwayMode === "select"}
             onClick={() => onHighwayModeChange("select")}
           />
           <ToolbarButton
             icon={PencilIcon}
             aria-label="Place notes"
+            title={hint("Place notes", "highway.set-tool", "place")}
             checked={highwayMode === "place"}
             onClick={() => onHighwayModeChange("place")}
           />
           <ToolbarButton
             icon={EraserIcon}
             aria-label="Remove notes"
+            title={hint("Remove notes", "highway.set-tool", "remove")}
             checked={highwayMode === "remove"}
             onClick={() => onHighwayModeChange("remove")}
           />
@@ -315,6 +331,11 @@ const Toolbar = ({
             icon={StagepowerIcon}
             checked={highwayMode === "stagepower"}
             aria-label="Stagepower phrase"
+            title={hint(
+              "Stagepower phrase",
+              "highway.toggle-phrase-tool",
+              "stagepower",
+            )}
             onClick={() =>
               onHighwayModeChange(
                 highwayMode === "stagepower" ? "select" : "stagepower",
@@ -325,6 +346,7 @@ const Toolbar = ({
             icon={SoloIcon}
             checked={highwayMode === "solo"}
             aria-label="Solo phrase"
+            title={hint("Solo phrase", "highway.toggle-phrase-tool", "solo")}
             onClick={() =>
               onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
             }

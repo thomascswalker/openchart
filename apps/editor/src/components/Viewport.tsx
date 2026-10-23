@@ -8,12 +8,7 @@ import {
   useState,
 } from "react";
 import type { Midi } from "@openchart/midi";
-import {
-  Difficulty,
-  InstrumentType,
-  SongView,
-  type VocalPhraseKind,
-} from "@openchart/views";
+import { Difficulty, InstrumentType, SongView } from "@openchart/views";
 import { type ViewportSession } from "../services/editor/viewports";
 import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
@@ -28,21 +23,14 @@ import { ChartViewHost } from "./views/ChartViewHost";
 import type { EngineOptions } from "../rendering/engine";
 import { ChartViews } from "./views/ChartViews";
 import type { AnyChartView } from "./views/ChartViews";
-import {
-  HighwayView,
-  type DrumPlacementKind,
-  type HighwayMode,
-  type HighwayNotePlacementType,
-} from "./views/highway";
+import { HighwayView } from "./views/highway";
 import {
   PianoRollView,
   profileForInstrument,
   type PianoRollNote,
-  type VocalPlacement,
 } from "./views/pianoRoll";
 import Toolbar from "./Toolbar";
 import { Button, CloseButton } from "./shared/Button";
-import { isTypingTarget } from "../util/html";
 import { startCase } from "es-toolkit";
 import {
   BassIcon,
@@ -56,6 +44,7 @@ import {
   VocalsIcon,
 } from "./shared/Icon/Icon";
 import { TrackList } from "./Tracklist";
+import { ViewHotkeyScopes } from "../input/ViewportHotkeyScopes";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
@@ -143,6 +132,7 @@ export const Viewport = () => {
   const chartViewList = useMemo(() => [...chartViews.values()], [chartViews]);
   return (
     <section className="viewport-manager" aria-label="Chart viewports">
+      <ViewHotkeyScopes />
       <div
         className={`viewport-grid viewport-grid--${viewportSessions.length}`}
       >
@@ -189,15 +179,8 @@ function ViewportPanel({
     "editor.active-chart-view",
   );
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
-  const [highwayMode, setHighwayMode] = useState<HighwayMode>("select");
-  const [drumPlacementKind, setDrumPlacementKind] =
-    useState<DrumPlacementKind>("pad");
-  const [notePlacementType, setNotePlacementType] =
-    useState<HighwayNotePlacementType>("normal");
-  const [vocalPlacement, setVocalPlacement] = useState<VocalPlacement>({
-    noteKind: "pitched",
-    phrase: null,
-  });
+  const { highwayMode, drumPlacementKind, notePlacementType, vocalPlacement } =
+    session.tools;
   const pianoRollProfile = profileForInstrument(session.instrument);
   const activeView =
     ChartViews.find((view) => view.id === session.view) ?? ChartViews[0];
@@ -232,69 +215,6 @@ function ViewportPanel({
     }
     updateCameraData(articleRef.current, chartView);
   }, [chartView, session.camera.tick]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const isInvalidKey =
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
-        isTypingTarget(event.target);
-      if (isInvalidKey) {
-        return;
-      }
-
-      const isValidPianoView =
-        active &&
-        session.view === "piano-roll" &&
-        pianoRollProfile.editing === "vocals";
-
-      if (isValidPianoView) {
-        const key = event.key.toLowerCase();
-        const phraseKeys: Record<string, VocalPhraseKind> = {
-          r: "stagepower",
-          t: "vocal",
-          y: "power-window",
-        };
-        let phrase: VocalPhraseKind | null = phraseKeys[key] ?? null;
-        if (phrase) {
-          event.preventDefault();
-          setVocalPlacement((current) => ({
-            ...current,
-            phrase: current.phrase === phrase ? null : phrase,
-          }));
-          return;
-        }
-      }
-      const isValidHighwayView = active && session.view === "highway";
-      if (isValidHighwayView) {
-        const key = event.key.toLowerCase();
-        const keyMap: Record<string, HighwayMode> = {
-          q: "select",
-          w: "place",
-          e: "remove",
-          r: "stagepower",
-          t: "solo",
-        };
-        const mode = keyMap[key] ?? null;
-        if (mode) {
-          event.preventDefault();
-          setHighwayMode((current) =>
-            current === mode && (mode === "stagepower" || mode === "solo")
-              ? "select"
-              : mode,
-          );
-          return;
-        }
-      }
-      if (event.code === "Space" && active) {
-        event.preventDefault();
-        runAction("playback.toggle");
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [active, session.view, pianoRollProfile.editing]);
 
   const onNotesChanged = () => {
     runAction("history.record-edit");
@@ -499,13 +419,27 @@ function ViewportPanel({
         session={session}
         onViewChange={setView}
         highwayMode={highwayMode}
-        onHighwayModeChange={setHighwayMode}
+        onHighwayModeChange={(highwayMode) =>
+          runAction("editor.set-viewport-tools", session.id, { highwayMode })
+        }
         drumPlacementKind={drumPlacementKind}
-        onDrumPlacementKindChange={setDrumPlacementKind}
+        onDrumPlacementKindChange={(drumPlacementKind) =>
+          runAction("editor.set-viewport-tools", session.id, {
+            drumPlacementKind,
+          })
+        }
         notePlacementType={notePlacementType}
-        onNotePlacementTypeChange={setNotePlacementType}
+        onNotePlacementTypeChange={(notePlacementType) =>
+          runAction("editor.set-viewport-tools", session.id, {
+            notePlacementType,
+          })
+        }
         vocalPlacement={vocalPlacement}
-        onVocalPlacementChange={setVocalPlacement}
+        onVocalPlacementChange={(vocalPlacement) =>
+          runAction("editor.set-viewport-tools", session.id, {
+            vocalPlacement,
+          })
+        }
       />
       <div
         style={{

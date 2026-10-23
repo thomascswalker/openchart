@@ -108,6 +108,11 @@ export abstract class AbstractChartView<T> {
     return !this.state.isPlaying;
   }
 
+  /** The canvas this view draws into, once mounted. */
+  public getCanvas(): HTMLCanvasElement | null {
+    return this.engine?.canvas ?? null;
+  }
+
   public resize(width: number, height: number): void {
     this.width = width;
     this.height = height;

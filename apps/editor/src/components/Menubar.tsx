@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "./shared/Button";
 import { HorizontalSeparator } from "./shared/Separator";
 import { Text } from "./shared/Text";
+import { useShortcutResolver } from "../input/labels";
 
 export type MenuCommandId = string;
 
@@ -38,12 +39,11 @@ const MENUS: MenuDefinition[] = [
     label: "File",
     items: [
       { id: "document.new", label: "New Project" },
-      { id: "document.open", label: "Open Project...", shortcut: "Ctrl/Cmd+O" },
-      { id: "document.save", label: "Save", shortcut: "Ctrl/Cmd+S" },
+      { id: "document.open", label: "Open Project..." },
+      { id: "document.save", label: "Save" },
       {
         id: "document.save-as",
         label: "Save As...",
-        shortcut: "Ctrl/Cmd+Shift+S",
       },
       { type: "separator" },
       { id: "document.import-midi", label: "Import" },
@@ -53,7 +53,6 @@ const MENUS: MenuDefinition[] = [
       {
         id: "dialog.open-settings",
         label: "Settings...",
-        shortcut: "Ctrl/Cmd+,",
       },
     ],
   },
@@ -61,9 +60,9 @@ const MENUS: MenuDefinition[] = [
     id: "edit",
     label: "Edit",
     items: [
-      { id: "clipboard.cut", label: "Cut", shortcut: "Ctrl/Cmd+X" },
-      { id: "clipboard.copy", label: "Copy", shortcut: "Ctrl/Cmd+C" },
-      { id: "clipboard.paste", label: "Paste", shortcut: "Ctrl/Cmd+V" },
+      { id: "clipboard.cut", label: "Cut" },
+      { id: "clipboard.copy", label: "Copy" },
+      { id: "clipboard.paste", label: "Paste" },
     ],
   },
   {
@@ -73,19 +72,16 @@ const MENUS: MenuDefinition[] = [
       {
         id: "playback.toggle-metronome",
         label: "Metronome",
-        shortcut: "M",
         checkable: true,
       },
       {
         id: "playback.toggle-clap",
         label: "Highway Clap",
-        shortcut: "N",
         checkable: true,
       },
       {
         id: "playback.toggle-vocal-pitch-feedback",
         label: "Vocal Pitch Feedback",
-        shortcut: "P",
         checkable: true,
       },
     ],
@@ -124,6 +120,7 @@ export function Menubar({
   isChecked,
   onCommand,
 }: MenubarProps) {
+  const resolveShortcut = useShortcutResolver();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [activeTrigger, setActiveTrigger] = useState(0);
   const menubarRef = useRef<HTMLDivElement>(null);
@@ -364,6 +361,7 @@ export function Menubar({
 
                     const disabled = !canExecute(item.id);
                     const checked = isChecked?.(item.id) ?? false;
+                    const shortcut = item.shortcut ?? resolveShortcut(item.id);
                     const handleItemClick = () => {
                       if (disabled) return;
                       onCommand(item.id);
@@ -404,9 +402,9 @@ export function Menubar({
                           {checked ? "✓ " : ""}
                           {item.label}
                         </Text>
-                        {item.shortcut && (
+                        {shortcut && (
                           <Text disabled={disabled} textAlign="right">
-                            {item.shortcut}
+                            {shortcut}
                           </Text>
                         )}
                       </Button>

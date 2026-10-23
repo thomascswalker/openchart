@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
+import { useLayoutEffect, useSyncExternalStore } from "react";
 import { useEditorState } from "../hooks/useEditorState";
 import { runAction } from "../actions/execute";
 import { Workspace } from "./Workspace";
-import { isTypingTarget } from "../util/html";
+import { Hotkeys } from "../input/Hotkeys";
+import { globalBindings } from "../input";
 import { Menubar, type MenuCommandId } from "./Menubar";
 import { SettingsDialog } from "./dialogs/SettingsDialog";
 import { ProjectDialog } from "./dialogs/ProjectDialog";
@@ -54,71 +55,9 @@ const Shell = () => {
     runAction(command);
   };
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target;
-      if (event.defaultPrevented || isTypingTarget(target) || event.altKey)
-        return;
-
-      const key = event.key.toLowerCase();
-      let action: string | null = null;
-      if (!event.ctrlKey && !event.metaKey) {
-        switch (key) {
-          case "m":
-            action = "playback.toggle-metronome";
-            break;
-          case "n":
-            action = "playback.toggle-clap";
-            break;
-          case "p":
-            action = "playback.toggle-vocal-pitch-feedback";
-            break;
-        }
-      } else {
-        switch (key) {
-          case ",":
-            action = "dialog.open-settings";
-            break;
-          case "o":
-            action = "document.open";
-            break;
-          case "s":
-            action = event.shiftKey ? "document.save-as" : "document.save";
-            break;
-          case "z":
-            if (!event.shiftKey) action = "history.undo";
-            break;
-          case "y":
-            action = "history.redo";
-            break;
-          case "c":
-            action = "clipboard.copy";
-            break;
-          case "x":
-            action = "clipboard.cut";
-            break;
-          case "v":
-            action = "clipboard.paste";
-            break;
-        }
-      }
-      if (!action) {
-        return;
-      }
-      clipboard.sync();
-      if (!actions.isAvailable(action)) {
-        return;
-      }
-      event.preventDefault();
-      runAction(action);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [actions, clipboard]);
-
   return (
     <div className="midi-editor">
+      <Hotkeys bindings={globalBindings} />
       <Menubar
         canExecute={canRunMenuCommand}
         isChecked={(command) =>

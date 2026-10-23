@@ -11,6 +11,7 @@ import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
 import { DocumentService } from "../services/document";
 import { EditorStateService } from "../services/editor/state";
 import { Playback } from "./Playback";
+import { profileForInstrument } from "./views/pianoRoll";
 
 interface RuntimeProps {
   children: ReactNode;
@@ -24,7 +25,8 @@ export function Runtime({ children }: RuntimeProps) {
     canUndo: canUndo,
     canRedo: canRedo,
   } = useDocumentSnapshot();
-  const { viewportSessions, maxViewportCount } = useViewportSnapshot();
+  const { viewportSessions, maxViewportCount, activeViewportId } =
+    useViewportSnapshot();
 
   const doc = useService<DocumentService>("document");
   const editorState = useService<EditorStateService>("editor.state");
@@ -39,6 +41,18 @@ export function Runtime({ children }: RuntimeProps) {
   const hasTracks = Boolean(midiData?.trackCount);
   const canAddViewport = viewportSessions.length < maxViewportCount;
   const canCloseViewport = viewportSessions.length > 1;
+  const activeSession = viewportSessions.find(
+    (session) => session.id === activeViewportId,
+  );
+  const activeView = activeSession?.view ?? null;
+  const isVocalsEditing =
+    activeSession?.view === "piano-roll" &&
+    profileForInstrument(activeSession.instrument).editing === "vocals";
+  const isAnyDialogOpen =
+    editorStore.debugVisible ||
+    editorStore.projectVisible ||
+    editorStore.settingsVisible ||
+    editorStore.aboutVisible;
 
   useLayoutEffect(() => {
     context.update({
@@ -49,6 +63,9 @@ export function Runtime({ children }: RuntimeProps) {
       "dialog.project-open": editorStore.projectVisible,
       "dialog.settings-open": editorStore.settingsVisible,
       "dialog.about-open": editorStore.aboutVisible,
+      "dialog.any-open": isAnyDialogOpen,
+      "viewport.active-view": activeView,
+      "viewport.vocals-editing": isVocalsEditing,
       "editor.can-add-viewport": canAddViewport,
       "editor.can-close-viewport": canCloseViewport,
     });
@@ -61,6 +78,9 @@ export function Runtime({ children }: RuntimeProps) {
     editorStore.projectVisible,
     editorStore.settingsVisible,
     editorStore.aboutVisible,
+    isAnyDialogOpen,
+    activeView,
+    isVocalsEditing,
     canAddViewport,
     canCloseViewport,
   ]);

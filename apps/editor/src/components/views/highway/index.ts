@@ -259,6 +259,9 @@ export class HighwayView
     else this.setCameraTick(cameraTick);
   }
 
+  /** Discriminant for `AnyChartView`. */
+  public readonly kind = "highway" as const;
+
   public setMode(mode: HighwayMode): void {
     if (mode === this.mode) return;
     this.input.cancelPhraseGesture();
@@ -284,12 +287,29 @@ export class HighwayView
     return this.editing.canCopySelection();
   }
 
+  // Phrase tools edit phrases, not notes, so note cut/paste is unavailable.
   public canCutSelection(): boolean {
-    return this.editing.canCutSelection();
+    return !this.phraseMode && this.editing.canCutSelection();
   }
 
   public canPasteClipboard(): boolean {
-    return this.editing.canPasteClipboard();
+    return !this.phraseMode && this.editing.canPasteClipboard();
+  }
+
+  public toggleLaneNote(lane: number, preserveSustain = false): void {
+    this.input.toggleLaneNote(lane, preserveSustain);
+  }
+
+  public stepPlayhead(direction: -1 | 1): void {
+    this.input.stepPlayhead(direction);
+  }
+
+  public seekSection(direction: -1 | 1): void {
+    this.input.seekSection(direction);
+  }
+
+  public deleteSelection(): void {
+    this.input.deleteSelection();
   }
 
   public copySelection(): void {
