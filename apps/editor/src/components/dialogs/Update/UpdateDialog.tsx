@@ -1,12 +1,11 @@
-import {
-  useSyncExternalStore,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
-import { useService } from "../../platform";
-import type { UpdaterService, UpdaterSnapshot } from "../../services/updater";
-import { Button, Modal, Section, Text } from "../shared";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { useService } from "../../../platform";
+import type {
+  UpdaterService,
+  UpdaterSnapshot,
+} from "../../../services/updater";
+import { Button, Modal, Section, Text } from "../../shared";
 import styles from "./UpdateDialog.module.css";
 
 function formatMegabytes(bytes: number): string {
@@ -39,13 +38,6 @@ const UpdateDialog = () => {
   };
   const install = (): void => {
     void updater.install();
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      dismiss();
-    }
   };
 
   let body: ReactNode = null;
@@ -125,10 +117,8 @@ const UpdateDialog = () => {
   return (
     <Modal
       className={styles.dialog}
-      onKeyDown={onKeyDown}
-      onBackdropClick={(event) => {
-        if (event.target === event.currentTarget) dismiss();
-      }}
+      onEscapeDown={dismiss}
+      onBackdropClick={dismiss}
     >
       <Modal.Header title="Check for Updates" onClick={dismiss} />
       <Modal.Body>

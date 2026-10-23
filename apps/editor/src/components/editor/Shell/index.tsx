@@ -1,19 +1,19 @@
 import { useLayoutEffect, useSyncExternalStore } from "react";
-import { useEditorState } from "../../../hooks/useEditorState";
 import { runAction } from "../../../actions/execute";
-import { Workspace } from "../Workspace";
-import { Hotkeys } from "../../../input/Hotkeys";
+import { useEditorState } from "../../../hooks/useEditorState";
 import { globalBindings } from "../../../input";
-import { Menubar, type MenuCommandId } from "../Menubar";
-import { SettingsDialog } from "../../dialogs/SettingsDialog";
-import { ProjectDialog } from "../../dialogs/ProjectDialog";
-import { AboutDialog } from "../../dialogs/AboutDialog";
-import { UpdateDialog } from "../../dialogs/UpdateDialog";
+import { Hotkeys } from "../../../input/Hotkeys";
 import { usePlatform } from "../../../platform";
 import { EditorClipboardService } from "../../../services/editor/clipboard";
 import { PlaybackService } from "../../../services/playback";
 import { UpdaterService } from "../../../services/updater";
+import { AboutDialog } from "../../dialogs/About/AboutDialog";
+import { ProjectDialog } from "../../dialogs/Project/ProjectDialog";
+import { SettingsDialog } from "../../dialogs/Settings/SettingsDialog";
+import { UpdateDialog } from "../../dialogs/Update/UpdateDialog";
 import { Section, Text } from "../../shared";
+import { Menubar, type MenuCommandId } from "../Menubar";
+import { Workspace } from "../Workspace";
 
 const Shell = () => {
   const { error, projectVisible, settingsVisible, aboutVisible } =

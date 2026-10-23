@@ -16,16 +16,16 @@ type Story = StoryObj<typeof meta>;
 const ModalExample = () => {
   const [open, setOpen] = useState(true);
 
+  const close = () => {
+    setOpen(false);
+  };
+
   return (
     <>
       {!open && <Button onClick={() => setOpen(true)}>Open modal</Button>}
       {open && (
-        <Modal
-          onBackdropClick={(event) => {
-            if (event.target === event.currentTarget) setOpen(false);
-          }}
-        >
-          <Modal.Header title="Example dialog" onClick={() => setOpen(false)} />
+        <Modal onBackdropClick={close}>
+          <Modal.Header title="Example dialog" onClick={close} />
           <Modal.Body>
             <Section>
               <Label>

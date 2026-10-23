@@ -143,30 +143,25 @@ const Form = <T extends object>({
     setSelectedTab(tab);
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab") return;
+  const onTabDown = (event?: KeyboardEvent<HTMLDivElement>): void => {
     const focusable = [
       ...(dialogRef.current?.querySelectorAll<HTMLElement>(
         "button:not([disabled]), input:not([disabled]), select:not([disabled])",
       ) ?? []),
     ];
-    if (focusable.length === 0) return;
+    if (focusable.length === 0) {
+      return;
+    }
     const currentIndex = focusable.indexOf(
       document.activeElement as HTMLElement,
     );
-    const nextIndex = event.shiftKey
-      ? currentIndex <= 0
-        ? focusable.length - 1
-        : currentIndex - 1
-      : currentIndex === focusable.length - 1
-        ? 0
-        : currentIndex + 1;
-    event.preventDefault();
+    let nextIndex = 0;
+    if (event?.shiftKey) {
+      nextIndex = currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
+    } else {
+      nextIndex = currentIndex === focusable.length - 1 ? 0 : currentIndex + 1;
+    }
+    event?.preventDefault();
     focusable[nextIndex]?.focus();
   };
 
@@ -194,11 +189,10 @@ const Form = <T extends object>({
       {(isDirty) => (
         <Modal
           dialogRef={dialogRef}
-          onKeyDown={onKeyDown}
+          onEscapeDown={onClose}
+          onTabDown={onTabDown}
           className={styles.form}
-          onBackdropClick={(event) => {
-            if (event.target === event.currentTarget) onClose();
-          }}
+          onBackdropClick={onClose}
         >
           <Modal.Header title={title} onClick={onClose} />
           <Modal.Body>

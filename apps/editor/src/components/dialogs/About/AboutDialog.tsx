@@ -1,25 +1,15 @@
-import type { KeyboardEvent } from "react";
-import { runAction } from "../../actions/execute";
-import { Modal, Section, Text } from "../shared";
+import { runAction } from "../../../actions/execute";
+import { Modal, Section, Text } from "../../shared";
 
 const AboutDialog = () => {
   const close = (): void => {
     runAction("dialog.close-about");
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
-  };
-
   return (
     <Modal
-      onKeyDown={onKeyDown}
-      onBackdropClick={(event) => {
-        if (event.target === event.currentTarget) close();
-      }}
+      onEscapeDown={close}
+      onBackdropClick={close}
       fixedSize={{ width: 420, height: 320 }}
     >
       <Modal.Header title="About" onClick={close} />

@@ -1,16 +1,16 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { useEditorState } from "../../hooks/useEditorState";
-import { runAction } from "../../actions/execute";
-import Platform from "../../platform";
+import { useEditorState } from "../../../hooks/useEditorState";
+import { runAction } from "../../../actions/execute";
+import Platform from "../../../platform";
 import {
   validateApplicationSettings,
   SettingsService,
-} from "../../services/settings";
-import { defaultApplicationSettings } from "../../services/settings/schema";
-import { useApplicationSettings } from "../../hooks/useApplicationSettings";
-import { Runtime } from "../editor/Runtime";
+} from "../../../services/settings";
+import { defaultApplicationSettings } from "../../../services/settings/schema";
+import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
+import { Runtime } from "../../editor/Runtime";
 import { SettingsDialog } from "./SettingsDialog";
 
 function SettingsTestShell() {

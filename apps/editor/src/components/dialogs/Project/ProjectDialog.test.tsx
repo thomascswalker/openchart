@@ -1,11 +1,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { useEditorState } from "../../hooks/useEditorState";
-import { runAction } from "../../actions/execute";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
-import { Runtime } from "../editor/Runtime";
-import { Playback } from "../editor/Playback";
+import { useEditorState } from "../../../hooks/useEditorState";
+import { runAction } from "../../../actions/execute";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { Runtime } from "../../editor/Runtime";
+import { Playback } from "../../editor/Playback";
 import { ProjectDialog } from "./ProjectDialog";
 
 function ProjectTestShell() {

@@ -1,9 +1,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import Platform from "../../platform";
-import { DocumentService } from "../../services/document";
-import { UpdaterService } from "../../services/updater";
+import Platform from "../../../platform";
+import { DocumentService } from "../../../services/document";
+import { UpdaterService } from "../../../services/updater";
 import { UpdateDialog } from "./UpdateDialog";
 
 const mocks = vi.hoisted(() => ({

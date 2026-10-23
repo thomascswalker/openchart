@@ -2,7 +2,6 @@ import type {
   CSSProperties,
   HTMLAttributes,
   KeyboardEventHandler,
-  MouseEventHandler,
   ReactNode,
   RefObject,
 } from "react";
@@ -23,7 +22,7 @@ import {
   type styleFn,
 } from "styled-system";
 import { CloseButton, Section, Text } from "..";
-
+import type { KeyboardEvent, MouseEvent } from "react";
 import styles from "./modal.module.css";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border, flexbox);
@@ -78,20 +77,24 @@ interface ModalProps
   extends
     Omit<HTMLAttributes<HTMLDivElement>, keyof SystemProps | "style">,
     Omit<SystemProps, "size"> {
-  children: ReactNode;
-  dialogRef?: RefObject<HTMLDivElement | null>;
-  onBackdropClick?: MouseEventHandler<HTMLDivElement>;
-  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   fixedSize?: FixedSize;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  onEscapeDown?: (event?: KeyboardEvent<HTMLDivElement>) => void;
+  onTabDown?: (event?: KeyboardEvent<HTMLDivElement>) => void;
+  onBackdropClick?: () => void;
+  dialogRef?: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
 }
 
 const Modal = ({
-  children,
-  dialogRef,
-  onBackdropClick,
-  onKeyDown,
-  className,
   fixedSize,
+  onKeyDown,
+  onEscapeDown,
+  onTabDown,
+  onBackdropClick,
+  className,
+  dialogRef,
+  children,
   ...props
 }: ModalProps) => {
   const setDialogRef = useCallback(
@@ -113,8 +116,33 @@ const Modal = ({
     fixedSize && styles["ui-modal-fixed"],
     className,
   );
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    switch (event.key) {
+      case "Escape":
+        event.preventDefault();
+        onEscapeDown?.(event);
+        break;
+      case "Tab":
+        event.preventDefault();
+        onTabDown?.(event);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onBackdropClick?.();
+    }
+  };
+
   return (
-    <div className={styles["ui-modal-backdrop"]} onMouseDown={onBackdropClick}>
+    <div
+      className={styles["ui-modal-backdrop"]}
+      onMouseDown={handleBackdropClick}
+    >
       <div
         ref={setDialogRef}
         className={modalClassName}
@@ -122,7 +150,7 @@ const Modal = ({
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
         tabIndex={-1}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
         style={modalStyle}
       >
         {children}

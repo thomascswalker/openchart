@@ -1,11 +1,11 @@
-import { runActionAsync, runAction } from "../../actions/execute";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
+import { runActionAsync, runAction } from "../../../actions/execute";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import {
   MetadataSchema,
   type Metadata,
   type MetadataValidationErrors,
-} from "../../services/document/schema";
-import { Form } from "../shared";
+} from "../../../services/document/schema";
+import { Form } from "../../shared";
 
 const ProjectDialog = () => {
   const { metadata, directoryHandle } = useDocumentSnapshot();
