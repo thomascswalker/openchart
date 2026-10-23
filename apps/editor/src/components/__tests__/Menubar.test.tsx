@@ -2,6 +2,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { Menubar } from "../Menubar";
+import { shortcutLabel } from "../../input/labels";
 
 function render(element: ReactNode): { container: HTMLDivElement; root: Root } {
   const container = document.createElement("div");
@@ -57,14 +58,18 @@ describe("Menubar", () => {
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),
       ),
-    ).toContain("Settings...Ctrl/Cmd+,");
+    ).toContain(`Settings...${shortcutLabel("dialog.open-settings")}`);
     act(() => triggers[2].click());
     await settle();
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),
       ),
-    ).toEqual(["MetronomeM", "Highway ClapN", "Vocal Pitch FeedbackP"]);
+    ).toEqual([
+      `Metronome${shortcutLabel("playback.toggle-metronome")}`,
+      `Highway Clap${shortcutLabel("playback.toggle-clap")}`,
+      `Vocal Pitch Feedback${shortcutLabel("playback.toggle-vocal-pitch-feedback")}`,
+    ]);
     act(() => triggers[1].click());
     await settle();
     expect(
@@ -74,7 +79,11 @@ describe("Menubar", () => {
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
         (button) => button.textContent?.trim(),
       ),
-    ).toEqual(["CutCtrl/Cmd+X", "CopyCtrl/Cmd+C", "PasteCtrl/Cmd+V"]);
+    ).toEqual([
+      `Cut${shortcutLabel("clipboard.cut")}`,
+      `Copy${shortcutLabel("clipboard.copy")}`,
+      `Paste${shortcutLabel("clipboard.paste")}`,
+    ]);
     act(() => root.unmount());
     container.remove();
   });

@@ -72,8 +72,7 @@ export class PianoRollInputController {
     canvas.style.touchAction = "none";
     canvas.tabIndex = 0;
 
-    // Keyboard and click input.
-    canvas.addEventListener("keydown", this.handleKeyDown);
+    // Click input. Keyboard shortcuts are hotkey bindings (src/input).
     canvas.addEventListener("click", this.handleClick);
     canvas.addEventListener("contextmenu", this.handleContextMenu);
 
@@ -95,7 +94,6 @@ export class PianoRollInputController {
     const canvas = this.#canvas;
     if (canvas) {
       // Remove the listeners installed on the canvas.
-      canvas.removeEventListener("keydown", this.handleKeyDown);
       canvas.removeEventListener("click", this.handleClick);
       canvas.removeEventListener("contextmenu", this.handleContextMenu);
       canvas.removeEventListener("pointerdown", this.handlePointerDown);
@@ -134,94 +132,47 @@ export class PianoRollInputController {
     this.#editing.pasteClipboard(this.#hoverPosition.x, this.#hasHovered);
   }
 
-  // Keyboard and click input
+  // Keyboard commands. Hotkeys are declared in `src/input/pianoroll.ts` and
+  // reach the view through actions; these are the view-side implementations.
 
-  /** Handles piano-roll keyboard shortcuts and selection navigation. */
-  private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    const key = event.key.toLowerCase();
-    const selection = this.#context.getSelectionContext();
+  /** Transposes selected notes by `semitones`. */
+  public transposeSelection(semitones: number): void {
+    this.#editing.transposeSelection(semitones);
+  }
 
-    // Arrow keys transpose pitches or move notes along the timeline.
-    if (key === "arrowup" || key === "arrowdown") {
-      event.preventDefault();
-      const direction = key === "arrowup" ? 1 : -1;
-      const amplitude = event.shiftKey ? 12 : 1;
-      this.#editing.transposeSelection(direction * amplitude);
-      return;
-    }
+  /** Moves selected notes one snap interval earlier (-1) or later (1). */
+  public moveSelection(direction: -1 | 1): void {
+    const amplitude = this.#context.getState().snap.enabled
+      ? this.#coordinates.getSnapTicks()
+      : 7.5;
+    this.#editing.moveSelectionTicks(direction * amplitude);
+  }
 
-    if (key === "arrowleft" || key === "arrowright") {
-      event.preventDefault();
-      const direction = key === "arrowleft" ? -1 : 1;
-      const amplitude = this.#context.getState().snap.enabled
-        ? this.#coordinates.getSnapTicks()
-        : 7.5;
-      this.#editing.moveSelectionTicks(direction * amplitude);
-      return;
-    }
+  /** Selects every note in the current track. */
+  public selectAll(): void {
+    this.#context.getSelectionContext().notes = this.#context.getCurrentNotes();
+    this.#context.requestRender();
+  }
 
-    // Modifier shortcuts handle selection and clipboard operations.
-    if (event.ctrlKey || event.metaKey) {
-      switch (key) {
-        case "a": {
-          event.preventDefault();
-          selection.notes = this.#context.getCurrentNotes();
-          this.#context.requestRender();
-          break;
-        }
-        case "d": {
-          event.preventDefault();
-          selection.clear();
-          this.#context.requestRender();
-          break;
-        }
-        case "c": {
-          event.preventDefault();
-          this.#editing.copySelection();
-          break;
-        }
-        case "x": {
-          event.preventDefault();
-          this.#editing.cutSelection();
-          break;
-        }
-        case "v": {
-          event.preventDefault();
-          this.pasteClipboard();
-          break;
-        }
-      }
-      return;
-    }
+  /** Clears the selection. */
+  public clearSelection(): void {
+    this.#context.getSelectionContext().clear();
+    this.#context.requestRender();
+  }
 
-    // Single-key shortcuts apply when no modifier is held.
-    switch (key) {
-      case "c":
-        event.preventDefault();
-        this.#editing.copySelection();
-        break;
-      case "x":
-        event.preventDefault();
-        this.#editing.cutSelection();
-        break;
-      case "v":
-        event.preventDefault();
-        this.#editing.pasteClipboard(this.#hoverPosition.x, this.#hasHovered);
-        break;
-      case "f":
-        event.preventDefault();
-        this.#coordinates.focusSelection(
-          selection.notes,
-          this.#lastViewportSize,
-        );
-        this.#context.requestRender();
-        break;
-      case "delete":
-        event.preventDefault();
-        this.#editing.deleteSelection();
-        break;
-    }
-  };
+  /** Frames the selected notes in the viewport. */
+  public focusSelection(): void {
+    this.#coordinates.focusSelection(
+      this.#context.getSelectionContext().notes,
+      this.#lastViewportSize,
+    );
+    this.#context.requestRender();
+  }
+
+  /** Deletes the selected notes. */
+  public deleteSelection(): void {
+    this.#editing.deleteSelection();
+  }
 
   /** Selects notes or forwards a short left click to the header. */
   private readonly handleClick = (event: MouseEvent): void => {

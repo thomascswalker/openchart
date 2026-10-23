@@ -32,12 +32,12 @@ export type AppColumnDef<TData extends RowData> = Parameters<
 type DataType = Record<string, any>;
 
 interface DataTableProps {
-  key: string;
+  id: string;
   data: DataType[];
   columnDefs?: AppColumnDef<DataType>[];
 }
 
-const DataTable = ({ key, data, columnDefs }: DataTableProps) => {
+const DataTable = ({ id, data, columnDefs }: DataTableProps) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const columnHelper = createAppColumnHelper<DataType>();
@@ -46,7 +46,7 @@ const DataTable = ({ key, data, columnDefs }: DataTableProps) => {
     [data, columnDefs],
   );
   const table = useAppTable({
-    key,
+    key: id,
     columns,
     data,
   });

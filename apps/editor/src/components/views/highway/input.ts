@@ -77,7 +77,6 @@ export class HighwayInputController {
     canvas.tabIndex = 0;
     canvas.style.touchAction = "none";
     canvas.addEventListener("click", this.handleClick);
-    canvas.addEventListener("keydown", this.handleKeyDown);
     canvas.addEventListener("contextmenu", this.handleContextMenu);
     canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     canvas.addEventListener("pointerdown", this.handlePointerDown);
@@ -95,7 +94,6 @@ export class HighwayInputController {
     this.cancelActiveGestures();
     if (this.canvas) {
       this.canvas.removeEventListener("click", this.handleClick);
-      this.canvas.removeEventListener("keydown", this.handleKeyDown);
       this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
       this.canvas.removeEventListener("wheel", this.handleWheel);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
@@ -676,111 +674,74 @@ export class HighwayInputController {
     this.updateGhostLocation(event);
   };
 
-  private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (!this.canEditNotes || event.target !== this.canvas) return;
-    const key = event.key.toLowerCase();
-    const ghost = this.ghostNoteLocation;
-    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
-      if (key === "c") this.editing.copySelection();
-      else if (key === "x" && !this.context.getPhraseMode())
-        this.editing.cutSelection();
-      else if (key === "v" && !this.context.getPhraseMode()) {
-        this.editing.pasteClipboard(
-          ghost?.tick ?? this.context.getPlayheadTick(),
-          ghost?.lane ?? 0,
-        );
-      } else return;
-      event.preventDefault();
-      return;
-    }
-    if (event.ctrlKey || event.metaKey) return;
+  // Keyboard commands. Hotkeys are declared in `src/input/highway.ts` and reach
+  // the view through actions; these methods are the view-side implementations.
+
+  /** Adds or removes the note in `lane` (0-based) at the playhead. */
+  public toggleLaneNote(lane: number, preserveSustain = false): void {
+    if (!this.canEditNotes || this.context.getPhraseMode()) return;
     const chart = this.getCurrentChart();
     if (!chart) return;
-    if (this.context.getPhraseMode() && /^[1-5]$/.test(event.key)) return;
-    if (
-      event.altKey &&
-      (event.key === "ArrowUp" || event.key === "ArrowDown")
-    ) {
-      event.preventDefault();
-      const track = chart.getTrack().getMidiTrack();
-      const section = track
-        ? findSection(
-            track,
-            this.context.getPlayheadTick(),
-            event.key === "ArrowUp" ? 1 : -1,
-          )
-        : null;
-      if (section) this.context.requestSeek(section.tick);
-      return;
-    }
-    if (event.altKey) return;
-    if (event.key === "Delete" || event.key === "Backspace") {
-      event.preventDefault();
-      if (this.context.getPhraseMode()) {
-        this.phraseEditing.deleteSelectedPhrase();
-        this.context.requestRender();
-        return;
-      }
-      this.editing.deleteSelection();
-      return;
-    }
-    const snap = this.coordinates.getSnapTicks();
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      this.context.requestSeek(
-        getHighwaySteppedTick(
-          this.context.getPlayheadTick(),
-          event.key === "ArrowUp" ? 1 : -1,
-          snap,
-          this.context.getState().snap.enabled,
-        ),
+    const playheadTick = this.context.getPlayheadTick();
+    const note = chart
+      .getNotes()
+      .find(
+        (candidate) =>
+          candidate.start === playheadTick &&
+          physicalLaneForNote(chart, candidate) === lane &&
+          (chart.getTrack().getKey() !== "drums" ||
+            getDrumNoteProfile(candidate.note, chart.getOffset())?.kind ===
+              this.context.getDrumPlacementKind()),
       );
-      return;
+    if (note) {
+      this.editing.removeNote(chart, note, false);
+    } else {
+      const changed = this.editing.placeNoteAt(
+        chart,
+        lane,
+        playheadTick,
+        preserveSustain,
+      );
+      if (!changed) return;
     }
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      event.preventDefault();
-      this.context.stepSnapDenominator(event.key === "ArrowLeft" ? -1 : 1);
-      return;
-    }
-    if (/^[1-5]$/.test(event.key)) {
-      event.preventDefault();
-      const lane = Number(event.key) - 1;
-      const note = chart
-        .getNotes()
-        .find(
-          (candidate) =>
-            candidate.start === this.context.getPlayheadTick() &&
-            physicalLaneForNote(chart, candidate) === lane &&
-            (chart.getTrack().getKey() !== "drums" ||
-              getDrumNoteProfile(candidate.note, chart.getOffset())?.kind ===
-                this.context.getDrumPlacementKind()),
-        );
-      if (note) this.editing.removeNote(chart, note, false);
-      else {
-        const changed = this.editing.placeNoteAt(
-          chart,
-          lane,
-          this.context.getPlayheadTick(),
-          event.shiftKey,
-        );
-        if (!changed) return;
-      }
-      this.context.notifyNotesChanged();
+    this.context.notifyNotesChanged();
+    this.context.requestRender();
+  }
+
+  /** Moves the playhead one snap interval (or tick step) forward/backward. */
+  public stepPlayhead(direction: -1 | 1): void {
+    if (!this.canEditNotes || !this.getCurrentChart()) return;
+    this.context.requestSeek(
+      getHighwaySteppedTick(
+        this.context.getPlayheadTick(),
+        direction,
+        this.coordinates.getSnapTicks(),
+        this.context.getState().snap.enabled,
+      ),
+    );
+  }
+
+  /** Seeks to the next (1) or previous (-1) section marker. */
+  public seekSection(direction: -1 | 1): void {
+    if (!this.canEditNotes) return;
+    const chart = this.getCurrentChart();
+    const track = chart?.getTrack().getMidiTrack();
+    const section = track
+      ? findSection(track, this.context.getPlayheadTick(), direction)
+      : null;
+    if (section) this.context.requestSeek(section.tick);
+  }
+
+  /** Deletes selected notes, or the selected phrase while a phrase tool is on. */
+  public deleteSelection(): void {
+    if (!this.canEditNotes || !this.getCurrentChart()) return;
+    if (this.context.getPhraseMode()) {
+      this.phraseEditing.deleteSelectedPhrase();
       this.context.requestRender();
       return;
     }
-    if (event.key === "[" || event.key === "]") {
-      const track = chart.getTrack().getMidiTrack();
-      const section = track
-        ? findSection(
-            track,
-            this.context.getPlayheadTick(),
-            event.key === "]" ? 1 : -1,
-          )
-        : null;
-      if (section) this.context.requestSeek(section.tick);
-    }
-  };
+    this.editing.deleteSelection();
+  }
 
   private updateHoveredNote(event: MouseEvent): void {
     if (this.context.getPhraseMode()) {

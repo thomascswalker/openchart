@@ -23,6 +23,7 @@ import {
   createPianoRollFixture,
   type PianoRollFixtureVariant,
 } from "./createPianoRollFixture";
+import { usePianoRollStoryHotkeys } from "./usePianoRollStoryHotkeys";
 import "./PianoRollStoryHost.css";
 
 /** Instrument whose profile is used when a story names none. */
@@ -155,6 +156,9 @@ export function PianoRollStoryHost({
   const onReady = useCallback((readyView: AnyChartView | null) => {
     setView(readyView);
   }, []);
+
+  // Hotkeys normally come from the editor shell; mirror them for this story.
+  usePianoRollStoryHotkeys(view);
 
   // Probe WebGL once so the story can explain a missing context.
   useEffect(() => {

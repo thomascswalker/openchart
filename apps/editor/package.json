@@ -17,6 +17,7 @@
     "test:storybook": "playwright test --config playwright.storybook.config.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "docs:controls": "node scripts/generate-controls.mjs",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
@@ -28,6 +29,7 @@
     "@openchart/mixer": "^1.0.0",
     "@openchart/views": "^1.0.0",
     "@tanstack/react-form": "^1.33.5",
+    "@tanstack/react-hotkeys": "^0.16.0",
     "@tanstack/react-table": "^9.3.1",
     "@tanstack/react-virtual": "^3.14.21",
     "@tauri-apps/api": "^2.11.1",

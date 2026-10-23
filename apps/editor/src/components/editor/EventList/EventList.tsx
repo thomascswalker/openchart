@@ -213,7 +213,7 @@ const EventList = () => {
       </Section>
       <HorizontalSeparator marginTop={vars("space-large")} />
       <DataTable
-        key={`event-list-${eventType}`}
+        id={`event-list-${eventType}`}
         data={data}
         columnDefs={config.columnDefs}
       />

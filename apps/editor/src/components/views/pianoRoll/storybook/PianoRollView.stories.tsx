@@ -15,7 +15,7 @@ are local to this story mount and are discarded when it is remounted. Click an
 empty roll area to seek, or drag there to create a note; drag a note to move it
 and its right edge to resize it. Right-drag to select and middle-drag to pan.
 Use the mouse wheel or trackpad to zoom/pan. Focus the canvas before using
-Delete, arrow keys, C, X, V, or F; Storybook may otherwise handle shortcuts.
+Delete, arrow keys, Ctrl/Cmd+A/C/X/V, or F; Storybook may otherwise handle shortcuts.
 `,
       },
     },

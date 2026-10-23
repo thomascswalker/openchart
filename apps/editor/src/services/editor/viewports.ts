@@ -1,4 +1,9 @@
-import { Difficulty, requiresPianoRoll } from "@openchart/views";
+import {
+  Difficulty,
+  requiresPianoRoll,
+  type VocalNoteKind,
+  type VocalPhraseKind,
+} from "@openchart/views";
 import { StatefulService } from "../../platform/services";
 
 export type ViewportKind = "piano-roll" | "highway";
@@ -24,6 +29,43 @@ export function enforceViewForInstrument(
     : session;
 }
 
+/** Highway tools and phrase modes. Mirrors the Highway view's `HighwayMode`. */
+export type HighwayToolMode =
+  "select" | "place" | "remove" | "stagepower" | "solo";
+
+/** Mirrors the Highway view's `DrumPlacementKind`. */
+export type DrumPlacement = "pad" | "cymbal" | "kick";
+
+/** Mirrors the Highway view's `HighwayNotePlacementType`. */
+export type NotePlacement = "normal" | "force-hopo" | "force-strum" | "tap";
+
+/** Mirrors the Piano Roll's `VocalPlacement`. */
+export interface VocalToolPlacement {
+  noteKind: VocalNoteKind;
+  /** When set, a grid drag creates this phrase instead of a note. */
+  phrase: VocalPhraseKind | null;
+}
+
+/**
+ * Per-viewport editing tools. Kept in the session (not component state) so
+ * actions, and therefore hotkeys, can change them.
+ */
+export interface ViewportTools {
+  highwayMode: HighwayToolMode;
+  drumPlacementKind: DrumPlacement;
+  notePlacementType: NotePlacement;
+  vocalPlacement: VocalToolPlacement;
+}
+
+export function createViewportTools(): ViewportTools {
+  return {
+    highwayMode: "select",
+    drumPlacementKind: "pad",
+    notePlacementType: "normal",
+    vocalPlacement: { noteKind: "pitched", phrase: null },
+  };
+}
+
 export interface ViewportSession {
   id: string;
   view: ViewportKind;
@@ -31,6 +73,7 @@ export interface ViewportSession {
   instrument: string;
   difficulty: Difficulty;
   camera: ViewportCameraState;
+  tools: ViewportTools;
 }
 
 export interface ViewportSnapshot {
@@ -60,6 +103,7 @@ function createViewportSession(
     instrument: "LEAD GUITAR",
     difficulty: Difficulty.Expert,
     camera: { tick: cameraTick },
+    tools: createViewportTools(),
   };
 }
 const defaultViewportSnapshot: ViewportSnapshot = {
@@ -204,6 +248,21 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     ) {
       this.activeViewId = updated.view;
     }
+    this.publish();
+  };
+
+  /** Merges a partial update into a viewport's editing tools. */
+  public readonly updateTools = (
+    id: string,
+    update: Partial<ViewportTools>,
+  ): void => {
+    const current = this.getViewport(id);
+    if (!current) return;
+    this.viewportSessions = this.viewportSessions.map((session) =>
+      session.id === id
+        ? { ...session, tools: { ...session.tools, ...update } }
+        : session,
+    );
     this.publish();
   };
 
