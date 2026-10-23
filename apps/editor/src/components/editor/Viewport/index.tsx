@@ -42,7 +42,7 @@ import {
   profileForInstrument,
   type PianoRollNote,
 } from "../../views/pianoRoll";
-import { Timeline } from "../Timeline";
+import { Timeline } from "../Timeline/Timeline";
 import Toolbar from "../Toolbar";
 import { TrackList } from "../../dialogs";
 import styles from "./Viewport.module.css";
