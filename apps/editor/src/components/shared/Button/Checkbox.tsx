@@ -8,7 +8,7 @@ import type {
   BorderProps,
   styleFn,
 } from "styled-system";
-import { Text } from "../Text/Text";
+import { Text } from "..";
 import styles from "./checkbox.module.css";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);

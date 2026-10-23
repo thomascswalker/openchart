@@ -13,9 +13,7 @@ import { usePlatform } from "../../platform";
 import { EditorClipboardService } from "../../services/editor/clipboard";
 import { PlaybackService } from "../../services/playback";
 import { UpdaterService } from "../../services/updater";
-import { Section } from "../shared/Section";
-import { Text } from "../shared/Text";
-import styles from "./Shell.module.css";
+import { Section, Text } from "../shared";
 
 const Shell = () => {
   const { error, projectVisible, settingsVisible, aboutVisible } =
@@ -57,7 +55,15 @@ const Shell = () => {
   };
 
   return (
-    <div className={styles.midiEditor}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       <Hotkeys bindings={globalBindings} />
       <Menubar
         canExecute={canRunMenuCommand}

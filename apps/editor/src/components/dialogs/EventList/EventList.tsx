@@ -12,13 +12,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
 import { vars } from "../../../util/css";
-import Box from "../../shared/Box";
-import { Dropdown, type DropdownOption } from "../../shared/Dropdown";
-import { Section } from "../../shared/Section";
-import { HorizontalSeparator } from "../../shared/Separator";
-import { DataTable } from "../../shared/Table";
-import { createAppColumnHelper } from "../../shared/Table/DataTable";
-import { Label, Text } from "../../shared/Text";
+import {
+  Box,
+  DataTable,
+  Dropdown,
+  HorizontalSeparator,
+  Label,
+  Section,
+  Text,
+} from "../../shared";
+import { createAppColumnHelper } from "../../shared/Table";
+import type { DropdownOption } from "../../shared/Dropdown";
 
 type EventType = "channel" | "meta" | "sysex";
 type Row = Record<string, any>;
@@ -219,4 +223,4 @@ const EventList = () => {
   );
 };
 
-export default EventList;
+export { EventList };

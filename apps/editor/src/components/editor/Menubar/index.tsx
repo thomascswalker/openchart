@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Button } from "../../shared/Button";
-import { HorizontalSeparator } from "../../shared/Separator";
-import { Text } from "../../shared/Text";
+import { Button, HorizontalSeparator, Text } from "../../shared";
 import { useShortcutResolver } from "../../../input/labels";
 import styles from "./Menubar.module.css";
 

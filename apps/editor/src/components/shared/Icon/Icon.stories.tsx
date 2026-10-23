@@ -1,10 +1,9 @@
 import type { ComponentType } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { IconProps } from "./Icon";
-import * as allIcons from "./Icon";
-import { Text } from "../Text";
+import { Text, type IconProps } from "..";
+import * as allIcons from "..";
 
-const { default: Icon, ...moduleIcons } = allIcons;
+const { Icon, ...moduleIcons } = allIcons;
 
 const icons: Array<{
   name: string;

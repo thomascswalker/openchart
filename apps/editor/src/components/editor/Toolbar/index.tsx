@@ -1,26 +1,29 @@
-import { Section } from "../../shared/Section";
-import styles from "./toolbar.module.css";
 import {
+  ActivateIcon,
+  Button,
   CursorIcon,
-  EraserIcon,
+  Dropdown,
   EasyIcon,
+  EraserIcon,
   ExpertIcon,
   HardIcon,
   Highway3dIcon,
+  LockIcon,
   MediumIcon,
   PencilIcon,
-  PianoIcon,
-  StagepowerIcon,
-  SoloIcon,
   PhraseIcon,
-  ActivateIcon,
-  VolumeIcon,
-  LockIcon,
-  UnlockIcon,
+  PianoIcon,
+  Section,
   SnapIcon,
-} from "../../shared/Icon/Icon";
-import { VerticalSeparator } from "../../shared/Separator";
-import { Dropdown } from "../../shared/Dropdown";
+  SoloIcon,
+  StagepowerIcon,
+  UnlockIcon,
+  VerticalSeparator,
+  VolumeIcon,
+  type ButtonProps,
+  type IconProps,
+} from "../../shared";
+import styles from "./toolbar.module.css";
 import type {
   ViewportKind,
   ViewportSession,
@@ -28,9 +31,6 @@ import type {
 import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
 import { runAction } from "../../../actions/execute";
 import { SnapDenominators } from "../../views/pianoRoll/constants";
-import { Button } from "../../shared/Button";
-import type { ButtonProps } from "../../shared/Button";
-import type { IconProps } from "../../shared/Icon/Icon";
 import {
   Difficulty,
   InstrumentType,

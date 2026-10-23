@@ -1,7 +1,5 @@
 import { runAction } from "../../../actions/execute";
-import Box from "../../shared/Box";
-import { Button } from "../../shared/Button";
-import { Text } from "../../shared/Text";
+import { Box, Button, Text } from "../../shared";
 import styles from "./Timeline.module.css";
 import type { TimelinePosition } from "./util";
 import { layout, compose, type LayoutProps, type styleFn } from "styled-system";

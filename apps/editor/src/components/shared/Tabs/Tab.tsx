@@ -9,8 +9,7 @@ import type {
 } from "styled-system";
 import classNames from "classnames";
 import styles from "./Tab.module.css";
-import { Button } from "../Button";
-import { H6 } from "../Text";
+import { Button, H6 } from "..";
 import { vars } from "../../../util/css";
 
 type Orientation = "horizontal" | "vertical";
@@ -156,5 +155,5 @@ const TabContainer = ({
   );
 };
 
-export default TabContainer;
+export { TabContainer as Tabs };
 export type { TabsProps, TabListProps, TabBodyProps, TabOption };

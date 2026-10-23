@@ -1,6 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Section } from "../Section";
-import { H2, CodeBlock, H1 } from "../Text";
+import { CodeBlock, H1, H2, Section } from "..";
 
 interface ErrorBoundaryProps {
   children: ReactNode;

@@ -1,6 +1,6 @@
-import CommandPanel from "../CommandPanel";
+import { CommandPanel } from "../CommandPanel";
 import { Viewport } from "../Viewport";
-import Splitter from "../../shared/Splitter";
+import { Splitter } from "../../shared";
 import styles from "./Workspace.module.css";
 
 export const Workspace = () => {

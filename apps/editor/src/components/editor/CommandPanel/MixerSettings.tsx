@@ -1,6 +1,5 @@
-import { MixerIcon } from "../../shared/Icon/Icon";
-import TrackMixer from "../../dialogs/TrackMixer";
-import { PopupButton } from "../../shared/Popup/PopupButton";
+import { MixerIcon, PopupButton } from "../../shared";
+import { AudioMixer } from "../../dialogs/AudioMixer/AudioMixer";
 import styles from "../Viewport/Viewport.module.css";
 
 export const MixerSettings = () => (
@@ -10,6 +9,6 @@ export const MixerSettings = () => (
     title="AUDIO MIXER"
     width={520}
   >
-    <TrackMixer />
+    <AudioMixer />
   </PopupButton>
 );

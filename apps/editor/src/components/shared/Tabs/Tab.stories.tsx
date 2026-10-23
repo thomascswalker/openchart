@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import Tabs, { type TabsProps } from "./Tab";
-import { Button } from "../Button";
-import { HorizontalSeparator } from "../Separator";
+import { Button, HorizontalSeparator, Tabs, type TabsProps } from "..";
 
 const meta = {
   title: "Shared/Tabs",

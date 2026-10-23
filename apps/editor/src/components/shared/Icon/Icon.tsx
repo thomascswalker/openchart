@@ -141,5 +141,4 @@ export const {
   ResetIcon,
   TracksIcon,
 } = icons;
-export { type Icon };
-export default Icon;
+export { Icon };

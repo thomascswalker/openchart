@@ -1,7 +1,7 @@
 import { InputProvider } from "../../input/InputProvider";
 import { Runtime } from "./Runtime";
 import { Shell } from "./Shell";
-import { ErrorBoundary } from "../shared/ErrorBoundary/ErrorBoundary";
+import { ErrorBoundary } from "../shared";
 
 const Editor = () => {
   return (

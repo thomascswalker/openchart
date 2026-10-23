@@ -6,10 +6,7 @@ import {
 import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
 import { useService } from "../../platform";
 import type { UpdaterService, UpdaterSnapshot } from "../../services/updater";
-import { Button } from "../shared/Button";
-import { Modal } from "../shared/Modal/Modal";
-import { Section } from "../shared/Section";
-import { Text } from "../shared/Text";
+import { Button, Modal, Section, Text } from "../shared";
 import styles from "./UpdateDialog.module.css";
 
 function formatMegabytes(bytes: number): string {

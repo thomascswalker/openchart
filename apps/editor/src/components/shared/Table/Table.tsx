@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from "react";
-import Box from "../Box";
+import { Box } from "..";
 import styles from "./Table.module.css";
 import classNames from "classnames";
 
@@ -69,4 +69,4 @@ const _Table = Object.assign(Table, {
   Body,
 });
 
-export default _Table;
+export { _Table as Table };

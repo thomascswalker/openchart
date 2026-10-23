@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import EventList from "../EventList";
+import EventList from "../../../dialogs/EventList/EventList";
 import {
   addRandomMetaEvents,
   addRandomChannelEvents,

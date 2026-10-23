@@ -1,16 +1,21 @@
-import { useSnapshot } from "../../platform";
-import { Section } from "../shared/Section";
-import { Text, H6 } from "../shared/Text";
+import { useSnapshot } from "../../../platform";
+import {
+  Button,
+  H6,
+  HorizontalSeparator,
+  ResetIcon,
+  Section,
+  Slider,
+  Text,
+  type ButtonProps,
+  type SliderProps,
+} from "../../shared";
 import type { Track as MixerTrack } from "@openchart/mixer";
-import { HorizontalSeparator } from "../shared/Separator";
-import type { MixerSnapshot } from "../../services/mixer/types";
-import { Button, type ButtonProps } from "../shared/Button";
-import { Slider, type SliderProps } from "../shared/Slider";
+import type { MixerSnapshot } from "../../../services/mixer/types";
 import styles from "./TrackMixer.module.css";
 import classNames from "classnames";
 import type { ReactNode } from "react";
 import { startCase } from "es-toolkit";
-import { ResetIcon } from "../shared/Icon/Icon";
 
 interface VolumeSliderProps extends Omit<
   SliderProps,
@@ -123,7 +128,7 @@ const TrackButton = ({
   );
 };
 
-interface TrackProps {
+interface AudioTrackProps {
   name?: string;
   track: MixerTrack;
   index: number;
@@ -134,7 +139,7 @@ interface TrackProps {
   onSoloClick?: (track: MixerTrack) => void;
 }
 
-const Track = ({
+const AudioTrack = ({
   name,
   track,
   index,
@@ -143,7 +148,7 @@ const Track = ({
   onVolumeChange,
   onMuteClick,
   onSoloClick,
-}: TrackProps) => {
+}: AudioTrackProps) => {
   const enabled =
     !masterMuted && (track.soloed || (!hasSoloedTrack && !track.muted));
 
@@ -212,7 +217,7 @@ const Track = ({
   );
 };
 
-const TrackMixer = () => {
+const AudioMixer = () => {
   const mixer = useSnapshot<MixerSnapshot>("mixer").mixer;
   const hasSoloedTrack = Object.values(mixer.tracks).some(
     (track) => track.soloed,
@@ -283,7 +288,7 @@ const TrackMixer = () => {
           <Text textAlign="center">No audio tracks loaded</Text>
         )}
         {Object.entries(mixer.tracks).map(([name, track], index) => (
-          <Track
+          <AudioTrack
             key={name}
             name={name}
             track={track}
@@ -300,4 +305,4 @@ const TrackMixer = () => {
   );
 };
 
-export default TrackMixer;
+export { AudioMixer };

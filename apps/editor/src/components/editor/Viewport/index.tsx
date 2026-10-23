@@ -21,7 +21,7 @@ import type { EngineOptions } from "../../../rendering/engine";
 import { ActiveChartViewService } from "../../../services/editor/activeChartView";
 import { type ViewportSession } from "../../../services/editor/viewports";
 import { PlaybackService } from "../../../services/playback";
-import { Button, CloseButton } from "../../shared/Button";
+import { Button, CloseButton } from "../../shared";
 import {
   BassIcon,
   DrumsIcon,
@@ -32,7 +32,7 @@ import {
   PianoIcon,
   SplitIcon,
   VocalsIcon,
-} from "../../shared/Icon/Icon";
+} from "../../shared";
 import { ChartViewHost } from "../../views/ChartViewHost";
 import type { AnyChartView } from "../../views/ChartViews";
 import { ChartViews } from "../../views/ChartViews";
@@ -44,7 +44,7 @@ import {
 } from "../../views/pianoRoll";
 import { Timeline } from "../Timeline";
 import Toolbar from "../Toolbar";
-import { TrackList } from "../TrackList";
+import { TrackList } from "../../dialogs";
 import styles from "./Viewport.module.css";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {

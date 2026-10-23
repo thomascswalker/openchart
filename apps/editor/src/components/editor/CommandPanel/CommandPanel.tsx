@@ -1,11 +1,13 @@
-import TrackMixer from "../../dialogs/TrackMixer";
-import Box from "../../shared/Box";
-import { MixerIcon, SettingsIcon, TracksIcon } from "../../shared/Icon/Icon";
-import Tabs from "../../shared/Tabs";
-import type { TabOption } from "../../shared/Tabs/Tab";
+import { AudioMixer, EventList, ViewportSettings } from "../../dialogs";
+import {
+  Box,
+  MixerIcon,
+  SettingsIcon,
+  Tabs,
+  TracksIcon,
+  type TabOption,
+} from "../../shared";
 import styles from "./CommandPanel.module.css";
-import EventList from "./EventList";
-import { ViewportSettings } from "./ViewportSettings";
 
 function getTabOptions(size: number): TabOption[] {
   return [
@@ -45,7 +47,7 @@ const CommandPanel = () => {
         maxWidth="100%"
       >
         {[
-          <TrackMixer key="mixer" />,
+          <AudioMixer key="mixer" />,
           <EventList key="event-list" />,
           <ViewportSettings key="settings" />,
         ]}
@@ -54,4 +56,4 @@ const CommandPanel = () => {
   );
 };
 
-export default CommandPanel;
+export { CommandPanel };

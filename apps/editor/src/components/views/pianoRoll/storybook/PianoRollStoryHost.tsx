@@ -13,12 +13,16 @@ import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
 import { PianoRollView, profileForInstrument } from "../index";
 import { PlaybackService } from "../../../../services/playback";
 import { defaultApplicationSettings } from "../../../../services/settings/schema";
-import { Button, Checkbox } from "../../../shared/Button";
-import { Dropdown } from "../../../shared/Dropdown";
-import type { DropdownOption } from "../../../shared/Dropdown";
-import { Input } from "../../../shared/Input/Input";
-import { Section } from "../../../shared/Section";
-import { Label, Text } from "../../../shared/Text";
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  Input,
+  Label,
+  Section,
+  Text,
+  type DropdownOption,
+} from "../../../shared";
 import {
   createPianoRollFixture,
   type PianoRollFixtureVariant,

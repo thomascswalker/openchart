@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
-import TrackMixer from "./TrackMixer";
-import { useService } from "../../platform";
-import { MixerService } from "../../services/mixer";
+import AudioMixer from "./AudioMixer";
+import { useService } from "../../../platform";
+import { MixerService } from "../../../services/mixer";
 import sample1Url from "./__tests__/sample1.wav?url";
 import sample2Url from "./__tests__/sample2.wav?url";
 import sample3Url from "./__tests__/sample3.wav?url";
-import { Section } from "../shared/Section";
+import { Section } from "../../shared";
 
 const Wrapper = () => {
   return (
@@ -16,7 +16,7 @@ const Wrapper = () => {
       borderRadius={4}
       border="1px solid var(--border-color-primary)"
     >
-      <TrackMixer />
+      <AudioMixer />
     </Section>
   );
 };
@@ -41,7 +41,7 @@ const meta = {
       return <Story />;
     },
   ],
-} satisfies Meta<typeof TrackMixer>;
+} satisfies Meta<typeof AudioMixer>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

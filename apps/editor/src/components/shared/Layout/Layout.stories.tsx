@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { HorizontalSeparator, VerticalSeparator } from "../Separator/Separator";
-import { Section } from "../Section/Section";
+import { HorizontalSeparator, Section, VerticalSeparator } from "..";
 
 const meta = {
   title: "Shared/Layout",

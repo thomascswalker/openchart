@@ -9,7 +9,7 @@ import {
   type MidiMetaEvent,
 } from "@openchart/midi";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import DataTable, { createAppColumnHelper } from "../DataTable";
+import { DataTable, createAppColumnHelper } from "../..";
 
 const meta = {
   title: "Shared/DataTable",

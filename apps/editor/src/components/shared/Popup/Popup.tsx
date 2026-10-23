@@ -10,10 +10,8 @@ import {
 } from "react";
 import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "../Button";
+import { Button, Heading, HorizontalSeparator } from "..";
 import styles from "./popup.module.css";
-import { Heading } from "../Text";
-import { HorizontalSeparator } from "../Separator";
 
 interface PopupProps {
   trigger: ReactNode;

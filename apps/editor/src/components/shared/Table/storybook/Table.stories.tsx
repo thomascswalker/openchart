@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import Table from "../Table";
+import { Table } from "../..";
 
 const meta = {
   title: "Shared/Table",
