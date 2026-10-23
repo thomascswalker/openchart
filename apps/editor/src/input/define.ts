@@ -27,7 +27,11 @@ export interface BindingSpec {
   /** Defaults to `document`. */
   target?: BindingTarget;
   /** Set `requireReset: false` for bindings that should repeat while held. */
-  options?: { requireReset?: boolean };
+  options?: {
+    requireReset?: boolean;
+    eventType?: "keydown" | "keyup";
+    ignoreInputs?: boolean;
+  };
 }
 
 export interface Binding {
@@ -44,7 +48,11 @@ export interface Binding {
   readonly name: string;
   readonly group: string;
   readonly target: BindingTarget;
-  readonly options: { requireReset?: boolean };
+  readonly options: {
+    requireReset?: boolean;
+    eventType?: "keydown" | "keyup";
+    ignoreInputs?: boolean;
+  };
 }
 
 /**

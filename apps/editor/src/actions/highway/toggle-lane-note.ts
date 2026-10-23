@@ -9,7 +9,11 @@ export class ToggleLaneNoteAction extends Action<[number, boolean?]> {
     super({ condition: ActiveHighway });
   }
 
-  run(accessor: ServicesAccessor, lane: number, preserveSustain = false): void {
+  run(
+    accessor: ServicesAccessor,
+    lane: number,
+    preserveSustain: boolean = false,
+  ): void {
     const chartViewService = accessor.get<ActiveChartViewService>(
       "editor.active-chart-view",
     );

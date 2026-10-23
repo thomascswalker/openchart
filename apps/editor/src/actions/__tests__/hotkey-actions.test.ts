@@ -11,6 +11,7 @@ import { DeleteSelectionAction } from "../editor/delete-selection";
 import { StepSnapDenominatorAction } from "../editor/step-snap-denominator";
 import { TransposeSelectionAction } from "../piano-roll/transpose-selection";
 import { ToggleLaneNoteAction } from "../highway/toggle-lane-note";
+import { ReleaseLaneNoteAction } from "../highway/release-lane-note";
 
 function accessor(services: Record<string, unknown>): ServicesAccessor {
   return { get: <T>(id: string) => services[id] as T };
@@ -92,6 +93,7 @@ describe("view command actions", () => {
     expect(() =>
       new ToggleLaneNoteAction().run(services, 0, false),
     ).not.toThrow();
+    expect(() => new ReleaseLaneNoteAction().run(services, 0)).not.toThrow();
     expect(() => new TransposeSelectionAction().run(services, 1)).not.toThrow();
   });
 
@@ -100,12 +102,15 @@ describe("view command actions", () => {
     const highway = {
       kind: "highway" as const,
       toggleLaneNote: vi.fn(),
+      releaseLaneNote: vi.fn(),
       deleteSelection: vi.fn(),
     };
     active.set(highway as never);
     const services = accessor({ "editor.active-chart-view": active });
     new ToggleLaneNoteAction().run(services, 2, true);
     expect(highway.toggleLaneNote).toHaveBeenCalledWith(2, true);
+    new ReleaseLaneNoteAction().run(services, 2);
+    expect(highway.releaseLaneNote).toHaveBeenCalledWith(2);
     new DeleteSelectionAction().run(services);
     expect(highway.deleteSelection).toHaveBeenCalledOnce();
     // A piano roll command must not reach a highway view.

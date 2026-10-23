@@ -56,6 +56,10 @@ export class HighwayInputController {
   private phrasePointerEvent: PointerEvent | null = null;
   private phraseScrollFrame: number | null = null;
   private suppressNextClick = false;
+  private readonly heldLaneNotes = new Map<
+    number,
+    { noteOn: MidiChannelEvent; startTick: number }
+  >();
 
   public constructor(
     context: HighwayContext,
@@ -92,6 +96,9 @@ export class HighwayInputController {
 
   public detach(): void {
     this.cancelActiveGestures();
+    for (const lane of this.heldLaneNotes.keys()) {
+      this.releaseLaneNote(lane);
+    }
     if (this.canvas) {
       this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
@@ -693,32 +700,88 @@ export class HighwayInputController {
             getDrumNoteProfile(candidate.note, chart.getOffset())?.kind ===
               this.context.getDrumPlacementKind()),
       );
+    let releaseHeldNote = false;
     if (note) {
       this.editing.removeNote(chart, note, false);
+      releaseHeldNote = this.heldLaneNotes.delete(lane);
     } else {
+      const previousNotes = new Set(
+        chart.getNotes().map((candidate) => candidate.noteOn),
+      );
+      this.context.beginEdit();
       const changed = this.editing.placeNoteAt(
         chart,
         lane,
         playheadTick,
         preserveSustain,
       );
-      if (!changed) return;
+      if (!changed) {
+        this.context.endEdit();
+        return;
+      }
+      const placedNote = chart
+        .getNotes()
+        .find(
+          (candidate) =>
+            !previousNotes.has(candidate.noteOn) &&
+            candidate.start === playheadTick &&
+            physicalLaneForNote(chart, candidate) === lane,
+        );
+      if (placedNote) {
+        this.heldLaneNotes.set(lane, {
+          noteOn: placedNote.noteOn,
+          startTick: placedNote.start,
+        });
+      } else {
+        this.context.endEdit();
+      }
     }
     this.context.notifyNotesChanged();
+    if (releaseHeldNote) this.context.endEdit();
     this.context.requestRender();
+  }
+
+  /** Ends a held lane's sustain edit and commits its history transaction. */
+  public releaseLaneNote(lane: number): void {
+    if (!this.heldLaneNotes.delete(lane)) return;
+    this.context.endEdit();
   }
 
   /** Moves the playhead one snap interval (or tick step) forward/backward. */
   public stepPlayhead(direction: -1 | 1): void {
-    if (!this.canEditNotes || !this.getCurrentChart()) return;
-    this.context.requestSeek(
-      getHighwaySteppedTick(
-        this.context.getPlayheadTick(),
-        direction,
-        this.coordinates.getSnapTicks(),
-        this.context.getState().snap.enabled,
-      ),
+    const chart = this.getCurrentChart();
+    if (!this.canEditNotes || !chart) return;
+    const nextTick = getHighwaySteppedTick(
+      this.context.getPlayheadTick(),
+      direction,
+      this.coordinates.getSnapTicks(),
+      this.context.getState().snap.enabled,
     );
+    let changed = false;
+    const chartNotes = chart.getNotes();
+    for (const [lane, held] of this.heldLaneNotes) {
+      const note = chartNotes.find(
+        (candidate) => candidate.noteOn === held.noteOn,
+      );
+      if (!note) {
+        this.releaseLaneNote(lane);
+        continue;
+      }
+      const otherNoteStarts = chartNotes
+        .filter((candidate) => candidate.noteOn !== held.noteOn)
+        .map((candidate) => candidate.start);
+      const nextEnd = getHighwaySustainEnd(
+        held.startTick,
+        nextTick,
+        otherNoteStarts,
+      );
+      if (note.end !== nextEnd) {
+        changed = this.editing.resizeNote(chart, note, nextEnd) || changed;
+      }
+    }
+    if (changed) this.context.notifyNotesChanged();
+    this.context.requestSeek(nextTick);
+    if (changed) this.context.requestRender();
   }
 
   /** Seeks to the next (1) or previous (-1) section marker. */
