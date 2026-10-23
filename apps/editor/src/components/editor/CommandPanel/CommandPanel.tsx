@@ -1,27 +1,9 @@
-import { AudioMixer, EventList, ViewportSettings } from "../../dialogs";
-import { Box, MixerIcon, SettingsIcon, Tabs, TracksIcon } from "../../shared";
-import type { TabOption } from "../../shared/Tabs";
+import { useCommandPanel } from "./useCommandPanel";
+import { Box, Tabs } from "../../shared";
 import styles from "./CommandPanel.module.css";
 
-function getTabOptions(size: number): TabOption[] {
-  return [
-    {
-      title: "Audio Mixer",
-      icon: <MixerIcon size={size} />,
-    },
-    {
-      title: "Event List",
-      icon: <TracksIcon size={size} />,
-    },
-    {
-      title: "Viewport Settings",
-      icon: <SettingsIcon size={size} />,
-    },
-  ];
-}
-
 const CommandPanel = () => {
-  const options = getTabOptions(24);
+  const { options, children } = useCommandPanel();
   return (
     <Box
       className={styles.commandPanel}
@@ -40,11 +22,7 @@ const CommandPanel = () => {
         minHeight={0}
         maxWidth="100%"
       >
-        {[
-          <AudioMixer key="mixer" />,
-          <EventList key="event-list" />,
-          <ViewportSettings key="settings" />,
-        ]}
+        {children}
       </Tabs>
     </Box>
   );
