@@ -1,13 +1,13 @@
-import { runActionAsync, runAction } from "../../actions/execute";
-import { useApplicationSettings } from "../../hooks/useApplicationSettings";
+import { runActionAsync, runAction } from "../../../actions/execute";
+import { useSettings } from "../../../hooks/useApplication";
 import {
   applicationSettingsSchema,
   type ApplicationSettings,
-} from "../../services/settings/schema";
-import { Form } from "../shared";
+} from "../../../services/settings/schema";
+import { Form } from "../../shared";
 
 const SettingsDialog = () => {
-  const { settings } = useApplicationSettings();
+  const { settings } = useSettings();
 
   const close = (): void => {
     runAction("dialog.close-settings");

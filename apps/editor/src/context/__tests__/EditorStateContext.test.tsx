@@ -1,14 +1,16 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { useEditorState } from "../../hooks/useEditorState";
+import { useEditor } from "../../hooks/useEditorState";
 import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { Runtime } from "../../components/editor/Runtime";
 import { usePlayback } from "../../hooks/usePlayback";
+import { useDocument } from "../../hooks/useDocument";
 
 function CommandEnablementProbe() {
-  const { error, isDirty } = useEditorState();
+  const { isDirty } = useDocument();
+  const { error } = useEditor();
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>

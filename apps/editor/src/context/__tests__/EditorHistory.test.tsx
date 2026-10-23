@@ -2,26 +2,24 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "../../components/editor/Runtime";
-import { useEditorState } from "../useEditorState";
 import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";
 import { DocumentService } from "../../services/document";
-import { useDocumentSnapshot } from "../useDocumentSnapshot";
+import { useDocument } from "../../hooks/useDocument";
 
 function HistoryHarness() {
-  const {
-    midi: midiData,
-    canUndo: canUndo,
-    canRedo: canRedo,
-  } = useDocumentSnapshot();
+  const { midi, canUndo, canRedo, isDirty } = useDocument();
   const document = Platform.services.get<DocumentService>("document");
-  const { isDirty } = useEditorState();
   const [view, setView] = useState<"highway" | "piano-roll">("highway");
 
   const addNote = (): void => {
-    if (!midiData) return;
-    if (midiData.tracks.length === 0) midiData.addTrack();
-    midiData.tracks[0]?.addNote(60, 0, 100, 120);
+    if (!midi) {
+      return;
+    }
+    if (midi.tracks.length === 0) {
+      midi.addTrack();
+    }
+    midi.tracks[0]?.addNote(60, 0, 100, 120);
     runAction("history.record-edit");
     runAction("document.mark-dirty");
   };
@@ -29,7 +27,7 @@ function HistoryHarness() {
   return (
     <>
       <output data-testid="note-count">
-        {midiData?.tracks[0]?.getNotes().length ?? 0}
+        {midi?.tracks[0]?.getNotes().length ?? 0}
       </output>
       <output data-testid="history-state">
         {`${canUndo}:${canRedo}:${isDirty}`}

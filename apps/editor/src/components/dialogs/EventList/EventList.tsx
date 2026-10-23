@@ -9,8 +9,8 @@ import {
 import { SongView } from "@openchart/views";
 import { startCase } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { useDocument } from "../../../hooks/useDocument";
+import { useViewport } from "../../../hooks/useViewport";
 import { vars } from "../../../util/css";
 import {
   Box,
@@ -130,9 +130,9 @@ const eventTypeOptions: DropdownOption[] = (
 }));
 
 const EventList = () => {
-  const documentSnapshot = useDocumentSnapshot();
+  const documentSnapshot = useDocument();
   const { midi } = documentSnapshot;
-  const { viewportSessions, activeViewportId } = useViewportSnapshot();
+  const { viewportSessions, activeViewportId } = useViewport();
   const view = useMemo(
     () => (midi ? new SongView(midi) : null),
     // A new snapshot is published on every edit, even if midi is mutated in place.

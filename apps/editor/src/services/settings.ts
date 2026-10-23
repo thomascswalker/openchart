@@ -64,9 +64,9 @@ export function validateApplicationSettings(
     settings.feedback.previewLowPitch > settings.feedback.previewHighPitch
   ) {
     errors.previewLowPitch =
-      "Preview pitch range must be inclusive MIDI pitches 0–127.";
+      "Preview pitch range must be inclusive MIDI pitches 0-127.";
     errors.previewHighPitch =
-      "Preview pitch range must be inclusive MIDI pitches 0–127.";
+      "Preview pitch range must be inclusive MIDI pitches 0-127.";
   }
   if (typeof settings.graphics.antialiasing !== "boolean") {
     errors.antialiasing = "Antialiasing must be enabled or disabled.";
@@ -170,7 +170,7 @@ export class SettingsService extends StatefulService<ApplicationSettings> {
     return true;
   };
 
-  public readonly applySetting = <Path extends ApplicationSettingPath>(
+  public readonly apply = <Path extends ApplicationSettingPath>(
     path: Path,
     value: ApplicationSettingValue<Path>,
   ): boolean => {

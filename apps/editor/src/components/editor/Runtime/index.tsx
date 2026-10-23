@@ -5,9 +5,9 @@ import {
   type ReactNode,
 } from "react";
 import { usePlatform, useService } from "../../../platform";
-import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { useSettings } from "../../../hooks/useApplication";
+import { useDocument } from "../../../hooks/useDocument";
+import { useViewport } from "../../../hooks/useViewport";
 import { DocumentService } from "../../../services/document";
 import { EditorStateService } from "../../../services/editor/state";
 import { Playback } from "../Playback";
@@ -18,15 +18,11 @@ interface RuntimeProps {
 }
 
 export function Runtime({ children }: RuntimeProps) {
-  const { settings } = useApplicationSettings();
+  const { settings } = useSettings();
 
-  const {
-    midi: midiData,
-    canUndo: canUndo,
-    canRedo: canRedo,
-  } = useDocumentSnapshot();
+  const { midi: midiData, canUndo: canUndo, canRedo: canRedo } = useDocument();
   const { viewportSessions, maxViewportCount, activeViewportId } =
-    useViewportSnapshot();
+    useViewport();
 
   const doc = useService<DocumentService>("document");
   const editorState = useService<EditorStateService>("editor.state");

@@ -1,49 +1,32 @@
 import { useRef } from "react";
-import { xToTick } from "./util";
 import { runAction } from "../../../actions/execute";
 import styles from "./Timeline.module.css";
-interface TrackProps {
+import { useTimelineBounds } from "./useTimelineBounds";
+
+interface TimelineViewportProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   scrubFrameRef: React.RefObject<number | null>;
   timelineTicks: number;
-  chartViews: any[];
   isPlaying: boolean;
+  onScrub: (tick: number) => void;
 }
 
-const Viewport = ({
+const TimelineViewport = ({
   canvasRef,
   containerRef,
   scrubFrameRef,
   timelineTicks,
-  chartViews,
   isPlaying,
-}: TrackProps) => {
+  onScrub,
+}: TimelineViewportProps) => {
   const draggingRef = useRef(false);
   const pendingScrubXRef = useRef<number | null>(null);
-
-  const scrubToClientX = (clientX: number): void => {
-    if (timelineTicks <= 0) {
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const bounds = canvas.getBoundingClientRect();
-    const tick = xToTick(clientX - bounds.left, bounds.width, timelineTicks);
-
-    runAction("playback.set-tick", tick);
-
-    for (const chartView of chartViews) {
-      const cameraTick = chartView.getCameraTickForPlayhead(tick);
-      if (cameraTick !== null) {
-        chartView.setCameraTick(cameraTick);
-      }
-    }
-  };
+  const scrubToClientX = useTimelineBounds({
+    canvasRef,
+    timelineTicks,
+    onScrub,
+  });
 
   const queueScrubToClientX = (clientX: number): void => {
     pendingScrubXRef.current = clientX;
@@ -120,4 +103,4 @@ const Viewport = ({
   );
 };
 
-export default Viewport;
+export default TimelineViewport;

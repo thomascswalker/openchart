@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import Platform from "../platform";
 import { SettingsService } from "../services/settings";
 
-export function useApplicationSettings() {
+export function useSettings() {
   const settingsService = Platform.services.get<SettingsService>("settings");
   const settings = useSyncExternalStore(
     settingsService.subscribe,
@@ -12,6 +12,6 @@ export function useApplicationSettings() {
   return {
     settings,
     applySettings: settingsService.applySettings,
-    applySetting: settingsService.applySetting,
+    applySetting: settingsService.apply,
   };
 }

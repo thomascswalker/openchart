@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
+import { useViewport } from "../hooks/useViewport.ts";
 import { InputProviderContext } from "./context.ts";
 import { Hotkeys } from "./Hotkeys.tsx";
 import { highwayBindings, pianoRollBindings } from "./index.ts";
@@ -14,7 +14,7 @@ import { HotkeysProvider } from "./lib.ts";
  */
 export function ViewHotkeyScopes() {
   const ready = useContext(InputProviderContext);
-  const { activeViewId } = useViewportSnapshot();
+  const { activeViewId } = useViewport();
   if (!ready) return null;
   return (
     <>

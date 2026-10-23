@@ -14,12 +14,16 @@ const ActionButtonWidth = "40px";
 
 const clockItemStyles: styleFn = compose(layout);
 
-interface ClockItemProps extends LayoutProps {
+interface TimelineClockLabelProps extends LayoutProps {
   label: string;
   value: string | number;
 }
 
-const ClockItem = ({ label, value, ...props }: ClockItemProps) => {
+const TimelineClockLabel = ({
+  label,
+  value,
+  ...props
+}: TimelineClockLabelProps) => {
   const clockItem = clockItemStyles(props);
 
   return (
@@ -49,7 +53,7 @@ interface ControlsProps {
   isPlaying: boolean;
 }
 
-const Controls = ({ position, isPlaying }: ControlsProps) => {
+const TimelineControls = ({ position, isPlaying }: ControlsProps) => {
   const buttons = [
     {
       action: "playback.seek-start",
@@ -79,9 +83,17 @@ const Controls = ({ position, isPlaying }: ControlsProps) => {
         className={styles["clock"]}
         aria-label={`Playback position: tick ${position.tick}, time ${position.time}, measure ${position.measure}`}
       >
-        <ClockItem label="TICK" value={position.tick} width={ClockItemWidth} />
-        <ClockItem label="TIME" value={position.time} width={ClockItemWidth} />
-        <ClockItem
+        <TimelineClockLabel
+          label="TICK"
+          value={position.tick}
+          width={ClockItemWidth}
+        />
+        <TimelineClockLabel
+          label="TIME"
+          value={position.time}
+          width={ClockItemWidth}
+        />
+        <TimelineClockLabel
           label="MEAS"
           value={position.measure}
           width={ClockItemWidth}
@@ -102,4 +114,4 @@ const Controls = ({ position, isPlaying }: ControlsProps) => {
   );
 };
 
-export default Controls;
+export default TimelineControls;

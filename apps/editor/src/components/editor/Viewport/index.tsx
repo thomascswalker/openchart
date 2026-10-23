@@ -11,10 +11,10 @@ import {
   useState,
 } from "react";
 import { runAction } from "../../../actions/execute";
-import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { useSettings } from "../../../hooks/useApplication";
+import { useDocument } from "../../../hooks/useDocument";
 import { usePlaybackSelector } from "../../../hooks/usePlayback";
-import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { useViewport } from "../../../hooks/useViewport";
 import { ViewHotkeyScopes } from "../../../input/ViewportHotkeyScopes";
 import Platform from "../../../platform";
 import type { EngineOptions } from "../../../rendering/engine";
@@ -42,7 +42,7 @@ import {
   profileForInstrument,
   type PianoRollNote,
 } from "../../views/pianoRoll";
-import { Timeline } from "../Timeline";
+import { Timeline } from "../Timeline/Timeline";
 import Toolbar from "../Toolbar";
 import { TrackList } from "../../dialogs";
 import styles from "./Viewport.module.css";
@@ -104,7 +104,7 @@ function trackIndexForSession(
 }
 
 export const Viewport = () => {
-  const { viewportSessions, activeViewportId } = useViewportSnapshot();
+  const { viewportSessions, activeViewportId } = useViewport();
   const [chartViews, setChartViews] = useState<Map<string, AnyChartView>>(
     () => new Map(),
   );
@@ -161,15 +161,15 @@ function ViewportPanel({
     chartView: AnyChartView | null,
   ) => void;
 }) {
-  const { midi: midiData } = useDocumentSnapshot();
-  const { settings } = useApplicationSettings();
+  const { midi: midiData } = useDocument();
+  const { settings } = useSettings();
   const {
     viewportSessions,
     maxViewportCount,
     snapEnabled,
     snapDenominator,
     lockCursor,
-  } = useViewportSnapshot();
+  } = useViewport();
   const isPlaying = usePlaybackSelector((s) => s.isPlaying);
   const setActiveView = usePlaybackSelector((s) => s.setActiveView);
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);

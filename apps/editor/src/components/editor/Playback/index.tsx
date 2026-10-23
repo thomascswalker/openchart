@@ -5,16 +5,16 @@ import {
   type ReactNode,
 } from "react";
 import { Difficulty } from "@openchart/views";
-import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { useSettings } from "../../../hooks/useApplication";
+import { useDocument } from "../../../hooks/useDocument";
+import { useViewport } from "../../../hooks/useViewport";
 import Platform from "../../../platform";
 import { PlaybackService } from "../../../services/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
-  const { midi: midiData, documentId } = useDocumentSnapshot();
+  const { midi: midiData, documentId } = useDocument();
   const { viewportSessions, activeViewportId, snapEnabled, snapDenominator } =
-    useViewportSnapshot();
+    useViewport();
   const activeViewport = viewportSessions.find(
     (session) => session.id === activeViewportId,
   );
@@ -24,7 +24,7 @@ export function Playback({ children }: { children: ReactNode }) {
           (track) => track.name === activeViewport.instrument,
         )
       : null;
-  const { settings } = useApplicationSettings();
+  const { settings } = useSettings();
   const selectedInstrument = activeViewport?.instrument ?? "LEAD GUITAR";
   const selectedDifficulty = activeViewport?.difficulty ?? Difficulty.Expert;
   const playbackService = Platform.services.get<PlaybackService>("playback");

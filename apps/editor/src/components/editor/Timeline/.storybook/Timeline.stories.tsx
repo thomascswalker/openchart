@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Timeline } from ".";
-import { MockPlaybackService } from "../../../hooks/usePlayback.mock";
+import { Timeline } from "../Timeline";
+import { MockPlaybackService } from "../../../../hooks/usePlayback.mock";
 
 const meta = {
   title: "Editor/Timeline",

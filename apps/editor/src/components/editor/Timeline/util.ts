@@ -17,7 +17,7 @@ const ViewportColor = "rgba(255, 255, 255, 0.12)";
 const ViewportBorderColor = "rgba(255, 255, 255, 0.35)";
 const PlayheadColor = "#ff3b30";
 
-export const DefaultTempo: TempoEvent[] = [
+export const DefaultTempoEvents: TempoEvent[] = [
   {
     deltaTime: 0,
     status: 0xff,
@@ -28,7 +28,7 @@ export const DefaultTempo: TempoEvent[] = [
   },
 ];
 
-export const NoEvents: TimeSignatureEvent[] = [];
+export const DefaultTimeSignatureEvents: TimeSignatureEvent[] = [];
 
 function tickToX(tick: number, width: number, timelineTicks: number): number {
   if (timelineTicks <= 0) return 0;

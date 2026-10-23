@@ -1,16 +1,16 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { useEditorState } from "../../hooks/useEditorState";
-import { runAction } from "../../actions/execute";
-import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
-import { Runtime } from "../editor/Runtime";
-import { Playback } from "../editor/Playback";
+import { useEditor } from "../../../hooks/useEditorState";
+import { runAction } from "../../../actions/execute";
+import { useDocument } from "../../../hooks/useDocument";
+import { Runtime } from "../../editor/Runtime";
+import { Playback } from "../../editor/Playback";
 import { ProjectDialog } from "./ProjectDialog";
 
 function ProjectTestShell() {
-  const { projectVisible } = useEditorState();
-  const { metadata } = useDocumentSnapshot();
+  const { projectVisible } = useEditor();
+  const { metadata } = useDocument();
   return (
     <>
       <button type="button" onClick={() => runAction("dialog.open-project")}>

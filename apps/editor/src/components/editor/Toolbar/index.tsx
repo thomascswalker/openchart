@@ -27,7 +27,7 @@ import type {
   ViewportKind,
   ViewportSession,
 } from "../../../services/editor/viewports";
-import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { useViewport } from "../../../hooks/useViewport";
 import { runAction } from "../../../actions/execute";
 import { SnapDenominators } from "../../views/pianoRoll/constants";
 import {
@@ -151,7 +151,7 @@ const Toolbar = ({
     snapEnabled,
     snapDenominator,
     lockCursor,
-  } = useViewportSnapshot();
+  } = useViewport();
 
   const activeViewId = session.view ?? globalView;
 

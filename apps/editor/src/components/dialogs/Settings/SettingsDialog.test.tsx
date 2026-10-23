@@ -1,21 +1,21 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { useEditorState } from "../../hooks/useEditorState";
-import { runAction } from "../../actions/execute";
-import Platform from "../../platform";
+import { useEditor } from "../../../hooks/useEditorState";
+import { runAction } from "../../../actions/execute";
+import Platform from "../../../platform";
 import {
   validateApplicationSettings,
   SettingsService,
-} from "../../services/settings";
-import { defaultApplicationSettings } from "../../services/settings/schema";
-import { useApplicationSettings } from "../../hooks/useApplicationSettings";
-import { Runtime } from "../editor/Runtime";
+} from "../../../services/settings";
+import { defaultApplicationSettings } from "../../../services/settings/schema";
+import { useSettings } from "../../../hooks/useApplication";
+import { Runtime } from "../../editor/Runtime";
 import { SettingsDialog } from "./SettingsDialog";
 
 function SettingsTestShell() {
-  const { settingsVisible } = useEditorState();
-  const { settings } = useApplicationSettings();
+  const { settingsVisible } = useEditor();
+  const { settings } = useSettings();
   return (
     <>
       <button type="button" onClick={() => runAction("dialog.open-settings")}>
