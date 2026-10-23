@@ -1,12 +1,20 @@
 import "./App.css";
-import Editor from "./components/editor/Editor";
+import { Runtime, Shell } from "./components/editor";
+import { ErrorBoundary } from "./components/shared";
+import { InputProvider } from "./input/InputProvider";
 import Platform, { PlatformProvider } from "./platform";
 
 function App() {
   return (
     <section>
       <PlatformProvider value={Platform}>
-        <Editor />
+        <ErrorBoundary>
+          <InputProvider>
+            <Runtime>
+              <Shell />
+            </Runtime>
+          </InputProvider>
+        </ErrorBoundary>
       </PlatformProvider>
     </section>
   );

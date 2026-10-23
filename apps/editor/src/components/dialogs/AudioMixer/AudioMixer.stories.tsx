@@ -3,9 +3,9 @@ import { useEffect } from "react";
 import { AudioMixer } from "./AudioMixer";
 import { useService } from "../../../platform";
 import { MixerService } from "../../../services/mixer";
-import sample1Url from "./__tests__/sample1.wav?url";
-import sample2Url from "./__tests__/sample2.wav?url";
-import sample3Url from "./__tests__/sample3.wav?url";
+import sample1Url from "./sample1.wav?url";
+import sample2Url from "./sample2.wav?url";
+import sample3Url from "./sample3.wav?url";
 import { Section } from "../../shared";
 
 const Wrapper = () => {
