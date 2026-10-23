@@ -1,6 +1,7 @@
-import { MixerIcon, PopupButton } from "../../shared";
+import { MixerIcon } from "../../shared";
 import { AudioMixer } from "../../dialogs/AudioMixer/AudioMixer";
 import styles from "../Viewport/Viewport.module.css";
+import { PopupButton } from "../../shared/Popup";
 
 export const MixerSettings = () => (
   <PopupButton

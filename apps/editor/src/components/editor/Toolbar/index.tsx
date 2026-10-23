@@ -20,7 +20,6 @@ import {
   UnlockIcon,
   VerticalSeparator,
   VolumeIcon,
-  type ButtonProps,
   type IconProps,
 } from "../../shared";
 import styles from "./toolbar.module.css";
@@ -47,6 +46,7 @@ import type {
   HighwayMode,
   HighwayNotePlacementType,
 } from "../../views/highway";
+import type { ButtonProps } from "../../shared/Button";
 
 const Difficulties = [
   [Difficulty.Easy, EasyIcon],

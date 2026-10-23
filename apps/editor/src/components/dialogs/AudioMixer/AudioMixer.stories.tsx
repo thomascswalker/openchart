@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
-import AudioMixer from "./AudioMixer";
+import { AudioMixer } from "./AudioMixer";
 import { useService } from "../../../platform";
 import { MixerService } from "../../../services/mixer";
 import sample1Url from "./__tests__/sample1.wav?url";

@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import type { JSX } from "react/jsx-runtime";
 import { getTextSystemStyles } from "./textStyles";
-import type { TextProps } from "..";
+import type { TextProps } from "./Text";
 import styles from "./text.module.css";
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;

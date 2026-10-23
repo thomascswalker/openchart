@@ -1,12 +1,6 @@
 import { AudioMixer, EventList, ViewportSettings } from "../../dialogs";
-import {
-  Box,
-  MixerIcon,
-  SettingsIcon,
-  Tabs,
-  TracksIcon,
-  type TabOption,
-} from "../../shared";
+import { Box, MixerIcon, SettingsIcon, Tabs, TracksIcon } from "../../shared";
+import type { TabOption } from "../../shared/Tabs";
 import styles from "./CommandPanel.module.css";
 
 function getTabOptions(size: number): TabOption[] {

@@ -7,8 +7,6 @@ import {
   Section,
   Slider,
   Text,
-  type ButtonProps,
-  type SliderProps,
 } from "../../shared";
 import type { Track as MixerTrack } from "@openchart/mixer";
 import type { MixerSnapshot } from "../../../services/mixer/types";
@@ -16,6 +14,8 @@ import styles from "./TrackMixer.module.css";
 import classNames from "classnames";
 import type { ReactNode } from "react";
 import { startCase } from "es-toolkit";
+import type { SliderProps } from "../../shared/Slider";
+import type { ButtonProps } from "../../shared/Button";
 
 interface VolumeSliderProps extends Omit<
   SliderProps,
