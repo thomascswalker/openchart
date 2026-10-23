@@ -10,7 +10,7 @@ import {
 } from "../../shared";
 import type { Track as MixerTrack } from "@openchart/mixer";
 import type { MixerSnapshot } from "../../../services/mixer/types";
-import styles from "./TrackMixer.module.css";
+import styles from "./AudioMixer.module.css";
 import classNames from "classnames";
 import type { ReactNode } from "react";
 import { startCase } from "es-toolkit";
