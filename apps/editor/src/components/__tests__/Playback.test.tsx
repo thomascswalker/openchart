@@ -1,7 +1,7 @@
 import { act, StrictMode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { Runtime } from "../Runtime";
+import { Runtime } from "../editor/Runtime";
 import { usePlayback } from "../../hooks/usePlayback";
 
 function FeedbackConsumer() {

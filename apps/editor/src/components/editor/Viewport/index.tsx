@@ -1,3 +1,6 @@
+import type { Midi } from "@openchart/midi";
+import { Difficulty, InstrumentType, SongView } from "@openchart/views";
+import { startCase } from "es-toolkit";
 import {
   useCallback,
   useEffect,
@@ -7,44 +10,42 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Midi } from "@openchart/midi";
-import { Difficulty, InstrumentType, SongView } from "@openchart/views";
-import { type ViewportSession } from "../services/editor/viewports";
-import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { usePlaybackSelector } from "../hooks/usePlayback";
-import { useApplicationSettings } from "../hooks/useApplicationSettings";
-import { runAction } from "../actions/execute";
-import Platform from "../platform";
-import { PlaybackService } from "../services/playback";
-import { ActiveChartViewService } from "../services/editor/activeChartView";
-import { Timeline } from "./editor/Timeline/Timeline";
-import { ChartViewHost } from "./views/ChartViewHost";
-import type { EngineOptions } from "../rendering/engine";
-import { ChartViews } from "./views/ChartViews";
-import type { AnyChartView } from "./views/ChartViews";
-import { HighwayView } from "./views/highway";
-import {
-  PianoRollView,
-  profileForInstrument,
-  type PianoRollNote,
-} from "./views/pianoRoll";
-import Toolbar from "./Toolbar";
-import { Button, CloseButton } from "./shared/Button";
-import { startCase } from "es-toolkit";
+import { runAction } from "../../../actions/execute";
+import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { usePlaybackSelector } from "../../../hooks/usePlayback";
+import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { ViewHotkeyScopes } from "../../../input/ViewportHotkeyScopes";
+import Platform from "../../../platform";
+import type { EngineOptions } from "../../../rendering/engine";
+import { ActiveChartViewService } from "../../../services/editor/activeChartView";
+import { type ViewportSession } from "../../../services/editor/viewports";
+import { PlaybackService } from "../../../services/playback";
+import { Button, CloseButton } from "../../shared/Button";
 import {
   BassIcon,
   DrumsIcon,
-  GuitarIcon,
-  FourpadIcon,
   FivepadIcon,
+  FourpadIcon,
+  GuitarIcon,
   NoteIcon,
   PianoIcon,
   SplitIcon,
   VocalsIcon,
-} from "./shared/Icon/Icon";
-import { TrackList } from "./Tracklist";
-import { ViewHotkeyScopes } from "../input/ViewportHotkeyScopes";
+} from "../../shared/Icon/Icon";
+import { ChartViewHost } from "../../views/ChartViewHost";
+import type { AnyChartView } from "../../views/ChartViews";
+import { ChartViews } from "../../views/ChartViews";
+import { HighwayView } from "../../views/highway";
+import {
+  PianoRollView,
+  profileForInstrument,
+  type PianoRollNote,
+} from "../../views/pianoRoll";
+import { Timeline } from "../Timeline";
+import Toolbar from "../Toolbar";
+import { TrackList } from "../TrackList";
+import styles from "./Viewport.module.css";
 
 function InstrumentIcon({ instrument }: { instrument: string }) {
   switch (instrument) {
@@ -131,11 +132,9 @@ export const Viewport = () => {
 
   const chartViewList = useMemo(() => [...chartViews.values()], [chartViews]);
   return (
-    <section className="viewport-manager" aria-label="Chart viewports">
+    <section className={styles.viewportManager} aria-label="Chart viewports">
       <ViewHotkeyScopes />
-      <div
-        className={`viewport-grid viewport-grid--${viewportSessions.length}`}
-      >
+      <div className={styles.viewportGrid} data-count={viewportSessions.length}>
         {viewportSessions.map((session) => (
           <ViewportPanel
             key={session.id}
@@ -378,21 +377,21 @@ function ViewportPanel({
       data-testid="viewport-panel"
       data-viewport-id={session.id}
       data-view={session.view}
-      className={`viewport-panel${active ? " viewport-panel--active" : ""}`}
+      className={`${styles.viewportPanel}${active ? ` ${styles.viewportPanelActive}` : ""}`}
       onPointerDown={() => runAction("editor.focus-viewport", session.id)}
     >
-      <header className="viewport-panel__header">
-        <p className="viewport-panel__title">
-          <span className="viewport-panel__title-icon" aria-hidden="true">
+      <header className={styles.viewportPanelHeader}>
+        <p className={styles.viewportPanelTitle}>
+          <span className={styles.viewportPanelTitleIcon} aria-hidden="true">
             <InstrumentIcon instrument={session.instrument} />
           </span>
-          <span className="viewport-panel__title-text">
+          <span className={styles.viewportPanelTitleText}>
             {session.view === "piano-roll"
               ? session.instrument
               : `${startCase(session.instrument)} (${Difficulty[session.difficulty]})`}
           </span>
         </p>
-        <div className="viewport-panel__actions">
+        <div className={styles.viewportPanelActions}>
           <Button
             aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
             onClick={() =>

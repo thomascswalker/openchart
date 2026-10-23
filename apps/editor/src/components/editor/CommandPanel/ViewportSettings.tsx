@@ -1,8 +1,8 @@
-import { useApplicationSettings } from "../hooks/useApplicationSettings";
-import { HIGHWAY_SCROLL_SPEED_RANGE } from "../services/settings/schema";
-import { Checkbox } from "./shared/Button";
-import { Slider } from "./shared/Slider";
-import { Text } from "./shared/Text";
+import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
+import { HIGHWAY_SCROLL_SPEED_RANGE } from "../../../services/settings/schema";
+import { Checkbox } from "../../shared/Button";
+import { Slider } from "../../shared/Slider";
+import { Text } from "../../shared/Text";
 
 export const ViewportSettings = () => {
   const { settings, applySetting } = useApplicationSettings();

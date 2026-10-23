@@ -2,12 +2,7 @@ import type { Midi, MidiNote } from "@openchart/midi";
 import type { EditablePhraseKind } from "@openchart/views";
 import { ChartView, SongView } from "@openchart/views";
 import * as THREE from "three";
-import {
-  AbstractChartView,
-  type CameraDebugState,
-  type ChartViewState,
-  type CameraDebugView,
-} from "../AbstractChartView";
+import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ResourceRegistry } from "./assets";
@@ -17,8 +12,6 @@ import {
   defaultCameraFieldOfView,
   defaultCameraPosition,
   defaultCameraRotation,
-  maximumCameraFieldOfView,
-  minimumCameraFieldOfView,
   farBoardZ,
   nearBoardZ,
   strikeLineZ,
@@ -41,26 +34,7 @@ export type { HighwayMode, HighwayTool } from "./types";
 export type { HighwayNotePlacementType } from "./types";
 export type { DrumPlacementKind } from "./drumProfile";
 
-function isValidCameraDebugState(state: CameraDebugState): boolean {
-  return (
-    [
-      state.position.x,
-      state.position.y,
-      state.position.z,
-      state.rotation.x,
-      state.rotation.y,
-      state.rotation.z,
-      state.fieldOfView,
-    ].every(Number.isFinite) &&
-    state.fieldOfView >= minimumCameraFieldOfView &&
-    state.fieldOfView <= maximumCameraFieldOfView
-  );
-}
-
-export class HighwayView
-  extends AbstractChartView<MidiNote>
-  implements CameraDebugView
-{
+export class HighwayView extends AbstractChartView<MidiNote> {
   private readonly threeCamera = new THREE.PerspectiveCamera(
     defaultCameraFieldOfView,
     1,
@@ -135,8 +109,6 @@ export class HighwayView
     this.phraseEditing,
   );
   private readonly renderer: HighwayRenderer;
-  private cameraDebugDefaults: CameraDebugState | null = null;
-  private cameraReady = false;
   private canvas: HTMLCanvasElement | null = null;
   private viewportWidth = 1;
   private viewportHeight = 1;
@@ -201,8 +173,6 @@ export class HighwayView
       defaultCameraRotation.z,
     );
     this.threeCamera.lookAt(0, 0, -20);
-    this.cameraReady = true;
-    this.cameraDebugDefaults = this.getCameraDebugState();
     this.renderer.mount();
     this.input.attach(this.canvas);
   }
@@ -325,47 +295,6 @@ export class HighwayView
       this.input.getGhostNoteLocation()?.tick ?? this.playheadTick,
       this.input.getGhostNoteLocation()?.lane ?? 0,
     );
-  }
-
-  public getCameraDebugState(): CameraDebugState | null {
-    if (!this.cameraReady) return null;
-    return {
-      position: {
-        x: this.threeCamera.position.x,
-        y: this.threeCamera.position.y,
-        z: this.threeCamera.position.z,
-      },
-      rotation: {
-        x: THREE.MathUtils.radToDeg(this.threeCamera.rotation.x),
-        y: THREE.MathUtils.radToDeg(this.threeCamera.rotation.y),
-        z: THREE.MathUtils.radToDeg(this.threeCamera.rotation.z),
-      },
-      fieldOfView: this.threeCamera.fov,
-    };
-  }
-
-  public applyCameraDebugState(state: CameraDebugState): boolean {
-    if (!this.cameraReady || !isValidCameraDebugState(state)) return false;
-    this.threeCamera.position.set(
-      state.position.x,
-      state.position.y,
-      state.position.z,
-    );
-    this.threeCamera.rotation.set(
-      THREE.MathUtils.degToRad(state.rotation.x),
-      THREE.MathUtils.degToRad(state.rotation.y),
-      THREE.MathUtils.degToRad(state.rotation.z),
-    );
-    this.threeCamera.fov = state.fieldOfView;
-    this.threeCamera.updateProjectionMatrix();
-    this.render();
-    return true;
-  }
-
-  public resetCameraDebugState(): boolean {
-    return this.cameraDebugDefaults
-      ? this.applyCameraDebugState(this.cameraDebugDefaults)
-      : false;
   }
 
   protected override draw(engine: Engine): void {

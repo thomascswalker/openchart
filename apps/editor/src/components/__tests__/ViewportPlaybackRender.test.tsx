@@ -1,8 +1,8 @@
 import { act, Profiler } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { Runtime } from "../Runtime";
-import { Viewport } from "../Viewport";
+import { Runtime } from "../editor/Runtime";
+import { Viewport } from "../editor/Viewport";
 import Platform from "../../platform";
 import { PlaybackService } from "../../services/playback";
 

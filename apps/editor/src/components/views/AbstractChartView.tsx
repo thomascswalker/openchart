@@ -22,31 +22,6 @@ export interface SnapSettings {
   denominator: number;
 }
 
-export interface CameraDebugState {
-  position: { x: number; y: number; z: number };
-  rotation: { x: number; y: number; z: number };
-  fieldOfView: number;
-}
-
-export interface CameraDebugView {
-  getCameraDebugState(): CameraDebugState | null;
-  applyCameraDebugState(state: CameraDebugState): boolean;
-  resetCameraDebugState(): boolean;
-}
-
-export function isCameraDebugView(view: unknown): view is CameraDebugView {
-  return (
-    typeof view === "object" &&
-    view !== null &&
-    "getCameraDebugState" in view &&
-    typeof view.getCameraDebugState === "function" &&
-    "applyCameraDebugState" in view &&
-    typeof view.applyCameraDebugState === "function" &&
-    "resetCameraDebugState" in view &&
-    typeof view.resetCameraDebugState === "function"
-  );
-}
-
 export abstract class AbstractChartView<T> {
   private readonly defaultScene = new THREE.Scene();
   private readonly defaultCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);

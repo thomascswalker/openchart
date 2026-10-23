@@ -6,20 +6,19 @@ import {
   type MidiChannelEvent,
   type MidiMetaEvent,
 } from "@openchart/midi";
-import { DataTable } from "../../shared/Table";
-import { useEffect, useMemo, useState } from "react";
-import Box from "../../shared/Box";
-import { Text } from "../../shared/Text";
-import { Dropdown, type DropdownOption } from "../../shared/Dropdown";
-import { createAppColumnHelper } from "../../shared/Table/DataTable";
-import { startCase } from "es-toolkit";
-import { Label } from "../../shared/Text";
-import { Section } from "../../shared/Section";
-import { vars } from "../../../util/css";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import { SongView } from "@openchart/views";
+import { startCase } from "es-toolkit";
+import { useEffect, useMemo, useState } from "react";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
 import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { vars } from "../../../util/css";
+import Box from "../../shared/Box";
+import { Dropdown, type DropdownOption } from "../../shared/Dropdown";
+import { Section } from "../../shared/Section";
 import { HorizontalSeparator } from "../../shared/Separator";
+import { DataTable } from "../../shared/Table";
+import { createAppColumnHelper } from "../../shared/Table/DataTable";
+import { Label, Text } from "../../shared/Text";
 
 type EventType = "channel" | "meta" | "sysex";
 type Row = Record<string, any>;
@@ -46,7 +45,6 @@ const baseRow = (event: TimedEvent): Row => ({
   status: event.status,
 });
 
-// Add a new event type here (and to EventType) to make it selectable.
 const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
   channel: {
     filter: (event) => event.status < 0xf0,

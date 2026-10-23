@@ -1,11 +1,11 @@
-import TrackMixer from "./dialogs/TrackMixer";
-import Box from "./shared/Box";
-import { MixerIcon, SettingsIcon, TracksIcon } from "./shared/Icon/Icon";
-import Tabs from "./shared/Tabs";
-import { ViewportSettings } from "./ViewportSettings";
+import TrackMixer from "../../dialogs/TrackMixer";
+import Box from "../../shared/Box";
+import { MixerIcon, SettingsIcon, TracksIcon } from "../../shared/Icon/Icon";
+import Tabs from "../../shared/Tabs";
+import type { TabOption } from "../../shared/Tabs/Tab";
 import styles from "./CommandPanel.module.css";
-import type { TabOption } from "./shared/Tabs/Tab";
-import EventList from "./editor/EventList/EventList";
+import EventList from "./EventList";
+import { ViewportSettings } from "./ViewportSettings";
 
 function getTabOptions(size: number): TabOption[] {
   return [

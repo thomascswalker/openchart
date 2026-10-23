@@ -5,7 +5,7 @@ import { runAction } from "../../../actions/execute";
 import { useEditorState } from "../../../hooks/useEditorState";
 import Platform from "../../../platform";
 import { EditorStateService } from "../../../services/editor/state";
-import { Runtime } from "../../Runtime";
+import { Runtime } from "../../editor/Runtime";
 import { AboutDialog } from "../AboutDialog";
 
 function AboutTestShell() {

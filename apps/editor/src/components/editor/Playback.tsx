@@ -5,11 +5,11 @@ import {
   type ReactNode,
 } from "react";
 import { Difficulty } from "@openchart/views";
-import { useApplicationSettings } from "../hooks/useApplicationSettings";
-import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import Platform from "../platform";
-import { PlaybackService } from "../services/playback";
+import { useApplicationSettings } from "../../hooks/useApplicationSettings";
+import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
+import Platform from "../../platform";
+import { PlaybackService } from "../../services/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
   const { midi: midiData, documentId } = useDocumentSnapshot();

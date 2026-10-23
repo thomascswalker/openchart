@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Button } from "./shared/Button";
-import { Popup } from "./shared/Popup";
+import { Button } from "../Button";
+import { Popup } from ".";
 
 interface PopupButtonProps {
   icon: ReactNode;

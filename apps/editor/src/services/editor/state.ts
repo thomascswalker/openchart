@@ -2,7 +2,6 @@ import { StatefulService } from "../../platform/services";
 
 export interface EditorStateSnapshot {
   error: string | null;
-  debugVisible: boolean;
   projectVisible: boolean;
   settingsVisible: boolean;
   aboutVisible: boolean;
@@ -13,7 +12,6 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
     super();
     this._snapshot = {
       error: null,
-      debugVisible: false,
       projectVisible: false,
       settingsVisible: false,
       aboutVisible: false,
@@ -23,7 +21,6 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
   public readonly reset = (): void => {
     this._snapshot = {
       error: null,
-      debugVisible: false,
       projectVisible: false,
       settingsVisible: false,
       aboutVisible: false,
@@ -39,13 +36,6 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
   };
 
   public readonly clearError = (): void => this.setError(null);
-
-  public readonly setDebugVisible = (debugVisible: boolean): void => {
-    if (this._snapshot.debugVisible === debugVisible) {
-      return;
-    }
-    this.update({ debugVisible });
-  };
 
   public readonly setProjectVisible = (projectVisible: boolean): void => {
     if (this._snapshot.projectVisible === projectVisible) {

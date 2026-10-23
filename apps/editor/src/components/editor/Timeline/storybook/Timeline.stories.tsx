@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Timeline } from "../Timeline";
+import { Timeline } from "..";
 import { MockPlaybackService } from "../../../../hooks/usePlayback.mock";
 
 const meta = {

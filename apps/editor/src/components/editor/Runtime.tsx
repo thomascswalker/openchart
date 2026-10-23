@@ -4,14 +4,14 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { usePlatform, useService } from "../platform";
-import { useApplicationSettings } from "../hooks/useApplicationSettings";
-import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { DocumentService } from "../services/document";
-import { EditorStateService } from "../services/editor/state";
+import { usePlatform, useService } from "../../platform";
+import { useApplicationSettings } from "../../hooks/useApplicationSettings";
+import { useDocumentSnapshot } from "../../hooks/useDocumentSnapshot";
+import { useViewportSnapshot } from "../../hooks/useViewportSnapshot";
+import { DocumentService } from "../../services/document";
+import { EditorStateService } from "../../services/editor/state";
 import { Playback } from "./Playback";
-import { profileForInstrument } from "./views/pianoRoll";
+import { profileForInstrument } from "../views/pianoRoll";
 
 interface RuntimeProps {
   children: ReactNode;
@@ -49,7 +49,6 @@ export function Runtime({ children }: RuntimeProps) {
     activeSession?.view === "piano-roll" &&
     profileForInstrument(activeSession.instrument).editing === "vocals";
   const isAnyDialogOpen =
-    editorStore.debugVisible ||
     editorStore.projectVisible ||
     editorStore.settingsVisible ||
     editorStore.aboutVisible;
@@ -59,7 +58,6 @@ export function Runtime({ children }: RuntimeProps) {
       "document.has-tracks": hasTracks,
       "history.can-undo": canUndo,
       "history.can-redo": canRedo,
-      "dialog.debug-open": editorStore.debugVisible,
       "dialog.project-open": editorStore.projectVisible,
       "dialog.settings-open": editorStore.settingsVisible,
       "dialog.about-open": editorStore.aboutVisible,
@@ -74,7 +72,6 @@ export function Runtime({ children }: RuntimeProps) {
     hasTracks,
     canUndo,
     canRedo,
-    editorStore.debugVisible,
     editorStore.projectVisible,
     editorStore.settingsVisible,
     editorStore.aboutVisible,

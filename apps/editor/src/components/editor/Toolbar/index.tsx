@@ -1,4 +1,4 @@
-import { Section } from "./shared/Section";
+import { Section } from "../../shared/Section";
 import styles from "./toolbar.module.css";
 import {
   CursorIcon,
@@ -18,19 +18,19 @@ import {
   LockIcon,
   UnlockIcon,
   SnapIcon,
-} from "./shared/Icon/Icon";
-import { VerticalSeparator } from "./shared/Separator";
-import { Dropdown } from "./shared/Dropdown";
+} from "../../shared/Icon/Icon";
+import { VerticalSeparator } from "../../shared/Separator";
+import { Dropdown } from "../../shared/Dropdown";
 import type {
   ViewportKind,
   ViewportSession,
-} from "../services/editor/viewports";
-import { useViewportSnapshot } from "../hooks/useViewportSnapshot";
-import { runAction } from "../actions/execute";
-import { SnapDenominators } from "./views/pianoRoll/constants";
-import { Button } from "./shared/Button";
-import type { ButtonProps } from "./shared/Button";
-import type { IconProps } from "./shared/Icon/Icon";
+} from "../../../services/editor/viewports";
+import { useViewportSnapshot } from "../../../hooks/useViewportSnapshot";
+import { runAction } from "../../../actions/execute";
+import { SnapDenominators } from "../../views/pianoRoll/constants";
+import { Button } from "../../shared/Button";
+import type { ButtonProps } from "../../shared/Button";
+import type { IconProps } from "../../shared/Icon/Icon";
 import {
   Difficulty,
   InstrumentType,
@@ -38,15 +38,15 @@ import {
   type VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
-import { usePlaybackSelector } from "../hooks/usePlayback";
-import type { VocalPlacement } from "./views/pianoRoll";
-import { useShortcutResolver } from "../input/labels";
+import { usePlaybackSelector } from "../../../hooks/usePlayback";
+import type { VocalPlacement } from "../../views/pianoRoll";
+import { useShortcutResolver } from "../../../input/labels";
 import { Fragment } from "react";
 import type {
   DrumPlacementKind,
   HighwayMode,
   HighwayNotePlacementType,
-} from "./views/highway";
+} from "../../views/highway";
 
 const Difficulties = [
   [Difficulty.Easy, EasyIcon],

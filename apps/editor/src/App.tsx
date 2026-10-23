@@ -1,5 +1,5 @@
 import "./App.css";
-import Editor from "./components/Editor";
+import Editor from "./components/editor/Editor";
 import Platform, { PlatformProvider } from "./platform";
 
 function App() {

@@ -10,7 +10,7 @@ import {
 } from "../../../services/settings";
 import { defaultApplicationSettings } from "../../../services/settings/schema";
 import { useApplicationSettings } from "../../../hooks/useApplicationSettings";
-import { Runtime } from "../../Runtime";
+import { Runtime } from "../../editor/Runtime";
 import { SettingsDialog } from "../SettingsDialog";
 
 function SettingsTestShell() {

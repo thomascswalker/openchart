@@ -1,20 +1,21 @@
 import { useLayoutEffect, useSyncExternalStore } from "react";
-import { useEditorState } from "../hooks/useEditorState";
-import { runAction } from "../actions/execute";
+import { useEditorState } from "../../hooks/useEditorState";
+import { runAction } from "../../actions/execute";
 import { Workspace } from "./Workspace";
-import { Hotkeys } from "../input/Hotkeys";
-import { globalBindings } from "../input";
+import { Hotkeys } from "../../input/Hotkeys";
+import { globalBindings } from "../../input";
 import { Menubar, type MenuCommandId } from "./Menubar";
-import { SettingsDialog } from "./dialogs/SettingsDialog";
-import { ProjectDialog } from "./dialogs/ProjectDialog";
-import { AboutDialog } from "./dialogs/AboutDialog";
-import { UpdateDialog } from "./dialogs/UpdateDialog";
-import { usePlatform } from "../platform";
-import { EditorClipboardService } from "../services/editor/clipboard";
-import { PlaybackService } from "../services/playback";
-import { UpdaterService } from "../services/updater";
-import { Section } from "./shared/Section";
-import { Text } from "./shared/Text";
+import { SettingsDialog } from "../dialogs/SettingsDialog";
+import { ProjectDialog } from "../dialogs/ProjectDialog";
+import { AboutDialog } from "../dialogs/AboutDialog";
+import { UpdateDialog } from "../dialogs/UpdateDialog";
+import { usePlatform } from "../../platform";
+import { EditorClipboardService } from "../../services/editor/clipboard";
+import { PlaybackService } from "../../services/playback";
+import { UpdaterService } from "../../services/updater";
+import { Section } from "../shared/Section";
+import { Text } from "../shared/Text";
+import styles from "./Shell.module.css";
 
 const Shell = () => {
   const { error, projectVisible, settingsVisible, aboutVisible } =
@@ -56,7 +57,7 @@ const Shell = () => {
   };
 
   return (
-    <div className="midi-editor">
+    <div className={styles.midiEditor}>
       <Hotkeys bindings={globalBindings} />
       <Menubar
         canExecute={canRunMenuCommand}

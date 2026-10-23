@@ -3,8 +3,6 @@ import { rgbFromHex } from "./materials";
 export const defaultCameraPosition = { x: 0, y: 7, z: 7 };
 export const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };
 export const defaultCameraFieldOfView = 45;
-export const minimumCameraFieldOfView = 1;
-export const maximumCameraFieldOfView = 179;
 export const wheelTicksPerPixel = 1 / 100;
 export const phraseAutoScrollEdgeMargin = 48;
 export const phraseAutoScrollMaximumTicksPerFrame = 96;

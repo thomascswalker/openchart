@@ -1,0 +1,190 @@
+.viewportPanelHighwaySettings {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  left: 20px;
+}
+
+.viewportPanelMixerSettings {
+  position: absolute;
+  z-index: 2;
+  top: 56px;
+  left: 20px;
+}
+
+.viewportPanelSettingsTrigger {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding: 0;
+  font-size: 12px;
+}
+
+.viewportManager {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.viewportManagerToolbar,
+.viewportPanelHeader,
+.viewportPanelActions,
+.highwayToolbar,
+.highwayToolbar [role="group"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viewportManagerToolbar {
+  min-height: 20px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #444;
+  background: #202020;
+}
+
+.viewportManagerToolbar span,
+.viewportPanelHeader span {
+  color: #888;
+  font-size: 12px;
+}
+
+.viewportManagerToolbar span {
+  margin-right: auto;
+}
+
+.viewportGrid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  background: #0b0b0b;
+}
+
+.viewportGrid[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.viewportGrid[data-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.viewportGrid[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.viewportPanel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid #303030;
+  background: #141414;
+}
+
+.viewportPanelActive {
+  border-color: #5e91c7;
+}
+
+.viewportPanelHeader {
+  min-height: 20px;
+  max-height: 32px;
+  padding: 3px 6px;
+  background: #222;
+  border-bottom: 1px solid #444;
+}
+
+.viewportPanelTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font: 400 13.3333px var(--font-primary);
+  letter-spacing: normal;
+}
+
+.viewportPanelTitleIcon {
+  display: inline-flex;
+  flex: 0 0 18px;
+}
+
+.viewportPanelTitleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewportPanelHeader strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewportPanelHeader span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewportPanelActions {
+  margin-left: auto;
+}
+
+.viewportPanelActions button {
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
+.viewportPanelActions button:last-child {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  padding: 0;
+  flex: 0 0 24px;
+  background: transparent;
+}
+
+.viewportPanelControls {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.viewportPanelControls :global(.midi-toolbar) {
+  min-height: 32px;
+  padding: 2px 6px;
+}
+
+.viewportPanelRenderer {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.highwayToolbar {
+  flex-wrap: wrap;
+  padding: 3px 6px;
+  border-bottom: 1px solid #333;
+}
+
+.highwayToolbar button {
+  padding: 2px 5px;
+  font-size: 10px;
+}
+
+.highwayToolbar button[aria-pressed="true"] {
+  border-color: #8cc8ff;
+  background: #32516d;
+}

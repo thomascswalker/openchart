@@ -1,10 +1,10 @@
 import { SongView } from "@openchart/views";
-import { useDocumentSnapshot } from "../hooks/useDocumentSnapshot";
-import { runActionAsync } from "../actions/execute";
-import type { ViewportSession } from "../services/editor/viewports";
-import Box from "./shared/Box";
-import { Button } from "./shared/Button";
-import { Text } from "./shared/Text";
+import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { runActionAsync } from "../../../actions/execute";
+import type { ViewportSession } from "../../../services/editor/viewports";
+import Box from "../../shared/Box";
+import { Button } from "../../shared/Button";
+import { Text } from "../../shared/Text";
 import styles from "./TrackList.module.css";
 import { useMemo } from "react";
 import type { MidiTrack } from "@openchart/midi";

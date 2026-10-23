@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Button } from "./shared/Button";
-import { HorizontalSeparator } from "./shared/Separator";
-import { Text } from "./shared/Text";
-import { useShortcutResolver } from "../input/labels";
+import { Button } from "../../shared/Button";
+import { HorizontalSeparator } from "../../shared/Separator";
+import { Text } from "../../shared/Text";
+import { useShortcutResolver } from "../../../input/labels";
+import styles from "./Menubar.module.css";
 
 export type MenuCommandId = string;
 
@@ -84,14 +85,6 @@ const MENUS: MenuDefinition[] = [
         label: "Vocal Pitch Feedback",
         checkable: true,
       },
-    ],
-  },
-  {
-    id: "window",
-    label: "Window",
-    items: [
-      { id: "dialog.open-debug", label: "Debugger..." },
-      { id: "dialog.close-debug", label: "Close Debugger" },
     ],
   },
   {
@@ -308,8 +301,12 @@ export function Menubar({
   };
 
   return (
-    <nav ref={menubarRef} className="midi-menubar" aria-label="Application">
-      <div className="midi-menubar__menus" role="menubar">
+    <nav
+      ref={menubarRef}
+      className={styles.midiMenubar}
+      aria-label="Application"
+    >
+      <div className={styles.midiMenubarMenus} role="menubar">
         {menus.map((menu, menuIndex) => {
           const isOpen = openMenu === menu.id;
           const menuId = `menu-${menu.id}`;
@@ -324,7 +321,7 @@ export function Menubar({
           const size = "24px";
 
           return (
-            <div className="midi-menubar__menu" key={menu.id}>
+            <div className={styles.midiMenubarMenu} key={menu.id}>
               <Button
                 ref={(element) => {
                   triggerRefs.current[menuIndex] = element;
@@ -334,7 +331,7 @@ export function Menubar({
                 aria-haspopup="menu"
                 aria-expanded={isOpen}
                 aria-controls={isOpen ? menuId : undefined}
-                className="midi-menubar__trigger"
+                className={styles.midiMenubarTrigger}
                 tabIndex={activeTrigger === menuIndex ? 0 : -1}
                 onClick={handleMenuClick}
                 onKeyDown={(event) => handleTriggerKeyDown(event, menuIndex)}
@@ -345,7 +342,11 @@ export function Menubar({
                 {menu.label}
               </Button>
               {isOpen ? (
-                <div id={menuId} className="midi-menubar__popup" role="menu">
+                <div
+                  id={menuId}
+                  className={styles.midiMenubarPopup}
+                  role="menu"
+                >
                   {menu.items.map((item, itemIndex) => {
                     if (item.type === "separator") {
                       return (
@@ -377,7 +378,7 @@ export function Menubar({
                         key={item.id}
                         flat
                         role={item.checkable ? "menuitemcheckbox" : "menuitem"}
-                        className="midi-menubar__item"
+                        className={styles.midiMenubarItem}
                         disabled={disabled}
                         aria-disabled={disabled}
                         aria-checked={item.checkable ? checked : undefined}

@@ -1,0 +1,79 @@
+.midiMenubar {
+  min-width: 0;
+}
+
+.midiMenubarMenus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: var(--border-primary);
+}
+
+.midiMenubarMenu {
+  position: relative;
+}
+
+.midiMenubarTrigger,
+.midiMenubarItem {
+  font: 400 13.3333px var(--font-primary);
+  letter-spacing: normal;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #eee;
+  cursor: pointer;
+}
+
+.midiMenubarTrigger {
+  padding: 4px 10px;
+  background: transparent;
+}
+
+.midiMenubarTrigger:hover,
+.midiMenubarTrigger[aria-expanded="true"] {
+  background: #333;
+}
+
+.midiMenubarTrigger:focus-visible,
+.midiMenubarItem:focus-visible {
+  outline: 2px solid #8cc8ff;
+  outline-offset: 1px;
+}
+
+.midiMenubarPopup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 190px;
+  padding: 0;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: var(--neutral-90);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 40%);
+  gap: 2px;
+}
+
+.midiMenubarPopup .midiMenubarItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 6px 9px;
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.midiMenubarItem:hover:not(:disabled),
+.midiMenubarItem:focus-visible:not(:disabled) {
+  background: #3f3f3f;
+}
+
+.midiMenubarAccelerator {
+  color: #aaa;
+  font-size: 12px;
+}

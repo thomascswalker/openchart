@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { useEditorState } from "../../hooks/useEditorState";
 import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";
-import { Runtime } from "../../components/Runtime";
+import { Runtime } from "../../components/editor/Runtime";
 import { usePlayback } from "../../hooks/usePlayback";
 
 function CommandEnablementProbe() {
-  const { debugVisible, error, isDirty } = useEditorState();
+  const { error, isDirty } = useEditorState();
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>
@@ -17,12 +17,6 @@ function CommandEnablementProbe() {
       </button>
       <button type="button" onClick={() => runAction("document.save")}>
         Save
-      </button>
-      <button type="button" onClick={() => runAction("dialog.open-debug")}>
-        Open debug
-      </button>
-      <button type="button" onClick={() => runAction("dialog.close-debug")}>
-        Close debug
       </button>
       <button type="button" onClick={() => runAction("document.new")}>
         New document
@@ -34,7 +28,6 @@ function CommandEnablementProbe() {
       <span data-testid="export-enabled">
         {String(Platform.actions.isAvailable("document.export-midi"))}
       </span>
-      <span data-testid="debug-visible">{String(debugVisible)}</span>
       <span data-testid="command-error">{error ?? ""}</span>
       <span data-testid="metronome-enabled">{String(isMetronomeEnabled)}</span>
       <span data-testid="clap-enabled">{String(isClapEnabled)}</span>
@@ -99,29 +92,15 @@ describe("editor action state", () => {
     container.remove();
   });
 
-  it("routes debug and new-document commands to their executors", () => {
+  it("routes the new-document command to its executor", () => {
     const { container, root } = renderCommands();
-
-    act(() => {
-      container.querySelectorAll("button")[2].click();
-    });
-    expect(
-      container.querySelector('[data-testid="debug-visible"]')?.textContent,
-    ).toBe("true");
-
-    act(() => {
-      container.querySelectorAll("button")[3].click();
-    });
-    expect(
-      container.querySelector('[data-testid="debug-visible"]')?.textContent,
-    ).toBe("false");
 
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     act(() => {
       container.querySelectorAll("button")[0].click();
     });
     act(() => {
-      container.querySelectorAll("button")[4].click();
+      container.querySelectorAll("button")[2].click();
     });
     expect(container.querySelector('[data-testid="dirty"]')?.textContent).toBe(
       "false",

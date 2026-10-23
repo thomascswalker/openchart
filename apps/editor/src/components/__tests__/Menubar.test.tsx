@@ -1,7 +1,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { Menubar } from "../Menubar";
+import { Menubar } from "../editor/Menubar";
 import { shortcutLabel } from "../../input/labels";
 
 function render(element: ReactNode): { container: HTMLDivElement; root: Root } {
@@ -34,7 +34,6 @@ describe("Menubar", () => {
       "File",
       "Edit",
       "Playback",
-      "Window",
       "Help",
     ]);
     act(() => triggers[0].click());

@@ -1,8 +1,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import { Runtime } from "../../../Runtime";
-import { Timeline } from "../Timeline";
+import { Runtime } from "../../Runtime";
+import { Timeline } from "..";
 import Platform from "../../../../platform";
 import { PlaybackService } from "../../../../services/playback";
 
