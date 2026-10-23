@@ -5,7 +5,7 @@ import {
   type Metadata,
   type MetadataValidationErrors,
 } from "../../services/document/schema";
-import { Form } from "../shared/Form";
+import { Form } from "../shared";
 
 const ProjectDialog = () => {
   const { metadata, directoryHandle } = useDocumentSnapshot();

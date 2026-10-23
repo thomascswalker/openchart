@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import "choices.js/public/assets/styles/choices.css";
-import { Button } from "../Button";
+import { Button, Dropdown, type DropdownOption } from "..";
 import styles from "./dropdown.module.css";
-import { type DropdownOption, Dropdown } from "./Dropdown";
 
 interface DropdownButtonProps {
   label: string;

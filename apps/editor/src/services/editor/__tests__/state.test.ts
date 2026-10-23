@@ -15,7 +15,6 @@ describe("EditorStateService", () => {
     expect(service.getSnapshot()).not.toBe(initialSnapshot);
     expect(service.getSnapshot()).toEqual({
       error: "Save failed",
-      debugVisible: false,
       projectVisible: true,
       settingsVisible: false,
       aboutVisible: false,

@@ -1,4 +1,4 @@
-import Table from "./Table";
+import { Table, Text } from "..";
 import {
   tableFeatures,
   createTableHook,
@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-table";
 import type { RowData } from "@tanstack/react-table";
 import { useMemo, useRef } from "react";
-import { Text } from "../../shared/Text";
 import { vars } from "../../../util/css";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
@@ -134,5 +133,4 @@ const DataTable = ({ id, data, columnDefs }: DataTableProps) => {
     </Table>
   );
 };
-export default DataTable;
-export { createAppColumnHelper };
+export { DataTable, createAppColumnHelper };

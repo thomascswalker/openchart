@@ -1,8 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CursorIcon } from "../Icon/Icon";
-import { Button } from "./Button";
-import { CloseButton } from "./Button";
+import { Button, CloseButton, CursorIcon } from "..";
 
 const meta = {
   title: "Shared/Buttons",

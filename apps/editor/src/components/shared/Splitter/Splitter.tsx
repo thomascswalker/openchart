@@ -154,5 +154,5 @@ function Splitter({
   );
 }
 
-export default Splitter;
+export { Splitter };
 export type { SplitterProps, SplitterOrientation };

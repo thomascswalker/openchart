@@ -22,9 +22,7 @@ import {
   type SpaceProps,
   type styleFn,
 } from "styled-system";
-import { Section } from "../Section";
-import { CloseButton } from "../Button";
-import { Text } from "../Text";
+import { CloseButton, Section, Text } from "..";
 
 import styles from "./modal.module.css";
 

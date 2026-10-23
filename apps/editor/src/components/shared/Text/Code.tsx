@@ -1,7 +1,5 @@
 import classNames from "classnames";
-import { Section } from "../Section";
-import type { TextProps } from "./Text";
-import { Text } from "./Text";
+import { Section, Text, type TextProps } from "..";
 import styles from "./text.module.css";
 
 type CodeProps = TextProps;

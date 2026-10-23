@@ -1,7 +1,7 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { Runtime } from "../../components/Runtime";
+import { Runtime } from "../../components/editor/Runtime";
 import { useEditorState } from "../useEditorState";
 import { runActionAsync, runAction } from "../../actions/execute";
 import Platform from "../../platform";

@@ -1,8 +1,6 @@
 import type { KeyboardEvent } from "react";
 import { runAction } from "../../actions/execute";
-import { Modal } from "../shared/Modal/Modal";
-import { Section } from "../shared/Section";
-import { Text } from "../shared/Text";
+import { Modal, Section, Text } from "../shared";
 
 const AboutDialog = () => {
   const close = (): void => {

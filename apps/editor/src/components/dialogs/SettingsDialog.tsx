@@ -4,7 +4,7 @@ import {
   applicationSettingsSchema,
   type ApplicationSettings,
 } from "../../services/settings/schema";
-import { Form } from "../shared/Form";
+import { Form } from "../shared";
 
 const SettingsDialog = () => {
   const { settings } = useApplicationSettings();

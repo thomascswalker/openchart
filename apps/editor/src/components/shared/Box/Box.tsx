@@ -73,4 +73,4 @@ const Box = forwardRef<HTMLDivElement, BoxProps>(
   },
 );
 
-export default Box;
+export { Box };

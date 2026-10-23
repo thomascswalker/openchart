@@ -1,7 +1,7 @@
 import { useState, type InputHTMLAttributes } from "react";
 import classNames from "classnames";
 import styles from "./input.module.css";
-import { Button, CloseButton } from "../Button";
+import { Button, CloseButton, DirectoryIcon } from "..";
 import {
   border,
   color,
@@ -17,7 +17,6 @@ import {
 import Platform from "../../../platform";
 import type { FileSystemService } from "../../../services/filesystem";
 import type { LoadFile } from "../../../services/filesystem/types";
-import { DirectoryIcon } from "../Icon/Icon";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);

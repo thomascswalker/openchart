@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import Splitter from "./Splitter";
+import { Splitter } from "./Splitter";
 
 function renderSplitter(orientation: "horizontal" | "vertical" = "horizontal") {
   const container = document.createElement("div");

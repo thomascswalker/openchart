@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Dropdown, type DropdownOption, type DropdownProps } from "./Dropdown";
+import { Dropdown, type DropdownOption, type DropdownProps } from "..";
 import { DropdownButton } from "./DropdownButton";
 
 const options: DropdownOption[] = [

@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button } from "../Button";
-import { Slider } from "../Slider";
-import { Popup } from "./Popup";
+import { Button, Popup, Slider } from "..";
 
 const meta = {
   title: "Shared/Popup",

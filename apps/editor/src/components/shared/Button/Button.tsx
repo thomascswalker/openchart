@@ -15,7 +15,7 @@ import type {
   styleFn,
 } from "styled-system";
 import styles from "./button.module.css";
-import { RemoveIcon } from "../Icon/Icon";
+import { RemoveIcon } from "..";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 

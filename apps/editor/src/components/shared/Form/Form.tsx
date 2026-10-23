@@ -1,13 +1,18 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { useForm } from "@tanstack/react-form";
 import z from "zod";
-import { Button, Checkbox } from "../Button";
-import { Dropdown } from "../Dropdown";
-import { FileInput, Input } from "../Input/Input";
-import { Section } from "../Section";
-import { Label, Text } from "../Text";
-import { Modal } from "../Modal/Modal";
-import { ListView } from "../ListView";
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  FileInput,
+  Input,
+  Label,
+  ListView,
+  Modal,
+  Section,
+  Text,
+} from "..";
 import styles from "./form.module.css";
 import { startCase } from "es-toolkit";
 

@@ -1,2 +1,3 @@
-export { default } from "./Table";
-export { default as DataTable } from "./DataTable";
+export { Table } from "./Table";
+export { DataTable, createAppColumnHelper } from "./DataTable";
+export type { AppColumnDef } from "./DataTable";

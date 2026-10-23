@@ -1,4 +1,4 @@
-import type { TextProps } from "./Text";
+import type { TextProps } from "./";
 import classNames from "classnames";
 import styles from "./text.module.css";
 import { getTextSystemStyles } from "./textStyles";

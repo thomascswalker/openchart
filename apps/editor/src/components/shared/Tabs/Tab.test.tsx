@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import Tabs from "./Tab";
+import { Tabs } from "./Tab";
 
 function renderTabs(collapsible: boolean) {
   const container = document.createElement("div");

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Code } from "./Code";
 import { CodeBlock } from "./Code";
 import { Heading } from "./Heading";
-import { Text } from "./Text";
+import { Text } from "..";
 
 const levels = [1, 2, 3, 4, 5, 6] as const;
 
