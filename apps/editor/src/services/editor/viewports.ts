@@ -34,35 +34,31 @@ export type HighwayToolMode =
   "select" | "place" | "remove" | "stagepower" | "solo";
 
 /** Mirrors the Highway view's `DrumPlacementKind`. */
-export type DrumPlacement = "pad" | "cymbal" | "kick";
+export type DrumNoteType = "pad" | "cymbal" | "kick";
 
 /** Mirrors the Highway view's `HighwayNotePlacementType`. */
-export type NotePlacement = "normal" | "force-hopo" | "force-strum" | "tap";
+export type GuitarNoteType = "normal" | "force-hopo" | "force-strum" | "tap";
 
 /** Mirrors the Piano Roll's `VocalPlacement`. */
-export interface VocalToolPlacement {
+export interface VocalNoteType {
   noteKind: VocalNoteKind;
   /** When set, a grid drag creates this phrase instead of a note. */
   phrase: VocalPhraseKind | null;
 }
 
-/**
- * Per-viewport editing tools. Kept in the session (not component state) so
- * actions, and therefore hotkeys, can change them.
- */
 export interface ViewportTools {
-  highwayMode: HighwayToolMode;
-  drumPlacementKind: DrumPlacement;
-  notePlacementType: NotePlacement;
-  vocalPlacement: VocalToolPlacement;
+  mode: HighwayToolMode;
+  drum: DrumNoteType;
+  guitar: GuitarNoteType;
+  vocal: VocalNoteType;
 }
 
 export function createViewportTools(): ViewportTools {
   return {
-    highwayMode: "select",
-    drumPlacementKind: "pad",
-    notePlacementType: "normal",
-    vocalPlacement: { noteKind: "pitched", phrase: null },
+    mode: "select",
+    drum: "pad",
+    guitar: "normal",
+    vocal: { noteKind: "pitched", phrase: null },
   };
 }
 

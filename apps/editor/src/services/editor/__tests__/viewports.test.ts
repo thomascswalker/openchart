@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ViewportService } from "../viewports";
+import { ViewportService, type ViewportTools } from "../viewports";
 
 describe("ViewportService", () => {
   it("owns viewport sessions and publishes focus and snap changes", () => {
@@ -84,27 +84,33 @@ describe("ViewportService", () => {
     const first = service.getSnapshot().activeViewportId;
     const second = service.addViewport("highway")!;
 
-    service.updateTools(second, { highwayMode: "place" });
+    service.updateTools(second, { mode: "place" });
     service.updateTools(first, {
-      vocalPlacement: { noteKind: "percussion", phrase: "vocal" },
+      vocal: { noteKind: "percussion", phrase: "vocal" },
     });
 
     const sessions = service.getSnapshot().viewportSessions;
-    expect(sessions.find((s) => s.id === second)?.tools).toMatchObject({
-      highwayMode: "place",
-      drumPlacementKind: "pad",
-    });
-    expect(sessions.find((s) => s.id === first)?.tools).toMatchObject({
-      highwayMode: "select",
-      vocalPlacement: { noteKind: "percussion", phrase: "vocal" },
-    });
+    const secondSessionTools: Partial<ViewportTools> = {
+      mode: "place",
+      drum: "pad",
+    };
+    expect(sessions.find((s) => s.id === second)?.tools).toMatchObject(
+      secondSessionTools,
+    );
+    const firstSessionTools: Partial<ViewportTools> = {
+      mode: "select",
+      vocal: { noteKind: "percussion", phrase: "vocal" },
+    };
+    expect(sessions.find((s) => s.id === first)?.tools).toMatchObject(
+      firstSessionTools,
+    );
   });
 
   it("preserves tools when other session fields update", () => {
     const service = new ViewportService();
     const id = service.getSnapshot().activeViewportId;
-    service.updateTools(id, { highwayMode: "solo" });
+    service.updateTools(id, { mode: "solo" });
     service.updateViewport(id, { camera: { tick: 960 } });
-    expect(service.getViewport(id)?.tools.highwayMode).toBe("solo");
+    expect(service.getViewport(id)?.tools.mode).toBe("solo");
   });
 });

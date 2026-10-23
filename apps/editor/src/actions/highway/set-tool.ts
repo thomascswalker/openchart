@@ -15,6 +15,6 @@ export class SetHighwayToolAction extends Action<[HighwayToolMode]> {
   run(accessor: ServicesAccessor, mode: HighwayToolMode): void {
     const viewports = accessor.get<ViewportService>("editor.viewports");
     const id = viewports.getActiveViewport()?.id;
-    if (id) viewports.updateTools(id, { highwayMode: mode });
+    if (id) viewports.updateTools(id, { mode: mode });
   }
 }

@@ -25,8 +25,8 @@ describe("viewport tool actions", () => {
       accessor({ "editor.viewports": viewports }),
       "place",
     );
-    expect(viewports.getViewport(active)?.tools.highwayMode).toBe("place");
-    expect(viewports.getViewport(other)?.tools.highwayMode).toBe("select");
+    expect(viewports.getViewport(active)?.tools.mode).toBe("place");
+    expect(viewports.getViewport(other)?.tools.mode).toBe("select");
   });
 
   it("toggles phrase tools back to select", () => {
@@ -34,30 +34,28 @@ describe("viewport tool actions", () => {
     const services = accessor({ "editor.viewports": viewports });
     const action = new ToggleHighwayPhraseToolAction();
     action.run(services, "solo");
-    expect(viewports.getActiveViewport()?.tools.highwayMode).toBe("solo");
+    expect(viewports.getActiveViewport()?.tools.mode).toBe("solo");
     action.run(services, "stagepower");
-    expect(viewports.getActiveViewport()?.tools.highwayMode).toBe("stagepower");
+    expect(viewports.getActiveViewport()?.tools.mode).toBe("stagepower");
     action.run(services, "stagepower");
-    expect(viewports.getActiveViewport()?.tools.highwayMode).toBe("select");
+    expect(viewports.getActiveViewport()?.tools.mode).toBe("select");
   });
 
   it("toggles vocal phrases and keeps the note kind", () => {
     const viewports = new ViewportService();
     const id = viewports.getSnapshot().activeViewportId;
     viewports.updateTools(id, {
-      vocalPlacement: { noteKind: "percussion", phrase: null },
+      vocal: { noteKind: "percussion", phrase: null },
     });
     const services = accessor({ "editor.viewports": viewports });
     const action = new ToggleVocalPhraseAction();
     action.run(services, "vocal");
-    expect(viewports.getActiveViewport()?.tools.vocalPlacement).toEqual({
+    expect(viewports.getActiveViewport()?.tools.vocal).toEqual({
       noteKind: "percussion",
       phrase: "vocal",
     });
     action.run(services, "vocal");
-    expect(
-      viewports.getActiveViewport()?.tools.vocalPlacement.phrase,
-    ).toBeNull();
+    expect(viewports.getActiveViewport()?.tools.vocal.phrase).toBeNull();
   });
 
   it("steps the snap denominator through the available choices", () => {

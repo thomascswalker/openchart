@@ -178,8 +178,12 @@ function ViewportPanel({
     "editor.active-chart-view",
   );
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
-  const { highwayMode, drumPlacementKind, notePlacementType, vocalPlacement } =
-    session.tools;
+  const {
+    mode: highwayMode,
+    drum: drumPlacementKind,
+    guitar: notePlacementType,
+    vocal: vocalPlacement,
+  } = session.tools;
   const pianoRollProfile = profileForInstrument(session.instrument);
   const activeView =
     ChartViews.find((view) => view.id === session.view) ?? ChartViews[0];
@@ -360,17 +364,6 @@ function ViewportPanel({
     stopPreview();
   }, [active, session.view, setActiveView, stopPreview]);
 
-  const setView = (view: ViewportSession["view"]) => {
-    runAction("editor.focus-viewport", session.id);
-    const { playbackTick } = Platform.services
-      .get<PlaybackService>("playback")
-      .getSnapshot();
-    runAction("editor.update-viewport", session.id, {
-      view,
-      camera: { tick: playbackTick },
-    });
-  };
-
   return (
     <article
       ref={articleRef}
@@ -414,32 +407,7 @@ function ViewportPanel({
           />
         </div>
       </header>
-      <Toolbar
-        session={session}
-        onViewChange={setView}
-        highwayMode={highwayMode}
-        onHighwayModeChange={(highwayMode) =>
-          runAction("editor.set-viewport-tools", session.id, { highwayMode })
-        }
-        drumPlacementKind={drumPlacementKind}
-        onDrumPlacementKindChange={(drumPlacementKind) =>
-          runAction("editor.set-viewport-tools", session.id, {
-            drumPlacementKind,
-          })
-        }
-        notePlacementType={notePlacementType}
-        onNotePlacementTypeChange={(notePlacementType) =>
-          runAction("editor.set-viewport-tools", session.id, {
-            notePlacementType,
-          })
-        }
-        vocalPlacement={vocalPlacement}
-        onVocalPlacementChange={(vocalPlacement) =>
-          runAction("editor.set-viewport-tools", session.id, {
-            vocalPlacement,
-          })
-        }
-      />
+      <Toolbar session={session} />
       <div
         style={{
           display: "flex",
