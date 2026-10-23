@@ -18,7 +18,7 @@ export class ToggleHighwayPhraseToolAction extends Action<
       return;
     }
     viewports.updateTools(session.id, {
-      highwayMode: session.tools.highwayMode === kind ? "select" : kind,
+      mode: session.tools.mode === kind ? "select" : kind,
     });
   }
 }

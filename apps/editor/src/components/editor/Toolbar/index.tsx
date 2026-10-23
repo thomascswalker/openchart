@@ -24,8 +24,9 @@ import {
 } from "../../shared";
 import styles from "./toolbar.module.css";
 import type {
-  ViewportKind,
+  HighwayToolMode,
   ViewportSession,
+  ViewportTools,
 } from "../../../services/editor/viewports";
 import { useViewport } from "../../../hooks/useViewport";
 import { runAction } from "../../../actions/execute";
@@ -38,15 +39,15 @@ import {
   type VocalPhraseKind,
 } from "@openchart/views";
 import { usePlaybackSelector } from "../../../hooks/usePlayback";
-import type { VocalPlacement } from "../../views/pianoRoll";
 import { useShortcutResolver } from "../../../input/labels";
 import { Fragment } from "react";
 import type {
   DrumPlacementKind,
-  HighwayMode,
   HighwayNotePlacementType,
 } from "../../views/highway";
 import type { ButtonProps } from "../../shared/Button";
+import Platform from "../../../platform";
+import type { PlaybackService } from "../../../services/playback";
 
 const Difficulties = [
   [Difficulty.Easy, EasyIcon],
@@ -55,49 +56,36 @@ const Difficulties = [
   [Difficulty.Expert, ExpertIcon],
 ] as const;
 
-const SNAP_OPTIONS = SnapDenominators.map((d) => ({
+const SnapOptions = SnapDenominators.map((d) => ({
   value: String(d),
   label: `1/${d}`,
 }));
 
-const DRUM_NOTE_TYPE_OPTIONS = [
+const DrumNoteOptions = [
   { value: "pad", label: "Pad" },
   { value: "cymbal", label: "Cymbal" },
   { value: "kick", label: "Kick" },
 ];
 
-const VOCAL_NOTE_TYPE_OPTIONS: { value: VocalNoteKind; label: string }[] = [
+const VocalNoteOptions: { value: VocalNoteKind; label: string }[] = [
   { value: "pitched", label: "Pitched" },
   { value: "percussion", label: "Percussion" },
   { value: "pitchless", label: "Pitchless" },
 ];
 
 // Shortcut hints are appended from the hotkey bindings (src/input).
-const VOCAL_PHRASES = [
+const VocalPhrases = [
   ["vocal", PhraseIcon, "Vocal phrase"],
   ["power-window", ActivateIcon, "Power window"],
   ["stagepower", StagepowerIcon, "Stagepower phrase"],
 ] as const satisfies readonly (readonly [VocalPhraseKind, unknown, string])[];
 
-const GUITAR_NOTE_TYPE_OPTIONS = [
+const GuitarNoteOptions = [
   { value: "normal", label: "Normal" },
   { value: "force-hopo", label: "Force HOPO" },
   { value: "force-strum", label: "Force Strum" },
   { value: "tap", label: "Tap" },
 ];
-
-interface ToolbarProps {
-  session: ViewportSession;
-  onViewChange: (view: "piano-roll" | "highway") => void;
-  highwayMode: HighwayMode;
-  onHighwayModeChange: (mode: HighwayMode) => void;
-  drumPlacementKind: DrumPlacementKind;
-  onDrumPlacementKindChange: (kind: DrumPlacementKind) => void;
-  notePlacementType: HighwayNotePlacementType;
-  onNotePlacementTypeChange: (type: HighwayNotePlacementType) => void;
-  vocalPlacement: VocalPlacement;
-  onVocalPlacementChange: (placement: VocalPlacement) => void;
-}
 
 type ToolbarButtonProps = Omit<ButtonProps, "icon"> & {
   icon: (props: Omit<IconProps, "svg">) => React.JSX.Element;
@@ -124,18 +112,17 @@ const ToolbarButton = ({
   />
 );
 
-const Toolbar = ({
-  session,
-  onViewChange,
-  highwayMode,
-  onHighwayModeChange,
-  drumPlacementKind,
-  onDrumPlacementKindChange,
-  notePlacementType,
-  onNotePlacementTypeChange,
-  vocalPlacement,
-  onVocalPlacementChange,
-}: ToolbarProps) => {
+interface ToolbarProps {
+  session: ViewportSession;
+}
+
+const Toolbar = ({ session }: ToolbarProps) => {
+  const {
+    mode: toolMode,
+    drum: drumType,
+    guitar: guitarType,
+    vocal: vocalType,
+  } = session.tools;
   const isVocalFeedbackEnabled = usePlaybackSelector(
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
@@ -155,10 +142,6 @@ const Toolbar = ({
 
   const activeViewId = session.view ?? globalView;
 
-  const handleViewChange = (kind: ViewportKind) => {
-    onViewChange(kind);
-  };
-
   const getNoteTypeComponent = () => {
     let value = "";
     let onChange: (value: string) => void = () => {};
@@ -169,18 +152,22 @@ const Toolbar = ({
     let disabled = false;
     switch (session.instrument) {
       case InstrumentType.Drums: {
-        value = drumPlacementKind;
+        value = drumType;
         onChange = (value: string) =>
-          onDrumPlacementKindChange(value as DrumPlacementKind);
-        options = DRUM_NOTE_TYPE_OPTIONS;
+          setNoteType({
+            drum: value as DrumPlacementKind,
+          });
+        options = DrumNoteOptions;
         break;
       }
       case InstrumentType.Lead:
       case InstrumentType.Groove:
-        value = notePlacementType;
+        value = guitarType;
         onChange = (value: string) =>
-          onNotePlacementTypeChange(value as HighwayNotePlacementType);
-        options = GUITAR_NOTE_TYPE_OPTIONS;
+          setNoteType({
+            guitar: value as HighwayNotePlacementType,
+          });
+        options = GuitarNoteOptions;
         break;
       default:
         disabled = true;
@@ -197,6 +184,25 @@ const Toolbar = ({
         maxWidth={120}
       />
     );
+  };
+
+  const setView = (view: ViewportSession["view"]) => {
+    runAction("editor.focus-viewport", session.id);
+    const { playbackTick } = Platform.services
+      .get<PlaybackService>("playback")
+      .getSnapshot();
+    runAction("editor.update-viewport", session.id, {
+      view,
+      camera: { tick: playbackTick },
+    });
+  };
+
+  const setNoteType = (args: Partial<ViewportTools>) => {
+    runAction("editor.set-viewport-tools", session.id, args);
+  };
+
+  const setToolMode = (mode: HighwayToolMode) => {
+    runAction("highway.set-tool", toolMode !== mode ? mode : "select");
   };
 
   return (
@@ -216,14 +222,14 @@ const Toolbar = ({
         icon={PianoIcon}
         aria-label="Piano Roll"
         checked={activeViewId === "piano-roll"}
-        onClick={() => handleViewChange("piano-roll")}
+        onClick={() => setView("piano-roll")}
       />
       <ToolbarButton
         icon={Highway3dIcon}
         aria-label="Highway"
         disabled={pianoRollOnly}
         checked={activeViewId === "highway"}
-        onClick={() => handleViewChange("highway")}
+        onClick={() => setView("highway")}
       />
 
       <VerticalSeparator />
@@ -248,7 +254,7 @@ const Toolbar = ({
         }
         minWidth="70px"
         maxWidth="70px"
-        options={SNAP_OPTIONS}
+        options={SnapOptions}
       />
 
       {/* Note Type */}
@@ -257,30 +263,34 @@ const Toolbar = ({
           <VerticalSeparator />
           <Dropdown
             aria-label="Vocal note type"
-            disabled={vocalPlacement.phrase !== null}
-            value={vocalPlacement.noteKind}
+            disabled={vocalType.phrase !== null}
+            value={vocalType.noteKind}
             onChange={(value: string) =>
-              onVocalPlacementChange({
-                ...vocalPlacement,
-                noteKind: value as VocalNoteKind,
+              setNoteType({
+                vocal: {
+                  ...vocalType,
+                  noteKind: value as VocalNoteKind,
+                },
               })
             }
-            options={VOCAL_NOTE_TYPE_OPTIONS}
+            options={VocalNoteOptions}
             minWidth={100}
             maxWidth={120}
           />
           <VerticalSeparator />
-          {VOCAL_PHRASES.map(([phrase, Icon, title]) => (
+          {VocalPhrases.map(([phrase, Icon, title]) => (
             <ToolbarButton
               key={phrase}
               icon={Icon}
               aria-label={title}
               title={hint(title, "piano-roll.toggle-vocal-phrase", phrase)}
-              checked={vocalPlacement.phrase === phrase}
+              checked={vocalType.phrase === phrase}
               onClick={() =>
-                onVocalPlacementChange({
-                  ...vocalPlacement,
-                  phrase: vocalPlacement.phrase === phrase ? null : phrase,
+                setNoteType({
+                  vocal: {
+                    ...vocalType,
+                    phrase: vocalType.phrase === phrase ? null : phrase,
+                  },
                 })
               }
             />
@@ -308,48 +318,42 @@ const Toolbar = ({
               "highway.set-tool",
               "select",
             )}
-            checked={highwayMode === "select"}
-            onClick={() => onHighwayModeChange("select")}
+            checked={toolMode === "select"}
+            onClick={() => setToolMode("select")}
           />
           <ToolbarButton
             icon={PencilIcon}
             aria-label="Place notes"
             title={hint("Place notes", "highway.set-tool", "place")}
-            checked={highwayMode === "place"}
-            onClick={() => onHighwayModeChange("place")}
+            checked={toolMode === "place"}
+            onClick={() => setToolMode("place")}
           />
           <ToolbarButton
             icon={EraserIcon}
             aria-label="Remove notes"
             title={hint("Remove notes", "highway.set-tool", "remove")}
-            checked={highwayMode === "remove"}
-            onClick={() => onHighwayModeChange("remove")}
+            checked={toolMode === "remove"}
+            onClick={() => setToolMode("remove")}
           />
 
           <VerticalSeparator />
           <ToolbarButton
             icon={StagepowerIcon}
-            checked={highwayMode === "stagepower"}
+            checked={toolMode === "stagepower"}
             aria-label="Stagepower phrase"
             title={hint(
               "Stagepower phrase",
               "highway.toggle-phrase-tool",
               "stagepower",
             )}
-            onClick={() =>
-              onHighwayModeChange(
-                highwayMode === "stagepower" ? "select" : "stagepower",
-              )
-            }
+            onClick={() => setToolMode("stagepower")}
           />
           <ToolbarButton
             icon={SoloIcon}
-            checked={highwayMode === "solo"}
+            checked={toolMode === "solo"}
             aria-label="Solo phrase"
             title={hint("Solo phrase", "highway.toggle-phrase-tool", "solo")}
-            onClick={() =>
-              onHighwayModeChange(highwayMode === "solo" ? "select" : "solo")
-            }
+            onClick={() => setToolMode("solo")}
           />
 
           <VerticalSeparator />

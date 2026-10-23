@@ -18,9 +18,9 @@ export class ToggleVocalPhraseAction extends Action<[VocalPhraseKind]> {
     const viewports = accessor.get<ViewportService>("editor.viewports");
     const session = viewports.getActiveViewport();
     if (!session) return;
-    const current = session.tools.vocalPlacement;
+    const current = session.tools.vocal;
     viewports.updateTools(session.id, {
-      vocalPlacement: {
+      vocal: {
         ...current,
         phrase: current.phrase === phrase ? null : phrase,
       },
