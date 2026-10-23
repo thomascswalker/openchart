@@ -40,7 +40,7 @@ describe("input bindings", () => {
     const seen = new Map<string, string>();
     const duplicates: string[] = [];
     for (const binding of allBindings) {
-      const key = `${binding.scope}|${binding.target}|${normalize(binding.hotkey)}`;
+      const key = `${binding.scope}|${binding.target}|${binding.options.eventType ?? "keydown"}|${normalize(binding.hotkey)}`;
       const existing = seen.get(key);
       if (existing) duplicates.push(`${existing} and ${binding.id}`);
       else seen.set(key, binding.id);
@@ -59,13 +59,20 @@ describe("input bindings", () => {
     // conscious decision. Today there are none.
     const intentionalOverrides: string[] = [];
     const global = new Map(
-      globalBindings.map((b) => [`${b.target}|${normalize(b.hotkey)}`, b.id]),
+      globalBindings.map((b) => [
+        `${b.target}|${b.options.eventType ?? "keydown"}|${normalize(b.hotkey)}`,
+        b.id,
+      ]),
     );
     const overrides = [...highwayBindings, ...pianoRollBindings]
-      .filter((b) => global.has(`${b.target}|${normalize(b.hotkey)}`))
+      .filter((b) =>
+        global.has(
+          `${b.target}|${b.options.eventType ?? "keydown"}|${normalize(b.hotkey)}`,
+        ),
+      )
       .map(
         (b) =>
-          `${b.id} overrides ${global.get(`${b.target}|${normalize(b.hotkey)}`)}`,
+          `${b.id} overrides ${global.get(`${b.target}|${b.options.eventType ?? "keydown"}|${normalize(b.hotkey)}`)}`,
       );
     expect(overrides).toEqual(intentionalOverrides);
   });
@@ -77,5 +84,19 @@ describe("input bindings", () => {
     expect(toggle?.id).toBe("highway.highway.toggle-lane-note.3.shift");
     expect(toggle?.args).toEqual([2, true]);
     expect(toggle?.target).toBe("canvas");
+  });
+
+  it("releases each lane on keyup", () => {
+    const release = highwayBindings.find(
+      (binding) =>
+        binding.action === "highway.release-lane-note" &&
+        binding.variant === "3",
+    );
+    expect(release).toMatchObject({
+      hotkey: "3",
+      args: [2],
+      target: "document",
+      options: { eventType: "keyup", ignoreInputs: false },
+    });
   });
 });

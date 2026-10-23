@@ -86,6 +86,7 @@ function createHarness(
     getSong: () => song,
     getTrack: () => trackView,
   };
+  let playheadTick = 0;
   const context = {
     getState: () => state,
     getCurrentChart: () => chart,
@@ -93,7 +94,7 @@ function createHarness(
     getPhraseMode: () =>
       options.phraseMode === undefined ? "solo" : options.phraseMode,
     getSelectionContext: () => selection,
-    getPlayheadTick: () => 0,
+    getPlayheadTick: () => playheadTick,
     getCameraTick: () => options.cameraTick ?? 0,
     getPpqn: () => 480,
     getCanvas: () => canvas,
@@ -104,7 +105,9 @@ function createHarness(
     canShowNotePlacementPreview: () => false,
     setCameraTick: vi.fn(),
     setPlayheadTick: vi.fn(),
-    requestSeek: vi.fn(),
+    requestSeek: vi.fn((tick: number) => {
+      playheadTick = tick;
+    }),
     requestRender: vi.fn(),
     notifyNotesChanged: vi.fn(),
     beginEdit: vi.fn(),
@@ -138,8 +141,19 @@ function createHarness(
     }),
   };
   const editing = {
-    placeNoteAt: vi.fn(() => true),
-    resizeNote: vi.fn(() => true),
+    placeNoteAt: vi.fn((_chart: unknown, lane: number, tick: number) => {
+      allNotes.push({
+        note: lane,
+        start: tick,
+        end: tick + 1,
+        noteOn: {} as MidiChannelEvent,
+      } as MidiNote);
+      return true;
+    }),
+    resizeNote: vi.fn((_chart: unknown, note: MidiNote, end: number) => {
+      note.end = end;
+      return true;
+    }),
   };
   const input = new HighwayInputController(
     context,
@@ -154,6 +168,8 @@ function createHarness(
     canvas,
     context,
     input,
+    chart,
+    allNotes,
     phraseEditing,
     selection,
     setPointerCapture,
@@ -369,6 +385,46 @@ describe("HighwayInputController note interaction", () => {
       false,
       note,
     );
+  });
+
+  it("sustains a placed lane note while stepping and returns to its minimum length before its start", () => {
+    const harness = createHarness({ mode: "select", phraseMode: null });
+    detachInput = () => harness.input.detach();
+    harness.context.requestSeek(480);
+
+    harness.input.toggleLaneNote(0);
+    const note = harness.chart.getNotes()[0]!;
+    expect(harness.context.beginEdit).toHaveBeenCalledOnce();
+
+    harness.input.stepPlayhead(-1);
+    expect(note.end).toBe(481);
+    harness.input.stepPlayhead(1);
+    harness.input.stepPlayhead(1);
+    expect(note.end).toBe(960);
+
+    harness.input.releaseLaneNote(0);
+    expect(harness.context.endEdit).toHaveBeenCalledOnce();
+    harness.input.stepPlayhead(1);
+    expect(note.end).toBe(960);
+  });
+
+  it("stops a held sustain at the next note start", () => {
+    const harness = createHarness({ mode: "select", phraseMode: null });
+    detachInput = () => harness.input.detach();
+    harness.context.requestSeek(480);
+
+    harness.input.toggleLaneNote(0);
+    const note = harness.chart.getNotes()[0]!;
+    harness.allNotes.push({
+      note: 1,
+      start: 720,
+      end: 721,
+      noteOn: {} as MidiChannelEvent,
+    } as MidiNote);
+
+    harness.input.stepPlayhead(1);
+
+    expect(note.end).toBe(720);
   });
 
   it("resizes a sustain by dragging it in Place mode", () => {

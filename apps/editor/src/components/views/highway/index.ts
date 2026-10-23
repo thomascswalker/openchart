@@ -270,6 +270,10 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.input.toggleLaneNote(lane, preserveSustain);
   }
 
+  public releaseLaneNote(lane: number): void {
+    this.input.releaseLaneNote(lane);
+  }
+
   public stepPlayhead(direction: -1 | 1): void {
     this.input.stepPlayhead(direction);
   }

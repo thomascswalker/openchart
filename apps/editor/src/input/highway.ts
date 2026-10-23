@@ -24,6 +24,17 @@ const laneBindings = Object.fromEntries(
         group: "Highway",
       },
     ],
+    [
+      `highway.release-lane-note#${lane}`,
+      {
+        hotkey: String(lane),
+        args: [lane - 1],
+        target: "document",
+        options: { eventType: "keyup", ignoreInputs: false },
+        name: `Release lane ${lane} note`,
+        group: "Highway",
+      },
+    ],
   ]),
 );
 
