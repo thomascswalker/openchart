@@ -99,4 +99,22 @@ describe("input bindings", () => {
       options: { eventType: "keyup", ignoreInputs: false },
     });
   });
+
+  it("binds Highway range selection to Shift+Arrow and Escape to the canvas", () => {
+    expect(
+      highwayBindings
+        .filter((binding) => binding.action === "highway.step-playhead")
+        .map(({ hotkey, args }) => [hotkey, args]),
+    ).toEqual([
+      ["ArrowUp", [1]],
+      ["ArrowDown", [-1]],
+      ["Shift+ArrowUp", [1, true]],
+      ["Shift+ArrowDown", [-1, true]],
+    ]);
+    expect(
+      highwayBindings.find(
+        (binding) => binding.action === "highway.clear-selection",
+      ),
+    ).toMatchObject({ hotkey: "Escape", target: "canvas" });
+  });
 });

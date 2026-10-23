@@ -1,7 +1,6 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import type { ChartView } from "@openchart/views";
 import type { HighwayContext } from "./context";
-import { HighwayCoordinateSystem } from "./coordinates";
 import {
   getSustainCutTargets,
   minimumMidiNoteDurationTicks,
@@ -70,15 +69,10 @@ import { drumLaneCount } from "./drumProfile";
 
 export class HighwayNoteEditingController {
   private readonly context: HighwayContext;
-  private readonly coordinates: HighwayCoordinateSystem;
   private clipboard: HighwayClipboardNote[] = [];
 
-  public constructor(
-    context: HighwayContext,
-    coordinates: HighwayCoordinateSystem,
-  ) {
+  public constructor(context: HighwayContext) {
     this.context = context;
-    this.coordinates = coordinates;
   }
 
   public canCopySelection(): boolean {
@@ -113,12 +107,11 @@ export class HighwayNoteEditingController {
       if (profile?.kind === "kick") return 0;
       return profile?.lane ?? profile?.slot ?? note.note - offset;
     };
-    const firstLane = Math.min(...notes.map(laneForNote));
     this.clipboard = notes.map((note) => {
       const profile = isDrums ? getDrumNoteProfile(note.note, offset) : null;
       return {
         relativeTick: note.start - firstTick,
-        relativeLane: laneForNote(note) - firstLane,
+        lane: laneForNote(note),
         durationTicks: note.end - note.start,
         velocity: note.velocity,
         ...(profile
@@ -144,22 +137,21 @@ export class HighwayNoteEditingController {
     this.context.requestRender();
   }
 
-  public pasteClipboard(anchorTick: number, anchorLane: number): void {
+  public pasteClipboard(anchorTick: number): boolean {
     const chart = this.context.getCurrentChart();
-    if (!chart || !this.canPasteClipboard()) return;
-    const snappedAnchorTick = this.coordinates.snapTick(anchorTick);
+    if (!chart || !this.canPasteClipboard()) return false;
     const originalNotes = new Set(chart.getNotes().map((note) => note.noteOn));
     const pasted = new Set<MidiChannelEvent>();
+    const occupied = new Set(
+      chart.getNotes().map((note) => `${note.note}:${note.start}`),
+    );
     const physicalLaneCount = this.isDrumChart(chart)
       ? drumLaneCount
       : chart.getLaneCount();
     for (const entry of this.clipboard) {
-      const lane = anchorLane + entry.relativeLane;
+      const lane = entry.lane;
       if (lane < 0 || lane >= physicalLaneCount) continue;
-      const start = Math.max(
-        0,
-        this.coordinates.snapTick(snappedAnchorTick + entry.relativeTick),
-      );
+      const start = Math.max(0, Math.round(anchorTick) + entry.relativeTick);
       let pitch = lane + chart.getOffset();
       if (this.isDrumChart(chart) && entry.drumKind) {
         if (entry.drumKind === "marker") {
@@ -177,6 +169,7 @@ export class HighwayNoteEditingController {
               ? 95
               : mappedPitch;
         }
+        if (occupied.has(`${pitch}:${start}`)) continue;
         chart.addNoteAtPitch(
           pitch,
           start,
@@ -184,6 +177,7 @@ export class HighwayNoteEditingController {
           entry.velocity,
         );
       } else {
+        if (occupied.has(`${pitch}:${start}`)) continue;
         chart.addNote(lane, start, start + entry.durationTicks, entry.velocity);
       }
       const note = chart
@@ -196,6 +190,7 @@ export class HighwayNoteEditingController {
             candidate.start === start &&
             candidate.end === start + entry.durationTicks,
         );
+      occupied.add(`${pitch}:${start}`);
       if (note) pasted.add(note.noteOn);
     }
     if (pasted.size > 0) {
@@ -203,6 +198,7 @@ export class HighwayNoteEditingController {
       this.context.notifyNotesChanged();
       this.context.requestRender();
     }
+    return pasted.size > 0;
   }
 
   public placeNoteAt(

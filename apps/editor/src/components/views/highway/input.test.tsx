@@ -87,6 +87,7 @@ function createHarness(
     getTrack: () => trackView,
   };
   let playheadTick = 0;
+  let selectionRange: { start: number; end: number } | null = null;
   const context = {
     getState: () => state,
     getCurrentChart: () => chart,
@@ -95,6 +96,7 @@ function createHarness(
       options.phraseMode === undefined ? "solo" : options.phraseMode,
     getSelectionContext: () => selection,
     getPlayheadTick: () => playheadTick,
+    getSelectionRange: () => selectionRange,
     getCameraTick: () => options.cameraTick ?? 0,
     getPpqn: () => 480,
     getCanvas: () => canvas,
@@ -105,6 +107,9 @@ function createHarness(
     canShowNotePlacementPreview: () => false,
     setCameraTick: vi.fn(),
     setPlayheadTick: vi.fn(),
+    setSelectionRange: vi.fn((range: { start: number; end: number } | null) => {
+      selectionRange = range;
+    }),
     requestSeek: vi.fn((tick: number) => {
       playheadTick = tick;
     }),
@@ -172,6 +177,7 @@ function createHarness(
     allNotes,
     phraseEditing,
     selection,
+    getSelectionRange: () => selectionRange,
     setPointerCapture,
     coordinates,
     editing,
@@ -303,6 +309,43 @@ describe("HighwayInputController phrase pointer routing", () => {
       false,
     );
     expect(harness.selection.size).toBe(0);
+  });
+});
+
+describe("HighwayInputController keyboard selection range", () => {
+  it("extends and contracts a range independently of note selection", () => {
+    const harness = createHarness({ mode: "select", phraseMode: null });
+    detachInput = () => harness.input.detach();
+
+    harness.input.stepPlayhead(1, true);
+    harness.input.stepPlayhead(1, true);
+    harness.input.stepPlayhead(-1, true);
+
+    expect(harness.getSelectionRange()).toEqual({ start: 0, end: 480 });
+    expect(harness.selection.size).toBe(0);
+
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift" }));
+    harness.input.stepPlayhead(1);
+    expect(harness.getSelectionRange()).toEqual({ start: 0, end: 480 });
+  });
+
+  it("selects the notes inside the range in the shared selection context", () => {
+    const harness = createHarness({ mode: "select", phraseMode: null });
+    detachInput = () => harness.input.detach();
+    const inside = { note: 0, start: 480, end: 481, noteOn: {} } as MidiNote;
+    const outside = { note: 1, start: 1440, end: 1441, noteOn: {} } as MidiNote;
+    harness.allNotes.push(inside, outside);
+
+    harness.input.stepPlayhead(1, true);
+    expect(harness.selection.size).toBe(0);
+    harness.input.stepPlayhead(1, true);
+    expect(harness.selection.notes).toEqual([inside.noteOn]);
+    harness.input.stepPlayhead(1, true);
+    expect(harness.selection.notes).toEqual([inside.noteOn]);
+    harness.input.stepPlayhead(1, true);
+    expect(harness.selection.notes).toEqual([inside.noteOn, outside.noteOn]);
+    harness.input.stepPlayhead(-1, true);
+    expect(harness.selection.notes).toEqual([inside.noteOn]);
   });
 });
 

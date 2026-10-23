@@ -1,9 +1,7 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import { Difficulty, type ChartView, type Note } from "@openchart/views";
-import * as THREE from "three";
 import { describe, expect, it, vi } from "vitest";
 import type { ChartViewState } from "../AbstractChartView";
-import { HighwayCoordinateSystem } from "./coordinates";
 import type { HighwayContext } from "./context";
 import { HighwayNoteEditingController } from "./noteEditing";
 import { SelectionContext } from "./selection";
@@ -60,20 +58,10 @@ describe("HighwayNoteEditingController", () => {
       notifyNotesChanged: vi.fn(),
       requestRender: vi.fn(),
     } as unknown as HighwayContext;
-    const coordinates = new HighwayCoordinateSystem(
-      {
-        getCanvas: () => null,
-        getCameraTick: () => 0,
-        getPpqn: () => 480,
-        getState: () => state,
-        getViewport: () => ({ width: 800, height: 600 }),
-      },
-      new THREE.PerspectiveCamera(45, 4 / 3, 0.1, 64),
-    );
-    const editing = new HighwayNoteEditingController(context, coordinates);
+    const editing = new HighwayNoteEditingController(context);
 
     editing.copySelection();
-    editing.pasteClipboard(1000, 1);
+    expect(editing.pasteClipboard(1000)).toBe(true);
 
     expect(
       added.map(({ note, start, end, velocity }) => ({
@@ -83,8 +71,8 @@ describe("HighwayNoteEditingController", () => {
         velocity,
       })),
     ).toEqual([
-      { lane: 1, start: 960, end: 1200, velocity: 80 },
-      { lane: 3, start: 1440, end: 1680, velocity: 100 },
+      { lane: 2, start: 1000, end: 1240, velocity: 80 },
+      { lane: 4, start: 1480, end: 1720, velocity: 100 },
     ]);
     expect(selection.notes).toEqual(added.map((note) => note.noteOn));
     expect(context.notifyNotesChanged).toHaveBeenCalledOnce();
@@ -107,10 +95,7 @@ describe("HighwayNoteEditingController", () => {
     const context = {
       getSelectionContext: () => selection,
     } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(
-      context,
-      {} as HighwayCoordinateSystem,
-    );
+    const editing = new HighwayNoteEditingController(context);
 
     expect(editing.removeNote(chart, note, false)).toBe(true);
     expect(selection.isSelected(note.noteOn)).toBe(true);
@@ -126,10 +111,7 @@ describe("HighwayNoteEditingController", () => {
     const context = {
       getDrumPlacementKind: () => "cymbal",
     } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(
-      context,
-      {} as HighwayCoordinateSystem,
-    );
+    const editing = new HighwayNoteEditingController(context);
 
     expect(editing.placeNoteAt(chart, 1, 480, false)).toBe(true);
     expect(editing.placeNoteAt(chart, 0, 960, false)).toBe(false);
@@ -147,10 +129,7 @@ describe("HighwayNoteEditingController", () => {
     const context = {
       getDrumPlacementKind: () => "kick",
     } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(
-      context,
-      {} as HighwayCoordinateSystem,
-    );
+    const editing = new HighwayNoteEditingController(context);
 
     expect(editing.placeNoteAt(chart, 3, 480, false)).toBe(true);
     expect(addNote).toHaveBeenCalledWith(0, 480, 481);
@@ -208,10 +187,7 @@ describe("HighwayNoteEditingController", () => {
       const context = {
         getNotePlacementType: () => placementType,
       } as unknown as HighwayContext;
-      const editing = new HighwayNoteEditingController(
-        context,
-        {} as HighwayCoordinateSystem,
-      );
+      const editing = new HighwayNoteEditingController(context);
 
       expect(editing.placeNoteAt(chart, 0, 480, false)).toBe(true);
       expect(markers).toContainEqual({ note: markerPitch, start: 480 });
@@ -232,10 +208,7 @@ describe("HighwayNoteEditingController", () => {
       getSong: () => ({ attachTrack: vi.fn() }),
       getOffset: () => 96,
     } as unknown as ChartView;
-    const editing = new HighwayNoteEditingController(
-      {} as HighwayContext,
-      {} as HighwayCoordinateSystem,
-    );
+    const editing = new HighwayNoteEditingController({} as HighwayContext);
 
     expect(editing.moveNote(chart, cymbal, 2, 720)).toBe(true);
     expect(setNotePitch).toHaveBeenNthCalledWith(1, cymbal, 102);
@@ -265,18 +238,42 @@ describe("HighwayNoteEditingController", () => {
       notifyNotesChanged: vi.fn(),
       requestRender: vi.fn(),
     } as unknown as HighwayContext;
-    const coordinates = { snapTick: (tick: number) => tick };
-    const editing = new HighwayNoteEditingController(
-      context,
-      coordinates as HighwayCoordinateSystem,
-    );
+    const editing = new HighwayNoteEditingController(context);
 
     editing.copySelection();
-    editing.pasteClipboard(600, 0);
+    editing.pasteClipboard(600);
 
     expect(added.map((note) => [note.note, note.start])).toEqual([
       [95, 600],
       [101, 720],
     ]);
+  });
+
+  it("skips pasted notes that land on an existing note", () => {
+    const sourceNotes = [makeNote(95, 120, 121), makeNote(101, 240, 241)];
+    const added: MidiNote[] = [];
+    const chart = {
+      getTrack: () => ({ getKey: () => "drums" }),
+      getOffset: () => 96,
+      getNotes: () => [...sourceNotes, ...added],
+      addNoteAtPitch: (pitch: number, start: number, end: number) => {
+        added.push(makeNote(pitch, start, end));
+        return true;
+      },
+    } as unknown as ChartView;
+    const selection = new SelectionContext();
+    sourceNotes.forEach((note) => selection.add(note.noteOn));
+    const context = {
+      getCurrentChart: () => chart,
+      getSelectionContext: () => selection,
+      getState: () => ({ isPlaying: false }),
+      notifyNotesChanged: vi.fn(),
+      requestRender: vi.fn(),
+    } as unknown as HighwayContext;
+    const editing = new HighwayNoteEditingController(context);
+
+    editing.copySelection();
+    expect(editing.pasteClipboard(120)).toBe(false);
+    expect(added).toHaveLength(0);
   });
 });

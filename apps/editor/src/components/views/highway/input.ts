@@ -56,6 +56,7 @@ export class HighwayInputController {
   private phrasePointerEvent: PointerEvent | null = null;
   private phraseScrollFrame: number | null = null;
   private suppressNextClick = false;
+  private keyboardSelectionAnchor: number | null = null;
   private readonly heldLaneNotes = new Map<
     number,
     { noteOn: MidiChannelEvent; startTick: number }
@@ -96,6 +97,7 @@ export class HighwayInputController {
 
   public detach(): void {
     this.cancelActiveGestures();
+    this.clearKeyboardSelectionAnchor();
     for (const lane of this.heldLaneNotes.keys()) {
       this.releaseLaneNote(lane);
     }
@@ -129,6 +131,14 @@ export class HighwayInputController {
 
   public getPhraseHoverState(): PhraseHoverState | null {
     return this.phraseHoverState;
+  }
+
+  public clearKeyboardSelectionAnchor(): void {
+    this.keyboardSelectionAnchor = null;
+  }
+
+  public clearSelectionContext(): void {
+    this.context.getSelectionContext().clear();
   }
 
   public canShowNotePlacementPreview(): boolean {
@@ -748,15 +758,35 @@ export class HighwayInputController {
   }
 
   /** Moves the playhead one snap interval (or tick step) forward/backward. */
-  public stepPlayhead(direction: -1 | 1): void {
+  public stepPlayhead(direction: -1 | 1, extendSelection = false): void {
     const chart = this.getCurrentChart();
     if (!this.canEditNotes || !chart) return;
+    const currentTick = this.context.getPlayheadTick();
     const nextTick = getHighwaySteppedTick(
-      this.context.getPlayheadTick(),
+      currentTick,
       direction,
       this.coordinates.getSnapTicks(),
       this.context.getState().snap.enabled,
     );
+    if (extendSelection) {
+      this.keyboardSelectionAnchor ??= currentTick;
+      const start = Math.min(this.keyboardSelectionAnchor, nextTick);
+      const end = Math.max(this.keyboardSelectionAnchor, nextTick);
+      this.context.setSelectionRange({ start, end });
+      // Same selection context as the mouse marquee, so copy/cut/paste behave identically.
+      const phrasePitches = this.getPhrasePitches(chart);
+      this.context.getSelectionContext().set(
+        chart
+          .getNotes()
+          .filter(
+            (note) =>
+              !phrasePitches.has(note.note) &&
+              note.start >= start &&
+              note.start < end,
+          )
+          .map((note) => note.noteOn),
+      );
+    }
     let changed = false;
     const chartNotes = chart.getNotes();
     for (const [lane, held] of this.heldLaneNotes) {
@@ -909,6 +939,9 @@ export class HighwayInputController {
   }
 
   private readonly handleModifierKey = (event: KeyboardEvent): void => {
+    if (event.key === "Shift" && event.type === "keyup") {
+      this.clearKeyboardSelectionAnchor();
+    }
     if (
       (event.key !== "Shift" && event.key !== "Alt") ||
       !this.ghostNoteLocation

@@ -5,6 +5,7 @@ import type { SelectionContext } from "./selection";
 import type { EditablePhraseKind } from "@openchart/views";
 import type {
   GhostNoteLocation,
+  HighwaySelectionRange,
   MarqueeDragState,
   PhraseHoverState,
 } from "./types";
@@ -27,6 +28,7 @@ export interface HighwayContext {
   getDrumPlacementKind(): DrumPlacementKind;
   getPhraseMode(): EditablePhraseKind | null;
   getPhraseHoverState(): PhraseHoverState | null;
+  getSelectionRange(): HighwaySelectionRange | null;
   getSelectionContext(): SelectionContext;
   getGhostNoteLocation(): GhostNoteLocation | null;
   getHoveredNoteOn(): MidiChannelEvent | null;
@@ -40,6 +42,7 @@ export interface HighwayContext {
   changeSnapDenominator(denominator: number): void;
   stepSnapDenominator(direction: -1 | 1): void;
   setPlayheadTick(tick: number): void;
+  setSelectionRange(range: HighwaySelectionRange | null): void;
   updateMarqueeOutline(marquee: MarqueeDragState | null): void;
   clearHoverOutline(): void;
 }
