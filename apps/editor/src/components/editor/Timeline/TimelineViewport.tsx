@@ -2,7 +2,8 @@ import { useRef } from "react";
 import { xToTick } from "./util";
 import { runAction } from "../../../actions/execute";
 import styles from "./Timeline.module.css";
-interface TrackProps {
+
+interface TimelineViewportProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   scrubFrameRef: React.RefObject<number | null>;
@@ -11,14 +12,14 @@ interface TrackProps {
   isPlaying: boolean;
 }
 
-const Viewport = ({
+const TimelineViewport = ({
   canvasRef,
   containerRef,
   scrubFrameRef,
   timelineTicks,
   chartViews,
   isPlaying,
-}: TrackProps) => {
+}: TimelineViewportProps) => {
   const draggingRef = useRef(false);
   const pendingScrubXRef = useRef<number | null>(null);
 
@@ -120,4 +121,4 @@ const Viewport = ({
   );
 };
 
-export default Viewport;
+export default TimelineViewport;

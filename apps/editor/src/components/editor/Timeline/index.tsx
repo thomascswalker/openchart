@@ -12,7 +12,7 @@ import {
 } from "./util";
 import type { AnyChartView } from "../../views/ChartViews";
 import Controls from "./Controls";
-import Viewport from "./Viewport";
+import TimelineViewport from "./TimelineViewport";
 
 interface TimelineProps {
   chartViews: AnyChartView[];
@@ -95,7 +95,7 @@ export function Timeline({ chartViews }: TimelineProps) {
   return (
     <div className={styles["timeline"]}>
       <Controls position={position} isPlaying={isPlaying} />
-      <Viewport
+      <TimelineViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
         scrubFrameRef={scrubFrameRef}
