@@ -96,7 +96,7 @@ describe("SettingsService", () => {
     const service = new SettingsService();
     const original = service.getSettings();
 
-    expect(service.applySetting("graphics.scrollSpeed", 1.5)).toBe(true);
+    expect(service.apply("graphics.scrollSpeed", 1.5)).toBe(true);
     expect(service.getSettings()).toEqual({
       ...original,
       graphics: { ...original.graphics, scrollSpeed: 1.5 },
@@ -106,7 +106,7 @@ describe("SettingsService", () => {
         .scrollSpeed,
     ).toBe(1.5);
 
-    expect(service.applySetting("graphics.scrollSpeed", 4.5)).toBe(false);
+    expect(service.apply("graphics.scrollSpeed", 4.5)).toBe(false);
     expect(service.getSettings().graphics.scrollSpeed).toBe(1.5);
   });
 });

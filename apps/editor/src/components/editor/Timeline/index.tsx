@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import { useResizeObserver } from "usehooks-ts";
 import { usePlaybackSelector } from "#usePlayback";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { useDocument } from "../../../hooks/useDocument";
 import styles from "./Timeline.module.css";
 import {
   DefaultTempo,
@@ -28,7 +28,7 @@ export function Timeline({ chartViews }: TimelineProps) {
   const scrubFrameRef = useRef<number | null>(null);
 
   const timelineTicks = Math.max(totalTimelineTicks, playbackTick);
-  const doc = useDocumentSnapshot();
+  const doc = useDocument();
   const tempo = useMemo(
     () => doc.midi?.getTempoEvents() ?? DefaultTempo,
     [doc],

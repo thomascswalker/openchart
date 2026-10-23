@@ -1,5 +1,5 @@
 import { SongView } from "@openchart/views";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { useDocument } from "../../../hooks/useDocument";
 import { runActionAsync } from "../../../actions/execute";
 import type { ViewportSession } from "../../../services/editor/viewports";
 import { Box, Button, Text } from "../../shared";
@@ -12,7 +12,7 @@ interface TrackListProps {
 }
 
 export function TrackList({ session }: TrackListProps) {
-  const { midi } = useDocumentSnapshot();
+  const { midi } = useDocument();
   if (!midi) {
     return <Text>No MIDI data</Text>;
   }

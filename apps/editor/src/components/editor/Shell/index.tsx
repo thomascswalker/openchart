@@ -1,6 +1,6 @@
 import { useLayoutEffect, useSyncExternalStore } from "react";
 import { runAction } from "../../../actions/execute";
-import { useEditorState } from "../../../hooks/useEditorState";
+import { useEditor } from "../../../hooks/useEditorState";
 import { globalBindings } from "../../../input";
 import { Hotkeys } from "../../../input/Hotkeys";
 import { usePlatform } from "../../../platform";
@@ -16,8 +16,7 @@ import { Menubar, type MenuCommandId } from "../Menubar";
 import { Workspace } from "../Workspace";
 
 const Shell = () => {
-  const { error, projectVisible, settingsVisible, aboutVisible } =
-    useEditorState();
+  const { error, projectVisible, settingsVisible, aboutVisible } = useEditor();
   const { services, actions } = usePlatform();
   const playbackService = services.get<PlaybackService>("playback");
   const isMetronomeEnabled = useSyncExternalStore(

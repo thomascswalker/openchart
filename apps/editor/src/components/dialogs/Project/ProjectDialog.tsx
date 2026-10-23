@@ -1,5 +1,5 @@
 import { runActionAsync, runAction } from "../../../actions/execute";
-import { useDocumentSnapshot } from "../../../hooks/useDocumentSnapshot";
+import { useDocument } from "../../../hooks/useDocument";
 import {
   MetadataSchema,
   type Metadata,
@@ -8,7 +8,7 @@ import {
 import { Form } from "../../shared";
 
 const ProjectDialog = () => {
-  const { metadata, directoryHandle } = useDocumentSnapshot();
+  const { metadata, directoryHandle } = useDocument();
 
   const close = (): void => {
     runAction("dialog.close-project");

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import Platform from "../platform";
 import { ViewportService } from "../services/editor/viewports";
 
-export function useViewportSnapshot() {
+export function useViewport() {
   const viewports = Platform.services.get<ViewportService>("editor.viewports");
   return useSyncExternalStore(
     viewports.subscribe,

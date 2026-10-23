@@ -2,14 +2,14 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { runAction } from "../../../actions/execute";
-import { useEditorState } from "../../../hooks/useEditorState";
+import { useEditor } from "../../../hooks/useEditorState";
 import Platform from "../../../platform";
 import { EditorStateService } from "../../../services/editor/state";
 import { Runtime } from "../../editor/Runtime";
 import { AboutDialog } from "./AboutDialog";
 
 function AboutTestShell() {
-  const { aboutVisible } = useEditorState();
+  const { aboutVisible } = useEditor();
   return (
     <>
       <button type="button" onClick={() => runAction("dialog.open-about")}>
