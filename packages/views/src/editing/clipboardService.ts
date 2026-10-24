@@ -3,6 +3,7 @@ import type { ChartEditAction } from "./action.js";
 import type { ChartDocument, NoteSnapshot } from "./chartDocument.js";
 import type { SelectionModel } from "./selectionModel.js";
 
+/** A note snapshot stored in the legacy clipboard payload. */
 export interface ClipboardNote {
   relativeTick: number;
   relativeTrack: number;
@@ -12,6 +13,7 @@ export interface ClipboardNote {
   phraseType?: EditablePhraseKind;
 }
 
+/** Legacy clipboard payload kept until the Phase 8 clipboard migration. */
 export interface ChartClipboard {
   notes: ClipboardNote[];
 }
@@ -29,14 +31,17 @@ export class ClipboardService {
     ) => EditablePhraseKind | null,
   ) {}
 
+  /** Rebinds the clipboard reader after the host document is replaced. */
   public setDocument(document: ChartDocument): void {
     this.document = document;
   }
 
+  /** Clears the current clipboard payload. */
   public clear(): void {
     this.clipboard = { notes: [] };
   }
 
+  /** Copies currently selected notes into the legacy payload. */
   public copy(): ChartClipboard {
     const notes = this.selection
       .getSelectedIds()
@@ -65,14 +70,17 @@ export class ClipboardService {
     return this.getData();
   }
 
+  /** Returns a defensive copy of the current clipboard payload. */
   public getData(): ChartClipboard {
     return { notes: this.clipboard.notes.map((note) => ({ ...note })) };
   }
 
+  /** Reports whether the payload contains notes that can be pasted. */
   public canPaste(): boolean {
     return this.clipboard.notes.length > 0;
   }
 
+  /** Builds legacy note/phrase commands at the requested paste anchor. */
   public createPasteActions(
     targetTick: number,
     targetTrackIndex: number,

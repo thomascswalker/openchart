@@ -469,7 +469,7 @@ export class NoteEditingController {
             type: "MOVE_NOTES",
             targetIds,
             tickDelta: 0,
-            trackDelta: semitones,
+            pitchDelta: semitones,
           },
         ])
       ) {
@@ -504,7 +504,7 @@ export class NoteEditingController {
             type: "MOVE_NOTES",
             targetIds,
             tickDelta: Math.round(deltaTicks),
-            trackDelta: 0,
+            pitchDelta: 0,
           },
         ])
       ) {
@@ -681,7 +681,7 @@ export class NoteEditingController {
           type: "MOVE_NOTES" as const,
           targetIds,
           tickDelta: delta.tickDelta ?? 0,
-          trackDelta: delta.trackDelta ?? 0,
+          pitchDelta: delta.trackDelta ?? 0,
         };
     const changed = this.applyActions([action], true);
     core.scratchpad.clear();

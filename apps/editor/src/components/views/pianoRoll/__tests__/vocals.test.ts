@@ -230,10 +230,10 @@ function createEditingCore(midi: Midi): PianoRollEditingCore {
     scratchpad,
     clipboard,
     getDocument: () => document,
-    dispatch: (action: ChartEditAction) => document.apply(action),
+    dispatch: (action: ChartEditAction) => document.applyLegacy(action),
     dispatchBatch: (actions: ChartEditAction[]) =>
       actions.reduce(
-        (changed, action) => document.apply(action) || changed,
+        (changed, action) => document.applyLegacy(action) || changed,
         false,
       ),
   };

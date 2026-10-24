@@ -80,3 +80,22 @@
 **Deviations from plan:** This follow-up completes the Phase 2 `AddNoteSpec`/`NotePatchFields` shape and byte-parity exit criterion, which were not met by the original Phase 2 commit.
 **Performance:** no performance benchmark run.
 **Open questions:** none
+
+## Phase 3: Kernel v2 (branch: editing/phase-3-kernel-v2)
+
+**Status:** done
+**Summary:** Added stable entity ID formatting/parsing, the raw command v2 vocabulary, structured results and rejection errors, a read-only document reader, and pure note-preview computation. `ChartDocument` now applies and preflights batches of note, text, tempo, and time-signature commands, returns affected IDs, and resolves notes through the MIDI event-ID index. The deprecated action path remains available through `applyLegacy` for `TransactionManager`; the Piano Roll move caller now supplies `pitchDelta`.
+**Files changed:**
+
+- Views: `packages/views/src/editing/{action.ts,chartDocument.ts,clipboardService.ts,commands.ts,entityId.ts,preview.ts,reader.ts,result.ts,scratchpad.ts,selectionModel.ts,transactionManager.ts}`, `packages/views/src/index.ts`
+- Views tests: `packages/views/tests/__tests__/editing.test.ts`
+- Editor: `apps/editor/src/components/views/pianoRoll/controllers/noteEditing.ts`
+- Editor test adaptation: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** added coverage for entity IDs, legacy-action upgrades, note commands and results, preflight atomicity, text/tempo/time-signature commands, and pure preview parity · ported the Piano Roll vocal test helper to `applyLegacy` while preserving its behavior assertions · removed none
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · targeted Prettier ✓ · full format:check fails on 158 repository files (153 in Phase 0 baseline; no Phase 3 source/test files are among the reported files) · `npm test`: 239 passed, 2 same baseline failures (`ChartView.getTrack` test double and Piano Roll time-signature fixture) · focused kernel/service/vocal tests 36 passed · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / same 3 baseline `playhead-sync` failures · Storybook build and test cannot run with Node.js v20.18.1; installed Storybook requires v20.19+ or v22.12+.
+  **Defects closed:** DEF-09 (Piano Roll move commands use `pitchDelta`); DEF-15 (note-ID resolution uses the MIDI event-ID index)
+  **Intentional behaviour changes:** none
+  **Deviations from plan:** Updated `vocals.test.ts` outside the enumerated Phase 3 app paths to route its deprecated-API fixture through `applyLegacy`; its MIDI output and behavior assertions are unchanged. Added TSDoc to the existing exported clipboard, scratchpad, selection, and transaction APIs as required by the kernel API documentation contract.
+  **Performance:** Note-ID resolution uses the O(1) event-ID index; no timing benchmark run.
+  **Open questions:** none
