@@ -1,8 +1,7 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import {
+  formatNoteId,
   extractSections,
-  getNotePhrases,
-  getPhrasePitch,
   type ChartView,
   type EditablePhraseKind,
 } from "@openchart/views";
@@ -56,12 +55,7 @@ import {
 } from "./noteStyles";
 import type { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayMarqueeDragState } from "../types";
-import {
-  DrumLaneCount,
-  getDrumNoteProfile,
-  getDrumPitchForPlacement,
-  type DrumPlacementKind,
-} from "../profile";
+import { DrumLaneCount, type DrumPlacementKind } from "../profile";
 
 interface InstancedBeatLine {
   mesh: THREE.Mesh;
@@ -136,7 +130,6 @@ function fiveFretNoteStyles(
     forceHopoPitch,
     forceStrumPitch,
     tapMarkerPitches: [
-      104,
       ...(tapMarkerPitch === undefined ? [] : [tapMarkerPitch]),
     ],
     ppqn,
@@ -321,9 +314,9 @@ export class HighwayRenderer {
     const recordDrawDuration = () => {
       this.scene.userData.highwayDrawMs = performance.now() - drawStartedAt;
     };
-    this.phraseEditing.getSelectedPhraseNoteOns();
     const chart = this.context.getCurrentChart();
-    if (!chart) {
+    const session = this.context.getEditingSession();
+    if (!chart || !session) {
       this.scene.userData.visibleNotes = 0;
       this.scene.userData.visibleSustains = 0;
       this.hideAllObjects();
@@ -352,7 +345,7 @@ export class HighwayRenderer {
       return;
     }
 
-    const isDrumChart = chart.getTrack().getKey() === "drums";
+    const isDrumChart = session.mode.id === "chart.drums";
     this.drawBeatLines();
     const visibleStart = this.coordinates.getTickAtDepth(nearBoardZ);
     const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
@@ -364,6 +357,8 @@ export class HighwayRenderer {
     const visibleNotes: IndexedNote[] = [];
     getHighwayNoteIndex(chart).query(
       chart,
+      session,
+      this.context.getPreviewState(),
       visibleStart,
       visibleEnd,
       visibleNotes,
@@ -371,31 +366,32 @@ export class HighwayRenderer {
 
     const tailData: SustainInstanceData[] = [];
     const visibleTailEnd = this.coordinates.getTickAtDepth(farBoardZ);
-    for (const { note, lane } of isDrumChart ? [] : visibleNotes) {
+    for (const note of isDrumChart
+      ? []
+      : visibleNotes.filter((entry) => entry.kind === "note")) {
       const tailStart = Math.max(note.start, visibleStart);
       const tailEnd = Math.min(note.end, visibleTailEnd);
       if (tailEnd <= tailStart) continue;
-      const cutTick = cutPreview.has(note.noteOn)
-        ? (this.context.getGhostNoteLocation()?.tick ?? null)
-        : null;
+      const cutTick =
+        note.source && cutPreview.has(note.source.noteOn)
+          ? (this.context.getGhostNoteLocation()?.tick ?? null)
+          : null;
       const solidTailEnd =
         cutTick === null ? tailEnd : Math.min(tailEnd, cutTick);
       if (solidTailEnd <= tailStart) continue;
       const transform = sustainWorldTransform(
-        this.coordinates.getLaneX(lane),
+        this.coordinates.getLaneX(note.lane),
         this.coordinates.getNoteZ(tailStart),
         this.coordinates.getNoteZ(solidTailEnd),
       );
-      const selected = this.context
-        .getSelectionContext()
-        .isSelected(note.noteOn);
+      const selected = session.selection.isSelected(note.id);
       tailData.push({
         x: transform.position.x,
         y: transform.position.y,
         z: 0,
         width: transform.scale.x,
         halfLength: transform.scale.y,
-        color: laneRgbColors[lane],
+        color: laneRgbColors[note.lane],
         selected,
         startTick: tailStart,
         endTick: solidTailEnd,
@@ -429,7 +425,7 @@ export class HighwayRenderer {
     this.scene.userData.visibleNotes = visibleNotes.length;
     this.scene.userData.visibleSustains = visibleTails + previewSustains;
 
-    const selection = this.context.getSelectionContext();
+    const selection = session.selection;
     const chartRevision = chart.getNoteRevision();
     const selectionRevision = selection.getRevision();
     const noteBatchDirty =
@@ -449,14 +445,15 @@ export class HighwayRenderer {
     };
     if (noteBatchDirty) {
       const noteStyles = fiveFretNoteStyles(chart, this.context.getPpqn());
-      for (const { note, lane, kind } of visibleNotes) {
+      for (const note of visibleNotes) {
+        if (note.kind === "phrase") continue;
         const instanceKind =
-          kind === "kick" || kind === "cymbal" || kind === "pad"
-            ? kind
+          note.kind === "kick" || note.kind === "cymbal" || note.kind === "pad"
+            ? note.kind
             : undefined;
         const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
         const position = noteWorldPosition(
-          kind === "kick" ? 0 : this.coordinates.getLaneX(lane),
+          note.kind === "kick" ? 0 : this.coordinates.getLaneX(note.lane),
           this.coordinates.getNoteZ(note.start),
           placement.transform,
           placement.placementOffset,
@@ -465,10 +462,10 @@ export class HighwayRenderer {
           x: position.x,
           y: position.y,
           z: position.z - this.coordinates.getNoteZ(note.start),
-          color: kind === "kick" ? kickColor : laneColors[lane],
-          selected: selection.isSelected(note.noteOn),
-          hopo: noteStyles.get(note)?.hopo,
-          tap: noteStyles.get(note)?.tap,
+          color: note.kind === "kick" ? kickColor : laneColors[note.lane],
+          selected: selection.isSelected(note.id),
+          hopo: note.source ? noteStyles.get(note.source)?.hopo : undefined,
+          tap: note.source ? noteStyles.get(note.source)?.tap : undefined,
           tick: note.start,
           priority: Math.abs(
             note.start - this.coordinates.getTickAtDepth(strikeLineZ),
@@ -782,15 +779,8 @@ export class HighwayRenderer {
   }
 
   private drawPhraseSpans(chart: ChartView): void {
-    const selectedPhraseNoteOns = new Set(
-      this.phraseEditing.getSelectedPhraseNoteOns(),
-    );
-    const track = chart.getTrack().getMidiTrack();
-    const descriptor = chart
-      .getSong()
-      .getTrackDescriptors()
-      .find((item) => item.key === chart.getTrack().getKey());
-    if (!track || !descriptor) {
+    const session = this.context.getEditingSession();
+    if (!session) {
       this.hidePhraseSpans();
       return;
     }
@@ -799,40 +789,43 @@ export class HighwayRenderer {
       this.coordinates.getTickAtDepth(nearBoardZ),
     );
     const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
+    const visibleEntries: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(
+      chart,
+      session,
+      this.context.getPreviewState(),
+      visibleStart,
+      visibleEnd,
+      visibleEntries,
+    );
     const phrases: Array<{
+      id: string | null;
       start: number;
       end: number;
       kind: EditablePhraseKind;
-      noteOn: MidiChannelEvent | null;
-    }> = (["stagepower", "solo"] as const).flatMap((kind) => {
-      const pitch = getPhrasePitch(descriptor, kind);
-      return pitch === null
-        ? []
-        : getNotePhrases(track, pitch, kind)
-            .filter(
-              (phrase) =>
-                phrase.note.noteOn !==
-                  this.phraseEditing.getDragState()?.note?.noteOn &&
-                phrase.end >= visibleStart &&
-                phrase.start <= visibleEnd,
-            )
-            .map(({ start, end, note }) => ({
-              start,
-              end,
-              kind,
-              noteOn: note.noteOn,
-            }));
-    });
+    }> = visibleEntries
+      .filter(
+        (entry) =>
+          entry.kind === "phrase" &&
+          entry.phraseKind !== null &&
+          entry.id !== this.phraseEditing.getDragState()?.id,
+      )
+      .map((entry) => ({
+        id: entry.id,
+        start: entry.start,
+        end: entry.end,
+        kind: entry.phraseKind!,
+      }));
     const phraseDrag = this.phraseEditing.getDragState();
     if (phraseDrag) {
       const start = Math.min(phraseDrag.startTick, phraseDrag.endTick);
       const end = Math.max(phraseDrag.startTick, phraseDrag.endTick);
       if (end >= visibleStart && start <= visibleEnd) {
         phrases.push({
+          id: phraseDrag.id,
           kind: phraseDrag.kind,
           start,
           end,
-          noteOn: phraseDrag.note?.noteOn ?? null,
         });
       }
     }
@@ -847,10 +840,10 @@ export class HighwayRenderer {
       mesh.position.set(0, -0.045, (startZ + endZ) / 2);
       mesh.scale.z = Math.max(0.03, Math.abs(startZ - endZ));
       mesh.material =
-        phrase.noteOn !== null && selectedPhraseNoteOns.has(phrase.noteOn)
+        phrase.id !== null && session.selection.isSelected(phrase.id)
           ? this.selectedPhraseMaterial
-          : phrase.noteOn !== null &&
-              phrase.noteOn === this.context.getPhraseHoverState()?.noteOn &&
+          : phrase.id !== null &&
+              phrase.id === this.context.getPhraseHoverState()?.id &&
               this.context.getPhraseHoverState()?.operation === "move"
             ? this.hoveredPhraseMaterial
             : phrase.kind === "stagepower"
@@ -866,10 +859,10 @@ export class HighwayRenderer {
 
   private drawPhraseAffordances(
     phrases: Array<{
+      id: string | null;
       start: number;
       end: number;
       kind: EditablePhraseKind;
-      noteOn: MidiChannelEvent | null;
     }>,
     phraseDrag: ReturnType<HighwayPhraseEditingController["getDragState"]>,
   ): void {
@@ -904,8 +897,8 @@ export class HighwayRenderer {
             hover?.operation === "resize-end"
           ? hover.operation
           : null;
-    const activeNoteOn = phraseDrag?.note?.noteOn ?? hover?.noteOn;
-    const phrase = phrases.find((item) => item.noteOn === activeNoteOn);
+    const activePhraseId = phraseDrag?.id ?? hover?.id;
+    const phrase = phrases.find((item) => item.id === activePhraseId);
     this.phraseStartBoundaryIndicator.visible =
       phraseMode !== null &&
       activeBoundary === "resize-start" &&
@@ -1130,7 +1123,9 @@ export class HighwayRenderer {
   private getSustainCutPreview(
     chart: ChartView,
   ): Map<MidiChannelEvent, MidiNote> {
-    if (chart.getTrack().getKey() === "drums") return new Map();
+    if (this.context.getEditingSession()?.mode.id === "chart.drums") {
+      return new Map();
+    }
     const location = this.context.getGhostNoteLocation();
     if (!location || !this.context.canShowNotePlacementPreview())
       return new Map();
@@ -1253,8 +1248,8 @@ export class HighwayRenderer {
 
   private drawGhostGem(): void {
     const location = this.context.getGhostNoteLocation();
-    const chart = this.context.getCurrentChart();
-    const isDrumChart = chart?.getTrack().getKey() === "drums";
+    const session = this.context.getEditingSession();
+    const isDrumChart = session?.mode.id === "chart.drums";
     const drumKind = isDrumChart
       ? this.context.getDrumPlacementKind()
       : undefined;
@@ -1268,16 +1263,21 @@ export class HighwayRenderer {
       ghostGem.object.visible = false;
       return;
     }
-    if (
-      chart?.getTrack().getKey() === "drums" &&
-      getDrumPitchForPlacement(
-        this.context.getDrumPlacementKind(),
-        location.lane,
-        chart.getOffset(),
-      ) === null
-    ) {
-      ghostGem.object.visible = false;
-      return;
+    if (isDrumChart) {
+      const projection = session.getProjection();
+      const row = projection
+        .getRows()
+        .find((candidate) => candidate.index === location.lane);
+      if (
+        !row ||
+        projection.pitchForRow(row, {
+          tool: "place",
+          drumKind: this.context.getDrumPlacementKind(),
+        }) === null
+      ) {
+        ghostGem.object.visible = false;
+        return;
+      }
     }
     const isDrumKick = isDrumChart && drumKind === "kick";
     const placement =
@@ -1292,7 +1292,7 @@ export class HighwayRenderer {
     );
     const laneColor = isDrumKick
       ? kickColor
-      : chart?.getTrack().getKey() === "drums"
+      : isDrumChart
         ? drumLaneRgbColors[location.lane]
         : laneRgbColors[location.lane];
     ghostGem.meshes.forEach((mesh) =>
@@ -1345,21 +1345,45 @@ export class HighwayRenderer {
       this.hoverOutline.visible = false;
       return;
     }
-    const profile =
-      chart.getTrack().getKey() === "drums"
-        ? getDrumNoteProfile(note.note, chart.getOffset())
+    const session = this.context.getEditingSession();
+    const track = chart.getTrack().getMidiTrack();
+    const trackIndex = session?.target.trackIndex;
+    const classification =
+      session && track && trackIndex !== null && trackIndex !== undefined
+        ? session.classifyNote({
+            id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
+            trackIndex,
+            tick: note.start,
+            pitch: note.note,
+            duration: note.end - note.start,
+            velocity: note.velocity,
+          })
         : null;
-    const lane = profile?.lane ?? (profile?.kind === "kick" ? 0 : -1);
-    const bounds =
-      profile?.kind === "kick"
-        ? this.hitTesting.getKickScreenBounds(note)
-        : this.hitTesting.getGemScreenBounds(
-            note,
-            profile ? lane : note.note - chart.getOffset(),
-            profile?.kind === "pad" || profile?.kind === "cymbal"
-              ? profile.kind
-              : "note",
-          );
+    const isDrumChart = session?.mode.id === "chart.drums";
+    const isKick = isDrumChart && classification?.subtype === "kick";
+    const row =
+      session && track && trackIndex !== null && trackIndex !== undefined
+        ? session.getProjection().rowForNote({
+            id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
+            trackIndex,
+            tick: note.start,
+            pitch: note.note,
+            duration: note.end - note.start,
+            velocity: note.velocity,
+          })
+        : null;
+    const lane = isKick ? 0 : (row?.index ?? note.note - chart.getOffset());
+    const bounds = isKick
+      ? this.hitTesting.getKickScreenBounds(note)
+      : this.hitTesting.getGemScreenBounds(
+          note,
+          lane,
+          classification?.kind === "note" &&
+            (classification.subtype === "pad" ||
+              classification.subtype === "cymbal")
+            ? classification.subtype
+            : "note",
+        );
     if (!bounds) {
       this.hoverOutline.visible = false;
       return;

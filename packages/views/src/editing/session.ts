@@ -17,6 +17,7 @@ import type {
   ModeContext,
   Projection,
 } from "./mode.js";
+import type { NoteSnapshot } from "./reader.js";
 
 /** Transaction operations supplied by the document/history owner. */
 export interface EditTransactionPort {
@@ -39,6 +40,7 @@ export interface EditingSession {
   readonly selection: SelectionModel;
   readonly clipboard: ClipboardService;
   getProjection(): Projection;
+  classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]>;
   can(commandType: string): boolean;
   execute(command: EditCommand, options?: ExecuteOptions): EditResult;
   executeBatch(
@@ -111,6 +113,10 @@ class EditingSessionImpl implements EditingSession {
 
   public getProjection(): Projection {
     return this.mode.createProjection(this.createModeContext());
+  }
+
+  public classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]> {
+    return this.mode.classify(note, this.createModeContext());
   }
 
   public can(commandType: string): boolean {

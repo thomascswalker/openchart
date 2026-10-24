@@ -37,6 +37,8 @@ const PlaceSchema = z.object({
   type: z.literal("PLACE_CHART_NOTE"),
   lane: z.number().int(),
   tick: z.number().int(),
+  endTick: z.number().int().optional(),
+  velocity: z.number().int().min(1).max(127).optional(),
   placement: z.enum(["normal", "force-hopo", "force-strum", "tap"]),
   cutPolicy: z.enum(["all", "none", "preferred-only", "all-but-preferred"]),
   preferredSustainId: z.string().optional(),
@@ -303,7 +305,13 @@ function expandFretsCommand(
   switch (command.type) {
     case "PLACE_CHART_NOTE": {
       const parsed = PlaceSchema.safeParse(command);
-      if (!parsed.success || !validTick(parsed.data.tick)) {
+      if (
+        !parsed.success ||
+        !validTick(parsed.data.tick) ||
+        (parsed.data.endTick !== undefined &&
+          (!validTick(parsed.data.endTick) ||
+            parsed.data.endTick <= parsed.data.tick))
+      ) {
         return rejected(
           command,
           "invalid-command",
@@ -381,7 +389,9 @@ function expandFretsCommand(
             trackIndex: targetTrackIndex(context),
             tick: parsed.data.tick,
             pitch: offset + parsed.data.lane,
-            duration: 1,
+            duration:
+              (parsed.data.endTick ?? parsed.data.tick + 1) - parsed.data.tick,
+            velocity: parsed.data.velocity,
           },
         ],
       });

@@ -35,6 +35,7 @@ const PlaceSchema = z.object({
   type: z.literal("PLACE_CHART_NOTE"),
   lane: z.number().int(),
   tick: z.number().int(),
+  endTick: z.number().int().optional(),
   drumKind: z.enum(["pad", "cymbal", "kick"]),
 });
 const MoveSchema = z.object({
@@ -198,6 +199,9 @@ function expandDrumCommand(
       if (
         !parsed.success ||
         !validTick(parsed.data.tick) ||
+        (parsed.data.endTick !== undefined &&
+          (!validTick(parsed.data.endTick) ||
+            parsed.data.endTick <= parsed.data.tick)) ||
         parsed.data.lane < 0 ||
         parsed.data.lane >= DrumLaneCount
       ) {
@@ -228,7 +232,9 @@ function expandDrumCommand(
                 trackIndex: targetTrackIndex(context),
                 tick: parsed.data.tick,
                 pitch,
-                duration: 1,
+                duration:
+                  (parsed.data.endTick ?? parsed.data.tick + 1) -
+                  parsed.data.tick,
               },
             ],
           },

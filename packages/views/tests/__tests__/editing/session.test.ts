@@ -105,6 +105,11 @@ describe("standalone editing sessions", () => {
       movable: true,
       resizable: true,
     });
+    expect(session.classifyNote(document.getNote(noteId)!)).toMatchObject({
+      kind: "note",
+      movable: true,
+      resizable: true,
+    });
     expect(
       computePreview([command], document).updated.get(noteId),
     ).toMatchObject({

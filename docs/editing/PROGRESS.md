@@ -154,3 +154,20 @@
   **Deviations from plan:** `Runtime/index.tsx` was updated so the vocals action condition follows the session mode after strategy removal. The three `packages/views/src/editing/*` changes provide interim vocal lyric clipboard payloads, standalone history event support, and session behavior required by the Piano Roll migration. `controllers/header.ts` is excluded until Phase 9 and was changed only to check the renamed `"vocals"` profile ID; its existing history/callback bridge remains for header edits.
   **Performance:** not measured in Phase 6
   **Open questions:** none. The user approved keeping the legacy header callback bridge as a temporary exception until its planned Phase 9 migration.
+
+  ## Phase 7: Highway migration (branch: editing/phase-7-highway-migration)
+
+  **Status:** done
+  **Summary:** Bound Highway editing to `EditingSession`, resolved the active target through the session, and moved note and phrase previews, commits, deletes, and clipboard operations onto session commands. Highway rendering and hit testing now project session classification, preview overlays, and stable entity IDs; selection survives undo/redo. Cancelled note drags leave MIDI and history unchanged, and playback start interrupts input gestures.
+  **Files changed:**
+
+  - Editor: `apps/editor/src/components/views/highway/**`; removed `highway/selection.ts`
+  - Views kernel: `packages/views/src/editing/{session.ts,modes/{chartDrums,chartFrets}.ts}` and `packages/views/tests/__tests__/editing/session.test.ts`
+  - Docs: `docs/editing/PROGRESS.md`
+    **Tests:** Highway unit suite 79 passed; Highway input TSX suite 14 passed; views package 64 passed; focused Highway instancing E2E 4 passed. Updated Highway tests to assert centralized ID selection and the current note argument shape; added a playback-start cancellation test and completed the missing physical-lane test setup. No tests were removed or weakened.
+    **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · repository lint ✓ · targeted Prettier ✓ · full format:check reports 131 pre-existing repository files with formatting differences (Phase 0 baseline: 153; all Phase 7 files pass targeted Prettier) · `npm test`: 240 passed / 1 pre-existing Piano Roll time-signature fixture failure; full run stops before the subsequent TSX suite, which was run separately and passed · check:editing:strict ✓ (15 violations, all in the approved Piano Roll header allowance; zero Highway violations) · editor E2E 15 passed / 3 same baseline `playhead-sync` failures · Storybook remains blocked by the installed Node.js requirement (20.19+ or 22.12+; environment 20.18.1).
+    **Defects closed:** DEF-01 (cancelled Highway drag has no mutation/history trace; playback-start interruption covered); DEF-03 (selection uses stable IDs and survives undo/redo); DEF-06 (Highway drum-kind rendering and classification use the session mode).
+    **Intentional behaviour changes:** Highway drag previews no longer mutate MIDI before commit; Highway phrase and note selections share the central selection model and survive undo/redo.
+    **Deviations from plan:** `HighwayNoteEditingController` remains as a session-command/gesture adapter rather than being folded into the input controller; it performs no direct MIDI mutations and keeps placement, clipboard, and selection commands separate from pointer-state handling. `HighwayPhraseEditingController` likewise remains as a gesture adapter over session commands. The approved Piano Roll header callback bridge remains until Phase 9. Changes to `packages/views` extend preview placement with an end tick and expose mode classification required by Highway projection; these are outside the listed app-only scope but necessary for held-note previews and mode-based indexing.
+    **Performance:** Highway instancing E2E recorded 3,000 visible notes, capacity 4,096, zero dropped notes, 1.700 ms draw, 0.100 ms instance-buffer writes, and no note-state rebuild on the unchanged frame. Drag preview/cancel behavior is covered by input tests; no separate active-drag timing comparison was captured.
+    **Open questions:** none
