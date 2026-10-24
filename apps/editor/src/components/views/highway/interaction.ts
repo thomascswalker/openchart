@@ -1,5 +1,12 @@
-export const minimumMidiNoteDurationTicks = 1;
-export const minimumSustainLengthTicks = 240;
+import {
+  getHighwaySustainEnd as getConfiguredHighwaySustainEnd,
+  getSustainCutTargets as getConfiguredSustainCutTargets,
+  getSustainsAtTick,
+  minimumMidiNoteDurationTicks,
+  minimumSustainLengthTicks,
+} from "@openchart/views";
+
+export { minimumMidiNoteDurationTicks, minimumSustainLengthTicks };
 
 export function getPhrasePointerAction(
   phraseHit: boolean,
@@ -98,21 +105,12 @@ export function getHighwaySustainEnd(
   otherNoteStarts: readonly number[] = [],
   allowExtended = false,
 ): number {
-  const requestedEnd = Math.max(noteStart + 1, pointerTick);
-  if (allowExtended) return requestedEnd;
-  const nextNoteStart = otherNoteStarts
-    .filter((tick) => tick > noteStart && tick < requestedEnd)
-    .reduce((next, tick) => Math.min(next, tick), Infinity);
-  return Number.isFinite(nextNoteStart)
-    ? Math.max(noteStart + 1, nextNoteStart)
-    : requestedEnd;
-}
-
-export function getSustainsAtTick<T extends { start: number; end: number }>(
-  notes: readonly T[],
-  tick: number,
-): T[] {
-  return notes.filter((note) => note.start < tick && tick < note.end);
+  return getConfiguredHighwaySustainEnd(
+    noteStart,
+    pointerTick,
+    otherNoteStarts,
+    { extendPastNext: allowExtended },
+  );
 }
 
 export function getSustainCutTargets<
@@ -124,14 +122,22 @@ export function getSustainCutTargets<
   preferredNoteOn: T["noteOn"] | null = null,
   sameLanePlacement = false,
 ): T[] {
-  const crossing = getSustainsAtTick(notes, tick);
-  if (preferredNoteOn === null) return shiftKey ? [] : crossing;
-  if (sameLanePlacement) {
-    return shiftKey
-      ? crossing.filter((note) => note.noteOn === preferredNoteOn)
-      : crossing;
-  }
-  return shiftKey
-    ? crossing
-    : crossing.filter((note) => note.noteOn === preferredNoteOn);
+  const cutPolicy =
+    preferredNoteOn === null
+      ? shiftKey
+        ? "none"
+        : "all"
+      : sameLanePlacement
+        ? shiftKey
+          ? "preferred-only"
+          : "all"
+        : shiftKey
+          ? "all"
+          : "preferred-only";
+  return getConfiguredSustainCutTargets(notes, tick, {
+    cutPolicy,
+    preferredNoteOn,
+  });
 }
+
+export { getSustainsAtTick };

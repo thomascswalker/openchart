@@ -12,6 +12,17 @@ export type VocalNoteKind = "pitched" | "pitchless" | "percussion";
 
 /** Phrase kinds that live on the VOCALS track. */
 export type VocalPhraseKind = "vocal" | "power-window" | "stagepower";
+export type VocalLaneId =
+  "vocal-phrase" | "power-window" | "stagepower" | "percussion" | "pitchless";
+
+export interface VocalLaneSpec {
+  id: VocalLaneId;
+  label: string;
+  pitches: readonly number[];
+  createPitch: number;
+  kind: VocalNoteKind | `phrase:${VocalPhraseKind}`;
+  phrase: VocalPhraseKind | null;
+}
 
 export type VocalClassification =
   | { type: "note"; kind: VocalNoteKind }
@@ -42,6 +53,51 @@ export const DEFAULT_VOCAL_LAYOUT: Readonly<VocalLayout> = Object.freeze({
   pitchlessLow: 35,
   pitchlessPlacement: 85,
 });
+
+export function vocalLaneSpecsFromLayout(layout: VocalLayout): VocalLaneSpec[] {
+  return [
+    {
+      id: "vocal-phrase",
+      label: "Phrase",
+      pitches: [layout.vocalPhrase],
+      createPitch: layout.vocalPhrase,
+      kind: "phrase:vocal",
+      phrase: "vocal",
+    },
+    {
+      id: "power-window",
+      label: "Power",
+      pitches: [layout.powerWindow],
+      createPitch: layout.powerWindow,
+      kind: "phrase:power-window",
+      phrase: "power-window",
+    },
+    {
+      id: "stagepower",
+      label: "Stage",
+      pitches: [layout.power],
+      createPitch: layout.power,
+      kind: "phrase:stagepower",
+      phrase: "stagepower",
+    },
+    {
+      id: "percussion",
+      label: "Perc",
+      pitches: [layout.percussion],
+      createPitch: layout.percussion,
+      kind: "percussion",
+      phrase: null,
+    },
+    {
+      id: "pitchless",
+      label: "Spoken",
+      pitches: [layout.pitchlessHigh, layout.pitchlessLow],
+      createPitch: layout.pitchlessPlacement,
+      kind: "pitchless",
+      phrase: null,
+    },
+  ];
+}
 
 export const VOCAL_PHRASE_KINDS: readonly VocalPhraseKind[] = [
   "vocal",

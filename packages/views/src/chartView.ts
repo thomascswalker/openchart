@@ -9,6 +9,7 @@ import type { MidiNotePhrase } from "./chartEditing.js";
 import {
   defaultConfig,
   describeTrack,
+  getDifficultyNotePitch,
   hasDifficulties,
   InstrumentTrackViewConfig,
   isVocalTrackConfig,
@@ -90,6 +91,7 @@ export class ChartView {
   private offset: number;
   private lanes: number;
   private role?: string;
+  private readonly kick2Pitch: number | null;
   private cachedNoteTrack: MidiTrack | undefined;
   private cachedNoteRevision = -1;
   private cachedNotes: MidiNote[] = [];
@@ -101,6 +103,7 @@ export class ChartView {
     offset: number,
     lanes: number,
     role?: string,
+    kick2Pitch: number | null = null,
   ) {
     this.track = track;
     this.midiTrack = midiTrack;
@@ -108,6 +111,7 @@ export class ChartView {
     this.offset = offset;
     this.lanes = lanes;
     this.role = role;
+    this.kick2Pitch = kick2Pitch;
   }
 
   public getTrack(): TrackView {
@@ -146,10 +150,16 @@ export class ChartView {
     const low = this.offset;
     const high = this.offset + this.lanes;
     const notes = this.midiTrack?.getNotes({ pitch: { low, high } }) ?? [];
-    if (this.role === "drums" && this.difficulty === Difficulty.Expert) {
-      const expertKick2 =
-        this.midiTrack?.getNotes({ pitch: { low: 95, high: 96 } }) ?? [];
-      for (const note of expertKick2) notes.push(note);
+    if (
+      this.role === "drums" &&
+      this.kick2Pitch !== null &&
+      (this.kick2Pitch < low || this.kick2Pitch >= high)
+    ) {
+      const kick2Notes =
+        this.midiTrack?.getNotes({
+          pitch: { low: this.kick2Pitch, high: this.kick2Pitch + 1 },
+        }) ?? [];
+      for (const note of kick2Notes) notes.push(note);
       notes.sort(
         (left, right) => left.start - right.start || left.note - right.note,
       );
@@ -224,11 +234,10 @@ export class ChartView {
     }
 
     this.getSong().attachTrack(this.midiTrack);
-    const duration = note.end - note.start;
     return this.midiTrack.updateNote(note, {
       start,
-      duration,
       pitch: this.offset + lane,
+      duration: note.end - note.start,
     });
   }
 
@@ -253,9 +262,7 @@ export class ChartView {
   private containsPitch(pitch: number): boolean {
     return (
       (pitch >= this.offset && pitch < this.offset + this.lanes) ||
-      (this.role === "drums" &&
-        this.difficulty === Difficulty.Expert &&
-        pitch === 95)
+      (this.role === "drums" && pitch === this.kick2Pitch)
     );
   }
 }
@@ -342,6 +349,7 @@ export class InstrumentTrackView extends TrackView {
           offsets[difficulty],
           config.noteCount,
           config.role,
+          getDifficultyNotePitch(describeTrack(config), difficulty, "Kick2"),
         ),
       ]),
     );

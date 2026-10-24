@@ -9,8 +9,7 @@ import { SongView } from "../chartView.js";
 import { getPhrasePitch } from "../chartEditing.js";
 import { ChartDocument } from "./chartDocument.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
-import { EditingModeRegistry } from "./modeRegistry.js";
-import { defaultModes } from "./modes/index.js";
+import { createDefaultModeRegistry } from "./modes/index.js";
 import { createEditingSession, type EditingSession } from "./session.js";
 
 /** In-memory snapshot history returned by standalone editing instances. */
@@ -38,8 +37,7 @@ export function createStandaloneEditing(
 ): StandaloneEditing {
   const document = createDocument(midi, config);
   const history = new StandaloneHistoryImpl(midi);
-  const registry = new EditingModeRegistry();
-  defaultModes.forEach((mode) => registry.register(mode));
+  const registry = createDefaultModeRegistry();
 
   return {
     registry,

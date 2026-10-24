@@ -218,6 +218,8 @@ class EditingSessionImpl implements EditingSession {
     const createsNotes = commands.some(
       (command) => command.type === "ADD_NOTES" && command.notes.length > 0,
     );
+    const materializesTarget =
+      this.targetValue.trackIndex === null && createsNotes;
     if (this.targetValue.trackIndex === null && createsNotes) {
       if (!this.mode.capabilities.canCreateTrack) {
         throw new EditRejectedError(
@@ -238,17 +240,21 @@ class EditingSessionImpl implements EditingSession {
     }
 
     if (this.targetValue.trackIndex === null) return [...commands];
-    return commands.map((command) =>
-      command.type === "ADD_NOTES"
-        ? {
-            ...command,
-            notes: command.notes.map((note) => ({
-              ...note,
-              trackIndex: this.targetValue.trackIndex!,
-            })),
-          }
-        : command,
-    );
+    return commands.map((command) => {
+      if (command.type === "ADD_NOTES") {
+        return {
+          ...command,
+          notes: command.notes.map((note) => ({
+            ...note,
+            trackIndex: this.targetValue.trackIndex!,
+          })),
+        };
+      }
+      if (materializesTarget && command.type === "ADD_TEXT") {
+        return { ...command, trackIndex: this.targetValue.trackIndex! };
+      }
+      return command;
+    });
   }
 
   private throwIfAllRejected(

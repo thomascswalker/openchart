@@ -2,7 +2,10 @@ import {
   classifyVocalPitch,
   findTrackConfig,
   isVocalTrackConfig,
+  vocalLaneSpecsFromLayout,
   vocalLayoutFromConfig,
+  type VocalLaneId,
+  type VocalLaneSpec,
   type VocalLayout,
   type VocalNoteKind,
   type VocalPhraseKind,
@@ -13,24 +16,13 @@ import type { PitchRange } from "../../../audio/soundboard";
 export type PianoRollNoteKind =
   "generic" | VocalNoteKind | `phrase:${VocalPhraseKind}` | "unknown";
 
-export type PinnedLaneId =
-  "vocal-phrase" | "power-window" | "stagepower" | "percussion" | "pitchless";
+export type PinnedLaneId = VocalLaneId;
 
 /**
  * A row between the header and the pitch grid. Pinned lanes do not scroll
  * vertically, and scale with the pitch rows so special pitches stay visible.
  */
-export interface LaneDef {
-  id: PinnedLaneId;
-  label: string;
-  /** Every pitch drawn in this lane. */
-  pitches: readonly number[];
-  /** Pitch written when a note is created by dragging in the lane. */
-  createPitch: number;
-  kind: PianoRollNoteKind;
-  /** Phrases draw as translucent bands; notes draw as solid blocks. */
-  phrase: VocalPhraseKind | null;
-}
+export type LaneDef = VocalLaneSpec;
 
 export interface PianoRollHeaderOptions {
   /** Which text meta events the header's text lane shows. */
@@ -87,49 +79,7 @@ export function createVocalsProfile(
   layout: VocalLayout,
   trackName = "VOCALS",
 ): PianoRollProfile {
-  const pitchless = [layout.pitchlessHigh, layout.pitchlessLow];
-  const lanes: LaneDef[] = [
-    {
-      id: "vocal-phrase",
-      label: "Phrase",
-      pitches: [layout.vocalPhrase],
-      createPitch: layout.vocalPhrase,
-      kind: "phrase:vocal",
-      phrase: "vocal",
-    },
-    {
-      id: "power-window",
-      label: "Power",
-      pitches: [layout.powerWindow],
-      createPitch: layout.powerWindow,
-      kind: "phrase:power-window",
-      phrase: "power-window",
-    },
-    {
-      id: "stagepower",
-      label: "Stage",
-      pitches: [layout.power],
-      createPitch: layout.power,
-      kind: "phrase:stagepower",
-      phrase: "stagepower",
-    },
-    {
-      id: "percussion",
-      label: "Perc",
-      pitches: [layout.percussion],
-      createPitch: layout.percussion,
-      kind: "percussion",
-      phrase: null,
-    },
-    {
-      id: "pitchless",
-      label: "Spoken",
-      pitches: pitchless,
-      createPitch: layout.pitchlessPlacement,
-      kind: "pitchless",
-      phrase: null,
-    },
-  ];
+  const lanes = vocalLaneSpecsFromLayout(layout);
   const laneByPitch = new Map<number, LaneDef>();
   for (const lane of lanes) {
     for (const pitch of lane.pitches) laneByPitch.set(pitch, lane);

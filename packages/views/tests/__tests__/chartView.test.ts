@@ -1,7 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { ChannelMessage, Midi, MidiTrack } from "@openchart/midi";
-import { expect, describe, beforeAll, it } from "vitest";
+import { expect, describe, beforeAll, it, vi } from "vitest";
 import { SongView, Difficulty, Note } from "../../src/chartView.js";
 import * as fs from "fs";
 
@@ -167,6 +167,27 @@ describe("data.json", () => {
     ).toEqual([[100, 960, 1_680]]);
     expect(chart.moveNote(note, 5 as Note, 1_920)).toBe(false);
     expect(chart.setNoteEnd(note, 960)).toBe(false);
+  });
+
+  it("moves a note with one atomic track update", () => {
+    const midi = new Midi();
+    const track = new MidiTrack("LEAD GUITAR");
+    midi.tracks = [track];
+    track.addNote(96, 480, 100, 240);
+
+    const chart = new SongView(midi)
+      .getInstrumentTrackView("LEAD GUITAR")!
+      .getChart(Difficulty.Expert);
+    const note = chart.getNotes()[0]!;
+    const updateNote = vi.spyOn(track, "updateNote").mockReturnValue(false);
+
+    expect(chart.moveNote(note, Note.Orange, 960)).toBe(false);
+    expect(updateNote).toHaveBeenCalledWith(note, {
+      start: 960,
+      pitch: 100,
+      duration: 240,
+    });
+    expect([note.note, note.start, note.end]).toEqual([96, 480, 720]);
   });
 
   it("adds a missing instrument track when its chart is first edited", () => {

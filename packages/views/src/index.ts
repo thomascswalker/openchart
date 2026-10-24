@@ -1,6 +1,10 @@
 export * from "./chartView.js";
 export * from "./config.js";
 export * from "./chartEditing.js";
+export * from "./chart/constants.js";
+export * from "./chart/drums.js";
+export * from "./chart/forcedNotes.js";
+export * from "./chart/sustains.js";
 export * from "./vocals.js";
 export * from "./editing/action.js";
 export * from "./editing/commands.js";
@@ -19,3 +23,6 @@ export * from "./editing/session.js";
 export * from "./editing/standalone.js";
 export * from "./editing/modes/index.js";
 export * from "./editing/modes/rawMidi.js";
+export * from "./editing/modes/chartFrets.js";
+export * from "./editing/modes/chartDrums.js";
+export * from "./editing/modes/vocals.js";

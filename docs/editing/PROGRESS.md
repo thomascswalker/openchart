@@ -111,10 +111,29 @@
 - Editor: `apps/editor/src/{bootstrap.ts,components/editor/Viewport/index.tsx,components/views/pianoRoll/{index.ts,types.ts,controllers/noteEditing.ts},services/editor/editing.ts}`
 - Editor tests: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`, `apps/editor/src/services/editor/__tests__/editing.test.ts`
 - Docs: `docs/editing/PROGRESS.md`
-**Tests:** added mode-priority and raw-mode tests, gesture invariants I-1/I-2/I-3/I-4/I-7, post-commit error handling, and configured-track creation/rollback coverage · added a generic Piano Roll gesture test asserting one undo entry and an editor-service gesture test asserting one undo step plus playback refresh · no tests removed or weakened
-**Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · touched-file Prettier ✓ · full format:check reports 157 repository files (Phase 0 baseline: 153; all Phase 4 files pass targeted Prettier) · `npm test`: 358 passed and the same 2 Phase 0 editor failures (`ChartView.getTrack` test double and Piano Roll time-signature fixture) · focused session/Piano Roll/service tests 33 passed · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / the same 3 `playhead-sync` failures · Storybook blocked: installed version requires Node.js v20.19+ or v22.12+, environment has v20.18.1.
-**Defects closed:** DEF-05 (generic session commits no longer trigger a duplicate `notifyNotesChanged`; service refresh is verified after a gesture commit)
-**Intentional behaviour changes:** none
-**Deviations from plan:** Changed `bootstrap.ts` to import the renamed `EditingService` as a type because `EditorEditingService` is now a deprecated type alias; this one-line out-of-scope adjustment is required by the Phase 4 class rename and has no runtime behavior change.
-**Performance:** no benchmark run; Phase 4 does not introduce an entity-resolution complexity change.
-**Open questions:** none
+  **Tests:** added mode-priority and raw-mode tests, gesture invariants I-1/I-2/I-3/I-4/I-7, post-commit error handling, and configured-track creation/rollback coverage · added a generic Piano Roll gesture test asserting one undo entry and an editor-service gesture test asserting one undo step plus playback refresh · no tests removed or weakened
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · touched-file Prettier ✓ · full format:check reports 157 repository files (Phase 0 baseline: 153; all Phase 4 files pass targeted Prettier) · `npm test`: 358 passed and the same 2 Phase 0 editor failures (`ChartView.getTrack` test double and Piano Roll time-signature fixture) · focused session/Piano Roll/service tests 33 passed · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / the same 3 `playhead-sync` failures · Storybook blocked: installed version requires Node.js v20.19+ or v22.12+, environment has v20.18.1.
+  **Defects closed:** DEF-05 (generic session commits no longer trigger a duplicate `notifyNotesChanged`; service refresh is verified after a gesture commit)
+  **Intentional behaviour changes:** none
+  **Deviations from plan:** Changed `bootstrap.ts` to import the renamed `EditingService` as a type because `EditorEditingService` is now a deprecated type alias; this one-line out-of-scope adjustment is required by the Phase 4 class rename and has no runtime behavior change.
+  **Performance:** no benchmark run; Phase 4 does not introduce an entity-resolution complexity change.
+  **Open questions:** none
+
+## Phase 5: Domain modes (branch: editing/phase-5-domain-modes)
+
+**Status:** done
+**Summary:** Added config-driven chart and vocal domain modes, moved shared chart semantics into `@openchart/views`, and re-exported Highway profile and sustain helpers for compatibility. `ChartView.moveNote` now uses atomic `updateNote`; default mode resolution and fixture behavior are covered by tests.
+**Files changed:**
+
+- Views config/chart semantics: `packages/views/src/{config.ts,chartView.ts,vocals.ts,chart/{constants,drums,forcedNotes,sustains}.ts}`
+- Views modes: `packages/views/src/editing/{modes/{common,chartFrets,chartDrums,vocals,index}.ts,session.ts,standalone.ts}`, `packages/views/src/index.ts`
+- Views tests: `packages/views/tests/__tests__/{config,chartView,domainModes}.test.ts`
+- Editor compatibility: `apps/editor/src/components/views/highway/{profile.ts,interaction.ts}`, `apps/editor/src/components/views/pianoRoll/profile.ts`
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** all 14 Phase 0 characterization/domain-mode tests pass; full views suite 64 passed; focused editor characterization tests 28 passed · ported none · removed none
+  **Gate results:** MIDI build ✓ · views build ✓ · check-types ✓ (9 Turbo tasks) · lint ✓ · targeted Prettier ✓ for every Phase 5 file · full format:check reports 155 files (153 in Phase 0 baseline; no Phase 5 files are reported) · `npm test`: 240 passed, 2 same pre-existing Phase 0 failures (`highway/noteEditing.test.ts` fake chart lacks `getTrack`; Piano Roll grid test reads an undefined time-signature event) · check:editing:strict ✓ (57 violations, all within existing allowances) · E2E 15 passed / same 3 baseline `playhead-sync` failures · Storybook build and interaction tests blocked because installed Storybook requires Node.js v20.19+ or v22.12+, while the environment has v20.18.1.
+  **Defects closed:** DEF-06 (drum-note movement preserves kind and Kick2); DEF-07 (atomic chart note movement); DEF-08 (forced-marker placement rejects missing config instead of using pitch 104); DEF-10 (vocal phrase overlap checks live in the mode)
+  **Intentional behaviour changes:** Missing forced-marker configuration now rejects with `missing-config-note`, replacing the legacy pitch-104 fallback (DEF-08).
+  **Deviations from plan:** The user approved adding `apps/editor/src/components/views/pianoRoll/profile.ts` to the Phase 5 scope as required by task 5.7. `midi.global` remains deferred to Phase 9 as specified by the plan.
+  **Performance:** not measured in Phase 5
+  **Open questions:** none

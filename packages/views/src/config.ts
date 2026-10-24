@@ -1,5 +1,6 @@
 import { z } from "zod";
 import defaultConfigData from "../configs/default.json" with { type: "json" };
+import type { Difficulty } from "./chartView.js";
 
 const TrackViewTypeSchema = z.union([
   z.literal("global"),
@@ -105,6 +106,36 @@ export function describeTrack(config: TrackViewConfig): TrackDescriptor {
     role: config.role,
     config,
   };
+}
+
+/** Returns the semantic role declared by a track's configuration. */
+export function getTrackRole(descriptor: TrackDescriptor): string | null {
+  return descriptor.config.role ?? null;
+}
+
+/** Returns the canonical lowercase config key for a chart difficulty. */
+export function getDifficultyName(difficulty: Difficulty): string {
+  const names = ["easy", "medium", "hard", "expert"] as const;
+  const name = names[difficulty];
+  if (!name) throw new RangeError(`Unknown chart difficulty '${difficulty}'`);
+  return name;
+}
+
+/** Resolves a difficulty-specific note pitch, or null when it is unconfigured. */
+export function getDifficultyNotePitch(
+  descriptor: TrackDescriptor,
+  difficulty: Difficulty,
+  suffix: string,
+): number | null {
+  if (
+    descriptor.config.type !== "instrument" ||
+    !hasDifficulties(descriptor.config)
+  ) {
+    return null;
+  }
+  const pitch =
+    descriptor.config.notes[`${getDifficultyName(difficulty)}${suffix}`];
+  return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 ? pitch : null;
 }
 
 /** True when a configured instrument has Easy-Expert difficulty charts. */
