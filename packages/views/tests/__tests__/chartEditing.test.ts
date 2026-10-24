@@ -55,15 +55,15 @@ describe("chart phrase editing", () => {
     ]);
   });
 
-  it("rolls back a phrase start if resizing fails", () => {
+  it("leaves a phrase unchanged when an atomic update is rejected", () => {
     const track = new MidiTrack("LEAD GUITAR");
     const phrase = addNotePhrase(track, 116, "solo", 480, 960)!;
-    const setDuration = track.setNoteDuration.bind(track);
-    track.setNoteDuration = () => false;
+    const updateNote = track.updateNote.bind(track);
+    track.updateNote = () => false;
 
     expect(updateNotePhrase(track, phrase.note, 720, 1_200)).toBe(false);
     expect(track.getNotes()).toMatchObject([{ start: 480, end: 960 }]);
-    track.setNoteDuration = setDuration;
+    track.updateNote = updateNote;
   });
 
   it("moves a note group by one stable tick and pitch delta", () => {

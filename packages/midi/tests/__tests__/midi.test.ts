@@ -151,6 +151,76 @@ test("setNotePitch mutates pitch and invalidates note cache", () => {
   expect(track.getNotes()[0].note).toBe(60);
 });
 
+test("addNoteAt inserts at an absolute tick and indexes the note by event ID", () => {
+  const track = new MidiTrack();
+  track.addNoteAt(120, 50, 90, 240);
+  const note = track.getNotes()[0]!;
+  const eventId = track.getEventId(note.noteOn);
+
+  expect(note).toMatchObject({
+    note: 50,
+    velocity: 90,
+    start: 120,
+    end: 360,
+  });
+  expect(track.getNoteByEventId(eventId)).toBe(note);
+  expect(track.getEventById(eventId)).toBe(note.noteOn);
+});
+
+test("event and note ID indexes survive cloning and are cleared on removal", () => {
+  const track = new MidiTrack();
+  track.addNoteAt(0, 50);
+  const note = track.getNotes()[0]!;
+  const eventId = track.getEventId(note.noteOn);
+  const cloned = track.clone();
+  const clonedTrackNote = cloned.getNotes()[0]!;
+
+  expect(cloned.getEventById(eventId)).toBe(clonedTrackNote.noteOn);
+  expect(cloned.getNoteByEventId(eventId)).toBe(clonedTrackNote);
+
+  expect(track.removeNote(note.noteOn, note.noteOff)).toBe(true);
+  expect(track.getEventById(eventId)).toBeUndefined();
+  expect(track.getNoteByEventId(eventId)).toBeNull();
+
+  track.insertEventAt(0, note.noteOn);
+  expect(track.getEventById(eventId)).toBe(note.noteOn);
+});
+
+test("updateNote applies a move and pitch change in one revision", () => {
+  const track = new MidiTrack();
+  track.addNoteAt(120, 50, 90, 240);
+  const [note] = track.getNotes();
+  const revision = track.getNoteRevision();
+
+  expect(
+    track.updateNote(note!, {
+      start: 240,
+      end: 480,
+      note: 60,
+      velocity: 100,
+    }),
+  ).toBe(true);
+
+  expect(track.getNoteRevision()).toBe(revision + 1);
+  expect(track.getNotes()).toMatchObject([
+    { note: 60, velocity: 100, start: 240, end: 480 },
+  ]);
+});
+
+test("updateNote validates the whole patch before changing MIDI events", () => {
+  const track = new MidiTrack();
+  track.addNoteAt(120, 50, 90, 240);
+  const [note] = track.getNotes();
+  const before = track.toBuffer();
+  const revision = track.getNoteRevision();
+
+  expect(() => track.updateNote(note!, { start: 240, note: 128 })).toThrow(
+    RangeError,
+  );
+  expect(track.toBuffer()).toEqual(before);
+  expect(track.getNoteRevision()).toBe(revision);
+});
+
 test("note revision advances once for each note mutation", () => {
   const track = new MidiTrack();
   track.addNote(50, 0);

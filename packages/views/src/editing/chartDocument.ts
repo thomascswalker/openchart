@@ -105,13 +105,11 @@ export class ChartDocument {
       if (!target) continue;
       const { track, note } = target;
       changed =
-        track.setNoteStart(note, Math.max(0, note.start + tickDelta)) ||
-        changed;
-      changed =
-        track.setNotePitch(
-          note,
-          Math.max(0, Math.min(127, note.note + trackDelta)),
-        ) || changed;
+        track.updateNote(note, {
+          start: Math.max(0, note.start + tickDelta),
+          end: Math.max(0, note.end + tickDelta),
+          note: Math.max(0, Math.min(127, note.note + trackDelta)),
+        }) || changed;
     }
     return changed;
   }
@@ -139,14 +137,11 @@ export class ChartDocument {
   ): boolean {
     this.validateNote(action.tick, action.pitch, action.duration);
     const track = this.getTrack(action.trackIndex);
-    const insertAt = track.getInsertionIndexAt(action.tick);
-    const startDelta = action.tick - track.getAbsoluteTickAt(insertAt);
-    track.addNote(
+    track.addNoteAt(
+      action.tick,
       action.pitch,
-      startDelta,
       action.velocity ?? 100,
       action.duration,
-      insertAt,
     );
     return true;
   }
@@ -221,9 +216,7 @@ export class ChartDocument {
     const track = this.midi.tracks[trackIndex];
     if (!track) return null;
     const eventId = match[2]!;
-    const note = track
-      .getNotes()
-      .find((candidate) => track.getEventId(candidate.noteOn) === eventId);
+    const note = track.getNoteByEventId(eventId);
     return note ? { trackIndex, track, note } : null;
   }
 

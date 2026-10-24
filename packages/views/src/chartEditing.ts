@@ -66,18 +66,8 @@ export function addNotePhrase(
     return null;
   }
 
-  const insertAt = track.getInsertionIndexAt(start);
-  const previousTick = track.getAbsoluteTickAt(insertAt);
-  const events = track.addNote(
-    pitch,
-    start - previousTick,
-    100,
-    end - start,
-    insertAt,
-  );
-  const note = track
-    .getNotes()
-    .find((candidate) => candidate.noteOn === events.noteOn);
+  const events = track.addNoteAt(start, pitch, 100, end - start);
+  const note = track.getNoteByEventId(track.getEventId(events.noteOn));
   return note ? { start: note.start, end: note.end, kind, note } : null;
 }
 
@@ -96,11 +86,7 @@ export function updateNotePhrase(
     return false;
   }
 
-  const originalStart = note.start;
-  if (!track.setNoteStart(note, start)) return false;
-  if (track.setNoteDuration(note, end - start)) return true;
-  track.setNoteStart(note, originalStart);
-  return false;
+  return track.updateNote(note, { start, end });
 }
 
 export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
@@ -128,12 +114,11 @@ export function moveNoteGroup(
   let changed = false;
   for (const note of notes) {
     changed =
-      track.setNoteStart(note, Math.max(0, note.start + deltaTick)) || changed;
-    changed =
-      track.setNotePitch(
-        note,
-        Math.max(0, Math.min(127, note.note + deltaPitch)),
-      ) || changed;
+      track.updateNote(note, {
+        start: Math.max(0, note.start + deltaTick),
+        end: Math.max(0, note.end + deltaTick),
+        note: Math.max(0, Math.min(127, note.note + deltaPitch)),
+      }) || changed;
   }
   return changed && keep.size > 0;
 }

@@ -59,9 +59,7 @@ function insertNote(
   velocity: number,
   duration: number,
 ): MidiChannelEvent {
-  const insertAt = track.getInsertionIndexAt(tick);
-  const startDelta = tick - track.getAbsoluteTickAt(insertAt);
-  return track.addNote(pitch, startDelta, velocity, duration, insertAt).noteOn;
+  return track.addNoteAt(tick, pitch, velocity, duration).noteOn;
 }
 
 export function copyNotes(notes: readonly PianoRollNote[]): ClipboardNote[] {
@@ -130,16 +128,14 @@ export class NoteEditingStrategy implements IEditingStrategy {
     if (!track) return false;
     let changed = false;
     for (const { note, initialTick, initialPitch } of targets) {
+      const start = Math.max(0, initialTick + tickDelta);
+      const duration = note.midiNote.end - note.midiNote.start;
       changed =
-        track.setNoteStart(
-          note.midiNote,
-          Math.max(0, initialTick + tickDelta),
-        ) || changed;
-      changed =
-        track.setNotePitch(
-          note.midiNote,
-          clamp(initialPitch + pitchDelta, 0, 127),
-        ) || changed;
+        track.updateNote(note.midiNote, {
+          start,
+          end: start + duration,
+          note: clamp(initialPitch + pitchDelta, 0, 127),
+        }) || changed;
     }
     return changed;
   }

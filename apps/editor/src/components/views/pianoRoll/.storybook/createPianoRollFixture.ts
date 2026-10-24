@@ -13,10 +13,7 @@ function addNoteAt(
   durationTicks: number,
   velocity = 100,
 ): void {
-  // Notes are stored as deltas, so convert the absolute tick first.
-  const insertAt = track.getInsertionIndexAt(startTick);
-  const startDelta = startTick - track.getAbsoluteTickAt(insertAt);
-  track.addNote(pitch, startDelta, velocity, durationTicks, insertAt);
+  track.addNoteAt(startTick, pitch, velocity, durationTicks);
 }
 
 /**

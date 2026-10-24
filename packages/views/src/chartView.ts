@@ -192,16 +192,11 @@ export class ChartView {
     this.midiTrack ??= this.getSong().ensureMidiTrack(this.track.getKey());
     if (!this.midiTrack) return false;
     this.getSong().attachTrack(this.midiTrack);
-    const insertAt = this.midiTrack.getInsertionIndexAt(start);
-    const previousTick = this.midiTrack.getAbsoluteTickAt(insertAt);
-    const startDelta = start - previousTick;
-
-    this.midiTrack.addNote(
+    this.midiTrack.addNoteAt(
+      start,
       pitch,
-      startDelta,
       velocity,
       Math.max(1, (end > start ? end : start + 1) - start),
-      insertAt,
     );
     return true;
   }
@@ -229,10 +224,12 @@ export class ChartView {
     }
 
     this.getSong().attachTrack(this.midiTrack);
-    return (
-      this.midiTrack.setNoteStart(note, start) &&
-      this.midiTrack.setNotePitch(note, this.offset + lane)
-    );
+    const duration = note.end - note.start;
+    return this.midiTrack.updateNote(note, {
+      start,
+      end: start + duration,
+      note: this.offset + lane,
+    });
   }
 
   public setNoteEnd(note: MidiNote, end: number): boolean {

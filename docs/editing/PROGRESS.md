@@ -48,3 +48,22 @@
   **Deviations from plan:** Added `TrackList.test.tsx` outside the explicit Phase 1 file list as the focused regression test required for DEF-12.
   **Performance:** not measured in Phase 1
   **Open questions:** none
+
+## Phase 2: MIDI editing primitives (branch: editing/phase-2-midi-primitives)
+
+**Status:** done
+**Summary:** Added absolute-tick `MidiTrack.addNoteAt`, atomic note `updateNote`, and O(1) event-ID and note-ID indexes. Migrated note insertion and combined move operations to these primitives while preserving event ordering and stale `MidiNote` snapshot behavior.
+**Files changed:**
+
+- MIDI: `packages/midi/src/track.ts`, `packages/midi/tests/__tests__/midi.test.ts`
+- Views: `packages/views/src/{chartEditing.ts,chartView.ts,vocals.ts}`, `packages/views/src/editing/chartDocument.ts`, `packages/views/tests/__tests__/chartEditing.test.ts`
+- Editor: `apps/editor/src/components/views/{highway/editing/noteEditing.ts,highway/__tests__/noteEditing.test.ts,pianoRoll/editingStrategy.ts,pianoRoll/.storybook/createPianoRollFixture.ts}`
+- Guardrails: `scripts/editing-boundaries.allowlist.json`
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** added 4 MIDI tests for absolute insertion, indexed lookup, clone/removal ID stability, one-revision atomic updates, and validation atomicity · ported the phrase-update rejection test to the atomic `updateNote` API, preserving its no-change assertion · updated the Highway test double for `addNoteAt` · removed none
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · targeted Prettier ✓ · full format:check baseline failure (145 files; down from 148 after Phase 1) · `npm test`: 239 passed, 2 same pre-existing failures · MIDI tests 27 passed · views tests 32 passed · strict editing boundary check 57 violations (down from 58; strict ✓; Piano Roll strategy allowance 8 → 7) · focused Highway/vocal characterization tests passed; Highway noteEditing retains 1 pre-existing `chart.getTrack` failure · e2e 15 passed / same 3 baseline `playhead-sync` failures · Storybook not rerun: remains blocked by the recorded Node.js version.
+  **Defects closed:** none
+  **Intentional behaviour changes:** none
+  **Deviations from plan:** Ported the phrase-update failure test to simulate rejection of the new atomic update operation; its assertion that the phrase remains unchanged is preserved. Updated the existing Highway test double to match the new absolute insertion API.
+  **Performance:** Event and note ID lookups now use maps; no performance benchmark run.
+  **Open questions:** none

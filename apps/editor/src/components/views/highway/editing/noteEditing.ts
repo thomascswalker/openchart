@@ -339,8 +339,6 @@ export class HighwayNoteEditingController {
       return;
     }
 
-    const insertAt = midiTrack.getInsertionIndexAt(tick);
-    const previousTick = midiTrack.getAbsoluteTickAt(insertAt);
-    midiTrack.addNote(selectedPitch, tick - previousTick, 100, 1, insertAt);
+    midiTrack.addNoteAt(tick, selectedPitch, 100, 1);
   }
 }

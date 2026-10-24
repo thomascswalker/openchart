@@ -223,16 +223,13 @@ function insertNote(
   end: number,
   velocity = 100,
 ): MidiNote | null {
-  const insertAt = track.getInsertionIndexAt(start);
-  const startDelta = start - track.getAbsoluteTickAt(insertAt);
-  const { noteOn } = track.addNote(
+  const { noteOn } = track.addNoteAt(
+    start,
     pitch,
-    startDelta,
     velocity,
     Math.max(1, end - start),
-    insertAt,
   );
-  return track.getNotes().find((note) => note.noteOn === noteOn) ?? null;
+  return track.getNoteByEventId(track.getEventId(noteOn));
 }
 
 function validSpan(start: number, end: number): boolean {
@@ -336,22 +333,26 @@ export function moveVocalNotes(
   let changed = false;
   for (const move of resolved) {
     const start = Math.max(0, Math.round(move.start));
-    if (move.note.start !== start) {
-      changed = track.setNoteStart(move.note, start) || changed;
-    }
+    let pitch = move.note.note;
     const classification = classifyVocalPitch(layout, move.note.note);
     if (
       move.pitch !== undefined &&
       classification.type === "note" &&
       classification.kind === "pitched"
     ) {
-      const pitch = Math.max(
+      pitch = Math.max(
         layout.range.low,
         Math.min(layout.range.high, Math.round(move.pitch)),
       );
-      if (pitch !== move.note.note) {
-        changed = track.setNotePitch(move.note, pitch) || changed;
-      }
+    }
+    if (move.note.start !== start || pitch !== move.note.note) {
+      const duration = move.note.end - move.note.start;
+      changed =
+        track.updateNote(move.note, {
+          start,
+          end: start + duration,
+          note: pitch,
+        }) || changed;
     }
     if (move.lyric) {
       changed = track.moveEvent(move.lyric, start) || changed;
@@ -443,12 +444,8 @@ export function updateVocalPhrase(
   if (vocalPhraseOverlaps(track, note.note, start, end, [note, ...ignore])) {
     return false;
   }
-  const originalStart = note.start;
-  if (note.start !== start && !track.setNoteStart(note, start)) return false;
-  if (note.end - note.start === end - start) return true;
-  if (track.setNoteDuration(note, end - start)) return true;
-  track.setNoteStart(note, originalStart);
-  return false;
+  if (note.start === start && note.end === end) return true;
+  return track.updateNote(note, { start, end });
 }
 
 export type VocalIssue =
