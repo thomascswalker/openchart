@@ -1,5 +1,5 @@
 import type { Midi } from "@openchart/midi";
-import { Difficulty } from "@openchart/views";
+import { Difficulty, type EditingSession } from "@openchart/views";
 import * as THREE from "three";
 import { Box2, Vector2 } from "three";
 import { Engine, type EngineOptions } from "../../rendering/engine";
@@ -76,6 +76,11 @@ export abstract class AbstractChartView<T> {
     this.state = state;
 
     this.render();
+  }
+
+  /** Binds the editing session supplied by the active viewport. */
+  public setEditingSession(_session: EditingSession | null): void {
+    void _session;
   }
 
   /** Chart renderers use this instead of reaching into React playback state. */

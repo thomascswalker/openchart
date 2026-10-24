@@ -16,6 +16,11 @@ export interface ClipboardNote {
 /** Legacy clipboard payload kept until the Phase 8 clipboard migration. */
 export interface ChartClipboard {
   notes: ClipboardNote[];
+  extensions?: {
+    vocals?: {
+      lyrics: Array<string | null>;
+    };
+  };
 }
 
 /** Serializes selected chart entities and translates paste into edit commands. */
@@ -41,8 +46,23 @@ export class ClipboardService {
     this.clipboard = { notes: [] };
   }
 
+  /** Adds the interim lyric extension used by Piano Roll vocal paste. */
+  public setVocalLyrics(lyrics: readonly (string | null)[]): void {
+    this.clipboard = {
+      ...this.clipboard,
+      extensions: { vocals: { lyrics: [...lyrics] } },
+    };
+  }
+
+  /** Returns a copy of the interim lyric extension, when present. */
+  public getVocalLyrics(): (string | null)[] | null {
+    const lyrics = this.clipboard.extensions?.vocals?.lyrics;
+    return lyrics ? [...lyrics] : null;
+  }
+
   /** Copies currently selected notes into the legacy payload. */
   public copy(): ChartClipboard {
+    this.clipboard = { notes: [] };
     const notes = this.selection
       .getSelectedIds()
       .map((id) => this.document.getNote(id))
@@ -72,7 +92,20 @@ export class ClipboardService {
 
   /** Returns a defensive copy of the current clipboard payload. */
   public getData(): ChartClipboard {
-    return { notes: this.clipboard.notes.map((note) => ({ ...note })) };
+    return {
+      notes: this.clipboard.notes.map((note) => ({ ...note })),
+      ...(this.clipboard.extensions
+        ? {
+            extensions: {
+              vocals: this.clipboard.extensions.vocals
+                ? {
+                    lyrics: [...this.clipboard.extensions.vocals.lyrics],
+                  }
+                : undefined,
+            },
+          }
+        : {}),
+    };
   }
 
   /** Reports whether the payload contains notes that can be pasted. */

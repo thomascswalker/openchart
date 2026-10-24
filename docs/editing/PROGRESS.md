@@ -137,3 +137,20 @@
   **Deviations from plan:** The user approved adding `apps/editor/src/components/views/pianoRoll/profile.ts` to the Phase 5 scope as required by task 5.7. `midi.global` remains deferred to Phase 9 as specified by the plan.
   **Performance:** not measured in Phase 5
   **Open questions:** none
+
+## Phase 6: Piano Roll migration (branch: editing/phase-6-piano-roll-migration)
+
+**Status:** done
+**Summary:** Replaced the Piano Roll strategy/core path with `EditingSession` gestures for raw MIDI and vocals. Note move, resize, create, erase, delete, clipboard, selection projection, and preview rendering now use session commands and stable IDs. The Storybook host uses standalone editing and the vocal lyric prompt keeps creation preview-only until commit; pointer cancellation cancels the gesture. Removed `editingStrategy.ts` and `vocalEditing.ts`.
+**Files changed:**
+
+- Editor: Piano Roll controllers, input, view, profile, selection, rendering, types, Storybook host, tests, and `apps/editor/e2e-storybook/piano-roll.spec.ts`; `AbstractChartView.tsx`; `Viewport/index.tsx`; `Runtime/index.tsx`; `services/editor/editing.ts`
+- Views kernel: `editing/{clipboardService.ts,session.ts,standalone.ts}`
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** migrated session-based Piano Roll vocal/characterization tests (25 passed); Piano Roll tests excluding the recorded grid baseline failure (12 passed); views package (64 passed) · no tests removed or weakened
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · repository lint ✓ · targeted Prettier ✓ (header excluded by plan; only its profile-id check changed) · full format:check baseline failure (148 files; Phase 0 baseline 153) · `npm test`: 243 passed, 2 same Phase 0 failures (`highway/noteEditing.test.ts` fake chart lacks `getTrack`; Piano Roll grid test reads an undefined time-signature event) · check:editing:strict ✓ (36 violations: 21 Highway and 15 header, all within allowance; no other Piano Roll violations) · E2E 15 passed / same 3 baseline `playhead-sync` failures · Storybook build and Piano Roll Storybook E2E not runnable because Storybook requires Node.js v20.19+ or v22.12+, while the environment has v20.18.1.
+  **Defects closed:** DEF-02 (vocal create cancellation has no mutation trace); DEF-11 (selection resolution is ID-based and subscription is not rebound on each update)
+  **Intentional behaviour changes:** note gestures preview without mutating MIDI and commit as a single session transaction; pointer cancellation cancels instead of committing.
+  **Deviations from plan:** `Runtime/index.tsx` was updated so the vocals action condition follows the session mode after strategy removal. The three `packages/views/src/editing/*` changes provide interim vocal lyric clipboard payloads, standalone history event support, and session behavior required by the Piano Roll migration. `controllers/header.ts` is excluded until Phase 9 and was changed only to check the renamed `"vocals"` profile ID; its existing history/callback bridge remains for header edits.
+  **Performance:** not measured in Phase 6
+  **Open questions:** none. The user approved keeping the legacy header callback bridge as a temporary exception until its planned Phase 9 migration.

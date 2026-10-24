@@ -324,7 +324,7 @@ export class PianoRollRenderer {
     const noneSelected = selection.size === 0;
     const profile = this.#context.getProfile();
     const missingLyric =
-      profile.editing === "vocals"
+      profile.id === "vocals"
         ? this.#context.getVocalMarks().missingLyric
         : null;
     const gridTop = this.#coordinates.getGridTop();
@@ -341,7 +341,9 @@ export class PianoRollRenderer {
       if (!screenRect) continue;
       const kind = profile.classify(geometry.note.pitch);
       const style = kindStyles[kind];
-      const missing = missingLyric?.has(geometry.note.midiNote.noteOn) ?? false;
+      const missing =
+        geometry.note.midiNote !== null &&
+        (missingLyric?.has(geometry.note.midiNote.noteOn) ?? false);
       const color = isSelected
         ? noteSelectedColor
         : missing
@@ -421,7 +423,7 @@ export class PianoRollRenderer {
 
   /** Validation colour in the header text lane for notes with no lyric. */
   private drawLyricMarkers(width: number): void {
-    if (this.#context.getProfile().editing !== "vocals") return;
+    if (this.#context.getProfile().id !== "vocals") return;
     const keyboardWidth = KeyboardWidth;
     for (const tick of this.#context.getVocalMarks().missingTicks) {
       const x = this.#coordinates.screenXForTick(tick);

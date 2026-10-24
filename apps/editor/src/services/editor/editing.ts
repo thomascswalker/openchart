@@ -209,6 +209,8 @@ export class EditingService extends Service {
         end: this.documentService.endEdit,
         rollback: this.documentService.rollbackEdit,
       },
+      selection: this.selection,
+      clipboard: this.clipboard,
       onCommit: (result) => this.publishResult(result),
     });
   }

@@ -648,7 +648,7 @@ export class HeaderController extends IController {
       }
       if (
         event.key === "Tab" &&
-        this.context.getProfile().editing === "vocals" &&
+        this.context.getProfile().id === "vocals" &&
         this.#editingMarker?.lane === "text"
       ) {
         event.preventDefault();

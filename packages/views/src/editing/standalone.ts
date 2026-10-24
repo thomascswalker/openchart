@@ -8,8 +8,10 @@ import {
 import { SongView } from "../chartView.js";
 import { getPhrasePitch } from "../chartEditing.js";
 import { ChartDocument } from "./chartDocument.js";
+import { ClipboardService } from "./clipboardService.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
 import { createDefaultModeRegistry } from "./modes/index.js";
+import { SelectionModel } from "./selectionModel.js";
 import { createEditingSession, type EditingSession } from "./session.js";
 
 /** In-memory snapshot history returned by standalone editing instances. */
@@ -17,8 +19,10 @@ export interface StandaloneHistory {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly isDirty: boolean;
+  readonly isInTransaction: boolean;
   readonly undoDepth: number;
   readonly redoDepth: number;
+  subscribe(listener: () => void): () => void;
   undo(): boolean;
   redo(): boolean;
 }
@@ -26,6 +30,8 @@ export interface StandaloneHistory {
 /** Standalone editing API for unit tests, Storybook, and embedded tools. */
 export interface StandaloneEditing {
   registry: ModeRegistry;
+  selection: SelectionModel;
+  clipboard: ClipboardService;
   createSession(target: EditingTarget, hostKind: string): EditingSession;
   history: StandaloneHistory;
 }
@@ -38,9 +44,29 @@ export function createStandaloneEditing(
   const document = createDocument(midi, config);
   const history = new StandaloneHistoryImpl(midi);
   const registry = createDefaultModeRegistry();
+  const selection = new SelectionModel();
+  const clipboard = new ClipboardService(
+    document,
+    selection,
+    (trackIndex, pitch) => {
+      const descriptor = document.getTrackDescriptor(trackIndex);
+      if (!descriptor) return null;
+      for (const phraseType of [
+        "stagepower",
+        "solo",
+        "vocal",
+        "power-window",
+      ] as const) {
+        if (getPhrasePitch(descriptor, phraseType) === pitch) return phraseType;
+      }
+      return null;
+    },
+  );
 
   return {
     registry,
+    selection,
+    clipboard,
     history,
     createSession(target, hostKind) {
       const normalizedTarget = resolveTarget(target, document);
@@ -63,6 +89,8 @@ export function createStandaloneEditing(
         hostKind,
         config,
         transaction: history,
+        selection,
+        clipboard,
       });
     },
   };
@@ -131,6 +159,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
   private transactionChanged = false;
   private readonly undoStack: Midi[] = [];
   private readonly redoStack: Midi[] = [];
+  private readonly listeners = new Set<() => void>();
 
   public constructor(midi: Midi) {
     this.midi = midi;
@@ -150,6 +179,10 @@ class StandaloneHistoryImpl implements StandaloneHistory {
     return !bytesEqual(this.initial, this.midi.toBuffer());
   }
 
+  public get isInTransaction(): boolean {
+    return this.transactionDepth > 0;
+  }
+
   public get undoDepth(): number {
     return this.undoStack.length;
   }
@@ -158,12 +191,18 @@ class StandaloneHistoryImpl implements StandaloneHistory {
     return this.redoStack.length;
   }
 
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
   public begin(): void {
     if (this.transactionDepth === 0) {
       this.beforeTransaction = this.midi.clone();
       this.transactionChanged = false;
     }
     this.transactionDepth += 1;
+    this.notify();
   }
 
   public record(): void {
@@ -171,6 +210,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
       throw new Error("Cannot record outside an editing transaction");
     }
     this.transactionChanged = true;
+    this.notify();
   }
 
   public end(): void {
@@ -186,6 +226,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
     }
     this.beforeTransaction = null;
     this.transactionChanged = false;
+    this.notify();
   }
 
   public rollback(): boolean {
@@ -194,6 +235,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
     this.transactionDepth = 0;
     this.beforeTransaction = null;
     this.transactionChanged = false;
+    this.notify();
     return true;
   }
 
@@ -204,6 +246,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
     this.redoStack.push(this.current);
     restoreMidi(this.midi, previous);
     this.current = this.midi.clone();
+    this.notify();
     return true;
   }
 
@@ -214,7 +257,12 @@ class StandaloneHistoryImpl implements StandaloneHistory {
     this.undoStack.push(this.current);
     restoreMidi(this.midi, next);
     this.current = this.midi.clone();
+    this.notify();
     return true;
+  }
+
+  private notify(): void {
+    for (const listener of [...this.listeners]) listener();
   }
 }
 

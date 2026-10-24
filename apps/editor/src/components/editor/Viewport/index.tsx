@@ -38,11 +38,7 @@ import { ChartViewHost } from "../../views/ChartViewHost";
 import type { AnyChartView } from "../../views/ChartViews";
 import { ChartViews } from "../../views/ChartViews";
 import { HighwayView } from "../../views/highway";
-import {
-  PianoRollView,
-  profileForInstrument,
-  type PianoRollNote,
-} from "../../views/pianoRoll";
+import { PianoRollView, type PianoRollNote } from "../../views/pianoRoll";
 import { Timeline } from "../Timeline/Timeline";
 import Toolbar from "../Toolbar";
 import { TrackList } from "../../dialogs";
@@ -178,6 +174,9 @@ function ViewportPanel({
   const activeChartView = Platform.services.get<ActiveChartViewService>(
     "editor.active-chart-view",
   );
+  const editingService =
+    Platform.services.get<EditingService>("editor.editing");
+  const editingSession = editingService.getSession(session.id);
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
   const {
     mode: highwayMode,
@@ -185,7 +184,6 @@ function ViewportPanel({
     guitar: notePlacementType,
     vocal: vocalPlacement,
   } = session.tools;
-  const pianoRollProfile = profileForInstrument(session.instrument);
   const activeView =
     ChartViews.find((view) => view.id === session.view) ?? ChartViews[0];
   const engineOptions = useMemo<EngineOptions>(() => {
@@ -200,12 +198,7 @@ function ViewportPanel({
     : null;
 
   const handleReady = (view: AnyChartView | null): void => {
-    if (view instanceof PianoRollView) {
-      view.setEditingCore(
-        Platform.services.get<EditingService>("editor.editing"),
-        session.id,
-      );
-    }
+    view?.setEditingSession(editingSession);
     setChartView(view);
   };
 
@@ -268,7 +261,9 @@ function ViewportPanel({
     view.onNotesChanged = onNotesChanged;
     view.onBeginEdit = onBeginEdit;
     view.onEndEdit = onEndEdit;
-    view.onRollbackEdit = onRollbackEdit;
+    if (!(view instanceof PianoRollView)) {
+      view.onRollbackEdit = onRollbackEdit;
+    }
     if (view instanceof PianoRollView) {
       view.onNotePreview = onNotePreview;
     }
@@ -289,7 +284,9 @@ function ViewportPanel({
       view.onNotesChanged = null;
       view.onBeginEdit = null;
       view.onEndEdit = null;
-      view.onRollbackEdit = null;
+      if (!(view instanceof PianoRollView)) {
+        view.onRollbackEdit = null;
+      }
       if (view instanceof PianoRollView) {
         view.onNotePreview = null;
       }
@@ -341,15 +338,13 @@ function ViewportPanel({
     }
   }, [chartView, drumPlacementKind, notePlacementType]);
 
-  useEffect(() => {
-    if (!(chartView instanceof PianoRollView)) {
-      return;
+  useLayoutEffect(() => {
+    if (!chartView) return;
+    chartView.setEditingSession(editingSession);
+    if (chartView instanceof PianoRollView) {
+      chartView.applyCameraState(getPianoRollCamera());
     }
-    // Same pattern as HighwayView.setMode(): swap behaviour on the live
-    // renderer instead of recreating it, so the camera survives.
-    chartView.setProfile(pianoRollProfile);
-    chartView.applyCameraState(getPianoRollCamera());
-  }, [chartView, pianoRollProfile]);
+  }, [chartView, editingSession]);
 
   useEffect(() => {
     if (chartView instanceof PianoRollView) {

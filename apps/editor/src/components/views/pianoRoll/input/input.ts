@@ -57,10 +57,6 @@ export class PianoRollInputController {
     // Cancel the current action
     this.#editing.cancelGesture();
     this.#pendingCreateStart = null;
-
-    if (this.#isErasing) {
-      this.#context.endEdit();
-    }
     this.#isErasing = false;
 
     this.#header.endDrag();
@@ -80,7 +76,7 @@ export class PianoRollInputController {
     canvas.addEventListener("pointerdown", this.handlePointerDown);
     canvas.addEventListener("pointermove", this.handlePointerMove);
     canvas.addEventListener("pointerup", this.handlePointerUp);
-    canvas.addEventListener("pointercancel", this.handlePointerUp);
+    canvas.addEventListener("pointercancel", this.handlePointerCancel);
     canvas.addEventListener("pointerleave", this.handlePointerLeave);
 
     // Non-pointer input and pointer-up events outside the canvas.
@@ -99,7 +95,7 @@ export class PianoRollInputController {
       canvas.removeEventListener("pointerdown", this.handlePointerDown);
       canvas.removeEventListener("pointermove", this.handlePointerMove);
       canvas.removeEventListener("pointerup", this.handlePointerUp);
-      canvas.removeEventListener("pointercancel", this.handlePointerUp);
+      canvas.removeEventListener("pointercancel", this.handlePointerCancel);
       canvas.removeEventListener("pointerleave", this.handlePointerLeave);
       canvas.removeEventListener("wheel", this.handleWheel);
       canvas.removeEventListener("auxclick", this.handleAuxClick);
@@ -113,9 +109,6 @@ export class PianoRollInputController {
     pointer.button = null;
     this.#pendingCreateStart = null;
 
-    if (this.#isErasing) {
-      this.#context.endEdit();
-    }
     this.#isErasing = false;
     this.#editing.cancelGesture();
     this.#header.endDrag();
@@ -226,10 +219,9 @@ export class PianoRollInputController {
     }
     // Alt + right-drag erases notes as the pointer moves.
     else if (event.altKey) {
-      this.#isErasing = true;
-      this.#context.beginEdit();
+      this.#isErasing = this.#editing.beginErase();
       const hit = this.hitTestNote(pos);
-      if (hit) {
+      if (hit && this.#isErasing) {
         this.#editing.eraseNote(hit);
       }
     }
@@ -249,6 +241,7 @@ export class PianoRollInputController {
       this.#header.beginDrag(pos);
       return;
     }
+    this.#editing.beginPointerGesture();
 
     // Prefer resizing an edge, then moving a note body, otherwise defer creation.
     const edgeHit = this.hitTestNoteEdge(pos);
@@ -406,7 +399,6 @@ export class PianoRollInputController {
     }
     pointer.id = null;
     pointer.button = null;
-    const wasErasing = this.#isErasing;
     this.#isErasing = false;
 
     // A click on empty space seeks; a drag has already started note creation.
@@ -422,7 +414,24 @@ export class PianoRollInputController {
     // Finish editing and release any temporary header or selection state.
     this.#editing.finishGesture();
     this.#header.endDrag();
-    if (wasErasing) this.#context.endEdit();
+    const selection = this.#context.getSelectionContext();
+    if (selection.bounds !== null) selection.bounds = null;
+    this.#context.requestRender();
+  };
+
+  /** Cancels active editing instead of committing a pointer-cancel event. */
+  private readonly handlePointerCancel = (event: PointerEvent): void => {
+    const pointer = this.#context.getPointerContext();
+    if (pointer.id === null || event.pointerId !== pointer.id) return;
+    if (this.#canvas?.hasPointerCapture(event.pointerId)) {
+      this.#canvas.releasePointerCapture(event.pointerId);
+    }
+    pointer.id = null;
+    pointer.button = null;
+    this.#pendingCreateStart = null;
+    this.#editing.cancelGesture();
+    this.#header.endDrag();
+    this.#isErasing = false;
     const selection = this.#context.getSelectionContext();
     if (selection.bounds !== null) selection.bounds = null;
     this.#context.requestRender();

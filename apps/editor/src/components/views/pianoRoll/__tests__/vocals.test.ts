@@ -1,14 +1,10 @@
 import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
 import {
-  ChartDocument,
-  ClipboardService,
   createStandaloneEditing,
   Difficulty,
-  EditScratchpad,
-  SelectionModel,
+  parseEntityId,
   SongView,
   validateVocalTrack,
-  type ChartEditAction,
 } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
@@ -21,7 +17,7 @@ import { NoteGeometryCache } from "../rendering/geometry";
 import {
   GENERIC_PROFILE,
   pitchName,
-  profileForInstrument,
+  profileFromSession,
   type PianoRollProfile,
 } from "../profile";
 import { SelectionContext } from "../selection";
@@ -29,11 +25,28 @@ import type {
   PianoRollLyricPromptHandlers,
   PianoRollContext,
   PianoRollNote,
-  PianoRollEditingCore,
   PianoRollVocalPlacement,
 } from "../types";
+import { toPianoRollNote } from "../noteData";
+import type { PreviewState } from "@openchart/views";
 
-const VOCALS = profileForInstrument("VOCALS");
+const profileMidi = new Midi();
+profileMidi.addTrack();
+const profileEditing = createStandaloneEditing(profileMidi);
+const vocalDescriptor = new SongView(profileMidi)
+  .getTrackDescriptors()
+  .find((descriptor) => descriptor.name === "VOCALS");
+if (!vocalDescriptor) throw new Error("Default config is missing vocals");
+const VOCALS = profileFromSession(
+  profileEditing.createSession(
+    {
+      trackKey: vocalDescriptor.key,
+      trackIndex: null,
+      difficulty: Difficulty.Expert,
+    },
+    "piano-roll",
+  ),
+);
 const LANE_HEIGHT = 18;
 const GRID_TOP = HeaderHeight + 5 * LANE_HEIGHT;
 const TEMPO: TempoEvent[] = [
@@ -71,11 +84,37 @@ function harness(
   midi = new Midi(),
   profile: PianoRollProfile = VOCALS,
   selectedInstrument = "VOCALS",
-  editingCore: PianoRollEditingCore | null = null,
+  selectedTrackIndex: number | null = null,
 ) {
+  if (midi.trackCount === 0) midi.addTrack();
+  const targetTrack =
+    selectedTrackIndex === null
+      ? midi.getTrack(selectedInstrument)
+      : midi.tracks[selectedTrackIndex];
+  const targetName = targetTrack?.name ?? selectedInstrument;
+  const descriptor = new SongView(midi)
+    .getTrackDescriptors()
+    .find((item) => item.name === targetName);
+  const standalone = createStandaloneEditing(midi);
+  const session = standalone.createSession(
+    {
+      trackKey: descriptor?.key ?? targetName,
+      trackIndex:
+        selectedTrackIndex ??
+        (targetTrack ? midi.tracks.indexOf(targetTrack) : null),
+      difficulty: Difficulty.Expert,
+    },
+    "piano-roll",
+  );
+  const activeProfile = profileFromSession(session);
+  if (activeProfile.id !== profile.id) {
+    throw new Error(
+      `Expected ${profile.id} session, received ${activeProfile.id}`,
+    );
+  }
   const state = {
     midi,
-    selectedTrackIndex: null as number | null,
+    selectedTrackIndex,
     selectedInstrument,
     selectedDifficulty: 3,
     snap: { enabled: true, denominator: 4 },
@@ -90,23 +129,54 @@ function harness(
   const calls = {
     begin: 0,
     end: 0,
-    rollback: 0,
     changed: 0,
     previews: 0,
-    rollbackHandled: true,
     prompts: [] as { tick: number; handlers: PianoRollLyricPromptHandlers }[],
   };
-  const coordinates = makeCoordinates(profile);
+  const coordinates = makeCoordinates(activeProfile);
   const track = (): MidiTrack | null => {
-    if (state.selectedTrackIndex !== null) {
-      return midi.tracks[state.selectedTrackIndex] ?? null;
+    const index = session.target.trackIndex ?? state.selectedTrackIndex;
+    if (index !== null) {
+      return midi.tracks[index] ?? null;
     }
-    const trackName = profile.trackName ?? state.selectedInstrument;
-    return midi.getTrack(trackName) ?? null;
+    return midi.getTrack(state.selectedInstrument) ?? null;
   };
   const trackIndex = () => {
     const found = track();
     return found ? midi.tracks.indexOf(found) : null;
+  };
+  let previewState: PreviewState | null = null;
+  const getDisplayNotes = (source: PianoRollNote[]): PianoRollNote[] => {
+    if (!previewState) return source;
+    const index = trackIndex();
+    if (index === null) return source;
+    return source
+      .filter((note) => !previewState!.removed.has(note.id))
+      .map((note) => {
+        const updated = previewState!.updated.get(note.id);
+        return updated
+          ? {
+              ...note,
+              tick: updated.tick,
+              pitch: updated.pitch,
+              durationTicks: updated.duration,
+              velocity: updated.velocity,
+            }
+          : note;
+      })
+      .concat(
+        previewState.added
+          .filter((note) => note.trackIndex === index)
+          .map((note) => ({
+            id: note.id,
+            tick: note.tick,
+            durationTicks: note.duration,
+            pitch: note.pitch,
+            velocity: note.velocity,
+            midiNote: null,
+          })),
+      )
+      .sort((left, right) => left.tick - right.tick);
   };
   const context = {
     getState: () => state,
@@ -114,7 +184,7 @@ function harness(
     getPpqn: () => 480,
     getSelectedTrack: track,
     getSelectedTrackIndex: trackIndex,
-    getProfile: () => profile,
+    getProfile: () => activeProfile,
     getVocalPlacement: () => placement,
     getVocalMarks: () => ({ missingLyric: new Set(), missingTicks: [] }),
     getTrackNotes: (m: Midi, index: number) => noteData.getTrackNotes(m, index),
@@ -125,74 +195,35 @@ function harness(
     getCamera: () => coordinates.getCamera(),
     getViewport: () => ({ width: 1000, height: 1000 }),
     getSelectionContext: () => selection,
-    getEditingCore: () => editingCore,
-    getEditingSession: () => editingCore?.getSession("test") ?? null,
-    getDisplayNotes: (source: PianoRollNote[]) => {
-      if (!editingCore) return source;
-      const index = trackIndex();
-      if (index === null) return source;
-      return source.map((note) => {
-        const id = editingCore.getDocument().getNoteId(index, note.midiNote);
-        const delta = editingCore.scratchpad.get(id);
-        return delta
-          ? {
-              ...note,
-              tick: Math.max(0, note.tick + (delta.tickDelta ?? 0)),
-              pitch: Math.max(
-                0,
-                Math.min(127, note.pitch + (delta.trackDelta ?? 0)),
-              ),
-              durationTicks: Math.max(
-                1,
-                note.durationTicks + (delta.durationDelta ?? 0),
-              ),
-            }
-          : note;
-      });
+    getEditingSession: () => session,
+    getPreviewState: () => previewState,
+    setPreviewState: (preview: PreviewState | null) => {
+      previewState = preview;
     },
+    getDisplayNotes,
     requestRender: () => {},
     beginEdit: () => calls.begin++,
     endEdit: () => calls.end++,
     notifyNotesChanged: () => calls.changed++,
     requestSeek: () => {},
     invalidateTempoCache: () => {},
-    rollbackEdit: () => {
-      calls.rollback++;
-      return calls.rollbackHandled;
-    },
     promptLyric: (tick: number, handlers: PianoRollLyricPromptHandlers) =>
       calls.prompts.push({ tick, handlers }),
     cancelLyricPrompt: () => calls.prompts.pop()?.handlers.onCancel(),
     editNextLyric: () => {},
     previewNotes: () => calls.previews++,
   } as unknown as PianoRollContext;
-  if (editingCore) {
-    selection.bindSharedSelection(
-      editingCore.selection,
-      (note) => {
-        const index = midi.tracks.findIndex((item) =>
-          item.getNotes().includes(note.midiNote),
-        );
-        return index < 0
-          ? ""
-          : editingCore.getDocument().getNoteId(index, note.midiNote);
-      },
-      (id) => {
-        for (let index = 0; index < midi.tracks.length; index++) {
-          const note = noteData
-            .getTrackNotes(midi, index)
-            .find(
-              (candidate) =>
-                editingCore
-                  .getDocument()
-                  .getNoteId(index, candidate.midiNote) === id,
-            );
-          if (note) return note;
-        }
-        return null;
-      },
-    );
-  }
+  selection.bindSharedSelection(standalone.selection, (id) => {
+    const parsed = parseEntityId(id);
+    if (!parsed || parsed.kind !== "note" || parsed.trackIndex === null) {
+      return null;
+    }
+    const track = midi.tracks[parsed.trackIndex];
+    const note = track?.getNoteByEventId(parsed.eventId);
+    return track && note
+      ? toPianoRollNote(track, parsed.trackIndex, note)
+      : null;
+  });
   const editing = new NoteEditingController(context, coordinates);
   const notes = (): PianoRollNote[] => {
     const index = trackIndex();
@@ -209,6 +240,8 @@ function harness(
   };
   return {
     midi,
+    session,
+    standalone,
     editing,
     calls,
     placement,
@@ -223,40 +256,6 @@ function harness(
   };
 }
 
-function createEditingCore(midi: Midi): PianoRollEditingCore & {
-  history: ReturnType<typeof createStandaloneEditing>["history"];
-} {
-  const document = new ChartDocument(midi, () => null);
-  const selection = new SelectionModel();
-  const scratchpad = new EditScratchpad();
-  const clipboard = new ClipboardService(document, selection);
-  const standalone = createStandaloneEditing(midi);
-  const session = standalone.createSession(
-    {
-      trackKey: "lead-guitar",
-      trackIndex: midi.tracks.findIndex(
-        (track) => track.name === "LEAD GUITAR",
-      ),
-      difficulty: Difficulty.Expert,
-    },
-    "piano-roll",
-  );
-  return {
-    selection,
-    scratchpad,
-    clipboard,
-    history: standalone.history,
-    getDocument: () => document,
-    getSession: () => session,
-    dispatch: (action: ChartEditAction) => document.applyLegacy(action),
-    dispatchBatch: (actions: ChartEditAction[]) =>
-      actions.reduce(
-        (changed, action) => document.applyLegacy(action) || changed,
-        false,
-      ),
-  };
-}
-
 function seeded() {
   const midi = new Midi();
   const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
@@ -267,14 +266,13 @@ function seeded() {
 }
 
 describe("piano-roll profiles", () => {
-  it("previews generic note drags in the scratchpad and commits one session transaction on release", () => {
+  it("previews generic note drags in the session and commits one history entry on release", () => {
     const midi = new Midi();
     const trackIndex = midi.addTrack();
     const track = midi.tracks[trackIndex]!;
     track.name = "LEAD GUITAR";
     track.addNote(60, 0, 100, 120);
-    const core = createEditingCore(midi);
-    const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", core);
+    const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", trackIndex);
     const note = h.notes()[0]!;
 
     h.editing.beginMove(note);
@@ -282,7 +280,6 @@ describe("piano-roll profiles", () => {
     h.editing.updateMove(new Vector2(xAt(480), targetY));
 
     expect(track.getNotes()[0]).toMatchObject({ start: 0, note: 60 });
-    expect(core.scratchpad.getSnapshot().size).toBe(1);
     const preview = h.context.getDisplayNotes!(h.notes())[0]!;
     expect(preview).toMatchObject({
       tick: 480,
@@ -293,10 +290,10 @@ describe("piano-roll profiles", () => {
     h.editing.finishGesture();
 
     expect(track.getNotes()[0]).toMatchObject({ start: 480, note: 62 });
-    expect(core.scratchpad.getSnapshot().size).toBe(0);
-    expect(core.history.undoDepth).toBe(1);
-    expect(h.calls.begin).toBe(1);
-    expect(h.calls.end).toBe(1);
+    expect(h.standalone.history.undoDepth).toBe(1);
+    expect(h.standalone.history.isInTransaction).toBe(false);
+    expect(h.calls.begin).toBe(0);
+    expect(h.calls.end).toBe(0);
     expect(h.calls.changed).toBe(0);
   });
 
@@ -305,12 +302,16 @@ describe("piano-roll profiles", () => {
     const track = midi.tracks[midi.addTrack()]!;
     track.name = "LEAD GUITAR";
     const { noteOn } = track.addNote(60, 0, 90, 120);
-    const core = createEditingCore(midi);
-    const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", core);
+    const h = harness(
+      midi,
+      GENERIC_PROFILE,
+      "LEAD GUITAR",
+      midi.tracks.indexOf(track),
+    );
     h.selection.notes = [h.notes()[0]!];
 
     h.editing.copySelection();
-    expect(core.clipboard.canPaste()).toBe(true);
+    expect(h.session.clipboard.canPaste()).toBe(true);
 
     h.editing.cutSelection();
     expect(track.getNotes()).toHaveLength(0);
@@ -319,10 +320,10 @@ describe("piano-roll profiles", () => {
     expect(track.getNotes()).toMatchObject([
       { note: 60, start: 480, end: 600, velocity: 90 },
     ]);
-    expect(h.selection.notes[0]?.midiNote.noteOn).not.toBe(noteOn);
+    expect(h.selection.notes[0]?.midiNote?.noteOn).not.toBe(noteOn);
   });
 
-  it("derives the vocals profile from the instrument config", () => {
+  it("derives the vocals profile from the editing session projection", () => {
     expect(VOCALS.id).toBe("vocals");
     expect(VOCALS.pitchRange).toEqual({ low: 36, high: 84 });
     expect(VOCALS.pinnedLanes.map((lane) => lane.id)).toEqual([
@@ -332,7 +333,8 @@ describe("piano-roll profiles", () => {
       "percussion",
       "pitchless",
     ]);
-    expect(profileForInstrument("LEAD GUITAR")).toBe(GENERIC_PROFILE);
+    const generic = harness(new Midi(), GENERIC_PROFILE, "LEAD GUITAR").session;
+    expect(profileFromSession(generic)).toBe(GENERIC_PROFILE);
     expect(VOCALS.classify(85)).toBe("pitchless");
     expect(VOCALS.classify(35)).toBe("pitchless");
     expect(VOCALS.classify(111)).toBe("phrase:power-window");
@@ -491,25 +493,42 @@ describe("piano-roll profiles", () => {
 });
 
 describe("vocal note editing", () => {
-  it("creates the track and a pitched note, then commits its lyric in one transaction", () => {
+  it("keeps the note as a preview until its lyric is committed", () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
 
+    expect(h.track()).toBeNull();
+    expect(h.notes()).toEqual([]);
+    expect(h.context.getPreviewState!()?.added).toMatchObject([
+      { pitch: 60, tick: 0, duration: 480 },
+    ]);
+    expect(h.calls.prompts.map((p) => p.tick)).toEqual([0]);
+    expect(h.editing.isAwaitingLyric).toBe(true);
+    expect(h.standalone.history.isInTransaction).toBe(false);
+    expect(h.calls.previews).toBe(1);
+
+    expect(h.calls.prompts[0].handlers.onCommit("la")).toBe(true);
+    expect(h.standalone.history.undoDepth).toBe(1);
+    expect(h.standalone.history.isInTransaction).toBe(false);
     expect(h.track()).not.toBeNull();
     expect(h.notes().map((n) => [n.pitch, n.tick, n.durationTicks])).toEqual([
       [60, 0, 480],
     ]);
-    expect(h.calls.prompts.map((p) => p.tick)).toEqual([0]);
-    expect(h.editing.isAwaitingLyric).toBe(true);
-    // The transaction is still open while the lyric prompt is up.
-    expect([h.calls.begin, h.calls.end]).toEqual([1, 0]);
-    expect(h.calls.previews).toBe(1);
-
-    expect(h.calls.prompts[0].handlers.onCommit("   ")).toBe(false);
-    expect(h.calls.prompts[0].handlers.onCommit("la")).toBe(true);
-    expect([h.calls.begin, h.calls.end]).toEqual([1, 1]);
     expect(h.lyrics()).toEqual([[0, "la"]]);
     expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+  });
+
+  it("cancels an empty lyric submission without changing MIDI or history", () => {
+    const h = harness();
+    const before = h.midi.toBuffer();
+    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
+
+    expect(h.calls.prompts[0]!.handlers.onCommit("   ")).toBe(false);
+    expect(h.track()).toBeNull();
+    expect(h.midi.toBuffer()).toEqual(before);
+    expect(h.standalone.history.undoDepth).toBe(0);
+    expect(h.standalone.history.isDirty).toBe(false);
+    expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
   describe("generic note editing", () => {
@@ -529,8 +548,7 @@ describe("vocal note editing", () => {
       const midi = new Midi();
       const unmapped = new MidiTrack("Unmapped track");
       midi.tracks.push(unmapped);
-      const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR");
-      h.state.selectedTrackIndex = 0;
+      const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", 0);
       const genericY = HeaderHeight + (84 - 60) * 18 + 5;
 
       h.drag(new Vector2(xAt(0), genericY), xAt(480));
@@ -543,49 +561,87 @@ describe("vocal note editing", () => {
     it("does not create a fallback track without a configured instrument", () => {
       const h = harness(new Midi(), GENERIC_PROFILE, "not configured");
       const genericY = HeaderHeight + (84 - 60) * 18 + 5;
+      const initialTracks = [...h.midi.tracks];
 
-      h.drag(new Vector2(xAt(0), genericY), xAt(480));
+      expect(() => h.drag(new Vector2(xAt(0), genericY), xAt(480))).toThrow();
 
-      expect(h.midi.tracks).toHaveLength(0);
-      expect(h.calls.begin).toBe(0);
+      expect(h.midi.tracks).toEqual(initialTracks);
+      expect(h.standalone.history.undoDepth).toBe(0);
     });
   });
 
-  it("rolls back the whole create on Escape", () => {
+  it("cancels the whole create on Escape without a history rollback", () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.calls.prompts[0].handlers.onCancel();
-    expect(h.calls.rollback).toBe(1);
-    // The rollback closes the transaction itself; no endEdit follows.
-    expect(h.calls.end).toBe(0);
-    expect(h.editing.isAwaitingLyric).toBe(false);
-  });
-
-  it("removes the note by hand when no history rollback is available", () => {
-    const h = harness();
-    h.calls.rollbackHandled = false;
-    h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
-    h.calls.prompts[0].handlers.onCancel();
+    expect(h.track()).toBeNull();
     expect(h.notes()).toEqual([]);
     expect(h.lyrics()).toEqual([]);
-    expect([h.calls.begin, h.calls.end]).toEqual([1, 1]);
+    expect(h.calls.end).toBe(0);
+    expect(h.standalone.history.undoDepth).toBe(0);
+    expect(h.standalone.history.isDirty).toBe(false);
+    expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
-  it("rolls back a pending lyric when playback cancels the gesture", () => {
+  it("cancels a vocal move with no document or history trace (I-2)", () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
+    h.calls.prompts[0]!.handlers.onCommit("la");
+    const before = h.midi.toBuffer();
+    const note = h.notes()[0]!;
+    h.editing.beginMove(note);
+    h.editing.updateMove(new Vector2(xAt(1440), yAt(62)));
+
+    expect(h.midi.toBuffer()).toEqual(before);
+    expect(h.standalone.history.undoDepth).toBe(1);
+    expect(h.standalone.history.isDirty).toBe(true);
+
     h.editing.cancelGesture();
-    expect(h.calls.rollback).toBe(1);
+    expect(h.midi.toBuffer()).toEqual(before);
+    expect(h.standalone.history.undoDepth).toBe(1);
+    expect(h.standalone.history.redoDepth).toBe(0);
+    expect(h.standalone.history.isDirty).toBe(true);
     expect(h.editing.isAwaitingLyric).toBe(false);
+  });
+
+  it("previews an erase and cancels it without a document or history trace", () => {
+    const h = seeded();
+    const before = h.midi.toBuffer();
+    const note = h.notes()[0]!;
+
+    expect(h.editing.beginErase()).toBe(true);
+    h.editing.eraseNote(note);
+    expect(h.notes()).toHaveLength(3);
+    expect(h.context.getDisplayNotes!(h.notes())).toHaveLength(2);
+
+    h.editing.cancelGesture();
+    expect(h.midi.toBuffer()).toEqual(before);
+    expect(h.standalone.history.undoDepth).toBe(0);
+    expect(h.standalone.history.isDirty).toBe(false);
+    expect(h.context.getPreviewState!()).toBeNull();
+  });
+
+  it("commits an erase gesture as one history entry", () => {
+    const h = seeded();
+    const note = h.notes()[0]!;
+
+    expect(h.editing.beginErase()).toBe(true);
+    h.editing.eraseNote(note);
+    h.editing.finishGesture();
+
+    expect(h.notes()).toHaveLength(2);
+    expect(h.standalone.history.undoDepth).toBe(1);
   });
 
   it("creates lane kinds by dragging in their lane, without a lyric prompt", () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), laneY(3)), xAt(240));
     h.drag(new Vector2(xAt(480), laneY(4)), xAt(720));
-    expect(h.notes().map((n) => n.pitch)).toEqual([90, 85]);
+    expect(h.notes().map((n) => n.pitch)).toEqual([90]);
     // Percussion: no prompt. Pitchless: prompt.
     expect(h.calls.prompts.map((p) => p.tick)).toEqual([480]);
+    expect(h.calls.prompts[0]!.handlers.onCommit("word")).toBe(true);
+    expect(h.notes().map((n) => n.pitch)).toEqual([90, 85]);
   });
 
   it("uses the toolbar kind and phrase mode in the grid", () => {
@@ -601,7 +657,7 @@ describe("vocal note editing", () => {
       [96, 0, 960],
     ]);
     expect(h.calls.prompts).toEqual([]);
-    expect(h.calls.begin).toBe(h.calls.end);
+    expect(h.standalone.history.isInTransaction).toBe(false);
   });
 
   it("moves a note with its lyric and clamps it to the pitched range", () => {

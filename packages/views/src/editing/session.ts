@@ -8,6 +8,9 @@ import {
   type EditResult,
   type Rejection,
 } from "./result.js";
+import { ClipboardService } from "./clipboardService.js";
+import type { SelectionModel } from "./selectionModel.js";
+import { SelectionModel as SelectionModelImpl } from "./selectionModel.js";
 import type {
   EditingMode,
   EditingTarget,
@@ -33,6 +36,8 @@ export interface EditingSession {
   readonly mode: EditingMode;
   readonly target: EditingTarget;
   readonly hostKind: string;
+  readonly selection: SelectionModel;
+  readonly clipboard: ClipboardService;
   getProjection(): Projection;
   can(commandType: string): boolean;
   execute(command: EditCommand, options?: ExecuteOptions): EditResult;
@@ -60,6 +65,8 @@ export interface CreateEditingSessionOptions {
   hostKind: string;
   config: SongViewConfig;
   transaction: EditTransactionPort;
+  selection?: SelectionModel;
+  clipboard?: ClipboardService;
   onCommit?: (result: EditResult) => void;
 }
 
@@ -73,6 +80,8 @@ export function createEditingSession(
 class EditingSessionImpl implements EditingSession {
   public readonly mode: EditingMode;
   public readonly hostKind: string;
+  public readonly selection: SelectionModel;
+  public readonly clipboard: ClipboardService;
   private readonly document: ChartDocument;
   private readonly config: SongViewConfig;
   private readonly transaction: EditTransactionPort;
@@ -87,6 +96,9 @@ class EditingSessionImpl implements EditingSession {
     this.hostKind = options.hostKind;
     this.config = options.config;
     this.transaction = options.transaction;
+    this.selection = options.selection ?? new SelectionModelImpl();
+    this.clipboard =
+      options.clipboard ?? new ClipboardService(this.document, this.selection);
     this.onCommit = options.onCommit;
     this.toolState = this.mode.toolStateSchema.parse(
       this.mode.createDefaultToolState(),

@@ -1,5 +1,10 @@
 import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
-import { Difficulty, type VocalNoteKind } from "@openchart/views";
+import {
+  Difficulty,
+  SongView,
+  createStandaloneEditing,
+  type VocalNoteKind,
+} from "@openchart/views";
 import {
   useCallback,
   useEffect,
@@ -10,7 +15,8 @@ import {
 import { ChartViewHost } from "../../ChartViewHost";
 import type { AnyChartView } from "../../ChartViews";
 import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
-import { PianoRollView, profileForInstrument } from "../index";
+import { PianoRollView } from "../index";
+import { profileFromSession } from "../profile";
 import { PlaybackService } from "../../../../services/playback";
 import { defaultApplicationSettings } from "../../../../services/settings/schema";
 import {
@@ -112,9 +118,9 @@ export function PianoRollStoryHost({
   initialTrackIndex = 1,
   instrument = DEFAULT_INSTRUMENT,
 }: PianoRollStoryHostProps) {
-  const profile = profileForInstrument(instrument);
   const [vocalKind, setVocalKind] = useState<VocalNoteKind>("pitched");
   const [midi] = useState<Midi>(() => createPianoRollFixture(variant));
+  const editing = useMemo(() => createStandaloneEditing(midi), [midi]);
   const [playback] = useState(() => new PlaybackService());
   const [selectedTrackIndex, setSelectedTrackIndex] =
     useState(initialTrackIndex);
@@ -128,6 +134,27 @@ export function PianoRollStoryHost({
   const [webGLSupported, setWebGLSupported] = useState<boolean | null>(null);
   const [revision, setRevision] = useState(0);
   const [transaction, setTransaction] = useState("Ready");
+  const target = useMemo(() => {
+    const track = midi.tracks[selectedTrackIndex];
+    if (!track) {
+      throw new Error(
+        `Piano Roll story track ${selectedTrackIndex} is missing`,
+      );
+    }
+    const descriptor = new SongView(midi)
+      .getTrackDescriptors()
+      .find((item) => item.name === track.name);
+    return {
+      trackKey: descriptor?.key ?? track.name,
+      trackIndex: selectedTrackIndex,
+      difficulty: SELECTED_DIFFICULTY,
+    };
+  }, [midi, selectedTrackIndex]);
+  const editingSession = useMemo(
+    () => editing.createSession(target, "piano-roll"),
+    [editing, target],
+  );
+  const profile = profileFromSession(editingSession);
   const snapshot = useSyncExternalStore(
     playback.subscribe,
     playback.getSnapshot,
@@ -157,9 +184,13 @@ export function PianoRollStoryHost({
       visibleTickSpan: activeView.getVisibleTickSpan(),
     });
   }, []);
-  const onReady = useCallback((readyView: AnyChartView | null) => {
-    setView(readyView);
-  }, []);
+  const onReady = useCallback(
+    (readyView: AnyChartView | null) => {
+      readyView?.setEditingSession(editingSession);
+      setView(readyView);
+    },
+    [editingSession],
+  );
 
   // Hotkeys normally come from the editor shell; mirror them for this story.
   usePianoRollStoryHotkeys(view);
@@ -194,12 +225,22 @@ export function PianoRollStoryHost({
     instrument,
   ]);
 
-  // Push the instrument profile and vocal toolbar choice into the view.
+  // Push the session-derived profile and vocal toolbar choice into the view.
   useEffect(() => {
     if (!(view instanceof PianoRollView)) return;
-    view.setProfile(profile);
+    view.setEditingSession(editingSession);
     view.setVocalPlacement({ noteKind: vocalKind, phrase: null });
-  }, [profile, view, vocalKind]);
+  }, [editingSession, view, vocalKind]);
+
+  useEffect(
+    () =>
+      editing.history.subscribe(() => {
+        setTransaction(editing.history.isInTransaction ? "Editing" : "Ready");
+        playback.refresh(midi);
+        setRevision((current) => current + 1);
+      }),
+    [editing, midi, playback],
+  );
 
   // Release audio resources when the story unmounts.
   useEffect(
@@ -306,7 +347,7 @@ export function PianoRollStoryHost({
             onChange={(value) => setSnapDenominator(Number(value))}
           />
         </div>
-        {profile.editing === "vocals" ? (
+        {profile.id === "vocals" ? (
           <div className="piano-roll-story__field">
             <Label htmlFor="piano-roll-vocal-kind">Vocal note type</Label>
             <Dropdown
