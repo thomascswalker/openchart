@@ -80,6 +80,14 @@ describe("chart phrase editing", () => {
     ]);
   });
 
+  it("preserves note duration when a group move clamps at tick zero", () => {
+    const track = new MidiTrack("LEAD GUITAR");
+    track.addNote(96, 60, 100, 120);
+
+    expect(moveNoteGroup(track, track.getNotes(), -120)).toBe(true);
+    expect(track.getNotes()).toMatchObject([{ start: 0, end: 120 }]);
+  });
+
   it("extracts section markers and finds the adjacent section", () => {
     const track = new MidiTrack("LEAD GUITAR");
     track.addTextEvent(MetaType.Marker, 480, "[section Verse]");

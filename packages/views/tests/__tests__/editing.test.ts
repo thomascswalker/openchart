@@ -80,6 +80,28 @@ describe("shared chart editing primitives", () => {
     expect(track.getNotes()).toHaveLength(1);
   });
 
+  it("preserves duration when a note move clamps at tick zero", () => {
+    const midi = new Midi();
+    const trackIndex = midi.addTrack();
+    const track = midi.tracks[trackIndex]!;
+    track.addNote(60, 60, 90, 120);
+    const document = new ChartDocument(midi, () => null);
+    const noteId = document.getNoteId(0, track.getNotes()[0]!);
+
+    expect(
+      document.apply({
+        type: "MOVE_NOTES",
+        targetIds: [noteId],
+        tickDelta: -120,
+        trackDelta: 0,
+      }),
+    ).toBe(true);
+    expect(document.getNote(noteId)).toMatchObject({
+      tick: 0,
+      duration: 120,
+    });
+  });
+
   it("creates and resizes phrases through the same document", () => {
     const { track, document } = createDocument();
 

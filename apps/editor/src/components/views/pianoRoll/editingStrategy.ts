@@ -59,7 +59,7 @@ function insertNote(
   velocity: number,
   duration: number,
 ): MidiChannelEvent {
-  return track.addNoteAt(tick, pitch, velocity, duration).noteOn;
+  return track.addNoteAt({ tick, pitch, velocity, duration }).noteOn;
 }
 
 export function copyNotes(notes: readonly PianoRollNote[]): ClipboardNote[] {
@@ -133,8 +133,8 @@ export class NoteEditingStrategy implements IEditingStrategy {
       changed =
         track.updateNote(note.midiNote, {
           start,
-          end: start + duration,
-          note: clamp(initialPitch + pitchDelta, 0, 127),
+          duration,
+          pitch: clamp(initialPitch + pitchDelta, 0, 127),
         }) || changed;
     }
     return changed;

@@ -13,7 +13,12 @@ function addNoteAt(
   durationTicks: number,
   velocity = 100,
 ): void {
-  track.addNoteAt(startTick, pitch, velocity, durationTicks);
+  track.addNoteAt({
+    tick: startTick,
+    pitch,
+    velocity,
+    duration: durationTicks,
+  });
 }
 
 /**

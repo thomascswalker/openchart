@@ -192,12 +192,12 @@ export class ChartView {
     this.midiTrack ??= this.getSong().ensureMidiTrack(this.track.getKey());
     if (!this.midiTrack) return false;
     this.getSong().attachTrack(this.midiTrack);
-    this.midiTrack.addNoteAt(
-      start,
+    this.midiTrack.addNoteAt({
+      tick: start,
       pitch,
       velocity,
-      Math.max(1, (end > start ? end : start + 1) - start),
-    );
+      duration: Math.max(1, (end > start ? end : start + 1) - start),
+    });
     return true;
   }
 
@@ -227,8 +227,8 @@ export class ChartView {
     const duration = note.end - note.start;
     return this.midiTrack.updateNote(note, {
       start,
-      end: start + duration,
-      note: this.offset + lane,
+      duration,
+      pitch: this.offset + lane,
     });
   }
 

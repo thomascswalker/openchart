@@ -321,6 +321,21 @@ export interface MidiNote {
   previous?: MidiNote;
 }
 
+export interface AddNoteSpec {
+  pitch: number;
+  tick: number;
+  duration: number;
+  velocity?: number;
+  channel?: number;
+}
+
+export interface NotePatchFields {
+  start?: number;
+  pitch?: number;
+  duration?: number;
+  velocity?: number;
+}
+
 export interface GetNotesOptions {
   pitch?: {
     low: number;

@@ -104,11 +104,12 @@ export class ChartDocument {
       const target = this.resolveNote(id);
       if (!target) continue;
       const { track, note } = target;
+      const start = Math.max(0, note.start + tickDelta);
       changed =
         track.updateNote(note, {
-          start: Math.max(0, note.start + tickDelta),
-          end: Math.max(0, note.end + tickDelta),
-          note: Math.max(0, Math.min(127, note.note + trackDelta)),
+          start,
+          duration: note.end - note.start,
+          pitch: Math.max(0, Math.min(127, note.note + trackDelta)),
         }) || changed;
     }
     return changed;
@@ -137,12 +138,12 @@ export class ChartDocument {
   ): boolean {
     this.validateNote(action.tick, action.pitch, action.duration);
     const track = this.getTrack(action.trackIndex);
-    track.addNoteAt(
-      action.tick,
-      action.pitch,
-      action.velocity ?? 100,
-      action.duration,
-    );
+    track.addNoteAt({
+      tick: action.tick,
+      pitch: action.pitch,
+      velocity: action.velocity,
+      duration: action.duration,
+    });
     return true;
   }
 

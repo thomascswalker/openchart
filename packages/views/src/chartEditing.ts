@@ -66,9 +66,13 @@ export function addNotePhrase(
     return null;
   }
 
-  const events = track.addNoteAt(start, pitch, 100, end - start);
-  const note = track.getNoteByEventId(track.getEventId(events.noteOn));
-  return note ? { start: note.start, end: note.end, kind, note } : null;
+  const note = track.addNoteAt({
+    tick: start,
+    pitch,
+    velocity: 100,
+    duration: end - start,
+  });
+  return { start: note.start, end: note.end, kind, note };
 }
 
 export function updateNotePhrase(
@@ -86,7 +90,7 @@ export function updateNotePhrase(
     return false;
   }
 
-  return track.updateNote(note, { start, end });
+  return track.updateNote(note, { start, duration: end - start });
 }
 
 export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
@@ -113,11 +117,12 @@ export function moveNoteGroup(
   const keep = new Set(notes.map((note) => note.noteOn));
   let changed = false;
   for (const note of notes) {
+    const start = Math.max(0, note.start + deltaTick);
     changed =
       track.updateNote(note, {
-        start: Math.max(0, note.start + deltaTick),
-        end: Math.max(0, note.end + deltaTick),
-        note: Math.max(0, Math.min(127, note.note + deltaPitch)),
+        start,
+        duration: note.end - note.start,
+        pitch: Math.max(0, Math.min(127, note.note + deltaPitch)),
       }) || changed;
   }
   return changed && keep.size > 0;

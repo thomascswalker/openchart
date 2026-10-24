@@ -339,6 +339,11 @@ export class HighwayNoteEditingController {
       return;
     }
 
-    midiTrack.addNoteAt(tick, selectedPitch, 100, 1);
+    midiTrack.addNoteAt({
+      tick,
+      pitch: selectedPitch,
+      velocity: 100,
+      duration: 1,
+    });
   }
 }

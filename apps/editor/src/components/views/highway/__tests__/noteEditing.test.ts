@@ -152,8 +152,8 @@ describe("HighwayNoteEditingController", () => {
                   note.note < options.pitch.high,
               )
             : markers,
-        addNoteAt: (start: number, note: number) => {
-          markers.push({ note, start });
+        addNoteAt: (spec: { tick: number; pitch: number }) => {
+          markers.push({ note: spec.pitch, start: spec.tick });
         },
         removeNote: vi.fn(),
       };

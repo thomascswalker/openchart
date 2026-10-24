@@ -67,3 +67,16 @@
   **Deviations from plan:** Ported the phrase-update failure test to simulate rejection of the new atomic update operation; its assertion that the phrase remains unchanged is preserved. Updated the existing Highway test double to match the new absolute insertion API.
   **Performance:** Event and note ID lookups now use maps; no performance benchmark run.
   **Open questions:** none
+
+### Phase 2 follow-up: close MIDI primitive contract gaps
+
+**Status:** done · branch: `editing/phase-2-midi-primitives`
+**Summary:** Aligned the public primitive API with the Phase 2 contract: `addNoteAt` takes `AddNoteSpec` and returns the indexed `MidiNote`; `updateNote` accepts `NotePatchFields` (`start`, `pitch`, `duration`, `velocity`); missing note IDs return `undefined`. Updated scoped callers and test doubles. Added the required legacy/new API byte-parity test, including equal-tick events and EndOfTrack, plus regression tests proving clamped group moves preserve duration.
+**Files changed:** MIDI types, exports, implementation and tests; the previously listed `@openchart/views` insertion/move callers and tests; Piano Roll/Highway insertion callers and the Highway test double; this progress log.
+**Tests:** MIDI 29 passed; views 34 passed; added byte parity, channel validation, and tick-zero duration-clamp regressions. No existing assertions were removed or weakened.
+**Gate results:** MIDI/views builds ✓ · check-types ✓ · lint ✓ · touched-file Prettier ✓ · full format:check baseline failure (145 files; no touched files reported) · full `npm test`: 239 passed, the same 2 pre-existing editor failures · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / 3 existing `playhead-sync` failures · Storybook remains blocked by Node.js v20.18.1 (installed Storybook requires v20.19+ or v22.12+).
+**Defects closed:** none
+**Intentional behaviour changes:** none; the zero-tick clamp now preserves the note's original duration, consistent with `setNoteStart`.
+**Deviations from plan:** This follow-up completes the Phase 2 `AddNoteSpec`/`NotePatchFields` shape and byte-parity exit criterion, which were not met by the original Phase 2 commit.
+**Performance:** no performance benchmark run.
+**Open questions:** none

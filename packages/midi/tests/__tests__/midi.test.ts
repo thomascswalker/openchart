@@ -153,8 +153,12 @@ test("setNotePitch mutates pitch and invalidates note cache", () => {
 
 test("addNoteAt inserts at an absolute tick and indexes the note by event ID", () => {
   const track = new MidiTrack();
-  track.addNoteAt(120, 50, 90, 240);
-  const note = track.getNotes()[0]!;
+  const note = track.addNoteAt({
+    tick: 120,
+    pitch: 50,
+    velocity: 90,
+    duration: 240,
+  });
   const eventId = track.getEventId(note.noteOn);
 
   expect(note).toMatchObject({
@@ -169,8 +173,7 @@ test("addNoteAt inserts at an absolute tick and indexes the note by event ID", (
 
 test("event and note ID indexes survive cloning and are cleared on removal", () => {
   const track = new MidiTrack();
-  track.addNoteAt(0, 50);
-  const note = track.getNotes()[0]!;
+  const note = track.addNoteAt({ tick: 0, pitch: 50, duration: 240 });
   const eventId = track.getEventId(note.noteOn);
   const cloned = track.clone();
   const clonedTrackNote = cloned.getNotes()[0]!;
@@ -180,7 +183,7 @@ test("event and note ID indexes survive cloning and are cleared on removal", () 
 
   expect(track.removeNote(note.noteOn, note.noteOff)).toBe(true);
   expect(track.getEventById(eventId)).toBeUndefined();
-  expect(track.getNoteByEventId(eventId)).toBeNull();
+  expect(track.getNoteByEventId(eventId)).toBeUndefined();
 
   track.insertEventAt(0, note.noteOn);
   expect(track.getEventById(eventId)).toBe(note.noteOn);
@@ -188,15 +191,19 @@ test("event and note ID indexes survive cloning and are cleared on removal", () 
 
 test("updateNote applies a move and pitch change in one revision", () => {
   const track = new MidiTrack();
-  track.addNoteAt(120, 50, 90, 240);
-  const [note] = track.getNotes();
+  const note = track.addNoteAt({
+    tick: 120,
+    pitch: 50,
+    velocity: 90,
+    duration: 240,
+  });
   const revision = track.getNoteRevision();
 
   expect(
-    track.updateNote(note!, {
+    track.updateNote(note, {
       start: 240,
-      end: 480,
-      note: 60,
+      duration: 240,
+      pitch: 60,
       velocity: 100,
     }),
   ).toBe(true);
@@ -209,16 +216,85 @@ test("updateNote applies a move and pitch change in one revision", () => {
 
 test("updateNote validates the whole patch before changing MIDI events", () => {
   const track = new MidiTrack();
-  track.addNoteAt(120, 50, 90, 240);
-  const [note] = track.getNotes();
+  const note = track.addNoteAt({
+    tick: 120,
+    pitch: 50,
+    velocity: 90,
+    duration: 240,
+  });
   const before = track.toBuffer();
   const revision = track.getNoteRevision();
 
-  expect(() => track.updateNote(note!, { start: 240, note: 128 })).toThrow(
+  expect(() => track.updateNote(note, { start: 240, pitch: 128 })).toThrow(
     RangeError,
   );
   expect(track.toBuffer()).toEqual(before);
   expect(track.getNoteRevision()).toBe(revision);
+});
+
+test("absolute insertion and atomic updates preserve legacy MIDI byte ordering", () => {
+  const source = new MidiTrack("Lead");
+  source.addTextEvent(MetaType.Marker, 0, "start");
+  source.addTextEvent(MetaType.Marker, 240, "equal tick");
+  source.events.push({
+    deltaTime: 0,
+    status: 0xff,
+    type: MetaType.EndOfTrack,
+    length: 0,
+  });
+
+  const legacyTrack = source.clone();
+  const absoluteTrack = source.clone();
+  const specs = [
+    { pitch: 60, tick: 0, velocity: 100, duration: 240 },
+    { pitch: 62, tick: 240, velocity: 90, duration: 120 },
+    { pitch: 64, tick: 240, velocity: 80, duration: 360 },
+  ];
+
+  const legacyNotes = specs.map(({ pitch, tick, velocity, duration }) => {
+    const insertAt = legacyTrack.getInsertionIndexAt(tick);
+    const { noteOn } = legacyTrack.addNote(
+      pitch,
+      tick - legacyTrack.getAbsoluteTickAt(insertAt),
+      velocity,
+      duration,
+      insertAt,
+    );
+    return legacyTrack.getNoteByEventId(legacyTrack.getEventId(noteOn))!;
+  });
+  const absoluteNotes = specs.map((spec) => absoluteTrack.addNoteAt(spec));
+
+  legacyTrack.setNoteStart(legacyNotes[0]!, 120);
+  legacyTrack.setNotePitch(legacyNotes[0]!, 61);
+  legacyTrack.setNoteDuration(legacyNotes[0]!, 300);
+  legacyTrack.setNotePitch(legacyNotes[2]!, 65);
+  legacyTrack.setNoteStart(legacyNotes[1]!, 360);
+
+  absoluteTrack.updateNote(absoluteNotes[0]!, {
+    start: 120,
+    pitch: 61,
+    duration: 300,
+  });
+  absoluteTrack.updateNote(absoluteNotes[2]!, { pitch: 65 });
+  absoluteTrack.updateNote(absoluteNotes[1]!, { start: 360 });
+
+  expect(absoluteTrack.toBuffer()).toEqual(legacyTrack.toBuffer());
+});
+
+test("addNoteAt validates optional channel and inserts on that channel", () => {
+  const track = new MidiTrack();
+  const note = track.addNoteAt({
+    tick: 0,
+    pitch: 50,
+    duration: 120,
+    channel: 3,
+  });
+
+  expect(note.noteOn.channel).toBe(3);
+  expect(() =>
+    track.addNoteAt({ tick: 120, pitch: 50, duration: 120, channel: 16 }),
+  ).toThrow(RangeError);
+  expect(track.getNotes()).toHaveLength(1);
 });
 
 test("note revision advances once for each note mutation", () => {

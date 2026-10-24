@@ -4,6 +4,7 @@ export { addRandomChannelEvents, addRandomMetaEvents } from "./random.js";
 export { MidiTrack } from "./track.js";
 export {
   BaseEventSchema,
+  AddNoteSpec,
   ChannelMessage,
   ChannelOrPortMetaPayloadSchema,
   DefaultMetaPayloadSchema,
@@ -16,6 +17,7 @@ export {
   MetaEventSchema,
   MetaPayloadSchema,
   MidiNote,
+  NotePatchFields,
   SysExEventSchema,
   SequenceNumberMetaPayloadSchema,
   SMPTEMetaPayloadSchema,

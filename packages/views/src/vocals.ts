@@ -223,13 +223,12 @@ function insertNote(
   end: number,
   velocity = 100,
 ): MidiNote | null {
-  const { noteOn } = track.addNoteAt(
-    start,
+  return track.addNoteAt({
+    tick: start,
     pitch,
     velocity,
-    Math.max(1, end - start),
-  );
-  return track.getNoteByEventId(track.getEventId(noteOn));
+    duration: Math.max(1, end - start),
+  });
 }
 
 function validSpan(start: number, end: number): boolean {
@@ -350,8 +349,8 @@ export function moveVocalNotes(
       changed =
         track.updateNote(move.note, {
           start,
-          end: start + duration,
-          note: pitch,
+          duration,
+          pitch,
         }) || changed;
     }
     if (move.lyric) {
@@ -445,7 +444,7 @@ export function updateVocalPhrase(
     return false;
   }
   if (note.start === start && note.end === end) return true;
-  return track.updateNote(note, { start, end });
+  return track.updateNote(note, { start, duration: end - start });
 }
 
 export type VocalIssue =
