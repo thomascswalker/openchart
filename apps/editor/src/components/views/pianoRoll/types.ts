@@ -7,7 +7,15 @@ import type {
   TempoEvent,
   TimeSignatureEvent,
 } from "@openchart/midi";
-import type { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
+import type {
+  ChartDocument,
+  ChartEditAction,
+  ClipboardService,
+  EditScratchpad,
+  SelectionModel,
+  VocalNoteKind,
+  VocalPhraseKind,
+} from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
 import type { PianoRollProfile } from "./profile";
 import type { SelectionContext } from "./selection";
@@ -90,6 +98,8 @@ export interface PianoRollContext {
   getViewport(): { width: number; height: number };
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;
+  getEditingCore?(): PianoRollEditingCore | null;
+  getDisplayNotes?(notes: PianoRollNote[]): PianoRollNote[];
   requestRender(): void;
   beginEdit(): void;
   endEdit(): void;
@@ -104,6 +114,15 @@ export interface PianoRollContext {
   editNextLyric(afterTick: number): void;
   /** Audition notes (vocal pitch feedback on place/move). */
   previewNotes(notes: readonly PianoRollNote[]): void;
+}
+
+export interface PianoRollEditingCore {
+  readonly selection: SelectionModel;
+  readonly scratchpad: EditScratchpad;
+  readonly clipboard: ClipboardService;
+  getDocument(): ChartDocument;
+  dispatch(action: ChartEditAction): boolean;
+  dispatchBatch(actions: ChartEditAction[]): boolean;
 }
 
 export interface PianoRollCameraState {

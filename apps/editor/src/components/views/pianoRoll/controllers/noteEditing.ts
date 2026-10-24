@@ -12,6 +12,7 @@ import type { PianoRollContext, PianoRollNote } from "../types";
 import { VocalEditingStrategy } from "../vocalEditing";
 import { KeyboardWidth } from "../constants";
 import type { PianoRollEditingType } from "../profile";
+import type { ChartEditAction } from "@openchart/views";
 
 export function remapNotesByIdentity(
   notes: PianoRollNote[],
@@ -122,10 +123,17 @@ export class NoteEditingController {
     const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
     const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
 
-    const changed = this.strategy.resize(this.resizeTargets, delta);
-
-    this.remapSelection(this.resizeSelectionKeep);
-    if (changed) this.context.notifyNotesChanged();
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      this.updateScratchpad(
+        this.resizeTargets.map(({ note }) => note),
+        { durationDelta: delta },
+      );
+    } else {
+      const changed = this.strategy.resize(this.resizeTargets, delta);
+      this.remapSelection(this.resizeSelectionKeep);
+      if (changed) this.context.notifyNotesChanged();
+    }
     this.context.requestRender();
   }
 
@@ -169,10 +177,21 @@ export class NoteEditingController {
     const tickDelta = newAnchorTick - this.moveAnchorInitialTick;
     const pitchDelta = newAnchorPitch - this.moveAnchorInitialPitch;
 
-    const changed = this.strategy.move(this.moveTargets, tickDelta, pitchDelta);
-
-    this.remapSelection(this.moveSelectionKeep);
-    if (changed) this.context.notifyNotesChanged();
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      this.updateScratchpad(
+        this.moveTargets.map(({ note }) => note),
+        { tickDelta, trackDelta: pitchDelta },
+      );
+    } else {
+      const changed = this.strategy.move(
+        this.moveTargets,
+        tickDelta,
+        pitchDelta,
+      );
+      this.remapSelection(this.moveSelectionKeep);
+      if (changed) this.context.notifyNotesChanged();
+    }
     this.context.requestRender();
   }
 
@@ -183,6 +202,7 @@ export class NoteEditingController {
     }
 
     const lyricNote = this.creating ? this.pendingLyric : null;
+    this.commitScratchpadGesture();
     this.resetGestureState();
     if (lyricNote) {
       // Keep the transaction open: the note and its lyric become one history
@@ -195,6 +215,7 @@ export class NoteEditingController {
 
   public cancelGesture(): void {
     this.resetGestureState();
+    this.context.getEditingCore?.()?.scratchpad.clear();
     if (this.awaitingLyric) {
       // Closing the prompt runs its onCancel, which rolls the create back.
       this.context.cancelLyricPrompt();
@@ -226,7 +247,7 @@ export class NoteEditingController {
     }
 
     this.beginGestureTransaction();
-    const created = this.strategy.create(local);
+    const created = this.createNote(local);
     if (!created) {
       this.endGestureTransaction();
       return;
@@ -332,6 +353,47 @@ export class NoteEditingController {
     this.context.endEdit();
   }
 
+  private createNote(local: Vector2) {
+    const core = this.context.getEditingCore?.();
+    if (!core || this.strategy.id !== "generic") {
+      return this.strategy.create(local);
+    }
+    const track = this.strategy.getTrack(true);
+    const midi = this.context.getMidi();
+    if (!track || !midi) return null;
+    const trackIndex = midi.tracks.indexOf(track);
+    if (trackIndex < 0) return null;
+
+    const tick = this.coordinates.snapTick(
+      this.coordinates.tickAtScreenX(local.x),
+    );
+    const pitch = this.coordinates.pitchAtScreenY(local.y);
+    const existing = new Set(track.getNotes().map((note) => note.noteOn));
+    const changed = this.applyActions(
+      [
+        {
+          type: "ADD_NOTE",
+          tick,
+          trackIndex,
+          pitch,
+          duration: 1,
+          velocity: 100,
+        },
+      ],
+      true,
+    );
+    if (!changed) return null;
+    const note = track
+      .getNotes()
+      .find(
+        (candidate) =>
+          !existing.has(candidate.noteOn) &&
+          candidate.start === tick &&
+          candidate.note === pitch,
+      );
+    return note ? { noteOn: note.noteOn, needsLyric: false } : null;
+  }
+
   public eraseNote(note: PianoRollNote): void {
     if (this.isNoteEditingLocked) {
       return;
@@ -346,8 +408,19 @@ export class NoteEditingController {
         .filter((selected) => selected !== note)
         .map((selected) => selected.midiNote.noteOn),
     );
-    this.strategy.remove([note]);
-    this.context.notifyNotesChanged();
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      const id = this.noteId(note);
+      if (
+        !id ||
+        !this.applyActions([{ type: "DELETE_SELECTION", targetIds: [id] }])
+      ) {
+        return;
+      }
+    } else {
+      this.strategy.remove([note]);
+      this.context.notifyNotesChanged();
+    }
     this.remapSelection(keep);
     this.context.requestRender();
   }
@@ -361,8 +434,16 @@ export class NoteEditingController {
       return;
     }
 
-    this.strategy.remove(selection.notes);
-    this.context.notifyNotesChanged();
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      const targetIds = selection.notes
+        .map((note) => this.noteId(note))
+        .filter((id): id is string => id !== null);
+      if (!this.applyActions([{ type: "DELETE_SELECTION", targetIds }])) return;
+    } else {
+      this.strategy.remove(selection.notes);
+      this.context.notifyNotesChanged();
+    }
     selection.clear();
     this.context.requestRender();
   }
@@ -377,9 +458,28 @@ export class NoteEditingController {
     }
 
     const keep = new Set(selection.notes.map((note) => note.midiNote.noteOn));
-    this.strategy.transpose(selection.notes, semitones);
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      const targetIds = selection.notes
+        .map((note) => this.noteId(note))
+        .filter((id): id is string => id !== null);
+      if (
+        !this.applyActions([
+          {
+            type: "MOVE_NOTES",
+            targetIds,
+            tickDelta: 0,
+            trackDelta: semitones,
+          },
+        ])
+      ) {
+        return;
+      }
+    } else {
+      this.strategy.transpose(selection.notes, semitones);
+      this.context.notifyNotesChanged();
+    }
     this.remapSelection(keep);
-    this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -393,9 +493,28 @@ export class NoteEditingController {
     }
 
     const keep = new Set(selection.notes.map((note) => note.midiNote.noteOn));
-    this.strategy.shift(selection.notes, deltaTicks);
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      const targetIds = selection.notes
+        .map((note) => this.noteId(note))
+        .filter((id): id is string => id !== null);
+      if (
+        !this.applyActions([
+          {
+            type: "MOVE_NOTES",
+            targetIds,
+            tickDelta: Math.round(deltaTicks),
+            trackDelta: 0,
+          },
+        ])
+      ) {
+        return;
+      }
+    } else {
+      this.strategy.shift(selection.notes, deltaTicks);
+      this.context.notifyNotesChanged();
+    }
     this.remapSelection(keep);
-    this.context.notifyNotesChanged();
     this.context.requestRender();
   }
 
@@ -404,7 +523,17 @@ export class NoteEditingController {
     if (selection.size === 0) {
       return;
     }
-    this.clipboard = this.strategy.copy(selection.notes);
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      core.selection.setSelectedIds(
+        selection.notes
+          .map((note) => this.noteId(note))
+          .filter((id): id is string => id !== null),
+      );
+      core.clipboard.copy();
+    } else {
+      this.clipboard = this.strategy.copy(selection.notes);
+    }
   }
 
   public canCopySelection(): boolean {
@@ -416,7 +545,12 @@ export class NoteEditingController {
   }
 
   public canPasteClipboard(): boolean {
-    return !this.isNoteEditingLocked && this.clipboard.length > 0;
+    const core = this.context.getEditingCore?.();
+    const hasClipboard =
+      core && this.strategy.id === "generic"
+        ? core.clipboard.canPaste()
+        : this.clipboard.length > 0;
+    return !this.isNoteEditingLocked && hasClipboard;
   }
 
   public cutSelection(): void {
@@ -429,8 +563,16 @@ export class NoteEditingController {
     }
 
     this.copySelection();
-    this.strategy.remove(selection.notes);
-    this.context.notifyNotesChanged();
+    const core = this.context.getEditingCore?.();
+    if (core && this.strategy.id === "generic") {
+      const targetIds = selection.notes
+        .map((note) => this.noteId(note))
+        .filter((id): id is string => id !== null);
+      if (!this.applyActions([{ type: "DELETE_SELECTION", targetIds }])) return;
+    } else {
+      this.strategy.remove(selection.notes);
+      this.context.notifyNotesChanged();
+    }
     this.remapSelection(new Set());
     this.context.requestRender();
   }
@@ -439,10 +581,9 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked) {
       return;
     }
-    if (
-      !this.strategy.getTrack(this.strategy.id === "vocal") ||
-      this.clipboard.length === 0
-    ) {
+    const core = this.context.getEditingCore?.();
+    const useSharedClipboard = core && this.strategy.id === "generic";
+    if (!this.strategy.getTrack(this.strategy.id === "vocal")) {
       return;
     }
 
@@ -450,6 +591,23 @@ export class NoteEditingController {
     const anchorTick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(x),
     );
+    if (useSharedClipboard) {
+      const trackIndex = this.context.getSelectedTrackIndex();
+      const track = this.strategy.getTrack(false);
+      if (trackIndex === null || !track || !core.clipboard.canPaste()) {
+        return;
+      }
+      const existing = new Set(track.getNotes().map((note) => note.noteOn));
+      const actions = core.clipboard.createPasteActions(anchorTick, trackIndex);
+      if (!this.applyActions(actions)) return;
+      const pastedNotes = track
+        .getNotes()
+        .filter((note) => !existing.has(note.noteOn));
+      this.remapSelection(new Set(pastedNotes.map((note) => note.noteOn)));
+      this.context.requestRender();
+      return;
+    }
+    if (this.clipboard.length === 0) return;
     const pastedNoteOns = new Set(
       this.strategy.paste(this.clipboard, anchorTick),
     );
@@ -471,5 +629,85 @@ export class NoteEditingController {
       mapped,
       keep,
     );
+  }
+
+  private noteId(note: PianoRollNote): string | null {
+    const core = this.context.getEditingCore?.();
+    const trackIndex = this.context.getSelectedTrackIndex();
+    return core && trackIndex !== null
+      ? core.getDocument().getNoteId(trackIndex, note.midiNote)
+      : null;
+  }
+
+  private updateScratchpad(
+    notes: readonly PianoRollNote[],
+    delta: {
+      tickDelta?: number;
+      trackDelta?: number;
+      durationDelta?: number;
+    },
+  ): void {
+    const core = this.context.getEditingCore?.();
+    if (!core) return;
+    const edits = new Map<string, typeof delta>();
+    for (const note of notes) {
+      const id = this.noteId(note);
+      if (id) edits.set(id, delta);
+    }
+    core.scratchpad.setMany(edits);
+  }
+
+  private commitScratchpadGesture(): void {
+    const core = this.context.getEditingCore?.();
+    if (!core || this.strategy.id !== "generic") return;
+    const delta = core.scratchpad.getSnapshot().values().next().value;
+    const resize = this.resizing;
+    const targets = resize ? this.resizeTargets : this.moveTargets;
+    const targetIds = targets
+      .map(({ note }) => this.noteId(note))
+      .filter((id): id is string => id !== null);
+    if (!delta || targetIds.length === 0) {
+      core.scratchpad.clear();
+      return;
+    }
+
+    const action = resize
+      ? {
+          type: "RESIZE_NOTES" as const,
+          targetIds,
+          durationDelta: delta.durationDelta ?? 0,
+        }
+      : {
+          type: "MOVE_NOTES" as const,
+          targetIds,
+          tickDelta: delta.tickDelta ?? 0,
+          trackDelta: delta.trackDelta ?? 0,
+        };
+    const changed = this.applyActions([action], true);
+    core.scratchpad.clear();
+    if (changed) {
+      const keep = resize ? this.resizeSelectionKeep : this.moveSelectionKeep;
+      this.remapSelection(keep);
+      this.context.requestRender();
+    }
+  }
+
+  private applyActions(
+    actions: ChartEditAction[],
+    transactionAlreadyOpen = false,
+  ): boolean {
+    const core = this.context.getEditingCore?.();
+    if (!core || actions.length === 0) return false;
+    if (!transactionAlreadyOpen) this.context.beginEdit();
+    let changed = false;
+    try {
+      for (const action of actions) {
+        changed = core.dispatch(action) || changed;
+      }
+      if (changed) this.context.notifyNotesChanged();
+      return changed;
+    } finally {
+      if (!transactionAlreadyOpen) this.context.endEdit();
+    }
   }
 }

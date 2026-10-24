@@ -1,5 +1,13 @@
 import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
-import { SongView, validateVocalTrack } from "@openchart/views";
+import {
+  ChartDocument,
+  ClipboardService,
+  EditScratchpad,
+  SelectionModel,
+  SongView,
+  validateVocalTrack,
+  type ChartEditAction,
+} from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
 import { CoordinateSystem } from "../coordinates";
@@ -19,6 +27,7 @@ import type {
   PianoRollLyricPromptHandlers,
   PianoRollContext,
   PianoRollNote,
+  PianoRollEditingCore,
   PianoRollVocalPlacement,
 } from "../types";
 
@@ -60,6 +69,7 @@ function harness(
   midi = new Midi(),
   profile: PianoRollProfile = VOCALS,
   selectedInstrument = "VOCALS",
+  editingCore: PianoRollEditingCore | null = null,
 ) {
   const state = {
     midi,
@@ -71,7 +81,10 @@ function harness(
   };
   const selection = new SelectionContext();
   const noteData = new NoteDataStore();
-  const placement: PianoRollVocalPlacement = { noteKind: "pitched", phrase: null };
+  const placement: PianoRollVocalPlacement = {
+    noteKind: "pitched",
+    phrase: null,
+  };
   const calls = {
     begin: 0,
     end: 0,
@@ -110,6 +123,30 @@ function harness(
     getCamera: () => coordinates.getCamera(),
     getViewport: () => ({ width: 1000, height: 1000 }),
     getSelectionContext: () => selection,
+    getEditingCore: () => editingCore,
+    getDisplayNotes: (source: PianoRollNote[]) => {
+      if (!editingCore) return source;
+      const index = trackIndex();
+      if (index === null) return source;
+      return source.map((note) => {
+        const id = editingCore.getDocument().getNoteId(index, note.midiNote);
+        const delta = editingCore.scratchpad.get(id);
+        return delta
+          ? {
+              ...note,
+              tick: Math.max(0, note.tick + (delta.tickDelta ?? 0)),
+              pitch: Math.max(
+                0,
+                Math.min(127, note.pitch + (delta.trackDelta ?? 0)),
+              ),
+              durationTicks: Math.max(
+                1,
+                note.durationTicks + (delta.durationDelta ?? 0),
+              ),
+            }
+          : note;
+      });
+    },
     requestRender: () => {},
     beginEdit: () => calls.begin++,
     endEdit: () => calls.end++,
@@ -126,6 +163,33 @@ function harness(
     editNextLyric: () => {},
     previewNotes: () => calls.previews++,
   } as unknown as PianoRollContext;
+  if (editingCore) {
+    selection.bindSharedSelection(
+      editingCore.selection,
+      (note) => {
+        const index = midi.tracks.findIndex((item) =>
+          item.getNotes().includes(note.midiNote),
+        );
+        return index < 0
+          ? ""
+          : editingCore.getDocument().getNoteId(index, note.midiNote);
+      },
+      (id) => {
+        for (let index = 0; index < midi.tracks.length; index++) {
+          const note = noteData
+            .getTrackNotes(midi, index)
+            .find(
+              (candidate) =>
+                editingCore
+                  .getDocument()
+                  .getNoteId(index, candidate.midiNote) === id,
+            );
+          if (note) return note;
+        }
+        return null;
+      },
+    );
+  }
   const editing = new NoteEditingController(context, coordinates);
   const notes = (): PianoRollNote[] => {
     const index = trackIndex();
@@ -152,6 +216,26 @@ function harness(
     lyrics,
     drag,
     track,
+    context,
+  };
+}
+
+function createEditingCore(midi: Midi): PianoRollEditingCore {
+  const document = new ChartDocument(midi, () => null);
+  const selection = new SelectionModel();
+  const scratchpad = new EditScratchpad();
+  const clipboard = new ClipboardService(document, selection);
+  return {
+    selection,
+    scratchpad,
+    clipboard,
+    getDocument: () => document,
+    dispatch: (action: ChartEditAction) => document.apply(action),
+    dispatchBatch: (actions: ChartEditAction[]) =>
+      actions.reduce(
+        (changed, action) => document.apply(action) || changed,
+        false,
+      ),
   };
 }
 
@@ -165,6 +249,60 @@ function seeded() {
 }
 
 describe("piano-roll profiles", () => {
+  it("previews generic note drags in the scratchpad and commits one command on release", () => {
+    const midi = new Midi();
+    const trackIndex = midi.addTrack();
+    const track = midi.tracks[trackIndex]!;
+    track.name = "LEAD GUITAR";
+    track.addNote(60, 0, 100, 120);
+    const core = createEditingCore(midi);
+    const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", core);
+    const note = h.notes()[0]!;
+
+    h.editing.beginMove(note);
+    const targetY = h.coordinates.getGridTop() + (84 - 62) * 18 + 5;
+    h.editing.updateMove(new Vector2(xAt(480), targetY));
+
+    expect(track.getNotes()[0]).toMatchObject({ start: 0, note: 60 });
+    expect(core.scratchpad.getSnapshot().size).toBe(1);
+    const preview = h.context.getDisplayNotes!(h.notes())[0]!;
+    expect(preview).toMatchObject({
+      tick: 480,
+      pitch: 62,
+    });
+    expect(h.selection.isSelected(preview)).toBe(true);
+
+    h.editing.finishGesture();
+
+    expect(track.getNotes()[0]).toMatchObject({ start: 480, note: 62 });
+    expect(core.scratchpad.getSnapshot().size).toBe(0);
+    expect(h.calls.begin).toBe(1);
+    expect(h.calls.end).toBe(1);
+    expect(h.calls.changed).toBe(1);
+  });
+
+  it("uses the shared clipboard and edit commands for generic notes", () => {
+    const midi = new Midi();
+    const track = midi.tracks[midi.addTrack()]!;
+    track.name = "LEAD GUITAR";
+    const { noteOn } = track.addNote(60, 0, 90, 120);
+    const core = createEditingCore(midi);
+    const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", core);
+    h.selection.notes = [h.notes()[0]!];
+
+    h.editing.copySelection();
+    expect(core.clipboard.canPaste()).toBe(true);
+
+    h.editing.cutSelection();
+    expect(track.getNotes()).toHaveLength(0);
+
+    h.editing.pasteClipboard(xAt(480), true);
+    expect(track.getNotes()).toMatchObject([
+      { note: 60, start: 480, end: 600, velocity: 90 },
+    ]);
+    expect(h.selection.notes[0]?.midiNote.noteOn).not.toBe(noteOn);
+  });
+
   it("derives the vocals profile from the instrument config", () => {
     expect(VOCALS.id).toBe("vocals");
     expect(VOCALS.pitchRange).toEqual({ low: 36, high: 84 });

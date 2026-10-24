@@ -95,18 +95,11 @@ export class EditorEditingService extends Service {
   private createChartDocument(midi: NonNullable<DocumentService["data"]>) {
     const song = new SongView(midi);
     const descriptors = song.getTrackDescriptors();
-    const trackIndices = new Map(
-      descriptors.flatMap((descriptor) => {
-        const index = midi.tracks.findIndex(
-          (track) => track.name === descriptor.name,
-        );
-        return index < 0 ? [] : [[descriptor.key, index] as const];
-      }),
-    );
-    const document = new ChartDocument(
-      midi,
-      ChartDocument.phrasePitchResolver(descriptors, trackIndices),
-    );
+    const document = new ChartDocument(midi, (trackIndex, phraseType) => {
+      const track = midi.tracks[trackIndex];
+      const descriptor = descriptors.find((item) => item.name === track?.name);
+      return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
+    });
     return document;
   }
 

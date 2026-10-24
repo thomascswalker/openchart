@@ -1,6 +1,6 @@
 import type { MidiNote } from "@openchart/midi";
 import type { ChartView } from "@openchart/views";
-import { drumLaneCount, getDrumNoteProfile } from "./profile";
+import { DrumLaneCount, getDrumNoteProfile } from "./profile";
 
 export type IndexedNoteKind = "note" | "kick" | "cymbal" | "pad";
 
@@ -51,7 +51,7 @@ export class HighwayNoteIndex {
     if (this.chart === chart && this.revision === revision) return;
 
     const isDrumChart = chart.getTrack().getKey() === "drums";
-    const laneLimit = isDrumChart ? drumLaneCount : chart.getLaneCount();
+    const laneLimit = isDrumChart ? DrumLaneCount : chart.getLaneCount();
     const entries: IndexedNote[] = [];
     for (const note of chart.getNotes()) {
       let lane: number;

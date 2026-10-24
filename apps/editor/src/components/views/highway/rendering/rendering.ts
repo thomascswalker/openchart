@@ -57,7 +57,7 @@ import {
 import type { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayMarqueeDragState } from "../types";
 import {
-  drumLaneCount,
+  DrumLaneCount,
   getDrumNoteProfile,
   getDrumPitchForPlacement,
   type DrumPlacementKind,
@@ -359,7 +359,7 @@ export class HighwayRenderer {
     const laneColors = isDrumChart ? drumLaneRgbColors : laneRgbColors;
     this.updateFretboardPalette(
       isDrumChart,
-      isDrumChart ? drumLaneCount : chart.getLaneCount(),
+      isDrumChart ? DrumLaneCount : chart.getLaneCount(),
     );
     const visibleNotes: IndexedNote[] = [];
     getHighwayNoteIndex(chart).query(

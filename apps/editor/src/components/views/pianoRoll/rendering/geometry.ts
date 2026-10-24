@@ -21,17 +21,10 @@ export interface NoteGeometryCoordinates {
   screenXForTick(tick: number): number;
   timelineUnitsAtTick(tick: number): number;
   toScreenSpace(value: Box2): Box2;
-  /** Optional: profiles with pinned lanes place special pitches there. */
   pinnedRectForPitch?(pitch: number): { y: number; height: number } | null;
-  /** Optional: grid notes are clipped below this Y. */
   getGridTop?(): number;
 }
 
-/**
- * Screen-space rectangle of a note, shared by drawing, hit-testing and
- * marquee selection. Grid notes are clipped to the grid so they never cover
- * the header or pinned lanes; null when fully clipped.
- */
 export function screenRectOf(
   geometry: NoteGeometry,
   coordinates: NoteGeometryCoordinates,
@@ -76,7 +69,6 @@ interface GeometryCache {
   maxPitch: number;
 }
 
-/** Lazily caches note rectangles and provides the editor's hit-testing surface. */
 export class NoteGeometryCache {
   private cache: GeometryCache | null = null;
 

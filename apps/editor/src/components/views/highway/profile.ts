@@ -7,7 +7,7 @@ export interface DrumNoteProfile {
   slot: number;
 }
 
-export const drumLaneCount = 4;
+export const DrumLaneCount = 4;
 
 const slotProfiles: readonly DrumNoteProfile[] = [
   { kind: "kick", lane: null, slot: 0 },
@@ -37,7 +37,7 @@ export function getDrumPitchForPlacement(
   lane: number,
   offset: number,
 ): number | null {
-  if (!Number.isInteger(lane) || lane < 0 || lane >= drumLaneCount) {
+  if (!Number.isInteger(lane) || lane < 0 || lane >= DrumLaneCount) {
     return null;
   }
   if (kind === "kick") return offset;

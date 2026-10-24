@@ -7,6 +7,7 @@ import { NoteDataStore } from "../noteData";
 import { NoteGeometryCache, screenRectOf } from "./geometry";
 import type { PianoRollNoteKind } from "../profile";
 import type { PianoRollContext } from "../types";
+import type { TimeSignatureEvent } from "@openchart/midi";
 
 const RenderOrder = {
   CanvasBackground: 0,
@@ -250,7 +251,7 @@ export class PianoRollRenderer {
     const visibleEnd = this.#coordinates.tickAtScreenX(
       KeyboardWidth + visibleWidth,
     );
-    // this.drawSnapGrid(height, visibleStart, visibleEnd);
+
     const vertical: THREE.Vector3[] = [];
     const major: THREE.Vector3[] = [];
     for (const { tick, isMeasure } of iterateGridBeats(
@@ -287,7 +288,10 @@ export class PianoRollRenderer {
     const noteHeight = Math.max(1, rowHeight - 2);
     const trackIndex = this.#context.getSelectedTrackIndex();
     if (trackIndex === null) return;
-    const notes = this.#context.getTrackNotes(midi, trackIndex);
+    const sourceNotes = this.#context.getTrackNotes(midi, trackIndex);
+    const notes = this.#context.getDisplayNotes?.(sourceNotes) ?? sourceNotes;
+    const noteIndex =
+      notes === sourceNotes ? this.#noteData.currentIndex : null;
     const visibleEnd = this.#coordinates.tickAtScreenX(width);
     if (
       this.#geometry.needsRebuild({
@@ -305,7 +309,7 @@ export class PianoRollRenderer {
       this.#geometry.rebuild({
         track,
         notes,
-        noteIndex: this.#noteData.currentIndex,
+        noteIndex,
         tempoEvents: this.#context.getTempoEvents(),
         tickWidth,
         rowHeight,
@@ -505,26 +509,42 @@ export class PianoRollRenderer {
   }
 }
 
+interface GridBeatIterator {
+  tick: number;
+  isMeasure: boolean;
+}
+
 export function* iterateGridBeats(
   ppqn: number,
-  segments: import("@openchart/midi").TimeSignatureEvent[],
+  tsEvents: TimeSignatureEvent[],
   startTick: number,
   endTick: number,
-): Generator<{ tick: number; isMeasure: boolean }> {
-  for (let index = 0; index < segments.length; index++) {
-    const segment = segments[index];
-    const segmentEnd =
-      index + 1 < segments.length ? segments[index + 1].tick : Infinity;
-    if (segmentEnd <= startTick || segment.tick >= endTick) continue;
+): Generator<GridBeatIterator> {
+  for (let index = 0; index < tsEvents.length; index++) {
+    const segment = tsEvents[index];
+    const nextTick = tsEvents[index + 1].tick;
+    const segmentEnd = index + 1 < tsEvents.length ? nextTick : Infinity;
+    if (segmentEnd <= startTick || segment.tick >= endTick) {
+      continue;
+    }
+
     const beatTicks = (ppqn * 4) / 2 ** segment.denominator;
-    if (!Number.isFinite(beatTicks) || beatTicks <= 0) continue;
+    if (!Number.isFinite(beatTicks) || beatTicks <= 0) {
+      continue;
+    }
+
     const rangeStart = Math.max(segment.tick, startTick - beatTicks);
     const rangeEnd = Math.min(segmentEnd, endTick + beatTicks);
     const firstBeat = Math.floor((rangeStart - segment.tick) / beatTicks);
-    for (let beat = firstBeat; ; beat++) {
+
+    let beat = firstBeat;
+    while (true) {
       const tick = segment.tick + beat * beatTicks;
-      if (tick > rangeEnd || tick >= segmentEnd) break;
+      if (tick > rangeEnd || tick >= segmentEnd) {
+        break;
+      }
       yield { tick, isMeasure: beat % segment.numerator === 0 };
+      beat++;
     }
   }
 }

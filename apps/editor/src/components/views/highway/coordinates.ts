@@ -2,7 +2,7 @@ import { Vector2 } from "three";
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
 import { laneCount, nearBoardZ } from "./constants";
-import { drumLaneCount } from "./profile";
+import { DrumLaneCount } from "./profile";
 import { BaseCoordinates } from "../shared/coordinates";
 
 type HighwayCoordinateContext = Pick<
@@ -96,7 +96,7 @@ export class HighwayCoordinateSystem extends BaseCoordinates {
   }
 
   public getPhysicalLaneCount(): number {
-    if (this.isDrumChart()) return drumLaneCount;
+    if (this.isDrumChart()) return DrumLaneCount;
     return this.context.getCurrentChart?.()?.getLaneCount() ?? laneCount;
   }
 

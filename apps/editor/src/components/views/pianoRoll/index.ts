@@ -43,6 +43,7 @@ import {
   KeyboardWidth,
 } from "./constants";
 import { cloneDeep } from "es-toolkit";
+import type { PianoRollEditingCore } from "./types";
 
 export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public constructor(engineOptions?: EngineOptions) {
@@ -79,6 +80,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
+  private editingCore: PianoRollEditingCore | null = null;
+  private editingUnsubscribers: Array<() => void> = [];
 
   private readonly noteData = new NoteDataStore();
   private readonly geometry = new NoteGeometryCache();
@@ -119,6 +122,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }),
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
+    getEditingCore: () => this.editingCore,
+    getDisplayNotes: (notes) => this.getDisplayNotes(notes),
     requestRender: () => this.render(),
     beginEdit: () => this.onBeginEdit?.(),
     endEdit: () => this.onEndEdit?.(),
@@ -259,6 +264,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   public override update(state: ChartViewState): void {
     const playbackStarted = !this.state.isPlaying && state.isPlaying;
     super.update(state);
+    this.bindSharedSelection();
     if (playbackStarted) {
       this.input.cancelNoteEditing();
     }
@@ -311,7 +317,24 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.geometry.clear();
     this.noteData.clear();
     this.renderer.dispose();
+    for (const unsubscribe of this.editingUnsubscribers) unsubscribe();
+    this.editingUnsubscribers = [];
     super.destroy();
+  }
+
+  public setEditingCore(core: PianoRollEditingCore | null): void {
+    if (this.editingCore === core) return;
+    for (const unsubscribe of this.editingUnsubscribers) unsubscribe();
+    this.editingUnsubscribers = [];
+    this.editingCore = core;
+    if (core) {
+      this.editingUnsubscribers.push(
+        core.scratchpad.subscribe(() => this.render()),
+        core.selection.subscribe(() => this.render()),
+      );
+    }
+    this.bindSharedSelection();
+    this.render();
   }
 
   protected override draw(engine: Engine): void {
@@ -357,6 +380,51 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     trackIndex: number,
   ): PianoRollNote[] {
     return this.noteData.getTrackNotes(midi, trackIndex);
+  }
+
+  private bindSharedSelection(): void {
+    const core = this.editingCore;
+    if (!core) return;
+    const midi = this.state.midi;
+    const trackIndex = this.getSelectedTrackIndex();
+    if (!midi || trackIndex === null) return;
+    const document = core.getDocument();
+    const notes = this.noteData.getTrackNotes(midi, trackIndex);
+    this.selection.bindSharedSelection(
+      core.selection,
+      (note) => document.getNoteId(trackIndex, note.midiNote),
+      (id) =>
+        notes.find(
+          (note) => document.getNoteId(trackIndex, note.midiNote) === id,
+        ) ?? null,
+    );
+  }
+
+  private getDisplayNotes(notes: PianoRollNote[]): PianoRollNote[] {
+    const core = this.editingCore;
+    const trackIndex = this.getSelectedTrackIndex();
+    if (!core || trackIndex === null) return notes;
+    const edits = core.scratchpad.getSnapshot();
+    if (edits.size === 0) return notes;
+    const document = core.getDocument();
+    return notes
+      .map((note) => {
+        const delta = edits.get(document.getNoteId(trackIndex, note.midiNote));
+        if (!delta) return note;
+        return {
+          ...note,
+          tick: Math.max(0, note.tick + (delta.tickDelta ?? 0)),
+          pitch: Math.max(
+            0,
+            Math.min(127, note.pitch + (delta.trackDelta ?? 0)),
+          ),
+          durationTicks: Math.max(
+            1,
+            note.durationTicks + (delta.durationDelta ?? 0),
+          ),
+        };
+      })
+      .sort((left, right) => left.tick - right.tick);
   }
 
   /** Discriminant for `AnyChartView`. */
