@@ -1,9 +1,9 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import type { EditablePhraseKind } from "@openchart/views";
-import type { DrumNoteKind } from "./drumProfile";
+import type { DrumNoteKind } from "./profile";
 
 export type HighwayTool = "select" | "place" | "remove";
-/** Phrases the Highway can place; vocal phrases live in the Piano Roll. */
+
 export type HighwayPhraseKind = Extract<
   EditablePhraseKind,
   "stagepower" | "solo"
@@ -32,7 +32,7 @@ export interface HighwayClipboardNote {
   originalPitch?: number;
 }
 
-export interface PhraseDragState {
+export interface HighwayPhraseDragState {
   pointerId: number;
   kind: EditablePhraseKind;
   startTick: number;
@@ -45,13 +45,13 @@ export interface PhraseDragState {
   moved: boolean;
 }
 
-export interface PhraseHoverState {
+export interface HighwayPhraseHoverState {
   noteOn: MidiChannelEvent | null;
-  operation: PhraseDragState["operation"] | null;
+  operation: HighwayPhraseDragState["operation"] | null;
   placementTick: number | null;
 }
 
-export interface DragState {
+export interface HighwayDragState {
   pointerId: number;
   button: 0 | 2;
   shiftKey: boolean;
@@ -72,7 +72,7 @@ export interface DragState {
   changed: boolean;
 }
 
-export interface MarqueeDragState {
+export interface HighwayMarqueeDragState {
   pointerId: number;
   startX: number;
   startY: number;
@@ -82,14 +82,14 @@ export interface MarqueeDragState {
   moved: boolean;
 }
 
-export interface ScreenBounds {
+export interface HighwayScreenBounds {
   left: number;
   right: number;
   top: number;
   bottom: number;
 }
 
-export interface GhostNoteLocation {
+export interface HighwayGhostNoteLocation {
   lane: number;
   tick: number;
   shiftKey: boolean;

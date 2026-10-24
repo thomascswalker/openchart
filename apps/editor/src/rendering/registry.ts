@@ -32,7 +32,7 @@ const declaredUnusedAssetUrls = import.meta.glob(
   { query: "?url", import: "default" },
 );
 const shaderSources = import.meta.glob(
-  "../components/views/highway/shaders/*.glsl",
+  "../components/views/highway/rendering/shaders/*.glsl",
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 

@@ -15,7 +15,7 @@ import {
   KeyboardWidth,
 } from "../constants";
 import type { CoordinateSystem } from "../coordinates";
-import type { LyricPromptHandlers, PianoRollContext } from "../types";
+import type { PianoRollLyricPromptHandlers, PianoRollContext } from "../types";
 import { IController } from "../controller";
 import {
   parseTempoString,
@@ -54,7 +54,7 @@ export class HeaderController extends IController {
   #editingMarkerKey: string | null = null;
   #editingMarker: { lane: HeaderLane; tick: number } | null = null;
   #draggingText: TextMidiEvent | null = null;
-  #prompt: { tick: number; handlers: LyricPromptHandlers } | null = null;
+  #prompt: { tick: number; handlers: PianoRollLyricPromptHandlers } | null = null;
   #promptKey: string | null = null;
   #width: number = 0;
 
@@ -221,7 +221,7 @@ export class HeaderController extends IController {
    * Opens the inline text input at `tick` for a lyric. Used right after a
    * vocal note is created and when Tab moves to a note with no lyric yet.
    */
-  public promptText(tick: number, handlers: LyricPromptHandlers): void {
+  public promptText(tick: number, handlers: PianoRollLyricPromptHandlers): void {
     if (this.#prompt) this.cancelPrompt();
     this.#editingMarker = null;
     this.#prompt = { tick, handlers };

@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import type { EngineOptions } from "../../../rendering/engine";
-import { ResourceRegistry } from "./assets";
+import { ResourceRegistry } from "./rendering/assets";
 import { getHighwaySnapDenominator } from "./interaction";
 import { SnapDenominators } from "../pianoRoll/constants";
 import {
@@ -25,15 +25,15 @@ import {
 import type { HighwayContext } from "./context";
 import { HighwayCoordinateSystem } from "./coordinates";
 import { HighwayHitTester } from "./hitTesting";
-import { HighwayNoteEditingController } from "./noteEditing";
-import { HighwayPhraseEditingController } from "./phraseEditing";
-import { HighwayInputController } from "./input";
-import { HighwayRenderer, type HighwayRenderDiagnostics } from "./rendering";
+import { HighwayNoteEditingController } from "./editing/noteEditing";
+import { HighwayPhraseEditingController } from "./editing/phraseEditing";
+import { HighwayInputController } from "./input/input";
+import { HighwayRenderer, type HighwayRenderDiagnostics } from "./rendering/rendering";
 import { SelectionContext } from "./selection";
-import type { DrumPlacementKind } from "./drumProfile";
+import type { DrumPlacementKind } from "./profile";
 export type { HighwayMode, HighwayTool } from "./types";
 export type { HighwayNotePlacementType } from "./types";
-export type { DrumPlacementKind } from "./drumProfile";
+export type { DrumPlacementKind } from "./profile";
 
 export class HighwayView extends AbstractChartView<MidiNote> {
   private readonly threeCamera = new THREE.PerspectiveCamera(

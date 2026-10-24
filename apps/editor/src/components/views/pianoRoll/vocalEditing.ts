@@ -95,6 +95,35 @@ export class VocalEditingStrategy implements IEditingStrategy {
         return null;
       }
       const track = this.getTrack(true);
+      const core = this.context.getEditingCore?.();
+      const midi = this.context.getMidi();
+      const trackIndex = midi && track ? midi.tracks.indexOf(track) : -1;
+      if (core && track && trackIndex >= 0) {
+        const existed = track
+          .getNotes()
+          .some((note) => note.note === pitch && note.start === tick);
+        if (
+          !core.dispatch({
+            type: "CREATE_PHRASE",
+            trackIndex,
+            startTick: tick,
+            duration: end - tick,
+            phraseType: phrase,
+          })
+        ) {
+          return null;
+        }
+        const created = track
+          .getNotes()
+          .find(
+            (note) =>
+              !existed &&
+              note.note === pitch &&
+              note.start === tick &&
+              note.end === end,
+          );
+        return created ? { noteOn: created.noteOn, needsLyric: false } : null;
+      }
       const created = track
         ? addVocalPhrase(track, this.layout, phrase, tick, end)
         : null;

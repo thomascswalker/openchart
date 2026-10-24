@@ -4,13 +4,13 @@ import type { ChartViewState } from "../AbstractChartView";
 import type { SelectionContext } from "./selection";
 import type { EditablePhraseKind } from "@openchart/views";
 import type {
-  GhostNoteLocation,
+  HighwayGhostNoteLocation,
   HighwaySelectionRange,
-  MarqueeDragState,
-  PhraseHoverState,
+  HighwayMarqueeDragState,
+  HighwayPhraseHoverState,
 } from "./types";
 import type { HighwayMode, HighwayNotePlacementType } from "./types";
-import type { DrumPlacementKind } from "./drumProfile";
+import type { DrumPlacementKind } from "./profile";
 
 /** Narrow view services available to highway-specific collaborators. */
 export interface HighwayContext {
@@ -27,10 +27,10 @@ export interface HighwayContext {
   getNotePlacementType?(): HighwayNotePlacementType;
   getDrumPlacementKind(): DrumPlacementKind;
   getPhraseMode(): EditablePhraseKind | null;
-  getPhraseHoverState(): PhraseHoverState | null;
+  getPhraseHoverState(): HighwayPhraseHoverState | null;
   getSelectionRange(): HighwaySelectionRange | null;
   getSelectionContext(): SelectionContext;
-  getGhostNoteLocation(): GhostNoteLocation | null;
+  getGhostNoteLocation(): HighwayGhostNoteLocation | null;
   getHoveredNoteOn(): MidiChannelEvent | null;
   canShowNotePlacementPreview(): boolean;
   getCanvas(): HTMLCanvasElement | null;
@@ -43,6 +43,6 @@ export interface HighwayContext {
   stepSnapDenominator(direction: -1 | 1): void;
   setPlayheadTick(tick: number): void;
   setSelectionRange(range: HighwaySelectionRange | null): void;
-  updateMarqueeOutline(marquee: MarqueeDragState | null): void;
+  updateMarqueeOutline(marquee: HighwayMarqueeDragState | null): void;
   clearHoverOutline(): void;
 }

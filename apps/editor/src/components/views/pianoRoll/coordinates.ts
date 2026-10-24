@@ -19,6 +19,7 @@ import {
   type PianoRollProfile,
 } from "./profile";
 import type { PianoRollCamera, PianoRollNote } from "./types";
+import { BaseCoordinates } from "../shared/coordinates";
 
 export interface CoordinateSystemContext {
   getPpqn(): number;
@@ -30,7 +31,7 @@ export interface CoordinateSystemContext {
 }
 
 /** Tempo-aware conversion and camera math used by every piano-roll surface. */
-export class CoordinateSystem {
+export class CoordinateSystem extends BaseCoordinates {
   private readonly context: CoordinateSystemContext;
   private readonly camera: PianoRollCamera;
 
@@ -38,6 +39,7 @@ export class CoordinateSystem {
     context: CoordinateSystemContext,
     camera: PianoRollCamera,
   ) {
+    super();
     this.context = context;
     this.camera = camera;
   }
@@ -129,18 +131,8 @@ export class CoordinateSystem {
     return (this.context.getPpqn() * 4) / snap.denominator;
   }
 
-  public snapTick(tick: number): number {
-    const snap = this.context.getState().snap;
-    if (!snap.enabled) {
-      return Math.max(0, Math.round(tick));
-    }
-
-    const ticksPerSnap = this.getSnapTicks();
-    if (!Number.isFinite(ticksPerSnap) || ticksPerSnap <= 0) {
-      return Math.max(0, Math.round(tick));
-    }
-
-    return Math.max(0, Math.floor(tick / ticksPerSnap) * ticksPerSnap);
+  protected isSnapEnabled(): boolean {
+    return this.context.getState().snap.enabled;
   }
 
   public snapTickToNearest(tick: number): number {

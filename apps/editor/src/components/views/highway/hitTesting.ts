@@ -8,11 +8,11 @@ import {
 } from "@openchart/views";
 import { Vector2 } from "three";
 import * as THREE from "three";
-import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./geometryCatalog";
+import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./rendering/geometryCatalog";
 import type { MeshKey } from "../../../rendering/registry";
-import { noteWorldPosition } from "./geometry";
+import { noteWorldPosition } from "./rendering/geometry";
 import { farBoardZ, nearBoardZ, strikeLineZ } from "./constants";
-import type { PhraseDragState, ScreenBounds } from "./types";
+import type { HighwayPhraseDragState, HighwayScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
 import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
 
@@ -167,7 +167,7 @@ export class HighwayHitTester {
     phrase: MidiNotePhrase,
     tick: number,
     event?: MouseEvent,
-  ): PhraseDragState["operation"] {
+  ): HighwayPhraseDragState["operation"] {
     if (event) {
       const point = this.coordinates.getCanvasPoint(event);
       const start = this.getPhraseBoundaryProjection(phrase, "start");
@@ -216,7 +216,7 @@ export class HighwayHitTester {
 
   public getPhraseScreenBounds(
     phrase: Pick<MidiNotePhrase, "start" | "end">,
-  ): ScreenBounds | null {
+  ): HighwayScreenBounds | null {
     const visibleStart = Math.max(
       0,
       this.coordinates.getTickAtDepth(nearBoardZ),
@@ -246,7 +246,7 @@ export class HighwayHitTester {
     note: MidiNote,
     lane: number,
     geometryId: GeometryId = "note",
-  ): ScreenBounds | null {
+  ): HighwayScreenBounds | null {
     if (lane < 0 || lane >= this.coordinates.getPhysicalLaneCount()) {
       return null;
     }
@@ -303,14 +303,14 @@ export class HighwayHitTester {
     };
   }
 
-  public getKickScreenBounds(note: MidiNote): ScreenBounds | null {
+  public getKickScreenBounds(note: MidiNote): HighwayScreenBounds | null {
     return this.getGemScreenBounds(note, 0, "kick");
   }
 
   public getTailScreenBounds(
     note: MidiNote,
     lane: number,
-  ): ScreenBounds | null {
+  ): HighwayScreenBounds | null {
     if (
       lane < 0 ||
       lane >= this.coordinates.getPhysicalLaneCount() ||
@@ -346,7 +346,7 @@ export class HighwayHitTester {
   }
 
   public containsScreenPoint(
-    bounds: ScreenBounds,
+    bounds: HighwayScreenBounds,
     x: number,
     y: number,
   ): boolean {

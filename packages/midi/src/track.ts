@@ -59,6 +59,13 @@ export class MidiTrack {
       }
       return { ...event };
     });
+    this.events.forEach((event, index) => {
+      const clonedEvent = track.events[index];
+      if (clonedEvent) {
+        track.eventIds.set(clonedEvent, this.getEventId(event));
+      }
+    });
+    track.nextEventId = this.nextEventId;
     return track;
   }
 

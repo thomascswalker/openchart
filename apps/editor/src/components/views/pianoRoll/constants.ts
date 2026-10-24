@@ -3,7 +3,7 @@ import {
   type TempoEvent,
   type TimeSignatureEvent,
 } from "@openchart/midi";
-import type { VocalMarks } from "./types";
+import type { PianoRollVocalMarks } from "./types";
 
 export const BlackPitchClasses = new Set([
   1, // C#
@@ -67,7 +67,7 @@ export const KeyboardWidth = 64;
 
 export const ClickMovementThreshold = 4;
 
-export const EmptyMarks: VocalMarks = {
+export const EmptyMarks: PianoRollVocalMarks = {
   missingLyric: new Set(),
   missingTicks: [],
 };

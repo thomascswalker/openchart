@@ -2,7 +2,7 @@ import type { MidiChannelEvent } from "@openchart/midi";
 import type { Vector2 } from "three";
 import { KeyboardWidth } from "../constants";
 import type { CoordinateSystem } from "../coordinates";
-import { DefaultEditContext } from "./default";
+import { DefaultEditContext } from "./generic";
 import type { IEditContext } from "./context";
 import {
   type ClipboardNote,
@@ -12,7 +12,7 @@ import {
 } from "./types";
 import { toPianoRollNote } from "../noteData";
 import type { PianoRollContext, PianoRollNote } from "../types";
-import { VocalEditContext } from "./vocals";
+import { VocalEditContext } from "./vocal";
 
 /** State of an active resize (or the drag that follows creating a note). */
 interface ResizeGesture {
