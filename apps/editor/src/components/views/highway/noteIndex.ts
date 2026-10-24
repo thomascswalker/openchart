@@ -1,6 +1,6 @@
 import type { MidiNote } from "@openchart/midi";
 import type { ChartView } from "@openchart/views";
-import { drumLaneCount, getDrumNoteProfile } from "./drumProfile";
+import { drumLaneCount, getDrumNoteProfile } from "./profile";
 
 export type IndexedNoteKind = "note" | "kick" | "cymbal" | "pad";
 

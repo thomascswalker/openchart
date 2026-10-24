@@ -18,22 +18,22 @@ import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import { type Engine, type EngineOptions } from "../../../rendering/engine";
 import { CoordinateSystem } from "./coordinates";
 import { HeaderController, type HeaderLane } from "./controllers/header";
-import { PianoRollInputController } from "./controllers/input";
+import { PianoRollInputController } from "./input/input";
 import { PianoRollLabels } from "./controllers/labels";
 import { NoteDataStore } from "./noteData";
 import { NoteEditingController } from "./controllers/noteEditing";
-import { NoteGeometryCache } from "./noteGeometry";
-import { PointerContext } from "./pointer";
+import { NoteGeometryCache } from "./rendering/geometry";
+import { PointerContext } from "./input/pointer";
 import { GENERIC_PROFILE, type PianoRollProfile } from "./profile";
-import { PianoRollRenderer } from "./rendering";
+import { PianoRollRenderer } from "./rendering/rendering";
 import { SelectionContext } from "./selection";
 import type {
   PianoRollCamera,
   PianoRollCameraState,
   PianoRollContext,
   PianoRollNote,
-  VocalMarks,
-  VocalPlacement,
+  PianoRollVocalMarks,
+  PianoRollVocalPlacement,
 } from "./types";
 import {
   DefaultCamera,
@@ -66,12 +66,12 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     { y: number; v: number }
   >();
   private pendingRangeFit = false;
-  private vocalPlacement: VocalPlacement = {
+  private vocalPlacement: PianoRollVocalPlacement = {
     noteKind: "pitched",
     phrase: null,
   };
   private vocalMarksKey: { track: MidiTrack; revision: number } | null = null;
-  private vocalMarks: VocalMarks = EmptyMarks;
+  private vocalMarks: PianoRollVocalMarks = EmptyMarks;
 
   /** Audition hook for vocal pitch feedback on place/move. */
   public onNotePreview: ((notes: readonly PianoRollNote[]) => void) | null =
@@ -206,7 +206,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.render();
   }
 
-  public setVocalPlacement(placement: VocalPlacement): void {
+  public setVocalPlacement(placement: PianoRollVocalPlacement): void {
     this.vocalPlacement = placement;
   }
 
@@ -445,7 +445,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   /** Missing-lyric marks, recomputed only when the track's revision moves. */
-  private getVocalMarks(): VocalMarks {
+  private getVocalMarks(): PianoRollVocalMarks {
     const layout = this.profile.vocal;
     const track = this.getSelectedTrack();
     if (!layout || !track) return EmptyMarks;
@@ -535,4 +535,4 @@ function isPianoRollCameraState(value: unknown): value is PianoRollCameraState {
 
 export { GENERIC_PROFILE, profileForInstrument } from "./profile";
 export type { PianoRollProfile } from "./profile";
-export type { VocalPlacement } from "./types";
+export type { PianoRollVocalPlacement } from "./types";

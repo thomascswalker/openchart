@@ -1,4 +1,4 @@
-import { rgbFromHex } from "./materials";
+import { rgbFromHex } from "./rendering/materials";
 
 export const defaultCameraPosition = { x: 0, y: 7, z: 7 };
 export const defaultCameraRotation = { x: -0.65, y: 0, z: 0 };

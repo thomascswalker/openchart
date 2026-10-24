@@ -11,7 +11,7 @@ import type { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
 import type { PianoRollProfile } from "./profile";
 import type { SelectionContext } from "./selection";
-import type { PointerContext } from "./pointer";
+import type { PointerContext } from "./input/pointer";
 
 export interface PianoRollNote {
   tick: number;
@@ -46,14 +46,14 @@ export interface PianoRollCamera {
 }
 
 /** Toolbar state that decides what a vocal drag in the grid creates. */
-export interface VocalPlacement {
+export interface PianoRollVocalPlacement {
   noteKind: VocalNoteKind;
   /** When set, a grid drag creates this phrase instead of a note. */
   phrase: VocalPhraseKind | null;
 }
 
 /** Derived vocal validation state used for drawing, cached per revision. */
-export interface VocalMarks {
+export interface PianoRollVocalMarks {
   /** NoteOn events of pitched/pitchless notes with no lyric on their tick. */
   missingLyric: ReadonlySet<MidiChannelEvent>;
   /** Ticks of those notes, for the header's validation markers. */
@@ -61,7 +61,7 @@ export interface VocalMarks {
 }
 
 /** Callbacks for the header's inline lyric prompt. */
-export interface LyricPromptHandlers {
+export interface PianoRollLyricPromptHandlers {
   initialText?: string;
   /** Return false to keep the prompt open (e.g. empty text). */
   onCommit(text: string): boolean;
@@ -79,8 +79,8 @@ export interface PianoRollContext {
   /** Index of getSelectedTrack() in the MIDI file (resolved by name if new). */
   getSelectedTrackIndex(): number | null;
   getProfile(): PianoRollProfile;
-  getVocalPlacement(): VocalPlacement;
-  getVocalMarks(): VocalMarks;
+  getVocalPlacement(): PianoRollVocalPlacement;
+  getVocalMarks(): PianoRollVocalMarks;
   getTrackNotes(midi: Midi, trackIndex: number): PianoRollNote[];
   getCurrentNotes(): PianoRollNote[];
   getTempoEvents(): TempoEvent[];
@@ -98,7 +98,7 @@ export interface PianoRollContext {
   invalidateTempoCache(): void;
   /** Restores the document to before the open edit transaction. */
   rollbackEdit(): boolean;
-  promptLyric(tick: number, handlers: LyricPromptHandlers): void;
+  promptLyric(tick: number, handlers: PianoRollLyricPromptHandlers): void;
   cancelLyricPrompt(): void;
   /** Tab from a lyric: edit (or prompt for) the next note's lyric. */
   editNextLyric(afterTick: number): void;
