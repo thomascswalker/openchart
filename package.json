@@ -23,6 +23,8 @@
     "check": "npm run lint && npm run format:check",
     "test": "turbo run test",
     "check-types": "turbo run check-types --filter=!@openchart/desktop",
+    "check:editing": "node scripts/check-editing-boundaries.mjs",
+    "check:editing:strict": "node scripts/check-editing-boundaries.mjs --strict",
     "test:core": "turbo run test --filter=@openchart/midi",
     "test:views": "turbo run test --filter=@openchart/views",
     "test:mixer": "turbo run test --filter=@openchart/mixer",

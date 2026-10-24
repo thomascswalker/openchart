@@ -1,0 +1,12 @@
+{
+  "apps/editor/src/components/views/highway/editing/noteEditing.ts": 14,
+  "apps/editor/src/components/views/highway/editing/phraseEditing.ts": 4,
+  "apps/editor/src/components/views/highway/input/input.ts": 3,
+  "apps/editor/src/components/views/pianoRoll/controllers/header.ts": 15,
+  "apps/editor/src/components/views/pianoRoll/editing/context.ts": 1,
+  "apps/editor/src/components/views/pianoRoll/editing/generic.ts": 6,
+  "apps/editor/src/components/views/pianoRoll/editing/vocal.ts": 13,
+  "apps/editor/src/components/views/pianoRoll/editingStrategy.ts": 8,
+  "apps/editor/src/components/views/pianoRoll/index.ts": 1,
+  "apps/editor/src/components/views/pianoRoll/vocalEditing.ts": 13
+}
