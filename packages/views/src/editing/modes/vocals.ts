@@ -96,13 +96,19 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
         id: `vocal-note-${noteKind}`,
         label: noteKind,
         icon: noteKind,
-        group: "vocal-tools",
+        group: "placement",
         stateKey: "noteKind",
         value: noteKind,
       })),
-      ...(["vocal", "power-window", "stagepower"] as const).map((phrase) => ({
+      ...(
+        [
+          ["vocal", "Vocal phrase"],
+          ["power-window", "Power window"],
+          ["stagepower", "Stagepower phrase"],
+        ] as const
+      ).map(([phrase, label]) => ({
         id: `vocal-phrase-${phrase}`,
-        label: phrase,
+        label,
         icon: phrase,
         group: "vocal-tools",
         stateKey: "phrase",

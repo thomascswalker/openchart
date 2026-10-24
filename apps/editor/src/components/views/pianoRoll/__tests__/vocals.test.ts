@@ -523,6 +523,21 @@ describe("piano-roll profiles", () => {
           getMidi: () => midi,
           getSelectedTrack: () => track,
           getProfile: () => profile,
+          getGlobalEditingSession: () => ({
+            execute: (command: {
+              type: string;
+              tick?: number;
+              name?: string;
+            }) => {
+              if (command.type !== "ADD_SECTION") return { changed: false };
+              track.addTextEvent(
+                MetaType.Marker,
+                command.tick!,
+                `[section ${command.name}]`,
+              );
+              return { changed: true };
+            },
+          }),
           getTempoEvents: () => TEMPO,
           getTimeSignatureEvents: () => [],
           getTextEvents: () => [],

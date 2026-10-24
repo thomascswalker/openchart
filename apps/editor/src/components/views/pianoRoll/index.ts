@@ -87,6 +87,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
   private editingSession: EditingSession | null = null;
+  private globalEditingSession: EditingSession | null = null;
   private editingUnsubscribers: Array<() => void> = [];
   private previewState: PreviewState | null = null;
   private previewTrack: MidiTrack | null = null;
@@ -138,6 +139,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
     getEditingSession: () => this.editingSession,
+    getGlobalEditingSession: () => this.globalEditingSession,
     getPreviewState: () => this.previewState,
     setPreviewState: (preview) => {
       this.previewState = preview;
@@ -383,6 +385,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.render();
   }
 
+  public setGlobalEditingSession(session: EditingSession | null): void {
+    this.globalEditingSession = session;
+  }
+
   protected override draw(engine: Engine): void {
     // Store last viewport size
     const { x: width, y: height } = engine.size;
@@ -622,19 +628,19 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       );
     }
     const tick = next.note.start;
+    const write = (text: string): boolean => {
+      const session = this.editingSession;
+      const trackIndex = this.getSelectedTrackIndex();
+      if (!session || trackIndex === null) return false;
+      return session.execute({
+        type: "SET_LYRIC",
+        id: formatNoteId(trackIndex, track.getEventId(next.note.noteOn)),
+        text,
+      }).changed;
+    };
     if (next.lyric) {
-      this.header.editTextAt(tick);
+      this.header.editTextAt(tick, write);
     } else {
-      const write = (text: string): boolean => {
-        const session = this.editingSession;
-        const trackIndex = this.getSelectedTrackIndex();
-        if (!session || trackIndex === null) return false;
-        return session.execute({
-          type: "SET_LYRIC",
-          id: formatNoteId(trackIndex, track.getEventId(next.note.noteOn)),
-          text,
-        }).changed;
-      };
       this.header.promptText(tick, {
         onCommit: write,
         onCancel: () => {},

@@ -20,6 +20,7 @@ import Platform from "../../../platform";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ActiveChartViewService } from "../../../services/editor/activeChartView";
 import type { EditingService } from "../../../services/editor/editing";
+import type { EditingMode } from "@openchart/views";
 import { type ViewportSession } from "../../../services/editor/viewports";
 import { PlaybackService } from "../../../services/playback";
 import { Button, CloseButton } from "../../shared";
@@ -38,7 +39,13 @@ import { ChartViewHost } from "../../views/ChartViewHost";
 import type { AnyChartView } from "../../views/ChartViews";
 import { ChartViews } from "../../views/ChartViews";
 import { HighwayView } from "../../views/highway";
+import type {
+  DrumPlacementKind,
+  HighwayMode,
+  HighwayNotePlacementType,
+} from "../../views/highway";
 import { PianoRollView, type PianoRollNote } from "../../views/pianoRoll";
+import type { PianoRollVocalPlacement } from "../../views/pianoRoll";
 import { Timeline } from "../Timeline/Timeline";
 import Toolbar from "../Toolbar";
 import { TrackList } from "../../dialogs";
@@ -177,13 +184,27 @@ function ViewportPanel({
   const editingService =
     Platform.services.get<EditingService>("editor.editing");
   const editingSession = editingService.getSession(session.id);
+  const globalEditingSession =
+    session.view === "piano-roll"
+      ? editingService.getSession(session.id, "global")
+      : null;
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
-  const {
-    mode: highwayMode,
-    drum: drumPlacementKind,
-    guitar: notePlacementType,
-    vocal: vocalPlacement,
-  } = session.tools;
+  const modeState = getStateValues(editingSession?.getToolState());
+  const highwayMode = getHighwayMode(editingSession?.mode ?? null, modeState);
+  const drumPlacementKind = getModeValue(
+    editingSession?.mode ?? null,
+    modeState,
+    "drumKind",
+  );
+  const notePlacementType = getModeValue(
+    editingSession?.mode ?? null,
+    modeState,
+    "placement",
+  );
+  const vocalPlacement = getVocalPlacement(
+    editingSession?.mode ?? null,
+    modeState,
+  );
   const activeView =
     ChartViews.find((view) => view.id === session.view) ?? ChartViews[0];
   const engineOptions = useMemo<EngineOptions>(() => {
@@ -199,6 +220,9 @@ function ViewportPanel({
 
   const handleReady = (view: AnyChartView | null): void => {
     view?.setEditingSession(editingSession);
+    if (view instanceof PianoRollView) {
+      view.setGlobalEditingSession(globalEditingSession);
+    }
     setChartView(view);
   };
 
@@ -250,6 +274,94 @@ function ViewportPanel({
       // the vocal range, so pass the profile's range explicitly.
       this.getProfile().pitchRange,
     );
+  }
+
+  function getStateValues(state: unknown): Record<string, unknown> {
+    if (typeof state !== "object" || state === null || Array.isArray(state)) {
+      return {};
+    }
+    return state as Record<string, unknown>;
+  }
+
+  function getModeValue(
+    mode: EditingMode | null | undefined,
+    state: Record<string, unknown>,
+    stateKey: string,
+  ): unknown {
+    return mode?.tools.some(
+      (tool) => tool.group === "placement" && tool.stateKey === stateKey,
+    )
+      ? state[stateKey]
+      : undefined;
+  }
+
+  function getHighwayMode(
+    mode: EditingMode | null,
+    state: Record<string, unknown>,
+  ): HighwayMode | null {
+    const activePhrase = mode?.tools.find(
+      (tool) =>
+        tool.group === "highway-tools" &&
+        tool.stateKey === "phrase" &&
+        Object.is(state[tool.stateKey], tool.value),
+    );
+    if (activePhrase && isHighwayMode(activePhrase.value)) {
+      return activePhrase.value;
+    }
+    const activeTool = mode?.tools.find(
+      (tool) =>
+        tool.group === "highway-tools" &&
+        tool.stateKey === "tool" &&
+        Object.is(state[tool.stateKey], tool.value),
+    );
+    if (!activeTool) return null;
+    return isHighwayMode(activeTool.value) ? activeTool.value : null;
+  }
+
+  function isHighwayMode(value: unknown): value is HighwayMode {
+    return (
+      value === "select" ||
+      value === "place" ||
+      value === "remove" ||
+      value === "stagepower" ||
+      value === "solo"
+    );
+  }
+
+  function isDrumPlacementKind(value: unknown): value is DrumPlacementKind {
+    return value === "pad" || value === "cymbal" || value === "kick";
+  }
+
+  function isHighwayNotePlacementType(
+    value: unknown,
+  ): value is HighwayNotePlacementType {
+    return (
+      value === "normal" ||
+      value === "force-hopo" ||
+      value === "force-strum" ||
+      value === "tap"
+    );
+  }
+
+  function getVocalPlacement(
+    mode: EditingMode | null,
+    state: Record<string, unknown>,
+  ): PianoRollVocalPlacement | null {
+    if (mode?.id !== "vocals") return null;
+    const noteKind = state.noteKind;
+    const phrase = state.phrase;
+    if (
+      (noteKind !== "pitched" &&
+        noteKind !== "pitchless" &&
+        noteKind !== "percussion") ||
+      (phrase !== null &&
+        phrase !== "vocal" &&
+        phrase !== "power-window" &&
+        phrase !== "stagepower")
+    ) {
+      return null;
+    }
+    return { noteKind, phrase };
   }
 
   /* Effect executed when the chart view or session ID change */
@@ -326,15 +438,19 @@ function ViewportPanel({
   }, [active, activeChartView, chartView]);
 
   useLayoutEffect(() => {
-    if (chartView instanceof HighwayView) {
+    if (chartView instanceof HighwayView && highwayMode) {
       chartView.setMode(highwayMode);
     }
   }, [chartView, highwayMode]);
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {
-      chartView.setDrumPlacementKind(drumPlacementKind);
-      chartView.setNotePlacementType(notePlacementType);
+      if (isDrumPlacementKind(drumPlacementKind)) {
+        chartView.setDrumPlacementKind(drumPlacementKind);
+      }
+      if (isHighwayNotePlacementType(notePlacementType)) {
+        chartView.setNotePlacementType(notePlacementType);
+      }
     }
   }, [chartView, drumPlacementKind, notePlacementType]);
 
@@ -342,12 +458,13 @@ function ViewportPanel({
     if (!chartView) return;
     chartView.setEditingSession(editingSession);
     if (chartView instanceof PianoRollView) {
+      chartView.setGlobalEditingSession(globalEditingSession);
       chartView.applyCameraState(getPianoRollCamera());
     }
-  }, [chartView, editingSession]);
+  }, [chartView, editingSession, globalEditingSession]);
 
   useEffect(() => {
-    if (chartView instanceof PianoRollView) {
+    if (chartView instanceof PianoRollView && vocalPlacement) {
       chartView.setVocalPlacement(vocalPlacement);
     }
   }, [chartView, vocalPlacement]);

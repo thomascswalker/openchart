@@ -26,3 +26,4 @@ export * from "./editing/modes/rawMidi.js";
 export * from "./editing/modes/chartFrets.js";
 export * from "./editing/modes/chartDrums.js";
 export * from "./editing/modes/vocals.js";
+export * from "./editing/modes/globalTrack.js";

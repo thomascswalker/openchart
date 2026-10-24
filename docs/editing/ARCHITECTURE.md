@@ -132,11 +132,14 @@ first mode that applies to both. `canHost` is the single availability check.
 | `vocals`      | Vocal track config                 | `piano-roll` |
 | `chart.drums` | Drum role with difficulties        | `highway`    |
 | `chart.frets` | Other instrument with difficulties | `highway`    |
-| `midi.global` | Global track                       | `piano-roll` |
+| `midi.global` | Global header entities             | `global`     |
 | `midi.raw`    | Instrument or unmapped MIDI track  | `piano-roll` |
 
 A Piano Roll on a chart track is deliberately raw MIDI editing. Vocals are not
 available in the Highway unless a future mode explicitly declares that host.
+`midi.global` is a secondary session used by Piano Roll header controls; it
+does not replace the primary session that projects notes for the selected
+track.
 
 ### Session and gesture
 

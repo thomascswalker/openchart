@@ -110,6 +110,7 @@ export interface EntityClassification {
 /** Mode registry used to choose the first matching mode for a host and track. */
 export interface ModeRegistry {
   register(mode: EditingMode): void;
+  getById(modeId: EditingModeId): EditingMode | null;
   resolve(track: TrackDescriptor, hostKind: string): EditingMode | null;
   listForHost(hostKind: string): readonly EditingMode[];
   canHost(track: TrackDescriptor, hostKind: string): boolean;

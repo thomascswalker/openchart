@@ -183,6 +183,7 @@ export function findTrackConfig(
 }
 
 /** True when the named instrument can only be edited in the Piano Roll. */
+/** @deprecated Resolve view support through ModeRegistry.canHost instead. */
 export function requiresPianoRoll(
   nameOrKey: string,
   config: SongViewConfig = defaultConfig,
