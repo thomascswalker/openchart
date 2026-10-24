@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import Platform from "./platform";
 import { DocumentService } from "./services/document";
+import { EditorEditingService } from "./services/editor/editing";
 import { EditorStateService } from "./services/editor/state";
 import { ViewportService } from "./services/editor/viewports";
 
@@ -11,6 +12,7 @@ export function bootstrap(): void {
   // Start with a clean editor, document, and viewport state.
   Platform.services.get<EditorStateService>("editor.state").reset();
   Platform.services.get<DocumentService>("document").reset();
+  Platform.services.get<EditorEditingService>("editor.editing").reset();
   Platform.services.get<ViewportService>("editor.viewports").reset();
 
   // Desktop-only features (e.g. the updater) are gated on this flag.
