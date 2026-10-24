@@ -13,10 +13,10 @@ interface TrackListProps {
 
 export function TrackList({ session }: TrackListProps) {
   const { midi } = useDocument();
-  if (!midi) {
+  const view = useMemo(() => (midi ? new SongView(midi) : null), [midi]);
+  if (!midi || !view) {
     return <Text>No MIDI data</Text>;
   }
-  const view = useMemo(() => new SongView(midi), []);
 
   const getTrackKey = (track: MidiTrack) => {
     const desc = view.getTrackDescriptors();

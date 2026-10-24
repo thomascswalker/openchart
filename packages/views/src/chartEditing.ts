@@ -107,6 +107,7 @@ export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
   return track.removeNote(note.noteOn, note.noteOff);
 }
 
+/** @deprecated Removed in Phase 10; use mode-specific selection instead. */
 export function groupNotesAtTick(
   notes: readonly MidiNote[],
   tick: number,
@@ -114,6 +115,7 @@ export function groupNotesAtTick(
   return notes.filter((note) => note.start === tick);
 }
 
+/** @deprecated Removed in Phase 10; use an EditingSession command instead. */
 export function moveNoteGroup(
   track: MidiTrack,
   notes: readonly MidiNote[],
@@ -136,6 +138,7 @@ export function moveNoteGroup(
   return changed && keep.size > 0;
 }
 
+/** @deprecated Removed in Phase 10; use an EditingSession command instead. */
 export function trimNoteAt(
   track: MidiTrack,
   note: MidiNote,

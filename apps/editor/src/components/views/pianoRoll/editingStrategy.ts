@@ -4,6 +4,7 @@ import { clamp } from "es-toolkit";
 import { Vector2 } from "three";
 import type { CoordinateSystem } from "./coordinates";
 import type { PianoRollContext, PianoRollNote } from "./types";
+import type { PianoRollEditingType } from "./profile";
 
 export interface ResizeTarget {
   note: PianoRollNote;
@@ -30,7 +31,7 @@ export interface CreatedNote {
 }
 
 export interface IEditingStrategy {
-  readonly id: "generic" | "vocal";
+  readonly id: PianoRollEditingType;
   getTrack(create: boolean): MidiTrack | null;
   create(local: Vector2): CreatedNote | null;
   beginMove(targets: readonly MoveTarget[]): void;

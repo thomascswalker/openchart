@@ -38,7 +38,7 @@ import type { PianoRollContext, PianoRollNote } from "./types";
  * nothing crosses between the pitch grid and the pinned lanes.
  */
 export class VocalEditingStrategy implements IEditingStrategy {
-  public readonly id = "vocal";
+  public readonly id = "vocals";
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
   private moveLyrics = new Map<MidiChannelEvent, TextMidiEvent | null>();

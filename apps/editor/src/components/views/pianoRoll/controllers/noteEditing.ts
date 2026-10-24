@@ -583,7 +583,7 @@ export class NoteEditingController {
     }
     const core = this.context.getEditingCore?.();
     const useSharedClipboard = core && this.strategy.id === "generic";
-    if (!this.strategy.getTrack(this.strategy.id === "vocal")) {
+    if (!this.strategy.getTrack(this.strategy.id === "vocals")) {
       return;
     }
 

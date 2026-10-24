@@ -8,3 +8,4 @@ export * from "./editing/clipboardService.js";
 export * from "./editing/scratchpad.js";
 export * from "./editing/selectionModel.js";
 export * from "./editing/transactionManager.js";
+export * from "./editing/mode.js";

@@ -39,6 +39,7 @@ export class ChartDocument {
     this.resolvePhrasePitch = resolvePhrasePitch;
   }
 
+  /** @deprecated Removed in Phase 10; resolve phrase pitches through a mode. */
   public static phrasePitchResolver(
     descriptors: readonly TrackDescriptor[],
     trackIndices: ReadonlyMap<string, number>,

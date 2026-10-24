@@ -106,6 +106,7 @@ export class ClipboardService {
     });
   }
 
+  /** @deprecated Removed in Phase 10; execute paste through an EditingSession. */
   public paste(
     targetTick: number,
     targetTrackIndex: number,
