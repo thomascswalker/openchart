@@ -9,7 +9,7 @@ export * from "./vocals.js";
 export * from "./editing/action.js";
 export * from "./editing/commands.js";
 export * from "./editing/chartDocument.js";
-export * from "./editing/clipboardService.js";
+export * from "./editing/clipboard.js";
 export * from "./editing/entityId.js";
 export * from "./editing/reader.js";
 export * from "./editing/result.js";

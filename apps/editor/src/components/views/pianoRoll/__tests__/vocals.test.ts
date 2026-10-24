@@ -265,6 +265,52 @@ function seeded() {
   return harness(midi);
 }
 
+function copySelectionToClipboard(h: ReturnType<typeof harness>) {
+  const track = h.track();
+  const trackIndex = track ? h.midi.tracks.indexOf(track) : -1;
+  if (!track || trackIndex < 0 || h.selection.notes.length === 0) {
+    throw new Error(
+      "Clipboard test selection must contain notes on the target track",
+    );
+  }
+
+  const selected = h.selection.notes.map((note) => {
+    const snapshot = {
+      id: note.id,
+      trackIndex,
+      tick: note.tick,
+      pitch: note.pitch,
+      duration: note.durationTicks,
+      velocity: note.velocity,
+    };
+    const classification = h.session.classifyNote(snapshot);
+    const lyric = track
+      .getTextEvents()
+      .find(
+        (event) => event.type === MetaType.Lyric && event.tick === note.tick,
+      )?.text;
+    return { note, snapshot, classification, lyric };
+  });
+  const firstTick = Math.min(...selected.map(({ note }) => note.tick));
+  h.session.clipboard.setData({
+    sourceModeId: h.session.mode.id,
+    entities: selected.map(({ note, snapshot, classification, lyric }) => {
+      const row = h.session.getProjection().rowForNote(snapshot);
+      return {
+        relativeTick: note.tick - firstTick,
+        duration: note.durationTicks,
+        velocity: note.velocity,
+        pitch: note.pitch,
+        ...(row ? { row: row.id } : {}),
+        classification,
+        ...(h.session.mode.id === "vocals" && lyric !== undefined
+          ? { lyric }
+          : {}),
+      };
+    }),
+  });
+}
+
 describe("piano-roll profiles", () => {
   it("previews generic note drags in the session and commits one history entry on release", () => {
     const midi = new Midi();
@@ -310,13 +356,16 @@ describe("piano-roll profiles", () => {
     );
     h.selection.notes = [h.notes()[0]!];
 
-    h.editing.copySelection();
+    copySelectionToClipboard(h);
     expect(h.session.clipboard.canPaste()).toBe(true);
 
-    h.editing.cutSelection();
+    h.session.execute({
+      type: "DELETE_ENTITIES",
+      targetIds: h.selection.notes.map((note) => note.id),
+    });
     expect(track.getNotes()).toHaveLength(0);
 
-    h.editing.pasteClipboard(xAt(480), true);
+    h.session.pasteClipboard(480);
     expect(track.getNotes()).toMatchObject([
       { note: 60, start: 480, end: 600, velocity: 90 },
     ]);
@@ -703,8 +752,8 @@ describe("vocal note editing", () => {
   it("copies and pastes notes with their lyrics", () => {
     const h = seeded();
     h.selection.notes = h.notes();
-    h.editing.copySelection();
-    h.editing.pasteClipboard(xAt(1920), true);
+    copySelectionToClipboard(h);
+    h.session.pasteClipboard(1920);
     expect(h.lyrics()).toEqual([
       [0, "one"],
       [480, "two"],

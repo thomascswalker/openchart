@@ -80,7 +80,23 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     editing.selection.add(noteId);
     editing.scratchpad.set(noteId, { tickDelta: 120 });
-    editing.clipboard.copy();
+    editing.clipboard.setData({
+      sourceModeId: "midi.raw",
+      entities: [
+        {
+          relativeTick: 0,
+          duration: 100,
+          velocity: 120,
+          pitch: 60,
+          classification: {
+            kind: "note",
+            subtype: "note",
+            movable: true,
+            resizable: true,
+          },
+        },
+      ],
+    });
     expect(editing.clipboard.canPaste()).toBe(true);
 
     const nextMidi = new Midi();

@@ -1,5 +1,6 @@
 import { MetaType } from "@openchart/midi";
 import { z } from "zod";
+import type { ClipboardPayload } from "../clipboard.js";
 import {
   classifyVocalPitch,
   vocalKindNeedsLyric,
@@ -21,6 +22,7 @@ import type {
 } from "../mode.js";
 import { isRawCommand } from "../mode.js";
 import type { NoteSnapshot } from "../reader.js";
+import type { Rejection } from "../result.js";
 import {
   ownsNotes,
   rejected,
@@ -112,8 +114,104 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
     createDefaultToolState: () => ({ noteKind: "pitched", phrase: null }),
     createProjection: (context) => createVocalProjection(context),
     classify: (note, context) => classifyVocalNote(note, context),
+    expandPaste: (payload, anchorTick, context) =>
+      expandVocalPaste(payload, anchorTick, context),
     expand: (command, context) => expandVocalCommand(command, context),
   };
+}
+
+function expandVocalPaste(
+  payload: ClipboardPayload,
+  anchorTick: number,
+  context: ModeContext,
+): ExpansionResult {
+  const commands: RawCommand[] = [];
+  const rejections: Rejection[] = [];
+  const layout = getLayout(context);
+  const pasteCommand: EditCommand = { type: "PASTE_CLIPBOARD" };
+  if (!layout) {
+    return rejected(
+      pasteCommand,
+      "missing-config",
+      "Vocal layout is unavailable",
+    );
+  }
+
+  for (const entity of payload.entities) {
+    const tick = anchorTick + entity.relativeTick;
+    const endTick = tick + entity.duration;
+    if (!validSpan(tick, endTick) || !Number.isSafeInteger(endTick)) {
+      rejections.push({
+        code: "invalid-paste-span",
+        message: "Pasted vocal span is invalid",
+        command: pasteCommand,
+      });
+      continue;
+    }
+
+    const sameMode = payload.sourceModeId === "vocals";
+    const vocalClassification = sameMode
+      ? null
+      : classifyVocalPitch(layout, entity.pitch);
+    if (vocalClassification?.type === "unknown") {
+      rejections.push({
+        code: "invalid-vocal-note",
+        message: "This note is not valid for the vocal chart",
+        command: pasteCommand,
+      });
+      continue;
+    }
+    const entityKind = sameMode
+      ? entity.classification.kind
+      : vocalClassification?.type === "phrase"
+        ? "phrase"
+        : "note";
+    const subtype = sameMode
+      ? entity.classification.subtype
+      : (vocalClassification?.kind ?? "unknown");
+    let command: EditCommand;
+    if (entityKind === "phrase") {
+      if (!["vocal", "power-window", "stagepower"].includes(subtype)) {
+        rejections.push({
+          code: "invalid-vocal-phrase",
+          message: "This phrase kind is not supported by the vocal chart",
+          command: pasteCommand,
+        });
+        continue;
+      }
+      command = {
+        type: "CREATE_VOCAL_PHRASE",
+        phraseKind: subtype as "vocal" | "power-window" | "stagepower",
+        startTick: tick,
+        endTick,
+      };
+    } else {
+      const kind = subtype;
+      if (kind !== "pitched" && kind !== "pitchless" && kind !== "percussion") {
+        rejections.push({
+          code: "invalid-vocal-note",
+          message: "This note is not valid for the vocal chart",
+          command: pasteCommand,
+        });
+        continue;
+      }
+      command = {
+        type: "ADD_VOCAL_NOTE",
+        kind,
+        tick,
+        endTick,
+        pitch: entity.pitch,
+        ...(sameMode && entity.lyric !== undefined
+          ? { lyric: entity.lyric }
+          : {}),
+      };
+    }
+
+    const expansion = expandVocalCommand(command, context);
+    commands.push(...expansion.commands);
+    rejections.push(...expansion.rejections);
+  }
+  return { commands, rejections };
 }
 
 function createVocalProjection(context: ModeContext): Projection {

@@ -171,3 +171,21 @@
     **Deviations from plan:** `HighwayNoteEditingController` remains as a session-command/gesture adapter rather than being folded into the input controller; it performs no direct MIDI mutations and keeps placement, clipboard, and selection commands separate from pointer-state handling. `HighwayPhraseEditingController` likewise remains as a gesture adapter over session commands. The approved Piano Roll header callback bridge remains until Phase 9. Changes to `packages/views` extend preview placement with an end tick and expose mode classification required by Highway projection; these are outside the listed app-only scope but necessary for held-note previews and mode-based indexing.
     **Performance:** Highway instancing E2E recorded 3,000 visible notes, capacity 4,096, zero dropped notes, 1.700 ms draw, 0.100 ms instance-buffer writes, and no note-state rebuild on the unchanged frame. Drag preview/cancel behavior is covered by input tests; no separate active-drag timing comparison was captured.
     **Open questions:** none
+
+## Phase 8: Clipboard and selection centralization (branch: editing/phase-8-clipboard-selection)
+
+**Status:** done
+**Summary:** Replaced the view-owned clipboard with one defensive, mode-tagged payload shared by editor sessions. Added mode-specific paste expansion for raw MIDI, frets, drums, and vocals, including cross-view pitch validation, Kick2 preservation, and vocal lyric restoration. Routed copy, cut, paste, menu enablement, playback gating, and rejection-count errors through `EditorClipboardService`; cut is one session transaction. Removed view-local clipboard methods and verified shared selection replacement across viewport sessions.
+**Files changed:**
+
+- Views: `packages/views/src/editing/{clipboard.ts,clipboardService.ts,mode.ts,session.ts,standalone.ts,modes/{rawMidi,chartFrets,chartDrums,vocals}.ts}`, `packages/views/src/index.ts`
+- Editor services: `apps/editor/src/services/editor/{clipboard.ts,editing.ts,__tests__/{clipboard,editing}.test.ts}`
+- Editor views/tests: Highway and Piano Roll clipboard APIs removed; migrated characterization/note/vocal tests and the Piano Roll Storybook hotkey adapter
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** added 8 editor clipboard integration tests covering cross-view paste, validation/rejection reporting, lyric and Kick2 preservation, cut undo, playback enablement, and shared viewport selection · ported the legacy clipboard test and view tests to the session payload API while retaining MIDI output and lyric assertions · removed none
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 Turbo tasks) · lint ✓ · targeted Prettier ✓ · full format:check reports 129 repository files; all Phase 8 files pass · `npm test`: 382 passed / 1 pre-existing editor Piano Roll time-signature fixture failure · Menubar 5 passed; focused editor unit suites 52 passed; views suite 64 passed · check:editing:strict ✓ (15 violations, all within the approved Piano Roll header allowance; no clipboard code remains in production views) · E2E 15 passed / the same 3 baseline `playhead-sync` failures · Storybook unavailable: installed Storybook requires Node.js v20.19+ or v22.12+, environment v20.18.1.
+  **Defects closed:** DEF-04 (cross-view clipboard and focused-view-dependent menu enablement; tests: editor clipboard integration and Menubar)
+  **Intentional behaviour changes:** Cross-mode paste now validates entities against the destination mode and reports dropped-note counts; paste remains enabled across view modes when a shared payload exists (DEF-04).
+  **Deviations from plan:** The standalone Piano Roll Storybook host omits clipboard hotkeys because it has no editor-level clipboard service; clipboard logic was not reintroduced into the view.
+  **Performance:** not applicable
+  **Open questions:** none

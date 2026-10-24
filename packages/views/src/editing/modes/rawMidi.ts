@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { EditCommand, RawCommandType } from "../commands.js";
+import type { ClipboardPayload } from "../clipboard.js";
+import type { EditCommand, RawCommand, RawCommandType } from "../commands.js";
 import type { EntityId } from "../entityId.js";
 import {
   isRawCommand,
@@ -57,8 +58,37 @@ export function createRawMidiMode(): EditingMode<Record<string, never>> {
       movable: true,
       resizable: true,
     }),
+    expandPaste: (payload, anchorTick, context) =>
+      expandRawPaste(payload, anchorTick, context),
     expand: (command, context) => expandRawCommand(command, context),
   };
+}
+
+function expandRawPaste(
+  payload: ClipboardPayload,
+  anchorTick: number,
+  context: ModeContext,
+): ExpansionResult {
+  const commands: RawCommand[] = [];
+  const rejections: Rejection[] = [];
+  for (const entity of payload.entities) {
+    const command: EditCommand = {
+      type: "ADD_NOTES",
+      notes: [
+        {
+          trackIndex: context.target.trackIndex ?? 0,
+          tick: anchorTick + entity.relativeTick,
+          pitch: entity.pitch,
+          duration: entity.duration,
+          velocity: entity.velocity,
+        },
+      ],
+    };
+    const expansion = expandRawCommand(command, context);
+    commands.push(...expansion.commands);
+    rejections.push(...expansion.rejections);
+  }
+  return { commands, rejections };
 }
 
 function expandRawCommand(

@@ -8,7 +8,10 @@ import {
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
-import { createHighwayTestSetup } from "./testUtils";
+import {
+  copyHighwaySelectionToClipboard,
+  createHighwayTestSetup,
+} from "./testUtils";
 
 type NotePlacement = "force-hopo" | "force-strum" | "tap";
 
@@ -68,10 +71,8 @@ describe("HighwayNoteEditingController", () => {
     setup.session.selection.setSelectedIds(
       source.map((note) => getNoteId(setup, note)),
     );
-    const editing = new HighwayNoteEditingController(setup.context);
-
-    editing.copySelection();
-    expect(editing.pasteClipboard(1000)).toBe(true);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(1000).changed).toBe(true);
 
     const pasted = setup.chart
       .getNotes()
@@ -202,10 +203,8 @@ describe("HighwayNoteEditingController", () => {
       getNoteId(setup, kick2),
       getNoteId(setup, cymbal),
     ]);
-    const editing = new HighwayNoteEditingController(setup.context);
-
-    editing.copySelection();
-    expect(editing.pasteClipboard(600)).toBe(true);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(600).changed).toBe(true);
 
     expect(
       setup.chart
@@ -229,10 +228,8 @@ describe("HighwayNoteEditingController", () => {
       getNoteId(setup, kick2),
       getNoteId(setup, cymbal),
     ]);
-    const editing = new HighwayNoteEditingController(setup.context);
-
-    editing.copySelection();
-    expect(editing.pasteClipboard(120)).toBe(false);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(120).changed).toBe(false);
     expect(setup.chart.getNotes()).toHaveLength(2);
   });
 });

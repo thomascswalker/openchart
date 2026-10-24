@@ -8,7 +8,7 @@ import {
 import { SongView } from "../chartView.js";
 import { getPhrasePitch } from "../chartEditing.js";
 import { ChartDocument } from "./chartDocument.js";
-import { ClipboardService } from "./clipboardService.js";
+import { ClipboardService } from "./clipboard.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
 import { createDefaultModeRegistry } from "./modes/index.js";
 import { SelectionModel } from "./selectionModel.js";
@@ -45,23 +45,7 @@ export function createStandaloneEditing(
   const history = new StandaloneHistoryImpl(midi);
   const registry = createDefaultModeRegistry();
   const selection = new SelectionModel();
-  const clipboard = new ClipboardService(
-    document,
-    selection,
-    (trackIndex, pitch) => {
-      const descriptor = document.getTrackDescriptor(trackIndex);
-      if (!descriptor) return null;
-      for (const phraseType of [
-        "stagepower",
-        "solo",
-        "vocal",
-        "power-window",
-      ] as const) {
-        if (getPhrasePitch(descriptor, phraseType) === pitch) return phraseType;
-      }
-      return null;
-    },
-  );
+  const clipboard = new ClipboardService();
 
   return {
     registry,

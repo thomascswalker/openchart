@@ -1,6 +1,10 @@
 import { Box2, Vector2 } from "three";
 import { getScrollGesture } from "../../../../util/scroll";
-import { ClickMovementThreshold, HeaderHeight } from "../constants";
+import {
+  ClickMovementThreshold,
+  HeaderHeight,
+  KeyboardWidth,
+} from "../constants";
 import type { CoordinateSystem } from "../coordinates";
 import { HeaderController } from "../controllers/header";
 import type { NoteEditingController } from "../controllers/noteEditing";
@@ -120,9 +124,12 @@ export class PianoRollInputController {
     this.#lastViewportSize.y = height;
   }
 
-  /** Pastes the clipboard at the current horizontal hover position, if known. */
-  public pasteClipboard(): void {
-    this.#editing.pasteClipboard(this.#hoverPosition.x, this.#hasHovered);
+  public getPasteAnchorTick(): number {
+    return this.#coordinates.snapTick(
+      this.#coordinates.tickAtScreenX(
+        this.#hasHovered ? this.#hoverPosition.x : KeyboardWidth,
+      ),
+    );
   }
 
   // Keyboard commands. Hotkeys are declared in `src/input/pianoroll.ts` and

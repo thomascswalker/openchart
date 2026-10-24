@@ -2,8 +2,9 @@ import { MetaType, Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
 import {
   ChartDocument,
-  ClipboardService,
   computePreview,
+  createStandaloneEditing,
+  Difficulty,
   EditScratchpad,
   EditRejectedError,
   formatNoteId,
@@ -442,38 +443,53 @@ describe("shared chart editing primitives", () => {
     expect(scratchListener).toHaveBeenCalledTimes(2);
   });
 
-  it("copies selected notes and produces paste commands", () => {
-    const { track, document } = createDocument();
-    const selection = new SelectionModel();
-    const ids = track.getNotes().map((note) => document.getNoteId(0, note));
-    selection.setSelectedIds(ids);
-    const clipboard = new ClipboardService(document, selection);
-
-    expect(clipboard.copy().notes).toHaveLength(2);
-    expect(clipboard.createPasteActions(960, 0)).toEqual([
+  it("pastes mode-tagged clipboard notes in one session transaction", () => {
+    const { midi, track, document } = createDocument();
+    const standalone = createStandaloneEditing(midi);
+    const session = standalone.createSession(
       {
-        type: "ADD_NOTE",
+        trackKey: "lead-guitar",
         trackIndex: 0,
-        tick: 960,
-        pitch: 60,
-        duration: 120,
-        velocity: 90,
+        difficulty: Difficulty.Expert,
       },
-      {
-        type: "ADD_NOTE",
-        trackIndex: 0,
-        tick: 1_200,
-        pitch: 64,
-        duration: 240,
-        velocity: 80,
-      },
-    ]);
-    const dispatchBatch = vi.fn(() => true);
-    expect(clipboard.paste(960, 0, dispatchBatch)).toBe(true);
-    expect(dispatchBatch).toHaveBeenCalledOnce();
-    expect(dispatchBatch).toHaveBeenCalledWith(
-      clipboard.createPasteActions(960, 0),
+      "piano-roll",
     );
+    const ids = track.getNotes().map((note) => document.getNoteId(0, note));
+    const selected = ids.map((id) => document.getNote(id)!);
+    const firstTick = Math.min(...selected.map((note) => note.tick));
+    standalone.clipboard.setData({
+      sourceModeId: session.mode.id,
+      entities: selected.map((note) => {
+        const row = session.getProjection().rowForNote(note);
+        return {
+          relativeTick: note.tick - firstTick,
+          duration: note.duration,
+          velocity: note.velocity,
+          pitch: note.pitch,
+          ...(row ? { row: row.id } : {}),
+          classification: session.classifyNote(note),
+        };
+      }),
+    });
+
+    const result = session.pasteClipboard(960);
+
+    expect(result.changed).toBe(true);
+    expect(result.createdIds).toHaveLength(2);
+    expect(
+      track.getNotes().map(({ start, note, end, velocity }) => ({
+        tick: start,
+        pitch: note,
+        duration: end - start,
+        velocity,
+      })),
+    ).toEqual([
+      { tick: 0, pitch: 60, duration: 120, velocity: 90 },
+      { tick: 240, pitch: 64, duration: 240, velocity: 80 },
+      { tick: 960, pitch: 60, duration: 120, velocity: 90 },
+      { tick: 1_200, pitch: 64, duration: 240, velocity: 80 },
+    ]);
+    expect(standalone.history.undoDepth).toBe(1);
   });
 
   it("records successful commands and groups batches as one transaction", () => {

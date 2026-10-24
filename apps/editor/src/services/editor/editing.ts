@@ -14,7 +14,6 @@ import {
   type EditingSession,
   type EditingTarget,
   type EditResult,
-  type EditablePhraseKind,
   type ModeRegistry,
   type TrackDescriptor,
 } from "@openchart/views";
@@ -34,7 +33,7 @@ export class EditingService extends Service {
   public readonly selection = new SelectionModel();
   /** @deprecated Removed after the Piano Roll migration in Phase 6. */
   public readonly scratchpad = new EditScratchpad();
-  /** @deprecated Replaced by the mode-aware clipboard in Phase 8. */
+  /** Shared payload used by every editing session. */
   public readonly clipboard: ClipboardService;
 
   public readonly registry: ModeRegistry;
@@ -65,11 +64,7 @@ export class EditingService extends Service {
     this.documentId = documentService.getSnapshot().documentId;
     const chartDocument = this.createChartDocument(documentService.data);
     this.chartDocument = chartDocument;
-    this.clipboard = new ClipboardService(
-      chartDocument,
-      this.selection,
-      (trackIndex, pitch) => this.getPhraseType(trackIndex, pitch),
-    );
+    this.clipboard = new ClipboardService();
     this.documentService.subscribe(this.syncDocument);
     this.viewportService.subscribe(this.syncViewports);
   }
@@ -156,7 +151,6 @@ export class EditingService extends Service {
     this.chartDocument = midi ? this.createChartDocument(midi) : null;
     this.sessions.clear();
     this.sessionSignatures.clear();
-    if (this.chartDocument) this.clipboard.setDocument(this.chartDocument);
     if (projectChanged) {
       this.selection.clear();
       this.scratchpad.clear();
@@ -305,23 +299,6 @@ export class EditingService extends Service {
       },
       getNote: (id) => this.chartDocument?.getNote(id) ?? null,
     });
-  }
-
-  private getPhraseType(
-    trackIndex: number,
-    pitch: number,
-  ): EditablePhraseKind | null {
-    const descriptor = this.chartDocument?.getTrackDescriptor(trackIndex);
-    if (!descriptor) return null;
-    for (const phraseType of [
-      "stagepower",
-      "solo",
-      "vocal",
-      "power-window",
-    ] as const) {
-      if (getPhrasePitch(descriptor, phraseType) === pitch) return phraseType;
-    }
-    return null;
   }
 
   private publishResult(result: EditResult): void {

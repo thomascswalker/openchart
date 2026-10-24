@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ClipboardPayload } from "../clipboard.js";
 import {
   DrumLaneCount,
   classifyDrumPitch,
@@ -16,6 +17,7 @@ import type {
 } from "../mode.js";
 import { isRawCommand } from "../mode.js";
 import type { NoteSnapshot } from "../reader.js";
+import type { Rejection } from "../result.js";
 import {
   ownsNotes,
   rejected,
@@ -126,7 +128,77 @@ export function createChartDrumsMode(): EditingMode<ChartDrumsToolState> {
     createDefaultToolState: () => ({ tool: "select", drumKind: "pad" }),
     createProjection: (context) => createDrumProjection(context),
     classify: (note, context) => classifyDrumNote(note, context),
+    expandPaste: (payload, anchorTick, context) =>
+      expandDrumPaste(payload, anchorTick, context),
     expand: (command, context) => expandDrumCommand(command, context),
+  };
+}
+
+function expandDrumPaste(
+  payload: ClipboardPayload,
+  anchorTick: number,
+  context: ModeContext,
+): ExpansionResult {
+  const command: EditCommand = {
+    type: "PASTE_CHART_NOTES",
+    anchorTick,
+    notes: [],
+  };
+  const notes: {
+    relativeTick: number;
+    lane: number;
+    durationTicks: number;
+    velocity: number;
+    drumKind: "pad" | "cymbal" | "kick";
+    originalPitch: number;
+  }[] = [];
+  const rejections: Rejection[] = [];
+  const projection = createDrumProjection(context);
+  const layout = getLayout(context);
+
+  for (const entity of payload.entities) {
+    let drumKind: "pad" | "cymbal" | "kick" | null = null;
+    let lane: number | null = null;
+    if (payload.sourceModeId === "chart.drums") {
+      drumKind =
+        entity.classification.kind === "note" &&
+        ["pad", "cymbal", "kick"].includes(entity.classification.subtype)
+          ? (entity.classification.subtype as "pad" | "cymbal" | "kick")
+          : null;
+      const row = projection
+        .getRows()
+        .find((candidate) => candidate.id === entity.row);
+      lane = drumKind === "kick" ? 0 : (row?.index ?? null);
+    } else if (layout) {
+      const classification = classifyDrumPitch(layout, entity.pitch);
+      if (classification && classification.kind !== "marker") {
+        drumKind = classification.kind;
+        lane = classification.kind === "kick" ? 0 : classification.lane;
+      }
+    }
+
+    if (drumKind === null || lane === null) {
+      rejections.push({
+        code: "invalid-drum-note",
+        message: "This note cannot be pasted into the configured drum chart",
+        command,
+      });
+      continue;
+    }
+    notes.push({
+      relativeTick: entity.relativeTick,
+      lane,
+      durationTicks: entity.duration,
+      velocity: entity.velocity,
+      drumKind,
+      originalPitch: entity.pitch,
+    });
+  }
+
+  const expansion = expandDrumCommand({ ...command, notes }, context);
+  return {
+    commands: expansion.commands,
+    rejections: [...rejections, ...expansion.rejections],
   };
 }
 

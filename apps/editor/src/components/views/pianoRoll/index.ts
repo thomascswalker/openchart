@@ -519,28 +519,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.input.deleteSelection();
   }
 
-  public canCopySelection(): boolean {
-    return this.editing.canCopySelection();
-  }
-
-  public canCutSelection(): boolean {
-    return this.editing.canCutSelection();
-  }
-
-  public canPasteClipboard(): boolean {
-    return this.editing.canPasteClipboard();
-  }
-
-  public copySelection(): void {
-    this.editing.copySelection();
-  }
-
-  public cutSelection(): void {
-    this.editing.cutSelection();
-  }
-
-  public pasteClipboard(): void {
-    this.input.pasteClipboard();
+  public getPasteAnchorTick(): number {
+    return this.input.getPasteAnchorTick();
   }
 
   public drawCursor(width: number, height: number): void {
