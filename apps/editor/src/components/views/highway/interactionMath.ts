@@ -1,13 +1,3 @@
-import {
-  getHighwaySustainEnd as getConfiguredHighwaySustainEnd,
-  getSustainCutTargets as getConfiguredSustainCutTargets,
-  getSustainsAtTick,
-  minimumMidiNoteDurationTicks,
-  minimumSustainLengthTicks,
-} from "@openchart/views";
-
-export { minimumMidiNoteDurationTicks, minimumSustainLengthTicks };
-
 export function getPhrasePointerAction(
   phraseHit: boolean,
   insidePhraseBand: boolean,
@@ -98,46 +88,3 @@ export function getHighwayDragTarget(
     lane: Math.max(0, Math.min(laneCount - 1, initialLane + laneDelta)),
   };
 }
-
-export function getHighwaySustainEnd(
-  noteStart: number,
-  pointerTick: number,
-  otherNoteStarts: readonly number[] = [],
-  allowExtended = false,
-): number {
-  return getConfiguredHighwaySustainEnd(
-    noteStart,
-    pointerTick,
-    otherNoteStarts,
-    { extendPastNext: allowExtended },
-  );
-}
-
-export function getSustainCutTargets<
-  T extends { start: number; end: number; noteOn: unknown },
->(
-  notes: readonly T[],
-  tick: number,
-  shiftKey: boolean,
-  preferredNoteOn: T["noteOn"] | null = null,
-  sameLanePlacement = false,
-): T[] {
-  const cutPolicy =
-    preferredNoteOn === null
-      ? shiftKey
-        ? "none"
-        : "all"
-      : sameLanePlacement
-        ? shiftKey
-          ? "preferred-only"
-          : "all"
-        : shiftKey
-          ? "all"
-          : "preferred-only";
-  return getConfiguredSustainCutTargets(notes, tick, {
-    cutPolicy,
-    preferredNoteOn,
-  });
-}
-
-export { getSustainsAtTick };

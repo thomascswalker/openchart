@@ -3,14 +3,10 @@ import {
   ChartDocument,
   ClipboardService,
   defaultConfig,
-  EditScratchpad,
   EditingModeRegistry,
-  getPhrasePitch,
   SelectionModel,
   SongView,
-  upgradeLegacyAction,
   createEditingSession,
-  type ChartEditAction,
   type EditingModeId,
   type EditingSession,
   type EditingTarget,
@@ -32,8 +28,6 @@ export class EditingService extends Service {
 
   /** @deprecated Removed after the Piano Roll migration in Phase 6. */
   public readonly selection = new SelectionModel();
-  /** @deprecated Removed after the Piano Roll migration in Phase 6. */
-  public readonly scratchpad = new EditScratchpad();
   /** Shared payload used by every editing session. */
   public readonly clipboard: ClipboardService;
 
@@ -87,7 +81,6 @@ export class EditingService extends Service {
 
   public readonly reset = (): void => {
     this.selection.clear();
-    this.scratchpad.clear();
     this.clipboard.clear();
     this.sessions.clear();
     this.sessionSignatures.clear();
@@ -173,24 +166,6 @@ export class EditingService extends Service {
     return viewport ? this.getSession(viewport.id) : null;
   }
 
-  /** @deprecated Use EditingSession.execute. */
-  public dispatch = (action: ChartEditAction): boolean => {
-    const session = this.getActiveSession();
-    if (!session)
-      throw new Error("The active viewport has no editing session.");
-    return session.execute(this.upgradeLegacy(action)).changed;
-  };
-
-  /** @deprecated Use EditingSession.executeBatch. */
-  public dispatchBatch = (actions: readonly ChartEditAction[]): boolean => {
-    const session = this.getActiveSession();
-    if (!session)
-      throw new Error("The active viewport has no editing session.");
-    return session.executeBatch(
-      actions.map((action) => this.upgradeLegacy(action)),
-    ).changed;
-  };
-
   private readonly syncDocument = (): void => {
     const snapshot = this.documentService.getSnapshot();
     const midi = snapshot.midi;
@@ -204,7 +179,6 @@ export class EditingService extends Service {
     this.sessionSignatures.clear();
     if (projectChanged) {
       this.selection.clear();
-      this.scratchpad.clear();
       this.clipboard.clear();
     }
     this.notify();
@@ -352,29 +326,7 @@ export class EditingService extends Service {
   }
 
   private createChartDocument(midi: Midi): ChartDocument {
-    const song = new SongView(midi);
-    const descriptors = song.getTrackDescriptors();
-    return new ChartDocument(
-      midi,
-      (trackIndex, phraseType) => {
-        const track = midi.tracks[trackIndex];
-        const descriptor = descriptors.find(
-          (item) => item.name === track?.name,
-        );
-        return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
-      },
-      defaultConfig,
-    );
-  }
-
-  private upgradeLegacy(action: ChartEditAction) {
-    return upgradeLegacyAction(action, {
-      resolvePhrasePitch: (trackIndex, phraseType) => {
-        const descriptor = this.chartDocument?.getTrackDescriptor(trackIndex);
-        return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
-      },
-      getNote: (id) => this.chartDocument?.getNote(id) ?? null,
-    });
+    return new ChartDocument(midi, defaultConfig);
   }
 
   private publishResult(result: EditResult): void {

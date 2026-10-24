@@ -3,6 +3,9 @@ import {
   Difficulty,
   formatNoteId,
   getPhrasePitch,
+  getHighwaySustainEnd,
+  getSustainCutOptions,
+  getSustainCutTargets,
   type EditablePhraseKind,
   type SongViewConfig,
 } from "@openchart/views";
@@ -11,11 +14,7 @@ import characterization from "../../../../../../../packages/views/tests/fixtures
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayPhrase } from "../hitTesting";
-import {
-  getHighwayDragTarget,
-  getHighwaySustainEnd,
-  getSustainCutTargets,
-} from "../interaction";
+import { getHighwayDragTarget } from "../interactionMath";
 import { getDrumNoteProfile, getDrumPitchForPlacement } from "../profile";
 import {
   copyHighwaySelectionToClipboard,
@@ -143,9 +142,11 @@ describe("editing characterization: Highway", () => {
           noteOn: note.id,
         })),
         tick,
-        testCase.shiftKey,
-        preferred,
-        testCase.sameLanePlacement,
+        getSustainCutOptions(
+          testCase.shiftKey,
+          preferred,
+          testCase.sameLanePlacement,
+        ),
       ).map((note) => note.id);
       expect(actual).toEqual(testCase.expected);
     }
@@ -153,12 +154,9 @@ describe("editing characterization: Highway", () => {
       getHighwaySustainEnd(end.noteStart, end.pointerTick, end.nextStarts),
     ).toBe(end.withoutExtended);
     expect(
-      getHighwaySustainEnd(
-        end.noteStart,
-        end.pointerTick,
-        end.nextStarts,
-        true,
-      ),
+      getHighwaySustainEnd(end.noteStart, end.pointerTick, end.nextStarts, {
+        extendPastNext: true,
+      }),
     ).toBe(end.withExtended);
   });
 

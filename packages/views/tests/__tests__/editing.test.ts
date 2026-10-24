@@ -5,7 +5,6 @@ import {
   computePreview,
   createStandaloneEditing,
   Difficulty,
-  EditScratchpad,
   EditRejectedError,
   formatNoteId,
   formatTempoId,
@@ -13,8 +12,6 @@ import {
   formatTimeSignatureId,
   parseEntityId,
   SelectionModel,
-  TransactionManager,
-  upgradeLegacyAction,
 } from "../../src/index.js";
 
 function createDocument() {
@@ -32,9 +29,7 @@ function createDocument() {
     240,
     secondNoteInsertAt,
   );
-  const document = new ChartDocument(midi, (index, kind) =>
-    index === 0 && kind === "stagepower" ? 116 : null,
-  );
+  const document = new ChartDocument(midi);
   return { midi, track, document };
 }
 
@@ -54,63 +49,12 @@ describe("shared chart editing primitives", () => {
     expect(() => formatNoteId(-1, "event-1")).toThrow(RangeError);
   });
 
-  it("upgrades deprecated actions into the v2 raw vocabulary", () => {
-    const context = {
-      resolvePhrasePitch: () => 116,
-      getNote: () => ({ tick: 480, pitch: 116, duration: 240 }),
-    };
-    expect(
-      upgradeLegacyAction({
-        type: "MOVE_NOTES",
-        targetIds: ["note:0:event-1"],
-        tickDelta: 120,
-        trackDelta: 2,
-      }),
-    ).toEqual({
-      type: "MOVE_NOTES",
-      targetIds: ["note:0:event-1"],
-      tickDelta: 120,
-      pitchDelta: 2,
-    });
-    expect(
-      upgradeLegacyAction(
-        {
-          type: "CREATE_PHRASE",
-          trackIndex: 0,
-          startTick: 480,
-          duration: 240,
-          phraseType: "stagepower",
-        },
-        context,
-      ),
-    ).toMatchObject({
-      type: "ADD_NOTES",
-      notes: [{ trackIndex: 0, tick: 480, pitch: 116, duration: 240 }],
-    });
-    expect(
-      upgradeLegacyAction(
-        {
-          type: "RESIZE_PHRASE",
-          targetId: "note:0:event-1",
-          startDelta: 120,
-          durationDelta: 60,
-        },
-        context,
-      ),
-    ).toMatchObject({
-      type: "UPDATE_NOTES",
-      patches: [{ id: "note:0:event-1", tick: 600, duration: 300 }],
-    });
-  });
-
   it("applies serializable note commands and resolves note IDs", () => {
     const { midi, track, document } = createDocument();
     const [first, second] = track.getNotes();
     const firstId = document.getNoteId(0, first!);
 
-    const clonedDocument = new ChartDocument(midi.clone(), (index, kind) =>
-      index === 0 && kind === "stagepower" ? 116 : null,
-    );
+    const clonedDocument = new ChartDocument(midi.clone());
     expect(clonedDocument.getNote(firstId)).toMatchObject({
       tick: 0,
       pitch: 60,
@@ -331,7 +275,7 @@ describe("shared chart editing primitives", () => {
     ];
     const preview = computePreview(commands, document);
     const before = midi.toBuffer();
-    const appliedDocument = new ChartDocument(midi.clone(), () => null);
+    const appliedDocument = new ChartDocument(midi.clone());
     const result = appliedDocument.applyBatch(commands);
 
     expect(preview.rejections).toEqual([]);
@@ -355,7 +299,7 @@ describe("shared chart editing primitives", () => {
     const trackIndex = midi.addTrack();
     const track = midi.tracks[trackIndex]!;
     track.addNote(60, 60, 90, 120);
-    const document = new ChartDocument(midi, () => null);
+    const document = new ChartDocument(midi);
     const noteId = document.getNoteId(0, track.getNotes()[0]!);
 
     expect(
@@ -372,17 +316,50 @@ describe("shared chart editing primitives", () => {
     });
   });
 
-  it("creates and resizes phrases through the same document", () => {
-    const { track, document } = createDocument();
+  it("moves a note group through one stable session command", () => {
+    const midi = new Midi();
+    const track = midi.tracks[midi.addTrack()]!;
+    track.addNote(96, 0, 100, 120);
+    track.addNote(97, 240, 100, 120);
+    const document = new ChartDocument(midi);
+    const targetIds = track
+      .getNotes()
+      .map((note) => document.getNoteId(0, note));
 
     expect(
-      document.applyLegacy({
-        type: "CREATE_PHRASE",
+      document.apply({
+        type: "MOVE_NOTES",
+        targetIds,
+        tickDelta: 480,
+        pitchDelta: 2,
+      }).changed,
+    ).toBe(true);
+    expect(
+      track.getNotes().map((note) => [note.note, note.start, note.end]),
+    ).toEqual([
+      [98, 480, 600],
+      [99, 840, 960],
+    ]);
+  });
+
+  it("creates and resizes phrases through a mode session", () => {
+    const { midi, track, document } = createDocument();
+    const session = createStandaloneEditing(midi).createSession(
+      {
+        trackKey: "lead-guitar",
         trackIndex: 0,
+        difficulty: Difficulty.Expert,
+      },
+      "highway",
+    );
+
+    expect(
+      session.execute({
+        type: "CREATE_PHRASE",
+        phraseKind: "stagepower",
         startTick: 480,
-        duration: 240,
-        phraseType: "stagepower",
-      }),
+        endTick: 720,
+      }).changed,
     ).toBe(true);
     const phrase = track.getNotes().find((note) => note.note === 116)!;
     const phraseId = document.getNoteId(0, phrase);
@@ -392,12 +369,12 @@ describe("shared chart editing primitives", () => {
       duration: 240,
     });
     expect(
-      document.applyLegacy({
-        type: "RESIZE_PHRASE",
-        targetId: phraseId,
-        startDelta: 120,
-        durationDelta: 120,
-      }),
+      session.execute({
+        type: "UPDATE_PHRASE",
+        id: phraseId,
+        startTick: 600,
+        endTick: 960,
+      }).changed,
     ).toBe(true);
     expect(document.getNote(phraseId)).toMatchObject({
       tick: 600,
@@ -405,17 +382,17 @@ describe("shared chart editing primitives", () => {
     });
 
     const regularNoteId = document.getNoteId(0, track.getNotes()[0]!);
-    expect(
-      document.applyLegacy({
-        type: "RESIZE_PHRASE",
-        targetId: regularNoteId,
-        startDelta: 120,
-        durationDelta: 120,
-      }),
-    ).toBe(false);
+    const rejected = session.execute({
+      type: "UPDATE_PHRASE",
+      id: regularNoteId,
+      startTick: 120,
+      endTick: 360,
+    });
+    expect(rejected.changed).toBe(false);
+    expect(rejected.rejections).toHaveLength(1);
   });
 
-  it("shares ID-based selection changes and keeps drag previews volatile", () => {
+  it("shares ID-based selection changes and keeps previews volatile", () => {
     const selection = new SelectionModel();
     const listener = vi.fn();
     const unsubscribe = selection.subscribe(listener);
@@ -430,17 +407,29 @@ describe("shared chart editing primitives", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
 
-    const scratchpad = new EditScratchpad();
-    const scratchListener = vi.fn();
-    scratchpad.subscribe(scratchListener);
-    scratchpad.set("note:0:event-1", { tickDelta: 120, trackDelta: 1 });
-    expect(scratchpad.get("note:0:event-1")).toEqual({
-      tickDelta: 120,
-      trackDelta: 1,
+    const midi = new Midi();
+    const track = midi.tracks[midi.addTrack()]!;
+    const note = track.addNote(60, 0, 90, 120);
+    const document = new ChartDocument(midi);
+    const noteId = document.getNoteId(0, note);
+    const before = midi.toBuffer();
+    const preview = computePreview(
+      [
+        {
+          type: "MOVE_NOTES",
+          targetIds: [noteId],
+          tickDelta: 120,
+          pitchDelta: 1,
+        },
+      ],
+      document,
+    );
+
+    expect(preview.updated.get(noteId)).toMatchObject({
+      tick: 120,
+      pitch: 61,
     });
-    scratchpad.clear();
-    expect(scratchpad.getSnapshot().size).toBe(0);
-    expect(scratchListener).toHaveBeenCalledTimes(2);
+    expect(midi.toBuffer()).toEqual(before);
   });
 
   it("pastes mode-tagged clipboard notes in one session transaction", () => {
@@ -492,32 +481,28 @@ describe("shared chart editing primitives", () => {
     expect(standalone.history.undoDepth).toBe(1);
   });
 
-  it("records successful commands and groups batches as one transaction", () => {
-    const { document } = createDocument();
-    const transaction = {
-      beginEdit: vi.fn(),
-      recordEdit: vi.fn(),
-      endEdit: vi.fn(),
-    };
-    const manager = new TransactionManager(document, transaction);
-    const action = {
-      type: "ADD_NOTE" as const,
-      trackIndex: 0,
-      tick: 480,
-      pitch: 72,
-      duration: 120,
-    };
+  it("records commands and batches as separate session history entries", () => {
+    const { midi, track } = createDocument();
+    const standalone = createStandaloneEditing(midi);
+    const session = standalone.createSession(
+      {
+        trackKey: "lead-guitar",
+        trackIndex: 0,
+        difficulty: Difficulty.Expert,
+      },
+      "piano-roll",
+    );
+    const add = (tick: number) => ({
+      type: "ADD_NOTES" as const,
+      notes: [{ trackIndex: 0, tick, pitch: 72, duration: 120 }],
+    });
 
-    expect(manager.dispatch(action)).toBe(true);
-    expect(transaction.recordEdit).toHaveBeenCalledTimes(1);
-    expect(
-      manager.dispatchBatch([
-        { ...action, tick: 720 },
-        { ...action, tick: 960 },
-      ]),
-    ).toBe(true);
-    expect(transaction.beginEdit).toHaveBeenCalledTimes(1);
-    expect(transaction.recordEdit).toHaveBeenCalledTimes(3);
-    expect(transaction.endEdit).toHaveBeenCalledTimes(1);
+    expect(session.execute(add(480)).changed).toBe(true);
+    expect(standalone.history.undoDepth).toBe(1);
+    expect(session.executeBatch([add(720), add(960)]).changed).toBe(true);
+    expect(standalone.history.undoDepth).toBe(2);
+    expect(track.getNotes()).toHaveLength(5);
+    expect(standalone.history.undo()).toBe(true);
+    expect(midi.tracks[0]!.getNotes()).toHaveLength(3);
   });
 });

@@ -243,23 +243,6 @@ function ViewportPanel({
     updateCameraData(articleRef.current, chartView);
   }, [chartView, session.camera.tick]);
 
-  const onNotesChanged = () => {
-    runAction("history.record-edit");
-    runAction("playback.refresh");
-  };
-  const onBeginEdit = () => runAction("history.begin-edit");
-  const onEndEdit = () => runAction("history.end-edit");
-  const onRollbackEdit = () => {
-    try {
-      return (
-        Platform.actions.executeAction<boolean>("history.rollback-edit") ===
-        true
-      );
-    } catch {
-      return false;
-    }
-  };
-
   function onNotePreview(this: PianoRollView, notes: readonly PianoRollNote[]) {
     const playback = Platform.services.get<PlaybackService>("playback");
     if (!playback.getSnapshot().isVocalPitchFeedbackEnabled) return;
@@ -370,12 +353,6 @@ function ViewportPanel({
     if (!view) {
       return;
     }
-    view.onNotesChanged = onNotesChanged;
-    view.onBeginEdit = onBeginEdit;
-    view.onEndEdit = onEndEdit;
-    if (!(view instanceof PianoRollView)) {
-      view.onRollbackEdit = onRollbackEdit;
-    }
     if (view instanceof PianoRollView) {
       view.onNotePreview = onNotePreview;
     }
@@ -393,12 +370,6 @@ function ViewportPanel({
     });
     return () => {
       unsubscribeCameraChange();
-      view.onNotesChanged = null;
-      view.onBeginEdit = null;
-      view.onEndEdit = null;
-      if (!(view instanceof PianoRollView)) {
-        view.onRollbackEdit = null;
-      }
       if (view instanceof PianoRollView) {
         view.onNotePreview = null;
       }

@@ -127,9 +127,6 @@ function harness(
     phrase: null,
   };
   const calls = {
-    begin: 0,
-    end: 0,
-    changed: 0,
     previews: 0,
     prompts: [] as { tick: number; handlers: PianoRollLyricPromptHandlers }[],
   };
@@ -202,9 +199,6 @@ function harness(
     },
     getDisplayNotes,
     requestRender: () => {},
-    beginEdit: () => calls.begin++,
-    endEdit: () => calls.end++,
-    notifyNotesChanged: () => calls.changed++,
     requestSeek: () => {},
     invalidateTempoCache: () => {},
     promptLyric: (tick: number, handlers: PianoRollLyricPromptHandlers) =>
@@ -338,9 +332,6 @@ describe("piano-roll profiles", () => {
     expect(track.getNotes()[0]).toMatchObject({ start: 480, note: 62 });
     expect(h.standalone.history.undoDepth).toBe(1);
     expect(h.standalone.history.isInTransaction).toBe(false);
-    expect(h.calls.begin).toBe(0);
-    expect(h.calls.end).toBe(0);
-    expect(h.calls.changed).toBe(0);
   });
 
   it("uses the shared clipboard and edit commands for generic notes", () => {
@@ -542,7 +533,6 @@ describe("piano-roll profiles", () => {
           getTimeSignatureEvents: () => [],
           getTextEvents: () => [],
           invalidateTempoCache: () => {},
-          notifyNotesChanged: () => {},
           requestRender: () => {},
         } as never,
         makeCoordinates(profile),
@@ -641,7 +631,6 @@ describe("vocal note editing", () => {
     expect(h.track()).toBeNull();
     expect(h.notes()).toEqual([]);
     expect(h.lyrics()).toEqual([]);
-    expect(h.calls.end).toBe(0);
     expect(h.standalone.history.undoDepth).toBe(0);
     expect(h.standalone.history.isDirty).toBe(false);
     expect(h.editing.isAwaitingLyric).toBe(false);

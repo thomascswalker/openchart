@@ -149,9 +149,6 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     },
     getDisplayNotes: (notes) => this.getDisplayNotes(notes),
     requestRender: () => this.render(),
-    beginEdit: () => this.onBeginEdit?.(),
-    endEdit: () => this.onEndEdit?.(),
-    notifyNotesChanged: () => this.onNotesChanged?.(),
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     invalidateTempoCache: () => {
       this.#tempoCacheMidi = null;
