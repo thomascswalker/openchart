@@ -11,6 +11,7 @@ import type {
   ChartDocument,
   ChartEditAction,
   ClipboardService,
+  EditingSession,
   EditScratchpad,
   SelectionModel,
   VocalNoteKind,
@@ -99,6 +100,7 @@ export interface PianoRollContext {
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;
   getEditingCore?(): PianoRollEditingCore | null;
+  getEditingSession?(): EditingSession | null;
   getDisplayNotes?(notes: PianoRollNote[]): PianoRollNote[];
   requestRender(): void;
   beginEdit(): void;
@@ -121,6 +123,7 @@ export interface PianoRollEditingCore {
   readonly scratchpad: EditScratchpad;
   readonly clipboard: ClipboardService;
   getDocument(): ChartDocument;
+  getSession(viewportId: string): EditingSession | null;
   dispatch(action: ChartEditAction): boolean;
   dispatchBatch(actions: ChartEditAction[]): boolean;
 }

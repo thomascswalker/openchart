@@ -19,7 +19,7 @@ import { ViewHotkeyScopes } from "../../../input/ViewportHotkeyScopes";
 import Platform from "../../../platform";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ActiveChartViewService } from "../../../services/editor/activeChartView";
-import { EditorEditingService } from "../../../services/editor/editing";
+import type { EditingService } from "../../../services/editor/editing";
 import { type ViewportSession } from "../../../services/editor/viewports";
 import { PlaybackService } from "../../../services/playback";
 import { Button, CloseButton } from "../../shared";
@@ -202,7 +202,8 @@ function ViewportPanel({
   const handleReady = (view: AnyChartView | null): void => {
     if (view instanceof PianoRollView) {
       view.setEditingCore(
-        Platform.services.get<EditorEditingService>("editor.editing"),
+        Platform.services.get<EditingService>("editor.editing"),
+        session.id,
       );
     }
     setChartView(view);

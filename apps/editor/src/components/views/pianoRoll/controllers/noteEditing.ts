@@ -12,7 +12,12 @@ import type { PianoRollContext, PianoRollNote } from "../types";
 import { VocalEditingStrategy } from "../vocalEditing";
 import { KeyboardWidth } from "../constants";
 import type { PianoRollEditingType } from "../profile";
-import type { ChartEditAction } from "@openchart/views";
+import {
+  getPhrasePitch,
+  parseEntityId,
+  upgradeLegacyAction,
+  type ChartEditAction,
+} from "@openchart/views";
 
 export function remapNotesByIdentity(
   notes: PianoRollNote[],
@@ -242,7 +247,13 @@ export class NoteEditingController {
     if (this.isNoteEditingLocked || this.awaitingLyric) {
       return;
     }
-    if (!this.strategy.getTrack(true)) {
+    const core = this.context.getEditingCore?.();
+    const usesSession =
+      core !== null && core !== undefined && this.strategy.id === "generic";
+    if (
+      (usesSession && !this.context.getEditingSession?.()) ||
+      (!usesSession && !this.strategy.getTrack(true))
+    ) {
       return;
     }
 
@@ -254,7 +265,7 @@ export class NoteEditingController {
     }
     const { noteOn } = created;
     this.pendingLyric = created.needsLyric ? noteOn : null;
-    this.context.notifyNotesChanged();
+    if (!usesSession) this.context.notifyNotesChanged();
     this.remapSelection(new Set([noteOn]));
 
     const anchor = this.context.getSelectionContext().notes[0];
@@ -358,39 +369,37 @@ export class NoteEditingController {
     if (!core || this.strategy.id !== "generic") {
       return this.strategy.create(local);
     }
-    const track = this.strategy.getTrack(true);
+    const session = this.context.getEditingSession?.();
     const midi = this.context.getMidi();
-    if (!track || !midi) return null;
-    const trackIndex = midi.tracks.indexOf(track);
-    if (trackIndex < 0) return null;
+    if (!session || !midi) return null;
 
     const tick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(local.x),
     );
     const pitch = this.coordinates.pitchAtScreenY(local.y);
-    const existing = new Set(track.getNotes().map((note) => note.noteOn));
-    const changed = this.applyActions(
-      [
+    const result = session.execute({
+      type: "ADD_NOTES",
+      notes: [
         {
-          type: "ADD_NOTE",
+          trackIndex: this.context.getSelectedTrackIndex() ?? 0,
           tick,
-          trackIndex,
           pitch,
           duration: 1,
           velocity: 100,
         },
       ],
-      true,
-    );
-    if (!changed) return null;
-    const note = track
-      .getNotes()
-      .find(
-        (candidate) =>
-          !existing.has(candidate.noteOn) &&
-          candidate.start === tick &&
-          candidate.note === pitch,
-      );
+    });
+    const parsedId = result.createdIds[0]
+      ? parseEntityId(result.createdIds[0])
+      : null;
+    const track =
+      parsedId?.kind === "note" && parsedId.trackIndex !== null
+        ? midi.tracks[parsedId.trackIndex]
+        : undefined;
+    const note =
+      parsedId?.kind === "note"
+        ? track?.getNoteByEventId(parsedId.eventId)
+        : null;
     return note ? { noteOn: note.noteOn, needsLyric: false } : null;
   }
 
@@ -683,7 +692,14 @@ export class NoteEditingController {
           tickDelta: delta.tickDelta ?? 0,
           pitchDelta: delta.trackDelta ?? 0,
         };
-    const changed = this.applyActions([action], true);
+    const session = this.context.getEditingSession?.();
+    if (!session) {
+      core.scratchpad.clear();
+      return;
+    }
+    const gesture = session.beginGesture();
+    gesture.preview(this.upgradeAction(action));
+    const changed = gesture.commit().changed;
     core.scratchpad.clear();
     if (changed) {
       const keep = resize ? this.resizeSelectionKeep : this.moveSelectionKeep;
@@ -692,22 +708,28 @@ export class NoteEditingController {
     }
   }
 
-  private applyActions(
-    actions: ChartEditAction[],
-    transactionAlreadyOpen = false,
-  ): boolean {
+  private applyActions(actions: ChartEditAction[]): boolean {
     const core = this.context.getEditingCore?.();
-    if (!core || actions.length === 0) return false;
-    if (!transactionAlreadyOpen) this.context.beginEdit();
-    let changed = false;
-    try {
-      for (const action of actions) {
-        changed = core.dispatch(action) || changed;
-      }
-      if (changed) this.context.notifyNotesChanged();
-      return changed;
-    } finally {
-      if (!transactionAlreadyOpen) this.context.endEdit();
-    }
+    const session = this.context.getEditingSession?.();
+    if (!core || !session || actions.length === 0) return false;
+    return session.executeBatch(
+      actions.map((action) => this.upgradeAction(action)),
+    ).changed;
+  }
+
+  private upgradeAction(action: ChartEditAction) {
+    const document = this.context.getEditingCore?.()?.getDocument();
+    return upgradeLegacyAction(
+      action,
+      document
+        ? {
+            resolvePhrasePitch: (trackIndex, phraseType) => {
+              const descriptor = document.getTrackDescriptor(trackIndex);
+              return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
+            },
+            getNote: (id) => document.getNote(id),
+          }
+        : undefined,
+    );
   }
 }

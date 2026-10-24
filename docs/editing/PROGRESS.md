@@ -99,3 +99,22 @@
   **Deviations from plan:** Updated `vocals.test.ts` outside the enumerated Phase 3 app paths to route its deprecated-API fixture through `applyLegacy`; its MIDI output and behavior assertions are unchanged. Added TSDoc to the existing exported clipboard, scratchpad, selection, and transaction APIs as required by the kernel API documentation contract.
   **Performance:** Note-ID resolution uses the O(1) event-ID index; no timing benchmark run.
   **Open questions:** none
+
+## Phase 4: Mode framework and EditingService (branch: editing/phase-4-mode-framework)
+
+**Status:** done
+**Summary:** Added the mode contracts and registration-order registry, shipped the `midi.raw` Piano Roll mode, and introduced editing sessions with preview/commit/cancel gestures. Added standalone editing with snapshot history and configured-track materialization. Reworked the editor bridge as `EditingService`; sessions are cached per viewport and invalidated when the document or viewport target changes, successful commits refresh playback and publish edit results. Routed the generic Piano Roll command and gesture commits through sessions while keeping its existing scratchpad preview and one-undo-step gesture behavior.
+**Files changed:**
+
+- Views: `packages/views/src/editing/{chartDocument.ts,mode.ts,modeRegistry.ts,session.ts,standalone.ts,modes/{index.ts,rawMidi.ts}}`, `packages/views/src/index.ts`
+- Views tests: `packages/views/tests/__tests__/editing/session.test.ts`
+- Editor: `apps/editor/src/{bootstrap.ts,components/editor/Viewport/index.tsx,components/views/pianoRoll/{index.ts,types.ts,controllers/noteEditing.ts},services/editor/editing.ts}`
+- Editor tests: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`, `apps/editor/src/services/editor/__tests__/editing.test.ts`
+- Docs: `docs/editing/PROGRESS.md`
+**Tests:** added mode-priority and raw-mode tests, gesture invariants I-1/I-2/I-3/I-4/I-7, post-commit error handling, and configured-track creation/rollback coverage · added a generic Piano Roll gesture test asserting one undo entry and an editor-service gesture test asserting one undo step plus playback refresh · no tests removed or weakened
+**Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · touched-file Prettier ✓ · full format:check reports 157 repository files (Phase 0 baseline: 153; all Phase 4 files pass targeted Prettier) · `npm test`: 358 passed and the same 2 Phase 0 editor failures (`ChartView.getTrack` test double and Piano Roll time-signature fixture) · focused session/Piano Roll/service tests 33 passed · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / the same 3 `playhead-sync` failures · Storybook blocked: installed version requires Node.js v20.19+ or v22.12+, environment has v20.18.1.
+**Defects closed:** DEF-05 (generic session commits no longer trigger a duplicate `notifyNotesChanged`; service refresh is verified after a gesture commit)
+**Intentional behaviour changes:** none
+**Deviations from plan:** Changed `bootstrap.ts` to import the renamed `EditingService` as a type because `EditorEditingService` is now a deprecated type alias; this one-line out-of-scope adjustment is required by the Phase 4 class rename and has no runtime behavior change.
+**Performance:** no benchmark run; Phase 4 does not introduce an entity-resolution complexity change.
+**Open questions:** none

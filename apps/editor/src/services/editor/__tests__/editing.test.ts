@@ -2,7 +2,9 @@ import { Midi } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../../document";
 import type { LoggerService } from "../../logger";
-import { EditorEditingService } from "../editing";
+import type { PlaybackService } from "../../playback";
+import { EditingService } from "../editing";
+import { ViewportService } from "../viewports";
 
 function createDocumentService(): DocumentService {
   const logger = {
@@ -14,7 +16,7 @@ function createDocumentService(): DocumentService {
   return new DocumentService(logger);
 }
 
-describe("EditorEditingService", () => {
+describe("EditingService", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -23,9 +25,15 @@ describe("EditorEditingService", () => {
     const documentService = createDocumentService();
     const midi = new Midi();
     midi.addTrack();
+    midi.tracks[0]!.name = "LEAD GUITAR";
     midi.tracks[0]!.addNote(60, 0, 100, 120);
     documentService.data = midi;
-    const editing = new EditorEditingService(documentService);
+    const playback = { refresh: vi.fn() } as unknown as PlaybackService;
+    const editing = new EditingService(
+      documentService,
+      playback,
+      new ViewportService(),
+    );
     const noteId = editing
       .getDocument()
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
@@ -41,6 +49,7 @@ describe("EditorEditingService", () => {
         duration: 120,
       }),
     ).toBe(true);
+    expect(playback.refresh).toHaveBeenCalledTimes(1);
     expect(documentService.getSnapshot().canUndo).toBe(true);
     expect(documentService.data.tracks[0]?.getNotes()).toHaveLength(2);
 
@@ -61,7 +70,11 @@ describe("EditorEditingService", () => {
     midi.addTrack();
     midi.tracks[0]!.addNote(60, 0, 100, 120);
     documentService.data = midi;
-    const editing = new EditorEditingService(documentService);
+    const editing = new EditingService(
+      documentService,
+      { refresh: vi.fn() } as unknown as PlaybackService,
+      new ViewportService(),
+    );
     const noteId = editing
       .getDocument()
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
@@ -77,5 +90,47 @@ describe("EditorEditingService", () => {
     expect(editing.selection.getSelectedIds()).toEqual([]);
     expect(editing.scratchpad.getSnapshot().size).toBe(0);
     expect(editing.clipboard.canPaste()).toBe(false);
+  });
+
+  it("commits a generic gesture in one undo step and refreshes playback", () => {
+    const documentService = createDocumentService();
+    const midi = new Midi();
+    midi.addTrack();
+    midi.tracks[0]!.name = "LEAD GUITAR";
+    midi.tracks[0]!.addNote(60, 0, 100, 120);
+    documentService.data = midi;
+    const playback = { refresh: vi.fn() } as unknown as PlaybackService;
+    const editing = new EditingService(
+      documentService,
+      playback,
+      new ViewportService(),
+    );
+    const session = editing.getSession("viewport-1")!;
+    const id = editing
+      .getDocument()
+      .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
+    const gesture = session.beginGesture();
+    gesture.preview({
+      type: "MOVE_NOTES",
+      targetIds: [id],
+      tickDelta: 240,
+      pitchDelta: 2,
+    });
+
+    expect(gesture.commit()).toMatchObject({ changed: true, updatedIds: [id] });
+    expect(playback.refresh).toHaveBeenCalledTimes(1);
+    expect(documentService.getSnapshot().canUndo).toBe(true);
+    expect(documentService.data.tracks[0]?.getNotes()[0]).toMatchObject({
+      start: 240,
+      note: 62,
+    });
+
+    documentService.undoEdit();
+
+    expect(documentService.data.tracks[0]?.getNotes()[0]).toMatchObject({
+      start: 0,
+      note: 60,
+    });
+    expect(documentService.getSnapshot().canUndo).toBe(false);
   });
 });

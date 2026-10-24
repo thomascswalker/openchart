@@ -13,7 +13,11 @@ import {
   updateNotePhrase,
 } from "../chartEditing.js";
 import { SongView } from "../chartView.js";
-import type { TrackDescriptor } from "../config.js";
+import {
+  defaultConfig,
+  type SongViewConfig,
+  type TrackDescriptor,
+} from "../config.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 import {
   formatNoteId,
@@ -51,12 +55,18 @@ export class ChartDocument implements ChartDocumentReader {
   private readonly midi: Midi;
   private readonly resolvePhrasePitch: PhrasePitchResolver;
   private readonly trackDescriptors: readonly TrackDescriptor[];
+  private readonly config: SongViewConfig;
 
   /** Creates a reader and command executor for a mutable MIDI document. */
-  public constructor(midi: Midi, resolvePhrasePitch: PhrasePitchResolver) {
+  public constructor(
+    midi: Midi,
+    resolvePhrasePitch: PhrasePitchResolver,
+    config: SongViewConfig = defaultConfig,
+  ) {
     this.midi = midi;
     this.resolvePhrasePitch = resolvePhrasePitch;
-    this.trackDescriptors = new SongView(midi).getTrackDescriptors();
+    this.config = config;
+    this.trackDescriptors = new SongView(midi, config).getTrackDescriptors();
   }
 
   /** @deprecated Removed in Phase 10; resolve phrase pitches through a mode. */
@@ -103,6 +113,16 @@ export class ChartDocument implements ChartDocumentReader {
     const index = this.midi.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
+    return index >= 0 ? index : null;
+  }
+
+  /** Materializes a configured target track and returns its current index. */
+  public ensureTrack(trackKey: string): number | null {
+    const track = new SongView(this.midi, this.config).ensureMidiTrack(
+      trackKey,
+    );
+    if (!track) return null;
+    const index = this.midi.tracks.indexOf(track);
     return index >= 0 ? index : null;
   }
 

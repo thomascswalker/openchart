@@ -2,6 +2,8 @@ import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
 import {
   ChartDocument,
   ClipboardService,
+  createStandaloneEditing,
+  Difficulty,
   EditScratchpad,
   SelectionModel,
   SongView,
@@ -124,6 +126,7 @@ function harness(
     getViewport: () => ({ width: 1000, height: 1000 }),
     getSelectionContext: () => selection,
     getEditingCore: () => editingCore,
+    getEditingSession: () => editingCore?.getSession("test") ?? null,
     getDisplayNotes: (source: PianoRollNote[]) => {
       if (!editingCore) return source;
       const index = trackIndex();
@@ -220,16 +223,31 @@ function harness(
   };
 }
 
-function createEditingCore(midi: Midi): PianoRollEditingCore {
+function createEditingCore(midi: Midi): PianoRollEditingCore & {
+  history: ReturnType<typeof createStandaloneEditing>["history"];
+} {
   const document = new ChartDocument(midi, () => null);
   const selection = new SelectionModel();
   const scratchpad = new EditScratchpad();
   const clipboard = new ClipboardService(document, selection);
+  const standalone = createStandaloneEditing(midi);
+  const session = standalone.createSession(
+    {
+      trackKey: "lead-guitar",
+      trackIndex: midi.tracks.findIndex(
+        (track) => track.name === "LEAD GUITAR",
+      ),
+      difficulty: Difficulty.Expert,
+    },
+    "piano-roll",
+  );
   return {
     selection,
     scratchpad,
     clipboard,
+    history: standalone.history,
     getDocument: () => document,
+    getSession: () => session,
     dispatch: (action: ChartEditAction) => document.applyLegacy(action),
     dispatchBatch: (actions: ChartEditAction[]) =>
       actions.reduce(
@@ -249,7 +267,7 @@ function seeded() {
 }
 
 describe("piano-roll profiles", () => {
-  it("previews generic note drags in the scratchpad and commits one command on release", () => {
+  it("previews generic note drags in the scratchpad and commits one session transaction on release", () => {
     const midi = new Midi();
     const trackIndex = midi.addTrack();
     const track = midi.tracks[trackIndex]!;
@@ -276,9 +294,10 @@ describe("piano-roll profiles", () => {
 
     expect(track.getNotes()[0]).toMatchObject({ start: 480, note: 62 });
     expect(core.scratchpad.getSnapshot().size).toBe(0);
+    expect(core.history.undoDepth).toBe(1);
     expect(h.calls.begin).toBe(1);
     expect(h.calls.end).toBe(1);
-    expect(h.calls.changed).toBe(1);
+    expect(h.calls.changed).toBe(0);
   });
 
   it("uses the shared clipboard and edit commands for generic notes", () => {

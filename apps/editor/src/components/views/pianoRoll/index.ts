@@ -81,6 +81,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
   private editingCore: PianoRollEditingCore | null = null;
+  private editingViewportId: string | null = null;
   private editingUnsubscribers: Array<() => void> = [];
 
   private readonly noteData = new NoteDataStore();
@@ -123,6 +124,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     getPointerContext: () => this.pointer,
     getSelectionContext: () => this.selection,
     getEditingCore: () => this.editingCore,
+    getEditingSession: () =>
+      this.editingViewportId
+        ? (this.editingCore?.getSession(this.editingViewportId) ?? null)
+        : null,
     getDisplayNotes: (notes) => this.getDisplayNotes(notes),
     requestRender: () => this.render(),
     beginEdit: () => this.onBeginEdit?.(),
@@ -322,11 +327,17 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     super.destroy();
   }
 
-  public setEditingCore(core: PianoRollEditingCore | null): void {
-    if (this.editingCore === core) return;
+  public setEditingCore(
+    core: PianoRollEditingCore | null,
+    viewportId: string | null = null,
+  ): void {
+    if (this.editingCore === core && this.editingViewportId === viewportId) {
+      return;
+    }
     for (const unsubscribe of this.editingUnsubscribers) unsubscribe();
     this.editingUnsubscribers = [];
     this.editingCore = core;
+    this.editingViewportId = viewportId;
     if (core) {
       this.editingUnsubscribers.push(
         core.scratchpad.subscribe(() => this.render()),
