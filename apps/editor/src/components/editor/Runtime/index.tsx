@@ -1,6 +1,7 @@
 import {
   useEffect,
   useLayoutEffect,
+  useRef,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -10,8 +11,9 @@ import { useDocument } from "../../../hooks/useDocument";
 import { useViewport } from "../../../hooks/useViewport";
 import { DocumentService } from "../../../services/document";
 import { EditorStateService } from "../../../services/editor/state";
+import type { EditingService } from "../../../services/editor/editing";
+import { createEditingContextSnapshot } from "../../../services/editor/editingContext";
 import { Playback } from "../Playback";
-import { profileForInstrument } from "../../views/pianoRoll";
 
 interface RuntimeProps {
   children: ReactNode;
@@ -26,6 +28,7 @@ export function Runtime({ children }: RuntimeProps) {
 
   const doc = useService<DocumentService>("document");
   const editorState = useService<EditorStateService>("editor.state");
+  const editing = useService<EditingService>("editor.editing");
 
   const editorStore = useSyncExternalStore(
     editorState.subscribe,
@@ -41,15 +44,20 @@ export function Runtime({ children }: RuntimeProps) {
     (session) => session.id === activeViewportId,
   );
   const activeView = activeSession?.view ?? null;
-  const isVocalsEditing =
-    activeSession?.view === "piano-roll" &&
-    profileForInstrument(activeSession.instrument).editing === "vocals";
+  const editingSession = activeSession
+    ? editing.getSession(activeSession.id)
+    : null;
+  const previousCapabilityKeys = useRef<string[]>([]);
   const isAnyDialogOpen =
     editorStore.projectVisible ||
     editorStore.settingsVisible ||
     editorStore.aboutVisible;
 
   useLayoutEffect(() => {
+    const editingContext = createEditingContextSnapshot(
+      editingSession,
+      previousCapabilityKeys.current,
+    );
     context.update({
       "document.has-tracks": hasTracks,
       "history.can-undo": canUndo,
@@ -59,10 +67,11 @@ export function Runtime({ children }: RuntimeProps) {
       "dialog.about-open": editorStore.aboutVisible,
       "dialog.any-open": isAnyDialogOpen,
       "viewport.active-view": activeView,
-      "viewport.vocals-editing": isVocalsEditing,
+      ...editingContext.values,
       "editor.can-add-viewport": canAddViewport,
       "editor.can-close-viewport": canCloseViewport,
     });
+    previousCapabilityKeys.current = editingContext.commandTypes;
   }, [
     context,
     hasTracks,
@@ -73,7 +82,7 @@ export function Runtime({ children }: RuntimeProps) {
     editorStore.aboutVisible,
     isAnyDialogOpen,
     activeView,
-    isVocalsEditing,
+    editingSession,
     canAddViewport,
     canCloseViewport,
   ]);

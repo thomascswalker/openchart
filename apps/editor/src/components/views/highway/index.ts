@@ -1,12 +1,16 @@
 import type { Midi, MidiNote } from "@openchart/midi";
-import type { EditablePhraseKind } from "@openchart/views";
+import type {
+  EditablePhraseKind,
+  EditingSession,
+  PreviewState,
+} from "@openchart/views";
 import { ChartView, SongView } from "@openchart/views";
 import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ResourceRegistry } from "./rendering/assets";
-import { getHighwaySnapDenominator } from "./interaction";
+import { getHighwaySnapDenominator } from "./interactionMath";
 import { SnapDenominators } from "../pianoRoll/constants";
 import {
   defaultCameraFieldOfView,
@@ -28,8 +32,10 @@ import { HighwayHitTester } from "./hitTesting";
 import { HighwayNoteEditingController } from "./editing/noteEditing";
 import { HighwayPhraseEditingController } from "./editing/phraseEditing";
 import { HighwayInputController } from "./input/input";
-import { HighwayRenderer, type HighwayRenderDiagnostics } from "./rendering/rendering";
-import { SelectionContext } from "./selection";
+import {
+  HighwayRenderer,
+  type HighwayRenderDiagnostics,
+} from "./rendering/rendering";
 import type { DrumPlacementKind } from "./profile";
 export type { HighwayMode, HighwayTool } from "./types";
 export type { HighwayNotePlacementType } from "./types";
@@ -50,6 +56,12 @@ export class HighwayView extends AbstractChartView<MidiNote> {
       const midi = this.state.midi;
       return midi ? this.getActiveChart(midi) : null;
     },
+    getEditingSession: () => this.editingSession,
+    getPreviewState: () => this.previewState,
+    setPreviewState: (preview) => {
+      this.previewState = preview;
+      this.render();
+    },
     getViewport: () => ({
       width: this.viewportWidth,
       height: this.viewportHeight,
@@ -64,15 +76,11 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
     getSelectionRange: () => this.selectionRange,
-    getSelectionContext: () => this.selection,
     getGhostNoteLocation: () => this.input.getGhostNoteLocation(),
     getHoveredNoteOn: () => this.input.getHoveredNoteOn(),
     canShowNotePlacementPreview: () => this.input.canShowNotePlacementPreview(),
     getCanvas: () => this.canvas,
     requestRender: () => this.render(),
-    beginEdit: () => this.onBeginEdit?.(),
-    endEdit: () => this.onEndEdit?.(),
-    notifyNotesChanged: () => this.onNotesChanged?.(),
     requestSeek: (tick) => this.onSeekRequest?.(tick),
     changeSnapDenominator: (denominator) =>
       this.onSnapDenominatorChange?.(denominator),
@@ -95,7 +103,10 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.context,
     this.threeCamera,
   );
-  private readonly hitTesting = new HighwayHitTester(this.coordinates);
+  private readonly hitTesting = new HighwayHitTester(
+    this.coordinates,
+    this.context,
+  );
   private readonly editing = new HighwayNoteEditingController(this.context);
   private readonly phraseEditing = new HighwayPhraseEditingController(
     this.context,
@@ -117,7 +128,9 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   private playheadTick = 0;
   private cameraTick = 0;
   private scrollSpeedMultiplier = 1;
-  private readonly selection = new SelectionContext();
+  private editingSession: EditingSession | null = null;
+  private previewState: PreviewState | null = null;
+  private unsubscribeSelection: (() => void) | null = null;
   private selectionRange: HighwaySelectionRange | null = null;
   private mode: HighwayMode = "select";
   private notePlacementType: HighwayNotePlacementType = "normal";
@@ -140,6 +153,21 @@ export class HighwayView extends AbstractChartView<MidiNote> {
 
   public getPerformanceDiagnostics(): HighwayRenderDiagnostics {
     return this.renderer.getPerformanceDiagnostics();
+  }
+
+  public override setEditingSession(session: EditingSession | null): void {
+    if (this.editingSession === session) return;
+    this.input.cancelActiveGestures();
+    this.unsubscribeSelection?.();
+    this.unsubscribeSelection = null;
+    this.editingSession = session;
+    this.previewState = null;
+    if (session) {
+      this.unsubscribeSelection = session.selection.subscribe(() =>
+        this.render(),
+      );
+    }
+    this.render();
   }
 
   public override update(state: ChartViewState): void {
@@ -254,19 +282,6 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.notePlacementType = type;
   }
 
-  public canCopySelection(): boolean {
-    return this.editing.canCopySelection();
-  }
-
-  // Phrase tools edit phrases, not notes, so note cut/paste is unavailable.
-  public canCutSelection(): boolean {
-    return !this.phraseMode && this.editing.canCutSelection();
-  }
-
-  public canPasteClipboard(): boolean {
-    return !this.phraseMode && this.editing.canPasteClipboard();
-  }
-
   public toggleLaneNote(lane: number, preserveSustain = false): void {
     this.input.toggleLaneNote(lane, preserveSustain);
   }
@@ -296,17 +311,8 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.input.deleteSelection();
   }
 
-  public copySelection(): void {
-    this.editing.copySelection();
-  }
-
-  public cutSelection(): void {
-    this.editing.cutSelection();
-  }
-
-  public pasteClipboard(): void {
-    const pasted = this.editing.pasteClipboard(this.playheadTick);
-    if (pasted) this.clearSelectionRange();
+  public getPasteAnchorTick(): number {
+    return this.playheadTick;
   }
 
   private setSelectionRange(range: HighwaySelectionRange | null): void {
@@ -342,6 +348,8 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   public override destroy(): void {
     this.input.cancelActiveGestures();
     this.input.detach();
+    this.unsubscribeSelection?.();
+    this.unsubscribeSelection = null;
     this.renderer.dispose();
     this.canvas = null;
     super.destroy();
@@ -351,10 +359,12 @@ export class HighwayView extends AbstractChartView<MidiNote> {
       this.songMidi = midi;
       this.song = new SongView(midi);
     }
+    const target = this.editingSession?.target;
+    if (!target || target.difficulty === null) return null;
     return (
       this.song
-        ?.getInstrumentTrackView(this.state.selectedInstrument)
-        ?.getChart(this.state.selectedDifficulty) ?? null
+        ?.getInstrumentTrackView(target.trackKey)
+        ?.getChart(target.difficulty) ?? null
     );
   }
 }
