@@ -1,5 +1,5 @@
 import { SnapDenominators } from "../../components/views/pianoRoll/constants";
-import { getHighwaySnapDenominator } from "../../components/views/highway/interaction";
+import { getHighwaySnapDenominator } from "../../components/views/highway/interactionMath";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import { ViewportService } from "../../services/editor/viewports";

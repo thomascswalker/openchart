@@ -10,7 +10,7 @@ import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ResourceRegistry } from "./rendering/assets";
-import { getHighwaySnapDenominator } from "./interaction";
+import { getHighwaySnapDenominator } from "./interactionMath";
 import { SnapDenominators } from "../pianoRoll/constants";
 import {
   defaultCameraFieldOfView,

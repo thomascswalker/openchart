@@ -103,9 +103,6 @@ export interface PianoRollContext {
   getPreviewState?(): PreviewState | null;
   getDisplayNotes?(notes: PianoRollNote[]): PianoRollNote[];
   requestRender(): void;
-  beginEdit(): void;
-  endEdit(): void;
-  notifyNotesChanged(): void;
   requestSeek(tick: number): void;
   invalidateTempoCache(): void;
   promptLyric(tick: number, handlers: PianoRollLyricPromptHandlers): void;

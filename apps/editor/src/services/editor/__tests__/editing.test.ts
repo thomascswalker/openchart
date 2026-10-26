@@ -40,15 +40,13 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
 
     editing.selection.add(noteId);
-    editing.scratchpad.set(noteId, { tickDelta: 120 });
+    const session = editing.getSession("viewport-1");
+    expect(session).not.toBeNull();
     expect(
-      editing.dispatch({
-        type: "ADD_NOTE",
-        trackIndex: 0,
-        tick: 240,
-        pitch: 64,
-        duration: 120,
-      }),
+      session!.execute({
+        type: "ADD_NOTES",
+        notes: [{ trackIndex: 0, tick: 240, pitch: 64, duration: 120 }],
+      }).changed,
     ).toBe(true);
     expect(playback.refresh).toHaveBeenCalledTimes(1);
     expect(documentService.getSnapshot().canUndo).toBe(true);
@@ -62,10 +60,9 @@ describe("EditingService", () => {
       tick: 0,
       pitch: 60,
     });
-    expect(editing.scratchpad.get(noteId)).toEqual({ tickDelta: 120 });
   });
 
-  it("clears document-scoped state and clipboard when a new project is loaded", () => {
+  it("clears selection and clipboard when a new project is loaded", () => {
     const documentService = createDocumentService();
     const midi = new Midi();
     midi.addTrack();
@@ -80,7 +77,6 @@ describe("EditingService", () => {
       .getDocument()
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     editing.selection.add(noteId);
-    editing.scratchpad.set(noteId, { tickDelta: 120 });
     editing.clipboard.setData({
       sourceModeId: "midi.raw",
       entities: [
@@ -105,7 +101,6 @@ describe("EditingService", () => {
     documentService.data = nextMidi;
 
     expect(editing.selection.getSelectedIds()).toEqual([]);
-    expect(editing.scratchpad.getSnapshot().size).toBe(0);
     expect(editing.clipboard.canPaste()).toBe(false);
   });
 
