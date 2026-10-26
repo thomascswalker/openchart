@@ -5,11 +5,8 @@ import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import { getPhrasePitch } from "../../src/chartEditing.js";
 import { SongView, VocalTrackView } from "../../src/chartView.js";
-import {
-  defaultConfig,
-  describeTrack,
-  requiresPianoRoll,
-} from "../../src/config.js";
+import { defaultConfig, describeTrack } from "../../src/config.js";
+import { createDefaultModeRegistry } from "../../src/editing/modes/index.js";
 import { classifyVocalPitch, DEFAULT_VOCAL_LAYOUT } from "../../src/vocals.js";
 
 function vocals(midi = new Midi()): { midi: Midi; view: VocalTrackView } {
@@ -29,9 +26,16 @@ describe("vocal configuration", () => {
     expect(view.hasDifficulties()).toBe(false);
     expect(view.getCharts()).toEqual([]);
     expect(view.getChart(3)).toBeUndefined();
-    expect(requiresPianoRoll("VOCALS")).toBe(true);
-    expect(requiresPianoRoll("vocals")).toBe(true);
-    expect(requiresPianoRoll("LEAD GUITAR")).toBe(false);
+    const registry = createDefaultModeRegistry();
+    const vocalDescriptor = describeTrack(
+      defaultConfig.tracks.find((track) => track.name === "VOCALS")!,
+    );
+    const leadDescriptor = describeTrack(
+      defaultConfig.tracks.find((track) => track.name === "LEAD GUITAR")!,
+    );
+    expect(registry.resolve(vocalDescriptor, "piano-roll")?.id).toBe("vocals");
+    expect(registry.resolve(vocalDescriptor, "highway")).toBeNull();
+    expect(registry.resolve(leadDescriptor, "highway")?.id).toBe("chart.frets");
 
     const layout = (view as VocalTrackView).getLayout();
     expect(layout.range).toEqual({ low: 36, high: 84 });

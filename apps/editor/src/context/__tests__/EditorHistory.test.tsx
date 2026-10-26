@@ -2,8 +2,9 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "../../components/editor/Runtime";
-import { runActionAsync, runAction } from "../../actions/execute";
+import { runActionAsync } from "../../actions/execute";
 import Platform from "../../platform";
+import { EditingService } from "../../services/editor/editing";
 import { DocumentService } from "../../services/document";
 import { useDocument } from "../../hooks/useDocument";
 
@@ -16,12 +17,26 @@ function HistoryHarness() {
     if (!midi) {
       return;
     }
-    if (midi.tracks.length === 0) {
-      midi.addTrack();
+    let track = midi.tracks[0];
+    if (!track) {
+      track = midi.tracks[midi.addTrack()]!;
     }
-    midi.tracks[0]?.addNote(60, 0, 100, 120);
-    runAction("history.record-edit");
-    runAction("document.mark-dirty");
+    track.name = "LEAD GUITAR";
+    const session = Platform.services
+      .get<EditingService>("editor.editing")
+      .getSession("viewport-1");
+    if (!session) throw new Error("Expected a Piano Roll editing session");
+    session.execute({
+      type: "ADD_NOTES",
+      notes: [
+        {
+          trackIndex: midi.tracks.indexOf(track),
+          tick: 0,
+          pitch: 60,
+          duration: 120,
+        },
+      ],
+    });
   };
 
   return (

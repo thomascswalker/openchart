@@ -111,10 +111,117 @@
 - Editor: `apps/editor/src/{bootstrap.ts,components/editor/Viewport/index.tsx,components/views/pianoRoll/{index.ts,types.ts,controllers/noteEditing.ts},services/editor/editing.ts}`
 - Editor tests: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`, `apps/editor/src/services/editor/__tests__/editing.test.ts`
 - Docs: `docs/editing/PROGRESS.md`
-**Tests:** added mode-priority and raw-mode tests, gesture invariants I-1/I-2/I-3/I-4/I-7, post-commit error handling, and configured-track creation/rollback coverage · added a generic Piano Roll gesture test asserting one undo entry and an editor-service gesture test asserting one undo step plus playback refresh · no tests removed or weakened
-**Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · touched-file Prettier ✓ · full format:check reports 157 repository files (Phase 0 baseline: 153; all Phase 4 files pass targeted Prettier) · `npm test`: 358 passed and the same 2 Phase 0 editor failures (`ChartView.getTrack` test double and Piano Roll time-signature fixture) · focused session/Piano Roll/service tests 33 passed · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / the same 3 `playhead-sync` failures · Storybook blocked: installed version requires Node.js v20.19+ or v22.12+, environment has v20.18.1.
-**Defects closed:** DEF-05 (generic session commits no longer trigger a duplicate `notifyNotesChanged`; service refresh is verified after a gesture commit)
-**Intentional behaviour changes:** none
-**Deviations from plan:** Changed `bootstrap.ts` to import the renamed `EditingService` as a type because `EditorEditingService` is now a deprecated type alias; this one-line out-of-scope adjustment is required by the Phase 4 class rename and has no runtime behavior change.
-**Performance:** no benchmark run; Phase 4 does not introduce an entity-resolution complexity change.
-**Open questions:** none
+  **Tests:** added mode-priority and raw-mode tests, gesture invariants I-1/I-2/I-3/I-4/I-7, post-commit error handling, and configured-track creation/rollback coverage · added a generic Piano Roll gesture test asserting one undo entry and an editor-service gesture test asserting one undo step plus playback refresh · no tests removed or weakened
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · lint ✓ · touched-file Prettier ✓ · full format:check reports 157 repository files (Phase 0 baseline: 153; all Phase 4 files pass targeted Prettier) · `npm test`: 358 passed and the same 2 Phase 0 editor failures (`ChartView.getTrack` test double and Piano Roll time-signature fixture) · focused session/Piano Roll/service tests 33 passed · check:editing 57 violations, all within allowance; strict ✓ · E2E 15 passed / the same 3 `playhead-sync` failures · Storybook blocked: installed version requires Node.js v20.19+ or v22.12+, environment has v20.18.1.
+  **Defects closed:** DEF-05 (generic session commits no longer trigger a duplicate `notifyNotesChanged`; service refresh is verified after a gesture commit)
+  **Intentional behaviour changes:** none
+  **Deviations from plan:** Changed `bootstrap.ts` to import the renamed `EditingService` as a type because `EditorEditingService` is now a deprecated type alias; this one-line out-of-scope adjustment is required by the Phase 4 class rename and has no runtime behavior change.
+  **Performance:** no benchmark run; Phase 4 does not introduce an entity-resolution complexity change.
+  **Open questions:** none
+
+## Phase 5: Domain modes (branch: editing/phase-5-domain-modes)
+
+**Status:** done
+**Summary:** Added config-driven chart and vocal domain modes, moved shared chart semantics into `@openchart/views`, and re-exported Highway profile and sustain helpers for compatibility. `ChartView.moveNote` now uses atomic `updateNote`; default mode resolution and fixture behavior are covered by tests.
+**Files changed:**
+
+- Views config/chart semantics: `packages/views/src/{config.ts,chartView.ts,vocals.ts,chart/{constants,drums,forcedNotes,sustains}.ts}`
+- Views modes: `packages/views/src/editing/{modes/{common,chartFrets,chartDrums,vocals,index}.ts,session.ts,standalone.ts}`, `packages/views/src/index.ts`
+- Views tests: `packages/views/tests/__tests__/{config,chartView,domainModes}.test.ts`
+- Editor compatibility: `apps/editor/src/components/views/highway/{profile.ts,interaction.ts}`, `apps/editor/src/components/views/pianoRoll/profile.ts`
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** all 14 Phase 0 characterization/domain-mode tests pass; full views suite 64 passed; focused editor characterization tests 28 passed · ported none · removed none
+  **Gate results:** MIDI build ✓ · views build ✓ · check-types ✓ (9 Turbo tasks) · lint ✓ · targeted Prettier ✓ for every Phase 5 file · full format:check reports 155 files (153 in Phase 0 baseline; no Phase 5 files are reported) · `npm test`: 240 passed, 2 same pre-existing Phase 0 failures (`highway/noteEditing.test.ts` fake chart lacks `getTrack`; Piano Roll grid test reads an undefined time-signature event) · check:editing:strict ✓ (57 violations, all within existing allowances) · E2E 15 passed / same 3 baseline `playhead-sync` failures · Storybook build and interaction tests blocked because installed Storybook requires Node.js v20.19+ or v22.12+, while the environment has v20.18.1.
+  **Defects closed:** DEF-06 (drum-note movement preserves kind and Kick2); DEF-07 (atomic chart note movement); DEF-08 (forced-marker placement rejects missing config instead of using pitch 104); DEF-10 (vocal phrase overlap checks live in the mode)
+  **Intentional behaviour changes:** Missing forced-marker configuration now rejects with `missing-config-note`, replacing the legacy pitch-104 fallback (DEF-08).
+  **Deviations from plan:** The user approved adding `apps/editor/src/components/views/pianoRoll/profile.ts` to the Phase 5 scope as required by task 5.7. `midi.global` remains deferred to Phase 9 as specified by the plan.
+  **Performance:** not measured in Phase 5
+  **Open questions:** none
+
+## Phase 6: Piano Roll migration (branch: editing/phase-6-piano-roll-migration)
+
+**Status:** done
+**Summary:** Replaced the Piano Roll strategy/core path with `EditingSession` gestures for raw MIDI and vocals. Note move, resize, create, erase, delete, clipboard, selection projection, and preview rendering now use session commands and stable IDs. The Storybook host uses standalone editing and the vocal lyric prompt keeps creation preview-only until commit; pointer cancellation cancels the gesture. Removed `editingStrategy.ts` and `vocalEditing.ts`.
+**Files changed:**
+
+- Editor: Piano Roll controllers, input, view, profile, selection, rendering, types, Storybook host, tests, and `apps/editor/e2e-storybook/piano-roll.spec.ts`; `AbstractChartView.tsx`; `Viewport/index.tsx`; `Runtime/index.tsx`; `services/editor/editing.ts`
+- Views kernel: `editing/{clipboardService.ts,session.ts,standalone.ts}`
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** migrated session-based Piano Roll vocal/characterization tests (25 passed); Piano Roll tests excluding the recorded grid baseline failure (12 passed); views package (64 passed) · no tests removed or weakened
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · repository lint ✓ · targeted Prettier ✓ (header excluded by plan; only its profile-id check changed) · full format:check baseline failure (148 files; Phase 0 baseline 153) · `npm test`: 243 passed, 2 same Phase 0 failures (`highway/noteEditing.test.ts` fake chart lacks `getTrack`; Piano Roll grid test reads an undefined time-signature event) · check:editing:strict ✓ (36 violations: 21 Highway and 15 header, all within allowance; no other Piano Roll violations) · E2E 15 passed / same 3 baseline `playhead-sync` failures · Storybook build and Piano Roll Storybook E2E not runnable because Storybook requires Node.js v20.19+ or v22.12+, while the environment has v20.18.1.
+  **Defects closed:** DEF-02 (vocal create cancellation has no mutation trace); DEF-11 (selection resolution is ID-based and subscription is not rebound on each update)
+  **Intentional behaviour changes:** note gestures preview without mutating MIDI and commit as a single session transaction; pointer cancellation cancels instead of committing.
+  **Deviations from plan:** `Runtime/index.tsx` was updated so the vocals action condition follows the session mode after strategy removal. The three `packages/views/src/editing/*` changes provide interim vocal lyric clipboard payloads, standalone history event support, and session behavior required by the Piano Roll migration. `controllers/header.ts` is excluded until Phase 9 and was changed only to check the renamed `"vocals"` profile ID; its existing history/callback bridge remains for header edits.
+  **Performance:** not measured in Phase 6
+  **Open questions:** none. The user approved keeping the legacy header callback bridge as a temporary exception until its planned Phase 9 migration.
+
+  ## Phase 7: Highway migration (branch: editing/phase-7-highway-migration)
+
+  **Status:** done
+  **Summary:** Bound Highway editing to `EditingSession`, resolved the active target through the session, and moved note and phrase previews, commits, deletes, and clipboard operations onto session commands. Highway rendering and hit testing now project session classification, preview overlays, and stable entity IDs; selection survives undo/redo. Cancelled note drags leave MIDI and history unchanged, and playback start interrupts input gestures.
+  **Files changed:**
+
+  - Editor: `apps/editor/src/components/views/highway/**`; removed `highway/selection.ts`
+  - Views kernel: `packages/views/src/editing/{session.ts,modes/{chartDrums,chartFrets}.ts}` and `packages/views/tests/__tests__/editing/session.test.ts`
+  - Docs: `docs/editing/PROGRESS.md`
+    **Tests:** Highway unit suite 79 passed; Highway input TSX suite 14 passed; views package 64 passed; focused Highway instancing E2E 4 passed. Updated Highway tests to assert centralized ID selection and the current note argument shape; added a playback-start cancellation test and completed the missing physical-lane test setup. No tests were removed or weakened.
+    **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · repository lint ✓ · targeted Prettier ✓ · full format:check reports 131 pre-existing repository files with formatting differences (Phase 0 baseline: 153; all Phase 7 files pass targeted Prettier) · `npm test`: 240 passed / 1 pre-existing Piano Roll time-signature fixture failure; full run stops before the subsequent TSX suite, which was run separately and passed · check:editing:strict ✓ (15 violations, all in the approved Piano Roll header allowance; zero Highway violations) · editor E2E 15 passed / 3 same baseline `playhead-sync` failures · Storybook remains blocked by the installed Node.js requirement (20.19+ or 22.12+; environment 20.18.1).
+    **Defects closed:** DEF-01 (cancelled Highway drag has no mutation/history trace; playback-start interruption covered); DEF-03 (selection uses stable IDs and survives undo/redo); DEF-06 (Highway drum-kind rendering and classification use the session mode).
+    **Intentional behaviour changes:** Highway drag previews no longer mutate MIDI before commit; Highway phrase and note selections share the central selection model and survive undo/redo.
+    **Deviations from plan:** `HighwayNoteEditingController` remains as a session-command/gesture adapter rather than being folded into the input controller; it performs no direct MIDI mutations and keeps placement, clipboard, and selection commands separate from pointer-state handling. `HighwayPhraseEditingController` likewise remains as a gesture adapter over session commands. The approved Piano Roll header callback bridge remains until Phase 9. Changes to `packages/views` extend preview placement with an end tick and expose mode classification required by Highway projection; these are outside the listed app-only scope but necessary for held-note previews and mode-based indexing.
+    **Performance:** Highway instancing E2E recorded 3,000 visible notes, capacity 4,096, zero dropped notes, 1.700 ms draw, 0.100 ms instance-buffer writes, and no note-state rebuild on the unchanged frame. Drag preview/cancel behavior is covered by input tests; no separate active-drag timing comparison was captured.
+    **Open questions:** none
+
+## Phase 8: Clipboard and selection centralization (branch: editing/phase-8-clipboard-selection)
+
+**Status:** done
+**Summary:** Replaced the view-owned clipboard with one defensive, mode-tagged payload shared by editor sessions. Added mode-specific paste expansion for raw MIDI, frets, drums, and vocals, including cross-view pitch validation, Kick2 preservation, and vocal lyric restoration. Routed copy, cut, paste, menu enablement, playback gating, and rejection-count errors through `EditorClipboardService`; cut is one session transaction. Removed view-local clipboard methods and verified shared selection replacement across viewport sessions.
+**Files changed:**
+
+- Views: `packages/views/src/editing/{clipboard.ts,clipboardService.ts,mode.ts,session.ts,standalone.ts,modes/{rawMidi,chartFrets,chartDrums,vocals}.ts}`, `packages/views/src/index.ts`
+- Editor services: `apps/editor/src/services/editor/{clipboard.ts,editing.ts,__tests__/{clipboard,editing}.test.ts}`
+- Editor views/tests: Highway and Piano Roll clipboard APIs removed; migrated characterization/note/vocal tests and the Piano Roll Storybook hotkey adapter
+- Docs: `docs/editing/PROGRESS.md`
+  **Tests:** added 8 editor clipboard integration tests covering cross-view paste, validation/rejection reporting, lyric and Kick2 preservation, cut undo, playback enablement, and shared viewport selection · ported the legacy clipboard test and view tests to the session payload API while retaining MIDI output and lyric assertions · removed none
+  **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 Turbo tasks) · lint ✓ · targeted Prettier ✓ · full format:check reports 129 repository files; all Phase 8 files pass · `npm test`: 382 passed / 1 pre-existing editor Piano Roll time-signature fixture failure · Menubar 5 passed; focused editor unit suites 52 passed; views suite 64 passed · check:editing:strict ✓ (15 violations, all within the approved Piano Roll header allowance; no clipboard code remains in production views) · E2E 15 passed / the same 3 baseline `playhead-sync` failures · Storybook unavailable: installed Storybook requires Node.js v20.19+ or v22.12+, environment v20.18.1.
+  **Defects closed:** DEF-04 (cross-view clipboard and focused-view-dependent menu enablement; tests: editor clipboard integration and Menubar)
+  **Intentional behaviour changes:** Cross-mode paste now validates entities against the destination mode and reports dropped-note counts; paste remains enabled across view modes when a shared payload exists (DEF-04).
+  **Deviations from plan:** The standalone Piano Roll Storybook host omits clipboard hotkeys because it has no editor-level clipboard service; clipboard logic was not reintroduced into the view.
+  **Performance:** not applicable
+  **Open questions:** none
+
+## Phase 9: Capability-driven UI and global editing (branch: editing/phase-9-capability-driven-ui)
+
+**Status:** done
+**Summary:** Replaced mirrored viewport tool fields with per-mode, schema-validated state; resolved view availability through the registered modes; generated toolbar groups from mode descriptors while retaining the existing controls, labels, ordering, and shortcuts; published active-mode and capability context keys; and routed editing actions through sessions. Added `midi.global` as a secondary Piano Roll header session and migrated tempo, time-signature, section-marker, text, and text-drag edits to session commands/gestures. Vocal lyric edits continue through `SET_LYRIC`, while the global mode rejects lyric changes.
+**Files changed:**
+
+- Views: `packages/views/src/config.ts`, `packages/views/src/editing/{mode.ts,modeRegistry.ts,session.ts,modes/{globalTrack.ts,index.ts,vocals.ts}}`, `packages/views/src/index.ts`
+- Editor services: `apps/editor/src/services/editor/{editing.ts,editingContext.ts,viewports.ts}`, corresponding editing/viewport tests, and `mode-extensibility.test.ts`
+- Editor UI/actions: migrated edit actions, `Runtime`, `Toolbar/{definitions.ts,index.tsx,types.ts}`, `Viewport/index.tsx`, shared icon lookup, Piano Roll header/session wiring, and the vocal header test fixture
+- Docs: `docs/editing/{ARCHITECTURE.md,PROGRESS.md}`
+  **Tests:** added a test-only four-lane mode acceptance test covering registry resolution, generated toolbar tools, published context keys, command execution, clipboard round-trip, and gesture cancel/commit/undo; added toolbar DOM parity coverage for the existing Highway controls; added global-session/lyric-guard/tool-state validation coverage; updated viewport and action tests for mode-indexed state. No tests were removed or weakened.
+  **Gate results:** `npm run check-types` passed (9 Turbo tasks) · `npm run lint` passed · MIDI/views/editor builds passed (Vite emitted its existing Node.js 20.19+ version warning under Node.js 20.18.1, plus existing CSS/chunk warnings) · targeted Prettier check passed for all changed source/tests/docs · `npm run check:editing:strict` passed with 0 violations in `components/**` · focused Phase 9 editor unit tests 22 passed · toolbar DOM tests 2 passed · views suite 64 passed · full editor unit suite 254 passed / 1 known pre-existing Piano Roll time-signature fixture failure (`iterateGridBeats` reads an absent next signature); root `npm test` exits on that same known failure.
+  **Defects closed:** DEF-14 (global header edits bypassed the editing session and were not undoable as session commands; global header operations now use the secondary session, while vocal lyrics remain writable only through the vocal session).
+  **Intentional behaviour changes:** Viewports now select a host supported by the active mode registry; global header edits participate in session history, playback refresh, and gesture cancellation.
+  **Deviations from plan:** Added `editingContext.ts` to make capability-key creation testable and to clear keys when switching modes. The acceptance test lives in the editor service tests and uses the real registry/session/clipboard APIs with a test-only mode and `"test-view"` host.
+  **Performance:** not measured in Phase 9
+  **Open questions:** none
+
+## Phase 10: Enforcement and documentation (branch: editing/phase-10-enforcement-documentation)
+
+**Status:** done
+**Summary:** Removed the deprecated editing action, transaction, scratchpad, history-bracketing, and interaction-wrapper APIs; moved reusable interaction math and sustain-cut policy to focused helpers; emptied the editing-boundary allowlist and added the strict gate to the root `check` command. Added a special-pitch literal check and completed the architecture reference, mode/view contribution guides, docs index, and Views README.
+**Files changed:**
+
+- Editor: removed deprecated history actions and editing wrappers; migrated Highway and Piano Roll adapters/tests to the session and preview APIs
+- Views: removed legacy command/transaction/scratchpad APIs and obsolete helpers; added the shared sustain-cut options helper
+- Guardrails: `package.json`, `scripts/check-editing-boundaries.mjs`, `scripts/editing-boundaries.allowlist.json`
+- Docs: `docs/editing/{ARCHITECTURE.md,ADDING_A_MODE.md,ADDING_A_VIEW.md,PROGRESS.md}`, `docs/index.md`, `packages/views/README.md`
+  **Tests:** ported legacy editing tests to raw commands, sessions, and preview state while preserving MIDI-output and user-visible behavior assertions; added no runtime dependencies and weakened or deleted no assertions · focused editor suites: 51 passed · Views: 62 passed
+  **Gate results:** MIDI, Views, and Editor builds ✓ · `npm run check-types` ✓ (9 Turbo tasks) · lint ✓ · `npm run check:editing:strict` ✓ (0 violations; empty allowlist) · targeted editor tests ✓ · root `npm test`: 254 editor tests passed with the same pre-existing Piano Roll time-signature fixture failure; Audio 15, MIDI 29, Mixer 26, and Views 62 passed · E2E: 15 passed and the same 3 baseline `playhead-sync` failures · performance E2E ✓ (3,000 notes, capacity 4,096, zero dropped notes; draw 1.800 ms, instance-buffer writes 0.100 ms) · root `npm run check` passes lint and strict boundary checks, then fails the repository-wide Prettier check on 118 files (the Phase 0 baseline was 153; changed Phase 10 files pass targeted formatting) · Storybook tests/build unavailable because installed Storybook requires Node.js v20.19+ or v22.12+, while the environment is v20.18.1.
+  **Defects closed:** no new defects; previously tracked DEF-01–DEF-12, DEF-14, and DEF-15 remain closed. No open defect is listed in the progress log.
+  **Intentional behaviour changes:** none beyond the planned removal of deprecated APIs and enforcement of the centralized editing boundary.
+  **Deviations from plan:** Did not add the strict boundary gate to `ci`; decision S-4 requires maintainer sign-off. The root `check` command enforces it. Full-format and Storybook gates remain blocked by the repository-wide formatting baseline and the installed Node.js version, respectively.
+  **Performance:** highway instancing acceptance test passed with 3,000 visible notes, a 4,096-note capacity, zero dropped notes, 1.800 ms draw time, and 0.100 ms instance-buffer writes.
+  **Open questions:** none

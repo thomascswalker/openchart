@@ -8,12 +8,16 @@ import {
   type EditResult,
   type Rejection,
 } from "./result.js";
+import { ClipboardService } from "./clipboard.js";
+import type { SelectionModel } from "./selectionModel.js";
+import { SelectionModel as SelectionModelImpl } from "./selectionModel.js";
 import type {
   EditingMode,
   EditingTarget,
   ModeContext,
   Projection,
 } from "./mode.js";
+import type { NoteSnapshot } from "./reader.js";
 
 /** Transaction operations supplied by the document/history owner. */
 export interface EditTransactionPort {
@@ -33,15 +37,20 @@ export interface EditingSession {
   readonly mode: EditingMode;
   readonly target: EditingTarget;
   readonly hostKind: string;
+  readonly selection: SelectionModel;
+  readonly clipboard: ClipboardService;
   getProjection(): Projection;
+  classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]>;
   can(commandType: string): boolean;
   execute(command: EditCommand, options?: ExecuteOptions): EditResult;
   executeBatch(
     commands: readonly EditCommand[],
     options?: ExecuteOptions,
   ): EditResult;
+  pasteClipboard(anchorTick: number): EditResult;
   beginGesture(): GestureHandle;
   getToolState(): unknown;
+  setToolState(state: unknown): void;
 }
 
 /** Preview/commit/cancel handle for one continuous editing gesture. */
@@ -60,6 +69,8 @@ export interface CreateEditingSessionOptions {
   hostKind: string;
   config: SongViewConfig;
   transaction: EditTransactionPort;
+  selection?: SelectionModel;
+  clipboard?: ClipboardService;
   onCommit?: (result: EditResult) => void;
 }
 
@@ -73,12 +84,14 @@ export function createEditingSession(
 class EditingSessionImpl implements EditingSession {
   public readonly mode: EditingMode;
   public readonly hostKind: string;
+  public readonly selection: SelectionModel;
+  public readonly clipboard: ClipboardService;
   private readonly document: ChartDocument;
   private readonly config: SongViewConfig;
   private readonly transaction: EditTransactionPort;
   private readonly onCommit: ((result: EditResult) => void) | undefined;
   private targetValue: EditingTarget;
-  private readonly toolState: unknown;
+  private toolState: unknown;
 
   public constructor(options: CreateEditingSessionOptions) {
     this.document = options.document;
@@ -87,6 +100,8 @@ class EditingSessionImpl implements EditingSession {
     this.hostKind = options.hostKind;
     this.config = options.config;
     this.transaction = options.transaction;
+    this.selection = options.selection ?? new SelectionModelImpl();
+    this.clipboard = options.clipboard ?? new ClipboardService();
     this.onCommit = options.onCommit;
     this.toolState = this.mode.toolStateSchema.parse(
       this.mode.createDefaultToolState(),
@@ -97,8 +112,16 @@ class EditingSessionImpl implements EditingSession {
     return this.targetValue;
   }
 
+  public setToolState(state: unknown): void {
+    this.toolState = this.mode.toolStateSchema.parse(state);
+  }
+
   public getProjection(): Projection {
     return this.mode.createProjection(this.createModeContext());
+  }
+
+  public classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]> {
+    return this.mode.classify(note, this.createModeContext());
   }
 
   public can(commandType: string): boolean {
@@ -126,7 +149,42 @@ class EditingSessionImpl implements EditingSession {
       return { ...emptyEditResult(), rejections };
     }
 
-    const triggerCommand = rawCommands[0]!;
+    return this.commitExpanded(rawCommands, rejections, rawCommands[0]!);
+  }
+
+  public pasteClipboard(anchorTick: number): EditResult {
+    if (!Number.isSafeInteger(anchorTick) || anchorTick < 0) {
+      throw new RangeError("anchorTick must be a non-negative integer");
+    }
+    const payload = this.clipboard.getData();
+    if (!payload) return emptyEditResult();
+
+    const expansion = this.mode.expandPaste(
+      payload,
+      anchorTick,
+      this.createModeContext(),
+      this.toolState,
+    );
+    if (expansion.commands.length === 0) {
+      return { ...emptyEditResult(), rejections: [...expansion.rejections] };
+    }
+
+    const result = this.commitExpanded(
+      expansion.commands,
+      expansion.rejections,
+      { type: "PASTE_CLIPBOARD" },
+    );
+    if (result.createdIds.length > 0) {
+      this.selection.setSelectedIds(result.createdIds);
+    }
+    return result;
+  }
+
+  private commitExpanded(
+    rawCommands: readonly RawCommand[],
+    rejections: readonly Rejection[],
+    triggerCommand: EditCommand,
+  ): EditResult {
     const targetBeforeTransaction = this.targetValue;
     let transactionStarted = false;
     let combinedResult: EditResult;
@@ -139,7 +197,7 @@ class EditingSessionImpl implements EditingSession {
       this.transaction.end();
       transactionStarted = false;
 
-      combinedResult = { ...result, rejections };
+      combinedResult = { ...result, rejections: [...rejections] };
     } catch (error) {
       if (transactionStarted) {
         let rolledBack: boolean;
@@ -218,6 +276,8 @@ class EditingSessionImpl implements EditingSession {
     const createsNotes = commands.some(
       (command) => command.type === "ADD_NOTES" && command.notes.length > 0,
     );
+    const materializesTarget =
+      this.targetValue.trackIndex === null && createsNotes;
     if (this.targetValue.trackIndex === null && createsNotes) {
       if (!this.mode.capabilities.canCreateTrack) {
         throw new EditRejectedError(
@@ -238,17 +298,21 @@ class EditingSessionImpl implements EditingSession {
     }
 
     if (this.targetValue.trackIndex === null) return [...commands];
-    return commands.map((command) =>
-      command.type === "ADD_NOTES"
-        ? {
-            ...command,
-            notes: command.notes.map((note) => ({
-              ...note,
-              trackIndex: this.targetValue.trackIndex!,
-            })),
-          }
-        : command,
-    );
+    return commands.map((command) => {
+      if (command.type === "ADD_NOTES") {
+        return {
+          ...command,
+          notes: command.notes.map((note) => ({
+            ...note,
+            trackIndex: this.targetValue.trackIndex!,
+          })),
+        };
+      }
+      if (materializesTarget && command.type === "ADD_TEXT") {
+        return { ...command, trackIndex: this.targetValue.trackIndex! };
+      }
+      return command;
+    });
   }
 
   private throwIfAllRejected(

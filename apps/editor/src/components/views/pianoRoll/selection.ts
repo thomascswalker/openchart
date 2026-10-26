@@ -7,7 +7,8 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
   #bounds: Box2 | null = null;
   #sharedSelection: SelectionModel | null = null;
   #sharedUnsubscribe: (() => void) | null = null;
-  #getId: ((note: PianoRollNote) => string) | null = null;
+  #resolveId: ((id: string) => PianoRollNote | null) | null = null;
+  #resolvedById = new Map<string, PianoRollNote | null>();
   #syncingShared = false;
   private revision = 0;
 
@@ -17,30 +18,53 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
 
   public bindSharedSelection(
     selection: SelectionModel,
-    getId: (note: PianoRollNote) => string,
     resolveId: (id: string) => PianoRollNote | null,
   ): void {
+    if (this.#sharedSelection === selection && this.#resolveId === resolveId) {
+      this.refreshSharedSelection();
+      return;
+    }
     this.#sharedUnsubscribe?.();
     this.#sharedSelection = selection;
-    this.#getId = getId;
+    this.#resolveId = resolveId;
+    this.#resolvedById.clear();
     this.#sharedUnsubscribe = selection.subscribe((ids) => {
-      this.#syncingShared = true;
-      try {
-        super.set(
-          ids
-            .map((id) => resolveId(id))
-            .filter((note): note is PianoRollNote => note !== null),
-        );
-      } finally {
-        this.#syncingShared = false;
-      }
+      this.syncSharedSelection(ids);
     });
-    const selectedIds = selection.getSelectedIds();
+    this.refreshSharedSelection();
+  }
+
+  public unbindSharedSelection(): void {
+    this.#sharedUnsubscribe?.();
+    this.#sharedUnsubscribe = null;
+    this.#sharedSelection = null;
+    this.#resolveId = null;
+    this.#resolvedById.clear();
+    this.#syncingShared = true;
+    try {
+      super.clear();
+    } finally {
+      this.#syncingShared = false;
+    }
+  }
+
+  public refreshSharedSelection(): void {
+    if (!this.#sharedSelection) return;
+    this.#resolvedById.clear();
+    this.syncSharedSelection(this.#sharedSelection.getSelectedIds());
+  }
+
+  private syncSharedSelection(ids: readonly string[]): void {
     this.#syncingShared = true;
     try {
       super.set(
-        selectedIds
-          .map((id) => resolveId(id))
+        ids
+          .map((id) => {
+            if (!this.#resolvedById.has(id)) {
+              this.#resolvedById.set(id, this.#resolveId?.(id) ?? null);
+            }
+            return this.#resolvedById.get(id) ?? null;
+          })
           .filter((note): note is PianoRollNote => note !== null),
       );
     } finally {
@@ -62,12 +86,7 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
   }
 
   public override isSelected(note: PianoRollNote): boolean {
-    return (
-      super.isSelected(note) ||
-      this.notes.some(
-        (selected) => selected.midiNote.noteOn === note.midiNote.noteOn,
-      )
-    );
+    return this.#sharedSelection?.isSelected(note.id) ?? super.isSelected(note);
   }
 
   public set notes(value: PianoRollNote[]) {
@@ -89,7 +108,7 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
 
   protected override onChanged(): void {
     this.revision += 1;
-    if (this.#syncingShared || !this.#sharedSelection || !this.#getId) return;
-    this.#sharedSelection.setSelectedIds(this.notes.map(this.#getId));
+    if (this.#syncingShared || !this.#sharedSelection) return;
+    this.#sharedSelection.setSelectedIds(this.notes.map((note) => note.id));
   }
 }

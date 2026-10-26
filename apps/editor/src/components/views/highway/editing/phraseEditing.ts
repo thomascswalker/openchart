@@ -1,21 +1,19 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import {
-  addNotePhrase,
-  getPhrasePitch,
-  type EditablePhraseKind,
-  type MidiNotePhrase,
-  updateNotePhrase,
+import type {
+  EditablePhraseKind,
+  EntityId,
+  GestureHandle,
 } from "@openchart/views";
+import { formatNoteId } from "@openchart/views";
 import type { HighwayContext } from "../context";
 import { HighwayCoordinateSystem } from "../coordinates";
+import type { HighwayPhrase } from "../hitTesting";
 import type { HighwayPhraseDragState } from "../types";
 
 export class HighwayPhraseEditingController {
   private readonly context: HighwayContext;
   private readonly coordinates: HighwayCoordinateSystem;
   private dragState: HighwayPhraseDragState | null = null;
-  private selectedPhraseNoteOn: MidiChannelEvent | null = null;
-  private readonly selectedPhraseNoteOns = new Set<MidiChannelEvent>();
+  private gesture: GestureHandle | null = null;
 
   public constructor(
     context: HighwayContext,
@@ -29,63 +27,57 @@ export class HighwayPhraseEditingController {
     return this.dragState;
   }
 
-  public getSelectedPhraseNoteOn(): MidiChannelEvent | null {
-    this.getSelectedPhraseNoteOns();
-    return this.selectedPhraseNoteOn;
+  public getSelectedPhraseIds(): EntityId[] {
+    const session = this.context.getEditingSession();
+    const chart = this.context.getCurrentChart();
+    const track = chart?.getTrack().getMidiTrack();
+    const trackIndex = session?.target.trackIndex;
+    if (!session || !track || trackIndex === null || trackIndex === undefined) {
+      return [];
+    }
+    const selected = new Set(session.selection.getSelectedIds());
+    return track.getNotes().flatMap((note) => {
+      const id = this.getEntityId(trackIndex, track.getEventId(note.noteOn));
+      if (!selected.has(id)) return [];
+      const classification = session.classifyNote({
+        id,
+        trackIndex,
+        tick: note.start,
+        pitch: note.note,
+        duration: note.end - note.start,
+        velocity: note.velocity,
+      });
+      return classification.kind === "phrase" ? [id] : [];
+    });
   }
 
-  public getSelectedPhraseNoteOns(): MidiChannelEvent[] {
-    const track = this.context.getCurrentChart()?.getTrack().getMidiTrack();
-    const existing = new Set(
-      track?.getNotes().map((note) => note.noteOn) ?? [],
+  public isPhraseSelected(id: EntityId): boolean {
+    return this.getSelectedPhraseIds().includes(id);
+  }
+
+  public selectPhrase(id: EntityId | null): void {
+    const selection = this.context.getEditingSession()?.selection;
+    selection?.setSelectedIds(id ? [id] : []);
+  }
+
+  public selectPhrases(ids: Iterable<EntityId>, additive: boolean): void {
+    const selection = this.context.getEditingSession()?.selection;
+    if (!selection) return;
+    selection.setSelectedIds(
+      additive ? [...selection.getSelectedIds(), ...ids] : ids,
     );
-    for (const noteOn of this.selectedPhraseNoteOns) {
-      if (!existing.has(noteOn)) this.selectedPhraseNoteOns.delete(noteOn);
-    }
-    if (
-      this.selectedPhraseNoteOn &&
-      !this.selectedPhraseNoteOns.has(this.selectedPhraseNoteOn)
-    ) {
-      this.selectedPhraseNoteOn =
-        [...this.selectedPhraseNoteOns].at(-1) ?? null;
-    }
-    return [...this.selectedPhraseNoteOns];
-  }
-
-  public isPhraseSelected(noteOn: MidiChannelEvent): boolean {
-    return this.getSelectedPhraseNoteOns().includes(noteOn);
-  }
-
-  public selectPhrase(phrase: MidiNotePhrase | null): void {
-    this.selectedPhraseNoteOn = phrase?.note.noteOn ?? null;
-    this.selectedPhraseNoteOns.clear();
-    if (this.selectedPhraseNoteOn) {
-      this.selectedPhraseNoteOns.add(this.selectedPhraseNoteOn);
-    }
-  }
-
-  public selectPhrases(
-    noteOns: Iterable<MidiChannelEvent>,
-    additive: boolean,
-  ): void {
-    if (!additive) this.selectedPhraseNoteOns.clear();
-    const incoming = [...noteOns];
-    for (const noteOn of incoming) this.selectedPhraseNoteOns.add(noteOn);
-    if (incoming.length > 0) {
-      this.selectedPhraseNoteOn = incoming[incoming.length - 1] ?? null;
-    } else if (!additive) {
-      this.selectedPhraseNoteOn = null;
-    }
-    this.getSelectedPhraseNoteOns();
   }
 
   public beginPhraseDrag(
     pointerId: number,
     kind: EditablePhraseKind,
     tick: number,
-    phrase: MidiNotePhrase | null,
+    phrase: HighwayPhrase | null,
     operation: HighwayPhraseDragState["operation"],
   ): void {
+    const session = this.context.getEditingSession();
+    if (!session) return;
+    this.gesture = session.beginGesture();
     this.dragState = {
       pointerId,
       kind,
@@ -95,98 +87,104 @@ export class HighwayPhraseEditingController {
       initialStartTick: phrase?.start ?? tick,
       initialEndTick: phrase?.end ?? tick,
       operation,
-      note: phrase?.note ?? null,
+      id: phrase?.id ?? null,
       moved: false,
     };
-    this.selectPhrase(phrase);
-    this.context.beginEdit();
+    if (phrase) this.selectPhrase(phrase.id);
   }
 
   public updatePhraseDrag(tick: number): void {
     const drag = this.dragState;
     if (!drag) return;
-    drag.moved ||= tick !== drag.pointerTick;
+    const nextTick =
+      drag.operation === "move" ? this.coordinates.snapTick(tick) : tick;
+    drag.moved ||= nextTick !== drag.pointerTick;
     if (drag.operation === "create") {
-      drag.startTick = Math.min(drag.pointerTick, tick);
-      drag.endTick = Math.max(drag.pointerTick, tick);
+      drag.startTick = Math.min(drag.pointerTick, nextTick);
+      drag.endTick = Math.max(drag.pointerTick, nextTick);
     } else if (drag.operation === "move") {
-      const start = this.coordinates.snapTick(
-        drag.initialStartTick + tick - drag.pointerTick,
+      const start = Math.max(
+        0,
+        this.coordinates.snapTick(
+          drag.initialStartTick + nextTick - drag.pointerTick,
+        ),
       );
       const duration = drag.initialEndTick - drag.initialStartTick;
       drag.startTick = start;
       drag.endTick = start + duration;
     } else if (drag.operation === "resize-start") {
-      drag.startTick = Math.min(drag.initialEndTick - 1, Math.max(0, tick));
+      drag.startTick = Math.min(drag.initialEndTick - 1, Math.max(0, nextTick));
     } else {
-      drag.endTick = Math.max(drag.initialStartTick + 1, tick);
+      drag.endTick = Math.max(drag.initialStartTick + 1, nextTick);
     }
+    this.updatePreview(drag);
   }
 
   public finishPhraseDrag(): boolean {
     const drag = this.dragState;
+    const gesture = this.gesture;
     this.dragState = null;
-    if (!drag) return false;
-    try {
-      const chart = this.context.getCurrentChart();
-      if (!chart || (drag.operation === "create" && !drag.moved)) return false;
-      const descriptor = chart
-        .getSong()
-        .getTrackDescriptors()
-        .find((item) => item.key === chart.getTrack().getKey());
-      const pitch = descriptor ? getPhrasePitch(descriptor, drag.kind) : null;
-      if (pitch === null) return false;
-      const track = chart.getSong().ensureMidiTrack(chart.getTrack().getKey());
-      if (!track) return false;
-
-      const start = Math.max(0, Math.min(drag.startTick, drag.endTick));
-      const end = Math.max(drag.startTick, drag.endTick);
-      const finalEnd = Math.max(start + 1, end);
-      if (!Number.isInteger(start) || !Number.isInteger(finalEnd)) return false;
-      let changed = false;
-      if (drag.note) {
-        changed =
-          (start !== drag.initialStartTick ||
-            finalEnd !== drag.initialEndTick) &&
-          updateNotePhrase(track, drag.note, start, finalEnd);
-      } else {
-        const phrase = addNotePhrase(track, pitch, drag.kind, start, finalEnd);
-        changed = phrase !== null;
-        if (phrase) this.selectPhrase(phrase);
-      }
-      if (changed) this.context.notifyNotesChanged();
-      return changed;
-    } finally {
-      this.context.endEdit();
+    this.gesture = null;
+    if (!drag || !gesture) return false;
+    if (drag.operation === "create" && !drag.moved) {
+      gesture.cancel();
+      this.context.setPreviewState(null);
+      return false;
     }
+    const result = gesture.commit();
+    this.context.setPreviewState(null);
+    const session = this.context.getEditingSession();
+    if (result.createdIds.length > 0) {
+      session?.selection.setSelectedIds(result.createdIds);
+    } else if (result.updatedIds.length > 0) {
+      session?.selection.setSelectedIds(result.updatedIds);
+    }
+    return result.changed;
   }
 
   public cancelPhraseDrag(): void {
-    if (!this.dragState) return;
     this.dragState = null;
-    this.context.endEdit();
+    this.gesture?.cancel();
+    this.gesture = null;
+    this.context.setPreviewState(null);
   }
 
   public deleteSelectedPhrase(): boolean {
-    const chart = this.context.getCurrentChart();
-    const track = chart?.getTrack().getMidiTrack();
-    const selected = new Set(this.getSelectedPhraseNoteOns());
-    const phrases =
-      track?.getNotes().filter((note: MidiNote) => selected.has(note.noteOn)) ??
-      [];
-    this.selectedPhraseNoteOn = null;
-    this.selectedPhraseNoteOns.clear();
-    if (!track || phrases.length === 0) return false;
-    this.context.beginEdit();
-    try {
-      let changed = false;
-      for (const phrase of phrases) {
-        changed = track.removeNote(phrase.noteOn, phrase.noteOff) || changed;
-      }
-      if (changed) this.context.notifyNotesChanged();
-      return changed;
-    } finally {
-      this.context.endEdit();
-    }
+    const session = this.context.getEditingSession();
+    if (!session) return false;
+    const targetIds = this.getSelectedPhraseIds();
+    if (targetIds.length === 0) return false;
+    const changed = session.execute({
+      type: "DELETE_ENTITIES",
+      targetIds,
+    }).changed;
+    if (changed) session.selection.setSelectedIds([]);
+    this.context.requestRender();
+    return changed;
+  }
+
+  private updatePreview(drag: HighwayPhraseDragState): void {
+    const gesture = this.gesture;
+    if (!gesture || (drag.operation === "create" && !drag.moved)) return;
+    const startTick = Math.min(drag.startTick, drag.endTick);
+    const endTick = Math.max(startTick + 1, drag.endTick);
+    const command = drag.id
+      ? {
+          type: "UPDATE_PHRASE",
+          id: drag.id,
+          startTick,
+          endTick,
+        }
+      : {
+          type: "CREATE_PHRASE",
+          phraseKind: drag.kind,
+          startTick,
+          endTick,
+        };
+    this.context.setPreviewState(gesture.preview(command));
+  }
+
+  private getEntityId(trackIndex: number, eventId: string): EntityId {
+    return formatNoteId(trackIndex, eventId);
   }
 }

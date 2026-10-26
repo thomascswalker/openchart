@@ -1,6 +1,5 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import type { EditablePhraseKind } from "@openchart/views";
-import type { DrumNoteKind } from "./profile";
+import type { EditablePhraseKind, EntityId } from "@openchart/views";
 
 export type HighwayTool = "select" | "place" | "remove";
 
@@ -23,15 +22,6 @@ export function getPhraseModeForHighwayMode(
   return mode === "stagepower" || mode === "solo" ? mode : null;
 }
 
-export interface HighwayClipboardNote {
-  relativeTick: number;
-  lane: number;
-  durationTicks: number;
-  velocity: number;
-  drumKind?: DrumNoteKind;
-  originalPitch?: number;
-}
-
 export interface HighwayPhraseDragState {
   pointerId: number;
   kind: EditablePhraseKind;
@@ -41,12 +31,12 @@ export interface HighwayPhraseDragState {
   initialStartTick: number;
   initialEndTick: number;
   operation: "create" | "move" | "resize-start" | "resize-end";
-  note: MidiNote | null;
+  id: EntityId | null;
   moved: boolean;
 }
 
 export interface HighwayPhraseHoverState {
-  noteOn: MidiChannelEvent | null;
+  id: EntityId | null;
   operation: HighwayPhraseDragState["operation"] | null;
   placementTick: number | null;
 }

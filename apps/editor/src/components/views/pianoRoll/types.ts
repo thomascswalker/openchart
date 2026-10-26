@@ -8,12 +8,9 @@ import type {
   TimeSignatureEvent,
 } from "@openchart/midi";
 import type {
-  ChartDocument,
-  ChartEditAction,
-  ClipboardService,
+  EntityId,
   EditingSession,
-  EditScratchpad,
-  SelectionModel,
+  PreviewState,
   VocalNoteKind,
   VocalPhraseKind,
 } from "@openchart/views";
@@ -23,11 +20,12 @@ import type { SelectionContext } from "./selection";
 import type { PointerContext } from "./input/pointer";
 
 export interface PianoRollNote {
+  id: EntityId;
   tick: number;
   durationTicks: number;
   pitch: number;
   velocity: number;
-  midiNote: MidiNote;
+  midiNote: MidiNote | null;
 }
 
 export interface PianoRollCamera {
@@ -99,17 +97,14 @@ export interface PianoRollContext {
   getViewport(): { width: number; height: number };
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;
-  getEditingCore?(): PianoRollEditingCore | null;
   getEditingSession?(): EditingSession | null;
+  getGlobalEditingSession?(): EditingSession | null;
+  setPreviewState?(preview: PreviewState | null): void;
+  getPreviewState?(): PreviewState | null;
   getDisplayNotes?(notes: PianoRollNote[]): PianoRollNote[];
   requestRender(): void;
-  beginEdit(): void;
-  endEdit(): void;
-  notifyNotesChanged(): void;
   requestSeek(tick: number): void;
   invalidateTempoCache(): void;
-  /** Restores the document to before the open edit transaction. */
-  rollbackEdit(): boolean;
   promptLyric(tick: number, handlers: PianoRollLyricPromptHandlers): void;
   cancelLyricPrompt(): void;
   /** Tab from a lyric: edit (or prompt for) the next note's lyric. */
@@ -118,18 +113,8 @@ export interface PianoRollContext {
   previewNotes(notes: readonly PianoRollNote[]): void;
 }
 
-export interface PianoRollEditingCore {
-  readonly selection: SelectionModel;
-  readonly scratchpad: EditScratchpad;
-  readonly clipboard: ClipboardService;
-  getDocument(): ChartDocument;
-  getSession(viewportId: string): EditingSession | null;
-  dispatch(action: ChartEditAction): boolean;
-  dispatchBatch(actions: ChartEditAction[]): boolean;
-}
-
 export interface PianoRollCameraState {
-  profile: PianoRollProfile["id"];
+  profile: PianoRollProfile["id"] | "generic";
   y: number;
   v: number;
   h: number;
