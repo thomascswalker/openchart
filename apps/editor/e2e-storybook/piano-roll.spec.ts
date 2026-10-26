@@ -294,13 +294,15 @@ test.describe("vocals profile", () => {
     const input = page.locator(".piano-roll-header-input");
     await expect(input).toBeVisible();
     await expect(input).toBeFocused();
-    await expect(page.getByTestId("note-count")).toHaveText("Notes: 12");
+    await expect(page.getByTestId("note-count")).toHaveText("Notes: 11");
+    await expect(canvas).toHaveAttribute("data-visible-notes", "12");
     await page.keyboard.type("née");
     await page.keyboard.press("Enter");
 
     await expect
       .poll(async () => JSON.parse((await story.getAttribute("data-lyrics"))!))
       .toContainEqual([1440, "née"]);
+    await expect(page.getByTestId("note-count")).toHaveText("Notes: 12");
     await expect(page.getByTestId("edit-transaction")).toHaveText(
       "Transaction: Ready",
     );
@@ -325,6 +327,29 @@ test.describe("vocals profile", () => {
 
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("note-count")).toHaveText("Notes: 11");
+    await expect(story).toHaveAttribute("data-lyrics", lyricsBefore ?? "");
+  });
+
+  test("empty Enter cancels a just-created note and its pending lyric", async ({
+    page,
+  }) => {
+    await page.goto(VOCALS_STORY);
+    const story = page.getByTestId("piano-roll-story");
+    const canvas = page.locator(".piano-roll-story__renderer canvas");
+    await expect(canvas).toBeVisible();
+    const lyricsBefore = await story.getAttribute("data-lyrics");
+    const bounds = await canvas.boundingBox();
+    if (!bounds) throw new Error("Piano-roll canvas has no layout bounds");
+    const y = bounds.y + VOCAL_GRID_TOP + 120;
+    await page.mouse.move(bounds.x + xForTick(1460), y);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + xForTick(1900), y, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator(".piano-roll-header-input")).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("note-count")).toHaveText("Notes: 11");
+    await expect(page.locator(".piano-roll-header-input")).toBeHidden();
     await expect(story).toHaveAttribute("data-lyrics", lyricsBefore ?? "");
   });
 });

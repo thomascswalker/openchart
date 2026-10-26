@@ -19,9 +19,6 @@ const HANDLERS: Record<string, Handler> = {
   "piano-roll.clear-selection": (view) => view.clearSelection(),
   "piano-roll.focus-selection": (view) => view.focusSelection(),
   "editor.delete-selection": (view) => view.deleteSelection(),
-  "clipboard.copy": (view) => view.copySelection(),
-  "clipboard.cut": (view) => view.cutSelection(),
-  "clipboard.paste": (view) => view.pasteClipboard(),
 };
 
 const STORY_BINDINGS = [...pianoRollBindings, ...globalBindings].filter(

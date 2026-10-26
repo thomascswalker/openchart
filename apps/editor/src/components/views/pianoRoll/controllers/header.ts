@@ -1,11 +1,17 @@
 import {
   MetaType,
-  Midi,
   type TempoEvent,
   type TextMidiEvent,
   type TimeSignatureEvent,
 } from "@openchart/midi";
 import { Vector2 } from "three";
+import type {
+  EditCommand,
+  EditingSession,
+  EntityId,
+  GestureHandle,
+} from "@openchart/views";
+import { formatTextId } from "@openchart/views";
 import {
   HeaderHeight,
   HeaderLaneHeight,
@@ -53,8 +59,12 @@ export class HeaderController extends IController {
   #deleteButtonRef: HTMLButtonElement | null = null;
   #editingMarkerKey: string | null = null;
   #editingMarker: { lane: HeaderLane; tick: number } | null = null;
+  #editTextHandler: ((text: string) => boolean) | null = null;
   #draggingText: TextMidiEvent | null = null;
-  #prompt: { tick: number; handlers: PianoRollLyricPromptHandlers } | null = null;
+  #draggingTextTick: number | null = null;
+  #dragGesture: GestureHandle | null = null;
+  #prompt: { tick: number; handlers: PianoRollLyricPromptHandlers } | null =
+    null;
   #promptKey: string | null = null;
   #width: number = 0;
 
@@ -109,6 +119,10 @@ export class HeaderController extends IController {
   }
 
   destroy(): void {
+    this.#dragGesture?.cancel();
+    this.#dragGesture = null;
+    this.#draggingText = null;
+    this.#draggingTextTick = null;
     // Remove HTML elements
     this.#bottomBorderRef?.remove();
     this.#bottomBorderRef = null;
@@ -181,7 +195,14 @@ export class HeaderController extends IController {
     const timeSignatureEvents = this.context
       .getTimeSignatureEvents()
       .filter(inView);
-    const textEvents = this.context.getTextEvents().filter(inView);
+    const textEvents = this.context
+      .getTextEvents()
+      .filter(inView)
+      .map((event) =>
+        event === this.#draggingText && this.#draggingTextTick !== null
+          ? { ...event, tick: this.#draggingTextTick }
+          : event,
+      );
     const tempoEvents = this.context.getTempoEvents().filter(inView);
     return [
       {
@@ -221,9 +242,13 @@ export class HeaderController extends IController {
    * Opens the inline text input at `tick` for a lyric. Used right after a
    * vocal note is created and when Tab moves to a note with no lyric yet.
    */
-  public promptText(tick: number, handlers: PianoRollLyricPromptHandlers): void {
+  public promptText(
+    tick: number,
+    handlers: PianoRollLyricPromptHandlers,
+  ): void {
     if (this.#prompt) this.cancelPrompt();
     this.#editingMarker = null;
+    this.#editTextHandler = null;
     this.#prompt = { tick, handlers };
     this.#promptKey = null;
     this.syncEditControls();
@@ -241,9 +266,10 @@ export class HeaderController extends IController {
   }
 
   /** Opens the edit input on the existing text event at `tick`. */
-  public editTextAt(tick: number): void {
+  public editTextAt(tick: number, onCommit?: (text: string) => boolean): void {
     if (this.#prompt) this.cancelPrompt();
     this.#editingMarker = { lane: "text", tick };
+    this.#editTextHandler = onCommit ?? null;
     this.#editingMarkerKey = null;
     this.syncEditControls();
   }
@@ -303,6 +329,7 @@ export class HeaderController extends IController {
       !visibleLanes.includes(this.#editingMarker.lane)
     ) {
       this.#editingMarker = null;
+      this.#editTextHandler = null;
       this.#editingMarkerKey = null;
     }
     this.context.requestRender();
@@ -342,9 +369,8 @@ export class HeaderController extends IController {
     if (this.context.getState().isPlaying) {
       return;
     }
-    const midi: Midi | null = this.context.getMidi();
     const laneType: HeaderLane | null = this.laneAt(point.y);
-    if (!midi || !laneType) {
+    if (!this.globalSession || !laneType) {
       return;
     }
 
@@ -356,38 +382,40 @@ export class HeaderController extends IController {
     // Create the lane-specific default value at the snapped tick.
     const clickTick = this.coordinates.tickAtScreenX(point.x);
     const snappedTick: number = this.coordinates.snapTick(clickTick);
-    let changed: boolean = false;
+    let changed = false;
 
     // Create a tempo event
     if (laneType === "tempo") {
       const current = this.effectiveTempoAt(snappedTick);
-      midi.addTempoEvent(snappedTick, current);
-      changed = true;
+      changed = this.executeGlobal({
+        type: "SET_TEMPO",
+        tick: snappedTick,
+        microsecondsPerQuarterNote: current,
+      });
     }
     // Create a time signature event
     else if (laneType === "timeSignature") {
       const current = this.effectiveTimeSignatureAt(snappedTick);
-      midi.addTimeSignatureEvent(
-        snappedTick,
-        current.numerator,
-        current.denominator,
-      );
-      changed = true;
+      changed = this.executeGlobal({
+        type: "SET_TIME_SIGNATURE",
+        tick: snappedTick,
+        numerator: current.numerator,
+        denominator: current.denominator,
+      });
     }
     // Create a text event if we're NOT in a vocal track
     else if (this.options.createOnClick) {
-      const track = this.context.getSelectedTrack();
-      if (track) {
-        track.addTextEvent(MetaType.Marker, snappedTick, "[section New]");
-        changed = true;
-      }
+      changed = this.executeGlobal({
+        type: "ADD_SECTION",
+        tick: snappedTick,
+        name: "New",
+      });
     }
 
     // If the MIDI was updated, invalidate the tempo cache and notify that
     // the notes changed
     if (changed) {
       this.context.invalidateTempoCache();
-      this.context.notifyNotesChanged();
     }
 
     // Rerender
@@ -399,9 +427,8 @@ export class HeaderController extends IController {
     if (this.context.getState().isPlaying) {
       return;
     }
-    const midi = this.context.getMidi();
     const lane = this.laneAt(y);
-    if (!midi || !lane) {
+    if (!this.globalSession || !lane) {
       return;
     }
 
@@ -415,18 +442,26 @@ export class HeaderController extends IController {
     if (marker) {
       // Text markers follow the profile's separate text-deletion option.
       if (lane === "tempo") {
-        changed = midi.removeTempoEventAt(marker.tick);
+        changed = this.executeGlobal({
+          type: "REMOVE_TEMPO",
+          tick: marker.tick,
+        });
       } else if (lane === "timeSignature") {
-        changed = midi.removeTimeSignatureEventAt(marker.tick);
+        changed = this.executeGlobal({
+          type: "REMOVE_TIME_SIGNATURE",
+          tick: marker.tick,
+        });
       } else if (this.options.deleteText) {
         const text = this.findTextEventNear(x);
         if (text)
-          changed = this.context.getSelectedTrack()?.removeEvent(text) ?? false;
+          changed = this.executeGlobal({
+            type: "DELETE_ENTITIES",
+            targetIds: [this.textEntityId(text)],
+          });
       }
     }
     if (changed) {
       this.context.invalidateTempoCache();
-      this.context.notifyNotesChanged();
     }
     this.context.requestRender();
   }
@@ -439,8 +474,14 @@ export class HeaderController extends IController {
       !this.options.dragText
     )
       return;
+    const session = this.globalSession;
     this.#draggingText = this.findTextEventNear(point.x);
-    if (this.#draggingText) this.context.beginEdit();
+    if (this.#draggingText && session) {
+      this.#draggingTextTick = this.#draggingText.tick;
+      this.#dragGesture = session.beginGesture();
+    } else {
+      this.#draggingText = null;
+    }
   }
 
   /** Moves the active text marker to the nearest snapped tick. */
@@ -449,20 +490,23 @@ export class HeaderController extends IController {
     const tick = this.coordinates.snapTickToNearest(
       this.coordinates.tickAtScreenX(point.x),
     );
-    const track = this.context.getSelectedTrack();
-    if (track?.moveEvent(this.#draggingText, tick)) {
-      this.context.notifyNotesChanged();
-      this.context.requestRender();
-    }
+    this.#draggingTextTick = tick;
+    this.#dragGesture?.preview({
+      type: "UPDATE_TEXT",
+      id: this.textEntityId(this.#draggingText),
+      tick,
+    });
+    this.context.requestRender();
   }
 
   /** Ends an active text-marker drag and closes its edit transaction. */
   public endDrag(): void {
-    const hadDrag = this.#draggingText !== null;
+    const gesture = this.#dragGesture;
     this.#draggingText = null;
-    if (hadDrag) {
-      this.context.endEdit();
-    }
+    this.#draggingTextTick = null;
+    this.#dragGesture = null;
+    gesture?.commit();
+    this.context.requestRender();
   }
 
   /** Creates or updates marker labels and highlights for one lane. */
@@ -648,7 +692,7 @@ export class HeaderController extends IController {
       }
       if (
         event.key === "Tab" &&
-        this.context.getProfile().editing === "vocals" &&
+        this.context.getProfile().id === "vocals" &&
         this.#editingMarker?.lane === "text"
       ) {
         event.preventDefault();
@@ -700,27 +744,34 @@ export class HeaderController extends IController {
   /** Deletes the currently hovered marker, respecting playback and profile settings. */
   private deleteHoveredMarker(): void {
     if (this.context.getState().isPlaying) return;
-    const midi = this.context.getMidi();
     const marker = this.#hoveredMarker;
-    if (!midi || !marker) return;
+    if (!this.globalSession || !marker) return;
     if (marker.lane === "text" && !this.options.deleteText) return;
 
-    // Remove the selected marker through the MIDI or selected-track API.
     let changed = false;
-    if (marker.lane === "tempo") changed = midi.removeTempoEventAt(marker.tick);
-    else if (marker.lane === "timeSignature") {
-      changed = midi.removeTimeSignatureEventAt(marker.tick);
+    if (marker.lane === "tempo") {
+      changed = this.executeGlobal({
+        type: "REMOVE_TEMPO",
+        tick: marker.tick,
+      });
+    } else if (marker.lane === "timeSignature") {
+      changed = this.executeGlobal({
+        type: "REMOVE_TIME_SIGNATURE",
+        tick: marker.tick,
+      });
     } else {
       const text = this.findTextEventNear(
         this.coordinates.screenXForTick(marker.tick),
       );
       if (text)
-        changed = this.context.getSelectedTrack()?.removeEvent(text) ?? false;
+        changed = this.executeGlobal({
+          type: "DELETE_ENTITIES",
+          targetIds: [this.textEntityId(text)],
+        });
     }
     this.#hoveredMarker = null;
     if (changed) {
       this.context.invalidateTempoCache();
-      this.context.notifyNotesChanged();
     }
     this.syncEditControls();
     this.context.requestRender();
@@ -730,9 +781,8 @@ export class HeaderController extends IController {
   private commitEdit(raw: string): void {
     if (this.context.getState().isPlaying) return;
 
-    const midi = this.context.getMidi();
     const marker = this.#editingMarker ?? this.#hoveredMarker;
-    if (!midi || !marker) return;
+    if (!marker || (marker.lane !== "text" && !this.globalSession)) return;
 
     let changed = false;
 
@@ -741,36 +791,62 @@ export class HeaderController extends IController {
       const parsed = parseTempoString(raw);
       if (parsed === null) return;
 
-      midi.removeTempoEventAt(marker.tick);
-      midi.addTempoEvent(marker.tick, Math.round(60_000_000 / parsed));
-      changed = true;
+      changed = this.executeGlobal({
+        type: "SET_TEMPO",
+        tick: marker.tick,
+        microsecondsPerQuarterNote: Math.round(60_000_000 / parsed),
+      });
     } else if (marker.lane === "timeSignature") {
       const parsed = parseTimeSignatureString(raw);
       if (parsed === null) return;
 
-      midi.removeTimeSignatureEventAt(marker.tick);
-      midi.addTimeSignatureEvent(
-        marker.tick,
-        parsed.numerator,
-        parsed.denominator,
-      );
-      changed = true;
+      changed = this.executeGlobal({
+        type: "SET_TIME_SIGNATURE",
+        tick: marker.tick,
+        numerator: parsed.numerator,
+        denominator: parsed.denominator,
+      });
     } else {
       const text = this.findTextEventNear(
         this.coordinates.screenXForTick(marker.tick),
       );
 
-      if (text)
+      if (text) {
         changed =
-          this.context.getSelectedTrack()?.updateTextEvent(text, raw) ?? false;
+          text.type === MetaType.Lyric
+            ? (this.#editTextHandler?.(raw) ?? false)
+            : this.executeGlobal({
+                type: "UPDATE_TEXT",
+                id: this.textEntityId(text),
+                text: raw,
+              });
+      }
     }
 
     this.#editingMarker = null;
+    this.#editTextHandler = null;
     if (changed) {
       this.context.invalidateTempoCache();
-      this.context.notifyNotesChanged();
     }
     this.context.requestRender();
+  }
+
+  private get globalSession(): EditingSession | null {
+    return this.context.getGlobalEditingSession?.() ?? null;
+  }
+
+  private executeGlobal(command: EditCommand): boolean {
+    const session = this.globalSession;
+    return session ? session.execute(command).changed : false;
+  }
+
+  private textEntityId(event: TextMidiEvent): EntityId {
+    const track = this.context.getSelectedTrack();
+    const trackIndex = this.context.getSelectedTrackIndex();
+    if (!track || trackIndex === null) {
+      throw new Error("A selected track is required to edit text events");
+    }
+    return formatTextId(trackIndex, track.getEventId(event));
   }
 
   /** Formats the current marker value for display in the inline edit input. */

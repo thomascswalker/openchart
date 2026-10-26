@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MidiNote } from "@openchart/midi";
 import { Vector2 } from "three";
 import * as THREE from "three";
-import {
-  Difficulty,
-  type ChartView,
-  type MidiNotePhrase,
-} from "@openchart/views";
+import { Difficulty, type MidiNotePhrase } from "@openchart/views";
 import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
 import type { ChartViewState } from "../../AbstractChartView";
 import { HighwayCoordinateSystem } from "../coordinates";
@@ -16,6 +12,7 @@ import {
   getPhraseBoundaryHitOperation,
   type PhraseBoundaryProjection,
 } from "../hitTesting";
+import { createHighwayTestSetup } from "./testUtils";
 
 function boundary(y: number): PhraseBoundaryProjection {
   return {
@@ -76,7 +73,10 @@ describe("phrase screen hit bounds", () => {
     },
     camera,
   );
-  const hitTesting = new HighwayHitTester(coordinates);
+  const hitTesting = new HighwayHitTester(coordinates, {
+    getEditingSession: () => null,
+    getPreviewState: () => null,
+  });
 
   function phrase(start: number, end: number): MidiNotePhrase {
     return { start, end } as MidiNotePhrase;
@@ -102,7 +102,10 @@ describe("drum note hit testing", () => {
       worldToScreen: (point: THREE.Vector3) =>
         new Vector2(point.x * 100, point.y * 100),
     } as unknown as HighwayCoordinateSystem;
-    const hitTesting = new HighwayHitTester(coordinates);
+    const hitTesting = new HighwayHitTester(coordinates, {
+      getEditingSession: () => null,
+      getPreviewState: () => null,
+    });
     const note = { note: 100, start: 480 } as MidiNote;
     const pad = hitTesting.getGemScreenBounds(note, 1, "pad")!;
     const cymbal = hitTesting.getGemScreenBounds(note, 1, "cymbal")!;
@@ -112,32 +115,59 @@ describe("drum note hit testing", () => {
   });
 
   it("hits cymbals on their pad lane and excludes marker pitches", () => {
-    const cymbal = { note: 101, start: 480, end: 480 } as MidiNote;
-    const flam = { note: 104, start: 480, end: 480 } as MidiNote;
+    const setup = createHighwayTestSetup("drums");
+    setup.midiTrack.addNoteAt({
+      pitch: 101,
+      tick: 480,
+      duration: 1,
+      velocity: 90,
+    });
+    setup.midiTrack.addNoteAt({
+      pitch: 104,
+      tick: 480,
+      duration: 1,
+      velocity: 90,
+    });
+    const cymbal = setup.chart.getNotes()[0]!;
     const coordinates = {
       getCanvasPoint: () => new Vector2(20, 20),
       getTickAtDepth: (depth: number) => (depth === nearBoardZ ? 0 : 1_000),
     } as unknown as HighwayCoordinateSystem;
-    const hitTesting = new HighwayHitTester(coordinates);
+    const hitTesting = new HighwayHitTester(coordinates, setup.context);
     hitTesting.getGemScreenBounds = (_note, lane) =>
       lane === 1 ? { left: 0, right: 40, top: 0, bottom: 40 } : null;
     hitTesting.getTailScreenBounds = () => null;
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      getNoteRevision: () => 1,
-      getNotes: () => [cymbal, flam],
-    } as unknown as ChartView;
 
     const candidates: IndexedNote[] = [];
-    getHighwayNoteIndex(chart).query(chart, 0, 1_000, candidates);
-    expect(candidates.map(({ note }) => note)).toContain(cymbal);
-    expect(hitTesting.getNoteAt(chart, {} as MouseEvent)).toBe(cymbal);
+    getHighwayNoteIndex(setup.chart).query(
+      setup.chart,
+      setup.session,
+      null,
+      0,
+      1_000,
+      candidates,
+    );
+    expect(candidates.map(({ source }) => source)).toContain(cymbal);
+    expect(hitTesting.getNoteAt(setup.chart, {} as MouseEvent)?.source).toBe(
+      cymbal,
+    );
   });
 
   it("uses normalized kick bounds and ignores flam markers", () => {
-    const kick = { note: 95, start: 480, end: 480 } as MidiNote;
-    const flam = { note: 104, start: 480, end: 480 } as MidiNote;
+    const setup = createHighwayTestSetup("drums");
+    setup.midiTrack.addNoteAt({
+      pitch: 95,
+      tick: 480,
+      duration: 1,
+      velocity: 90,
+    });
+    setup.midiTrack.addNoteAt({
+      pitch: 104,
+      tick: 480,
+      duration: 1,
+      velocity: 90,
+    });
+    const kick = setup.chart.getNotes()[0]!;
     const coordinates = {
       getCanvasPoint: () => new Vector2(300, 100),
       getTickAtDepth: (depth: number) => (depth === nearBoardZ ? 0 : 1_000),
@@ -147,16 +177,12 @@ describe("drum note hit testing", () => {
       worldToScreen: (point: THREE.Vector3) =>
         new Vector2((point.x + 3) * 100, (point.y + 1) * 100),
     } as unknown as HighwayCoordinateSystem;
-    const hitTesting = new HighwayHitTester(coordinates);
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      getNoteRevision: () => 1,
-      getNotes: () => [kick, flam],
-    } as unknown as ChartView;
+    const hitTesting = new HighwayHitTester(coordinates, setup.context);
 
     const bounds = hitTesting.getKickScreenBounds(kick);
     expect(bounds).toMatchObject({ left: 250, right: 350 });
-    expect(hitTesting.getNoteAt(chart, {} as MouseEvent)).toBe(kick);
+    expect(hitTesting.getNoteAt(setup.chart, {} as MouseEvent)?.source).toBe(
+      kick,
+    );
   });
 });
