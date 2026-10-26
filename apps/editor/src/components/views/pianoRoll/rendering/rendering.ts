@@ -524,7 +524,7 @@ export function* iterateGridBeats(
 ): Generator<GridBeatIterator> {
   for (let index = 0; index < tsEvents.length; index++) {
     const segment = tsEvents[index];
-    const nextTick = tsEvents[index + 1].tick;
+    const nextTick = tsEvents[index + 1]?.tick || segment.tick;
     const segmentEnd = index + 1 < tsEvents.length ? nextTick : Infinity;
     if (segmentEnd <= startTick || segment.tick >= endTick) {
       continue;
