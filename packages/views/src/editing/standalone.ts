@@ -3,12 +3,10 @@ import {
   defaultConfig,
   type SongViewConfig,
   type TrackDescriptor,
-  describeTrack,
 } from "../config.js";
 import { SongView } from "../chartView.js";
-import { getPhrasePitch } from "../chartEditing.js";
 import { ChartDocument } from "./chartDocument.js";
-import { ClipboardService } from "./clipboardService.js";
+import { ClipboardService } from "./clipboard.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
 import { createDefaultModeRegistry } from "./modes/index.js";
 import { SelectionModel } from "./selectionModel.js";
@@ -45,23 +43,7 @@ export function createStandaloneEditing(
   const history = new StandaloneHistoryImpl(midi);
   const registry = createDefaultModeRegistry();
   const selection = new SelectionModel();
-  const clipboard = new ClipboardService(
-    document,
-    selection,
-    (trackIndex, pitch) => {
-      const descriptor = document.getTrackDescriptor(trackIndex);
-      if (!descriptor) return null;
-      for (const phraseType of [
-        "stagepower",
-        "solo",
-        "vocal",
-        "power-window",
-      ] as const) {
-        if (getPhrasePitch(descriptor, phraseType) === pitch) return phraseType;
-      }
-      return null;
-    },
-  );
+  const clipboard = new ClipboardService();
 
   return {
     registry,
@@ -97,16 +79,7 @@ export function createStandaloneEditing(
 }
 
 function createDocument(midi: Midi, config: SongViewConfig): ChartDocument {
-  const descriptors = config.tracks.map(describeTrack);
-  return new ChartDocument(
-    midi,
-    (trackIndex, phraseType) => {
-      const name = midi.tracks[trackIndex]?.name;
-      const descriptor = descriptors.find((item) => item.name === name);
-      return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
-    },
-    config,
-  );
+  return new ChartDocument(midi, config);
 }
 
 function resolveTarget(

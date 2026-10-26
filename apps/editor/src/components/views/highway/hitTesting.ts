@@ -1,20 +1,24 @@
-import type { MidiNote } from "@openchart/midi";
-import {
-  getNotePhrases,
-  getPhrasePitch,
-  type EditablePhraseKind,
-  type MidiNotePhrase,
-  type ChartView,
-} from "@openchart/views";
+import type { ChartView, EditablePhraseKind, EntityId } from "@openchart/views";
 import { Vector2 } from "three";
 import * as THREE from "three";
-import { HIGHWAY_GEOMETRY_CATALOG, type GeometryId } from "./rendering/geometryCatalog";
+import {
+  HIGHWAY_GEOMETRY_CATALOG,
+  type GeometryId,
+} from "./rendering/geometryCatalog";
 import type { MeshKey } from "../../../rendering/registry";
 import { noteWorldPosition } from "./rendering/geometry";
 import { farBoardZ, nearBoardZ, strikeLineZ } from "./constants";
 import type { HighwayPhraseDragState, HighwayScreenBounds } from "./types";
 import { HighwayCoordinateSystem } from "./coordinates";
 import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
+import type { HighwayContext } from "./context";
+
+export interface HighwayPhrase {
+  id: EntityId;
+  start: number;
+  end: number;
+  kind: EditablePhraseKind;
+}
 
 export interface PhraseBoundaryProjection {
   worldStart: THREE.Vector3;
@@ -58,20 +62,32 @@ function distanceToSegment(
 
 export class HighwayHitTester {
   private readonly coordinates: HighwayCoordinateSystem;
+  private readonly context: Pick<
+    HighwayContext,
+    "getEditingSession" | "getPreviewState"
+  >;
   private readonly modelBounds = new Map<MeshKey, THREE.Box3>();
 
-  public constructor(coordinates: HighwayCoordinateSystem) {
+  public constructor(
+    coordinates: HighwayCoordinateSystem,
+    context: Pick<HighwayContext, "getEditingSession" | "getPreviewState">,
+  ) {
     this.coordinates = coordinates;
+    this.context = context;
   }
 
   public setModelBounds(meshKey: MeshKey, bounds: THREE.Box3): void {
     this.modelBounds.set(meshKey, bounds.clone());
   }
 
-  public getNoteAt(chart: ChartView, event: MouseEvent): MidiNote | undefined {
+  public getNoteAt(
+    chart: ChartView,
+    event: MouseEvent,
+  ): IndexedNote | undefined {
     const pointer = this.coordinates.getCanvasPoint(event);
-    if (!pointer) return undefined;
-    let hit: MidiNote | undefined;
+    const session = this.context.getEditingSession();
+    if (!pointer || !session) return undefined;
+    let hit: IndexedNote | undefined;
     let nearestDepth = Infinity;
     const visibleStart = Math.min(
       this.coordinates.getTickAtDepth(nearBoardZ),
@@ -84,21 +100,26 @@ export class HighwayHitTester {
     const candidates: IndexedNote[] = [];
     getHighwayNoteIndex(chart).query(
       chart,
+      session,
+      this.context.getPreviewState(),
       visibleStart,
       visibleEnd,
       candidates,
     );
-    for (const { note, lane, kind } of candidates) {
+    for (const note of candidates) {
+      if (note.kind === "phrase") continue;
       const gemBounds =
-        kind === "kick"
+        note.kind === "kick"
           ? this.getKickScreenBounds(note)
           : this.getGemScreenBounds(
               note,
-              lane,
-              kind === "pad" || kind === "cymbal" ? kind : "note",
+              note.lane,
+              note.kind === "pad" || note.kind === "cymbal"
+                ? note.kind
+                : "note",
             );
       const tailBounds =
-        kind === "note" ? this.getTailScreenBounds(note, lane) : null;
+        note.kind === "note" ? this.getTailScreenBounds(note, note.lane) : null;
       if (
         (!gemBounds ||
           !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
@@ -120,18 +141,26 @@ export class HighwayHitTester {
     chart: ChartView,
     event: MouseEvent,
     tick: number,
-  ): MidiNote | undefined {
-    if (chart.getTrack().getKey() === "drums") return undefined;
+  ): IndexedNote | undefined {
+    const session = this.context.getEditingSession();
+    if (!session || session.mode.id === "chart.drums") return undefined;
     const pointer = this.coordinates.getCanvasPoint(event);
     if (!pointer) return undefined;
-    let hit: MidiNote | undefined;
+    let hit: IndexedNote | undefined;
     let nearestDepth = Infinity;
     const candidates: IndexedNote[] = [];
-    getHighwayNoteIndex(chart).query(chart, tick, tick, candidates);
-    for (const { note, lane, kind } of candidates) {
-      if (kind !== "note") continue;
+    getHighwayNoteIndex(chart).query(
+      chart,
+      session,
+      this.context.getPreviewState(),
+      tick,
+      tick,
+      candidates,
+    );
+    for (const note of candidates) {
+      if (note.kind !== "note") continue;
       if (tick <= note.start || tick >= note.end) continue;
-      const bounds = this.getTailScreenBounds(note, lane);
+      const bounds = this.getTailScreenBounds(note, note.lane);
       if (!bounds || !this.containsScreenPoint(bounds, pointer.x, pointer.y)) {
         continue;
       }
@@ -148,23 +177,35 @@ export class HighwayHitTester {
     chart: ChartView,
     event: MouseEvent,
     kind: EditablePhraseKind,
-  ): MidiNotePhrase | undefined {
+  ): HighwayPhrase | undefined {
     const point = this.coordinates.getCanvasPoint(event);
-    const track = chart.getTrack().getMidiTrack();
-    const descriptor = chart
-      .getSong()
-      .getTrackDescriptors()
-      .find((item) => item.key === chart.getTrack().getKey());
-    const pitch = descriptor ? getPhrasePitch(descriptor, kind) : null;
-    if (!point || !track || pitch === null) return undefined;
-    return getNotePhrases(track, pitch, kind).find((phrase) => {
-      const bounds = this.getPhraseScreenBounds(phrase);
-      return bounds && this.containsScreenPoint(bounds, point.x, point.y);
-    });
+    const session = this.context.getEditingSession();
+    if (!point || !session) return undefined;
+    const candidates: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(
+      chart,
+      session,
+      this.context.getPreviewState(),
+      Math.max(0, this.coordinates.getTickAtDepth(nearBoardZ)),
+      this.coordinates.getTickAtDepth(farBoardZ),
+      candidates,
+    );
+    return candidates
+      .filter((entry) => entry.kind === "phrase" && entry.phraseKind === kind)
+      .map((entry) => ({
+        id: entry.id,
+        start: entry.start,
+        end: entry.end,
+        kind,
+      }))
+      .find((phrase) => {
+        const bounds = this.getPhraseScreenBounds(phrase);
+        return bounds && this.containsScreenPoint(bounds, point.x, point.y);
+      });
   }
 
   public getPhraseDragOperation(
-    phrase: MidiNotePhrase,
+    phrase: Pick<HighwayPhrase, "start" | "end">,
     tick: number,
     event?: MouseEvent,
   ): HighwayPhraseDragState["operation"] {
@@ -194,7 +235,7 @@ export class HighwayHitTester {
   }
 
   public getPhraseBoundaryProjection(
-    phrase: Pick<MidiNotePhrase, "start" | "end">,
+    phrase: Pick<HighwayPhrase, "start" | "end">,
     boundary: "start" | "end",
   ): PhraseBoundaryProjection | null {
     const tick = boundary === "start" ? phrase.start : phrase.end;
@@ -215,7 +256,7 @@ export class HighwayHitTester {
   }
 
   public getPhraseScreenBounds(
-    phrase: Pick<MidiNotePhrase, "start" | "end">,
+    phrase: Pick<HighwayPhrase, "start" | "end">,
   ): HighwayScreenBounds | null {
     const visibleStart = Math.max(
       0,
@@ -243,7 +284,7 @@ export class HighwayHitTester {
   }
 
   public getGemScreenBounds(
-    note: MidiNote,
+    note: Pick<IndexedNote, "start" | "end">,
     lane: number,
     geometryId: GeometryId = "note",
   ): HighwayScreenBounds | null {
@@ -303,12 +344,14 @@ export class HighwayHitTester {
     };
   }
 
-  public getKickScreenBounds(note: MidiNote): HighwayScreenBounds | null {
+  public getKickScreenBounds(
+    note: Pick<IndexedNote, "start" | "end">,
+  ): HighwayScreenBounds | null {
     return this.getGemScreenBounds(note, 0, "kick");
   }
 
   public getTailScreenBounds(
-    note: MidiNote,
+    note: Pick<IndexedNote, "start" | "end">,
     lane: number,
   ): HighwayScreenBounds | null {
     if (

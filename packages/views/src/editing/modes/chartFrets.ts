@@ -1,10 +1,12 @@
 import { z } from "zod";
+import type { ClipboardPayload } from "../clipboard.js";
 import { Difficulty } from "../../chartView.js";
 import { getPhrasePitch } from "../../chartEditing.js";
 import { getDifficultyNotePitch } from "../../config.js";
 import { getSustainCutTargets } from "../../chart/sustains.js";
 import { minimumSustainLengthTicks } from "../../chart/constants.js";
 import { createForcedNoteCommands } from "../../chart/forcedNotes.js";
+import { formatNoteId } from "../entityId.js";
 import type { EntityId } from "../entityId.js";
 import type { EditCommand, RawCommand } from "../commands.js";
 import type {
@@ -16,6 +18,7 @@ import type {
 } from "../mode.js";
 import { isRawCommand } from "../mode.js";
 import type { NoteSnapshot } from "../reader.js";
+import type { Rejection } from "../result.js";
 import {
   ownsNotes,
   rejected,
@@ -37,6 +40,8 @@ const PlaceSchema = z.object({
   type: z.literal("PLACE_CHART_NOTE"),
   lane: z.number().int(),
   tick: z.number().int(),
+  endTick: z.number().int().optional(),
+  velocity: z.number().int().min(1).max(127).optional(),
   placement: z.enum(["normal", "force-hopo", "force-strum", "tap"]),
   cutPolicy: z.enum(["all", "none", "preferred-only", "all-but-preferred"]),
   preferredSustainId: z.string().optional(),
@@ -170,8 +175,88 @@ export function createChartFretsMode(): EditingMode<ChartFretsToolState> {
     }),
     createProjection: (context) => createFretsProjection(context),
     classify: (note, context) => classifyFretsNote(note, context),
+    expandPaste: (payload, anchorTick, context) =>
+      expandFretsPaste(payload, anchorTick, context),
     expand: (command, context) => expandFretsCommand(command, context),
   };
+}
+
+function expandFretsPaste(
+  payload: ClipboardPayload,
+  anchorTick: number,
+  context: ModeContext,
+): ExpansionResult {
+  const commands: RawCommand[] = [];
+  const rejections: Rejection[] = [];
+  const projection = createFretsProjection(context);
+  const pasteCommand: EditCommand = { type: "PASTE_CLIPBOARD" };
+
+  for (const entity of payload.entities) {
+    const tick = anchorTick + entity.relativeTick;
+    if (
+      !validSpan(tick, tick + entity.duration) ||
+      !Number.isSafeInteger(tick + entity.duration)
+    ) {
+      rejections.push({
+        code: "invalid-paste-span",
+        message: "Pasted note span is invalid",
+        command: pasteCommand,
+      });
+      continue;
+    }
+
+    let command: EditCommand;
+    if (
+      payload.sourceModeId === "chart.frets" &&
+      entity.classification.kind === "phrase" &&
+      (entity.classification.subtype === "stagepower" ||
+        entity.classification.subtype === "solo")
+    ) {
+      command = {
+        type: "CREATE_PHRASE",
+        phraseKind: entity.classification.subtype,
+        startTick: tick,
+        endTick: tick + entity.duration,
+      };
+    } else {
+      const snapshot: NoteSnapshot = {
+        id: formatNoteId(context.target.trackIndex ?? 0, "clipboard"),
+        trackIndex: context.target.trackIndex ?? 0,
+        tick,
+        pitch: entity.pitch,
+        duration: entity.duration,
+        velocity: entity.velocity,
+      };
+      const row =
+        payload.sourceModeId === "chart.frets"
+          ? projection
+              .getRows()
+              .find((candidate) => candidate.id === entity.row)
+          : projection.rowForNote(snapshot);
+      if (!row) {
+        rejections.push({
+          code: "invalid-chart-pitch",
+          message: "This note is outside the configured chart lanes",
+          command: pasteCommand,
+        });
+        continue;
+      }
+      command = {
+        type: "PLACE_CHART_NOTE",
+        lane: row.index,
+        tick,
+        endTick: tick + entity.duration,
+        velocity: entity.velocity,
+        placement: "normal",
+        cutPolicy: "none",
+      };
+    }
+
+    const expansion = expandFretsCommand(command, context);
+    commands.push(...expansion.commands);
+    rejections.push(...expansion.rejections);
+  }
+  return { commands, rejections };
 }
 
 function createFretsProjection(context: ModeContext): Projection {
@@ -303,7 +388,13 @@ function expandFretsCommand(
   switch (command.type) {
     case "PLACE_CHART_NOTE": {
       const parsed = PlaceSchema.safeParse(command);
-      if (!parsed.success || !validTick(parsed.data.tick)) {
+      if (
+        !parsed.success ||
+        !validTick(parsed.data.tick) ||
+        (parsed.data.endTick !== undefined &&
+          (!validTick(parsed.data.endTick) ||
+            parsed.data.endTick <= parsed.data.tick))
+      ) {
         return rejected(
           command,
           "invalid-command",
@@ -381,7 +472,9 @@ function expandFretsCommand(
             trackIndex: targetTrackIndex(context),
             tick: parsed.data.tick,
             pitch: offset + parsed.data.lane,
-            duration: 1,
+            duration:
+              (parsed.data.endTick ?? parsed.data.tick + 1) - parsed.data.tick,
+            velocity: parsed.data.velocity,
           },
         ],
       });

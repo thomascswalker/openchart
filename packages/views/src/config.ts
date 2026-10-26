@@ -181,14 +181,3 @@ export function findTrackConfig(
       track.name === nameOrKey || describeTrack(track).key === nameOrKey,
   );
 }
-
-/** True when the named instrument can only be edited in the Piano Roll. */
-export function requiresPianoRoll(
-  nameOrKey: string,
-  config: SongViewConfig = defaultConfig,
-): boolean {
-  const track = findTrackConfig(nameOrKey, config);
-  return track !== undefined && track.type === "instrument"
-    ? !hasDifficulties(track)
-    : false;
-}

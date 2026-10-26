@@ -31,15 +31,15 @@ apps/editor/src/components/editor/**        Mode/tool descriptors and actions
    Mutations flow through `EditingService` → `EditingSession` → commands.
 2. `packages/views/src/**` does not import from `apps/**`, `react`, `three`, or
    browser DOM globals.
-3. Views do not call document history methods or the legacy edit-bracketing
-   callbacks (`onBeginEdit`, `onEndEdit`, `onRollbackEdit`, `onNotesChanged`).
+3. Views do not call document history methods. The editing service owns
+   transactions and post-commit side effects.
 4. Entity ID strings are formatted and parsed only in `editing/entityId.ts`.
 5. Special chart pitches are obtained through configuration and domain helpers,
    not numeric literals in app components.
 
 The report-mode boundary checker is `scripts/check-editing-boundaries.mjs`.
-Allowances are recorded in `scripts/editing-boundaries.allowlist.json` and are
-only reduced as migrations remove violations.
+Strict mode is part of the root `check` command. Its allowlist is empty; the
+checker also rejects configured pitch literals in editor component source.
 
 ## 2. Core concepts
 
@@ -101,6 +101,11 @@ interface Rejection {
 failures reject the batch without changes. Runtime failures after mutation
 begins are rethrown so the session's transaction port can restore the document.
 
+The editor uses `EditingSession.execute` for discrete commands and
+`beginGesture` for previewable edits. `PreviewState` is the gesture overlay;
+legacy action conversion, scratchpad previews, and transaction-manager dispatch
+are not part of the public editing API.
+
 ### Read-only document access
 
 `ChartDocumentReader` exposes PPQN, track descriptors, track lookup, note
@@ -132,11 +137,14 @@ first mode that applies to both. `canHost` is the single availability check.
 | `vocals`      | Vocal track config                 | `piano-roll` |
 | `chart.drums` | Drum role with difficulties        | `highway`    |
 | `chart.frets` | Other instrument with difficulties | `highway`    |
-| `midi.global` | Global track                       | `piano-roll` |
+| `midi.global` | Global header entities             | `global`     |
 | `midi.raw`    | Instrument or unmapped MIDI track  | `piano-roll` |
 
 A Piano Roll on a chart track is deliberately raw MIDI editing. Vocals are not
 available in the Highway unless a future mode explicitly declares that host.
+`midi.global` is a secondary session used by Piano Roll header controls; it
+does not replace the primary session that projects notes for the selected
+track.
 
 ### Session and gesture
 
@@ -181,6 +189,21 @@ side effects. It owns the mode registry, global selection, clipboard, and
 sessions keyed by viewport. It rebuilds sessions when the document, target,
 difficulty, or view kind changes. Its transaction port maps to
 `DocumentService`; successful commits refresh playback and publish the result.
+
+### Capability-driven UI and view adapters
+
+Toolbar tools, tool-state validation, view availability, and context keys come
+from the resolved mode. A mode's `hostKinds` and `appliesTo` predicate drive
+`ModeRegistry.canHost`; views do not infer availability from instrument names.
+The toolbar renders each mode's tool descriptors and dispatches the declared
+action ID and payload.
+
+Piano Roll header operations use a secondary `midi.global` session. The
+viewport's primary session remains bound to its selected track and controls
+note projection and editing. Lyrics remain owned by the `vocals` mode.
+
+For implementation walkthroughs, see
+[Adding a mode](./ADDING_A_MODE.md) and [Adding a view](./ADDING_A_VIEW.md).
 
 ### Required invariants
 
@@ -231,3 +254,10 @@ These decisions must not be silently changed:
   missing keys may be added and logged.
 - **S-6:** Any user-visible behavior change outside the defect register
   requires sign-off.
+
+## 6. Contributor guides
+
+- [Adding a mode](./ADDING_A_MODE.md) explains mode descriptors, commands,
+  registration, toolbar integration, and acceptance tests.
+- [Adding a view](./ADDING_A_VIEW.md) explains session-based projection,
+  gesture handling, tool state, and view-level tests.

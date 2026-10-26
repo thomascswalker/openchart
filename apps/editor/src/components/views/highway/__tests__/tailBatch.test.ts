@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
+import { minimumSustainLengthTicks } from "@openchart/views";
 import { rgbFromHex } from "../rendering/materials";
 import { SustainTailBatch } from "../rendering/tailBatch";
-import { minimumSustainLengthTicks } from "../interaction";
 
 describe("SustainTailBatch", () => {
   it("writes transforms and lane/selection attributes to one instanced mesh", () => {

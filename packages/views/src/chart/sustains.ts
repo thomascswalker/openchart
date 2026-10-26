@@ -10,6 +10,26 @@ export interface SustainEndOptions {
   extendPastNext?: boolean;
 }
 
+export function getSustainCutOptions<TNoteOn>(
+  shiftKey: boolean,
+  preferredNoteOn: TNoteOn | null = null,
+  sameLanePlacement = false,
+): SustainCutOptions<TNoteOn> {
+  const cutPolicy =
+    preferredNoteOn === null
+      ? shiftKey
+        ? "none"
+        : "all"
+      : sameLanePlacement
+        ? shiftKey
+          ? "preferred-only"
+          : "all"
+        : shiftKey
+          ? "all"
+          : "preferred-only";
+  return { cutPolicy, preferredNoteOn };
+}
+
 export function getHighwaySustainEnd(
   noteStart: number,
   pointerTick: number,

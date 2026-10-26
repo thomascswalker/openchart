@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { EditingMode } from "@openchart/views";
 import type { ViewportSession } from "../../../services/editor/viewports";
 
 export interface ToolbarContextState {
@@ -6,10 +7,13 @@ export interface ToolbarContextState {
   trackType: string;
   sessionId: string;
   playbackTick: number;
+  canHostView: (view: ViewportSession["view"]) => boolean;
 }
 
 export interface ToolbarEditorState {
   session: ViewportSession;
+  mode?: EditingMode;
+  toolState: unknown;
   snapEnabled: boolean;
   snapDenominator: number;
   lockCursor: boolean;

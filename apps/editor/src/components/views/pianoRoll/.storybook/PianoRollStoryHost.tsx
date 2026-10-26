@@ -262,27 +262,18 @@ export function PianoRollStoryHost({
     syncPlayback();
   }, [playback, snapshot.playbackTick, view]);
 
-  // Wire the view's callbacks to story state, and unwire on cleanup.
+  // Wire view navigation callbacks, and unwire on cleanup.
   useEffect(() => {
     if (!view) return;
     const unsubscribeCamera = view.subscribeCameraChange(() =>
       updateCamera(view),
     );
-    view.onNotesChanged = () => {
-      playback.refresh(midi);
-      setRevision((current) => current + 1);
-    };
-    view.onBeginEdit = () => setTransaction("Editing");
-    view.onEndEdit = () => setTransaction("Ready");
     view.onSeekRequest = playback.setPlaybackTick;
     view.onSnapDenominatorChange = setSnapDenominator;
     updateCamera(view);
 
     return () => {
       unsubscribeCamera();
-      view.onNotesChanged = null;
-      view.onBeginEdit = null;
-      view.onEndEdit = null;
       view.onSeekRequest = null;
       view.onSnapDenominatorChange = null;
     };
