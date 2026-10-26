@@ -66,19 +66,13 @@ export function addNotePhrase(
     return null;
   }
 
-  const insertAt = track.getInsertionIndexAt(start);
-  const previousTick = track.getAbsoluteTickAt(insertAt);
-  const events = track.addNote(
+  const note = track.addNoteAt({
+    tick: start,
     pitch,
-    start - previousTick,
-    100,
-    end - start,
-    insertAt,
-  );
-  const note = track
-    .getNotes()
-    .find((candidate) => candidate.noteOn === events.noteOn);
-  return note ? { start: note.start, end: note.end, kind, note } : null;
+    velocity: 100,
+    duration: end - start,
+  });
+  return { start: note.start, end: note.end, kind, note };
 }
 
 export function updateNotePhrase(
@@ -96,56 +90,11 @@ export function updateNotePhrase(
     return false;
   }
 
-  const originalStart = note.start;
-  if (!track.setNoteStart(note, start)) return false;
-  if (track.setNoteDuration(note, end - start)) return true;
-  track.setNoteStart(note, originalStart);
-  return false;
+  return track.updateNote(note, { start, duration: end - start });
 }
 
 export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
   return track.removeNote(note.noteOn, note.noteOff);
-}
-
-/** @deprecated Removed in Phase 10; use mode-specific selection instead. */
-export function groupNotesAtTick(
-  notes: readonly MidiNote[],
-  tick: number,
-): MidiNote[] {
-  return notes.filter((note) => note.start === tick);
-}
-
-/** @deprecated Removed in Phase 10; use an EditingSession command instead. */
-export function moveNoteGroup(
-  track: MidiTrack,
-  notes: readonly MidiNote[],
-  deltaTick: number,
-  deltaPitch = 0,
-): boolean {
-  if (!Number.isInteger(deltaTick) || !Number.isInteger(deltaPitch))
-    return false;
-  const keep = new Set(notes.map((note) => note.noteOn));
-  let changed = false;
-  for (const note of notes) {
-    changed =
-      track.setNoteStart(note, Math.max(0, note.start + deltaTick)) || changed;
-    changed =
-      track.setNotePitch(
-        note,
-        Math.max(0, Math.min(127, note.note + deltaPitch)),
-      ) || changed;
-  }
-  return changed && keep.size > 0;
-}
-
-/** @deprecated Removed in Phase 10; use an EditingSession command instead. */
-export function trimNoteAt(
-  track: MidiTrack,
-  note: MidiNote,
-  tick: number,
-): boolean {
-  if (!Number.isInteger(tick) || tick <= note.start) return false;
-  return track.setNoteDuration(note, Math.max(1, tick - note.start));
 }
 
 export function extractSections(track: MidiTrack): SectionMarker[] {

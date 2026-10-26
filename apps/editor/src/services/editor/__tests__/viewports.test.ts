@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ViewportService, type ViewportTools } from "../viewports";
+import { enforceAvailableView, ViewportService } from "../viewports";
 
 describe("ViewportService", () => {
   it("owns viewport sessions and publishes focus and snap changes", () => {
@@ -56,6 +56,16 @@ describe("ViewportService", () => {
     expect(service.getViewport(id)?.camera.tick).toBe(480);
   });
 
+  it("falls back to the first host allowed by a mode registry", () => {
+    const service = new ViewportService();
+    const session = service.getActiveViewport()!;
+    const available = enforceAvailableView(
+      session,
+      (_target, hostKind) => hostKind === "highway",
+    );
+    expect(available.view).toBe("highway");
+  });
+
   it("keeps every viewport on the same camera tick", () => {
     const service = new ViewportService();
     const firstId = service.getSnapshot().activeViewportId;
@@ -79,38 +89,44 @@ describe("ViewportService", () => {
     ).toEqual([1200, 1200, 1200]);
   });
 
-  it("keeps editing tools per viewport and merges updates", () => {
+  it("stores arbitrary mode tool state independently per viewport", () => {
     const service = new ViewportService();
     const first = service.getSnapshot().activeViewportId;
     const second = service.addViewport("highway")!;
 
-    service.updateTools(second, { mode: "place" });
-    service.updateTools(first, {
-      vocal: { noteKind: "percussion", phrase: "vocal" },
+    service.setModeToolState(second, "test.custom", { active: "place" });
+    service.setModeToolState(first, "vocals", {
+      noteKind: "percussion",
+      phrase: "vocal",
     });
 
     const sessions = service.getSnapshot().viewportSessions;
-    const secondSessionTools: Partial<ViewportTools> = {
-      mode: "place",
-      drum: "pad",
-    };
-    expect(sessions.find((s) => s.id === second)?.tools).toMatchObject(
-      secondSessionTools,
+    expect(sessions.find((s) => s.id === second)?.tools["test.custom"]).toEqual(
+      {
+        active: "place",
+      },
     );
-    const firstSessionTools: Partial<ViewportTools> = {
-      mode: "select",
-      vocal: { noteKind: "percussion", phrase: "vocal" },
-    };
-    expect(sessions.find((s) => s.id === first)?.tools).toMatchObject(
-      firstSessionTools,
-    );
+    expect(sessions.find((s) => s.id === first)?.tools.vocals).toEqual({
+      noteKind: "percussion",
+      phrase: "vocal",
+    });
+    expect(sessions.find((s) => s.id === second)?.tools.vocals).toEqual({
+      noteKind: "pitched",
+      phrase: null,
+    });
   });
 
   it("preserves tools when other session fields update", () => {
     const service = new ViewportService();
     const id = service.getSnapshot().activeViewportId;
-    service.updateTools(id, { mode: "solo" });
+    service.setModeToolState(id, "chart.frets", {
+      tool: "solo",
+      phrase: null,
+      placement: "normal",
+    });
     service.updateViewport(id, { camera: { tick: 960 } });
-    expect(service.getViewport(id)?.tools.mode).toBe("solo");
+    expect(
+      (service.getViewport(id)?.tools["chart.frets"] as { tool: string }).tool,
+    ).toBe("solo");
   });
 });

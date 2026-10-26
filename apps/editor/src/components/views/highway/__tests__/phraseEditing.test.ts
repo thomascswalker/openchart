@@ -1,59 +1,57 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import { Difficulty, type MidiNotePhrase } from "@openchart/views";
+import { formatNoteId, getPhrasePitch } from "@openchart/views";
 import { describe, expect, it } from "vitest";
-import * as THREE from "three";
-import type { ChartViewState } from "../../AbstractChartView";
-import { HighwayCoordinateSystem } from "../coordinates";
-import type { HighwayContext } from "../context";
+import type { HighwayCoordinateSystem } from "../coordinates";
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
+import type { HighwayPhrase } from "../hitTesting";
+import { createHighwayTestSetup } from "./testUtils";
 
-function createController(
-  overrides: Partial<HighwayContext> = {},
-): HighwayPhraseEditingController {
-  const state: ChartViewState = {
-    midi: null,
-    selectedTrackKey: null,
-    selectedTrackIndex: null,
-    selectedInstrument: "LEAD GUITAR",
-    selectedDifficulty: Difficulty.Expert,
-    snap: { enabled: true, denominator: 4 },
-    lockCursor: false,
-    isPlaying: false,
+function createController() {
+  const setup = createHighwayTestSetup();
+  const coordinates = {
+    snapTick: (tick: number) => Math.round(tick / 240) * 240,
+  } as HighwayCoordinateSystem;
+  return {
+    setup,
+    editing: new HighwayPhraseEditingController(setup.context, coordinates),
   };
-  const coordinates = new HighwayCoordinateSystem(
-    {
-      getCanvas: () => null,
-      getCameraTick: () => 0,
-      getPpqn: () => 480,
-      getState: () => state,
-      getViewport: () => ({ width: 800, height: 600 }),
-    },
-    new THREE.PerspectiveCamera(45, 4 / 3, 0.1, 64),
-  );
-  return new HighwayPhraseEditingController(
-    {
-      beginEdit: () => {},
-      endEdit: () => {},
-      getCurrentChart: () => null,
-      ...overrides,
-    } as unknown as HighwayContext,
-    coordinates,
-  );
 }
 
-function createPhrase(): MidiNotePhrase {
+function addPhrase(
+  setup: ReturnType<typeof createHighwayTestSetup>,
+  kind: "stagepower" | "solo",
+  start: number,
+  end: number,
+): HighwayPhrase {
+  const descriptor = setup.song
+    .getTrackDescriptors()
+    .find((track) => track.key === "lead-guitar")!;
+  const pitch = getPhrasePitch(descriptor, kind)!;
+  setup.midiTrack.addNoteAt({
+    pitch,
+    tick: start,
+    velocity: 100,
+    duration: end - start,
+  });
+  const note = setup.midiTrack
+    .getNotes()
+    .find(
+      (candidate) => candidate.start === start && candidate.note === pitch,
+    )!;
   return {
-    start: 480,
-    end: 960,
-    note: {
-      noteOn: {} as MidiChannelEvent,
-    } as MidiNote,
-  } as MidiNotePhrase;
+    id: formatNoteId(
+      setup.session.target.trackIndex!,
+      setup.midiTrack.getEventId(note.noteOn),
+    ),
+    start,
+    end,
+    kind,
+  };
 }
 
 describe("HighwayPhraseEditingController", () => {
-  it("creates a drag preview and cancels it", () => {
-    const editing = createController();
+  it("previews creation and cancels without changing MIDI or history", () => {
+    const { setup, editing } = createController();
+    const before = setup.midi.toBuffer();
     editing.beginPhraseDrag(7, "stagepower", 120, null, "create");
     editing.updatePhraseDrag(360);
 
@@ -63,12 +61,17 @@ describe("HighwayPhraseEditingController", () => {
       endTick: 360,
       operation: "create",
     });
+    expect(setup.context.getPreviewState()?.added).toHaveLength(1);
     editing.cancelPhraseDrag();
+
     expect(editing.getDragState()).toBeNull();
+    expect(setup.midi.toBuffer()).toEqual(before);
+    expect(setup.editing.history.undoDepth).toBe(0);
+    expect(setup.context.getPreviewState()).toBeNull();
   });
 
   it("normalizes reverse creation and ignores a click without a drag", () => {
-    const editing = createController();
+    const { editing } = createController();
     editing.beginPhraseDrag(1, "solo", 720, null, "create");
     editing.updatePhraseDrag(240);
     expect(editing.getDragState()).toMatchObject({
@@ -82,117 +85,57 @@ describe("HighwayPhraseEditingController", () => {
     expect(editing.finishPhraseDrag()).toBe(false);
   });
 
-  it("closes one history transaction on finish and cancellation", () => {
-    const calls: string[] = [];
-    const editing = createController({
-      beginEdit: () => calls.push("begin"),
-      endEdit: () => calls.push("end"),
-    });
+  it("commits creation, movement, and resizing as session transactions", () => {
+    const { setup, editing } = createController();
+    editing.beginPhraseDrag(1, "stagepower", 120, null, "create");
+    editing.updatePhraseDrag(360);
+    expect(editing.finishPhraseDrag()).toBe(true);
+    const phrase = addPhrase(setup, "solo", 480, 960);
+    expect(setup.editing.history.undoDepth).toBe(1);
 
-    editing.beginPhraseDrag(1, "solo", 100, null, "create");
-    editing.cancelPhraseDrag();
-    editing.beginPhraseDrag(2, "solo", 100, null, "create");
-    editing.finishPhraseDrag();
-
-    expect(calls).toEqual(["begin", "end", "begin", "end"]);
-  });
-
-  it("clears selected phrase identity after external track removal", () => {
-    const phrase = createPhrase();
-    const notes = [phrase.note];
-    const chart = {
-      getTrack: () => ({ getMidiTrack: () => ({ getNotes: () => notes }) }),
-    };
-    const editing = createController({
-      getCurrentChart: () => chart as never,
-    });
-
-    editing.selectPhrase(phrase);
-    expect(editing.getSelectedPhraseNoteOn()).toBe(phrase.note.noteOn);
-    notes.length = 0;
-    expect(editing.getSelectedPhraseNoteOn()).toBeNull();
-  });
-
-  it("replaces or additively extends phrase marquee selection", () => {
-    const first = createPhrase();
-    const second = createPhrase();
-    const third = createPhrase();
-    const notes = [first.note, second.note, third.note];
-    const chart = {
-      getTrack: () => ({ getMidiTrack: () => ({ getNotes: () => notes }) }),
-    };
-    const editing = createController({
-      getCurrentChart: () => chart as never,
-    });
-
-    editing.selectPhrases([first.note.noteOn, second.note.noteOn], false);
-    editing.selectPhrases([third.note.noteOn], true);
-    expect(editing.getSelectedPhraseNoteOns()).toEqual([
-      first.note.noteOn,
-      second.note.noteOn,
-      third.note.noteOn,
-    ]);
-
-    editing.selectPhrases([second.note.noteOn], false);
-    expect(editing.getSelectedPhraseNoteOns()).toEqual([second.note.noteOn]);
-    editing.selectPhrases([], false);
-    expect(editing.getSelectedPhraseNoteOns()).toEqual([]);
-  });
-
-  it("deletes all selected phrases in one history transaction", () => {
-    const first = createPhrase();
-    const second = createPhrase();
-    const notes = [first.note, second.note];
-    const track = {
-      getNotes: () => notes,
-      removeNote: (noteOn: MidiChannelEvent) => {
-        const index = notes.findIndex((note) => note.noteOn === noteOn);
-        if (index < 0) return false;
-        notes.splice(index, 1);
-        return true;
-      },
-    };
-    const calls: string[] = [];
-    const chart = { getTrack: () => ({ getMidiTrack: () => track }) };
-    const editing = createController({
-      getCurrentChart: () => chart as never,
-      beginEdit: () => calls.push("begin"),
-      endEdit: () => calls.push("end"),
-      notifyNotesChanged: () => calls.push("changed"),
-    });
-    editing.selectPhrases([first.note.noteOn, second.note.noteOn], false);
-
-    expect(editing.deleteSelectedPhrase()).toBe(true);
-    expect(notes).toEqual([]);
-    expect(calls).toEqual(["begin", "changed", "end"]);
-    expect(editing.getSelectedPhraseNoteOns()).toEqual([]);
-  });
-
-  it("snaps phrase movement and keeps resized phrases at least one tick long", () => {
-    const editing = createController();
-    const phrase = createPhrase();
-    editing.beginPhraseDrag(1, "solo", 720, phrase, "move");
-    editing.updatePhraseDrag(800);
+    editing.beginPhraseDrag(2, "solo", 720, phrase, "move");
+    editing.updatePhraseDrag(960);
     expect(editing.getDragState()).toMatchObject({
-      startTick: 480,
-      endTick: 960,
+      startTick: 720,
+      endTick: 1200,
       operation: "move",
     });
+    expect(editing.finishPhraseDrag()).toBe(true);
+    const movedPhrase = { ...phrase, start: 720, end: 1200 };
 
-    editing.beginPhraseDrag(2, "solo", 480, phrase, "resize-end");
+    editing.beginPhraseDrag(3, "solo", 720, movedPhrase, "resize-end");
     editing.updatePhraseDrag(200);
     expect(editing.getDragState()).toMatchObject({
-      startTick: 480,
-      endTick: 481,
+      startTick: 720,
+      endTick: 721,
       operation: "resize-end",
     });
+    expect(editing.finishPhraseDrag()).toBe(true);
 
-    editing.beginPhraseDrag(3, "solo", 480, phrase, "resize-start");
+    const resizedPhrase = { ...movedPhrase, end: 721 };
+    editing.beginPhraseDrag(4, "solo", 720, resizedPhrase, "resize-start");
     editing.updatePhraseDrag(0);
     expect(editing.getDragState()).toMatchObject({
       startTick: 0,
-      endTick: 960,
+      endTick: 721,
       operation: "resize-start",
     });
+    expect(editing.finishPhraseDrag()).toBe(true);
+  });
+
+  it("keeps phrase selection stable by ID and deletes selected phrases once", () => {
+    const { setup, editing } = createController();
+    const first = addPhrase(setup, "stagepower", 0, 240);
+    const second = addPhrase(setup, "solo", 480, 960);
+    editing.selectPhrases([first.id], false);
+    editing.selectPhrases([second.id], true);
+
+    expect(editing.getSelectedPhraseIds()).toEqual([first.id, second.id]);
+    const beforeDeleteDepth = setup.editing.history.undoDepth;
+
+    expect(editing.deleteSelectedPhrase()).toBe(true);
+    expect(setup.chart.getNotes()).toHaveLength(0);
+    expect(editing.getSelectedPhraseIds()).toEqual([]);
+    expect(setup.editing.history.undoDepth).toBe(beforeDeleteDepth + 1);
   });
 });

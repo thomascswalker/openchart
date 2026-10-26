@@ -1,40 +1,27 @@
 import {
-  Midi,
-  MidiTrack,
-  type MidiChannelEvent,
-  type MidiNote,
-} from "@openchart/midi";
-import { Difficulty, SongView, type ChartView } from "@openchart/views";
-import { describe, expect, it, vi } from "vitest";
-import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
-import type { HighwayContext } from "../context";
-import { HighwayNoteEditingController } from "../editing/noteEditing";
-import { HighwayPhraseEditingController } from "../editing/phraseEditing";
-import {
-  getHighwayDragTarget,
+  defaultConfig,
+  Difficulty,
+  formatNoteId,
+  getPhrasePitch,
   getHighwaySustainEnd,
+  getSustainCutOptions,
   getSustainCutTargets,
-} from "../interaction";
+  type EditablePhraseKind,
+  type SongViewConfig,
+} from "@openchart/views";
+import { describe, expect, it } from "vitest";
+import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
+import { HighwayPhraseEditingController } from "../editing/phraseEditing";
+import type { HighwayCoordinateSystem } from "../coordinates";
+import type { HighwayPhrase } from "../hitTesting";
+import { getHighwayDragTarget } from "../interactionMath";
 import { getDrumNoteProfile, getDrumPitchForPlacement } from "../profile";
-import { SelectionContext } from "../selection";
-import type { HighwayNotePlacementType } from "../types";
+import {
+  copyHighwaySelectionToClipboard,
+  createHighwayTestSetup,
+} from "./testUtils";
 
-function makeNote(pitch: number, start: number, end: number): MidiNote {
-  return {
-    note: pitch,
-    start,
-    end,
-    velocity: 100,
-    noteOn: {} as MidiChannelEvent,
-    noteOff: {} as MidiChannelEvent,
-  } as MidiNote;
-}
-
-function addNoteAt(track: MidiTrack, pitch: number, tick: number): void {
-  const insertAt = track.getInsertionIndexAt(tick);
-  const previousTick = track.getAbsoluteTickAt(insertAt);
-  track.addNote(pitch, tick - previousTick, 100, 1, insertAt);
-}
+type NotePlacement = "normal" | "force-hopo" | "force-strum" | "tap";
 
 describe("editing characterization: Highway", () => {
   it("records drum placement pitches for every difficulty, kind, and lane", () => {
@@ -55,7 +42,7 @@ describe("editing characterization: Highway", () => {
   it("records forced marker replacement and duplicate suppression by difficulty", () => {
     const { difficulties, placementOrder, expectedByPlacement, tick } =
       characterization.forcedMarkers;
-    const markerTypes: HighwayNotePlacementType[] = [
+    const markerTypes: NotePlacement[] = [
       "normal",
       "force-hopo",
       "force-strum",
@@ -63,48 +50,68 @@ describe("editing characterization: Highway", () => {
     ];
 
     for (const [difficultyIndex, difficulty] of difficulties.entries()) {
-      for (const placement of placementOrder) {
-        const track = new MidiTrack("LEAD GUITAR");
-        for (const pitch of difficulty.markers) addNoteAt(track, pitch, tick);
-        const configNotes = {
-          [`${["easy", "medium", "hard", "expert"][difficultyIndex]}Hopo`]:
-            difficulty.markers[0],
-          [`${["easy", "medium", "hard", "expert"][difficultyIndex]}Strum`]:
-            difficulty.markers[1],
-          [`${["easy", "medium", "hard", "expert"][difficultyIndex]}Tap`]:
-            difficulty.markers[2],
-        };
-        const chart = {
-          getTrack: () => ({
-            getKey: () => "lead-guitar",
-            getMidiTrack: () => track,
-          }),
-          getSong: () => ({
-            getTrackDescriptors: () => [
-              {
-                key: "lead-guitar",
-                config: {
-                  type: "instrument",
-                  offsets: {
-                    [["easy", "medium", "hard", "expert"][difficultyIndex]]:
-                      difficulty.offset,
-                  },
-                  notes: configNotes,
-                },
+      for (const placement of placementOrder as NotePlacement[]) {
+        const difficultyName = ["easy", "medium", "hard", "expert"][
+          difficultyIndex
+        ]!;
+        const config: SongViewConfig = {
+          ...defaultConfig,
+          tracks: defaultConfig.tracks.map((track) => {
+            if (track.key !== "lead-guitar" || track.type !== "instrument") {
+              return track;
+            }
+            return {
+              ...track,
+              offsets: {
+                easy: track.offsets?.easy ?? 60,
+                medium: track.offsets?.medium ?? 72,
+                hard: track.offsets?.hard ?? 84,
+                expert: track.offsets?.expert ?? 96,
+                [difficultyName]: difficulty.offset,
               },
-            ],
+              notes: {
+                ...track.notes,
+                [`${difficultyName}Hopo`]: difficulty.markers[0]!,
+                [`${difficultyName}Strum`]: difficulty.markers[1]!,
+                [`${difficultyName}Tap`]: difficulty.markers[2]!,
+              },
+            };
           }),
-          getOffset: () => difficulty.offset,
-          getNotes: () => [],
-          addNote: () => true,
-        } as unknown as ChartView;
-        const context = {
-          getNotePlacementType: () => placement,
-        } as unknown as HighwayContext;
-        const editing = new HighwayNoteEditingController(context);
+        };
+        const setup = createHighwayTestSetup(
+          "lead-guitar",
+          config,
+          [
+            Difficulty.Easy,
+            Difficulty.Medium,
+            Difficulty.Hard,
+            Difficulty.Expert,
+          ][difficultyIndex]!,
+        );
+        for (const pitch of difficulty.markers) {
+          setup.midiTrack.addNoteAt({
+            pitch,
+            tick,
+            velocity: 100,
+            duration: 1,
+          });
+        }
+        setup.setNotePlacementType(placement);
 
-        editing.placeNoteAt(chart, 0, tick, false);
-        editing.placeNoteAt(chart, 0, tick, false);
+        setup.session.execute({
+          type: "PLACE_CHART_NOTE",
+          lane: 0,
+          tick,
+          placement,
+          cutPolicy: "all",
+        });
+        setup.session.execute({
+          type: "PLACE_CHART_NOTE",
+          lane: 0,
+          tick,
+          placement,
+          cutPolicy: "all",
+        });
 
         const selectedMarkerIndex =
           expectedByPlacement[placement as keyof typeof expectedByPlacement][0];
@@ -112,9 +119,11 @@ describe("editing characterization: Highway", () => {
           selectedMarkerIndex === undefined
             ? []
             : [difficulty.markers[selectedMarkerIndex]];
+        const markerPitches = new Set(difficulty.markers);
         expect(
-          track
+          setup.midiTrack
             .getNotes()
+            .filter((note) => markerPitches.has(note.note))
             .map((note) => note.note)
             .sort((left, right) => left - right),
         ).toEqual(expected);
@@ -133,9 +142,11 @@ describe("editing characterization: Highway", () => {
           noteOn: note.id,
         })),
         tick,
-        testCase.shiftKey,
-        preferred,
-        testCase.sameLanePlacement,
+        getSustainCutOptions(
+          testCase.shiftKey,
+          preferred,
+          testCase.sameLanePlacement,
+        ),
       ).map((note) => note.id);
       expect(actual).toEqual(testCase.expected);
     }
@@ -143,12 +154,9 @@ describe("editing characterization: Highway", () => {
       getHighwaySustainEnd(end.noteStart, end.pointerTick, end.nextStarts),
     ).toBe(end.withoutExtended);
     expect(
-      getHighwaySustainEnd(
-        end.noteStart,
-        end.pointerTick,
-        end.nextStarts,
-        true,
-      ),
+      getHighwaySustainEnd(end.noteStart, end.pointerTick, end.nextStarts, {
+        extendPastNext: true,
+      }),
     ).toBe(end.withExtended);
   });
 
@@ -166,111 +174,140 @@ describe("editing characterization: Highway", () => {
       ),
     ).toEqual(drums.move.expected);
 
-    const kick2 = makeNote(
-      drums.kick2.pitch,
-      drums.move.initialTick,
-      drums.move.initialTick + 1,
-    );
-    const cymbal = makeNote(
-      drums.move.cymbalLane + 100,
-      drums.move.initialTick,
-      drums.move.initialTick + 1,
-    );
-    const marker = makeNote(
-      96 + drums.move.markerSlot,
-      drums.move.initialTick,
-      drums.move.initialTick + 1,
-    );
-    const pitches: number[] = [];
-    const track = {
-      setNotePitch: (_note: MidiNote, pitch: number) => {
-        pitches.push(pitch);
-        return true;
-      },
-      setNoteStart: () => true,
+    const setup = createHighwayTestSetup("drums");
+    const kick2Pitch = drums.kick2.pitch;
+    const cymbalPitch = drums.move.cymbalLane + 100;
+    const markerPitch = 96 + drums.move.markerSlot;
+    for (const pitch of [kick2Pitch, cymbalPitch, markerPitch]) {
+      setup.midiTrack.addNoteAt({
+        pitch,
+        tick: drums.move.initialTick,
+        velocity: 100,
+        duration: 1,
+      });
+    }
+    const entityId = (pitch: number) => {
+      const note = setup.chart.getNotes().find((item) => item.note === pitch)!;
+      return formatNoteId(
+        setup.session.target.trackIndex!,
+        setup.midiTrack.getEventId(note.noteOn),
+      );
     };
-    const chart = {
-      getTrack: () => ({
-        getKey: () => "drums",
-        getMidiTrack: () => track,
-      }),
-      getSong: () => ({ attachTrack: vi.fn() }),
-      getOffset: () => 96,
-    } as unknown as ChartView;
-    const editing = new HighwayNoteEditingController({} as HighwayContext);
-
     expect(getDrumNoteProfile(drums.kick2.pitch, 96)?.kind).toBe("kick");
-    expect(editing.moveNote(chart, kick2, 3, 720)).toBe(true);
     expect(
-      editing.moveNote(chart, cymbal, drums.move.cymbalTargetLane, 720),
+      setup.session.execute({
+        type: "MOVE_CHART_NOTES",
+        targetIds: [entityId(kick2Pitch)],
+        tickDelta: 240,
+        laneDelta: 3,
+      }).changed,
     ).toBe(true);
-    expect(editing.moveNote(chart, marker, 0, 720)).toBe(
-      drums.move.markerMovable,
+    expect(
+      setup.session.execute({
+        type: "MOVE_CHART_NOTES",
+        targetIds: [entityId(cymbalPitch)],
+        tickDelta: 240,
+        laneDelta: drums.move.cymbalTargetLane - drums.move.cymbalLane,
+      }).changed,
+    ).toBe(true);
+    expect(
+      setup.session.execute({
+        type: "MOVE_CHART_NOTES",
+        targetIds: [entityId(markerPitch)],
+        tickDelta: 240,
+        laneDelta: 0,
+      }).changed,
+    ).toBe(drums.move.markerMovable);
+    expect(
+      setup.chart
+        .getNotes()
+        .map((note) => note.note)
+        .sort(),
+    ).toEqual(
+      [
+        drums.kick2.movedPitch,
+        drums.move.cymbalExpectedPitch,
+        markerPitch,
+      ].sort(),
     );
-    expect(pitches).toEqual([
-      drums.kick2.movedPitch,
-      drums.move.cymbalExpectedPitch,
-    ]);
   });
 
   it("records drum chord paste with Kick2 preservation, marker clipping, and occupied-cell skip", () => {
     const { paste } = characterization.drums;
-    const source = paste.source.map(({ pitch, tick }) =>
-      makeNote(pitch, tick, tick + 1),
-    );
-    const occupied = paste.occupied.map(({ pitch, tick }) =>
-      makeNote(pitch, tick, tick + 1),
-    );
-    const added: MidiNote[] = [];
-    const notes = () => [...source, ...occupied, ...added];
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      getLaneCount: () => 9,
-      getNotes: notes,
-      addNoteAtPitch: (pitch: number, start: number, end: number) => {
-        added.push(makeNote(pitch, start, end));
-        return true;
-      },
-    } as unknown as ChartView;
-    const selection = new SelectionContext();
-    source.forEach((note) => selection.add(note.noteOn));
-    const context = {
-      getCurrentChart: () => chart,
-      getSelectionContext: () => selection,
-      getState: () => ({ isPlaying: false }),
-      notifyNotesChanged: vi.fn(),
-      requestRender: vi.fn(),
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
-
-    editing.copySelection();
-    editing.pasteClipboard(paste.anchorTick);
+    const setup = createHighwayTestSetup("drums");
+    for (const note of [...paste.source, ...paste.occupied]) {
+      setup.midiTrack.addNoteAt({
+        pitch: note.pitch,
+        tick: note.tick,
+        velocity: 100,
+        duration: 1,
+      });
+    }
+    const sourceIds = paste.source.map(({ pitch, tick }) => {
+      const note = setup.midiTrack
+        .getNotes()
+        .find(
+          (candidate) => candidate.note === pitch && candidate.start === tick,
+        )!;
+      return formatNoteId(
+        setup.session.target.trackIndex!,
+        setup.midiTrack.getEventId(note.noteOn),
+      );
+    });
+    setup.session.selection.setSelectedIds(sourceIds);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(paste.anchorTick).changed).toBe(true);
 
     expect(
-      added.map(({ note, start }) => ({ pitch: note, tick: start })),
-    ).toEqual(paste.expected);
+      setup.chart
+        .getNotes()
+        .filter(
+          (note) =>
+            !paste.source.some(
+              (sourceNote) =>
+                sourceNote.pitch === note.note &&
+                sourceNote.tick === note.start,
+            ) &&
+            !paste.occupied.some(
+              (occupiedNote) =>
+                occupiedNote.pitch === note.note &&
+                occupiedNote.tick === note.start,
+            ),
+        )
+        .map(({ note, start }) => ({ pitch: note, tick: start }))
+        .sort((left, right) => left.pitch - right.pitch),
+    ).toEqual(
+      [...paste.expected].sort((left, right) => left.pitch - right.pitch),
+    );
   });
 
   it("records phrase creation, movement, and edge clamps", () => {
-    const midi = new Midi();
-    const song = new SongView(midi);
-    const chart = song
-      .getInstrumentTrackView("lead-guitar")
-      ?.getChart(Difficulty.Expert);
-    expect(chart).toBeDefined();
-    const context = {
-      getCurrentChart: () => chart,
-      beginEdit: vi.fn(),
-      endEdit: vi.fn(),
-      notifyNotesChanged: vi.fn(),
-    } as unknown as HighwayContext;
+    const setup = createHighwayTestSetup();
     const coordinates = {
       snapTick: (tick: number) => Math.round(tick / 240) * 240,
-    } as unknown as ConstructorParameters<
-      typeof HighwayPhraseEditingController
-    >[1];
-    const editing = new HighwayPhraseEditingController(context, coordinates);
+    } as HighwayCoordinateSystem;
+    const editing = new HighwayPhraseEditingController(
+      setup.context,
+      coordinates,
+    );
+    const descriptor = setup.song
+      .getTrackDescriptors()
+      .find((track) => track.key === "lead-guitar")!;
+    const getPhrase = (kind: EditablePhraseKind): HighwayPhrase => {
+      const pitch = getPhrasePitch(descriptor, kind)!;
+      const note = setup.midiTrack
+        .getNotes()
+        .find((candidate) => candidate.note === pitch)!;
+      return {
+        id: formatNoteId(
+          setup.session.target.trackIndex!,
+          setup.midiTrack.getEventId(note.noteOn),
+        ),
+        start: note.start,
+        end: note.end,
+        kind,
+      };
+    };
 
     const { create, move, resizeStart, resizeEnd } = characterization.phrases;
     editing.beginPhraseDrag(
@@ -282,14 +319,13 @@ describe("editing characterization: Highway", () => {
     );
     editing.updatePhraseDrag(create.dragTick);
     expect(editing.finishPhraseDrag()).toBe(true);
-    const track = midi.getTrack("LEAD GUITAR")!;
-    const stagepower = track.getNotes({ pitch: { low: 116, high: 117 } })[0];
+    let stagepower = getPhrase("stagepower");
     expect([stagepower.start, stagepower.end]).toEqual(create.expected);
 
     editing.beginPhraseDrag(1, "solo", 960, null, "create");
     editing.updatePhraseDrag(1200);
     expect(editing.finishPhraseDrag()).toBe(true);
-    const solo = track.getNotes({ pitch: { low: 118, high: 119 } })[0];
+    let solo = getPhrase("solo");
     const soloFixture = characterization.phrases.solo;
     expect([solo.start, solo.end]).toEqual(soloFixture.create.expected);
 
@@ -297,81 +333,73 @@ describe("editing characterization: Highway", () => {
       1,
       "solo",
       soloFixture.move.pointerTick,
-      { start: solo.start, end: solo.end, kind: "solo", note: solo },
+      solo,
       "move",
     );
     editing.updatePhraseDrag(soloFixture.move.dragTick);
     expect(editing.finishPhraseDrag()).toBe(true);
+    solo = getPhrase("solo");
     expect([solo.start, solo.end]).toEqual(soloFixture.move.expected);
 
     editing.beginPhraseDrag(
       1,
       "solo",
       soloFixture.resizeStart.pointerTick,
-      { start: solo.start, end: solo.end, kind: "solo", note: solo },
+      { ...solo, ...soloFixture.move.expected },
       "resize-start",
     );
     editing.updatePhraseDrag(soloFixture.resizeStart.dragTick);
-    editing.finishPhraseDrag();
+    expect(editing.finishPhraseDrag()).toBe(true);
+    solo = getPhrase("solo");
     expect([solo.start, solo.end]).toEqual(soloFixture.resizeStart.expected);
 
     editing.beginPhraseDrag(
       1,
       "solo",
       soloFixture.resizeEnd.pointerTick,
-      { start: solo.start, end: solo.end, kind: "solo", note: solo },
+      { ...solo, ...soloFixture.resizeStart.expected },
       "resize-end",
     );
     editing.updatePhraseDrag(soloFixture.resizeEnd.dragTick);
-    editing.finishPhraseDrag();
+    expect(editing.finishPhraseDrag()).toBe(false);
+    solo = getPhrase("solo");
     expect([solo.start, solo.end]).toEqual(soloFixture.resizeEnd.expected);
 
+    stagepower = getPhrase("stagepower");
     editing.beginPhraseDrag(
       1,
       "stagepower",
       move.pointerTick,
-      {
-        start: stagepower.start,
-        end: stagepower.end,
-        kind: "stagepower",
-        note: stagepower,
-      },
+      stagepower,
       "move",
     );
     editing.updatePhraseDrag(move.dragTick);
     expect(editing.finishPhraseDrag()).toBe(true);
+    stagepower = getPhrase("stagepower");
     expect([stagepower.start, stagepower.end]).toEqual(move.expected);
 
     editing.beginPhraseDrag(
       1,
       "stagepower",
       resizeStart.pointerTick,
-      {
-        start: stagepower.start,
-        end: stagepower.end,
-        kind: "stagepower",
-        note: stagepower,
-      },
+      { ...stagepower, ...move.expected },
       "resize-start",
     );
     editing.updatePhraseDrag(resizeStart.dragTick);
-    editing.finishPhraseDrag();
+    expect(editing.finishPhraseDrag()).toBe(false);
+    stagepower = getPhrase("stagepower");
     expect([stagepower.start, stagepower.end]).toEqual(resizeStart.expected);
 
     editing.beginPhraseDrag(
       1,
       "stagepower",
       resizeEnd.pointerTick,
-      {
-        start: stagepower.start,
-        end: stagepower.end,
-        kind: "stagepower",
-        note: stagepower,
-      },
+      { ...stagepower, ...resizeStart.expected },
       "resize-end",
     );
     editing.updatePhraseDrag(resizeEnd.dragTick);
-    editing.finishPhraseDrag();
+    expect(editing.finishPhraseDrag()).toBe(true);
+    stagepower = getPhrase("stagepower");
     expect([stagepower.start, stagepower.end]).toEqual(resizeEnd.expected);
   });
 });

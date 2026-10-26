@@ -76,6 +76,7 @@ flowchart TD
                 EST["<b>Editor State</b><br/>Dialogs and Errors"]
                 VPS["<b>Viewports</b><br/>Panel sessions, Editing tools"]
                 ACV["<b>Active Chart View</b><br/>Renderer"]
+                EDIT["<b>Editing</b><br/>Modes, sessions, commands"]
                 CLIP["<b>Clipboard</b><br/>Copy, Cut, Paste"]
             end
         end
@@ -85,4 +86,8 @@ flowchart TD
         AR --> ACTIONS
         SR --> SERVICES
         ACTIONS --> SERVICES
+        EDIT --> DOC
+        EDIT --> PB
+        EDIT --> VPS
+        EDIT --> CLIP
 ```

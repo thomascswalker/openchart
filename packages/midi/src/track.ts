@@ -23,6 +23,8 @@ import {
   TimeSignatureEvent,
   TextMetaType,
   GetNotesOptions,
+  AddNoteSpec,
+  NotePatchFields,
 } from "./types.js";
 
 export class MidiTrack {
@@ -32,8 +34,10 @@ export class MidiTrack {
 
   private noteCache: MidiNote[] | null = null;
   private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
+  private noteCacheByEventId: Map<MidiEventId, MidiNote> | null = null;
   private noteRevision = 0;
   private readonly eventIds = new WeakMap<object, MidiEventId>();
+  private readonly eventsById = new Map<MidiEventId, MidiEvent>();
   private readonly textEventSources = new WeakMap<
     TextMidiEvent,
     TextMidiEvent
@@ -62,7 +66,9 @@ export class MidiTrack {
     this.events.forEach((event, index) => {
       const clonedEvent = track.events[index];
       if (clonedEvent) {
-        track.eventIds.set(clonedEvent, this.getEventId(event));
+        const id = this.getEventId(event);
+        track.eventIds.set(clonedEvent, id);
+        track.eventsById.set(id, clonedEvent);
       }
     });
     track.nextEventId = this.nextEventId;
@@ -126,12 +132,21 @@ export class MidiTrack {
     if (!id) {
       id = `event-${this.nextEventId++}`;
       this.eventIds.set(event, id);
+      this.eventsById.set(id, event);
     }
     return id;
   }
 
   public getEventById(id: MidiEventId): MidiEvent | undefined {
-    return this.events.find((event) => this.getEventId(event) === id);
+    return this.eventsById.get(id);
+  }
+
+  /** Returns the cached note paired with a NoteOn event ID, if it exists. */
+  public getNoteByEventId(id: MidiEventId): MidiNote | undefined {
+    if (this.noteCache === null || this.noteCacheByEventId === null) {
+      this.buildNoteCache();
+    }
+    return this.noteCacheByEventId!.get(id);
   }
 
   public insertEventAt(tick: number, event: MidiEvent): MidiEventId {
@@ -350,6 +365,10 @@ export class MidiTrack {
       this.events.length,
       ...timedEvents.map(({ event }) => event),
     );
+    for (const event of this.events) {
+      const id = this.eventIds.get(event);
+      if (id) this.eventsById.set(id, event);
+    }
 
     this.invalidateCaches();
   }
@@ -357,7 +376,13 @@ export class MidiTrack {
   private invalidateCaches(): void {
     this.noteCache = null;
     this.noteCacheByPitch = null;
+    this.noteCacheByEventId = null;
     this.noteRevision += 1;
+  }
+
+  private removeEventId(event: MidiEvent): void {
+    const id = this.eventIds.get(event);
+    if (id) this.eventsById.delete(id);
   }
 
   public getNoteRevision(): number {
@@ -516,6 +541,50 @@ export class MidiTrack {
     return { noteOn, noteOff };
   }
 
+  /** Inserts a note at an absolute tick and returns its cached note snapshot. */
+  public addNoteAt(spec: AddNoteSpec): MidiNote {
+    const { tick, pitch, duration, velocity = 100, channel = 0 } = spec;
+    if (!Number.isInteger(tick) || tick < 0) {
+      throw new RangeError("tick must be a non-negative integer");
+    }
+    if (!Number.isInteger(duration) || duration < 1) {
+      throw new RangeError("duration must be a positive integer");
+    }
+    if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
+      throw new RangeError("MIDI note must be between 0 and 127");
+    }
+    if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+      throw new RangeError("NoteOn velocity must be between 1 and 127");
+    }
+    if (!Number.isInteger(channel) || channel < 0 || channel > 15) {
+      throw new RangeError("MIDI channel must be between 0 and 15");
+    }
+
+    const noteOn: MidiChannelEvent = {
+      deltaTime: 0,
+      status: 0x90 | channel,
+      channel,
+      messageType: ChannelMessage.NoteOn,
+      data1: pitch,
+      data2: velocity,
+    };
+    const noteOff: MidiChannelEvent = {
+      deltaTime: 0,
+      status: 0x80 | channel,
+      channel,
+      messageType: ChannelMessage.NoteOff,
+      data1: pitch,
+      data2: 0,
+    };
+    this.insertEventsAt([
+      { tick, event: noteOn },
+      { tick: tick + duration, event: noteOff },
+    ]);
+    const note = this.getNoteByEventId(this.getEventId(noteOn));
+    if (!note) throw new Error("Inserted note was not found in the note cache");
+    return note;
+  }
+
   public removeNote(
     noteOn: MidiChannelEvent,
     noteOff: MidiChannelEvent,
@@ -541,6 +610,8 @@ export class MidiTrack {
     }
 
     const removed = new Set<MidiEvent>([noteOn, noteOff]);
+    this.removeEventId(noteOn);
+    this.removeEventId(noteOff);
 
     const remaining = this.getTimedEventRecords().filter(
       ({ event }) => !removed.has(event),
@@ -558,20 +629,63 @@ export class MidiTrack {
     if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
       throw new RangeError("MIDI note must be between 0 and 127");
     }
+    return this.updateNote(note, { pitch });
+  }
 
-    if (
-      this.events.indexOf(note.noteOn) < 0 ||
-      this.events.indexOf(note.noteOff) < 0
-    ) {
+  /** Atomically updates note properties and rebuilds timed events once. */
+  public updateNote(note: MidiNote, patch: NotePatchFields): boolean {
+    const currentNote = this.getNoteByEventId(this.getEventId(note.noteOn));
+    if (!currentNote || !this.events.includes(currentNote.noteOff)) {
       return false;
     }
 
-    note.noteOn.data1 = pitch;
-    note.noteOff.data1 = pitch;
-    note.note = pitch;
+    const pitch = patch.pitch ?? currentNote.note;
+    const velocity = patch.velocity ?? currentNote.velocity;
+    const start = patch.start ?? currentNote.start;
+    const duration = patch.duration ?? currentNote.end - currentNote.start;
+    const end = start + duration;
+    if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
+      throw new RangeError("MIDI note must be between 0 and 127");
+    }
+    if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+      throw new RangeError("NoteOn velocity must be between 1 and 127");
+    }
+    if (!Number.isInteger(start) || start < 0) {
+      throw new RangeError("startTick must be a non-negative integer");
+    }
+    if (!Number.isInteger(duration) || duration < 1) {
+      throw new RangeError("duration must be a positive integer");
+    }
+    if (!Number.isInteger(end)) {
+      throw new RangeError("endTick must be an integer");
+    }
 
-    this.invalidateCaches();
+    const timedEvents = this.getTimedEventRecords();
+    const noteOnTimed = timedEvents.find(
+      (timedEvent) => timedEvent.event === currentNote.noteOn,
+    );
+    const noteOffTimed = timedEvents.find(
+      (timedEvent) => timedEvent.event === currentNote.noteOff,
+    );
+    if (!noteOnTimed || !noteOffTimed) return false;
 
+    currentNote.noteOn.data1 = pitch;
+    currentNote.noteOff.data1 = pitch;
+    currentNote.noteOn.data2 = velocity;
+    currentNote.note = pitch;
+    currentNote.velocity = velocity;
+    currentNote.start = start;
+    currentNote.end = end;
+    if (note !== currentNote) {
+      note.note = pitch;
+      note.velocity = velocity;
+      note.start = start;
+      note.end = end;
+    }
+
+    noteOnTimed.tick = start;
+    noteOffTimed.tick = end;
+    this.replaceTimedEvents(this.keepEndOfTrackLast(timedEvents));
     return true;
   }
 
@@ -583,54 +697,10 @@ export class MidiTrack {
     if (!Number.isInteger(durationTicks) || durationTicks < 1) {
       throw new RangeError("durationTicks must be a positive integer");
     }
-
-    if (
-      this.events.indexOf(note.noteOn) < 0 ||
-      this.events.indexOf(note.noteOff) < 0
-    ) {
-      return false;
-    }
-
-    const timedEvents = this.getTimedEventRecords();
-    const noteOnTimed = timedEvents.find(
-      (timedEvent) => timedEvent.event === note.noteOn,
-    );
-    const noteOffTimed = timedEvents.find(
-      (timedEvent) => timedEvent.event === note.noteOff,
-    );
-
-    if (!noteOnTimed || !noteOffTimed) {
-      return false;
-    }
-
-    const newEndTick = noteOnTimed.tick + durationTicks;
-
-    const others = timedEvents.filter(
-      (timedEvent) => timedEvent.event !== note.noteOff,
-    );
-    others.push({
-      event: note.noteOff,
-      tick: newEndTick,
-      order: noteOffTimed.order,
-    });
-
-    const finalTick = others
-      .filter(({ event }) => !this.isEndOfTrack(event))
-      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
-
-    for (const timedEvent of others) {
-      if (this.isEndOfTrack(timedEvent.event)) {
-        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
-      }
-    }
-
-    others.sort(sortEvents);
-
-    this.replaceTimedEvents(others);
-
-    note.end = newEndTick;
-
-    return true;
+    const currentNote = this.getNoteByEventId(this.getEventId(note.noteOn));
+    return currentNote
+      ? this.updateNote(note, { duration: durationTicks })
+      : false;
   }
 
   /**
@@ -642,68 +712,20 @@ export class MidiTrack {
     if (!Number.isInteger(startTick) || startTick < 0) {
       throw new RangeError("startTick must be a non-negative integer");
     }
-
-    if (
-      this.events.indexOf(note.noteOn) < 0 ||
-      this.events.indexOf(note.noteOff) < 0
-    ) {
-      return false;
-    }
-
-    const timedEvents = this.getTimedEventRecords();
-    const noteOnTimed = timedEvents.find(
-      (timedEvent) => timedEvent.event === note.noteOn,
-    );
-    const noteOffTimed = timedEvents.find(
-      (timedEvent) => timedEvent.event === note.noteOff,
-    );
-
-    if (!noteOnTimed || !noteOffTimed) {
-      return false;
-    }
-
-    const duration = noteOffTimed.tick - noteOnTimed.tick;
-    const newEndTick = startTick + duration;
-
-    const others = timedEvents.filter(
-      (timedEvent) =>
-        timedEvent.event !== note.noteOn && timedEvent.event !== note.noteOff,
-    );
-    others.push({
-      event: note.noteOn,
-      tick: startTick,
-      order: noteOnTimed.order,
+    const currentNote = this.getNoteByEventId(this.getEventId(note.noteOn));
+    if (!currentNote) return false;
+    const duration = currentNote.end - currentNote.start;
+    return this.updateNote(note, {
+      start: startTick,
+      duration,
     });
-    others.push({
-      event: note.noteOff,
-      tick: newEndTick,
-      order: noteOffTimed.order,
-    });
-
-    const finalTick = others
-      .filter(({ event }) => !this.isEndOfTrack(event))
-      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
-
-    for (const timedEvent of others) {
-      if (this.isEndOfTrack(timedEvent.event)) {
-        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
-      }
-    }
-
-    others.sort(sortEvents);
-
-    this.replaceTimedEvents(others);
-
-    note.start = startTick;
-    note.end = newEndTick;
-
-    return true;
   }
 
   public removeEvent(event: MidiEvent): boolean {
     const source = this.resolveEvent(event);
     if (!source) return false;
 
+    this.removeEventId(source);
     const remaining = this.getTimedEventRecords().filter(
       (timedEvent) => timedEvent.event !== source,
     );
@@ -806,14 +828,17 @@ export class MidiTrack {
     notes.sort((a, b) => a.start - b.start);
 
     const notesByPitch = new Map<number, MidiNote[]>();
+    const notesByEventId = new Map<MidiEventId, MidiNote>();
     for (const note of notes) {
       const group = notesByPitch.get(note.note) ?? [];
       group.push(note);
       notesByPitch.set(note.note, group);
+      notesByEventId.set(this.getEventId(note.noteOn), note);
     }
 
     this.noteCache = notes;
     this.noteCacheByPitch = notesByPitch;
+    this.noteCacheByEventId = notesByEventId;
   }
 
   public getNotes(options: GetNotesOptions = {}): MidiNote[] {

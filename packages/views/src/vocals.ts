@@ -12,6 +12,17 @@ export type VocalNoteKind = "pitched" | "pitchless" | "percussion";
 
 /** Phrase kinds that live on the VOCALS track. */
 export type VocalPhraseKind = "vocal" | "power-window" | "stagepower";
+export type VocalLaneId =
+  "vocal-phrase" | "power-window" | "stagepower" | "percussion" | "pitchless";
+
+export interface VocalLaneSpec {
+  id: VocalLaneId;
+  label: string;
+  pitches: readonly number[];
+  createPitch: number;
+  kind: VocalNoteKind | `phrase:${VocalPhraseKind}`;
+  phrase: VocalPhraseKind | null;
+}
 
 export type VocalClassification =
   | { type: "note"; kind: VocalNoteKind }
@@ -42,6 +53,51 @@ export const DEFAULT_VOCAL_LAYOUT: Readonly<VocalLayout> = Object.freeze({
   pitchlessLow: 35,
   pitchlessPlacement: 85,
 });
+
+export function vocalLaneSpecsFromLayout(layout: VocalLayout): VocalLaneSpec[] {
+  return [
+    {
+      id: "vocal-phrase",
+      label: "Phrase",
+      pitches: [layout.vocalPhrase],
+      createPitch: layout.vocalPhrase,
+      kind: "phrase:vocal",
+      phrase: "vocal",
+    },
+    {
+      id: "power-window",
+      label: "Power",
+      pitches: [layout.powerWindow],
+      createPitch: layout.powerWindow,
+      kind: "phrase:power-window",
+      phrase: "power-window",
+    },
+    {
+      id: "stagepower",
+      label: "Stage",
+      pitches: [layout.power],
+      createPitch: layout.power,
+      kind: "phrase:stagepower",
+      phrase: "stagepower",
+    },
+    {
+      id: "percussion",
+      label: "Perc",
+      pitches: [layout.percussion],
+      createPitch: layout.percussion,
+      kind: "percussion",
+      phrase: null,
+    },
+    {
+      id: "pitchless",
+      label: "Spoken",
+      pitches: [layout.pitchlessHigh, layout.pitchlessLow],
+      createPitch: layout.pitchlessPlacement,
+      kind: "pitchless",
+      phrase: null,
+    },
+  ];
+}
 
 export const VOCAL_PHRASE_KINDS: readonly VocalPhraseKind[] = [
   "vocal",
@@ -223,16 +279,12 @@ function insertNote(
   end: number,
   velocity = 100,
 ): MidiNote | null {
-  const insertAt = track.getInsertionIndexAt(start);
-  const startDelta = start - track.getAbsoluteTickAt(insertAt);
-  const { noteOn } = track.addNote(
+  return track.addNoteAt({
+    tick: start,
     pitch,
-    startDelta,
     velocity,
-    Math.max(1, end - start),
-    insertAt,
-  );
-  return track.getNotes().find((note) => note.noteOn === noteOn) ?? null;
+    duration: Math.max(1, end - start),
+  });
 }
 
 function validSpan(start: number, end: number): boolean {
@@ -336,22 +388,26 @@ export function moveVocalNotes(
   let changed = false;
   for (const move of resolved) {
     const start = Math.max(0, Math.round(move.start));
-    if (move.note.start !== start) {
-      changed = track.setNoteStart(move.note, start) || changed;
-    }
+    let pitch = move.note.note;
     const classification = classifyVocalPitch(layout, move.note.note);
     if (
       move.pitch !== undefined &&
       classification.type === "note" &&
       classification.kind === "pitched"
     ) {
-      const pitch = Math.max(
+      pitch = Math.max(
         layout.range.low,
         Math.min(layout.range.high, Math.round(move.pitch)),
       );
-      if (pitch !== move.note.note) {
-        changed = track.setNotePitch(move.note, pitch) || changed;
-      }
+    }
+    if (move.note.start !== start || pitch !== move.note.note) {
+      const duration = move.note.end - move.note.start;
+      changed =
+        track.updateNote(move.note, {
+          start,
+          duration,
+          pitch,
+        }) || changed;
     }
     if (move.lyric) {
       changed = track.moveEvent(move.lyric, start) || changed;
@@ -443,12 +499,8 @@ export function updateVocalPhrase(
   if (vocalPhraseOverlaps(track, note.note, start, end, [note, ...ignore])) {
     return false;
   }
-  const originalStart = note.start;
-  if (note.start !== start && !track.setNoteStart(note, start)) return false;
-  if (note.end - note.start === end - start) return true;
-  if (track.setNoteDuration(note, end - start)) return true;
-  track.setNoteStart(note, originalStart);
-  return false;
+  if (note.start === start && note.end === end) return true;
+  return track.updateNote(note, { start, duration: end - start });
 }
 
 export type VocalIssue =

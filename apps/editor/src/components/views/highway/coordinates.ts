@@ -9,7 +9,12 @@ type HighwayCoordinateContext = Pick<
   HighwayContext,
   "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
 > &
-  Partial<Pick<HighwayContext, "getCurrentChart" | "getScrollSpeedMultiplier">>;
+  Partial<
+    Pick<
+      HighwayContext,
+      "getCurrentChart" | "getEditingSession" | "getScrollSpeedMultiplier"
+    >
+  >;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
 export class HighwayCoordinateSystem extends BaseCoordinates {
@@ -101,7 +106,10 @@ export class HighwayCoordinateSystem extends BaseCoordinates {
   }
 
   private isDrumChart(): boolean {
-    return this.context.getState().selectedInstrument === "DRUMS";
+    return (
+      this.context.getEditingSession?.()?.mode.id === "chart.drums" ||
+      this.context.getState().selectedInstrument === "DRUMS"
+    );
   }
 
   public getNoteZ(tick: number): number {
