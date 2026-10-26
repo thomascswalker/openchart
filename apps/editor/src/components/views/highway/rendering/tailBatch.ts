@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { minimumSustainLengthTicks } from "../interaction";
+import { minimumSustainLengthTicks } from "@openchart/views";
 import {
   setMaterialStateForMaterial,
   type MaterialState,

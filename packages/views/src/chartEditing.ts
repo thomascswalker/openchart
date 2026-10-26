@@ -97,47 +97,6 @@ export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
   return track.removeNote(note.noteOn, note.noteOff);
 }
 
-/** @deprecated Removed in Phase 10; use mode-specific selection instead. */
-export function groupNotesAtTick(
-  notes: readonly MidiNote[],
-  tick: number,
-): MidiNote[] {
-  return notes.filter((note) => note.start === tick);
-}
-
-/** @deprecated Removed in Phase 10; use an EditingSession command instead. */
-export function moveNoteGroup(
-  track: MidiTrack,
-  notes: readonly MidiNote[],
-  deltaTick: number,
-  deltaPitch = 0,
-): boolean {
-  if (!Number.isInteger(deltaTick) || !Number.isInteger(deltaPitch))
-    return false;
-  const keep = new Set(notes.map((note) => note.noteOn));
-  let changed = false;
-  for (const note of notes) {
-    const start = Math.max(0, note.start + deltaTick);
-    changed =
-      track.updateNote(note, {
-        start,
-        duration: note.end - note.start,
-        pitch: Math.max(0, Math.min(127, note.note + deltaPitch)),
-      }) || changed;
-  }
-  return changed && keep.size > 0;
-}
-
-/** @deprecated Removed in Phase 10; use an EditingSession command instead. */
-export function trimNoteAt(
-  track: MidiTrack,
-  note: MidiNote,
-  tick: number,
-): boolean {
-  if (!Number.isInteger(tick) || tick <= note.start) return false;
-  return track.setNoteDuration(note, Math.max(1, tick - note.start));
-}
-
 export function extractSections(track: MidiTrack): SectionMarker[] {
   const textEvents = track.getTextEvents();
   return textEvents

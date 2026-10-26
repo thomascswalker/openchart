@@ -1,23 +1,18 @@
-import { Difficulty, requiresPianoRoll } from "@openchart/views";
+import type { EditingMode } from "@openchart/views";
+import { Difficulty } from "@openchart/views";
 import {
-  ActivateIcon,
-  CursorIcon,
   EasyIcon,
-  EraserIcon,
   ExpertIcon,
   HardIcon,
   Highway3dIcon,
   LockIcon,
   MediumIcon,
-  PencilIcon,
-  PhraseIcon,
   PianoIcon,
   SnapIcon,
-  SoloIcon,
-  StagepowerIcon,
   UnlockIcon,
   VolumeIcon,
-} from "../../shared";
+} from "../../shared/Icon/Icon";
+import { getToolIcon } from "../../shared/Icon/toolIcons";
 import type { ToolbarContextState, ToolGroupDef, ToolItemDef } from "./types";
 
 type Icon = ToolItemDef["icon"];
@@ -45,67 +40,10 @@ const makeViewDef = (
     { id: "editor.focus-viewport", args: [context.sessionId] },
   ],
   isActive: (context) => context.activeView === view,
-  isDisabled: (context) =>
-    view === "highway" && requiresPianoRoll(context.trackType),
+  isDisabled: (context) => !context.canHostView(view),
 });
 
-const makeHighwayToolDef = (
-  id: string,
-  icon: Icon,
-  label: string,
-  mode: "select" | "place" | "remove" | "stagepower" | "solo",
-  shortcutActionId = "highway.set-tool",
-): ToolItemDef => ({
-  id,
-  icon,
-  label,
-  actionId: "highway.set-tool",
-  actionPayload: (_context, state) => [
-    state.session.tools.mode === mode ? "select" : mode,
-  ],
-  shortcutActionId,
-  shortcutVariant: mode,
-  isActive: (_context, state) => state.session.tools.mode === mode,
-});
-
-const makeDifficultyDef = (
-  difficulty: Difficulty,
-  icon: Icon,
-  label: string,
-) => {
-  return {
-    id: `difficulty-${label.toLowerCase()}`,
-    icon,
-    label,
-    actionId: "editor.update-viewport",
-    actionPayload: (context) => [context.sessionId, { difficulty }],
-    isActive: (_context, state) => state.session.difficulty === difficulty,
-  } as ToolItemDef;
-};
-
-const makeVocalToolDef = (
-  phrase: "vocal" | "power-window" | "stagepower",
-  icon: Icon,
-  label: string,
-): ToolItemDef => ({
-  id: `vocal-phrase-${phrase}`,
-  icon,
-  label,
-  actionId: "editor.set-viewport-tools",
-  actionPayload: (context, state) => [
-    context.sessionId,
-    {
-      vocal: {
-        ...state.session.tools.vocal,
-        phrase: state.session.tools.vocal.phrase === phrase ? null : phrase,
-      },
-    },
-  ],
-  shortcutActionId: "piano-roll.toggle-vocal-phrase",
-  shortcutVariant: phrase,
-  isActive: (_context, state) => state.session.tools.vocal.phrase === phrase,
-});
-
+/** Fixed view and editor controls shared by every editing mode. */
 export const ToolbarGroups: ToolGroupDef[] = [
   {
     id: "view-selector",
@@ -136,60 +74,98 @@ export const ToolbarGroups: ToolGroupDef[] = [
       },
     ],
   },
-  {
-    id: "vocal-tools",
-    isVisible: (context) =>
-      context.activeView === "piano-roll" &&
-      requiresPianoRoll(context.trackType),
-    items: [
-      makeVocalToolDef("vocal", PhraseIcon, "Vocal phrase"),
-      makeVocalToolDef("power-window", ActivateIcon, "Power window"),
-      makeVocalToolDef("stagepower", StagepowerIcon, "Stagepower phrase"),
-      {
+];
+
+/** Builds button groups directly from the active mode's tool descriptors. */
+export function createModeToolbarGroups(mode: EditingMode): ToolGroupDef[] {
+  const groups = new Map<string, ToolItemDef[]>();
+  for (const tool of mode.tools) {
+    if (tool.group === "placement") continue;
+    const items = groups.get(tool.group) ?? [];
+    items.push({
+      id: tool.id,
+      icon: getToolIcon(tool.icon),
+      label: tool.label,
+      actionId: "editor.set-viewport-tools",
+      actionPayload: (actionContext, state) => {
+        const values = getStateValues(state.toolState);
+        const active = Object.is(values[tool.stateKey], tool.value);
+        const update: Record<string, unknown> = {
+          [tool.stateKey]:
+            tool.toggle && active ? tool.toggle.offValue : tool.value,
+        };
+        if (tool.group === "highway-tools") {
+          if (tool.stateKey === "phrase") {
+            update.tool = "select";
+          } else if (
+            tool.stateKey === "tool" &&
+            mode.tools.some((descriptor) => descriptor.stateKey === "phrase")
+          ) {
+            update.phrase = null;
+          }
+        }
+        return [actionContext.sessionId, mode.id, update];
+      },
+      shortcutActionId: tool.shortcutActionId,
+      shortcutVariant: tool.shortcutVariant,
+      isActive: (_actionContext, state) =>
+        Object.is(getStateValues(state.toolState)[tool.stateKey], tool.value),
+    });
+    groups.set(tool.group, items);
+  }
+
+  const modeGroups: ToolGroupDef[] = [...groups].map(([id, items]) => ({
+    id,
+    items,
+    isVisible: (groupContext) =>
+      (id === "highway-tools" && groupContext.activeView === "highway") ||
+      (id === "vocal-tools" && groupContext.activeView === "piano-roll") ||
+      !["highway-tools", "vocal-tools"].includes(id),
+  }));
+  if (mode.id === "vocals") {
+    const vocalGroup = modeGroups.find((group) => group.id === "vocal-tools");
+    if (vocalGroup) {
+      vocalGroup.items.push({
         id: "vocal-pitch-feedback",
         icon: VolumeIcon,
         label: "Vocal pitch feedback",
         actionId: "playback.toggle-vocal-pitch-feedback",
         isActive: (_context, state) => state.vocalPitchFeedbackEnabled,
-      },
-    ],
-  },
-  {
-    id: "highway-tools",
-    isVisible: (context) => context.activeView === "highway",
-    items: [
-      makeHighwayToolDef(
-        "select",
-        CursorIcon,
-        "Select, move, and edit sustains",
-        "select",
-      ),
-      makeHighwayToolDef("place", PencilIcon, "Place notes", "place"),
-      makeHighwayToolDef("remove", EraserIcon, "Remove notes", "remove"),
-      makeHighwayToolDef(
-        "stagepower",
-        StagepowerIcon,
-        "Stagepower phrase",
-        "stagepower",
-        "highway.toggle-phrase-tool",
-      ),
-      makeHighwayToolDef(
-        "solo",
-        SoloIcon,
-        "Solo phrase",
-        "solo",
-        "highway.toggle-phrase-tool",
-      ),
-    ],
-  },
-  {
-    id: "difficulty",
-    isVisible: (context) => context.activeView === "highway",
-    items: [
-      makeDifficultyDef(Difficulty.Easy, EasyIcon, "easy"),
-      makeDifficultyDef(Difficulty.Medium, MediumIcon, "medium"),
-      makeDifficultyDef(Difficulty.Hard, HardIcon, "hard"),
-      makeDifficultyDef(Difficulty.Expert, ExpertIcon, "expert"),
-    ],
-  },
-];
+      });
+    }
+  }
+  if (mode.capabilities.requiresDifficulty) {
+    modeGroups.push({
+      id: "difficulty",
+      isVisible: (groupContext) => groupContext.activeView === "highway",
+      items: [
+        makeDifficultyDef(Difficulty.Easy, EasyIcon, "easy"),
+        makeDifficultyDef(Difficulty.Medium, MediumIcon, "medium"),
+        makeDifficultyDef(Difficulty.Hard, HardIcon, "hard"),
+        makeDifficultyDef(Difficulty.Expert, ExpertIcon, "expert"),
+      ],
+    });
+  }
+  return modeGroups;
+}
+
+function makeDifficultyDef(
+  difficulty: Difficulty,
+  icon: Icon,
+  label: string,
+): ToolItemDef {
+  return {
+    id: `difficulty-${label.toLowerCase()}`,
+    icon,
+    label,
+    actionId: "editor.update-viewport",
+    actionPayload: (context) => [context.sessionId, { difficulty }],
+    isActive: (_context, state) => state.session.difficulty === difficulty,
+  };
+}
+
+export function getStateValues(state: unknown): Record<string, unknown> {
+  return typeof state === "object" && state !== null && !Array.isArray(state)
+    ? (state as Record<string, unknown>)
+    : {};
+}

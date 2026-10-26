@@ -47,8 +47,6 @@ const domainMutators = [
   "addNotePhrase",
   "updateNotePhrase",
   "removeNotePhrase",
-  "moveNoteGroup",
-  "trimNoteAt",
   "addVocalNote",
   "moveVocalNotes",
   "removeVocalNotes",
@@ -172,12 +170,23 @@ const violations = [
 ];
 
 const entityIdPattern = /(["'`])(?:note:|text:|tempo:)/g;
+const specialPitchPattern = new RegExp(
+  `(?:\\b(?:pitch|note|offset)\\b[^\\r\\n]{0,48}\\b(?:95|101|102|103|104|116|118)\\b|\\b(?:95|101|102|103|104|116|118)\\b[^\\r\\n]{0,48}\\b(?:pitch|note|offset)\\b)`,
+  "g",
+);
 for (const filePath of walk(componentRoot)) {
   const source = fs.readFileSync(filePath, "utf8");
   collectMatches(
     source,
     entityIdPattern,
     "entity id literal",
+    filePath,
+    violations,
+  );
+  collectMatches(
+    source,
+    specialPitchPattern,
+    "special pitch literal",
     filePath,
     violations,
   );

@@ -1,15 +1,14 @@
-import {
-  classifyVocalPitch,
-  findTrackConfig,
-  isVocalTrackConfig,
-  vocalLaneSpecsFromLayout,
-  vocalLayoutFromConfig,
-  type VocalLaneId,
-  type VocalLaneSpec,
-  type VocalLayout,
-  type VocalNoteKind,
-  type VocalPhraseKind,
+import type {
+  EditingSession,
+  Projection,
+  ProjectionRow,
+  VocalLaneId,
+  VocalLaneSpec,
+  VocalLayout,
+  VocalNoteKind,
+  VocalPhraseKind,
 } from "@openchart/views";
+import { formatNoteId } from "@openchart/views";
 import type { PitchRange } from "../../../audio/soundboard";
 
 /** How a note is drawn and edited. Generic notes are plain pitched notes. */
@@ -17,116 +16,180 @@ export type PianoRollNoteKind =
   "generic" | VocalNoteKind | `phrase:${VocalPhraseKind}` | "unknown";
 
 export type PinnedLaneId = VocalLaneId;
-
-/**
- * A row between the header and the pitch grid. Pinned lanes do not scroll
- * vertically, and scale with the pitch rows so special pitches stay visible.
- */
 export type LaneDef = VocalLaneSpec;
+export type PianoRollProfileId = "midi.raw" | "vocals";
 
 export interface PianoRollHeaderOptions {
-  /** Which text meta events the header's text lane shows. */
   textLane: "all" | "lyrics";
-  /** Clicking the empty text lane creates `[section New]`. */
   createOnClick: boolean;
-  /** Right-click and the × button delete text events. */
   deleteText: boolean;
-  /** Text labels can be dragged to a new tick. */
   dragText: boolean;
-  /** Labels are clipped at the next label's X so lyrics stay readable. */
   clipLabels: boolean;
 }
 
-export type PianoRollEditingType = "generic" | "vocals";
-
 export interface PianoRollProfile {
-  id: PianoRollEditingType;
-  /** Inclusive pitch range of the scrolling grid. Rows outside are dimmed. */
+  id: PianoRollProfileId;
   pitchRange: PitchRange;
   pinnedLanes: readonly LaneDef[];
-  /** Octave labels (C2...C6) on the keyboard. */
   keyboardLabels: boolean;
-  editing: PianoRollEditingType;
   header: PianoRollHeaderOptions;
-  /** MIDI track the profile edits when no track index is selected yet. */
-  trackName: string | null;
   vocal: VocalLayout | null;
   classify(pitch: number): PianoRollNoteKind;
   laneForPitch(pitch: number): LaneDef | null;
 }
 
-/** Reproduces the Piano Roll's original 0-127 behaviour exactly. */
+const GenericHeader: PianoRollHeaderOptions = Object.freeze({
+  textLane: "all",
+  createOnClick: true,
+  deleteText: true,
+  dragText: true,
+  clipLabels: false,
+});
+
+const VocalHeader: PianoRollHeaderOptions = Object.freeze({
+  textLane: "lyrics",
+  createOnClick: false,
+  deleteText: false,
+  dragText: false,
+  clipLabels: true,
+});
+
+/** Raw MIDI mode: any pitch from 0 through 127 and no pinned lanes. */
 export const GENERIC_PROFILE: PianoRollProfile = Object.freeze({
-  id: "generic",
+  id: "midi.raw",
   pitchRange: Object.freeze({ low: 0, high: 127 }),
-  pinnedLanes: Object.freeze([]) as readonly LaneDef[],
+  pinnedLanes: Object.freeze([]),
   keyboardLabels: false,
-  editing: "generic",
-  header: Object.freeze({
-    textLane: "all",
-    createOnClick: true,
-    deleteText: true,
-    dragText: true,
-    clipLabels: false,
-  }),
-  trackName: null,
+  header: GenericHeader,
   vocal: null,
   classify: () => "generic",
   laneForPitch: () => null,
-}) as PianoRollProfile;
+});
 
-export function createVocalsProfile(
-  layout: VocalLayout,
-  trackName = "VOCALS",
-): PianoRollProfile {
-  const lanes = vocalLaneSpecsFromLayout(layout);
+/** Builds the Piano Roll projection directly from its active editing session. */
+export function profileFromSession(session: EditingSession): PianoRollProfile {
+  const projection = session.getProjection();
+  if (session.mode.id === "midi.raw") return GENERIC_PROFILE;
+  if (session.mode.id !== "vocals") {
+    throw new Error(
+      `Piano Roll does not support editing mode '${session.mode.id}'`,
+    );
+  }
+
+  const rows = projection.getRows();
+  const pitchRows = rows.filter((row) => row.kind === "pitched");
+  if (pitchRows.length === 0) {
+    throw new Error("Vocal Piano Roll projection has no pitched rows");
+  }
+  const pitchValues = pitchRows.map((row) => Number(row.id));
+  const range = {
+    low: Math.min(...pitchValues),
+    high: Math.max(...pitchValues),
+  };
+  const laneRows = rows.filter((row) => row.kind !== "pitched");
+  const lanes = laneRows.map((row) =>
+    laneFromProjection(row, projection, session),
+  );
+  const layout = vocalLayoutFromProjection(range, lanes, projection, session);
   const laneByPitch = new Map<number, LaneDef>();
   for (const lane of lanes) {
     for (const pitch of lane.pitches) laneByPitch.set(pitch, lane);
   }
+
   return {
     id: "vocals",
-    pitchRange: { ...layout.range },
+    pitchRange: range,
     pinnedLanes: lanes,
     keyboardLabels: true,
-    editing: "vocals",
-    header: {
-      textLane: "lyrics",
-      createOnClick: false,
-      deleteText: false,
-      dragText: false,
-      clipLabels: true,
-    },
-    trackName,
+    header: VocalHeader,
     vocal: layout,
-    classify(pitch) {
-      const classification = classifyVocalPitch(layout, pitch);
-      return classification.type === "note"
-        ? classification.kind
-        : classification.type === "phrase"
-          ? `phrase:${classification.kind}`
-          : "unknown";
+    classify: (pitch) => {
+      const row = rowForPitch(projection, pitch);
+      if (!row) return "unknown";
+      return row.kind === "pitched"
+        ? "pitched"
+        : (row.kind as PianoRollNoteKind);
     },
     laneForPitch: (pitch) => laneByPitch.get(pitch) ?? null,
   };
 }
 
-const profileCache = new Map<string, PianoRollProfile>();
-
-/** Derives the profile for a viewport's instrument (or track name). */
-export function profileForInstrument(instrument: string): PianoRollProfile {
-  const cached = profileCache.get(instrument);
-  if (cached) return cached;
-  const config = findTrackConfig(instrument);
-  const profile =
-    config && isVocalTrackConfig(config)
-      ? createVocalsProfile(vocalLayoutFromConfig(config), config.name)
-      : GENERIC_PROFILE;
-  profileCache.set(instrument, profile);
-  return profile;
+function laneFromProjection(
+  row: ProjectionRow,
+  projection: Projection,
+  session: EditingSession,
+): LaneDef {
+  const pitches = Array.from({ length: 128 }, (_, pitch) => pitch).filter(
+    (pitch) => rowForPitch(projection, pitch)?.id === row.id,
+  );
+  const createPitch =
+    projection.pitchForRow(row, session.getToolState()) ?? pitches[0];
+  if (createPitch === undefined) {
+    throw new Error(`Vocal lane '${row.id}' has no creation pitch`);
+  }
+  const phrase = row.kind.startsWith("phrase:")
+    ? (row.kind.slice("phrase:".length) as VocalPhraseKind)
+    : null;
+  const kind = phrase
+    ? (`phrase:${phrase}` as const)
+    : (row.kind as VocalNoteKind);
+  return {
+    id: row.id as VocalLaneId,
+    label: row.label,
+    pitches,
+    createPitch,
+    kind,
+    phrase,
+  };
 }
 
-/** Scientific pitch name with C4 = 60 (so 36 is C2 and 84 is C6). */
+function vocalLayoutFromProjection(
+  range: PitchRange,
+  lanes: readonly LaneDef[],
+  projection: Projection,
+  session: EditingSession,
+): VocalLayout {
+  const pitchFor = (id: VocalLaneId): number => {
+    const lane = lanes.find((candidate) => candidate.id === id);
+    const row = projection.getRows().find((candidate) => candidate.id === id);
+    if (!lane || !row) {
+      throw new Error(`Vocal projection is missing lane '${id}'`);
+    }
+    return (
+      projection.pitchForRow(row, session.getToolState()) ?? lane.createPitch
+    );
+  };
+  const pitchless = lanes.find((lane) => lane.id === "pitchless");
+  if (!pitchless || pitchless.pitches.length < 2) {
+    throw new Error("Vocal projection must expose both pitchless pitches");
+  }
+  const [pitchlessLow, pitchlessHigh] = [...pitchless.pitches].sort(
+    (left, right) => left - right,
+  );
+  return {
+    range,
+    vocalPhrase: pitchFor("vocal-phrase"),
+    powerWindow: pitchFor("power-window"),
+    power: pitchFor("stagepower"),
+    percussion: pitchFor("percussion"),
+    pitchlessHigh,
+    pitchlessLow,
+    pitchlessPlacement: pitchless.createPitch,
+  };
+}
+
+function rowForPitch(projection: Projection, pitch: number) {
+  return projection.rowForNote({
+    id: formatNoteId(0, `preview-${pitch}`),
+    trackIndex: 0,
+    tick: 0,
+    pitch,
+    duration: 1,
+    velocity: 100,
+  });
+}
+
+/** Scientific pitch name with C4 = 60. */
 export function pitchName(pitch: number): string {
   const names = [
     "C",

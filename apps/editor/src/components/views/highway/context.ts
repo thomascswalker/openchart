@@ -1,7 +1,6 @@
 import type { Midi, MidiChannelEvent } from "@openchart/midi";
-import type { ChartView } from "@openchart/views";
+import type { ChartView, EditingSession, PreviewState } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
-import type { SelectionContext } from "./selection";
 import type { EditablePhraseKind } from "@openchart/views";
 import type {
   HighwayGhostNoteLocation,
@@ -18,6 +17,9 @@ export interface HighwayContext {
   getMidi(): Midi | null;
   getPpqn(): number;
   getCurrentChart(): ChartView | null;
+  getEditingSession(): EditingSession | null;
+  getPreviewState(): PreviewState | null;
+  setPreviewState(preview: PreviewState | null): void;
   getViewport(): { width: number; height: number };
   getPlayheadTick(): number;
   getCameraTick(): number;
@@ -29,15 +31,11 @@ export interface HighwayContext {
   getPhraseMode(): EditablePhraseKind | null;
   getPhraseHoverState(): HighwayPhraseHoverState | null;
   getSelectionRange(): HighwaySelectionRange | null;
-  getSelectionContext(): SelectionContext;
   getGhostNoteLocation(): HighwayGhostNoteLocation | null;
   getHoveredNoteOn(): MidiChannelEvent | null;
   canShowNotePlacementPreview(): boolean;
   getCanvas(): HTMLCanvasElement | null;
   requestRender(): void;
-  beginEdit(): void;
-  endEdit(): void;
-  notifyNotesChanged(): void;
   requestSeek(tick: number): void;
   changeSnapDenominator(denominator: number): void;
   stepSnapDenominator(direction: -1 | 1): void;

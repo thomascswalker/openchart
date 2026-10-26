@@ -1,143 +1,133 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import { Difficulty, type MidiNotePhrase } from "@openchart/views";
+import type { MidiNote } from "@openchart/midi";
+import {
+  Difficulty,
+  formatNoteId,
+  getPhrasePitch,
+  type EditablePhraseKind,
+} from "@openchart/views";
 import { Vector2 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ChartViewState } from "../../AbstractChartView";
+import { HighwayView } from "../index";
+import type { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayContext } from "../context";
+import { HighwayNoteEditingController } from "../editing/noteEditing";
+import { HighwayPhraseEditingController } from "../editing/phraseEditing";
+import type { HighwayPhrase } from "../hitTesting";
 import { HighwayInputController } from "../input/input";
-import { SelectionContext } from "../selection";
+import type { IndexedNote } from "../noteIndex";
+import { createHighwayTestSetup } from "./testUtils";
+
+interface NoteFixture {
+  pitch?: number;
+  start?: number;
+  end?: number;
+}
+
+interface PhraseFixture {
+  start: number;
+  end: number;
+  kind?: EditablePhraseKind;
+}
 
 function createHarness(
   options: {
-    phrase?: MidiNotePhrase;
-    phrases?: MidiNotePhrase[];
-    note?: MidiNote;
+    phrase?: PhraseFixture;
+    phrases?: PhraseFixture[];
+    note?: NoteFixture;
     outsidePhraseBand?: boolean;
-    mode?: "select" | "place" | "remove" | "solo" | "stagepower";
+    mode?: "select" | "place" | "remove";
     phraseMode?: "solo" | "stagepower" | null;
     sustain?: boolean;
     cameraTick?: number;
     lockCursor?: boolean;
   } = {},
 ) {
-  const state: ChartViewState = {
-    midi: null,
-    selectedTrackKey: null,
-    selectedTrackIndex: null,
-    selectedInstrument: "LEAD GUITAR",
-    selectedDifficulty: Difficulty.Expert,
-    snap: { enabled: true, denominator: 4 },
-    lockCursor: options.lockCursor ?? false,
-    isPlaying: false,
-  };
+  const setup = createHighwayTestSetup();
   const canvas = document.createElement("canvas");
   const setPointerCapture = vi
     .spyOn(canvas, "setPointerCapture")
     .mockImplementation(() => {});
   vi.spyOn(canvas, "releasePointerCapture").mockImplementation(() => {});
 
-  let phraseDrag: ReturnType<typeof createPhraseDrag> | null = null;
-  const phraseEditing = {
-    beginPhraseDrag: vi.fn(
-      (
-        pointerId: number,
-        kind: "solo" | "stagepower",
-        tick: number,
-        phrase: MidiNotePhrase | null,
-        operation: "create" | "move" | "resize-start" | "resize-end",
-      ) => {
-        phraseDrag = createPhraseDrag(pointerId, kind, tick, phrase, operation);
-      },
+  const addNote = ({
+    pitch = setup.chart.getOffset(),
+    start = 0,
+    end = start + 1,
+  }: NoteFixture): MidiNote =>
+    setup.midiTrack.addNoteAt({
+      pitch,
+      tick: start,
+      duration: end - start,
+    });
+  const notes = options.note ? [addNote(options.note)] : [];
+  const toIndexed = (note: MidiNote): IndexedNote => ({
+    id: formatNoteId(
+      setup.session.target.trackIndex!,
+      setup.midiTrack.getEventId(note.noteOn),
     ),
-    getDragState: () => phraseDrag,
-    finishPhraseDrag: vi.fn(() => {
-      phraseDrag = null;
-      return false;
-    }),
-    cancelPhraseDrag: vi.fn(() => {
-      phraseDrag = null;
-    }),
-    getSelectedPhraseNoteOn: () => null,
-    selectPhrases: vi.fn(),
+    source: note,
+    pitch: note.note,
+    start: note.start,
+    end: note.end,
+    velocity: note.velocity,
+    lane: note.note - setup.chart.getOffset(),
+    kind: "note",
+    phraseKind: null,
+  });
+  const addPhrase = (fixture: PhraseFixture): HighwayPhrase => {
+    const kind = fixture.kind ?? "solo";
+    const descriptor = setup.song
+      .getTrackDescriptors()
+      .find((track) => track.key === "lead-guitar")!;
+    const pitch = getPhrasePitch(descriptor, kind)!;
+    const note = addNote({
+      pitch,
+      start: fixture.start,
+      end: fixture.end,
+    });
+    return {
+      id: formatNoteId(
+        setup.session.target.trackIndex!,
+        setup.midiTrack.getEventId(note.noteOn),
+      ),
+      start: note.start,
+      end: note.end,
+      kind,
+    };
   };
-  const selection = new SelectionContext();
-  const allNotes = [
-    ...(options.note ? [options.note] : []),
-    ...(options.phrases ?? []).map((phrase) => phrase.note),
+  const phrases = [
+    ...(options.phrase ? [addPhrase(options.phrase)] : []),
+    ...(options.phrases ?? []).map(addPhrase),
   ];
-  const track = {
-    getNotes: (filter?: { pitch?: { low: number; high: number } }) =>
-      filter?.pitch
-        ? allNotes.filter(
-            (note) =>
-              note.note >= filter.pitch!.low && note.note < filter.pitch!.high,
-          )
-        : allNotes,
-  };
-  const descriptor = {
-    key: "lead",
-    config: { notes: { solo: 118, power: 116 } },
-  };
-  const song = { getTrackDescriptors: () => [descriptor] };
-  const trackView = { getMidiTrack: () => track, getKey: () => "lead" };
-  const chart = {
-    getNotes: () => allNotes,
-    getOffset: () => 0,
-    getSong: () => song,
-    getTrack: () => trackView,
-  };
-  let playheadTick = 0;
-  let selectionRange: { start: number; end: number } | null = null;
-  const context = {
-    getState: () => state,
-    getCurrentChart: () => chart,
-    getMode: () => options.mode ?? "solo",
-    getPhraseMode: () =>
-      options.phraseMode === undefined ? "solo" : options.phraseMode,
-    getSelectionContext: () => selection,
-    getPlayheadTick: () => playheadTick,
-    getSelectionRange: () => selectionRange,
-    getCameraTick: () => options.cameraTick ?? 0,
-    getPpqn: () => 480,
-    getCanvas: () => canvas,
-    getViewport: () => ({ width: 800, height: 600 }),
-    getGhostNoteLocation: () => null,
-    getPhraseHoverState: () => null,
-    getHoveredNoteOn: () => null,
-    canShowNotePlacementPreview: () => false,
-    setCameraTick: vi.fn(),
-    setPlayheadTick: vi.fn(),
-    setSelectionRange: vi.fn((range: { start: number; end: number } | null) => {
-      selectionRange = range;
-    }),
-    requestSeek: vi.fn((tick: number) => {
-      playheadTick = tick;
-    }),
-    requestRender: vi.fn(),
-    notifyNotesChanged: vi.fn(),
-    beginEdit: vi.fn(),
-    endEdit: vi.fn(),
-    changeSnapDenominator: vi.fn(),
-    stepSnapDenominator: vi.fn(),
-    updateMarqueeOutline: vi.fn(),
-    clearHoverOutline: vi.fn(),
-  } as unknown as HighwayContext;
-  const coordinates = {
-    getChartLocation: () => ({ lane: 0, tick: 240 }),
-    getWorldLocation: () => ({
-      x: options.outsidePhraseBand ? 4 : 0,
-      y: -0.045,
-      z: -12,
-    }),
-    getCanvasPoint: (event: MouseEvent) =>
-      new Vector2(event.clientX, event.clientY),
-    getSnapTicks: () => 480,
-  };
+  setup.setToolMode(options.mode ?? "select");
+  setup.setPhraseMode(
+    options.phraseMode === undefined ? "solo" : options.phraseMode,
+  );
+  setup.context.getState().lockCursor = options.lockCursor ?? false;
+  setup.context.setCameraTick(options.cameraTick ?? 0);
+
+  const context = setup.context as HighwayContext;
+  const selection = setup.selection;
+  const phraseEditing = new HighwayPhraseEditingController(context, {
+    snapTick: (tick) => Math.round(tick / 240) * 240,
+  } as HighwayCoordinateSystem);
+  vi.spyOn(phraseEditing, "beginPhraseDrag");
+  vi.spyOn(phraseEditing, "finishPhraseDrag");
+  vi.spyOn(phraseEditing, "selectPhrases");
+  let hoveredNote = notes[0] ? toIndexed(notes[0]) : null;
   const hitTesting = {
-    getSustainAt: () => (options.sustain ? options.note : undefined),
-    getNoteAt: () => options.note,
-    getPhraseAt: () => options.phrase,
-    getPhraseDragOperation: () => "resize-end",
+    getSustainAt: () =>
+      options.sustain && hoveredNote ? hoveredNote : undefined,
+    getNoteAt: () => hoveredNote,
+    getPhraseAt: (
+      _chart: unknown,
+      _event: unknown,
+      kind: EditablePhraseKind,
+    ) =>
+      options.outsidePhraseBand
+        ? undefined
+        : (phrases.find((phrase) => phrase.kind === kind) ?? undefined),
+    getPhraseDragOperation: () => "resize-end" as const,
     getPhraseScreenBounds: () => ({
       left: 180,
       right: 420,
@@ -145,63 +135,48 @@ function createHarness(
       bottom: 240,
     }),
   };
-  const editing = {
-    placeNoteAt: vi.fn((_chart: unknown, lane: number, tick: number) => {
-      allNotes.push({
-        note: lane,
-        start: tick,
-        end: tick + 1,
-        noteOn: {} as MidiChannelEvent,
-      } as MidiNote);
-      return true;
+  const coordinates = {
+    getChartLocation: vi.fn(() => ({ lane: 0, tick: 240 })),
+    getWorldLocation: () => ({
+      x: options.outsidePhraseBand ? 4 : 0,
+      y: -0.045,
+      z: -12,
     }),
-    resizeNote: vi.fn((_chart: unknown, note: MidiNote, end: number) => {
-      note.end = end;
-      return true;
-    }),
+    getCanvasPoint: (event: MouseEvent) =>
+      new Vector2(event.clientX, event.clientY),
+    getTickAtDepth: (depth: number) => (depth < 0 ? 0 : 10_000),
+    getSnapTicks: () => 480,
+    getPhysicalLaneCount: () => 5,
   };
+  const editing = new HighwayNoteEditingController(context);
+  vi.spyOn(editing, "placeNoteAt");
+  vi.spyOn(editing, "resizeNote");
   const input = new HighwayInputController(
     context,
-    coordinates as never,
+    coordinates as unknown as HighwayCoordinateSystem,
     hitTesting as never,
-    editing as never,
-    phraseEditing as never,
+    editing,
+    phraseEditing,
   );
   input.attach(canvas);
 
   return {
+    setup,
     canvas,
     context,
     input,
-    chart,
-    allNotes,
+    chart: setup.chart,
     phraseEditing,
     selection,
-    getSelectionRange: () => selectionRange,
     setPointerCapture,
     coordinates,
+    hitTesting,
     editing,
-  };
-}
-
-function createPhraseDrag(
-  pointerId: number,
-  kind: "solo" | "stagepower",
-  tick: number,
-  phrase: MidiNotePhrase | null,
-  operation: "create" | "move" | "resize-start" | "resize-end",
-) {
-  return {
-    pointerId,
-    kind,
-    startTick: phrase?.start ?? tick,
-    endTick: phrase?.end ?? tick,
-    pointerTick: tick,
-    initialStartTick: phrase?.start ?? tick,
-    initialEndTick: phrase?.end ?? tick,
-    operation,
-    note: phrase?.note ?? null,
-    moved: false,
+    notes,
+    phrases,
+    setHoveredNote: (note: MidiNote | null) => {
+      hoveredNote = note ? toIndexed(note) : null;
+    },
   };
 }
 
@@ -230,13 +205,12 @@ afterEach(() => {
 
 describe("HighwayInputController phrase pointer routing", () => {
   it("selects and resizes a phrase hit before starting a marquee", () => {
-    const phrase = {
-      start: 480,
-      end: 960,
-      note: { noteOn: {} as MidiChannelEvent } as MidiNote,
-    } as MidiNotePhrase;
-    const harness = createHarness({ phrase });
+    const harness = createHarness({
+      phrase: { start: 480, end: 960 },
+    });
+
     detachInput = () => harness.input.detach();
+    const [phrase] = harness.phrases;
 
     harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
     expect(harness.phraseEditing.beginPhraseDrag).toHaveBeenCalledWith(
@@ -269,10 +243,15 @@ describe("HighwayInputController phrase pointer routing", () => {
   });
 
   it("keeps direct note clicks out of note selection in phrase mode", () => {
-    const noteOn = {} as MidiChannelEvent;
-    const note = { noteOn } as MidiNote;
-    const harness = createHarness({ note });
-    harness.selection.add(noteOn);
+    const harness = createHarness({
+      note: { pitch: 96, start: 480, end: 481 },
+    });
+    const note = harness.notes[0]!;
+    const id = formatNoteId(
+      harness.setup.session.target.trackIndex!,
+      harness.setup.midiTrack.getEventId(note.noteOn),
+    );
+    harness.setup.session.selection.add(id);
     detachInput = () => harness.input.detach();
 
     harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
@@ -280,22 +259,15 @@ describe("HighwayInputController phrase pointer routing", () => {
     harness.canvas.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     expect(harness.phraseEditing.beginPhraseDrag).not.toHaveBeenCalled();
-    expect(harness.selection.isSelected(noteOn)).toBe(true);
+    expect(harness.selection.isSelected(id)).toBe(true);
   });
 
   it("marquee-selects multiple phrases independently of note selection", () => {
-    const first = {
-      start: 480,
-      end: 960,
-      note: { note: 118, noteOn: {} as MidiChannelEvent } as MidiNote,
-    } as MidiNotePhrase;
-    const second = {
-      start: 1_200,
-      end: 1_680,
-      note: { note: 118, noteOn: {} as MidiChannelEvent } as MidiNote,
-    } as MidiNotePhrase;
     const harness = createHarness({
-      phrases: [first, second],
+      phrases: [
+        { start: 480, end: 960 },
+        { start: 1_200, end: 1_680 },
+      ],
       outsidePhraseBand: true,
     });
     detachInput = () => harness.input.detach();
@@ -305,10 +277,36 @@ describe("HighwayInputController phrase pointer routing", () => {
     harness.canvas.dispatchEvent(pointerEvent("pointerup", 500, 300));
 
     expect(harness.phraseEditing.selectPhrases).toHaveBeenCalledWith(
-      [first.note.noteOn, second.note.noteOn],
+      harness.phrases.map((phrase) => phrase.id),
       false,
     );
-    expect(harness.selection.size).toBe(0);
+    expect(harness.selection.getSelectedIds()).toEqual(
+      harness.phrases.map((phrase) => phrase.id),
+    );
+  });
+});
+
+describe("HighwayView playback interruption", () => {
+  it("cancels active input gestures when playback starts", () => {
+    const view = new HighwayView();
+    const cancelActiveGestures = vi.spyOn(
+      HighwayInputController.prototype,
+      "cancelActiveGestures",
+    );
+
+    view.update({
+      midi: null,
+      selectedTrackKey: null,
+      selectedTrackIndex: null,
+      selectedInstrument: "LEAD GUITAR",
+      selectedDifficulty: Difficulty.Expert,
+      snap: { enabled: true, denominator: 4 },
+      lockCursor: false,
+      isPlaying: true,
+    });
+
+    expect(cancelActiveGestures).toHaveBeenCalledTimes(1);
+    view.destroy();
   });
 });
 
@@ -321,45 +319,79 @@ describe("HighwayInputController keyboard selection range", () => {
     harness.input.stepPlayhead(1, true);
     harness.input.stepPlayhead(-1, true);
 
-    expect(harness.getSelectionRange()).toEqual({ start: 0, end: 480 });
-    expect(harness.selection.size).toBe(0);
+    expect(harness.context.getSelectionRange()).toEqual({ start: 0, end: 480 });
+    expect(harness.selection.getSelectedIds()).toHaveLength(0);
 
     window.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift" }));
     harness.input.stepPlayhead(1);
-    expect(harness.getSelectionRange()).toEqual({ start: 0, end: 480 });
+    expect(harness.context.getSelectionRange()).toEqual({ start: 0, end: 480 });
   });
 
-  it("selects the notes inside the range in the shared selection context", () => {
+  it("selects notes inside the range in the shared selection model", () => {
     const harness = createHarness({ mode: "select", phraseMode: null });
     detachInput = () => harness.input.detach();
-    const inside = { note: 0, start: 480, end: 481, noteOn: {} } as MidiNote;
-    const outside = { note: 1, start: 1440, end: 1441, noteOn: {} } as MidiNote;
-    harness.allNotes.push(inside, outside);
+    const offset = harness.chart.getOffset();
+    const inside = harness.setup.midiTrack.addNoteAt({
+      pitch: offset,
+      tick: 480,
+      duration: 1,
+    });
+    const outside = harness.setup.midiTrack.addNoteAt({
+      pitch: offset + 1,
+      tick: 1_440,
+      duration: 1,
+    });
 
     harness.input.stepPlayhead(1, true);
-    expect(harness.selection.size).toBe(0);
+    expect(harness.selection.getSelectedIds()).toHaveLength(0);
     harness.input.stepPlayhead(1, true);
-    expect(harness.selection.notes).toEqual([inside.noteOn]);
+    expect(harness.selection.getSelectedIds()).toEqual([
+      formatNoteId(
+        harness.setup.session.target.trackIndex!,
+        harness.setup.midiTrack.getEventId(inside.noteOn),
+      ),
+    ]);
     harness.input.stepPlayhead(1, true);
-    expect(harness.selection.notes).toEqual([inside.noteOn]);
+    expect(harness.selection.getSelectedIds()).toEqual([
+      formatNoteId(
+        harness.setup.session.target.trackIndex!,
+        harness.setup.midiTrack.getEventId(inside.noteOn),
+      ),
+    ]);
     harness.input.stepPlayhead(1, true);
-    expect(harness.selection.notes).toEqual([inside.noteOn, outside.noteOn]);
+    expect(harness.selection.getSelectedIds()).toEqual([
+      formatNoteId(
+        harness.setup.session.target.trackIndex!,
+        harness.setup.midiTrack.getEventId(inside.noteOn),
+      ),
+      formatNoteId(
+        harness.setup.session.target.trackIndex!,
+        harness.setup.midiTrack.getEventId(outside.noteOn),
+      ),
+    ]);
     harness.input.stepPlayhead(-1, true);
-    expect(harness.selection.notes).toEqual([inside.noteOn]);
+    expect(harness.selection.getSelectedIds()).toEqual([
+      formatNoteId(
+        harness.setup.session.target.trackIndex!,
+        harness.setup.midiTrack.getEventId(inside.noteOn),
+      ),
+    ]);
   });
 });
 
 describe("HighwayInputController note interaction", () => {
-  it("refreshes the hover and placement cursor after wheel scrolling", () => {
-    const noteOn = {} as MidiChannelEvent;
-    const note = { note: 0, start: 0, end: 960, noteOn } as MidiNote;
+  it("refreshes hover and placement cursor after wheel scrolling", () => {
     const harness = createHarness({
       mode: "place",
       phraseMode: null,
-      note,
+      note: { pitch: 96, start: 0, end: 960 },
       cameraTick: 480,
     });
     detachInput = () => harness.input.detach();
+    const note = harness.notes[0]!;
+    const requestSeek = vi.spyOn(harness.context, "requestSeek");
+    const setCameraTick = vi.spyOn(harness.context, "setCameraTick");
+    harness.setHoveredNote(note);
 
     harness.canvas.dispatchEvent(
       new WheelEvent("wheel", {
@@ -371,13 +403,13 @@ describe("HighwayInputController note interaction", () => {
       }),
     );
 
-    expect(harness.context.setCameraTick).toHaveBeenCalledWith(960);
-    expect(harness.context.requestSeek).not.toHaveBeenCalled();
+    expect(setCameraTick).toHaveBeenCalledWith(960);
+    expect(requestSeek).not.toHaveBeenCalled();
     expect(harness.input.getGhostNoteLocation()).toMatchObject({
       lane: 0,
       tick: 240,
     });
-    expect(harness.input.getHoveredNoteOn()).toBe(noteOn);
+    expect(harness.input.getHoveredNoteOn()).toBe(note.noteOn);
   });
 
   it("moves the cursor with wheel scrolling when cursor lock is enabled", () => {
@@ -387,6 +419,8 @@ describe("HighwayInputController note interaction", () => {
       lockCursor: true,
     });
     detachInput = () => harness.input.detach();
+    const setCameraTick = vi.spyOn(harness.context, "setCameraTick");
+    const requestSeek = vi.spyOn(harness.context, "requestSeek");
 
     harness.canvas.dispatchEvent(
       new WheelEvent("wheel", {
@@ -398,31 +432,26 @@ describe("HighwayInputController note interaction", () => {
       }),
     );
 
-    expect(harness.context.setCameraTick).toHaveBeenCalledWith(960);
-    expect(harness.context.requestSeek).toHaveBeenCalledWith(480);
+    expect(setCameraTick).toHaveBeenCalledWith(960);
+    expect(requestSeek).toHaveBeenCalledWith(480);
   });
 
   it("keeps click placement on a sustain available in Place mode", () => {
-    const note = {
-      note: 0,
-      start: 0,
-      end: 960,
-      noteOn: {} as MidiChannelEvent,
-    } as MidiNote;
     const harness = createHarness({
       mode: "place",
       phraseMode: null,
-      note,
+      note: { pitch: 96, start: 0, end: 960 },
       sustain: true,
     });
     detachInput = () => harness.input.detach();
+    const note = harness.notes[0]!;
 
     harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
     harness.canvas.dispatchEvent(pointerEvent("pointerup"));
     harness.canvas.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     expect(harness.editing.placeNoteAt).toHaveBeenCalledWith(
-      expect.anything(),
+      harness.chart,
       0,
       240,
       false,
@@ -430,23 +459,26 @@ describe("HighwayInputController note interaction", () => {
     );
   });
 
-  it("sustains a placed lane note while stepping and returns to its minimum length before its start", () => {
+  it("previews a held lane note and commits its sustain length on release", () => {
     const harness = createHarness({ mode: "select", phraseMode: null });
     detachInput = () => harness.input.detach();
     harness.context.requestSeek(480);
 
     harness.input.toggleLaneNote(0);
-    const note = harness.chart.getNotes()[0]!;
-    expect(harness.context.beginEdit).toHaveBeenCalledOnce();
+    expect(harness.chart.getNotes()).toHaveLength(0);
 
     harness.input.stepPlayhead(-1);
-    expect(note.end).toBe(481);
+    expect(harness.setup.context.getPreviewState()?.added[0]?.duration).toBe(1);
     harness.input.stepPlayhead(1);
     harness.input.stepPlayhead(1);
-    expect(note.end).toBe(960);
+    expect(harness.setup.context.getPreviewState()?.added[0]?.duration).toBe(
+      480,
+    );
 
     harness.input.releaseLaneNote(0);
-    expect(harness.context.endEdit).toHaveBeenCalledOnce();
+    const note = harness.chart.getNotes()[0]!;
+    expect(note.end).toBe(960);
+    expect(harness.setup.editing.history.undoDepth).toBe(1);
     harness.input.stepPlayhead(1);
     expect(note.end).toBe(960);
   });
@@ -455,34 +487,35 @@ describe("HighwayInputController note interaction", () => {
     const harness = createHarness({ mode: "select", phraseMode: null });
     detachInput = () => harness.input.detach();
     harness.context.requestSeek(480);
+    harness.setup.midiTrack.addNoteAt({
+      pitch: harness.chart.getOffset() + 1,
+      tick: 720,
+      duration: 1,
+    });
 
     harness.input.toggleLaneNote(0);
-    const note = harness.chart.getNotes()[0]!;
-    harness.allNotes.push({
-      note: 1,
-      start: 720,
-      end: 721,
-      noteOn: {} as MidiChannelEvent,
-    } as MidiNote);
-
     harness.input.stepPlayhead(1);
 
-    expect(note.end).toBe(720);
+    expect(harness.chart.getNotes()).toHaveLength(1);
+    expect(harness.setup.context.getPreviewState()?.added[0]?.duration).toBe(
+      240,
+    );
+    harness.input.releaseLaneNote(0);
+    expect(
+      harness.chart
+        .getNotes()
+        .find((note) => note.note === harness.chart.getOffset())?.end,
+    ).toBe(720);
   });
 
-  it("resizes a sustain by dragging it in Place mode", () => {
-    const note = {
-      note: 0,
-      start: 0,
-      end: 960,
-      noteOn: {} as MidiChannelEvent,
-    } as MidiNote;
+  it("previews and commits a sustain resize in Place mode", () => {
     const harness = createHarness({
       mode: "place",
       phraseMode: null,
-      note,
+      note: { pitch: 96, start: 0, end: 960 },
       sustain: true,
     });
+    const note = harness.notes[0]!;
     vi.spyOn(harness.coordinates, "getChartLocation")
       .mockReturnValueOnce({ lane: 0, tick: 240 })
       .mockReturnValueOnce({ lane: 0, tick: 480 });
@@ -490,14 +523,46 @@ describe("HighwayInputController note interaction", () => {
 
     harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
     harness.canvas.dispatchEvent(pointerEvent("pointermove", 300, 300));
+    expect(note.end).toBe(960);
+    expect(
+      harness.setup.context
+        .getPreviewState()
+        ?.updated.get(
+          formatNoteId(
+            harness.setup.session.target.trackIndex!,
+            harness.setup.midiTrack.getEventId(note.noteOn),
+          ),
+        )?.duration,
+    ).toBe(480);
     harness.canvas.dispatchEvent(pointerEvent("pointerup", 300, 300));
 
-    expect(harness.editing.resizeNote).toHaveBeenCalledWith(
-      expect.anything(),
-      note,
-      480,
-    );
+    expect(note.end).toBe(480);
     expect(harness.editing.placeNoteAt).not.toHaveBeenCalled();
-    expect(harness.context.notifyNotesChanged).toHaveBeenCalledOnce();
+    expect(harness.setup.editing.history.undoDepth).toBe(1);
+  });
+
+  it("cancels a note drag without changing MIDI or history", () => {
+    const harness = createHarness({
+      mode: "select",
+      phraseMode: null,
+      note: { pitch: 96, start: 0, end: 120 },
+    });
+    const before = harness.setup.midi.toBuffer();
+    detachInput = () => harness.input.detach();
+
+    harness.canvas.dispatchEvent(pointerEvent("pointerdown"));
+    vi.spyOn(harness.coordinates, "getChartLocation").mockReturnValue({
+      lane: 1,
+      tick: 720,
+    });
+    harness.canvas.dispatchEvent(pointerEvent("pointermove", 420, 240));
+    expect(harness.setup.context.getPreviewState()?.updated.size).toBe(1);
+    expect(harness.setup.midi.toBuffer()).toEqual(before);
+
+    harness.input.cancelActiveGestures();
+
+    expect(harness.setup.midi.toBuffer()).toEqual(before);
+    expect(harness.setup.editing.history.undoDepth).toBe(0);
+    expect(harness.setup.context.getPreviewState()).toBeNull();
   });
 });

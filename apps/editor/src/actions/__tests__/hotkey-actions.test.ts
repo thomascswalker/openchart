@@ -18,45 +18,113 @@ function accessor(services: Record<string, unknown>): ServicesAccessor {
 }
 
 describe("viewport tool actions", () => {
+  function toolServices(viewports: ViewportService, modeId: string) {
+    const editing = {
+      getActiveSession: () => ({
+        mode: { id: modeId, tools: [{ stateKey: "phrase" }] },
+        getToolState: () => viewports.getActiveViewport()?.tools[modeId] ?? {},
+      }),
+      updateToolState: (
+        viewportId: string,
+        id: string,
+        update: Record<string, unknown>,
+      ) => {
+        const current = viewports.getViewport(viewportId)?.tools[id] ?? {};
+        viewports.setModeToolState(viewportId, id, {
+          ...(current as Record<string, unknown>),
+          ...update,
+        });
+      },
+    };
+    return accessor({
+      "editor.viewports": viewports,
+      "editor.editing": editing,
+    });
+  }
+
   it("sets the highway tool on the active viewport only", () => {
     const viewports = new ViewportService();
     const other = viewports.getSnapshot().activeViewportId;
     const active = viewports.addViewport("highway")!;
+    viewports.setModeToolState(active, "chart.frets", {
+      tool: "select",
+      phrase: "solo",
+      placement: "normal",
+    });
     new SetHighwayToolAction().run(
-      accessor({ "editor.viewports": viewports }),
+      toolServices(viewports, "chart.frets"),
       "place",
     );
-    expect(viewports.getViewport(active)?.tools.mode).toBe("place");
-    expect(viewports.getViewport(other)?.tools.mode).toBe("select");
+    expect(
+      (viewports.getViewport(active)?.tools["chart.frets"] as { tool: string })
+        .tool,
+    ).toBe("place");
+    expect(
+      (
+        viewports.getViewport(active)?.tools["chart.frets"] as {
+          phrase: null;
+        }
+      ).phrase,
+    ).toBeNull();
+    expect(
+      (viewports.getViewport(other)?.tools["chart.frets"] as { tool: string })
+        .tool,
+    ).toBe("select");
   });
 
   it("toggles phrase tools back to select", () => {
     const viewports = new ViewportService();
-    const services = accessor({ "editor.viewports": viewports });
+    const services = toolServices(viewports, "chart.frets");
     const action = new ToggleHighwayPhraseToolAction();
     action.run(services, "solo");
-    expect(viewports.getActiveViewport()?.tools.mode).toBe("solo");
+    expect(
+      (
+        viewports.getActiveViewport()?.tools["chart.frets"] as {
+          phrase: string;
+        }
+      ).phrase,
+    ).toBe("solo");
+    expect(
+      (viewports.getActiveViewport()?.tools["chart.frets"] as { tool: string })
+        .tool,
+    ).toBe("select");
     action.run(services, "stagepower");
-    expect(viewports.getActiveViewport()?.tools.mode).toBe("stagepower");
+    expect(
+      (
+        viewports.getActiveViewport()?.tools["chart.frets"] as {
+          phrase: string;
+        }
+      ).phrase,
+    ).toBe("stagepower");
     action.run(services, "stagepower");
-    expect(viewports.getActiveViewport()?.tools.mode).toBe("select");
+    expect(
+      (viewports.getActiveViewport()?.tools["chart.frets"] as { phrase: null })
+        .phrase,
+    ).toBeNull();
   });
 
   it("toggles vocal phrases and keeps the note kind", () => {
     const viewports = new ViewportService();
     const id = viewports.getSnapshot().activeViewportId;
-    viewports.updateTools(id, {
-      vocal: { noteKind: "percussion", phrase: null },
+    viewports.setModeToolState(id, "vocals", {
+      noteKind: "percussion",
+      phrase: null,
     });
-    const services = accessor({ "editor.viewports": viewports });
+    const services = toolServices(viewports, "vocals");
     const action = new ToggleVocalPhraseAction();
     action.run(services, "vocal");
-    expect(viewports.getActiveViewport()?.tools.vocal).toEqual({
+    expect(viewports.getActiveViewport()?.tools.vocals).toEqual({
       noteKind: "percussion",
       phrase: "vocal",
     });
     action.run(services, "vocal");
-    expect(viewports.getActiveViewport()?.tools.vocal.phrase).toBeNull();
+    expect(
+      (
+        viewports.getActiveViewport()?.tools.vocals as {
+          phrase: string | null;
+        }
+      ).phrase,
+    ).toBeNull();
   });
 
   it("steps the snap denominator through the available choices", () => {
@@ -88,7 +156,10 @@ describe("dialog.close-topmost", () => {
 describe("view command actions", () => {
   it("do nothing without a matching active view", () => {
     const active = new ActiveChartViewService();
-    const services = accessor({ "editor.active-chart-view": active });
+    const services = accessor({
+      "editor.active-chart-view": active,
+      "editor.editing": { getActiveSession: () => null },
+    });
     expect(() => new DeleteSelectionAction().run(services)).not.toThrow();
     expect(() =>
       new ToggleLaneNoteAction().run(services, 0, false),
@@ -106,13 +177,19 @@ describe("view command actions", () => {
       deleteSelection: vi.fn(),
     };
     active.set(highway as never);
-    const services = accessor({ "editor.active-chart-view": active });
+    const selection = { getSelectedIds: () => [] };
+    const editingSession = { selection, execute: vi.fn() };
+    const services = accessor({
+      "editor.active-chart-view": active,
+      "editor.editing": { getActiveSession: () => editingSession },
+    });
     new ToggleLaneNoteAction().run(services, 2, true);
     expect(highway.toggleLaneNote).toHaveBeenCalledWith(2, true);
     new ReleaseLaneNoteAction().run(services, 2);
     expect(highway.releaseLaneNote).toHaveBeenCalledWith(2);
     new DeleteSelectionAction().run(services);
-    expect(highway.deleteSelection).toHaveBeenCalledOnce();
+    expect(highway.deleteSelection).not.toHaveBeenCalled();
+    expect(editingSession.execute).not.toHaveBeenCalled();
     // A piano roll command must not reach a highway view.
     new TransposeSelectionAction().run(services, 12);
     expect(active.getActive("piano-roll")).toBeNull();

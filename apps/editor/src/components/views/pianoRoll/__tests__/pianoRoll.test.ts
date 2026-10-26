@@ -7,6 +7,7 @@ import {
 } from "@openchart/midi";
 import { Box2, Vector2 } from "three";
 import { describe, expect, it, vi } from "vitest";
+import { formatNoteId, SelectionModel } from "@openchart/views";
 import {
   parseTempoString,
   parseTimeSignatureString,
@@ -16,7 +17,6 @@ import { HeaderHeight } from "../constants";
 import { DefaultHeaderLanes, HeaderController } from "../controllers/header";
 import { PianoRollInputController } from "../input/input";
 import { NoteGeometryCache } from "../rendering/geometry";
-import { remapNotesByIdentity } from "../controllers/noteEditing";
 import { PointerContext } from "../input/pointer";
 import { iterateGridBeats } from "../rendering/rendering";
 import { SelectionContext } from "../selection";
@@ -59,6 +59,7 @@ function makeNote(
   pitch = 60,
 ): PianoRollNote {
   return {
+    id: formatNoteId(0, `test-${tick}-${pitch}`),
     tick,
     durationTicks,
     pitch,
@@ -236,9 +237,9 @@ describe("DOM styles", () => {
 });
 
 describe("selection identity", () => {
-  it("remaps to fresh mapped notes using stable NoteOn events", () => {
-    const firstEvent = {} as PianoRollNote["midiNote"]["noteOn"];
-    const secondEvent = {} as PianoRollNote["midiNote"]["noteOn"];
+  it("resolves selected entity ids to fresh notes after document replacement", () => {
+    const firstEvent = {} as NonNullable<PianoRollNote["midiNote"]>["noteOn"];
+    const secondEvent = {} as NonNullable<PianoRollNote["midiNote"]>["noteOn"];
     const first = {
       ...makeNote(0, 120),
       midiNote: { noteOn: firstEvent } as MidiNote,
@@ -247,9 +248,27 @@ describe("selection identity", () => {
       ...makeNote(120, 120),
       midiNote: { noteOn: secondEvent } as MidiNote,
     };
-    expect(
-      remapNotesByIdentity([first, second], new Set([secondEvent])),
-    ).toEqual([second]);
+    const model = new SelectionModel();
+    const selection = new SelectionContext();
+    let resolved = new Map<string, PianoRollNote>([
+      [first.id, first],
+      [second.id, second],
+    ]);
+    selection.bindSharedSelection(model, (id) => resolved.get(id) ?? null);
+    model.setSelectedIds([second.id]);
+    expect(selection.notes).toEqual([second]);
+
+    const restoredEvent = {} as NonNullable<
+      PianoRollNote["midiNote"]
+    >["noteOn"];
+    const restored = {
+      ...second,
+      midiNote: { noteOn: restoredEvent } as MidiNote,
+    };
+    resolved = new Map<string, PianoRollNote>([[second.id, restored]]);
+    selection.refreshSharedSelection();
+    expect(selection.notes).toEqual([restored]);
+    expect(selection.isSelected(restored)).toBe(true);
   });
 });
 
@@ -283,9 +302,11 @@ describe("piano-roll note creation", () => {
         geometry: [],
       } as never,
       {
+        beginPointerGesture: vi.fn(),
         beginCreate,
         updateResize: vi.fn(),
         finishGesture: vi.fn(),
+        cancelGesture: vi.fn(),
       } as never,
       { endDrag: vi.fn(), updateHover: vi.fn() } as never,
     );
@@ -328,6 +349,57 @@ describe("piano-roll note creation", () => {
       y: HeaderHeight + 20,
     });
     expect(requestSeek).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels an active gesture on pointercancel instead of committing it", () => {
+    const pointer = new PointerContext();
+    const beginPointerGesture = vi.fn();
+    const finishGesture = vi.fn();
+    const cancelGesture = vi.fn();
+    const canvas = {
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      focus: vi.fn(),
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: () => false,
+    } as unknown as HTMLCanvasElement;
+    const input = new PianoRollInputController(
+      {
+        getPointerContext: () => pointer,
+        getSelectionContext: () => new SelectionContext(),
+        getState: () => ({ isPlaying: false }),
+        requestRender: vi.fn(),
+      } as never,
+      {} as never,
+      {
+        hitTest: () => null,
+        hitTestEdge: () => null,
+      } as never,
+      {
+        beginPointerGesture,
+        finishGesture,
+        cancelGesture,
+      } as never,
+      { endDrag: vi.fn() } as never,
+    );
+    const controller = input as unknown as {
+      canvas: HTMLCanvasElement | null;
+      handlePointerDown: (event: PointerEvent) => void;
+      handlePointerCancel: (event: PointerEvent) => void;
+    };
+    controller.canvas = canvas;
+    controller.handlePointerDown({
+      button: 0,
+      pointerId: 7,
+      clientX: 100,
+      clientY: HeaderHeight + 20,
+      preventDefault: vi.fn(),
+    } as unknown as PointerEvent);
+    controller.handlePointerCancel({ pointerId: 7 } as PointerEvent);
+
+    expect(beginPointerGesture).toHaveBeenCalledOnce();
+    expect(cancelGesture).toHaveBeenCalledOnce();
+    expect(finishGesture).not.toHaveBeenCalled();
+    expect(pointer.id).toBeNull();
   });
 
   it("pans the camera by the middle-button drag distance", () => {
