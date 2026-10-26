@@ -189,3 +189,39 @@
   **Deviations from plan:** The standalone Piano Roll Storybook host omits clipboard hotkeys because it has no editor-level clipboard service; clipboard logic was not reintroduced into the view.
   **Performance:** not applicable
   **Open questions:** none
+
+## Phase 9: Capability-driven UI and global editing (branch: editing/phase-9-capability-driven-ui)
+
+**Status:** done
+**Summary:** Replaced mirrored viewport tool fields with per-mode, schema-validated state; resolved view availability through the registered modes; generated toolbar groups from mode descriptors while retaining the existing controls, labels, ordering, and shortcuts; published active-mode and capability context keys; and routed editing actions through sessions. Added `midi.global` as a secondary Piano Roll header session and migrated tempo, time-signature, section-marker, text, and text-drag edits to session commands/gestures. Vocal lyric edits continue through `SET_LYRIC`, while the global mode rejects lyric changes.
+**Files changed:**
+
+- Views: `packages/views/src/config.ts`, `packages/views/src/editing/{mode.ts,modeRegistry.ts,session.ts,modes/{globalTrack.ts,index.ts,vocals.ts}}`, `packages/views/src/index.ts`
+- Editor services: `apps/editor/src/services/editor/{editing.ts,editingContext.ts,viewports.ts}`, corresponding editing/viewport tests, and `mode-extensibility.test.ts`
+- Editor UI/actions: migrated edit actions, `Runtime`, `Toolbar/{definitions.ts,index.tsx,types.ts}`, `Viewport/index.tsx`, shared icon lookup, Piano Roll header/session wiring, and the vocal header test fixture
+- Docs: `docs/editing/{ARCHITECTURE.md,PROGRESS.md}`
+  **Tests:** added a test-only four-lane mode acceptance test covering registry resolution, generated toolbar tools, published context keys, command execution, clipboard round-trip, and gesture cancel/commit/undo; added toolbar DOM parity coverage for the existing Highway controls; added global-session/lyric-guard/tool-state validation coverage; updated viewport and action tests for mode-indexed state. No tests were removed or weakened.
+  **Gate results:** `npm run check-types` passed (9 Turbo tasks) · `npm run lint` passed · MIDI/views/editor builds passed (Vite emitted its existing Node.js 20.19+ version warning under Node.js 20.18.1, plus existing CSS/chunk warnings) · targeted Prettier check passed for all changed source/tests/docs · `npm run check:editing:strict` passed with 0 violations in `components/**` · focused Phase 9 editor unit tests 22 passed · toolbar DOM tests 2 passed · views suite 64 passed · full editor unit suite 254 passed / 1 known pre-existing Piano Roll time-signature fixture failure (`iterateGridBeats` reads an absent next signature); root `npm test` exits on that same known failure.
+  **Defects closed:** DEF-14 (global header edits bypassed the editing session and were not undoable as session commands; global header operations now use the secondary session, while vocal lyrics remain writable only through the vocal session).
+  **Intentional behaviour changes:** Viewports now select a host supported by the active mode registry; global header edits participate in session history, playback refresh, and gesture cancellation.
+  **Deviations from plan:** Added `editingContext.ts` to make capability-key creation testable and to clear keys when switching modes. The acceptance test lives in the editor service tests and uses the real registry/session/clipboard APIs with a test-only mode and `"test-view"` host.
+  **Performance:** not measured in Phase 9
+  **Open questions:** none
+
+## Phase 10: Enforcement and documentation (branch: editing/phase-10-enforcement-documentation)
+
+**Status:** done
+**Summary:** Removed the deprecated editing action, transaction, scratchpad, history-bracketing, and interaction-wrapper APIs; moved reusable interaction math and sustain-cut policy to focused helpers; emptied the editing-boundary allowlist and added the strict gate to the root `check` command. Added a special-pitch literal check and completed the architecture reference, mode/view contribution guides, docs index, and Views README.
+**Files changed:**
+
+- Editor: removed deprecated history actions and editing wrappers; migrated Highway and Piano Roll adapters/tests to the session and preview APIs
+- Views: removed legacy command/transaction/scratchpad APIs and obsolete helpers; added the shared sustain-cut options helper
+- Guardrails: `package.json`, `scripts/check-editing-boundaries.mjs`, `scripts/editing-boundaries.allowlist.json`
+- Docs: `docs/editing/{ARCHITECTURE.md,ADDING_A_MODE.md,ADDING_A_VIEW.md,PROGRESS.md}`, `docs/index.md`, `packages/views/README.md`
+  **Tests:** ported legacy editing tests to raw commands, sessions, and preview state while preserving MIDI-output and user-visible behavior assertions; added no runtime dependencies and weakened or deleted no assertions · focused editor suites: 51 passed · Views: 62 passed
+  **Gate results:** MIDI, Views, and Editor builds ✓ · `npm run check-types` ✓ (9 Turbo tasks) · lint ✓ · `npm run check:editing:strict` ✓ (0 violations; empty allowlist) · targeted editor tests ✓ · root `npm test`: 254 editor tests passed with the same pre-existing Piano Roll time-signature fixture failure; Audio 15, MIDI 29, Mixer 26, and Views 62 passed · E2E: 15 passed and the same 3 baseline `playhead-sync` failures · performance E2E ✓ (3,000 notes, capacity 4,096, zero dropped notes; draw 1.800 ms, instance-buffer writes 0.100 ms) · root `npm run check` passes lint and strict boundary checks, then fails the repository-wide Prettier check on 118 files (the Phase 0 baseline was 153; changed Phase 10 files pass targeted formatting) · Storybook tests/build unavailable because installed Storybook requires Node.js v20.19+ or v22.12+, while the environment is v20.18.1.
+  **Defects closed:** no new defects; previously tracked DEF-01–DEF-12, DEF-14, and DEF-15 remain closed. No open defect is listed in the progress log.
+  **Intentional behaviour changes:** none beyond the planned removal of deprecated APIs and enforcement of the centralized editing boundary.
+  **Deviations from plan:** Did not add the strict boundary gate to `ci`; decision S-4 requires maintainer sign-off. The root `check` command enforces it. Full-format and Storybook gates remain blocked by the repository-wide formatting baseline and the installed Node.js version, respectively.
+  **Performance:** highway instancing acceptance test passed with 3,000 visible notes, a 4,096-note capacity, zero dropped notes, 1.800 ms draw time, and 0.100 ms instance-buffer writes.
+  **Open questions:** none

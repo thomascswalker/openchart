@@ -77,7 +77,7 @@ describe("standalone editing sessions", () => {
       }),
     ).not.toBeNull();
     const documentBytes = midi.toBuffer();
-    const document = new ChartDocument(midi, () => null);
+    const document = new ChartDocument(midi);
     const context: ModeContext = {
       reader: document,
       target: session.target,
@@ -212,7 +212,7 @@ describe("standalone editing sessions", () => {
       .find((track) => track.key === target.trackKey)!;
     const mode = standalone.registry.resolve(descriptor, "piano-roll")!;
     const session = createEditingSession({
-      document: new ChartDocument(midi, () => null),
+      document: new ChartDocument(midi),
       mode,
       target,
       hostKind: "piano-roll",

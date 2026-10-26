@@ -2,6 +2,7 @@ import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import {
   findSection,
   formatNoteId,
+  getHighwaySustainEnd,
   type ChartView,
   type EditablePhraseKind,
   type EntityId,
@@ -13,9 +14,10 @@ import { HighwayHitTester, type HighwayPhrase } from "../hitTesting";
 import {
   getHighwayDragTarget,
   getHighwaySteppedTick,
-  getHighwaySustainEnd,
   getHighwayWheelTick,
-} from "../interaction";
+  getPhraseAutoScrollDelta,
+  getPhrasePointerAction,
+} from "../interactionMath";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type {
@@ -30,10 +32,6 @@ import {
   phraseAutoScrollMaximumTicksPerFrame,
   wheelTicksPerPixel,
 } from "../constants";
-import {
-  getPhraseAutoScrollDelta,
-  getPhrasePointerAction,
-} from "../interaction";
 import type { HighwayPhraseHoverState } from "../types";
 import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
 

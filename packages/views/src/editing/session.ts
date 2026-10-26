@@ -50,6 +50,7 @@ export interface EditingSession {
   pasteClipboard(anchorTick: number): EditResult;
   beginGesture(): GestureHandle;
   getToolState(): unknown;
+  setToolState(state: unknown): void;
 }
 
 /** Preview/commit/cancel handle for one continuous editing gesture. */
@@ -90,7 +91,7 @@ class EditingSessionImpl implements EditingSession {
   private readonly transaction: EditTransactionPort;
   private readonly onCommit: ((result: EditResult) => void) | undefined;
   private targetValue: EditingTarget;
-  private readonly toolState: unknown;
+  private toolState: unknown;
 
   public constructor(options: CreateEditingSessionOptions) {
     this.document = options.document;
@@ -109,6 +110,10 @@ class EditingSessionImpl implements EditingSession {
 
   public get target(): EditingTarget {
     return this.targetValue;
+  }
+
+  public setToolState(state: unknown): void {
+    this.toolState = this.mode.toolStateSchema.parse(state);
   }
 
   public getProjection(): Projection {

@@ -1,4 +1,5 @@
 import { Midi } from "@openchart/midi";
+import { MetaType } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../../document";
 import type { LoggerService } from "../../logger";
@@ -39,15 +40,13 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
 
     editing.selection.add(noteId);
-    editing.scratchpad.set(noteId, { tickDelta: 120 });
+    const session = editing.getSession("viewport-1");
+    expect(session).not.toBeNull();
     expect(
-      editing.dispatch({
-        type: "ADD_NOTE",
-        trackIndex: 0,
-        tick: 240,
-        pitch: 64,
-        duration: 120,
-      }),
+      session!.execute({
+        type: "ADD_NOTES",
+        notes: [{ trackIndex: 0, tick: 240, pitch: 64, duration: 120 }],
+      }).changed,
     ).toBe(true);
     expect(playback.refresh).toHaveBeenCalledTimes(1);
     expect(documentService.getSnapshot().canUndo).toBe(true);
@@ -61,10 +60,9 @@ describe("EditingService", () => {
       tick: 0,
       pitch: 60,
     });
-    expect(editing.scratchpad.get(noteId)).toEqual({ tickDelta: 120 });
   });
 
-  it("clears document-scoped state and clipboard when a new project is loaded", () => {
+  it("clears selection and clipboard when a new project is loaded", () => {
     const documentService = createDocumentService();
     const midi = new Midi();
     midi.addTrack();
@@ -79,7 +77,6 @@ describe("EditingService", () => {
       .getDocument()
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     editing.selection.add(noteId);
-    editing.scratchpad.set(noteId, { tickDelta: 120 });
     editing.clipboard.setData({
       sourceModeId: "midi.raw",
       entities: [
@@ -104,7 +101,6 @@ describe("EditingService", () => {
     documentService.data = nextMidi;
 
     expect(editing.selection.getSelectedIds()).toEqual([]);
-    expect(editing.scratchpad.getSnapshot().size).toBe(0);
     expect(editing.clipboard.canPaste()).toBe(false);
   });
 
@@ -148,5 +144,112 @@ describe("EditingService", () => {
       note: 60,
     });
     expect(documentService.getSnapshot().canUndo).toBe(false);
+  });
+
+  it("provides an isolated global header session for tempo and section edits", () => {
+    const documentService = createDocumentService();
+    const midi = new Midi();
+    midi.addTrack();
+    midi.tracks[0]!.name = "LEAD GUITAR";
+    midi.addTempoEvent(0, 500_000);
+    documentService.data = midi;
+    const playback = { refresh: vi.fn() } as unknown as PlaybackService;
+    const editing = new EditingService(
+      documentService,
+      playback,
+      new ViewportService(),
+    );
+
+    const global = editing.getSession("viewport-1", "global");
+    expect(global?.mode.id).toBe("midi.global");
+    expect(global?.hostKind).toBe("global");
+    expect(
+      global?.execute({
+        type: "SET_TEMPO",
+        tick: 480,
+        microsecondsPerQuarterNote: 400_000,
+      }).changed,
+    ).toBe(true);
+    expect(
+      global?.execute({
+        type: "ADD_SECTION",
+        tick: 960,
+        name: "Verse",
+      }).changed,
+    ).toBe(true);
+    expect(documentService.data.getTempoEvents()).toContainEqual(
+      expect.objectContaining({
+        tick: 480,
+        microsecondsPerQuarterNote: 400_000,
+      }),
+    );
+    expect(
+      documentService.data.tracks[0]!.getTextEvents().some(
+        (event) =>
+          event.type === MetaType.Marker &&
+          event.text === "[section Verse]" &&
+          event.tick === 960,
+      ),
+    ).toBe(true);
+    expect(playback.refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects lyric mutations through the global session", () => {
+    const documentService = createDocumentService();
+    const midi = new Midi();
+    midi.addTrack();
+    midi.tracks[0]!.name = "VOCALS";
+    const lyric = midi.tracks[0]!.addTextEvent(MetaType.Lyric, 0, "hello");
+    documentService.data = midi;
+    const editing = new EditingService(
+      documentService,
+      { refresh: vi.fn() } as unknown as PlaybackService,
+      new ViewportService(),
+    );
+    const global = editing.getSession("viewport-1", "global")!;
+    const lyricId = editing.getDocument().getTextEvents(0)[0]!.id;
+
+    expect(
+      global.execute({
+        type: "DELETE_ENTITIES",
+        targetIds: [lyricId],
+      }).changed,
+    ).toBe(false);
+    expect(
+      documentService.data.tracks[0]!.getTextEvents().some(
+        (event) => event.type === MetaType.Lyric && event.text === lyric.text,
+      ),
+    ).toBe(true);
+  });
+
+  it("schema-validates and stores mode tool state per viewport", () => {
+    const documentService = createDocumentService();
+    const midi = new Midi();
+    midi.addTrack();
+    midi.tracks[0]!.name = "LEAD GUITAR";
+    documentService.data = midi;
+    const viewports = new ViewportService();
+    const editing = new EditingService(
+      documentService,
+      { refresh: vi.fn() } as unknown as PlaybackService,
+      viewports,
+    );
+    const active = viewports.getSnapshot().activeViewportId;
+    const other = viewports.addViewport("piano-roll")!;
+
+    editing.updateToolState(active, "vocals", {
+      noteKind: "percussion",
+    });
+    expect(viewports.getViewport(active)?.tools.vocals).toEqual({
+      noteKind: "percussion",
+      phrase: null,
+    });
+    expect(() =>
+      editing.updateToolState(active, "vocals", { noteKind: "invalid" }),
+    ).toThrow();
+    expect(viewports.getViewport(other)?.tools.vocals).toEqual({
+      noteKind: "pitched",
+      phrase: null,
+    });
   });
 });

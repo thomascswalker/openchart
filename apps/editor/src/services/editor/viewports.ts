@@ -1,9 +1,13 @@
 import {
   Difficulty,
-  requiresPianoRoll,
-  type VocalNoteKind,
-  type VocalPhraseKind,
+  describeTrack,
+  EditingModeRegistry,
+  findTrackConfig,
+  type EditingModeId,
+  type ModeRegistry,
+  type TrackDescriptor,
 } from "@openchart/views";
+import { defaultModes } from "@openchart/views";
 import { StatefulService } from "../../platform/services";
 
 export type ViewportKind = "piano-roll" | "highway";
@@ -14,52 +18,19 @@ export interface ViewportCameraState {
   highway?: unknown;
 }
 
-/**
- * Instruments without difficulties (Vocals) can only be shown in the Piano
- * Roll. Applied on every update so selecting one from the TrackList lands on
- * the Piano Roll.
- */
-export function enforceViewForInstrument(
+/** Keeps each viewport on a host supported by its resolved editing mode. */
+export function enforceAvailableView(
   session: ViewportSession,
+  canHost: (session: ViewportSession, hostKind: ViewportKind) => boolean,
 ): ViewportSession {
-  return session.view !== "piano-roll" &&
-    (requiresPianoRoll(session.instrument) ||
-      requiresPianoRoll(session.trackKey))
-    ? { ...session, view: "piano-roll" }
-    : session;
-}
-
-/** Highway tools and phrase modes. Mirrors the Highway view's `HighwayMode`. */
-export type HighwayToolMode =
-  "select" | "place" | "remove" | "stagepower" | "solo";
-
-/** Mirrors the Highway view's `DrumPlacementKind`. */
-export type DrumNoteType = "pad" | "cymbal" | "kick";
-
-/** Mirrors the Highway view's `HighwayNotePlacementType`. */
-export type GuitarNoteType = "normal" | "force-hopo" | "force-strum" | "tap";
-
-/** Mirrors the Piano Roll's `VocalPlacement`. */
-export interface VocalNoteType {
-  noteKind: VocalNoteKind;
-  /** When set, a grid drag creates this phrase instead of a note. */
-  phrase: VocalPhraseKind | null;
-}
-
-export interface ViewportTools {
-  mode: HighwayToolMode;
-  drum: DrumNoteType;
-  guitar: GuitarNoteType;
-  vocal: VocalNoteType;
-}
-
-export function createViewportTools(): ViewportTools {
-  return {
-    mode: "select",
-    drum: "pad",
-    guitar: "normal",
-    vocal: { noteKind: "pitched", phrase: null },
-  };
+  if (canHost(session, session.view)) return session;
+  if (canHost(session, "piano-roll")) {
+    return { ...session, view: "piano-roll" };
+  }
+  if (canHost(session, "highway")) {
+    return { ...session, view: "highway" };
+  }
+  return session;
 }
 
 export interface ViewportSession {
@@ -69,7 +40,7 @@ export interface ViewportSession {
   instrument: string;
   difficulty: Difficulty;
   camera: ViewportCameraState;
-  tools: ViewportTools;
+  tools: Record<string, unknown>;
 }
 
 export interface ViewportSnapshot {
@@ -99,7 +70,12 @@ function createViewportSession(
     instrument: "LEAD GUITAR",
     difficulty: Difficulty.Expert,
     camera: { tick: cameraTick },
-    tools: createViewportTools(),
+    tools: Object.fromEntries(
+      defaultModes.map((mode) => [
+        mode.id,
+        mode.toolStateSchema.parse(mode.createDefaultToolState()),
+      ]),
+    ) as Record<string, unknown>,
   };
 }
 const defaultViewportSnapshot: ViewportSnapshot = {
@@ -128,11 +104,27 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
   private snapEnabled = true;
   private snapDenominator = 4;
   private lockCursor = true;
+  private modeRegistry: ModeRegistry | null = null;
+  private trackResolver:
+    ((session: ViewportSession) => TrackDescriptor) | null = null;
 
   constructor() {
     super();
+    const registry = new EditingModeRegistry();
+    defaultModes.forEach((mode) => registry.register(mode));
+    this.modeRegistry = registry;
     this._snapshot = this.buildSnapshot();
   }
+
+  public readonly setModeRegistry = (registry: ModeRegistry): void => {
+    this.modeRegistry = registry;
+  };
+
+  public readonly setTrackResolver = (
+    resolver: (session: ViewportSession) => TrackDescriptor,
+  ): void => {
+    this.trackResolver = resolver;
+  };
 
   public readonly reset = (): void => {
     this.viewportSessions = [createViewportSession(DEFAULT_VIEWPORT_ID)];
@@ -224,13 +216,16 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     this.viewportSessions = this.viewportSessions.map((session) => {
       const updated =
         session.id === id
-          ? enforceViewForInstrument({
-              ...session,
-              ...update,
-              camera: update.camera
-                ? { ...session.camera, ...update.camera }
-                : session.camera,
-            })
+          ? enforceAvailableView(
+              {
+                ...session,
+                ...update,
+                camera: update.camera
+                  ? { ...session.camera, ...update.camera }
+                  : session.camera,
+              },
+              (target, hostKind) => this.canHost(target, hostKind),
+            )
           : session;
       return updated.camera.tick === cameraTick
         ? updated
@@ -247,16 +242,17 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     this.publish();
   };
 
-  /** Merges a partial update into a viewport's editing tools. */
-  public readonly updateTools = (
+  /** Stores a mode's tool state; EditingService validates updates by schema. */
+  public readonly setModeToolState = (
     id: string,
-    update: Partial<ViewportTools>,
+    modeId: EditingModeId,
+    state: unknown,
   ): void => {
     const current = this.getViewport(id);
     if (!current) return;
     this.viewportSessions = this.viewportSessions.map((session) =>
       session.id === id
-        ? { ...session, tools: { ...session.tools, ...update } }
+        ? { ...session, tools: { ...session.tools, [modeId]: state } }
         : session,
     );
     this.publish();
@@ -311,5 +307,16 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
   private publish(): void {
     this._snapshot = this.buildSnapshot();
     this.notify();
+  }
+
+  private canHost(session: ViewportSession, hostKind: ViewportKind): boolean {
+    if (!this.modeRegistry) return false;
+    const descriptor = this.trackResolver?.(session);
+    if (descriptor) return this.modeRegistry.canHost(descriptor, hostKind);
+    const config =
+      findTrackConfig(session.trackKey) ?? findTrackConfig(session.instrument);
+    return Boolean(
+      config && this.modeRegistry.canHost(describeTrack(config), hostKind),
+    );
   }
 }

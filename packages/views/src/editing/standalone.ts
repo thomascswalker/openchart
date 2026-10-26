@@ -3,10 +3,8 @@ import {
   defaultConfig,
   type SongViewConfig,
   type TrackDescriptor,
-  describeTrack,
 } from "../config.js";
 import { SongView } from "../chartView.js";
-import { getPhrasePitch } from "../chartEditing.js";
 import { ChartDocument } from "./chartDocument.js";
 import { ClipboardService } from "./clipboard.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
@@ -81,16 +79,7 @@ export function createStandaloneEditing(
 }
 
 function createDocument(midi: Midi, config: SongViewConfig): ChartDocument {
-  const descriptors = config.tracks.map(describeTrack);
-  return new ChartDocument(
-    midi,
-    (trackIndex, phraseType) => {
-      const name = midi.tracks[trackIndex]?.name;
-      const descriptor = descriptors.find((item) => item.name === name);
-      return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
-    },
-    config,
-  );
+  return new ChartDocument(midi, config);
 }
 
 function resolveTarget(
