@@ -1,138 +1,134 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import { Difficulty, type ChartView, type Note } from "@openchart/views";
-import { describe, expect, it, vi } from "vitest";
-import type { ChartViewState } from "../../AbstractChartView";
-import type { HighwayContext } from "../context";
+import type { MidiNote } from "@openchart/midi";
+import {
+  defaultConfig,
+  Difficulty,
+  formatNoteId,
+  type EntityId,
+  type SongViewConfig,
+} from "@openchart/views";
+import { describe, expect, it } from "vitest";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
-import { SelectionContext } from "../selection";
-import type { HighwayNotePlacementType } from "../types";
+import {
+  copyHighwaySelectionToClipboard,
+  createHighwayTestSetup,
+} from "./testUtils";
 
-function makeNote(
-  lane: number,
-  start: number,
-  end: number,
+type NotePlacement = "force-hopo" | "force-strum" | "tap";
+
+function addNote(
+  setup: ReturnType<typeof createHighwayTestSetup>,
+  pitch: number,
+  tick: number,
+  duration: number,
   velocity = 90,
 ): MidiNote {
-  return {
-    note: lane as Note,
-    start,
-    end,
+  return setup.midiTrack.addNoteAt({
+    pitch,
+    tick,
+    duration,
     velocity,
-    noteOn: {} as MidiChannelEvent,
-    noteOff: {} as MidiChannelEvent,
-  } as MidiNote;
+  });
+}
+
+function getNoteId(
+  setup: ReturnType<typeof createHighwayTestSetup>,
+  note: MidiNote,
+): EntityId {
+  return formatNoteId(
+    setup.session.target.trackIndex!,
+    setup.midiTrack.getEventId(note.noteOn),
+  );
+}
+
+function createMarkerConfig(): SongViewConfig {
+  return {
+    ...defaultConfig,
+    tracks: defaultConfig.tracks.map((track) => {
+      if (track.key !== "lead-guitar" || track.type !== "instrument") {
+        return track;
+      }
+      return {
+        ...track,
+        notes: {
+          ...track.notes,
+          expertHopo: 101,
+          expertStrum: 102,
+          expertTap: 103,
+        },
+      };
+    }),
+  };
 }
 
 describe("HighwayNoteEditingController", () => {
-  it("copies relative lane/tick positions, clips paste lanes, and selects pasted notes", () => {
-    const offset = 60;
-    const notes = [
-      makeNote(offset + 2, 480, 720, 80),
-      makeNote(offset + 4, 960, 1200, 100),
+  it("copies relative pitches and ticks, preserves note data, and selects pasted IDs", () => {
+    const setup = createHighwayTestSetup();
+    const offset = setup.chart.getOffset();
+    const source = [
+      addNote(setup, offset + 2, 480, 240, 80),
+      addNote(setup, offset + 4, 960, 240, 100),
     ];
-    const added: MidiNote[] = [];
-    const chart = {
-      getNotes: () => [...notes, ...added],
-      getOffset: () => offset,
-      getLaneCount: () => 5,
-      addNote: (lane: Note, start: number, end: number, velocity: number) => {
-        added.push(makeNote(offset + Number(lane), start, end, velocity));
-      },
-    } as unknown as ChartView;
-    const selection = new SelectionContext();
-    notes.forEach((note) => selection.add(note.noteOn));
-    const state: ChartViewState = {
-      midi: null,
-      selectedTrackKey: null,
-      selectedTrackIndex: null,
-      selectedInstrument: "LEAD GUITAR",
-      selectedDifficulty: Difficulty.Expert,
-      snap: { enabled: true, denominator: 4 },
-      lockCursor: false,
-      isPlaying: false,
-    };
-    const context = {
-      getState: () => state,
-      getCurrentChart: () => chart,
-      getSelectionContext: () => selection,
-      notifyNotesChanged: vi.fn(),
-      requestRender: vi.fn(),
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
+    setup.session.selection.setSelectedIds(
+      source.map((note) => getNoteId(setup, note)),
+    );
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(1000).changed).toBe(true);
 
-    editing.copySelection();
-    expect(editing.pasteClipboard(1000)).toBe(true);
-
+    const pasted = setup.chart
+      .getNotes()
+      .filter(
+        (note) =>
+          !source.some((sourceNote) => note.noteOn === sourceNote.noteOn),
+      );
     expect(
-      added.map(({ note, start, end, velocity }) => ({
-        lane: note - offset,
+      pasted.map(({ note, start, end, velocity }) => ({
+        pitch: note,
         start,
         end,
         velocity,
       })),
     ).toEqual([
-      { lane: 2, start: 1000, end: 1240, velocity: 80 },
-      { lane: 4, start: 1480, end: 1720, velocity: 100 },
+      { pitch: offset + 2, start: 1000, end: 1240, velocity: 80 },
+      { pitch: offset + 4, start: 1480, end: 1720, velocity: 100 },
     ]);
-    expect(selection.notes).toEqual(added.map((note) => note.noteOn));
-    expect(context.notifyNotesChanged).toHaveBeenCalledOnce();
-    expect(context.requestRender).toHaveBeenCalledOnce();
+    expect(setup.session.selection.getSelectedIds()).toEqual(
+      pasted.map((note) => getNoteId(setup, note)),
+    );
   });
 
   it("can remove a note without changing selection when requested", () => {
-    const note = makeNote(2, 0, 1);
-    const notes = [note];
-    const chart = {
-      removeNote: (target: MidiNote) => {
-        const index = notes.indexOf(target);
-        if (index < 0) return false;
-        notes.splice(index, 1);
-        return true;
-      },
-    } as unknown as ChartView;
-    const selection = new SelectionContext();
-    selection.add(note.noteOn);
-    const context = {
-      getSelectionContext: () => selection,
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
+    const setup = createHighwayTestSetup();
+    const note = addNote(setup, setup.chart.getOffset() + 2, 0, 120);
+    const id = getNoteId(setup, note);
+    setup.session.selection.add(id);
+    const editing = new HighwayNoteEditingController(setup.context);
 
-    expect(editing.removeNote(chart, note, false)).toBe(true);
-    expect(selection.isSelected(note.noteOn)).toBe(true);
+    expect(editing.deleteNote(setup.chart, note, false)).toBe(true);
+    expect(setup.midiTrack.getNotes()).toHaveLength(0);
+    expect(setup.session.selection.isSelected(id)).toBe(true);
   });
 
   it("places only the selected drum kind on a compatible physical lane", () => {
-    const addNote = vi.fn();
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      addNote,
-    } as unknown as ChartView;
-    const context = {
-      getDrumPlacementKind: () => "cymbal",
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
+    const setup = createHighwayTestSetup("drums");
+    setup.setDrumPlacementKind("cymbal");
+    const editing = new HighwayNoteEditingController(setup.context);
 
-    expect(editing.placeNoteAt(chart, 1, 480, false)).toBe(true);
-    expect(editing.placeNoteAt(chart, 0, 960, false)).toBe(false);
-    expect(addNote).toHaveBeenCalledOnce();
-    expect(addNote).toHaveBeenCalledWith(5, 480, 481);
+    expect(editing.placeNoteAt(setup.chart, 1, 480, false)).toBe(true);
+    expect(editing.placeNoteAt(setup.chart, 0, 960, false)).toBe(false);
+    expect(
+      setup.chart.getNotes().map(({ note, start }) => [note, start]),
+    ).toEqual([[101, 480]]);
   });
 
   it("allows a kick to be placed from any of the four drum lanes", () => {
-    const addNote = vi.fn();
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      addNote,
-    } as unknown as ChartView;
-    const context = {
-      getDrumPlacementKind: () => "kick",
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
+    const setup = createHighwayTestSetup("drums");
+    setup.setDrumPlacementKind("kick");
+    const editing = new HighwayNoteEditingController(setup.context);
 
-    expect(editing.placeNoteAt(chart, 3, 480, false)).toBe(true);
-    expect(addNote).toHaveBeenCalledWith(0, 480, 481);
+    expect(editing.placeNoteAt(setup.chart, 3, 480, false)).toBe(true);
+    expect(
+      setup.chart.getNotes().map(({ note, start }) => [note, start]),
+    ).toEqual([[96, 480]]);
   });
 
   it.each([
@@ -141,137 +137,99 @@ describe("HighwayNoteEditingController", () => {
     ["tap", 103],
   ] as const)(
     "adds the configured %s marker when placing a Lead/Groove note",
-    (placementType: HighwayNotePlacementType, markerPitch) => {
-      const markers: Array<{ note: number; start: number }> = [];
-      const midiTrack = {
-        getNotes: (options?: { pitch: { low: number; high: number } }) =>
-          options
-            ? markers.filter(
-                (note) =>
-                  note.note >= options.pitch.low &&
-                  note.note < options.pitch.high,
-              )
-            : markers,
-        addNoteAt: (spec: { tick: number; pitch: number }) => {
-          markers.push({ note: spec.pitch, start: spec.tick });
-        },
-        removeNote: vi.fn(),
-      };
-      const chart = {
-        getTrack: () => ({
-          getKey: () => "lead-guitar",
-          getMidiTrack: () => midiTrack,
-        }),
-        getSong: () => ({
-          getTrackDescriptors: () => [
-            {
-              key: "lead-guitar",
-              config: {
-                type: "instrument",
-                offsets: { expert: 96 },
-                notes: {
-                  expertHopo: 101,
-                  expertStrum: 102,
-                  expertTap: 103,
-                },
-              },
-            },
-          ],
-        }),
-        getOffset: () => 96,
-        getNotes: () => [],
-        addNote: vi.fn(() => true),
-      } as unknown as ChartView;
-      const context = {
-        getNotePlacementType: () => placementType,
-      } as unknown as HighwayContext;
-      const editing = new HighwayNoteEditingController(context);
+    (placementType: NotePlacement, markerPitch: number) => {
+      const setup = createHighwayTestSetup(
+        "lead-guitar",
+        createMarkerConfig(),
+        Difficulty.Expert,
+      );
+      setup.setNotePlacementType(placementType);
+      const editing = new HighwayNoteEditingController(setup.context);
 
-      expect(editing.placeNoteAt(chart, 0, 480, false)).toBe(true);
-      expect(markers).toContainEqual({ note: markerPitch, start: 480 });
+      expect(editing.placeNoteAt(setup.chart, 0, 480, false)).toBe(true);
+      expect(
+        setup.midiTrack
+          .getNotes({ pitch: { low: markerPitch, high: markerPitch + 1 } })
+          .map(({ note, start }) => [note, start]),
+      ).toEqual([[markerPitch, 480]]);
     },
   );
 
-  it("moves cymbals as cymbals and keeps Expert Kick2 at pitch 95", () => {
-    const cymbal = makeNote(101, 480, 481);
-    const kick2 = makeNote(95, 960, 961);
-    const setNotePitch = vi.fn((note: MidiNote, pitch: number) => {
-      note.note = pitch;
-      return true;
-    });
-    const setNoteStart = vi.fn(() => true);
-    const track = { setNotePitch, setNoteStart };
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums", getMidiTrack: () => track }),
-      getSong: () => ({ attachTrack: vi.fn() }),
-      getOffset: () => 96,
-    } as unknown as ChartView;
-    const editing = new HighwayNoteEditingController({} as HighwayContext);
+  it("previews mode-aware moves, preserves Kick2, and rejects marker movement", () => {
+    const setup = createHighwayTestSetup("drums");
+    const cymbal = addNote(setup, 101, 480, 120);
+    const kick2 = addNote(setup, 95, 960, 120);
+    const marker = addNote(setup, 104, 1200, 120);
+    const editing = new HighwayNoteEditingController(setup.context);
+    const cymbalId = getNoteId(setup, cymbal);
+    const kick2Id = getNoteId(setup, kick2);
 
-    expect(editing.moveNote(chart, cymbal, 2, 720)).toBe(true);
-    expect(setNotePitch).toHaveBeenNthCalledWith(1, cymbal, 102);
-    expect(editing.moveNote(chart, kick2, 3, 1200)).toBe(true);
-    expect(setNotePitch).toHaveBeenNthCalledWith(2, kick2, 95);
-    expect(editing.moveNote(chart, cymbal, 0, 960)).toBe(false);
+    expect(editing.moveNote(setup.chart, cymbal, 2, 720)).toBe(true);
+    expect(
+      setup.context.getPreviewState()?.updated.get(cymbalId),
+    ).toMatchObject({
+      tick: 720,
+      pitch: 102,
+    });
+    expect([cymbal.note, cymbal.start]).toEqual([101, 480]);
+    expect(editing.commitGesture()).toBe(true);
+    const movedCymbal = setup.chart
+      .getNotes()
+      .find((note) => getNoteId(setup, note) === cymbalId)!;
+    expect([movedCymbal.note, movedCymbal.start]).toEqual([102, 720]);
+
+    const currentKick2 = setup.chart
+      .getNotes()
+      .find((note) => getNoteId(setup, note) === kick2Id)!;
+    expect(editing.moveNote(setup.chart, currentKick2, 3, 1200)).toBe(true);
+    expect(editing.commitGesture()).toBe(true);
+    const movedKick2 = setup.chart
+      .getNotes()
+      .find((note) => getNoteId(setup, note) === kick2Id)!;
+    expect([movedKick2.note, movedKick2.start]).toEqual([95, 1200]);
+
+    const currentMarker = setup.midiTrack
+      .getNotes()
+      .find((note) => note.note === marker.note)!;
+    expect(editing.moveNote(setup.chart, currentMarker, 0, 1440)).toBe(false);
+    expect(editing.commitGesture()).toBe(false);
   });
 
   it("copies and pastes drum kinds without canonicalizing Kick2", () => {
-    const sourceNotes = [makeNote(95, 120, 121), makeNote(101, 240, 241)];
-    const added: MidiNote[] = [];
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      getNotes: () => [...sourceNotes, ...added],
-      addNoteAtPitch: (pitch: number, start: number, end: number) => {
-        added.push(makeNote(pitch, start, end));
-        return true;
-      },
-    } as unknown as ChartView;
-    const selection = new SelectionContext();
-    sourceNotes.forEach((note) => selection.add(note.noteOn));
-    const context = {
-      getCurrentChart: () => chart,
-      getSelectionContext: () => selection,
-      getState: () => ({ isPlaying: false }),
-      notifyNotesChanged: vi.fn(),
-      requestRender: vi.fn(),
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
+    const setup = createHighwayTestSetup("drums");
+    const kick2 = addNote(setup, 95, 120, 1);
+    const cymbal = addNote(setup, 101, 240, 1);
+    setup.session.selection.setSelectedIds([
+      getNoteId(setup, kick2),
+      getNoteId(setup, cymbal),
+    ]);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(600).changed).toBe(true);
 
-    editing.copySelection();
-    editing.pasteClipboard(600);
-
-    expect(added.map((note) => [note.note, note.start])).toEqual([
+    expect(
+      setup.chart
+        .getNotes()
+        .filter(
+          (note) =>
+            note.noteOn !== kick2.noteOn && note.noteOn !== cymbal.noteOn,
+        )
+        .map(({ note, start }) => [note, start]),
+    ).toEqual([
       [95, 600],
       [101, 720],
     ]);
   });
 
-  it("skips pasted notes that land on an existing note", () => {
-    const sourceNotes = [makeNote(95, 120, 121), makeNote(101, 240, 241)];
-    const added: MidiNote[] = [];
-    const chart = {
-      getTrack: () => ({ getKey: () => "drums" }),
-      getOffset: () => 96,
-      getNotes: () => [...sourceNotes, ...added],
-      addNoteAtPitch: (pitch: number, start: number, end: number) => {
-        added.push(makeNote(pitch, start, end));
-        return true;
-      },
-    } as unknown as ChartView;
-    const selection = new SelectionContext();
-    sourceNotes.forEach((note) => selection.add(note.noteOn));
-    const context = {
-      getCurrentChart: () => chart,
-      getSelectionContext: () => selection,
-      getState: () => ({ isPlaying: false }),
-      notifyNotesChanged: vi.fn(),
-      requestRender: vi.fn(),
-    } as unknown as HighwayContext;
-    const editing = new HighwayNoteEditingController(context);
-
-    editing.copySelection();
-    expect(editing.pasteClipboard(120)).toBe(false);
-    expect(added).toHaveLength(0);
+  it("skips pasted notes that land on existing notes", () => {
+    const setup = createHighwayTestSetup("drums");
+    const kick2 = addNote(setup, 95, 120, 1);
+    const cymbal = addNote(setup, 101, 240, 1);
+    setup.session.selection.setSelectedIds([
+      getNoteId(setup, kick2),
+      getNoteId(setup, cymbal),
+    ]);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(120).changed).toBe(false);
+    expect(setup.chart.getNotes()).toHaveLength(2);
   });
 });

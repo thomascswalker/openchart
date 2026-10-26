@@ -1,24 +1,30 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import {
   findSection,
-  getNotePhrases,
-  getPhrasePitch,
+  formatNoteId,
+  getHighwaySustainEnd,
   type ChartView,
   type EditablePhraseKind,
-  type MidiNotePhrase,
+  type EntityId,
+  type EditingSession,
 } from "@openchart/views";
 import { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayContext } from "../context";
-import { HighwayHitTester } from "../hitTesting";
+import { HighwayHitTester, type HighwayPhrase } from "../hitTesting";
 import {
   getHighwayDragTarget,
   getHighwaySteppedTick,
-  getHighwaySustainEnd,
   getHighwayWheelTick,
-} from "../interaction";
+  getPhraseAutoScrollDelta,
+  getPhrasePointerAction,
+} from "../interactionMath";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
-import type { HighwayDragState, HighwayGhostNoteLocation, HighwayMarqueeDragState } from "../types";
+import type {
+  HighwayDragState,
+  HighwayGhostNoteLocation,
+  HighwayMarqueeDragState,
+} from "../types";
 import {
   farBoardZ,
   nearBoardZ,
@@ -26,19 +32,56 @@ import {
   phraseAutoScrollMaximumTicksPerFrame,
   wheelTicksPerPixel,
 } from "../constants";
-import {
-  getPhraseAutoScrollDelta,
-  getPhrasePointerAction,
-} from "../interaction";
 import type { HighwayPhraseHoverState } from "../types";
-import { getDrumNoteProfile } from "../profile";
+import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
 
-function physicalLaneForNote(chart: ChartView, note: MidiNote): number {
-  if (chart.getTrack().getKey() === "drums") {
-    const profile = getDrumNoteProfile(note.note, chart.getOffset());
-    return profile?.kind === "kick" ? 0 : (profile?.lane ?? -1);
+function physicalLaneForNote(
+  context: HighwayContext,
+  chart: ChartView,
+  note: MidiNote,
+): number {
+  const classification = getClassification(context, chart, note);
+  const session = context.getEditingSession();
+  if (!classification || !session) return -1;
+  if (classification.kind !== "note" || !classification.movable) return -1;
+  if (session.mode.id === "chart.drums" && classification.subtype === "kick") {
+    return 0;
   }
-  return note.note - chart.getOffset();
+  const snapshot = getNoteSnapshot(context, chart, note);
+  return snapshot
+    ? (session.getProjection().rowForNote(snapshot)?.index ?? -1)
+    : -1;
+}
+
+function getClassification(
+  context: HighwayContext,
+  chart: ChartView,
+  note: MidiNote,
+): ReturnType<EditingSession["classifyNote"]> | null {
+  const session = context.getEditingSession();
+  const snapshot = getNoteSnapshot(context, chart, note);
+  return session && snapshot ? session.classifyNote(snapshot) : null;
+}
+
+function getNoteSnapshot(
+  context: HighwayContext,
+  chart: ChartView,
+  note: MidiNote,
+) {
+  const session = context.getEditingSession();
+  const track = chart.getTrack().getMidiTrack();
+  const trackIndex = session?.target.trackIndex;
+  if (!session || !track || trackIndex === null || trackIndex === undefined) {
+    return null;
+  }
+  return {
+    id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
+    trackIndex,
+    tick: note.start,
+    pitch: note.note,
+    duration: note.end - note.start,
+    velocity: note.velocity,
+  };
 }
 
 export class HighwayInputController {
@@ -59,7 +102,7 @@ export class HighwayInputController {
   private keyboardSelectionAnchor: number | null = null;
   private readonly heldLaneNotes = new Map<
     number,
-    { noteOn: MidiChannelEvent; startTick: number }
+    { startTick: number; preserveSustain: boolean }
   >();
 
   public constructor(
@@ -98,9 +141,6 @@ export class HighwayInputController {
   public detach(): void {
     this.cancelActiveGestures();
     this.clearKeyboardSelectionAnchor();
-    for (const lane of this.heldLaneNotes.keys()) {
-      this.releaseLaneNote(lane);
-    }
     if (this.canvas) {
       this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
@@ -138,7 +178,7 @@ export class HighwayInputController {
   }
 
   public clearSelectionContext(): void {
-    this.context.getSelectionContext().clear();
+    this.context.getEditingSession()?.selection.clear();
   }
 
   public canShowNotePlacementPreview(): boolean {
@@ -170,6 +210,8 @@ export class HighwayInputController {
     }
     this.drag = null;
     this.marqueeDrag = null;
+    this.editing.cancelGesture();
+    this.heldLaneNotes.clear();
     this.cancelPhraseGesture();
     this.ghostNoteLocation = null;
     this.hoveredNoteOn = null;
@@ -217,13 +259,12 @@ export class HighwayInputController {
     const chart = this.getCurrentChart();
     const location = this.coordinates.getChartLocation(event);
     if (!chart || !location) return;
-    const changed = this.editing.placeNoteAt(
+    this.editing.placeNoteAt(
       chart,
       location.lane,
       location.tick,
       event.shiftKey || event.altKey,
     );
-    if (changed) this.context.notifyNotesChanged();
     this.context.requestRender();
   };
 
@@ -238,10 +279,12 @@ export class HighwayInputController {
     const chart = this.getCurrentChart();
     if (!chart) return;
     const location = this.coordinates.getChartLocation(event);
-    const sustainHit = location
+    const sustainEntry = location
       ? (this.hitTesting.getSustainAt(chart, event, location.tick) ?? null)
       : null;
-    const note = sustainHit ?? this.hitTesting.getNoteAt(chart, event);
+    const noteEntry = sustainEntry ?? this.hitTesting.getNoteAt(chart, event);
+    const sustainHit = sustainEntry?.source ?? null;
+    const note = noteEntry?.source ?? undefined;
     this.updateCanvasCursor(note !== undefined, event);
     const phraseMode = this.context.getPhraseMode();
     if (phraseMode && event.button === 0) {
@@ -305,7 +348,7 @@ export class HighwayInputController {
       event.preventDefault();
       this.canvas?.focus();
       this.suppressNextClick = true;
-      const lane = physicalLaneForNote(chart, sustainHit);
+      const lane = physicalLaneForNote(this.context, chart, sustainHit);
       this.drag = {
         pointerId: event.pointerId,
         button: 0,
@@ -337,9 +380,7 @@ export class HighwayInputController {
       event.preventDefault();
       this.canvas?.focus();
       this.suppressNextClick = true;
-      if (note && this.editing.removeNote(chart, note)) {
-        this.context.notifyNotesChanged();
-      }
+      if (note) this.editing.deleteNote(chart, note);
       this.context.requestRender();
       return;
     }
@@ -351,22 +392,24 @@ export class HighwayInputController {
     event.preventDefault();
     this.canvas?.focus();
     this.suppressNextClick = event.button === 0;
-    const selection = this.context.getSelectionContext();
+    const selection = this.context.getEditingSession()?.selection;
+    if (!selection) return;
     const chartNotes = chart.getNotes();
     const interactiveNotes = chartNotes.filter(
-      (candidate) => physicalLaneForNote(chart, candidate) >= 0,
+      (candidate) => physicalLaneForNote(this.context, chart, candidate) >= 0,
     );
     const chord = interactiveNotes.filter(
       (candidate) => candidate.start === note.start,
     );
-    const chordNoteOns = chord.map((candidate) => candidate.noteOn);
+    const chordIds = chord
+      .map((candidate) => getNoteSnapshot(this.context, chart, candidate)?.id)
+      .filter((id): id is EntityId => id !== undefined);
+    const noteId = getNoteSnapshot(this.context, chart, note)?.id;
     if (event.button === 0) {
       if ((event.shiftKey || event.ctrlKey || event.metaKey) && !sustainHit) {
-        const shouldRemove = chordNoteOns.every((noteOn) =>
-          selection.isSelected(noteOn),
-        );
-        chordNoteOns.forEach((noteOn) =>
-          shouldRemove ? selection.remove(noteOn) : selection.add(noteOn),
+        const shouldRemove = chordIds.every((id) => selection.isSelected(id));
+        chordIds.forEach((id) =>
+          shouldRemove ? selection.delete(id) : selection.add(id),
         );
         if (shouldRemove) {
           this.context.requestRender();
@@ -376,23 +419,29 @@ export class HighwayInputController {
         !event.shiftKey &&
         !event.ctrlKey &&
         !event.metaKey &&
-        !selection.isSelected(note.noteOn)
+        noteId !== null &&
+        noteId !== undefined &&
+        !selection.isSelected(noteId)
       ) {
-        selection.set(chordNoteOns);
+        selection.setSelectedIds(chordIds);
       }
     } else {
-      selection.set(chordNoteOns);
+      selection.setSelectedIds(chordIds);
     }
     this.ghostNoteLocation = null;
-    const selectedTargets = interactiveNotes.filter((candidate) =>
-      selection.isSelected(candidate.noteOn),
+    const selectedTargets = interactiveNotes.filter(
+      (candidate) =>
+        getNoteSnapshot(this.context, chart, candidate) !== null &&
+        selection.isSelected(
+          getNoteSnapshot(this.context, chart, candidate)!.id,
+        ),
     );
     const resizeChord = event.button === 2;
     const targets = (resizeChord ? chord : selectedTargets).map(
       (candidate) => ({
         noteOn: candidate.noteOn,
         initialTick: candidate.start,
-        initialLane: physicalLaneForNote(chart, candidate),
+        initialLane: physicalLaneForNote(this.context, chart, candidate),
       }),
     );
     this.drag = {
@@ -404,7 +453,7 @@ export class HighwayInputController {
       noteOn: note.noteOn,
       noteOns: targets.map((target) => target.noteOn),
       targets,
-      initialLane: physicalLaneForNote(chart, note),
+      initialLane: physicalLaneForNote(this.context, chart, note),
       initialTick: note.start,
       pointerLane: location.lane,
       pointerTick: location.tick,
@@ -474,44 +523,34 @@ export class HighwayInputController {
     drag.moved ||=
       location.tick !== drag.pointerTick || location.lane !== drag.pointerLane;
     const chartNotes = chart.getNotes();
-    const otherNoteStarts = chartNotes
-      .filter((note) => !drag.noteOns.includes(note.noteOn))
-      .map((note) => note.start);
-    let changed = false;
-    for (const target of drag.targets) {
-      const candidate = chartNotes.find(
-        (note) => note.noteOn === target.noteOn,
+    const candidates = drag.targets
+      .map((target) => chartNotes.find((note) => note.noteOn === target.noteOn))
+      .filter((note): note is MidiNote => note !== undefined);
+    let changed: boolean;
+    if (drag.resizing) {
+      const endTick = Math.max(anchor.start + 1, location.tick);
+      changed = this.editing.previewSustainEnd(
+        chart,
+        candidates,
+        endTick,
+        event.shiftKey || event.altKey ? "allow" : "stop-at-next",
       );
-      if (!candidate) continue;
-      if (drag.resizing) {
-        const nextEnd = getHighwaySustainEnd(
-          candidate.start,
-          location.tick,
-          otherNoteStarts,
-          event.shiftKey || event.altKey,
-        );
-        if (nextEnd !== candidate.end) {
-          changed =
-            this.editing.resizeNote(chart, candidate, nextEnd) || changed;
-        }
-      } else {
-        const dragTarget = getHighwayDragTarget(
-          target.initialTick,
-          target.initialLane,
-          location.tick - drag.pointerTick,
-          location.lane - drag.pointerLane,
-          this.coordinates.getSnapTicks(),
-          this.context.getState().snap.enabled,
-          this.coordinates.getPhysicalLaneCount(),
-        );
-        changed =
-          this.editing.moveNote(
-            chart,
-            candidate,
-            dragTarget.lane,
-            dragTarget.tick,
-          ) || changed;
-      }
+    } else {
+      const dragTarget = getHighwayDragTarget(
+        drag.initialTick,
+        drag.initialLane,
+        location.tick - drag.pointerTick,
+        location.lane - drag.pointerLane,
+        this.coordinates.getSnapTicks(),
+        this.context.getState().snap.enabled,
+        this.coordinates.getPhysicalLaneCount(),
+      );
+      changed = this.editing.previewMove(
+        chart,
+        candidates,
+        dragTarget.tick - drag.initialTick,
+        dragTarget.lane - drag.initialLane,
+      );
     }
     drag.changed ||= changed;
     if (changed) this.context.requestRender();
@@ -550,16 +589,19 @@ export class HighwayInputController {
           bottom: Math.max(marquee.startY, marquee.currentY),
         };
         const chart = this.getCurrentChart();
-        const phrasePitchSet = this.getPhrasePitches(chart);
-        const selected = new Set(
+        const selected = new Set<EntityId>(
           (chart?.getNotes() ?? [])
             .filter((note) => {
-              if (phrasePitchSet.has(note.note)) return false;
-              const drumProfile =
-                chart?.getTrack().getKey() === "drums"
-                  ? getDrumNoteProfile(note.note, chart.getOffset())
-                  : null;
-              if (drumProfile?.kind === "kick") {
+              if (!chart) return false;
+              const classification = getClassification(
+                this.context,
+                chart,
+                note,
+              );
+              if (classification?.kind !== "note" || !classification.movable) {
+                return false;
+              }
+              if (classification.subtype === "kick") {
                 const noteBounds = this.hitTesting.getKickScreenBounds(note);
                 return (
                   noteBounds !== null &&
@@ -571,9 +613,10 @@ export class HighwayInputController {
               }
               const noteBounds = this.hitTesting.getGemScreenBounds(
                 note,
-                chart ? physicalLaneForNote(chart, note) : -1,
-                drumProfile?.kind === "pad" || drumProfile?.kind === "cymbal"
-                  ? drumProfile.kind
+                chart ? physicalLaneForNote(this.context, chart, note) : -1,
+                classification.subtype === "pad" ||
+                  classification.subtype === "cymbal"
+                  ? classification.subtype
                   : "note",
               );
               return (
@@ -584,12 +627,21 @@ export class HighwayInputController {
                 noteBounds.top <= bounds.bottom
               );
             })
-            .map((note) => note.noteOn),
+            .map((note) =>
+              chart
+                ? getNoteSnapshot(this.context, chart, note)?.id
+                : undefined,
+            )
+            .filter((id): id is EntityId => id !== undefined),
         );
-        const selection = this.context.getSelectionContext();
-        selection.set(
-          marquee.additive ? [...selection.notes, ...selected] : selected,
-        );
+        const selection = this.context.getEditingSession()?.selection;
+        if (selection) {
+          selection.setSelectedIds(
+            marquee.additive
+              ? [...selection.getSelectedIds(), ...selected]
+              : selected,
+          );
+        }
         const phraseMode = this.context.getPhraseMode();
         if (chart && phraseMode) {
           this.phraseEditing.selectPhrases(
@@ -598,7 +650,7 @@ export class HighwayInputController {
           );
         }
       } else if (!marquee.additive && !this.context.getPhraseMode()) {
-        this.context.getSelectionContext().clear();
+        this.context.getEditingSession()?.selection.clear();
       }
       this.context.updateMarqueeOutline(null);
       this.updateCanvasCursor(false, event);
@@ -621,11 +673,11 @@ export class HighwayInputController {
     if (!drag || drag.pointerId !== event.pointerId) return;
     this.canvas?.releasePointerCapture(event.pointerId);
     this.drag = null;
-    let changed = drag.changed;
+    let changed = this.editing.commitGesture();
     if (!drag.moved && drag.sustainHit) {
       const chart = this.getCurrentChart();
       if (chart && drag.button === 0) {
-        const lane = drag.sustainHit.note - chart.getOffset();
+        const lane = physicalLaneForNote(this.context, chart, drag.sustainHit);
         changed = this.editing.placeNoteAt(
           chart,
           lane,
@@ -643,7 +695,7 @@ export class HighwayInputController {
           ) || changed;
       }
     }
-    if (changed) this.context.notifyNotesChanged();
+    if (changed) this.context.requestRender();
     if (drag.button === 2 && event.button === 2) {
       this.suppressNextClick = false;
     }
@@ -665,7 +717,13 @@ export class HighwayInputController {
       this.context.requestRender();
       return;
     }
-    if (this.drag?.pointerId === event.pointerId) this.handlePointerUp(event);
+    if (this.drag?.pointerId === event.pointerId) {
+      this.canvas?.releasePointerCapture(event.pointerId);
+      this.drag = null;
+      this.editing.cancelGesture();
+      this.suppressNextClick = false;
+      this.context.requestRender();
+    }
   };
 
   private readonly handleWheel = (event: WheelEvent): void => {
@@ -698,63 +756,43 @@ export class HighwayInputController {
   public toggleLaneNote(lane: number, preserveSustain = false): void {
     if (!this.canEditNotes || this.context.getPhraseMode()) return;
     const chart = this.getCurrentChart();
-    if (!chart) return;
+    const session = this.context.getEditingSession();
+    if (!chart || !session) return;
     const playheadTick = this.context.getPlayheadTick();
     const note = chart
       .getNotes()
       .find(
         (candidate) =>
           candidate.start === playheadTick &&
-          physicalLaneForNote(chart, candidate) === lane &&
-          (chart.getTrack().getKey() !== "drums" ||
-            getDrumNoteProfile(candidate.note, chart.getOffset())?.kind ===
+          physicalLaneForNote(this.context, chart, candidate) === lane &&
+          (session.mode.id !== "chart.drums" ||
+            getClassification(this.context, chart, candidate)?.subtype ===
               this.context.getDrumPlacementKind()),
       );
-    let releaseHeldNote = false;
     if (note) {
-      this.editing.removeNote(chart, note, false);
-      releaseHeldNote = this.heldLaneNotes.delete(lane);
+      this.editing.deleteNote(chart, note, false);
+      if (this.heldLaneNotes.delete(lane)) this.editing.cancelGesture();
     } else {
-      const previousNotes = new Set(
-        chart.getNotes().map((candidate) => candidate.noteOn),
-      );
-      this.context.beginEdit();
-      const changed = this.editing.placeNoteAt(
-        chart,
+      const changed = this.editing.previewPlaceNote(
         lane,
         playheadTick,
+        playheadTick + 1,
         preserveSustain,
       );
-      if (!changed) {
-        this.context.endEdit();
-        return;
-      }
-      const placedNote = chart
-        .getNotes()
-        .find(
-          (candidate) =>
-            !previousNotes.has(candidate.noteOn) &&
-            candidate.start === playheadTick &&
-            physicalLaneForNote(chart, candidate) === lane,
-        );
-      if (placedNote) {
-        this.heldLaneNotes.set(lane, {
-          noteOn: placedNote.noteOn,
-          startTick: placedNote.start,
-        });
-      } else {
-        this.context.endEdit();
-      }
+      if (!changed) return;
+      this.heldLaneNotes.set(lane, {
+        startTick: playheadTick,
+        preserveSustain,
+      });
     }
-    this.context.notifyNotesChanged();
-    if (releaseHeldNote) this.context.endEdit();
     this.context.requestRender();
   }
 
-  /** Ends a held lane's sustain edit and commits its history transaction. */
+  /** Commits a held lane's preview gesture. */
   public releaseLaneNote(lane: number): void {
     if (!this.heldLaneNotes.delete(lane)) return;
-    this.context.endEdit();
+    this.editing.commitGesture();
+    this.context.requestRender();
   }
 
   /** Moves the playhead one snap interval (or tick step) forward/backward. */
@@ -773,43 +811,36 @@ export class HighwayInputController {
       const start = Math.min(this.keyboardSelectionAnchor, nextTick);
       const end = Math.max(this.keyboardSelectionAnchor, nextTick);
       this.context.setSelectionRange({ start, end });
-      // Same selection context as the mouse marquee, so copy/cut/paste behave identically.
-      const phrasePitches = this.getPhrasePitches(chart);
-      this.context.getSelectionContext().set(
+      this.context.getEditingSession()?.selection.setSelectedIds(
         chart
           .getNotes()
           .filter(
             (note) =>
-              !phrasePitches.has(note.note) &&
+              physicalLaneForNote(this.context, chart, note) >= 0 &&
               note.start >= start &&
               note.start < end,
           )
-          .map((note) => note.noteOn),
+          .map((note) => getNoteSnapshot(this.context, chart, note)?.id)
+          .filter((id): id is EntityId => id !== undefined),
       );
     }
     let changed = false;
     const chartNotes = chart.getNotes();
     for (const [lane, held] of this.heldLaneNotes) {
-      const note = chartNotes.find(
-        (candidate) => candidate.noteOn === held.noteOn,
-      );
-      if (!note) {
-        this.releaseLaneNote(lane);
-        continue;
-      }
-      const otherNoteStarts = chartNotes
-        .filter((candidate) => candidate.noteOn !== held.noteOn)
-        .map((candidate) => candidate.start);
+      const otherNoteStarts = chartNotes.map((candidate) => candidate.start);
       const nextEnd = getHighwaySustainEnd(
         held.startTick,
         nextTick,
         otherNoteStarts,
       );
-      if (note.end !== nextEnd) {
-        changed = this.editing.resizeNote(chart, note, nextEnd) || changed;
-      }
+      changed =
+        this.editing.previewPlaceNote(
+          lane,
+          held.startTick,
+          nextEnd,
+          held.preserveSustain,
+        ) || changed;
     }
-    if (changed) this.context.notifyNotesChanged();
     this.context.requestSeek(nextTick);
     if (changed) this.context.requestRender();
   }
@@ -842,9 +873,9 @@ export class HighwayInputController {
       return;
     }
     const chart = this.getCurrentChart();
-    const note = chart ? this.hitTesting.getNoteAt(chart, event) : undefined;
-    const next = note?.noteOn ?? null;
-    this.updateCanvasCursor(note !== undefined, event);
+    const entry = chart ? this.hitTesting.getNoteAt(chart, event) : undefined;
+    const next = entry?.source?.noteOn ?? null;
+    this.updateCanvasCursor(entry !== undefined, event);
     if (next === this.hoveredNoteOn) return;
     this.hoveredNoteOn = next;
     this.context.requestRender();
@@ -932,7 +963,8 @@ export class HighwayInputController {
           ...location,
           shiftKey: event.shiftKey || event.altKey,
           sustainHit:
-            this.hitTesting.getSustainAt(chart!, event, location.tick) ?? null,
+            this.hitTesting.getSustainAt(chart!, event, location.tick)
+              ?.source ?? null,
         }
       : null;
     this.context.requestRender();
@@ -980,7 +1012,7 @@ export class HighwayInputController {
     event: PointerEvent,
     kind: EditablePhraseKind,
     tick: number,
-    phrase: MidiNotePhrase | null | undefined,
+    phrase: HighwayPhrase | null | undefined,
     operation: "create" | "move" | "resize-start" | "resize-end",
   ): void {
     this.phraseEditing.beginPhraseDrag(
@@ -992,7 +1024,7 @@ export class HighwayInputController {
     );
     this.phrasePointerEvent = event;
     this.phraseHoverState = {
-      noteOn: phrase?.note.noteOn ?? null,
+      id: phrase?.id ?? null,
       operation,
       placementTick: operation === "create" ? tick : null,
     };
@@ -1028,7 +1060,7 @@ export class HighwayInputController {
     const next: HighwayPhraseHoverState =
       phrase && location
         ? {
-            noteOn: phrase.note.noteOn,
+            id: phrase.id,
             operation: this.hitTesting.getPhraseDragOperation(
               phrase,
               location.tick,
@@ -1037,14 +1069,14 @@ export class HighwayInputController {
             placementTick: null,
           }
         : {
-            noteOn: null,
+            id: null,
             operation: inPhraseBand && !noteHit ? "create" : null,
             placementTick:
               inPhraseBand && !noteHit ? (location?.tick ?? null) : null,
           };
     const previous = this.phraseHoverState;
     if (
-      previous?.noteOn === next.noteOn &&
+      previous?.id === next.id &&
       previous?.operation === next.operation &&
       previous?.placementTick === next.placementTick
     )
@@ -1054,35 +1086,26 @@ export class HighwayInputController {
     this.context.requestRender();
   }
 
-  private getPhrasePitches(chart: ChartView | null): Set<number> {
-    if (!chart) return new Set();
-    const descriptor = chart
-      .getSong()
-      .getTrackDescriptors()
-      .find((item) => item.key === chart.getTrack().getKey());
-    if (!descriptor) return new Set();
-    return new Set(
-      (["solo", "stagepower"] as const)
-        .map((kind) => getPhrasePitch(descriptor, kind))
-        .filter((pitch): pitch is number => pitch !== null),
-    );
-  }
-
   private getPhrasesInMarquee(
     chart: ChartView,
     kind: EditablePhraseKind,
     bounds: { left: number; right: number; top: number; bottom: number },
-  ): MidiChannelEvent[] {
-    const track = chart.getTrack().getMidiTrack();
-    const descriptor = chart
-      .getSong()
-      .getTrackDescriptors()
-      .find((item) => item.key === chart.getTrack().getKey());
-    const pitch = descriptor ? getPhrasePitch(descriptor, kind) : null;
-    if (!track || pitch === null) return [];
-    return getNotePhrases(track, pitch, kind)
-      .filter((phrase) => {
-        const phraseBounds = this.hitTesting.getPhraseScreenBounds(phrase);
+  ): EntityId[] {
+    const session = this.context.getEditingSession();
+    if (!session) return [];
+    const entries: IndexedNote[] = [];
+    getHighwayNoteIndex(chart).query(
+      chart,
+      session,
+      this.context.getPreviewState(),
+      Math.max(0, this.coordinates.getTickAtDepth(farBoardZ)),
+      this.coordinates.getTickAtDepth(nearBoardZ),
+      entries,
+    );
+    return entries
+      .filter((entry) => entry.kind === "phrase" && entry.phraseKind === kind)
+      .filter((entry) => {
+        const phraseBounds = this.hitTesting.getPhraseScreenBounds(entry);
         return (
           phraseBounds !== null &&
           phraseBounds.right >= bounds.left &&
@@ -1091,7 +1114,7 @@ export class HighwayInputController {
           phraseBounds.top <= bounds.bottom
         );
       })
-      .map((phrase) => phrase.note.noteOn);
+      .map((phrase) => phrase.id);
   }
 
   private updatePhraseAutoScroll(): void {

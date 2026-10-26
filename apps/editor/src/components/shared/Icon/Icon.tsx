@@ -104,6 +104,8 @@ Object.entries(svgModules).forEach(([path, module]) => {
   icons[`${componentName}Icon`] = makeIcon(makeSvgComponent(module.default));
 });
 
+// Generated icon components are resolved by asset names at module load.
+// eslint-disable-next-line react-refresh/only-export-components
 export const {
   CursorIcon,
   EraserIcon,

@@ -1,6 +1,3 @@
-export const minimumMidiNoteDurationTicks = 1;
-export const minimumSustainLengthTicks = 240;
-
 export function getPhrasePointerAction(
   phraseHit: boolean,
   insidePhraseBand: boolean,
@@ -90,48 +87,4 @@ export function getHighwayDragTarget(
     tick: Math.max(0, tick),
     lane: Math.max(0, Math.min(laneCount - 1, initialLane + laneDelta)),
   };
-}
-
-export function getHighwaySustainEnd(
-  noteStart: number,
-  pointerTick: number,
-  otherNoteStarts: readonly number[] = [],
-  allowExtended = false,
-): number {
-  const requestedEnd = Math.max(noteStart + 1, pointerTick);
-  if (allowExtended) return requestedEnd;
-  const nextNoteStart = otherNoteStarts
-    .filter((tick) => tick > noteStart && tick < requestedEnd)
-    .reduce((next, tick) => Math.min(next, tick), Infinity);
-  return Number.isFinite(nextNoteStart)
-    ? Math.max(noteStart + 1, nextNoteStart)
-    : requestedEnd;
-}
-
-export function getSustainsAtTick<T extends { start: number; end: number }>(
-  notes: readonly T[],
-  tick: number,
-): T[] {
-  return notes.filter((note) => note.start < tick && tick < note.end);
-}
-
-export function getSustainCutTargets<
-  T extends { start: number; end: number; noteOn: unknown },
->(
-  notes: readonly T[],
-  tick: number,
-  shiftKey: boolean,
-  preferredNoteOn: T["noteOn"] | null = null,
-  sameLanePlacement = false,
-): T[] {
-  const crossing = getSustainsAtTick(notes, tick);
-  if (preferredNoteOn === null) return shiftKey ? [] : crossing;
-  if (sameLanePlacement) {
-    return shiftKey
-      ? crossing.filter((note) => note.noteOn === preferredNoteOn)
-      : crossing;
-  }
-  return shiftKey
-    ? crossing
-    : crossing.filter((note) => note.noteOn === preferredNoteOn);
 }

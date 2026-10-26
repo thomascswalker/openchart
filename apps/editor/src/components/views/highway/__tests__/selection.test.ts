@@ -1,49 +1,34 @@
-import type { MidiChannelEvent } from "@openchart/midi";
+import { formatNoteId } from "@openchart/views";
 import { describe, expect, it } from "vitest";
-import { SelectionContext } from "../selection";
+import { createHighwayTestSetup } from "./testUtils";
 
-describe("Highway SelectionContext", () => {
-  it("adds, removes, and clears selected note-on events", () => {
-    const selection = new SelectionContext();
-    const first = {} as MidiChannelEvent;
-    const second = {} as MidiChannelEvent;
+describe("Highway session selection", () => {
+  it("keeps entity selection stable across undo and redo", () => {
+    const setup = createHighwayTestSetup();
+    const note = setup.midiTrack.addNoteAt({
+      pitch: setup.chart.getOffset(),
+      tick: 480,
+      duration: 120,
+    });
+    const id = formatNoteId(
+      setup.session.target.trackIndex!,
+      setup.midiTrack.getEventId(note.noteOn),
+    );
+    setup.session.selection.setSelectedIds([id]);
 
-    expect(selection.size).toBe(0);
-    expect(selection.isSelected(first)).toBe(false);
-    selection.add(first);
-    selection.add(second);
-    expect(selection.notes).toEqual([first, second]);
-    expect(selection.isSelected(first)).toBe(true);
-    selection.remove(first);
-    expect(selection.isSelected(first)).toBe(false);
-    selection.clear();
-    expect(selection.size).toBe(0);
-  });
+    expect(
+      setup.session.execute({
+        type: "MOVE_CHART_NOTES",
+        targetIds: [id],
+        tickDelta: 240,
+        laneDelta: 1,
+      }).changed,
+    ).toBe(true);
+    expect(setup.session.selection.getSelectedIds()).toEqual([id]);
 
-  it("replaces selection without retaining prior notes", () => {
-    const selection = new SelectionContext();
-    const first = {} as MidiChannelEvent;
-    const replacement = {} as MidiChannelEvent;
-
-    selection.add(first);
-    selection.set([replacement]);
-
-    expect(selection.notes).toEqual([replacement]);
-    expect(selection.isSelected(first)).toBe(false);
-  });
-
-  it("advances its revision only when selected notes change", () => {
-    const selection = new SelectionContext();
-    const note = {} as MidiChannelEvent;
-
-    expect(selection.getRevision()).toBe(0);
-    selection.add(note);
-    expect(selection.getRevision()).toBe(1);
-    selection.add(note);
-    expect(selection.getRevision()).toBe(1);
-    selection.set([note]);
-    expect(selection.getRevision()).toBe(1);
-    selection.clear();
-    expect(selection.getRevision()).toBe(2);
+    expect(setup.editing.history.undo()).toBe(true);
+    expect(setup.session.selection.getSelectedIds()).toEqual([id]);
+    expect(setup.editing.history.redo()).toBe(true);
+    expect(setup.session.selection.getSelectedIds()).toEqual([id]);
   });
 });

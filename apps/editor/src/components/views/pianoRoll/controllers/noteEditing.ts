@@ -1,72 +1,152 @@
-import type { MidiChannelEvent } from "@openchart/midi";
+import {
+  type EditCommand,
+  type EditingSession,
+  type EditResult,
+  type GestureHandle,
+  type PreviewState,
+  type VocalNoteKind,
+  type VocalPhraseKind,
+} from "@openchart/views";
 import { Vector2 } from "three";
 import type { CoordinateSystem } from "../coordinates";
-import {
-  NoteEditingStrategy,
-  type ClipboardNote,
-  type MoveTarget,
-  type IEditingStrategy,
-  type ResizeTarget,
-} from "../editingStrategy";
 import type { PianoRollContext, PianoRollNote } from "../types";
-import { VocalEditingStrategy } from "../vocalEditing";
-import { KeyboardWidth } from "../constants";
-import type { PianoRollEditingType } from "../profile";
-import type { ChartEditAction } from "@openchart/views";
 
-export function remapNotesByIdentity(
-  notes: PianoRollNote[],
-  keep: Set<MidiChannelEvent>,
-): PianoRollNote[] {
-  return notes.filter((note) => keep.has(note.midiNote.noteOn));
+interface CreateSpec {
+  tick: number;
+  endTick: number;
+  pitch: number | undefined;
+  kind: VocalNoteKind | undefined;
+  phraseKind: VocalPhraseKind | undefined;
 }
 
-/**
- * Gesture state, selection remapping, history bracketing and clipboard for
- * the Piano Roll. What each gesture does to the MIDI data is delegated to
- * the profile's editing strategy (generic or vocal).
- */
+interface ModeCommandBuilder {
+  move(
+    targetIds: readonly string[],
+    tickDelta: number,
+    pitchDelta: number,
+    previousValidTickDelta: number,
+  ): EditCommand;
+  resize(targetIds: readonly string[], durationDelta: number): EditCommand;
+  create(
+    spec: CreateSpec,
+    session: EditingSession,
+    lyric?: string,
+  ): EditCommand;
+  delete(targetIds: readonly string[]): EditCommand;
+}
+
+const COMMAND_BUILDERS: ReadonlyMap<string, ModeCommandBuilder> = new Map([
+  [
+    "midi.raw",
+    {
+      move: (targetIds, tickDelta, pitchDelta) => ({
+        type: "MOVE_NOTES",
+        targetIds,
+        tickDelta,
+        pitchDelta,
+      }),
+      resize: (targetIds, durationDelta) => ({
+        type: "RESIZE_NOTES",
+        targetIds,
+        durationDelta,
+      }),
+      create: (spec, session) => ({
+        type: "ADD_NOTES",
+        notes: [
+          {
+            trackIndex: session.target.trackIndex ?? 0,
+            tick: spec.tick,
+            pitch: spec.pitch ?? 0,
+            duration: Math.max(1, spec.endTick - spec.tick),
+          },
+        ],
+      }),
+      delete: (targetIds) => ({ type: "DELETE_ENTITIES", targetIds }),
+    },
+  ],
+  [
+    "vocals",
+    {
+      move: (targetIds, tickDelta, pitchDelta, previousValidTickDelta) => ({
+        type: "MOVE_VOCAL_ENTITIES",
+        targetIds,
+        tickDelta,
+        pitchDelta,
+        previousValidTickDelta,
+      }),
+      resize: (targetIds, durationDelta) => ({
+        type: "RESIZE_VOCAL_ENTITIES",
+        targetIds,
+        durationDelta,
+      }),
+      create: (spec, _session, lyric) =>
+        spec.phraseKind
+          ? {
+              type: "CREATE_VOCAL_PHRASE",
+              phraseKind: spec.phraseKind,
+              startTick: spec.tick,
+              endTick: spec.endTick,
+            }
+          : {
+              type: "ADD_VOCAL_NOTE",
+              kind: spec.kind ?? "pitched",
+              tick: spec.tick,
+              endTick: spec.endTick,
+              ...(spec.pitch === undefined ? {} : { pitch: spec.pitch }),
+              ...(lyric === undefined ? {} : { lyric }),
+            },
+      delete: (targetIds) => ({ type: "DELETE_ENTITIES", targetIds }),
+    },
+  ],
+]);
+
+function commandBuilderFor(session: EditingSession): ModeCommandBuilder {
+  const builder = COMMAND_BUILDERS.get(session.mode.id);
+  if (!builder) {
+    throw new Error(`Piano Roll cannot edit mode '${session.mode.id}'`);
+  }
+  return builder;
+}
+
+interface MoveTarget {
+  note: PianoRollNote;
+  initialTick: number;
+  initialPitch: number;
+}
+
+interface ResizeTarget {
+  note: PianoRollNote;
+  initialDuration: number;
+}
+
+/** Adapts Piano Roll pointer and keyboard gestures to one EditingSession. */
 export class NoteEditingController {
   private readonly context: PianoRollContext;
   private readonly coordinates: CoordinateSystem;
-  private readonly strategies: Record<PianoRollEditingType, IEditingStrategy>;
-
+  private gesture: GestureHandle | null = null;
   private resizing = false;
+  private moving = false;
+  private creating = false;
+  private awaitingLyric = false;
   private resizeAnchor: PianoRollNote | null = null;
   private resizeAnchorInitialEnd = 0;
   private resizeTargets: ResizeTarget[] = [];
-  private resizeSelectionKeep = new Set<MidiChannelEvent>();
-  private gestureTransactionOpen = false;
-
-  private creating = false;
-  private moving = false;
   private moveAnchor: PianoRollNote | null = null;
   private moveAnchorInitialTick = 0;
   private moveAnchorInitialPitch = 0;
   private moveTargets: MoveTarget[] = [];
-  private moveSelectionKeep = new Set<MidiChannelEvent>();
-
-  /** A just-created vocal note waiting for its lyric (transaction open). */
-  private pendingLyric: MidiChannelEvent | null = null;
-  private awaitingLyric = false;
-
-  private clipboard: ClipboardNote[] = [];
-
-  private get isNoteEditingLocked(): boolean {
-    return this.context.getState().isPlaying;
-  }
+  private createSpec: CreateSpec | null = null;
+  private lastValidTickDelta = 0;
+  private lastPreviewPitch: number | null = null;
+  private readonly erasingIds = new Set<string>();
 
   public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
     this.context = context;
     this.coordinates = coordinates;
-    this.strategies = {
-      generic: new NoteEditingStrategy(context, coordinates),
-      vocals: new VocalEditingStrategy(context, coordinates),
-    };
   }
 
-  private get strategy(): IEditingStrategy {
-    return this.strategies[this.context.getProfile().editing];
+  private get isNoteEditingLocked(): boolean {
+    return this.context.getState().isPlaying;
   }
 
   public get isResizing(): boolean {
@@ -81,71 +161,64 @@ export class NoteEditingController {
     return this.creating;
   }
 
-  /** True while the lyric prompt for a new note is open. */
   public get isAwaitingLyric(): boolean {
     return this.awaitingLyric;
   }
 
-  public beginResize(anchor: PianoRollNote): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    const selection = this.context.getSelectionContext();
-    const targets =
-      selection.isSelected(anchor) && selection.size > 0
-        ? selection.notes
-        : [anchor];
+  /** Opens a no-op-safe gesture when a pointer goes down on the editing grid. */
+  public beginPointerGesture(): void {
+    if (this.isNoteEditingLocked) return;
+    this.ensureGesture();
+  }
 
+  public beginErase(): boolean {
+    if (this.isNoteEditingLocked || !this.ensureGesture()) return false;
+    this.erasingIds.clear();
+    return true;
+  }
+
+  public beginResize(anchor: PianoRollNote): void {
+    if (this.isNoteEditingLocked || !this.ensureGesture()) return;
+    const selection = this.context.getSelectionContext();
+    if (!selection.isSelected(anchor)) selection.notes = [anchor];
     this.resizing = true;
     this.resizeAnchor = anchor;
     this.resizeAnchorInitialEnd = anchor.tick + anchor.durationTicks;
-    this.resizeTargets = targets.map((note) => ({
+    this.resizeTargets = selection.notes.map((note) => ({
       note,
       initialDuration: note.durationTicks,
     }));
-    this.resizeSelectionKeep = new Set(
-      selection.notes.map((note) => note.midiNote.noteOn),
-    );
-    this.beginGestureTransaction();
   }
 
   public updateResize(local: Vector2): void {
-    if (this.isNoteEditingLocked) {
+    if (this.isNoteEditingLocked) return;
+    if (this.creating) {
+      this.previewCreate(local);
       return;
     }
-    if (!this.strategy.getTrack(false) || !this.resizeAnchor) {
-      return;
-    }
+    if (!this.resizing || !this.resizeAnchor || !this.gesture) return;
 
     const snappedEnd = this.coordinates.snapTickToNearest(
       this.coordinates.tickAtScreenX(local.x),
     );
     const newAnchorEnd = Math.max(this.resizeAnchor.tick + 1, snappedEnd);
     const delta = newAnchorEnd - this.resizeAnchorInitialEnd;
-
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      this.updateScratchpad(
-        this.resizeTargets.map(({ note }) => note),
-        { durationDelta: delta },
-      );
-    } else {
-      const changed = this.strategy.resize(this.resizeTargets, delta);
-      this.remapSelection(this.resizeSelectionKeep);
-      if (changed) this.context.notifyNotesChanged();
-    }
-    this.context.requestRender();
+    const session = this.getSession();
+    if (!session) return;
+    this.preview(
+      commandBuilderFor(session).resize(
+        this.resizeTargets.map(({ note }) => note.id),
+        delta,
+      ),
+    );
   }
 
   public beginMove(anchor: PianoRollNote): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
+    if (this.isNoteEditingLocked || !this.ensureGesture()) return;
     const selection = this.context.getSelectionContext();
     if (!selection.isSelected(anchor) || selection.size === 0) {
       selection.notes = [anchor];
     }
-
     this.moving = true;
     this.moveAnchor = anchor;
     this.moveAnchorInitialTick = anchor.tick;
@@ -155,20 +228,14 @@ export class NoteEditingController {
       initialTick: note.tick,
       initialPitch: note.pitch,
     }));
-    this.moveSelectionKeep = new Set(
-      selection.notes.map((note) => note.midiNote.noteOn),
-    );
-    this.strategy.beginMove(this.moveTargets);
-    this.beginGestureTransaction();
+    this.lastValidTickDelta = 0;
+    this.lastPreviewPitch = anchor.pitch;
   }
 
   public updateMove(local: Vector2): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    if (!this.strategy.getTrack(false) || !this.moveAnchor) {
-      return;
-    }
+    if (this.isNoteEditingLocked || !this.moving || !this.moveAnchor) return;
+    const session = this.getSession();
+    if (!session || !this.gesture) return;
 
     const newAnchorTick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(local.x),
@@ -176,23 +243,37 @@ export class NoteEditingController {
     const newAnchorPitch = this.coordinates.pitchAtScreenY(local.y);
     const tickDelta = newAnchorTick - this.moveAnchorInitialTick;
     const pitchDelta = newAnchorPitch - this.moveAnchorInitialPitch;
-
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      this.updateScratchpad(
-        this.moveTargets.map(({ note }) => note),
-        { tickDelta, trackDelta: pitchDelta },
-      );
-    } else {
-      const changed = this.strategy.move(
-        this.moveTargets,
-        tickDelta,
-        pitchDelta,
-      );
-      this.remapSelection(this.moveSelectionKeep);
-      if (changed) this.context.notifyNotesChanged();
+    const command = commandBuilderFor(session).move(
+      this.moveTargets.map(({ note }) => note.id),
+      tickDelta,
+      pitchDelta,
+      this.lastValidTickDelta,
+    );
+    const preview = this.preview(command);
+    const firstTarget = this.moveTargets[0];
+    const updated = firstTarget
+      ? preview.updated.get(firstTarget.note.id)
+      : undefined;
+    if (firstTarget && updated && preview.rejections.length === 0) {
+      this.lastValidTickDelta = updated.tick - firstTarget.initialTick;
+      if (
+        this.moveTargets.length === 1 &&
+        session.mode.id === "vocals" &&
+        updated.pitch !== this.lastPreviewPitch
+      ) {
+        this.lastPreviewPitch = updated.pitch;
+        this.context.previewNotes([
+          {
+            id: updated.id,
+            tick: updated.tick,
+            durationTicks: updated.duration,
+            pitch: updated.pitch,
+            velocity: updated.velocity,
+            midiNote: firstTarget.note.midiNote,
+          },
+        ]);
+      }
     }
-    this.context.requestRender();
   }
 
   public finishGesture(): void {
@@ -200,514 +281,282 @@ export class NoteEditingController {
       this.cancelGesture();
       return;
     }
-
-    const lyricNote = this.creating ? this.pendingLyric : null;
-    this.commitScratchpadGesture();
-    this.resetGestureState();
-    if (lyricNote) {
-      // Keep the transaction open: the note and its lyric become one history
-      // entry, and Escape rolls both back.
-      this.openLyricPrompt(lyricNote);
-      return;
+    if (this.creating && this.createSpec?.kind !== undefined) {
+      this.awaitingLyric =
+        this.createSpec.kind === "pitched" ||
+        this.createSpec.kind === "pitchless";
+      if (this.awaitingLyric) {
+        this.context.promptLyric(this.createSpec.tick, {
+          onCommit: (text) => this.commitPendingLyric(text),
+          onCancel: () => this.cancelPendingLyric(),
+          onTab: (text) => {
+            const tick = this.createSpec?.tick;
+            if (this.commitPendingLyric(text) && tick !== undefined) {
+              this.context.editNextLyric(tick);
+            }
+          },
+        });
+        this.resizing = false;
+        return;
+      }
     }
-    this.endGestureTransaction();
+    this.commitGesture();
   }
 
   public cancelGesture(): void {
+    const wasAwaitingLyric = this.awaitingLyric;
+    this.gesture?.cancel();
     this.resetGestureState();
-    this.context.getEditingCore?.()?.scratchpad.clear();
-    if (this.awaitingLyric) {
-      // Closing the prompt runs its onCancel, which rolls the create back.
-      this.context.cancelLyricPrompt();
-      if (this.awaitingLyric) this.rollbackPendingCreate();
-      return;
+    this.context.setPreviewState?.(null);
+    if (wasAwaitingLyric) this.context.cancelLyricPrompt();
+    this.context.requestRender();
+  }
+
+  private commitGesture(lyric?: string): EditResult | null {
+    const gesture = this.gesture;
+    if (!gesture) {
+      this.resetGestureState();
+      return null;
     }
-    this.pendingLyric = null;
-    this.endGestureTransaction();
+    if (lyric !== undefined && this.createSpec) {
+      const session = this.getSession();
+      if (!session) return null;
+      this.preview(
+        commandBuilderFor(session).create(this.createSpec, session, lyric),
+      );
+    }
+    this.gesture = null;
+    const result = gesture.commit();
+    this.context.setPreviewState?.(null);
+    if (result.changed) {
+      const session = this.getSession();
+      session?.selection.setSelectedIds([
+        ...result.createdIds,
+        ...result.updatedIds,
+      ]);
+    }
+    this.resetGestureState();
+    this.context.requestRender();
+    return result;
+  }
+
+  private cancelPendingLyric(): void {
+    if (!this.awaitingLyric) return;
+    this.gesture?.cancel();
+    this.gesture = null;
+    this.resetGestureState();
+    this.context.setPreviewState?.(null);
+    this.context.requestRender();
+  }
+
+  private commitPendingLyric(text: string): boolean {
+    if (!this.awaitingLyric || !text.trim()) {
+      this.cancelPendingLyric();
+      return false;
+    }
+    const result = this.commitGesture(text);
+    this.awaitingLyric = false;
+    return result?.changed ?? false;
   }
 
   private resetGestureState(): void {
-    this.creating = false;
     this.resizing = false;
+    this.moving = false;
+    this.creating = false;
+    this.awaitingLyric = false;
     this.resizeAnchor = null;
     this.resizeTargets = [];
-    this.resizeSelectionKeep = new Set();
-    this.moving = false;
     this.moveAnchor = null;
     this.moveTargets = [];
-    this.moveSelectionKeep = new Set();
+    this.createSpec = null;
+    this.erasingIds.clear();
+    this.lastValidTickDelta = 0;
+    this.lastPreviewPitch = null;
   }
 
   public beginCreate(local: Vector2): void {
-    if (this.isNoteEditingLocked || this.awaitingLyric) {
+    if (
+      this.isNoteEditingLocked ||
+      this.awaitingLyric ||
+      !this.ensureGesture()
+    ) {
       return;
     }
-    if (!this.strategy.getTrack(true)) {
-      return;
-    }
-
-    this.beginGestureTransaction();
-    const created = this.createNote(local);
-    if (!created) {
-      this.endGestureTransaction();
-      return;
-    }
-    const { noteOn } = created;
-    this.pendingLyric = created.needsLyric ? noteOn : null;
-    this.context.notifyNotesChanged();
-    this.remapSelection(new Set([noteOn]));
-
-    const anchor = this.context.getSelectionContext().notes[0];
-    if (!anchor) {
-      return;
-    }
-
-    this.creating = true;
-    this.resizing = true;
-    this.resizeAnchor = anchor;
-    this.resizeAnchorInitialEnd = anchor.tick + anchor.durationTicks;
-    this.resizeTargets = [
-      { note: anchor, initialDuration: anchor.durationTicks },
-    ];
-    this.resizeSelectionKeep = new Set([noteOn]);
-    this.context.requestRender();
-  }
-
-  private openLyricPrompt(noteOn: MidiChannelEvent): void {
-    const note = this.strategy
-      .getTrack(false)
-      ?.getNotes()
-      .find((item) => item.noteOn === noteOn);
-    if (!note) {
-      this.pendingLyric = null;
-      this.endGestureTransaction();
-      return;
-    }
-    this.awaitingLyric = true;
-    this.context.promptLyric(note.start, {
-      onCommit: (text) => this.commitPendingLyric(text),
-      onCancel: () => this.rollbackPendingCreate(),
-      onTab: (text) => {
-        const tick = note.start;
-        if (this.commitPendingLyric(text)) this.context.editNextLyric(tick);
-        else this.rollbackPendingCreate();
-      },
-    });
-  }
-
-  /** Writes the new note's lyric and closes the create transaction. */
-  public commitPendingLyric(text: string): boolean {
-    const noteOn = this.pendingLyric;
-    if (!noteOn || !this.awaitingLyric || !text.trim()) return false;
-    if (!this.strategy.setLyric?.(noteOn, text)) return false;
-    this.pendingLyric = null;
-    this.awaitingLyric = false;
-    this.context.notifyNotesChanged();
-    this.endGestureTransaction();
-    this.context.requestRender();
-    return true;
-  }
-
-  /**
-   * Escape (or empty text): undo the note, the lyric-less track creation and
-   * every resize step in one go by restoring the pre-transaction document.
-   */
-  public rollbackPendingCreate(): void {
-    const noteOn = this.pendingLyric;
-    if (!this.awaitingLyric) return;
-    this.pendingLyric = null;
-    this.awaitingLyric = false;
-    this.context.getSelectionContext().clear();
-    if (this.gestureTransactionOpen && this.context.rollbackEdit()) {
-      this.gestureTransactionOpen = false;
-    } else {
-      // No history service (e.g. Storybook): remove the note by hand.
-      const track = this.strategy.getTrack(false);
-      const note = track?.getNotes().find((item) => item.noteOn === noteOn);
-      if (note) {
-        this.strategy.remove([
-          {
-            tick: note.start,
-            durationTicks: note.end - note.start,
-            pitch: note.note,
-            velocity: note.velocity,
-            midiNote: note,
-          },
-        ]);
-        this.context.notifyNotesChanged();
-      }
-      this.endGestureTransaction();
-    }
-    this.context.requestRender();
-  }
-
-  private beginGestureTransaction(): void {
-    if (this.gestureTransactionOpen) return;
-    this.gestureTransactionOpen = true;
-    this.context.beginEdit();
-  }
-
-  private endGestureTransaction(): void {
-    if (!this.gestureTransactionOpen) return;
-    this.gestureTransactionOpen = false;
-    this.context.endEdit();
-  }
-
-  private createNote(local: Vector2) {
-    const core = this.context.getEditingCore?.();
-    if (!core || this.strategy.id !== "generic") {
-      return this.strategy.create(local);
-    }
-    const track = this.strategy.getTrack(true);
-    const midi = this.context.getMidi();
-    if (!track || !midi) return null;
-    const trackIndex = midi.tracks.indexOf(track);
-    if (trackIndex < 0) return null;
-
+    const session = this.getSession();
+    if (!session) return;
     const tick = this.coordinates.snapTick(
       this.coordinates.tickAtScreenX(local.x),
     );
-    const pitch = this.coordinates.pitchAtScreenY(local.y);
-    const existing = new Set(track.getNotes().map((note) => note.noteOn));
-    const changed = this.applyActions(
-      [
-        {
-          type: "ADD_NOTE",
-          tick,
-          trackIndex,
-          pitch,
-          duration: 1,
-          velocity: 100,
-        },
-      ],
-      true,
-    );
-    if (!changed) return null;
-    const note = track
-      .getNotes()
-      .find(
-        (candidate) =>
-          !existing.has(candidate.noteOn) &&
-          candidate.start === tick &&
-          candidate.note === pitch,
-      );
-    return note ? { noteOn: note.noteOn, needsLyric: false } : null;
-  }
-
-  public eraseNote(note: PianoRollNote): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    if (!this.strategy.getTrack(false)) {
-      return;
-    }
-
-    const selection = this.context.getSelectionContext();
-    const keep = new Set(
-      selection.notes
-        .filter((selected) => selected !== note)
-        .map((selected) => selected.midiNote.noteOn),
-    );
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      const id = this.noteId(note);
-      if (
-        !id ||
-        !this.applyActions([{ type: "DELETE_SELECTION", targetIds: [id] }])
-      ) {
-        return;
-      }
+    const lane = this.coordinates.laneAtScreenY(local.y);
+    if (session.mode.id === "midi.raw") {
+      this.createSpec = {
+        tick,
+        endTick: tick + 1,
+        pitch: this.coordinates.pitchAtScreenY(local.y),
+        kind: undefined,
+        phraseKind: undefined,
+      };
+    } else if (session.mode.id === "vocals") {
+      const placement = this.context.getVocalPlacement();
+      const phraseKind = lane?.phrase ?? placement.phrase ?? undefined;
+      const kind =
+        phraseKind === undefined
+          ? lane?.kind === "percussion" || lane?.kind === "pitchless"
+            ? lane.kind
+            : placement.noteKind
+          : undefined;
+      this.createSpec = {
+        tick,
+        endTick: tick + 1,
+        pitch:
+          kind === "pitched"
+            ? this.coordinates.pitchAtScreenY(
+                Math.max(local.y, this.coordinates.getGridTop()),
+              )
+            : lane && !phraseKind
+              ? lane.createPitch
+              : undefined,
+        kind,
+        phraseKind,
+      };
     } else {
-      this.strategy.remove([note]);
-      this.context.notifyNotesChanged();
+      return;
     }
-    this.remapSelection(keep);
+    this.creating = true;
+    this.resizing = true;
     this.context.requestRender();
   }
 
-  public deleteSelection(): void {
-    if (this.isNoteEditingLocked) {
-      return;
+  private previewCreate(local: Vector2): void {
+    const session = this.getSession();
+    const spec = this.createSpec;
+    if (!session || !spec || !this.gesture) return;
+    const endTick = this.coordinates.snapTickToNearest(
+      this.coordinates.tickAtScreenX(local.x),
+    );
+    spec.endTick = Math.max(spec.tick + 1, endTick);
+    const command = commandBuilderFor(session).create(spec, session);
+    const preview = this.preview(command);
+    if (
+      session.mode.id === "vocals" &&
+      spec.kind === "pitched" &&
+      spec.pitch !== undefined &&
+      spec.pitch !== this.lastPreviewPitch &&
+      preview.rejections.length === 0
+    ) {
+      this.lastPreviewPitch = spec.pitch;
+      const added = preview.added[0];
+      if (added) {
+        this.context.previewNotes([
+          {
+            id: added.id,
+            tick: added.tick,
+            durationTicks: added.duration,
+            pitch: added.pitch,
+            velocity: added.velocity,
+            midiNote: null,
+          },
+        ]);
+      }
     }
-    const selection = this.context.getSelectionContext();
-    if (!this.strategy.getTrack(false) || selection.size === 0) {
-      return;
-    }
+  }
 
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      const targetIds = selection.notes
-        .map((note) => this.noteId(note))
-        .filter((id): id is string => id !== null);
-      if (!this.applyActions([{ type: "DELETE_SELECTION", targetIds }])) return;
-    } else {
-      this.strategy.remove(selection.notes);
-      this.context.notifyNotesChanged();
+  private ensureGesture(): boolean {
+    if (this.gesture?.isOpen) return true;
+    const session = this.getSession();
+    if (!session || !COMMAND_BUILDERS.has(session.mode.id)) return false;
+    this.gesture = session.beginGesture();
+    return true;
+  }
+
+  private getSession(): EditingSession | null {
+    return this.context.getEditingSession?.() ?? null;
+  }
+
+  private preview(command: EditCommand): PreviewState {
+    if (!this.gesture)
+      throw new Error("Cannot preview without an open gesture");
+    const preview = this.gesture.preview(command);
+    this.context.setPreviewState?.(preview);
+    this.context.requestRender();
+    return preview;
+  }
+
+  public eraseNote(note: PianoRollNote): void {
+    if (this.isNoteEditingLocked) return;
+    if (this.gesture?.isOpen) {
+      if (this.erasingIds.has(note.id)) return;
+      const session = this.getSession();
+      if (!session) return;
+      this.erasingIds.add(note.id);
+      this.preview(commandBuilderFor(session).delete([...this.erasingIds]));
+      return;
     }
-    selection.clear();
+    this.executeSelectionCommand([note.id]);
+  }
+
+  public deleteSelection(): void {
+    if (this.isNoteEditingLocked) return;
+    const targetIds = this.context
+      .getSelectionContext()
+      .notes.map((note) => note.id);
+    if (targetIds.length === 0) return;
+    const session = this.getSession();
+    if (!session) return;
+    const result = session.execute(
+      commandBuilderFor(session).delete(targetIds),
+    );
+    if (result.changed) {
+      const removedIds = new Set<string>(result.removedIds);
+      session.selection.setSelectedIds(
+        session.selection.getSelectedIds().filter((id) => !removedIds.has(id)),
+      );
+    }
     this.context.requestRender();
   }
 
   public transposeSelection(semitones: number): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    const selection = this.context.getSelectionContext();
-    if (!this.strategy.getTrack(false) || selection.size === 0) {
-      return;
-    }
-
-    const keep = new Set(selection.notes.map((note) => note.midiNote.noteOn));
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      const targetIds = selection.notes
-        .map((note) => this.noteId(note))
-        .filter((id): id is string => id !== null);
-      if (
-        !this.applyActions([
-          {
-            type: "MOVE_NOTES",
-            targetIds,
-            tickDelta: 0,
-            pitchDelta: semitones,
-          },
-        ])
-      ) {
-        return;
-      }
-    } else {
-      this.strategy.transpose(selection.notes, semitones);
-      this.context.notifyNotesChanged();
-    }
-    this.remapSelection(keep);
-    this.context.requestRender();
+    this.moveSelection(0, semitones);
   }
 
   public moveSelectionTicks(deltaTicks: number): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    const selection = this.context.getSelectionContext();
-    if (!this.strategy.getTrack(false) || selection.size === 0) {
-      return;
-    }
+    this.moveSelection(Math.round(deltaTicks), 0);
+  }
 
-    const keep = new Set(selection.notes.map((note) => note.midiNote.noteOn));
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      const targetIds = selection.notes
-        .map((note) => this.noteId(note))
-        .filter((id): id is string => id !== null);
-      if (
-        !this.applyActions([
-          {
-            type: "MOVE_NOTES",
-            targetIds,
-            tickDelta: Math.round(deltaTicks),
-            pitchDelta: 0,
-          },
-        ])
-      ) {
-        return;
-      }
-    } else {
-      this.strategy.shift(selection.notes, deltaTicks);
-      this.context.notifyNotesChanged();
+  private moveSelection(tickDelta: number, pitchDelta: number): void {
+    if (this.isNoteEditingLocked) return;
+    const selection = this.context.getSelectionContext().notes;
+    if (selection.length === 0) return;
+    const session = this.getSession();
+    if (!session) return;
+    const command = commandBuilderFor(session).move(
+      selection.map((note) => note.id),
+      tickDelta,
+      pitchDelta,
+      0,
+    );
+    const result = session.execute(command);
+    if (result.changed) {
+      session.selection.setSelectedIds([
+        ...result.createdIds,
+        ...result.updatedIds,
+      ]);
     }
-    this.remapSelection(keep);
     this.context.requestRender();
   }
 
-  public copySelection(): void {
-    const selection = this.context.getSelectionContext();
-    if (selection.size === 0) {
-      return;
-    }
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      core.selection.setSelectedIds(
-        selection.notes
-          .map((note) => this.noteId(note))
-          .filter((id): id is string => id !== null),
+  private executeSelectionCommand(targetIds: readonly string[]): void {
+    const session = this.getSession();
+    if (!session || targetIds.length === 0) return;
+    const result = session.execute(
+      commandBuilderFor(session).delete(targetIds),
+    );
+    if (result.changed) {
+      const removedIds = new Set<string>(result.removedIds);
+      session.selection.setSelectedIds(
+        session.selection.getSelectedIds().filter((id) => !removedIds.has(id)),
       );
-      core.clipboard.copy();
-    } else {
-      this.clipboard = this.strategy.copy(selection.notes);
     }
-  }
-
-  public canCopySelection(): boolean {
-    return this.context.getSelectionContext().size > 0;
-  }
-
-  public canCutSelection(): boolean {
-    return !this.isNoteEditingLocked && this.canCopySelection();
-  }
-
-  public canPasteClipboard(): boolean {
-    const core = this.context.getEditingCore?.();
-    const hasClipboard =
-      core && this.strategy.id === "generic"
-        ? core.clipboard.canPaste()
-        : this.clipboard.length > 0;
-    return !this.isNoteEditingLocked && hasClipboard;
-  }
-
-  public cutSelection(): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    const selection = this.context.getSelectionContext();
-    if (!this.strategy.getTrack(false) || selection.size === 0) {
-      return;
-    }
-
-    this.copySelection();
-    const core = this.context.getEditingCore?.();
-    if (core && this.strategy.id === "generic") {
-      const targetIds = selection.notes
-        .map((note) => this.noteId(note))
-        .filter((id): id is string => id !== null);
-      if (!this.applyActions([{ type: "DELETE_SELECTION", targetIds }])) return;
-    } else {
-      this.strategy.remove(selection.notes);
-      this.context.notifyNotesChanged();
-    }
-    this.remapSelection(new Set());
     this.context.requestRender();
-  }
-
-  public pasteClipboard(anchorX: number, hasHovered: boolean): void {
-    if (this.isNoteEditingLocked) {
-      return;
-    }
-    const core = this.context.getEditingCore?.();
-    const useSharedClipboard = core && this.strategy.id === "generic";
-    if (!this.strategy.getTrack(this.strategy.id === "vocals")) {
-      return;
-    }
-
-    const x = hasHovered ? anchorX : KeyboardWidth;
-    const anchorTick = this.coordinates.snapTick(
-      this.coordinates.tickAtScreenX(x),
-    );
-    if (useSharedClipboard) {
-      const trackIndex = this.context.getSelectedTrackIndex();
-      const track = this.strategy.getTrack(false);
-      if (trackIndex === null || !track || !core.clipboard.canPaste()) {
-        return;
-      }
-      const existing = new Set(track.getNotes().map((note) => note.noteOn));
-      const actions = core.clipboard.createPasteActions(anchorTick, trackIndex);
-      if (!this.applyActions(actions)) return;
-      const pastedNotes = track
-        .getNotes()
-        .filter((note) => !existing.has(note.noteOn));
-      this.remapSelection(new Set(pastedNotes.map((note) => note.noteOn)));
-      this.context.requestRender();
-      return;
-    }
-    if (this.clipboard.length === 0) return;
-    const pastedNoteOns = new Set(
-      this.strategy.paste(this.clipboard, anchorTick),
-    );
-    this.context.notifyNotesChanged();
-    this.remapSelection(pastedNoteOns);
-    this.context.requestRender();
-  }
-
-  public remapSelection(keep: Set<MidiChannelEvent>): void {
-    const midi = this.context.getMidi();
-    const trackIndex = this.context.getSelectedTrackIndex();
-    if (!midi || trackIndex === null || keep.size === 0) {
-      this.context.getSelectionContext().clear();
-      return;
-    }
-
-    const mapped = this.context.getTrackNotes(midi, trackIndex);
-    this.context.getSelectionContext().notes = remapNotesByIdentity(
-      mapped,
-      keep,
-    );
-  }
-
-  private noteId(note: PianoRollNote): string | null {
-    const core = this.context.getEditingCore?.();
-    const trackIndex = this.context.getSelectedTrackIndex();
-    return core && trackIndex !== null
-      ? core.getDocument().getNoteId(trackIndex, note.midiNote)
-      : null;
-  }
-
-  private updateScratchpad(
-    notes: readonly PianoRollNote[],
-    delta: {
-      tickDelta?: number;
-      trackDelta?: number;
-      durationDelta?: number;
-    },
-  ): void {
-    const core = this.context.getEditingCore?.();
-    if (!core) return;
-    const edits = new Map<string, typeof delta>();
-    for (const note of notes) {
-      const id = this.noteId(note);
-      if (id) edits.set(id, delta);
-    }
-    core.scratchpad.setMany(edits);
-  }
-
-  private commitScratchpadGesture(): void {
-    const core = this.context.getEditingCore?.();
-    if (!core || this.strategy.id !== "generic") return;
-    const delta = core.scratchpad.getSnapshot().values().next().value;
-    const resize = this.resizing;
-    const targets = resize ? this.resizeTargets : this.moveTargets;
-    const targetIds = targets
-      .map(({ note }) => this.noteId(note))
-      .filter((id): id is string => id !== null);
-    if (!delta || targetIds.length === 0) {
-      core.scratchpad.clear();
-      return;
-    }
-
-    const action = resize
-      ? {
-          type: "RESIZE_NOTES" as const,
-          targetIds,
-          durationDelta: delta.durationDelta ?? 0,
-        }
-      : {
-          type: "MOVE_NOTES" as const,
-          targetIds,
-          tickDelta: delta.tickDelta ?? 0,
-          pitchDelta: delta.trackDelta ?? 0,
-        };
-    const changed = this.applyActions([action], true);
-    core.scratchpad.clear();
-    if (changed) {
-      const keep = resize ? this.resizeSelectionKeep : this.moveSelectionKeep;
-      this.remapSelection(keep);
-      this.context.requestRender();
-    }
-  }
-
-  private applyActions(
-    actions: ChartEditAction[],
-    transactionAlreadyOpen = false,
-  ): boolean {
-    const core = this.context.getEditingCore?.();
-    if (!core || actions.length === 0) return false;
-    if (!transactionAlreadyOpen) this.context.beginEdit();
-    let changed = false;
-    try {
-      for (const action of actions) {
-        changed = core.dispatch(action) || changed;
-      }
-      if (changed) this.context.notifyNotesChanged();
-      return changed;
-    } finally {
-      if (!transactionAlreadyOpen) this.context.endEdit();
-    }
   }
 }

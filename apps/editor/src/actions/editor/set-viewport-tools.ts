@@ -1,19 +1,20 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import {
-  ViewportService,
-  type ViewportTools,
-} from "../../services/editor/viewports";
+import type { EditingModeId } from "@openchart/views";
+import { EditingService } from "../../services/editor/editing";
 
-/** Updates a viewport's editing tools (highway mode, placement kinds, ...). */
+/** Updates one mode's viewport tool state. */
 export class SetViewportToolsAction extends Action<
-  [string, Partial<ViewportTools>]
+  [string, EditingModeId, Record<string, unknown>]
 > {
   run(
     accessor: ServicesAccessor,
     id: string,
-    update: Partial<ViewportTools>,
+    modeId: EditingModeId,
+    update: Record<string, unknown>,
   ): void {
-    accessor.get<ViewportService>("editor.viewports").updateTools(id, update);
+    accessor
+      .get<EditingService>("editor.editing")
+      .updateToolState(id, modeId, update);
   }
 }

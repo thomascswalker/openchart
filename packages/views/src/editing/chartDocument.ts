@@ -6,14 +6,12 @@ import {
   type MidiNote,
   type MidiTrack,
 } from "@openchart/midi";
-import {
-  addNotePhrase,
-  type EditablePhraseKind,
-  getPhrasePitch,
-  updateNotePhrase,
-} from "../chartEditing.js";
 import { SongView } from "../chartView.js";
-import type { TrackDescriptor } from "../config.js";
+import {
+  defaultConfig,
+  type SongViewConfig,
+  type TrackDescriptor,
+} from "../config.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 import {
   formatNoteId,
@@ -28,48 +26,21 @@ import {
   EditRejectedError,
   type EditResult,
 } from "./result.js";
-import { upgradeLegacyAction, type RawCommand } from "./commands.js";
-import type { ChartEditAction } from "./action.js";
+import type { RawCommand } from "./commands.js";
 
 export type { NoteSnapshot } from "./reader.js";
-
-/** Resolves configured phrase kinds to their MIDI note pitch. */
-export type PhrasePitchResolver = (
-  trackIndex: number,
-  phraseType: EditablePhraseKind,
-) => number | null;
-
-const PhraseKinds: readonly EditablePhraseKind[] = [
-  "stagepower",
-  "solo",
-  "vocal",
-  "power-window",
-];
 
 /** Headless raw-command executor and read-only projection of a MIDI document. */
 export class ChartDocument implements ChartDocumentReader {
   private readonly midi: Midi;
-  private readonly resolvePhrasePitch: PhrasePitchResolver;
   private readonly trackDescriptors: readonly TrackDescriptor[];
+  private readonly config: SongViewConfig;
 
   /** Creates a reader and command executor for a mutable MIDI document. */
-  public constructor(midi: Midi, resolvePhrasePitch: PhrasePitchResolver) {
+  public constructor(midi: Midi, config: SongViewConfig = defaultConfig) {
     this.midi = midi;
-    this.resolvePhrasePitch = resolvePhrasePitch;
-    this.trackDescriptors = new SongView(midi).getTrackDescriptors();
-  }
-
-  /** @deprecated Removed in Phase 10; resolve phrase pitches through a mode. */
-  public static phrasePitchResolver(
-    descriptors: readonly TrackDescriptor[],
-    trackIndices: ReadonlyMap<string, number>,
-  ): PhrasePitchResolver {
-    return (trackIndex, phraseType) => {
-      const descriptor = descriptors.find(
-        (item) => trackIndices.get(item.key) === trackIndex,
-      );
-      return descriptor ? getPhrasePitch(descriptor, phraseType) : null;
-    };
+    this.config = config;
+    this.trackDescriptors = new SongView(midi, config).getTrackDescriptors();
   }
 
   /** Returns the stable ID for a note on the given track. */
@@ -103,6 +74,16 @@ export class ChartDocument implements ChartDocumentReader {
     const index = this.midi.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
+    return index >= 0 ? index : null;
+  }
+
+  /** Materializes a configured target track and returns its current index. */
+  public ensureTrack(trackKey: string): number | null {
+    const track = new SongView(this.midi, this.config).ensureMidiTrack(
+      trackKey,
+    );
+    if (!track) return null;
+    const index = this.midi.tracks.indexOf(track);
     return index >= 0 ? index : null;
   }
 
@@ -208,32 +189,6 @@ export class ChartDocument implements ChartDocumentReader {
       removedIds: [...removedIds],
       rejections: [],
     };
-  }
-
-  /** @deprecated Use apply with a RawCommand; removed in Phase 10. */
-  public applyLegacy(action: ChartEditAction): boolean {
-    switch (action.type) {
-      case "CREATE_PHRASE":
-        return this.createPhrase(action);
-      case "RESIZE_PHRASE":
-        return this.resizePhrase(action);
-      default: {
-        const targetIds =
-          action.type === "MOVE_NOTES" ||
-          action.type === "RESIZE_NOTES" ||
-          action.type === "DELETE_SELECTION"
-            ? action.targetIds.filter((id) => this.getNote(id) !== null)
-            : undefined;
-        const compatibleAction =
-          targetIds === undefined ? action : { ...action, targetIds };
-        return this.apply(
-          upgradeLegacyAction(compatibleAction, {
-            resolvePhrasePitch: this.resolvePhrasePitch,
-            getNote: (id) => this.getNote(id),
-          }),
-        ).changed;
-      }
-    }
   }
 
   private validateCommand(command: RawCommand): void {
@@ -677,54 +632,6 @@ export class ChartDocument implements ChartDocumentReader {
           "time-signature",
         );
     }
-  }
-
-  private createPhrase(
-    action: Extract<ChartEditAction, { type: "CREATE_PHRASE" }>,
-  ): boolean {
-    this.requireInteger(action.startTick, "startTick");
-    this.requireInteger(action.duration, "duration");
-    if (action.startTick < 0 || action.duration < 1) {
-      throw new RangeError(
-        "Phrase start must be non-negative and duration positive",
-      );
-    }
-    const pitch = this.resolvePhrasePitch(action.trackIndex, action.phraseType);
-    if (pitch === null) {
-      throw new Error(
-        `No MIDI pitch is configured for phrase type '${action.phraseType}' on track ${action.trackIndex}`,
-      );
-    }
-    const phrase = addNotePhrase(
-      this.getTrack(action.trackIndex),
-      pitch,
-      action.phraseType,
-      action.startTick,
-      action.startTick + action.duration,
-    );
-    return phrase !== null;
-  }
-
-  private resizePhrase(
-    action: Extract<ChartEditAction, { type: "RESIZE_PHRASE" }>,
-  ): boolean {
-    this.requireInteger(action.startDelta, "startDelta");
-    this.requireInteger(action.durationDelta, "durationDelta");
-    const target = this.resolveNote(action.targetId);
-    if (!target) return false;
-    const isPhrase = PhraseKinds.some(
-      (phraseType) =>
-        this.resolvePhrasePitch(target.trackIndex, phraseType) ===
-        target.note.note,
-    );
-    if (!isPhrase) return false;
-    const start = target.note.start + action.startDelta;
-    const duration = target.note.end - target.note.start + action.durationDelta;
-    return (
-      start >= 0 &&
-      duration >= 1 &&
-      updateNotePhrase(target.track, target.note, start, start + duration)
-    );
   }
 
   private toNoteSnapshot(
