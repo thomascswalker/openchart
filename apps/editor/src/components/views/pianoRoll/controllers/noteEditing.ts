@@ -1,5 +1,4 @@
 import {
-  getVocalNotes,
   type EditCommand,
   type EditingSession,
   type EditResult,
@@ -10,7 +9,6 @@ import {
 } from "@openchart/views";
 import { Vector2 } from "three";
 import type { CoordinateSystem } from "../coordinates";
-import { KeyboardWidth } from "../constants";
 import type { PianoRollContext, PianoRollNote } from "../types";
 
 interface CreateSpec {
@@ -538,113 +536,6 @@ export class NoteEditingController {
       0,
     );
     const result = session.execute(command);
-    if (result.changed) {
-      session.selection.setSelectedIds([
-        ...result.createdIds,
-        ...result.updatedIds,
-      ]);
-    }
-    this.context.requestRender();
-  }
-
-  public copySelection(): void {
-    const session = this.getSession();
-    const notes = this.context.getSelectionContext().notes;
-    if (!session || notes.length === 0) return;
-    session.selection.setSelectedIds(notes.map((note) => note.id));
-    session.clipboard.copy();
-    if (session.mode.id === "vocals") {
-      const track = this.context.getSelectedTrack();
-      const layout = this.context.getProfile().vocal;
-      if (!track || !layout) return;
-      const lyrics = new Map(
-        getVocalNotes(track, layout).map((item) => [
-          item.note.noteOn,
-          item.lyric?.text ?? null,
-        ]),
-      );
-      session.clipboard.setVocalLyrics(
-        notes.map((note) =>
-          note.midiNote ? (lyrics.get(note.midiNote.noteOn) ?? null) : null,
-        ),
-      );
-    }
-  }
-
-  public canCopySelection(): boolean {
-    return this.context.getSelectionContext().size > 0;
-  }
-
-  public canCutSelection(): boolean {
-    return !this.isNoteEditingLocked && this.canCopySelection();
-  }
-
-  public canPasteClipboard(): boolean {
-    const session = this.getSession();
-    return (
-      !this.isNoteEditingLocked && (session?.clipboard.canPaste() ?? false)
-    );
-  }
-
-  public cutSelection(): void {
-    if (!this.canCutSelection()) return;
-    this.copySelection();
-    this.deleteSelection();
-  }
-
-  public pasteClipboard(anchorX: number, hasHovered: boolean): void {
-    if (this.isNoteEditingLocked) return;
-    const session = this.getSession();
-    if (!session || !session.clipboard.canPaste()) return;
-    const anchorTick = this.coordinates.snapTick(
-      this.coordinates.tickAtScreenX(hasHovered ? anchorX : KeyboardWidth),
-    );
-    const data = session.clipboard.getData();
-    const profile = this.context.getProfile();
-    let commands: EditCommand[];
-    if (session.mode.id === "midi.raw") {
-      commands = [
-        {
-          type: "ADD_NOTES",
-          notes: data.notes.map((note) => ({
-            trackIndex: (session.target.trackIndex ?? 0) + note.relativeTrack,
-            tick: Math.max(0, anchorTick + note.relativeTick),
-            pitch: note.pitch,
-            duration: Math.max(1, note.duration),
-            velocity: note.velocity,
-          })),
-        },
-      ];
-    } else if (session.mode.id === "vocals") {
-      const lyrics = session.clipboard.getVocalLyrics() ?? [];
-      commands = data.notes.map((note, index) => {
-        const kind = profile.classify(note.pitch);
-        const phraseKind = kind.startsWith("phrase:")
-          ? (kind.slice("phrase:".length) as VocalPhraseKind)
-          : undefined;
-        const startTick = Math.max(0, anchorTick + note.relativeTick);
-        if (phraseKind) {
-          return {
-            type: "CREATE_VOCAL_PHRASE",
-            phraseKind,
-            startTick,
-            endTick: startTick + Math.max(1, note.duration),
-          };
-        }
-        return {
-          type: "ADD_VOCAL_NOTE",
-          kind:
-            kind === "pitchless" || kind === "percussion" ? kind : "pitched",
-          tick: startTick,
-          endTick: startTick + Math.max(1, note.duration),
-          pitch: note.pitch,
-          ...(lyrics[index] ? { lyric: lyrics[index]! } : {}),
-        };
-      });
-    } else {
-      return;
-    }
-    const result = session.executeBatch(commands);
     if (result.changed) {
       session.selection.setSelectedIds([
         ...result.createdIds,

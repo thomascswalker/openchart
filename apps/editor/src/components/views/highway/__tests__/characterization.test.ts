@@ -3,22 +3,23 @@ import {
   Difficulty,
   formatNoteId,
   getPhrasePitch,
+  getHighwaySustainEnd,
+  getSustainCutOptions,
+  getSustainCutTargets,
   type EditablePhraseKind,
   type SongViewConfig,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
-import { HighwayNoteEditingController } from "../editing/noteEditing";
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayPhrase } from "../hitTesting";
-import {
-  getHighwayDragTarget,
-  getHighwaySustainEnd,
-  getSustainCutTargets,
-} from "../interaction";
+import { getHighwayDragTarget } from "../interactionMath";
 import { getDrumNoteProfile, getDrumPitchForPlacement } from "../profile";
-import { createHighwayTestSetup } from "./testUtils";
+import {
+  copyHighwaySelectionToClipboard,
+  createHighwayTestSetup,
+} from "./testUtils";
 
 type NotePlacement = "normal" | "force-hopo" | "force-strum" | "tap";
 
@@ -141,9 +142,11 @@ describe("editing characterization: Highway", () => {
           noteOn: note.id,
         })),
         tick,
-        testCase.shiftKey,
-        preferred,
-        testCase.sameLanePlacement,
+        getSustainCutOptions(
+          testCase.shiftKey,
+          preferred,
+          testCase.sameLanePlacement,
+        ),
       ).map((note) => note.id);
       expect(actual).toEqual(testCase.expected);
     }
@@ -151,12 +154,9 @@ describe("editing characterization: Highway", () => {
       getHighwaySustainEnd(end.noteStart, end.pointerTick, end.nextStarts),
     ).toBe(end.withoutExtended);
     expect(
-      getHighwaySustainEnd(
-        end.noteStart,
-        end.pointerTick,
-        end.nextStarts,
-        true,
-      ),
+      getHighwaySustainEnd(end.noteStart, end.pointerTick, end.nextStarts, {
+        extendPastNext: true,
+      }),
     ).toBe(end.withExtended);
   });
 
@@ -255,9 +255,8 @@ describe("editing characterization: Highway", () => {
       );
     });
     setup.session.selection.setSelectedIds(sourceIds);
-    const editing = new HighwayNoteEditingController(setup.context);
-    editing.copySelection();
-    expect(editing.pasteClipboard(paste.anchorTick)).toBe(true);
+    copyHighwaySelectionToClipboard(setup);
+    expect(setup.session.pasteClipboard(paste.anchorTick).changed).toBe(true);
 
     expect(
       setup.chart

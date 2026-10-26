@@ -4,14 +4,17 @@ import {
   getHighwayDragTarget,
   getHighwaySnapDenominator,
   getHighwaySteppedTick,
-  getHighwaySustainEnd,
   getHighwayWheelTick,
   getPhrasePointerAction,
+} from "../interactionMath";
+import {
+  getHighwaySustainEnd,
+  getSustainCutOptions,
   getSustainCutTargets,
   getSustainsAtTick,
   minimumMidiNoteDurationTicks,
   minimumSustainLengthTicks,
-} from "../interaction";
+} from "@openchart/views";
 import { getPhraseModeForHighwayMode } from "../types";
 
 describe("highway interaction helpers", () => {
@@ -86,7 +89,9 @@ describe("highway interaction helpers", () => {
 
   it("stops sustain extension at the next note unless Shift allows overlap", () => {
     expect(getHighwaySustainEnd(480, 1_200, [840])).toBe(840);
-    expect(getHighwaySustainEnd(480, 1_200, [840], true)).toBe(1_200);
+    expect(
+      getHighwaySustainEnd(480, 1_200, [840], { extendPastNext: true }),
+    ).toBe(1_200);
     expect(getHighwaySustainEnd(480, 900, [840])).toBe(840);
   });
 
@@ -101,22 +106,36 @@ describe("highway interaction helpers", () => {
       0, 1, 2,
     ]);
     expect(
-      getSustainCutTargets(notes, 500, false, "green").map((note) => note.lane),
+      getSustainCutTargets(
+        notes,
+        500,
+        getSustainCutOptions(false, "green"),
+      ).map((note) => note.lane),
     ).toEqual([0]);
     expect(
-      getSustainCutTargets(notes, 500, true, "green").map((note) => note.lane),
-    ).toEqual([0, 1, 2]);
-    expect(
-      getSustainCutTargets(notes, 500, false, "green", true).map(
+      getSustainCutTargets(notes, 500, getSustainCutOptions(true, "green")).map(
         (note) => note.lane,
       ),
     ).toEqual([0, 1, 2]);
     expect(
-      getSustainCutTargets(notes, 500, true, "green", true).map(
-        (note) => note.lane,
-      ),
+      getSustainCutTargets(
+        notes,
+        500,
+        getSustainCutOptions(false, "green", true),
+      ).map((note) => note.lane),
+    ).toEqual([0, 1, 2]);
+    expect(
+      getSustainCutTargets(
+        notes,
+        500,
+        getSustainCutOptions(true, "green", true),
+      ).map((note) => note.lane),
     ).toEqual([0]);
-    expect(getSustainCutTargets(notes, 500, true)).toEqual([]);
-    expect(getSustainCutTargets(notes, 500, false)).toEqual(notes);
+    expect(
+      getSustainCutTargets(notes, 500, getSustainCutOptions(true)),
+    ).toEqual([]);
+    expect(
+      getSustainCutTargets(notes, 500, getSustainCutOptions(false)),
+    ).toEqual(notes);
   });
 });

@@ -10,7 +10,7 @@ import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ResourceRegistry } from "./rendering/assets";
-import { getHighwaySnapDenominator } from "./interaction";
+import { getHighwaySnapDenominator } from "./interactionMath";
 import { SnapDenominators } from "../pianoRoll/constants";
 import {
   defaultCameraFieldOfView,
@@ -282,19 +282,6 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.notePlacementType = type;
   }
 
-  public canCopySelection(): boolean {
-    return this.editing.canCopySelection();
-  }
-
-  // Phrase tools edit phrases, not notes, so note cut/paste is unavailable.
-  public canCutSelection(): boolean {
-    return !this.phraseMode && this.editing.canCutSelection();
-  }
-
-  public canPasteClipboard(): boolean {
-    return !this.phraseMode && this.editing.canPasteClipboard();
-  }
-
   public toggleLaneNote(lane: number, preserveSustain = false): void {
     this.input.toggleLaneNote(lane, preserveSustain);
   }
@@ -324,17 +311,8 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.input.deleteSelection();
   }
 
-  public copySelection(): void {
-    this.editing.copySelection();
-  }
-
-  public cutSelection(): void {
-    this.editing.cutSelection();
-  }
-
-  public pasteClipboard(): void {
-    const pasted = this.editing.pasteClipboard(this.playheadTick);
-    if (pasted) this.clearSelectionRange();
+  public getPasteAnchorTick(): number {
+    return this.playheadTick;
   }
 
   private setSelectionRange(range: HighwaySelectionRange | null): void {

@@ -1,6 +1,7 @@
 import type { ZodType } from "zod";
 import type { Difficulty } from "../chartView.js";
 import type { SongViewConfig, TrackDescriptor } from "../config.js";
+import type { ClipboardPayload } from "./clipboard.js";
 import type { NoteSnapshot } from "./reader.js";
 import type { EntityKind } from "./entityId.js";
 import type { EditCommand, RawCommand, RawCommandType } from "./commands.js";
@@ -85,6 +86,12 @@ export interface EditingMode<TToolState = unknown> {
   createDefaultToolState(): TToolState;
   createProjection(context: ModeContext): Projection;
   classify(note: NoteSnapshot, context: ModeContext): EntityClassification;
+  expandPaste(
+    payload: ClipboardPayload,
+    anchorTick: number,
+    context: ModeContext,
+    toolState: TToolState,
+  ): ExpansionResult;
   expand(
     command: EditCommand,
     context: ModeContext,
@@ -103,6 +110,7 @@ export interface EntityClassification {
 /** Mode registry used to choose the first matching mode for a host and track. */
 export interface ModeRegistry {
   register(mode: EditingMode): void;
+  getById(modeId: EditingModeId): EditingMode | null;
   resolve(track: TrackDescriptor, hostKind: string): EditingMode | null;
   listForHost(hostKind: string): readonly EditingMode[];
   canHost(track: TrackDescriptor, hostKind: string): boolean;

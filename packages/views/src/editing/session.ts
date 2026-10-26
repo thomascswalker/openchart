@@ -8,7 +8,7 @@ import {
   type EditResult,
   type Rejection,
 } from "./result.js";
-import { ClipboardService } from "./clipboardService.js";
+import { ClipboardService } from "./clipboard.js";
 import type { SelectionModel } from "./selectionModel.js";
 import { SelectionModel as SelectionModelImpl } from "./selectionModel.js";
 import type {
@@ -47,8 +47,10 @@ export interface EditingSession {
     commands: readonly EditCommand[],
     options?: ExecuteOptions,
   ): EditResult;
+  pasteClipboard(anchorTick: number): EditResult;
   beginGesture(): GestureHandle;
   getToolState(): unknown;
+  setToolState(state: unknown): void;
 }
 
 /** Preview/commit/cancel handle for one continuous editing gesture. */
@@ -89,7 +91,7 @@ class EditingSessionImpl implements EditingSession {
   private readonly transaction: EditTransactionPort;
   private readonly onCommit: ((result: EditResult) => void) | undefined;
   private targetValue: EditingTarget;
-  private readonly toolState: unknown;
+  private toolState: unknown;
 
   public constructor(options: CreateEditingSessionOptions) {
     this.document = options.document;
@@ -99,8 +101,7 @@ class EditingSessionImpl implements EditingSession {
     this.config = options.config;
     this.transaction = options.transaction;
     this.selection = options.selection ?? new SelectionModelImpl();
-    this.clipboard =
-      options.clipboard ?? new ClipboardService(this.document, this.selection);
+    this.clipboard = options.clipboard ?? new ClipboardService();
     this.onCommit = options.onCommit;
     this.toolState = this.mode.toolStateSchema.parse(
       this.mode.createDefaultToolState(),
@@ -109,6 +110,10 @@ class EditingSessionImpl implements EditingSession {
 
   public get target(): EditingTarget {
     return this.targetValue;
+  }
+
+  public setToolState(state: unknown): void {
+    this.toolState = this.mode.toolStateSchema.parse(state);
   }
 
   public getProjection(): Projection {
@@ -144,7 +149,42 @@ class EditingSessionImpl implements EditingSession {
       return { ...emptyEditResult(), rejections };
     }
 
-    const triggerCommand = rawCommands[0]!;
+    return this.commitExpanded(rawCommands, rejections, rawCommands[0]!);
+  }
+
+  public pasteClipboard(anchorTick: number): EditResult {
+    if (!Number.isSafeInteger(anchorTick) || anchorTick < 0) {
+      throw new RangeError("anchorTick must be a non-negative integer");
+    }
+    const payload = this.clipboard.getData();
+    if (!payload) return emptyEditResult();
+
+    const expansion = this.mode.expandPaste(
+      payload,
+      anchorTick,
+      this.createModeContext(),
+      this.toolState,
+    );
+    if (expansion.commands.length === 0) {
+      return { ...emptyEditResult(), rejections: [...expansion.rejections] };
+    }
+
+    const result = this.commitExpanded(
+      expansion.commands,
+      expansion.rejections,
+      { type: "PASTE_CLIPBOARD" },
+    );
+    if (result.createdIds.length > 0) {
+      this.selection.setSelectedIds(result.createdIds);
+    }
+    return result;
+  }
+
+  private commitExpanded(
+    rawCommands: readonly RawCommand[],
+    rejections: readonly Rejection[],
+    triggerCommand: EditCommand,
+  ): EditResult {
     const targetBeforeTransaction = this.targetValue;
     let transactionStarted = false;
     let combinedResult: EditResult;
@@ -157,7 +197,7 @@ class EditingSessionImpl implements EditingSession {
       this.transaction.end();
       transactionStarted = false;
 
-      combinedResult = { ...result, rejections };
+      combinedResult = { ...result, rejections: [...rejections] };
     } catch (error) {
       if (transactionStarted) {
         let rolledBack: boolean;

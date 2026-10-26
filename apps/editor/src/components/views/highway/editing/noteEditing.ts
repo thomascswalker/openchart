@@ -1,7 +1,6 @@
 import type { MidiNote } from "@openchart/midi";
 import type {
   ChartView,
-  EditCommand,
   EditingSession,
   EntityId,
   GestureHandle,
@@ -9,7 +8,6 @@ import type {
 } from "@openchart/views";
 import { formatNoteId, parseEntityId } from "@openchart/views";
 import type { HighwayContext } from "../context";
-import type { DrumPlacementKind } from "../profile";
 import type { IndexedNote } from "../noteIndex";
 
 export class HighwayNoteEditingController {
@@ -18,64 +16,6 @@ export class HighwayNoteEditingController {
 
   public constructor(context: HighwayContext) {
     this.context = context;
-  }
-
-  public canCopySelection(): boolean {
-    return (
-      this.context
-        .getEditingSession()
-        ?.selection.getSelectedIds()
-        .some((id) => this.belongsToTarget(id)) ?? false
-    );
-  }
-
-  public canCutSelection(): boolean {
-    return !this.context.getState().isPlaying && this.canCopySelection();
-  }
-
-  public canPasteClipboard(): boolean {
-    return (
-      !this.context.getState().isPlaying &&
-      (this.context.getEditingSession()?.clipboard.canPaste() ?? false)
-    );
-  }
-
-  public copySelection(): void {
-    this.context.getEditingSession()?.clipboard.copy();
-  }
-
-  public cutSelection(): void {
-    const session = this.context.getEditingSession();
-    if (!session || !this.canCutSelection()) return;
-    session.clipboard.copy();
-    const ids = this.getTargetSelection(session);
-    const result = session.execute({ type: "DELETE_ENTITIES", targetIds: ids });
-    if (result.changed) session.selection.setSelectedIds([]);
-    this.context.requestRender();
-  }
-
-  public pasteClipboard(anchorTick: number): boolean {
-    const session = this.context.getEditingSession();
-    const chart = this.context.getCurrentChart();
-    if (!session || !chart || !this.canPasteClipboard()) return false;
-    const clipboard = session.clipboard.getData();
-    const trackIndex = session.target.trackIndex;
-    if (trackIndex === null) return false;
-
-    const commands = this.createPasteCommands(
-      session,
-      chart,
-      clipboard.notes,
-      Math.max(0, Math.round(anchorTick)),
-      trackIndex,
-    );
-    if (commands.length === 0) return false;
-    const result = session.executeBatch(commands);
-    if (result.createdIds.length > 0) {
-      session.selection.setSelectedIds(result.createdIds);
-      this.context.requestRender();
-    }
-    return result.changed;
   }
 
   public placeNoteAt(
@@ -317,113 +257,6 @@ export class HighwayNoteEditingController {
     if (result.changed) session.selection.setSelectedIds([]);
     this.context.requestRender();
     return result.changed;
-  }
-
-  private createPasteCommands(
-    session: EditingSession,
-    chart: ChartView,
-    notes: ReturnType<EditingSession["clipboard"]["getData"]>["notes"],
-    anchorTick: number,
-    trackIndex: number,
-  ): EditCommand[] {
-    const occupied = new Set(
-      chart.getNotes().map((note) => `${note.note}:${note.start}`),
-    );
-    if (session.mode.id === "chart.drums") {
-      const pasted = notes.flatMap((note) => {
-        const snapshot = this.clipboardSnapshot(note, trackIndex);
-        const classification = session.classifyNote(snapshot);
-        if (
-          classification.kind !== "note" ||
-          classification.subtype === "marker" ||
-          classification.subtype === "unmapped"
-        ) {
-          return [];
-        }
-        const row = session.getProjection().rowForNote(snapshot);
-        if (!row) return [];
-        return [
-          {
-            relativeTick: note.relativeTick,
-            lane: classification.subtype === "kick" ? 0 : row.index,
-            durationTicks: note.duration,
-            velocity: note.velocity,
-            drumKind: classification.subtype as DrumPlacementKind,
-            originalPitch: note.pitch,
-          },
-        ];
-      });
-      return pasted.length > 0
-        ? [
-            {
-              type: "PASTE_CHART_NOTES",
-              anchorTick,
-              notes: pasted,
-            },
-          ]
-        : [];
-    }
-
-    const commands: EditCommand[] = [];
-    for (const note of notes) {
-      const tick = anchorTick + note.relativeTick;
-      const snapshot = this.clipboardSnapshot(note, trackIndex, tick);
-      const classification = session.classifyNote(snapshot);
-      if (note.phraseType) {
-        if (
-          classification.kind === "phrase" &&
-          (note.phraseType === "stagepower" || note.phraseType === "solo")
-        ) {
-          commands.push({
-            type: "CREATE_PHRASE",
-            phraseKind: note.phraseType,
-            startTick: tick,
-            endTick: tick + note.duration,
-          });
-        }
-        continue;
-      }
-      const row = session.getProjection().rowForNote(snapshot);
-      if (
-        !row ||
-        classification.kind !== "note" ||
-        classification.subtype === "unmapped" ||
-        occupied.has(`${note.pitch}:${tick}`)
-      ) {
-        continue;
-      }
-      occupied.add(`${note.pitch}:${tick}`);
-      commands.push({
-        type: "PLACE_CHART_NOTE",
-        lane: row.index,
-        tick,
-        endTick: tick + note.duration,
-        velocity: note.velocity,
-        placement: "normal",
-        cutPolicy: "none",
-      });
-    }
-    return commands;
-  }
-
-  private clipboardSnapshot(
-    note: {
-      relativeTick: number;
-      pitch: number;
-      duration: number;
-      velocity: number;
-    },
-    trackIndex: number,
-    tick = note.relativeTick,
-  ): NoteSnapshot {
-    return {
-      id: formatNoteId(trackIndex, `clipboard-${note.pitch}-${tick}`),
-      trackIndex,
-      tick,
-      pitch: note.pitch,
-      duration: note.duration,
-      velocity: note.velocity,
-    };
   }
 
   private getTargetSelection(session: EditingSession): EntityId[] {

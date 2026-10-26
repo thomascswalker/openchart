@@ -98,13 +98,11 @@ export interface PianoRollContext {
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;
   getEditingSession?(): EditingSession | null;
+  getGlobalEditingSession?(): EditingSession | null;
   setPreviewState?(preview: PreviewState | null): void;
   getPreviewState?(): PreviewState | null;
   getDisplayNotes?(notes: PianoRollNote[]): PianoRollNote[];
   requestRender(): void;
-  beginEdit(): void;
-  endEdit(): void;
-  notifyNotesChanged(): void;
   requestSeek(tick: number): void;
   invalidateTempoCache(): void;
   promptLyric(tick: number, handlers: PianoRollLyricPromptHandlers): void;

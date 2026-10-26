@@ -2,6 +2,8 @@ import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import {
   formatNoteId,
   extractSections,
+  getSustainCutOptions,
+  getSustainCutTargets,
   type ChartView,
   type EditablePhraseKind,
 } from "@openchart/views";
@@ -33,7 +35,6 @@ import {
   HIGHWAY_GEOMETRY_CATALOG,
   HIGHWAY_RENDER_ORDER,
 } from "./geometryCatalog";
-import { getSustainCutTargets } from "../interaction";
 import {
   createMaterialSet,
   setMaterialState,
@@ -1135,9 +1136,11 @@ export class HighwayRenderer {
     const targets = getSustainCutTargets(
       chart.getNotes(),
       location.tick,
-      location.shiftKey,
-      location.sustainHit?.noteOn ?? null,
-      sameLanePlacement,
+      getSustainCutOptions(
+        location.shiftKey,
+        location.sustainHit?.noteOn ?? null,
+        sameLanePlacement,
+      ),
     );
     return new Map(targets.map((note) => [note.noteOn, note]));
   }

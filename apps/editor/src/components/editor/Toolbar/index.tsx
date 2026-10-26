@@ -1,31 +1,20 @@
 import { Fragment } from "react";
-import {
-  InstrumentType,
-  requiresPianoRoll,
-  type VocalNoteKind,
-} from "@openchart/views";
 import { runAction } from "../../../actions/execute";
 import { usePlaybackSelector } from "../../../hooks/usePlayback";
 import { useViewport } from "../../../hooks/useViewport";
-import type {
-  DrumPlacementKind,
-  HighwayNotePlacementType,
-} from "../../views/highway";
+import Platform from "../../../platform";
+import type { EditingService } from "../../../services/editor/editing";
+import type { ViewportSession } from "../../../services/editor/viewports";
 import { Dropdown, Section } from "../../shared";
-import type {
-  ViewportSession,
-  ViewportTools,
-} from "../../../services/editor/viewports";
-import { ToolbarGroups } from "./definitions";
 import { ToolGroup } from "./ToolGroup";
-import type { ToolbarContextState, ToolbarEditorState } from "./types";
-import styles from "./toolbar.module.css";
 import {
-  DrumNoteOptions,
-  GuitarNoteOptions,
-  VocalNoteOptions,
-  SnapOptions,
-} from "./constants";
+  createModeToolbarGroups,
+  getStateValues,
+  ToolbarGroups,
+} from "./definitions";
+import type { ToolbarContextState, ToolbarEditorState } from "./types";
+import { SnapOptions } from "./constants";
+import styles from "./toolbar.module.css";
 
 interface ToolbarProps {
   session: ViewportSession;
@@ -37,71 +26,42 @@ export default function Toolbar({ session }: ToolbarProps) {
   const vocalPitchFeedbackEnabled = usePlaybackSelector(
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
-  const activeView = session.view;
-  const pianoRollOnly = requiresPianoRoll(session.instrument);
+  const editing = Platform.services.get<EditingService>("editor.editing");
+  const editingSession = editing.getSession(session.id);
+  const mode = editingSession?.mode;
+  const toolState = editingSession?.getToolState();
 
   const context: ToolbarContextState = {
-    activeView,
+    activeView: session.view,
     trackType: session.instrument,
     sessionId: session.id,
     playbackTick,
+    canHostView: (view) => editing.canHost(session.id, view),
   };
   const editorState: ToolbarEditorState = {
     session,
+    mode,
+    toolState,
     snapEnabled,
     snapDenominator,
     lockCursor,
     vocalPitchFeedbackEnabled,
   };
-
-  const setNoteType = (args: Partial<ViewportTools>): void => {
-    runAction("editor.set-viewport-tools", session.id, args);
-  };
-
-  const getHighwayNoteTypeControl = () => {
-    if (session.instrument === InstrumentType.Drums) {
-      return (
-        <Dropdown
-          aria-label="Note type"
-          value={session.tools.drum}
-          onChange={(value: string) =>
-            setNoteType({ drum: value as DrumPlacementKind })
-          }
-          options={DrumNoteOptions}
-          minWidth={100}
-          maxWidth={120}
-        />
-      );
-    }
-    if (
-      session.instrument === InstrumentType.Lead ||
-      session.instrument === InstrumentType.Groove
-    ) {
-      return (
-        <Dropdown
-          aria-label="Note type"
-          value={session.tools.guitar}
-          onChange={(value: string) =>
-            setNoteType({ guitar: value as HighwayNotePlacementType })
-          }
-          options={GuitarNoteOptions}
-          minWidth={100}
-          maxWidth={120}
-        />
-      );
-    }
-    return (
-      <Dropdown
-        aria-label="Note type"
-        disabled
-        value=""
-        onChange={() => {}}
-        options={[]}
-        minWidth={100}
-        maxWidth={120}
-      />
-    );
-  };
+  const modeGroups = mode ? createModeToolbarGroups(mode) : [];
+  const placementTools =
+    mode?.tools.filter((tool) => tool.group === "placement") ?? [];
+  const placementState = getStateValues(toolState);
+  const placementStateKey = placementTools[0]?.stateKey;
+  const placementValue =
+    placementStateKey === undefined
+      ? ""
+      : String(placementState[placementStateKey] ?? "");
+  const placementOptions = placementTools
+    .filter((tool) => typeof tool.value === "string")
+    .map((tool) => ({
+      value: tool.value as string,
+      label: placementLabel(tool.value as string, tool.label),
+    }));
 
   return (
     <Section
@@ -117,49 +77,85 @@ export default function Toolbar({ session }: ToolbarProps) {
     >
       {ToolbarGroups.map((group) => (
         <Fragment key={group.id}>
-          {group.id === "vocal-tools" &&
-            activeView === "piano-roll" &&
-            pianoRollOnly && (
-              <Dropdown
-                aria-label="Vocal note type"
-                disabled={session.tools.vocal.phrase !== null}
-                value={session.tools.vocal.noteKind}
-                onChange={(value: string) =>
-                  setNoteType({
-                    vocal: {
-                      ...session.tools.vocal,
-                      noteKind: value as VocalNoteKind,
-                    },
-                  })
-                }
-                options={VocalNoteOptions}
-                minWidth={100}
-                maxWidth={120}
-              />
-            )}
-          {group.id === "highway-tools" &&
-            activeView === "highway" &&
-            getHighwayNoteTypeControl()}
           <ToolGroup
             group={group}
             context={context}
             editorState={editorState}
           />
           {group.id === "general-tools" && (
-            <Dropdown
-              disabled={!snapEnabled}
-              aria-label="Snap denominator"
-              value={String(snapDenominator)}
-              onChange={(value) =>
-                runAction("editor.set-snap-denominator", Number(value))
-              }
-              minWidth="70px"
-              maxWidth="70px"
-              options={SnapOptions}
-            />
+            <>
+              <Dropdown
+                disabled={!snapEnabled}
+                aria-label="Snap denominator"
+                value={String(snapDenominator)}
+                onChange={(value) =>
+                  runAction("editor.set-snap-denominator", Number(value))
+                }
+                minWidth="70px"
+                maxWidth="70px"
+                options={SnapOptions}
+              />
+              {placementTools.length > 0 &&
+                placementStateKey &&
+                mode &&
+                ((mode.id === "vocals" && session.view === "piano-roll") ||
+                  (mode.id !== "vocals" && session.view === "highway")) && (
+                  <Dropdown
+                    aria-label={
+                      mode.id === "vocals" ? "Vocal note type" : "Note type"
+                    }
+                    disabled={
+                      mode.id === "vocals" && placementState.phrase !== null
+                    }
+                    value={placementValue}
+                    onChange={(value) => {
+                      const selected = placementTools.find(
+                        (tool) => String(tool.value) === value,
+                      );
+                      if (selected) {
+                        runAction(
+                          "editor.set-viewport-tools",
+                          session.id,
+                          mode.id,
+                          {
+                            [placementStateKey]: selected.value,
+                          },
+                        );
+                      }
+                    }}
+                    options={placementOptions}
+                    minWidth={100}
+                    maxWidth={120}
+                  />
+                )}
+              {modeGroups.map((modeGroup) => (
+                <ToolGroup
+                  key={modeGroup.id}
+                  group={modeGroup}
+                  context={context}
+                  editorState={editorState}
+                />
+              ))}
+            </>
           )}
         </Fragment>
       ))}
     </Section>
   );
+}
+
+function placementLabel(value: string, fallback: string): string {
+  const labels: Record<string, string> = {
+    normal: "Normal",
+    "force-hopo": "Force HOPO",
+    "force-strum": "Force Strum",
+    tap: "Tap",
+    pad: "Pad",
+    cymbal: "Cymbal",
+    kick: "Kick",
+    pitched: "Pitched",
+    percussion: "Percussion",
+    pitchless: "Pitchless",
+  };
+  return labels[value] ?? fallback;
 }

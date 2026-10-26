@@ -3,7 +3,9 @@ import {
   createStandaloneEditing,
   defaultConfig,
   Difficulty,
+  formatNoteId,
   SongView,
+  type ClipboardPayload,
   type EditingSession,
   type PreviewState,
   type SongViewConfig,
@@ -116,4 +118,53 @@ export function createHighwayTestSetup(
       phraseMode = next;
     },
   };
+}
+
+export function copyHighwaySelectionToClipboard(
+  setup: ReturnType<typeof createHighwayTestSetup>,
+): ClipboardPayload {
+  const trackIndex = setup.session.target.trackIndex;
+  if (trackIndex === null) {
+    throw new Error("Highway test session has no target track");
+  }
+  const selectedIds = new Set(setup.session.selection.getSelectedIds());
+  const notes = setup.midiTrack.getNotes().flatMap((note) => {
+    const id = formatNoteId(
+      trackIndex,
+      setup.midiTrack.getEventId(note.noteOn),
+    );
+    if (!selectedIds.has(id)) return [];
+    const snapshot = {
+      id,
+      trackIndex,
+      tick: note.start,
+      pitch: note.note,
+      duration: note.end - note.start,
+      velocity: note.velocity,
+    };
+    return [
+      {
+        snapshot,
+        classification: setup.session.classifyNote(snapshot),
+        row: setup.session.getProjection().rowForNote(snapshot)?.id,
+      },
+    ];
+  });
+  if (notes.length === 0) {
+    throw new Error("Highway test selection has no notes");
+  }
+  const firstTick = Math.min(...notes.map(({ snapshot }) => snapshot.tick));
+  const payload: ClipboardPayload = {
+    sourceModeId: setup.session.mode.id,
+    entities: notes.map(({ snapshot, classification, row }) => ({
+      relativeTick: snapshot.tick - firstTick,
+      duration: snapshot.duration,
+      velocity: snapshot.velocity,
+      pitch: snapshot.pitch,
+      ...(row ? { row } : {}),
+      classification,
+    })),
+  };
+  setup.session.clipboard.setData(payload);
+  return payload;
 }

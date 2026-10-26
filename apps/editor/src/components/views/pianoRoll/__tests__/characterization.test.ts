@@ -125,13 +125,31 @@ describe("editing characterization: Piano Roll vocals", () => {
 
     const currentPitched = resolveNote(pitchedId)!;
     session.selection.setSelectedIds([pitchedId]);
-    session.clipboard.copy();
-    session.clipboard.setVocalLyrics([
-      getLyrics(track).find((lyric) => lyric.tick === currentPitched.start)
-        ?.text ?? null,
-    ]);
-    const lyrics = session.clipboard.getVocalLyrics();
-    const copiedNote = session.clipboard.getData().notes[0]!;
+    const snapshot = {
+      id: pitchedId,
+      trackIndex,
+      tick: currentPitched.start,
+      pitch: currentPitched.note,
+      duration: currentPitched.end - currentPitched.start,
+      velocity: currentPitched.velocity,
+    };
+    session.clipboard.setData({
+      sourceModeId: session.mode.id,
+      entities: [
+        {
+          relativeTick: 0,
+          duration: snapshot.duration,
+          velocity: snapshot.velocity,
+          pitch: snapshot.pitch,
+          row: session.getProjection().rowForNote(snapshot)?.id,
+          classification: session.classifyNote(snapshot),
+          lyric: getLyrics(track).find(
+            (lyric) => lyric.tick === currentPitched.start,
+          )?.text,
+        },
+      ],
+    });
+    const copiedNote = session.clipboard.getData()!.entities[0]!;
     session.execute({
       type: "DELETE_ENTITIES",
       targetIds: [pitchedId],
@@ -145,7 +163,7 @@ describe("editing characterization: Piano Roll vocals", () => {
       tick: 960,
       endTick: 960 + copiedNote.duration,
       pitch: copiedNote.pitch,
-      ...(lyrics?.[0] ? { lyric: lyrics[0] } : {}),
+      ...(copiedNote.lyric ? { lyric: copiedNote.lyric } : {}),
     });
     expect(getLyrics(track).find((lyric) => lyric.tick === 960)?.text).toBe(
       characterization.vocal.pasteRestoresLyric,

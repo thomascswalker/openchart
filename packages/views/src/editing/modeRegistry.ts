@@ -1,4 +1,4 @@
-import type { EditingMode, ModeRegistry } from "./mode.js";
+import type { EditingMode, EditingModeId, ModeRegistry } from "./mode.js";
 import type { TrackDescriptor } from "../config.js";
 
 /** Resolves modes in registration order, which also defines their priority. */
@@ -13,6 +13,11 @@ export class EditingModeRegistry implements ModeRegistry {
     }
     this.modes.push(mode);
     this.modeIds.add(mode.id);
+  }
+
+  /** Returns a registered mode by its stable identifier. */
+  public getById(modeId: EditingModeId): EditingMode | null {
+    return this.modes.find((mode) => mode.id === modeId) ?? null;
   }
 
   /** Returns the first registered mode that applies to the host and track. */
