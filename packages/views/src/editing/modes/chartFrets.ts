@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ClipboardPayload } from "../clipboard.js";
-import { Difficulty } from "../../chartView.js";
+import { Difficulty } from "../../types.js";
 import { getPhrasePitch } from "../../chartEditing.js";
 import { getDifficultyNotePitch } from "../../config.js";
 import { getSustainCutTargets } from "../../chart/sustains.js";

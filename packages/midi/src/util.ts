@@ -1,4 +1,4 @@
-import { TempoEvent } from "./types.js";
+import { TempoEvent, EventRecord } from "./types.js";
 import { startCase } from "es-toolkit";
 
 /**
@@ -68,13 +68,13 @@ export function getStatusString(status: number): string {
  *
  * @param tick The absolute MIDI tick to convert
  * @param ppqn Pulses (ticks) per quarter note
- * @param tempoEvents Array of tempo events affecting the timing
+ * @param tempoRecords Array of tempo events affecting the timing
  * @returns The corresponding time in milliseconds
  */
 export function ticksToMs(
   tick: number,
   ppqn: number,
-  tempoEvents: TempoEvent[],
+  tempoRecords: EventRecord[],
 ): number {
   let ms = 0;
   let previousTick = 0;
@@ -82,21 +82,21 @@ export function ticksToMs(
 
   // Iterate through each tempo event to accumulate the time in milliseconds up
   // to the target tick
-  for (const event of tempoEvents) {
-    if (event.tick >= tick) {
+  for (const record of tempoRecords) {
+    if (record.tick >= tick) {
       break;
     }
 
     // Calculate the time in milliseconds for the delta ticks since the previous
     // tempo event
-    const delta = event.tick - previousTick;
+    const delta = record.tick - previousTick;
 
     // Accumulate the time in milliseconds for this segment
     ms += (delta * usPerQuarterNote) / ppqn / 1000;
 
     // Update the previous tick and the current tempo for the next iteration
-    previousTick = event.tick;
-    usPerQuarterNote = event.microsecondsPerQuarterNote;
+    previousTick = record.tick;
+    usPerQuarterNote = (record.event as TempoEvent).microsecondsPerQuarterNote;
   }
 
   // Add the time for the remaining ticks after the last tempo event up to the
@@ -109,13 +109,13 @@ export function ticksToMs(
  *
  * @param ms The time in milliseconds to convert
  * @param ppqn Pulses (ticks) per quarter note
- * @param tempoEvents Array of tempo events affecting the timing
+ * @param tempoRecords Array of tempo events affecting the timing
  * @returns The corresponding absolute MIDI tick
  */
 export function msToTicks(
   ms: number,
   ppqn: number,
-  tempoEvents: TempoEvent[],
+  tempoRecords: EventRecord[],
 ): number {
   let remainingMs = ms;
   let previousTick = 0;
@@ -123,10 +123,10 @@ export function msToTicks(
 
   // Iterate through each tempo event to accumulate the time in milliseconds up
   // to the target time in ms
-  for (const event of tempoEvents) {
+  for (const record of tempoRecords) {
     // Calculate the time in milliseconds for the delta ticks since the previous
     // tempo event
-    const delta = event.tick - previousTick;
+    const delta = record.tick - previousTick;
 
     // Calculate the duration of this segment in milliseconds based on the
     // current tempo
@@ -141,8 +141,8 @@ export function msToTicks(
     // Otherwise subtract the segment duration from the remaining time and
     // update the previous tick and tempo
     remainingMs -= segmentMs;
-    previousTick = event.tick;
-    usPerQuarterNote = event.microsecondsPerQuarterNote;
+    previousTick = record.tick;
+    usPerQuarterNote = (record.event as TempoEvent).microsecondsPerQuarterNote;
   }
 
   // Calculate the final tick based on the remaining time and the current tempo

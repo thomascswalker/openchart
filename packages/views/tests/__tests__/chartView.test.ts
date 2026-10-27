@@ -1,9 +1,15 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import { ChannelMessage, Midi, MidiTrack } from "@openchart/midi";
+import {
+  ChannelMessage,
+  Midi,
+  MidiChannelEvent,
+  MidiTrack,
+} from "@openchart/midi";
 import { expect, describe, beforeAll, it, vi } from "vitest";
-import { SongView, Difficulty, Note } from "../../src/chartView.js";
+import { SongView } from "../../src/index.js";
 import * as fs from "fs";
+import { Difficulty } from "../../src/types.js";
 
 describe("data.json", () => {
   let midi: Midi;
@@ -41,13 +47,13 @@ describe("data.json", () => {
       song
         .getInstrumentTrackView("FOUR PAD")
         ?.getChart(Difficulty.Expert)
-        .getLaneCount(),
+        ?.getLaneCount(),
     ).toBe(4);
     expect(
       song
         .getInstrumentTrackView("FIVE PAD")
         ?.getChart(Difficulty.Expert)
-        .getLaneCount(),
+        ?.getLaneCount(),
     ).toBe(5);
 
     const noteCounts = [
@@ -111,7 +117,7 @@ describe("data.json", () => {
 
     chart.addNote(Note.Green, 480, 720);
 
-    const events = track.getChannelEvents();
+    const events = track.events as MidiChannelEvent[];
     expect(events).toHaveLength(2);
     expect(events.map((event) => event.deltaTime)).toEqual([480, 240]);
     expect(events[0]?.status).toBe(0x90);

@@ -12,10 +12,7 @@ import {
   TimeSignatureEvent,
   TextMidiEvent,
   TextMetaType,
-  DefaultTempoEvent,
-  DefaultTimeSignatureEvent,
   extractMetaPayload,
-  sortEvents,
 } from "./types.js";
 import { isTwoByteMessage } from "./util.js";
 import {
@@ -161,27 +158,11 @@ class Midi {
   }
 
   public getTempoEvents(): TempoEvent[] {
-    const events = this.tracks.map((track) => track.getTempoEvents()).flat();
-    events.sort(sortEvents);
-
-    if (events.length === 0 || events[0].tick !== 0) {
-      events.unshift({ ...DefaultTempoEvent });
-    }
-
-    return events;
+    return this.tracks.map((track) => track.getTempoEvents()).flat();
   }
 
   public getTimeSignatureEvents(): TimeSignatureEvent[] {
-    const events = this.tracks
-      .map((track) => track.getTimeSignatureEvents())
-      .flat();
-    events.sort(sortEvents);
-    if (events.length === 0 || events[0].tick !== 0) {
-      // Denominator is stored as a power-of-two exponent (2 == quarter note), per the MIDI spec.
-      events.unshift({ ...DefaultTimeSignatureEvent });
-    }
-
-    return events;
+    return this.tracks.map((track) => track.getTimeSignatureEvents()).flat();
   }
 
   public addTempoEvent(tick: number, microsecondsPerQuarterNote: number): void {
@@ -192,7 +173,6 @@ class Midi {
     }
 
     const event: TempoEvent = {
-      tick,
       deltaTime: 0,
       status: 0xff,
       type: MetaType.Tempo,
@@ -211,11 +191,11 @@ class Midi {
     }
 
     const match = track
-      .getTimedEvents()
+      .getAllEventRecords()
       .find(
         (timedEvent) =>
           timedEvent.tick === tick &&
-          timedEvent.status === 0xff &&
+          timedEvent.event.status === 0xff &&
           "type" in timedEvent &&
           timedEvent.type === MetaType.Tempo,
       );
@@ -237,7 +217,6 @@ class Midi {
     }
 
     const event: TimeSignatureEvent = {
-      tick,
       deltaTime: 0,
       status: 0xff,
       type: MetaType.TimeSignature,
@@ -257,11 +236,11 @@ class Midi {
     }
 
     const match = track
-      .getTimedEvents()
+      .getAllEventRecords()
       .find(
         (timedEvent) =>
           timedEvent.tick === tick &&
-          timedEvent.status === 0xff &&
+          timedEvent.event.status === 0xff &&
           "type" in timedEvent &&
           timedEvent.type === MetaType.TimeSignature,
       );

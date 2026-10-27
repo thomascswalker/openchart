@@ -66,7 +66,7 @@ export function addNotePhrase(
     return null;
   }
 
-  const note = track.addNoteAt({
+  const note = track.insertNote({
     tick: start,
     pitch,
     velocity: 100,
@@ -98,7 +98,7 @@ export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
 }
 
 export function extractSections(track: MidiTrack): SectionMarker[] {
-  const textEvents = track.getTextEvents();
+  const textEvents = track.getTextEventRecords();
   return textEvents
     .filter((item) => item.type === MetaType.Marker)
     .map((item) => ({

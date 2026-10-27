@@ -1,5 +1,5 @@
 import type { ZodType } from "zod";
-import type { Difficulty } from "../chartView.js";
+import type { Difficulty } from "../types.js";
 import type { SongViewConfig, TrackDescriptor } from "../config.js";
 import type { ClipboardPayload } from "./clipboard.js";
 import type { NoteSnapshot } from "./reader.js";

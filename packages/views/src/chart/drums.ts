@@ -1,4 +1,4 @@
-import { Difficulty, type Difficulty as DifficultyType } from "../chartView.js";
+import { Difficulty, type Difficulty as DifficultyType } from "../types.js";
 import {
   defaultConfig,
   describeTrack,

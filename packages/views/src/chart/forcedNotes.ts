@@ -1,4 +1,4 @@
-import type { Difficulty } from "../chartView.js";
+import type { Difficulty } from "../types.js";
 import { getDifficultyNotePitch, type TrackDescriptor } from "../config.js";
 import type { EntityId } from "../editing/entityId.js";
 import type { RawCommand } from "../editing/commands.js";

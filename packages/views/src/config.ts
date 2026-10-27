@@ -1,6 +1,17 @@
 import { z } from "zod";
 import defaultConfigData from "../configs/default.json" with { type: "json" };
-import type { Difficulty } from "./chartView.js";
+import { Difficulty } from "./types.js";
+
+// const NoteRangeSchema = z.object({
+//   low: z.number().int().min(0).max(127),
+//   high: z.number().int().min(0).max(127),
+// });
+
+// const ChartViewConfigSchema = z.object({
+//   difficulty: z.enum(Difficulty),
+//   laneCount: z.number().int().default(5),
+//   range: NoteRangeSchema,
+// });
 
 const TrackViewTypeSchema = z.union([
   z.literal("global"),
@@ -21,6 +32,7 @@ const BaseTrackViewConfigSchema = TrackIdentitySchema.extend({
   noteCount: z.optional(z.number().int()),
   notes: z.record(z.string(), z.number()),
 });
+
 const GlobalViewConfigSchema = BaseTrackViewConfigSchema.extend({
   type: z.union([z.literal("global"), z.literal("animation")]),
   notes: z.record(z.string(), z.number()),
@@ -70,6 +82,8 @@ const SongViewConfigSchema = z.object({
   tracks: z.array(TrackViewConfigSchema),
 });
 
+// export type NoteRange = z.infer<typeof NoteRangeSchema>;
+// export type ChartViewConfig = z.infer<typeof ChartViewConfigSchema>;
 export type GlobalTrackViewConfig = z.infer<typeof GlobalViewConfigSchema>;
 export type InstrumentTrackViewConfig = z.infer<
   typeof InstrumentTrackViewConfigSchema

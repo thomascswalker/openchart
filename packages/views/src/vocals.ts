@@ -215,7 +215,7 @@ function pairLyrics(
   const unknown: MidiNote[] = [];
   const percussionTicks = new Set<number>();
   for (const note of track.getNotes()) {
-    const classification = classifyVocalPitch(layout, note.note);
+    const classification = classifyVocalPitch(layout, note.pitch);
     if (classification.type === "unknown") {
       unknown.push(note);
       continue;
@@ -388,8 +388,8 @@ export function moveVocalNotes(
   let changed = false;
   for (const move of resolved) {
     const start = Math.max(0, Math.round(move.start));
-    let pitch = move.note.note;
-    const classification = classifyVocalPitch(layout, move.note.note);
+    let pitch = move.note.pitch;
+    const classification = classifyVocalPitch(layout, move.note.pitch);
     if (
       move.pitch !== undefined &&
       classification.type === "note" &&
@@ -400,7 +400,7 @@ export function moveVocalNotes(
         Math.min(layout.range.high, Math.round(move.pitch)),
       );
     }
-    if (move.note.start !== start || pitch !== move.note.note) {
+    if (move.note.start !== start || pitch !== move.note.pitch) {
       const duration = move.note.end - move.note.start;
       changed =
         track.updateNote(move.note, {
@@ -496,7 +496,7 @@ export function updateVocalPhrase(
   ignore: readonly MidiNote[] = [],
 ): boolean {
   if (!validSpan(start, end)) return false;
-  if (vocalPhraseOverlaps(track, note.note, start, end, [note, ...ignore])) {
+  if (vocalPhraseOverlaps(track, note.pitch, start, end, [note, ...ignore])) {
     return false;
   }
   if (note.start === start && note.end === end) return true;

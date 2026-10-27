@@ -123,7 +123,7 @@ test("write file", async () => {
   track.addNote(53, 120);
   track.addNote(55, 120);
 
-  expect(track.getNoteEvents().length).toBe(8);
+  expect(track.getNotes().length).toBe(4);
 
   // Write the MIDI to a file
   const outPath = "./test-write.mid";

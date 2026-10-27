@@ -410,11 +410,11 @@ export class ChartDocument implements ChartDocumentReader {
           const duration =
             patch.duration ?? target.note.end - target.note.start;
           const start = patch.tick ?? target.note.start;
-          const pitch = patch.pitch ?? target.note.note;
+          const pitch = patch.pitch ?? target.note.pitch;
           const velocity = patch.velocity ?? target.note.velocity;
           if (
             start === target.note.start &&
-            pitch === target.note.note &&
+            pitch === target.note.pitch &&
             duration === target.note.end - target.note.start &&
             velocity === target.note.velocity
           ) {
@@ -441,9 +441,9 @@ export class ChartDocument implements ChartDocumentReader {
           const start = Math.max(0, target.note.start + command.tickDelta);
           const pitch = Math.max(
             0,
-            Math.min(127, target.note.note + command.pitchDelta),
+            Math.min(127, target.note.pitch + command.pitchDelta),
           );
-          if (start === target.note.start && pitch === target.note.note)
+          if (start === target.note.start && pitch === target.note.pitch)
             continue;
           target.track.updateNote(target.note, {
             start,
@@ -643,7 +643,7 @@ export class ChartDocument implements ChartDocumentReader {
       id: formatNoteId(trackIndex, eventId),
       trackIndex,
       tick: note.start,
-      pitch: note.note,
+      pitch: note.pitch,
       duration: note.end - note.start,
       velocity: note.velocity,
     };

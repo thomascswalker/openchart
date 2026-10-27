@@ -4,7 +4,7 @@ export { addRandomChannelEvents, addRandomMetaEvents } from "./random.js";
 export { MidiTrack } from "./track.js";
 export {
   BaseEventSchema,
-  AddNoteSpec,
+  InsertNoteOptions as AddNoteSpec,
   ChannelMessage,
   ChannelOrPortMetaPayloadSchema,
   DefaultMetaPayloadSchema,
@@ -26,7 +26,6 @@ export {
   TempoMetaPayloadSchema,
   TextEventSchema,
   TextMetaType,
-  TimedEventSchema,
   TimeSignatureEvent,
   TimeSignatureEventSchema,
   TimeSignatureMetaPayloadSchema,
@@ -36,6 +35,5 @@ export {
   type MidiMetaEvent,
   type MidiSysExEvent,
   type TextMidiEvent,
-  type TimedMidiEvent,
 } from "./types.js";
 export { getStatusString, msToTicks, ticksToMs } from "./util.js";

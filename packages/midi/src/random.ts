@@ -52,7 +52,7 @@ export function addRandomMetaEvents(
         track.addTimeSignatureEvent(tick);
         break;
       default:
-        track.addTextEvent(MetaType.TextMidiEvent, tick, "Text!");
+        track.addTextEvent(MetaType.Text, tick, "Text!");
         break;
     }
   }

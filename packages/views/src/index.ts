@@ -1,4 +1,3 @@
-export * from "./chartView.js";
 export * from "./config.js";
 export * from "./chartEditing.js";
 export * from "./chart/constants.js";
@@ -24,3 +23,4 @@ export * from "./editing/modes/chartFrets.js";
 export * from "./editing/modes/chartDrums.js";
 export * from "./editing/modes/vocals.js";
 export * from "./editing/modes/globalTrack.js";
+export * from "./views/index.js";
