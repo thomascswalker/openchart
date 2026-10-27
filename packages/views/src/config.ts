@@ -1,17 +1,19 @@
 import { z } from "zod";
 import defaultConfigData from "../configs/default.json" with { type: "json" };
+import { InstrumentType } from "./types.js";
 
-const TrackViewTypeSchema = z.union([
-  z.literal("global"),
-  z.literal("animation"),
-  z.literal("instrument"),
-]);
+export enum TrackType {
+  Global = "global",
+  Animation = "animation",
+  Instrument = "instrument",
+}
+
+const TrackViewTypeSchema = z.enum(TrackType);
 
 const TrackIdentitySchema = z.object({
-  key: z.string().min(1).optional(),
-  visible: z.boolean().optional(),
-  editable: z.boolean().optional(),
-  role: z.string().optional(),
+  key: z.string().min(1),
+  visible: z.boolean().default(true).optional(),
+  editable: z.boolean().default(true).optional(),
 });
 
 const BaseTrackViewConfigSchema = TrackIdentitySchema.extend({
@@ -19,9 +21,11 @@ const BaseTrackViewConfigSchema = TrackIdentitySchema.extend({
   type: TrackViewTypeSchema,
   noteCount: z.optional(z.number().int()),
   notes: z.record(z.string(), z.number()),
+
+  describe: z.function(),
 });
 const GlobalViewConfigSchema = BaseTrackViewConfigSchema.extend({
-  type: z.union([z.literal("global"), z.literal("animation")]),
+  type: z.union([z.literal(TrackType.Global), z.literal(TrackType.Animation)]),
   notes: z.record(z.string(), z.number()),
 });
 
@@ -44,29 +48,49 @@ const VocalTrackConfigSchema = z.object({
 });
 
 const InstrumentTrackViewConfigSchema = BaseTrackViewConfigSchema.extend({
-  type: z.literal("instrument"),
-  /** False for instruments without Easy/Medium/Hard/Expert charts (vocals). */
-  hasDifficulties: z.boolean().optional(),
-  vocals: VocalTrackConfigSchema.optional(),
-  offsets: z.optional(
-    z.object({
-      expert: z.number().int().default(96),
-      hard: z.number().int().default(84),
-      medium: z.number().int().default(72),
-      easy: z.number().int().default(60),
-    }),
+  type: z.literal(TrackType.Instrument).describe("Instrument track type."),
+  instrument: z.enum(InstrumentType),
+  hasDifficulties: z
+    .boolean()
+    .optional()
+    .describe(
+      "False for instruments without Easy/Medium/Hard/Expert charts (vocals).",
+    ),
+  vocals: VocalTrackConfigSchema.optional().describe(
+    "Vocal track configuration.",
   ),
-  noteCount: z.number().int().default(5),
+  offsets: z
+    .optional(
+      z.object({
+        expert: z.number().int().default(96),
+        hard: z.number().int().default(84),
+        medium: z.number().int().default(72),
+        easy: z.number().int().default(60),
+      }),
+    )
+    .describe("Difficulty offsets for the instrument."),
+  laneCount: z
+    .number()
+    .int()
+    .default(5)
+    .describe("Number of lanes for the instrument."),
+  noteCount: z
+    .number()
+    .int()
+    .default(5)
+    .describe("Number of notes for the instrument."),
   notes: z.record(z.string(), z.number()),
 });
+
 const TrackViewConfigSchema = z.union([
   GlobalViewConfigSchema,
   InstrumentTrackViewConfigSchema,
 ]);
+
 const SongViewConfigSchema = z.object({
-  name: z.string(),
-  ppqn: z.number(),
-  tracks: z.array(TrackViewConfigSchema),
+  name: z.string().describe("The name of the song."),
+  ppqn: z.number().describe("Pulses per quarter note for the song."),
+  tracks: z.array(TrackViewConfigSchema).describe("The tracks in the song."),
 });
 
 export type GlobalTrackViewConfig = z.infer<typeof GlobalViewConfigSchema>;
@@ -77,87 +101,27 @@ export type TrackViewConfig = z.infer<typeof TrackViewConfigSchema>;
 export type VocalTrackConfig = z.infer<typeof VocalTrackConfigSchema>;
 export type SongViewConfig = z.infer<typeof SongViewConfigSchema>;
 
-export interface TrackDescriptor {
-  key: string;
-  name: string;
-  type: "global" | "animation" | "instrument";
-  visible: boolean;
-  editable: boolean;
-  role?: string;
-  config: TrackViewConfig;
-}
-
-export function trackKeyForName(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-export function describeTrack(config: TrackViewConfig): TrackDescriptor {
-  return {
-    key: config.key ?? trackKeyForName(config.name),
-    name: config.name,
-    type: config.type,
-    visible: config.visible ?? config.name !== "CHART HEADER",
-    editable: config.editable ?? config.type === "instrument",
-    role: config.role,
-    config,
-  };
-}
-
-/** True when a configured instrument has Easy-Expert difficulty charts. */
-export function hasDifficulties(config: TrackViewConfig): boolean {
-  return config.type !== "instrument"
-    ? false
-    : (config as InstrumentTrackViewConfig).hasDifficulties !== false;
-}
-
-/** True when the configured track uses the vocal data model. */
-export function isVocalTrackConfig(
-  config: TrackViewConfig,
-): config is InstrumentTrackViewConfig & { vocals: VocalTrackConfig } {
-  return (
-    config.type === "instrument" &&
-    (config as InstrumentTrackViewConfig).vocals !== undefined
-  );
-}
-
 export function loadConfig(content: string): SongViewConfig | undefined {
   const data = JSON.parse(content);
   try {
-    return SongViewConfigSchema.parse(data) as SongViewConfig;
+    const config = SongViewConfigSchema.parse(data) as SongViewConfig;
+
+    return config;
   } catch (e) {
     console.error(`Failed to parse config: ${e}`);
     return undefined;
   }
 }
 
-export const defaultConfig = loadConfig(JSON.stringify(defaultConfigData))!;
+export const DefaultSongConfig = loadConfig(JSON.stringify(defaultConfigData))!;
 
-/**
- * Looks up a configured track by display name or key. Used by services that
- * only know the viewport's instrument string (e.g. to force the Piano Roll for
- * instruments without difficulties).
- */
-export function findTrackConfig(
-  nameOrKey: string,
-  config: SongViewConfig = defaultConfig,
-): TrackViewConfig | undefined {
-  return config.tracks.find(
-    (track) =>
-      track.name === nameOrKey || describeTrack(track).key === nameOrKey,
-  );
-}
+export const TrackDescriptorSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  type: z.enum(TrackType),
+  visible: z.boolean(),
+  editable: z.boolean(),
+  config: TrackViewConfigSchema,
+});
 
-/** True when the named instrument can only be edited in the Piano Roll. */
-export function requiresPianoRoll(
-  nameOrKey: string,
-  config: SongViewConfig = defaultConfig,
-): boolean {
-  const track = findTrackConfig(nameOrKey, config);
-  return track !== undefined && track.type === "instrument"
-    ? !hasDifficulties(track)
-    : false;
-}
+export type TrackDescriptor = z.infer<typeof TrackDescriptorSchema>;

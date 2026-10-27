@@ -1,6 +1,6 @@
 import type { MidiNote, MidiTrack } from "@openchart/midi";
 import { MetaType } from "@openchart/midi";
-import type { TrackDescriptor } from "./config.js";
+import type { TrackDescriptor } from "../config.js";
 
 export interface SectionMarker {
   name: string;

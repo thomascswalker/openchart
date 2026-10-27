@@ -56,7 +56,7 @@ describe("data.json", () => {
       980, // Medium
       661, // Easy
     ];
-    lead.getCharts().forEach((chart, index) => {
+    lead.charts.forEach((chart, index) => {
       const notes = chart.getNotes();
       expect(notes.length).toBe(noteCounts[index]);
     });
@@ -69,9 +69,7 @@ describe("data.json", () => {
     const fivePad = song.getInstrumentTrackView("FIVE PAD")!;
 
     expect(
-      fourPad
-        .getCharts()
-        .map((chart) => [chart.getOffset(), chart.getLaneCount()]),
+      fourPad.charts.map((chart) => [chart.getOffset(), chart.getLaneCount()]),
     ).toEqual([
       [96, 4],
       [84, 4],

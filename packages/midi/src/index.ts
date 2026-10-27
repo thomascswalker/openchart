@@ -8,6 +8,7 @@ export {
   ChannelOrPortMetaPayloadSchema,
   DefaultMetaPayloadSchema,
   GetNotesOptions,
+  PitchRange,
   KeySignatureMetaPayloadSchema,
   MetaType,
   ChannelEventSchema,

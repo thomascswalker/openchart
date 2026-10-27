@@ -321,9 +321,11 @@ export interface MidiNote {
   previous?: MidiNote;
 }
 
+export interface PitchRange {
+  low: number;
+  high: number;
+}
+
 export interface GetNotesOptions {
-  pitch?: {
-    low: number;
-    high: number;
-  };
+  pitch?: PitchRange;
 }

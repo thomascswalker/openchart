@@ -5,7 +5,7 @@ import {
   type TextMidiEvent,
 } from "@openchart/midi";
 import type { MidiNotePhrase } from "./chartEditing.js";
-import type { InstrumentTrackViewConfig } from "./config.js";
+import type { InstrumentTrackViewConfig } from "../config.js";
 
 /** Note kinds that live on the VOCALS track. */
 export type VocalNoteKind = "pitched" | "pitchless" | "percussion";

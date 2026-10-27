@@ -8,25 +8,21 @@
       "type": "global",
       "key": "chart-header",
       "visible": false,
-      "editable": false,
-      "notes": {},
-      "events": {}
+      "editable": false
     },
     {
       "name": "GLOBAL",
       "type": "global",
       "key": "global",
       "visible": true,
-      "editable": false,
-      "notes": {},
-      "events": {}
+      "editable": false
     },
     {
       "name": "LEAD GUITAR",
       "type": "instrument",
       "key": "lead-guitar",
-      "role": "lead",
       "noteCount": 5,
+      "laneCount": 5,
       "offsets": {
         "expert": 96,
         "hard": 84,
@@ -76,8 +72,8 @@
       "name": "RHYTHM GUITAR",
       "type": "instrument",
       "key": "rhythm-guitar",
-      "role": "rhythm",
       "noteCount": 5,
+      "laneCount": 5,
       "offsets": {
         "expert": 96,
         "hard": 84,
@@ -127,8 +123,8 @@
       "name": "DRUMS",
       "type": "instrument",
       "key": "drums",
-      "role": "drums",
       "noteCount": 9,
+      "laneCount": 4,
       "offsets": {
         "expert": 96,
         "hard": 84,
@@ -185,7 +181,6 @@
       "name": "VOCALS",
       "type": "instrument",
       "key": "vocals",
-      "role": "vocals",
       "hasDifficulties": false,
       "vocals": {
         "range": { "low": 36, "high": 84 },
@@ -205,6 +200,7 @@
       "type": "instrument",
       "key": "four-pad",
       "noteCount": 4,
+      "laneCount": 4,
       "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
       "notes": {}
     },
@@ -213,6 +209,7 @@
       "type": "instrument",
       "key": "five-pad",
       "noteCount": 5,
+      "laneCount": 5,
       "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
       "notes": {}
     }

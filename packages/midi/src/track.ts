@@ -30,14 +30,19 @@ export class MidiTrack {
   name: string = "";
   events: MidiEvent[] = [];
 
+  /* Cache of NoteOn and NoteOff events */
   private noteCache: MidiNote[] | null = null;
+  /* Cache of NoteOn and NoteOff events by pitch */
   private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
+  /* Revision number for the note cache */
   private noteRevision = 0;
+  /* Map of event IDs for each event object */
   private readonly eventIds = new WeakMap<object, MidiEventId>();
   private readonly textEventSources = new WeakMap<
     TextMidiEvent,
     TextMidiEvent
   >();
+  /* Next event ID to assign */
   private nextEventId = 1;
 
   public constructor(name: string = "") {

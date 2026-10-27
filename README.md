@@ -103,6 +103,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 npm ci
 ```
 
+Installing dependencies also builds `@openchart/midi`, whose package exports
+point to generated files under `packages/midi/dist`.
+
 ### Build Everything (Libraries & Apps)
 
 ```bash
