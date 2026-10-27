@@ -6,7 +6,7 @@ import {
   drumLayoutFromConfig,
   drumPitchFor,
 } from "../../chart/drums.js";
-import { getTrackRole } from "../../config.js";
+import { getTrackRole, hasDifficulties } from "../../config.js";
 import type { EditCommand, RawCommand } from "../commands.js";
 import type {
   EditingMode,
@@ -76,7 +76,7 @@ export function createChartDrumsMode(): EditingMode<ChartDrumsToolState> {
       track.type === "instrument" &&
       track.config.type === "instrument" &&
       getTrackRole(track) === "drums" &&
-      track.config.hasDifficulties !== false,
+      hasDifficulties(track.config),
     capabilities: {
       rawCommands: new Set(["DELETE_ENTITIES"]),
       domainCommands: domainCommandTypes,

@@ -4,7 +4,7 @@ import {
   type SongViewConfig,
   type TrackDescriptor,
 } from "../config.js";
-import { SongView } from "../chartView.js";
+import { SongView } from "../views/song.js";
 import { ChartDocument } from "./chartDocument.js";
 import { ClipboardService } from "./clipboard.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
@@ -110,7 +110,11 @@ function descriptorForTarget(
     name,
     key: trackKey,
     type: "instrument" as const,
-    noteCount: 128,
+    charts: [0, 1, 2, 3].map((difficulty) => ({
+      difficulty,
+      laneCount: 128,
+      range: { low: 0, high: 128 },
+    })),
     notes: {},
   };
   return {

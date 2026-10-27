@@ -174,35 +174,21 @@ class Midi {
 
     const event: TempoEvent = {
       deltaTime: 0,
+      tick,
       status: 0xff,
       type: MetaType.Tempo,
       length: 3,
       microsecondsPerQuarterNote,
     };
 
-    track.insertEventsAt([{ tick, event }]);
+    track.insertEventsAt([event]);
   }
 
   public removeTempoEventAt(tick: number): boolean {
     const track = this.tracks[0];
-
-    if (!track) {
-      return false;
-    }
-
-    const match = track
-      .getAllEventRecords()
-      .find(
-        (timedEvent) =>
-          timedEvent.tick === tick &&
-          timedEvent.event.status === 0xff &&
-          "type" in timedEvent &&
-          timedEvent.type === MetaType.Tempo,
-      );
-
-    if (!match || match.order === undefined) return false;
-    const event = track.events[match.order];
-    return event ? track.removeEvent(event) : false;
+    if (!track) return false;
+    const match = track.getTempoEvents().find((event) => event.tick === tick);
+    return match ? track.removeEvent(match) : false;
   }
 
   public addTimeSignatureEvent(
@@ -218,6 +204,7 @@ class Midi {
 
     const event: TimeSignatureEvent = {
       deltaTime: 0,
+      tick,
       status: 0xff,
       type: MetaType.TimeSignature,
       length: 4,
@@ -225,29 +212,16 @@ class Midi {
       denominator,
     };
 
-    track.insertEventsAt([{ tick, event }]);
+    track.insertEventsAt([event]);
   }
 
   public removeTimeSignatureEventAt(tick: number): boolean {
     const track = this.tracks[0];
-
-    if (!track) {
-      return false;
-    }
-
+    if (!track) return false;
     const match = track
-      .getAllEventRecords()
-      .find(
-        (timedEvent) =>
-          timedEvent.tick === tick &&
-          timedEvent.event.status === 0xff &&
-          "type" in timedEvent &&
-          timedEvent.type === MetaType.TimeSignature,
-      );
-
-    if (!match || match.order === undefined) return false;
-    const event = track.events[match.order];
-    return event ? track.removeEvent(event) : false;
+      .getTimeSignatureEvents()
+      .find((event) => event.tick === tick);
+    return match ? track.removeEvent(match) : false;
   }
 
   private checkWriteable() {
@@ -390,6 +364,7 @@ class Midi {
 
         const channelEvent: MidiChannelEvent = {
           deltaTime,
+          tick: 0,
           status,
           channel: status & 0x0f,
           messageType: messageType as ChannelMessage,
@@ -412,6 +387,7 @@ class Midi {
         const bytes = decodeBase64(values[3]);
         const event: MidiMetaEvent = {
           deltaTime,
+          tick: 0,
           status: 0xff,
           type: type as MetaType,
           length: bytes.length,
@@ -421,6 +397,7 @@ class Midi {
           const { text } = event as TextMidiEvent;
           return {
             deltaTime,
+            tick: 0,
             status: 0xff,
             type: type as TextMetaType,
             length: bytes.length,
@@ -436,7 +413,8 @@ class Midi {
         }
 
         const data = decodeBase64(values[2]);
-        return { deltaTime, status, length: data.length, data };
+        // tick is recomputed from deltaTime by the MidiTrack.events setter
+        return { deltaTime, tick: 0, status, length: data.length, data };
       }
 
       throw new Error(`Invalid MIDI event status: ${status}`);

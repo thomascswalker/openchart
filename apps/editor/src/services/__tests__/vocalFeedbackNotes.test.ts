@@ -14,7 +14,7 @@ describe("notesForVocalFeedback", () => {
     vocals.addPitched(64, 1440, 1680, "lo");
 
     const pitches = (instrument: string) =>
-      notesForVocalFeedback(midi, instrument).map((note) => note.note);
+      notesForVocalFeedback(midi, instrument).map((note) => note.pitch);
     expect(pitches("VOCALS")).toEqual([60, 64]);
     // Editing another part still lets you hear the vocal melody.
     expect(pitches("LEAD GUITAR")).toEqual([60, 64]);

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Difficulty } from "../../src/chartView.js";
+import { Difficulty } from "../../src/types.js";
 import {
   defaultConfig,
   describeTrack,
@@ -7,6 +7,7 @@ import {
   getDifficultyNotePitch,
   getTrackRole,
   loadConfig,
+  SongViewSchema,
 } from "../../src/config.js";
 import * as fs from "fs";
 import path from "path";
@@ -14,7 +15,9 @@ import path from "path";
 test("load config from file", async () => {
   const filename = path.resolve("./configs/default.json");
   const content = fs.readFileSync(filename);
-  const config = loadConfig(content.toString());
+  const parsedContent = content.toString();
+  const config = loadConfig(parsedContent);
+  expect(SongViewSchema.parse(JSON.parse(parsedContent))).toEqual(config);
   expect(config).toBeDefined();
 });
 

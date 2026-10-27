@@ -1,4 +1,4 @@
-import { Difficulty, type Difficulty as DifficultyType } from "../types.js";
+import type { Difficulty as DifficultyType } from "../types.js";
 import {
   defaultConfig,
   describeTrack,
@@ -123,18 +123,10 @@ function defaultDrumLayout(offset: number): DrumLayout | null {
     .map(describeTrack)
     .find((track) => getTrackRole(track) === "drums");
   if (!descriptor || descriptor.config.type !== "instrument") return null;
-  const difficultyName = Object.entries(descriptor.config.offsets ?? {}).find(
-    ([, value]) => value === offset,
-  )?.[0];
-  if (!difficultyName) return null;
-  const difficulties: Readonly<Record<string, DifficultyType>> = {
-    easy: Difficulty.Easy,
-    medium: Difficulty.Medium,
-    hard: Difficulty.Hard,
-    expert: Difficulty.Expert,
-  };
-  const difficulty = difficulties[difficultyName];
-  return difficulty === undefined
-    ? null
-    : drumLayoutFromConfig(descriptor, difficulty);
+  const chart = descriptor.config.charts.find(
+    (item) => "difficulty" in item && item.range.low === offset,
+  );
+  return chart && "difficulty" in chart
+    ? drumLayoutFromConfig(descriptor, chart.difficulty)
+    : null;
 }

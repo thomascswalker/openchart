@@ -26,7 +26,7 @@ function addPhrase(
     .getTrackDescriptors()
     .find((track) => track.key === "lead-guitar")!;
   const pitch = getPhrasePitch(descriptor, kind)!;
-  setup.midiTrack.addNoteAt({
+  setup.midiTrack.insertNote({
     pitch,
     tick: start,
     velocity: 100,
@@ -35,7 +35,7 @@ function addPhrase(
   const note = setup.midiTrack
     .getNotes()
     .find(
-      (candidate) => candidate.start === start && candidate.note === pitch,
+      (candidate) => candidate.start === start && candidate.pitch === pitch,
     )!;
   return {
     id: formatNoteId(

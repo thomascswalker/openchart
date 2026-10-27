@@ -2,13 +2,12 @@ import { MetaType, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import {
   addNotePhrase,
-  extractSections,
-  findSection,
   getNotePhrases,
   getPhrasePitch,
   removeNotePhrase,
   updateNotePhrase,
-} from "../../src/chartEditing.js";
+} from "../../src/editing/phrase.js";
+import { extractSections, findSection } from "../../src/editing/section.js";
 import { defaultConfig, describeTrack } from "../../src/config.js";
 
 const leadDescriptor = describeTrack(

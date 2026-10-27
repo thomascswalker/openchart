@@ -30,7 +30,7 @@ export class HighwayPhraseEditingController {
   public getSelectedPhraseIds(): EntityId[] {
     const session = this.context.getEditingSession();
     const chart = this.context.getCurrentChart();
-    const track = chart?.getTrack().getMidiTrack();
+    const track = chart?.getMidiTrack();
     const trackIndex = session?.target.trackIndex;
     if (!session || !track || trackIndex === null || trackIndex === undefined) {
       return [];
@@ -43,7 +43,7 @@ export class HighwayPhraseEditingController {
         id,
         trackIndex,
         tick: note.start,
-        pitch: note.note,
+        pitch: note.pitch,
         duration: note.end - note.start,
         velocity: note.velocity,
       });

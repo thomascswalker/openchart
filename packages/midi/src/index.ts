@@ -29,6 +29,8 @@ export {
   TimeSignatureEvent,
   TimeSignatureEventSchema,
   TimeSignatureMetaPayloadSchema,
+  sortEvents,
+  type BaseMidiEvent,
   type MidiChannelEvent,
   type MidiEvent,
   type MidiEventId,

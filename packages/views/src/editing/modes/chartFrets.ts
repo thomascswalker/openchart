@@ -1,8 +1,12 @@
 import { z } from "zod";
 import type { ClipboardPayload } from "../clipboard.js";
 import { Difficulty } from "../../types.js";
-import { getPhrasePitch } from "../../chartEditing.js";
-import { getDifficultyNotePitch } from "../../config.js";
+import { getPhrasePitch } from "../phrase.js";
+import {
+  getChartViewConfig,
+  getDifficultyNotePitch,
+  hasDifficulties,
+} from "../../config.js";
 import { getSustainCutTargets } from "../../chart/sustains.js";
 import { minimumSustainLengthTicks } from "../../chart/constants.js";
 import { createForcedNoteCommands } from "../../chart/forcedNotes.js";
@@ -95,7 +99,7 @@ export function createChartFretsMode(): EditingMode<ChartFretsToolState> {
     appliesTo: (track) =>
       track.type === "instrument" &&
       track.config.type === "instrument" &&
-      track.config.hasDifficulties !== false,
+      hasDifficulties(track.config),
     capabilities: {
       rawCommands: new Set(["DELETE_ENTITIES"]),
       domainCommands: domainCommandTypes,
@@ -269,13 +273,10 @@ function createFretsProjection(context: ModeContext): Projection {
   ) {
     return emptyProjection();
   }
-  const offset =
-    descriptor.config.offsets?.[
-      Difficulty[difficulty].toLowerCase() as
-        "easy" | "medium" | "hard" | "expert"
-    ];
-  if (offset === undefined) return emptyProjection();
-  const noteCount = descriptor.config.noteCount ?? 5;
+  const chart = getChartViewConfig(descriptor.config, difficulty);
+  if (!chart) return emptyProjection();
+  const offset = chart.range.low;
+  const noteCount = chart.laneCount;
   const rows: ProjectionRow[] = Array.from(
     { length: noteCount },
     (_, index) => ({
@@ -331,10 +332,9 @@ function classifyFretsNote(note: NoteSnapshot, context: ModeContext) {
       resizable: true,
     };
   }
-  const offsetName = Difficulty[difficulty].toLowerCase() as
-    "easy" | "medium" | "hard" | "expert";
-  const offset = descriptor.config.offsets?.[offsetName];
-  const noteCount = descriptor.config.noteCount ?? 5;
+  const chart = getChartViewConfig(descriptor.config, difficulty);
+  const offset = chart?.range.low;
+  const noteCount = chart?.laneCount ?? 0;
   if (
     offset === undefined ||
     note.pitch < offset ||
@@ -401,13 +401,11 @@ function expandFretsCommand(
           "Chart note placement is invalid",
         );
       }
-      const offsetName = Difficulty[difficulty].toLowerCase() as
-        "easy" | "medium" | "hard" | "expert";
-      const offset = descriptor.config.offsets?.[offsetName];
+      const chart = getChartViewConfig(descriptor.config, difficulty);
       if (
-        offset === undefined ||
+        chart === undefined ||
         parsed.data.lane < 0 ||
-        parsed.data.lane >= (descriptor.config.noteCount ?? 5)
+        parsed.data.lane >= chart.laneCount
       ) {
         return rejected(
           command,
@@ -415,6 +413,7 @@ function expandFretsCommand(
           "Chart note lane is outside the configured chart",
         );
       }
+      const offset = chart.range.low;
       const notes = targetNotes(context);
       const preferredId = parsed.data.preferredSustainId;
       if (preferredId) {
@@ -428,7 +427,7 @@ function expandFretsCommand(
           (note) =>
             note.duration > minimumSustainLengthTicks &&
             note.pitch >= offset &&
-            note.pitch < offset + (descriptor.config.noteCount ?? 5),
+            note.pitch < offset + chart.laneCount,
         )
         .map((note) => ({
           ...note,
@@ -494,6 +493,7 @@ function expandFretsCommand(
       if (owned.rejection)
         return { commands: [], rejections: [owned.rejection] };
       const offset = difficultyOffset(descriptor, difficulty);
+      const chart = getChartViewConfig(descriptor.config, difficulty);
       if (offset === null) {
         return rejected(
           command,
@@ -528,7 +528,7 @@ function expandFretsCommand(
             Math.max(
               0,
               Math.min(
-                (descriptor.config.noteCount ?? 5) - 1,
+                (chart?.laneCount ?? 0) - 1,
                 lane + parsed.data.laneDelta,
               ),
             ),
@@ -593,16 +593,14 @@ function expandFretsCommand(
           return { commands: [], rejections: [preferred.rejection] };
         }
       }
+      const chart = getChartViewConfig(descriptor.config, difficulty);
       const notes = targetNotes(context)
         .filter(
           (note) =>
             note.duration > minimumSustainLengthTicks &&
-            note.pitch >= (difficultyOffset(descriptor, difficulty) ?? 0) &&
-            note.pitch <
-              (difficultyOffset(descriptor, difficulty) ?? 0) +
-                (descriptor.config.type === "instrument"
-                  ? (descriptor.config.noteCount ?? 5)
-                  : 0),
+            chart !== undefined &&
+            note.pitch >= chart.range.low &&
+            note.pitch < chart.range.low + chart.laneCount,
         )
         .map((note) => ({
           ...note,
@@ -708,9 +706,7 @@ function difficultyOffset(
   difficulty: Difficulty,
 ): number | null {
   if (descriptor.config.type !== "instrument") return null;
-  const name = Difficulty[difficulty].toLowerCase() as
-    "easy" | "medium" | "hard" | "expert";
-  return descriptor.config.offsets?.[name] ?? null;
+  return getChartViewConfig(descriptor.config, difficulty)?.range.low ?? null;
 }
 
 function emptyProjection(): Projection {

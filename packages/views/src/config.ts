@@ -2,16 +2,21 @@ import { z } from "zod";
 import defaultConfigData from "../configs/default.json" with { type: "json" };
 import { Difficulty } from "./types.js";
 
-// const NoteRangeSchema = z.object({
-//   low: z.number().int().min(0).max(127),
-//   high: z.number().int().min(0).max(127),
-// });
+const NoteRangeSchema = z.object({
+  low: z.number().int().min(0).max(127),
+  high: z.number().int().min(0).max(127),
+});
 
-// const ChartViewConfigSchema = z.object({
-//   difficulty: z.enum(Difficulty),
-//   laneCount: z.number().int().default(5),
-//   range: NoteRangeSchema,
-// });
+const ChartViewConfigSchema = z
+  .object({
+    difficulty: z.enum(Difficulty),
+    laneCount: z.number().int().positive().default(5),
+    range: NoteRangeSchema,
+  })
+  .refine(({ laneCount, range }) => laneCount <= range.high - range.low + 1, {
+    path: ["laneCount"],
+    message: "Lane count must fit within the chart range",
+  });
 
 const TrackViewTypeSchema = z.union([
   z.literal("global"),
@@ -29,7 +34,6 @@ const TrackIdentitySchema = z.object({
 const BaseTrackViewConfigSchema = TrackIdentitySchema.extend({
   name: z.string(),
   type: TrackViewTypeSchema,
-  noteCount: z.optional(z.number().int()),
   notes: z.record(z.string(), z.number()),
 });
 
@@ -46,10 +50,7 @@ const GlobalViewConfigSchema = BaseTrackViewConfigSchema.extend({
  */
 const VocalTrackConfigSchema = z.object({
   /** Inclusive pitched-note range. Default C2 (36) to C6 (84), with C4 = 60. */
-  range: z.object({
-    low: z.number().int().min(0).max(127),
-    high: z.number().int().min(0).max(127),
-  }),
+  range: NoteRangeSchema,
   /** `notes` key of the pitch that new pitchless notes are written to. */
   pitchlessPlacement: z
     .union([z.literal("pitchlessHigh"), z.literal("pitchlessLow")])
@@ -58,39 +59,29 @@ const VocalTrackConfigSchema = z.object({
 
 const InstrumentTrackViewConfigSchema = BaseTrackViewConfigSchema.extend({
   type: z.literal("instrument"),
-  /** False for instruments without Easy/Medium/Hard/Expert charts (vocals). */
-  hasDifficulties: z.boolean().optional(),
-  vocals: VocalTrackConfigSchema.optional(),
-  offsets: z.optional(
-    z.object({
-      expert: z.number().int().default(96),
-      hard: z.number().int().default(84),
-      medium: z.number().int().default(72),
-      easy: z.number().int().default(60),
-    }),
-  ),
-  noteCount: z.number().int().default(5),
-  notes: z.record(z.string(), z.number()),
+  charts: z.array(z.union([ChartViewConfigSchema, VocalTrackConfigSchema])),
 });
+
 const TrackViewConfigSchema = z.union([
   GlobalViewConfigSchema,
   InstrumentTrackViewConfigSchema,
 ]);
-const SongViewConfigSchema = z.object({
+
+export const SongViewSchema = z.object({
   name: z.string(),
   ppqn: z.number(),
   tracks: z.array(TrackViewConfigSchema),
 });
 
-// export type NoteRange = z.infer<typeof NoteRangeSchema>;
-// export type ChartViewConfig = z.infer<typeof ChartViewConfigSchema>;
+export type NoteRange = z.infer<typeof NoteRangeSchema>;
+export type ChartViewConfig = z.infer<typeof ChartViewConfigSchema>;
 export type GlobalTrackViewConfig = z.infer<typeof GlobalViewConfigSchema>;
 export type InstrumentTrackViewConfig = z.infer<
   typeof InstrumentTrackViewConfigSchema
 >;
 export type TrackViewConfig = z.infer<typeof TrackViewConfigSchema>;
 export type VocalTrackConfig = z.infer<typeof VocalTrackConfigSchema>;
-export type SongViewConfig = z.infer<typeof SongViewConfigSchema>;
+export type SongViewConfig = z.infer<typeof SongViewSchema>;
 
 export interface TrackDescriptor {
   key: string;
@@ -152,27 +143,47 @@ export function getDifficultyNotePitch(
   return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 ? pitch : null;
 }
 
+/** Returns the configured chart for a difficulty, if the track has one. */
+export function getChartViewConfig(
+  config: TrackViewConfig,
+  difficulty: Difficulty,
+): ChartViewConfig | undefined {
+  if (config.type !== "instrument") return undefined;
+  return config.charts.find(
+    (chart): chart is ChartViewConfig =>
+      "difficulty" in chart && chart.difficulty === difficulty,
+  );
+}
+
+/** Returns the vocal-specific settings configured for an instrument. */
+export function getVocalTrackConfig(
+  config: TrackViewConfig,
+): VocalTrackConfig | undefined {
+  if (config.type !== "instrument") return undefined;
+  return config.charts.find(
+    (chart): chart is VocalTrackConfig => !("difficulty" in chart),
+  );
+}
+
 /** True when a configured instrument has Easy-Expert difficulty charts. */
 export function hasDifficulties(config: TrackViewConfig): boolean {
-  return config.type !== "instrument"
-    ? false
-    : (config as InstrumentTrackViewConfig).hasDifficulties !== false;
+  return (
+    config.type === "instrument" &&
+    config.charts.some((chart) => "difficulty" in chart)
+  );
 }
 
 /** True when the configured track uses the vocal data model. */
 export function isVocalTrackConfig(
   config: TrackViewConfig,
-): config is InstrumentTrackViewConfig & { vocals: VocalTrackConfig } {
-  return (
-    config.type === "instrument" &&
-    (config as InstrumentTrackViewConfig).vocals !== undefined
-  );
+): config is InstrumentTrackViewConfig {
+  return getVocalTrackConfig(config) !== undefined;
 }
 
 export function loadConfig(content: string): SongViewConfig | undefined {
   const data = JSON.parse(content);
   try {
-    return SongViewConfigSchema.parse(data) as SongViewConfig;
+    return SongViewSchema.parse(data);
   } catch (e) {
     console.error(`Failed to parse config: ${e}`);
     return undefined;

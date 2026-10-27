@@ -100,9 +100,9 @@ describe("data.json", () => {
     expect(fourPadExpert.addNote(3, 0, 120)).toBe(true);
     expect(fourPadExpert.addNote(4, 240, 360)).toBe(false);
     expect(fourPadExpert.addNoteAtPitch(116, 480, 600)).toBe(false);
-    expect(fourPadExpert.getNotes().map((note) => note.note)).toEqual([99]);
+    expect(fourPadExpert.getNotes().map((note) => note.pitch)).toEqual([99]);
     expect(fivePadExpert.addNote(4, 0, 120)).toBe(true);
-    expect(fivePadExpert.getNotes().map((note) => note.note)).toEqual([100]);
+    expect(fivePadExpert.getNotes().map((note) => note.pitch)).toEqual([100]);
   });
 
   it("mutates both the ChartView and its underlying MidiTrack", () => {
@@ -115,7 +115,7 @@ describe("data.json", () => {
       .getInstrumentTrackView("LEAD GUITAR")!
       .getChart(Difficulty.Expert);
 
-    chart.addNote(Note.Green, 480, 720);
+    chart.addNote(0, 480, 720);
 
     const events = track.events as MidiChannelEvent[];
     expect(events).toHaveLength(2);
@@ -150,7 +150,7 @@ describe("data.json", () => {
     const cached = chart.getNotes();
     expect(chart.getNotes()).toBe(cached);
 
-    chart.addNote(Note.Red, 240, 360);
+    chart.addNote(1, 240, 360);
     expect(chart.getNotes()).not.toBe(cached);
     expect(chart.getNotes()).toHaveLength(2);
   });
@@ -163,13 +163,13 @@ describe("data.json", () => {
     const chart = new SongView(midi)
       .getInstrumentTrackView("LEAD GUITAR")!
       .getChart(Difficulty.Expert);
-    chart.addNote(Note.Green, 480, 720);
+    chart.addNote(0, 480, 720);
 
     const note = chart.getNotes()[0]!;
-    expect(chart.moveNote(note, Note.Orange, 960)).toBe(true);
+    expect(chart.moveNote(note, 4, 960)).toBe(true);
     expect(chart.setNoteEnd(note, 1_680)).toBe(true);
     expect(
-      chart.getNotes().map((value) => [value.note, value.start, value.end]),
+      chart.getNotes().map((value) => [value.pitch, value.start, value.end]),
     ).toEqual([[100, 960, 1_680]]);
     expect(chart.moveNote(note, 5 as Note, 1_920)).toBe(false);
     expect(chart.setNoteEnd(note, 960)).toBe(false);
@@ -187,13 +187,13 @@ describe("data.json", () => {
     const note = chart.getNotes()[0]!;
     const updateNote = vi.spyOn(track, "updateNote").mockReturnValue(false);
 
-    expect(chart.moveNote(note, Note.Orange, 960)).toBe(false);
+    expect(chart.moveNote(note, 4, 960)).toBe(false);
     expect(updateNote).toHaveBeenCalledWith(note, {
       start: 960,
       pitch: 100,
       duration: 240,
     });
-    expect([note.note, note.start, note.end]).toEqual([96, 480, 720]);
+    expect([note.pitch, note.start, note.end]).toEqual([96, 480, 720]);
   });
 
   it("adds a missing instrument track when its chart is first edited", () => {
@@ -202,7 +202,7 @@ describe("data.json", () => {
       .getInstrumentTrackView("LEAD GUITAR")!
       .getChart(Difficulty.Expert);
 
-    chart.addNote(Note.Green, 480, 720);
+    chart.addNote(0, 480, 720);
 
     expect(midi.getTrack("LEAD GUITAR")?.getNotes()).toHaveLength(1);
   });
@@ -228,14 +228,14 @@ describe("data.json", () => {
       .getChart(Difficulty.Expert)
       .getNotes();
 
-    expect(drumNotes.map((note) => note.note)).toEqual([95, 96, 104]);
+    expect(drumNotes.map((note) => note.pitch)).toEqual([95, 96, 104]);
     expect(guitarNotes).toHaveLength(0);
     expect(
       song
         .getInstrumentTrackView("DRUMS")!
         .getChart(Difficulty.Hard)
         .getNotes()
-        .map((note) => note.note),
+        .map((note) => note.pitch),
     ).toEqual([]);
   });
 
@@ -249,7 +249,7 @@ describe("data.json", () => {
 
     expect(chart.addNoteAtPitch(95, 480, 720)).toBe(true);
     const kick2 = chart.getNotes()[0]!;
-    expect(kick2.note).toBe(95);
+    expect(kick2.pitch).toBe(95);
     expect(chart.removeNote(kick2)).toBe(true);
     expect(chart.getNotes()).toEqual([]);
   });
@@ -267,26 +267,26 @@ describe("data.json", () => {
       .getInstrumentTrackView("LEAD GUITAR")!
       .getChart(Difficulty.Expert);
 
-    chart.addNote(Note.Green, 480, 720);
+    chart.addNote(0, 480, 720);
 
     expect(track.events.map((event) => event.deltaTime)).toEqual([
       0, 480, 240, 240, 240, 240,
     ]);
     expect(
-      chart.getNotes().map((note) => [note.note, note.start, note.end]),
+      chart.getNotes().map((note) => [note.pitch, note.start, note.end]),
     ).toEqual([
       [97, 0, 960],
       [96, 480, 720],
       [98, 1200, 1440],
     ]);
 
-    const added = chart.getNotes().find((note) => note.note === 96)!;
+    const added = chart.getNotes().find((note) => note.pitch === 96)!;
     expect(chart.removeNote(added)).toBe(true);
     expect(track.events.map((event) => event.deltaTime)).toEqual([
       0, 960, 240, 240,
     ]);
     expect(
-      chart.getNotes().map((note) => [note.note, note.start, note.end]),
+      chart.getNotes().map((note) => [note.pitch, note.start, note.end]),
     ).toEqual([
       [97, 0, 960],
       [98, 1200, 1440],

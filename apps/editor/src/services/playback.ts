@@ -238,11 +238,8 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     let hasEvents = false;
     for (const track of this.midiData?.tracks ?? []) {
       if (track.events.length > 0) hasEvents = true;
-      let trackEndTick = 0;
-      for (const event of track.events) {
-        trackEndTick += event.deltaTime;
-      }
-      maxTick = Math.max(maxTick, trackEndTick);
+      // Events are sorted with EndOfTrack last, so the last one ends the track.
+      maxTick = Math.max(maxTick, track.events.at(-1)?.tick ?? 0);
     }
     this.midiTotalTicks = Math.max(maxTick, hasEvents ? 1 : 0);
     if (hasEvents) {
@@ -357,7 +354,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     if (!track) return;
     this.engine.previewTrack(
       track.getNotes().map((note) => ({
-        pitch: note.note,
+        pitch: note.pitch,
         startTick: note.start,
         endTick: note.end,
         velocity: note.velocity,

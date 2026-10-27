@@ -63,7 +63,7 @@ function placeFretsMarker(
 ) {
   const { midi, track } = makeMidi("LEAD GUITAR");
   for (const pitch of existingMarkers) {
-    track.addNoteAt({ tick: 480, pitch, duration: 1 });
+    track.insertNote({ tick: 480, pitch, duration: 1 });
   }
   const session = makeSession(midi, "LEAD GUITAR", difficulty, "highway");
   const result = session.execute({
@@ -154,7 +154,7 @@ describe("default editing modes", () => {
             expect(track.getNotes()).toEqual([]);
           } else {
             expect(result.rejections).toEqual([]);
-            expect(track.getNotes().map((note) => note.note)).toEqual([
+            expect(track.getNotes().map((note) => note.pitch)).toEqual([
               expected,
             ]);
           }
@@ -165,7 +165,7 @@ describe("default editing modes", () => {
 
   it("projects configured frets lanes and creates or updates configured phrases", () => {
     const { midi, track } = makeMidi("LEAD GUITAR");
-    const note = track.addNoteAt({ tick: 480, pitch: 96, duration: 120 });
+    const note = track.insertNote({ tick: 480, pitch: 96, duration: 120 });
     const session = makeSession(
       midi,
       "LEAD GUITAR",
@@ -201,7 +201,7 @@ describe("default editing modes", () => {
     expect(created.rejections).toEqual([]);
     const phrase = track
       .getNotes()
-      .find((candidate) => candidate.note === 116)!;
+      .find((candidate) => candidate.pitch === 116)!;
     const phraseId = formatNoteId(0, track.getEventId(phrase.noteOn));
     const updated = session.execute({
       type: "UPDATE_PHRASE",
@@ -239,7 +239,7 @@ describe("default editing modes", () => {
         endTick: phraseFixture.create.expected[1],
       });
       expect(created.rejections).toEqual([]);
-      const phrase = track.getNotes().find((note) => note.note === pitch)!;
+      const phrase = track.getNotes().find((note) => note.pitch === pitch)!;
       const id = formatNoteId(0, track.getEventId(phrase.noteOn));
       const updates =
         kind === "stagepower"
@@ -315,7 +315,7 @@ describe("default editing modes", () => {
 
   it("moves frets notes with lane and tick clamps", () => {
     const { midi, track } = makeMidi("LEAD GUITAR");
-    const note = track.addNoteAt({ tick: 480, pitch: 96, duration: 120 });
+    const note = track.insertNote({ tick: 480, pitch: 96, duration: 120 });
     const session = makeSession(
       midi,
       "LEAD GUITAR",
@@ -329,7 +329,7 @@ describe("default editing modes", () => {
       laneDelta: 99,
     });
     expect(result.rejections).toEqual([]);
-    expect(track.getNotes()[0]).toMatchObject({ start: 0, note: 100 });
+    expect(track.getNotes()[0]).toMatchObject({ start: 0, pitch: 100 });
   });
 
   it("replays forced-marker replacement and duplicate suppression through chart.frets", () => {
@@ -354,7 +354,7 @@ describe("default editing modes", () => {
         expect(
           track
             .getNotes()
-            .map((note) => note.note)
+            .map((note) => note.pitch)
             .filter((pitch) => markers.includes(pitch))
             .sort((left, right) => left - right),
         ).toEqual(expected.sort((left, right) => left - right));
@@ -376,7 +376,7 @@ describe("default editing modes", () => {
     for (const testCase of fixture.cutCases) {
       const { midi, track } = makeMidi("LEAD GUITAR");
       for (const item of fixture.notes) {
-        track.addNoteAt({
+        track.insertNote({
           tick: item.start,
           pitch: 96,
           duration: item.end - item.start,
@@ -410,8 +410,8 @@ describe("default editing modes", () => {
 
     for (const extendPastNext of ["stop-at-next", "allow"] as const) {
       const { midi, track } = makeMidi("LEAD GUITAR");
-      track.addNoteAt({ tick: 480, pitch: 96, duration: 480 });
-      track.addNoteAt({ tick: 840, pitch: 97, duration: 120 });
+      track.insertNote({ tick: 480, pitch: 96, duration: 480 });
+      track.insertNote({ tick: 840, pitch: 97, duration: 120 });
       const session = makeSession(
         midi,
         "LEAD GUITAR",
@@ -442,9 +442,9 @@ describe("default editing modes", () => {
 
   it("replays drum move and paste rules, including Kick2 and marker clipping", () => {
     const { midi, track } = makeMidi("DRUMS");
-    const kick2 = track.addNoteAt({ tick: 480, pitch: 95, duration: 120 });
-    const cymbal = track.addNoteAt({ tick: 480, pitch: 101, duration: 120 });
-    const marker = track.addNoteAt({ tick: 480, pitch: 104, duration: 120 });
+    const kick2 = track.insertNote({ tick: 480, pitch: 95, duration: 120 });
+    const cymbal = track.insertNote({ tick: 480, pitch: 101, duration: 120 });
+    const marker = track.insertNote({ tick: 480, pitch: 104, duration: 120 });
     const session = makeSession(midi, "DRUMS", Difficulty.Expert, "highway");
     const ids = track.getNotes().map((_, index) => noteId(track, 0, index));
 
@@ -458,7 +458,7 @@ describe("default editing modes", () => {
     ).toEqual([]);
     expect(
       track.getNotes().find((note) => note.noteOn === kick2.noteOn),
-    ).toMatchObject({ note: 95, start: 720 });
+    ).toMatchObject({ pitch: 95, start: 720 });
     expect(
       session.execute({
         type: "MOVE_CHART_NOTES",
@@ -468,7 +468,7 @@ describe("default editing modes", () => {
       }).rejections,
     ).toEqual([]);
     expect(
-      track.getNotes().find((note) => note.noteOn === cymbal.noteOn)?.note,
+      track.getNotes().find((note) => note.noteOn === cymbal.noteOn)?.pitch,
     ).toBe(102);
     expect(
       session.execute({
@@ -481,7 +481,7 @@ describe("default editing modes", () => {
     expect(marker.start).toBe(480);
 
     const pasted = makeMidi("DRUMS");
-    const occupied = pasted.track.addNoteAt({
+    const occupied = pasted.track.insertNote({
       tick: 480,
       pitch: 101,
       duration: 120,
@@ -539,17 +539,21 @@ describe("default editing modes", () => {
           (note) =>
             note.start === paste.anchorTick && note.noteOn !== occupied.noteOn,
         )
-        .map((note) => ({ pitch: note.note, tick: note.start })),
+        .map((note) => ({ pitch: note.pitch, tick: note.start })),
     ).toEqual(paste.expected);
   });
 
   it("replays vocal movement, lyric association, overlap, and deletion rules", () => {
     const { midi, track } = makeMidi("VOCALS");
-    const pitched = track.addNoteAt({ tick: 0, pitch: 60, duration: 120 });
+    const pitched = track.insertNote({ tick: 0, pitch: 60, duration: 120 });
     track.addTextEvent(MetaType.Lyric, 0, "la");
-    const percussion = track.addNoteAt({ tick: 0, pitch: 90, duration: 120 });
-    const firstPhrase = track.addNoteAt({ tick: 0, pitch: 116, duration: 100 });
-    track.addNoteAt({ tick: 200, pitch: 116, duration: 100 });
+    const percussion = track.insertNote({ tick: 0, pitch: 90, duration: 120 });
+    const firstPhrase = track.insertNote({
+      tick: 0,
+      pitch: 116,
+      duration: 100,
+    });
+    track.insertNote({ tick: 200, pitch: 116, duration: 100 });
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const idForNoteOn = new Map(
       track
@@ -576,13 +580,13 @@ describe("default editing modes", () => {
     });
     expect(move.rejections).toEqual([]);
     expect(
-      track.getNotes().find((note) => note.noteOn === pitched.noteOn)?.note,
+      track.getNotes().find((note) => note.noteOn === pitched.noteOn)?.pitch,
     ).toBe(characterization.vocal.pitchedMove.clampedPitch);
     expect(
       track.getNotes().find((note) => note.noteOn === pitched.noteOn)?.start,
     ).toBe(characterization.vocal.pitchedMove.toTick);
     expect(
-      track.getNotes().find((note) => note.noteOn === percussion.noteOn)?.note,
+      track.getNotes().find((note) => note.noteOn === percussion.noteOn)?.pitch,
     ).toBe(characterization.vocal.nonPitchedMove.resultPitch);
     expect(
       track.getTextEvents().find((event) => event.text === "la")?.tick,
@@ -622,7 +626,7 @@ describe("default editing modes", () => {
 
   it("creates vocal notes with lyrics and rejects overlapping phrase creation", () => {
     const { midi, track } = makeMidi("VOCALS");
-    track.addNoteAt({ tick: 200, pitch: 116, duration: 100 });
+    track.insertNote({ tick: 200, pitch: 116, duration: 100 });
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const note = session.execute({
       type: "ADD_VOCAL_NOTE",
@@ -647,7 +651,7 @@ describe("default editing modes", () => {
   it("materializes the configured vocal track before writing its lyric", () => {
     const midi = new Midi();
     const global = new MidiTrack("GLOBAL");
-    global.addNoteAt({ tick: 200, pitch: 116, duration: 100 });
+    global.insertNote({ tick: 200, pitch: 116, duration: 100 });
     midi.tracks = [global];
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const result = session.execute({

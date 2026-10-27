@@ -3,11 +3,12 @@ import * as fs from "fs";
 import { fileURLToPath } from "url";
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import { getPhrasePitch } from "../../src/chartEditing.js";
-import { SongView, VocalTrackView } from "../../src/chartView.js";
+import { getPhrasePitch } from "../../src/editing/phrase.js";
 import { defaultConfig, describeTrack } from "../../src/config.js";
 import { createDefaultModeRegistry } from "../../src/editing/modes/index.js";
 import { classifyVocalPitch, DEFAULT_VOCAL_LAYOUT } from "../../src/vocals.js";
+import { SongView } from "../../src/views/song.js";
+import { VocalTrackView } from "../../src/views/vocal.js";
 
 function vocals(midi = new Midi()): { midi: Midi; view: VocalTrackView } {
   const view = new SongView(midi).getVocalTrackView("VOCALS")!;
@@ -108,9 +109,9 @@ describe("VocalTrackView editing", () => {
     const percussion = view.addPercussion(1920, 2040)!;
 
     expect(pitched.lyric?.tick).toBe(480);
-    expect(pitchless.note.note).toBe(85);
-    expect(low.note.note).toBe(35);
-    expect(percussion.note.note).toBe(90);
+    expect(pitchless.note.pitch).toBe(85);
+    expect(low.note.pitch).toBe(35);
+    expect(percussion.note.pitch).toBe(90);
     expect(percussion.lyric).toBeNull();
     expect(lyrics(view)).toEqual([
       [480, "hel-"],
@@ -152,11 +153,11 @@ describe("VocalTrackView editing", () => {
     const byText = new Map(
       notes.map((item) => [item.lyric?.text ?? item.kind, item]),
     );
-    expect(byText.get("one")!.note).toMatchObject({ start: 480, note: 84 });
-    expect(byText.get("two")!.note).toMatchObject({ start: 0, note: 36 });
+    expect(byText.get("one")!.note).toMatchObject({ start: 480, pitch: 84 });
+    expect(byText.get("two")!.note).toMatchObject({ start: 0, pitch: 36 });
     expect(byText.get("percussion")!.note).toMatchObject({
       start: 1200,
-      note: 90,
+      pitch: 90,
     });
     expect(view.validate()).toEqual([]);
   });

@@ -1,11 +1,5 @@
 import type { MidiNote, MidiTrack } from "@openchart/midi";
-import { MetaType } from "@openchart/midi";
-import type { TrackDescriptor } from "./config.js";
-
-export interface SectionMarker {
-  name: string;
-  tick: number;
-}
+import type { TrackDescriptor } from "../config.js";
 
 export type EditablePhraseKind =
   "stagepower" | "solo" | "vocal" | "power-window";
@@ -95,26 +89,4 @@ export function updateNotePhrase(
 
 export function removeNotePhrase(track: MidiTrack, note: MidiNote): boolean {
   return track.removeNote(note.noteOn, note.noteOff);
-}
-
-export function extractSections(track: MidiTrack): SectionMarker[] {
-  const textEvents = track.getTextEventRecords();
-  return textEvents
-    .filter((item) => item.type === MetaType.Marker)
-    .map((item) => ({
-      name: item.text,
-      tick: item.tick,
-    }))
-    .filter((section) => /^\s*\[section\s+.+\]\s*$/i.test(section.name));
-}
-
-export function findSection(
-  track: MidiTrack,
-  tick: number,
-  direction: -1 | 1,
-): SectionMarker | null {
-  const sections = extractSections(track).sort((a, b) => a.tick - b.tick);
-  return direction > 0
-    ? (sections.find((section) => section.tick > tick) ?? null)
-    : ([...sections].reverse().find((section) => section.tick < tick) ?? null);
 }

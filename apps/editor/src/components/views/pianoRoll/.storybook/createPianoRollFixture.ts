@@ -6,14 +6,14 @@ export type PianoRollFixtureVariant =
   "populated" | "empty" | "dense" | "vocals" | "vocals-empty";
 
 /** Inserts a note at an absolute tick, keeping the track ordered. */
-function addNoteAt(
+function insertNote(
   track: MidiTrack,
   pitch: number,
   startTick: number,
   durationTicks: number,
   velocity = 100,
 ): void {
-  track.addNoteAt({
+  track.insertNote({
     tick: startTick,
     pitch,
     velocity,
@@ -100,11 +100,11 @@ export function createPianoRollFixture(
     );
   }
   for (const [pitch, start, duration, velocity] of leadNotes) {
-    addNoteAt(lead, pitch, start, duration, velocity);
+    insertNote(lead, pitch, start, duration, velocity);
   }
 
-  addNoteAt(bass, 60, 0, 960, 105);
-  addNoteAt(bass, 64, 960, 480, 98);
+  insertNote(bass, 60, 0, 960, 105);
+  insertNote(bass, 64, 960, 480, 98);
 
   return midi;
 }

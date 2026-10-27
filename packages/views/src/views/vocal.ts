@@ -1,6 +1,6 @@
 import { MidiTrack, MidiNote, type TextMidiEvent } from "@openchart/midi";
-import type { MidiNotePhrase } from "../chartEditing.js";
-import { SongView } from "../chartView.js";
+import type { MidiNotePhrase } from "../editing/phrase.js";
+import { SongView } from "../views/song.js";
 import { InstrumentTrackViewConfig } from "../config.js";
 import {
   type VocalLayout,

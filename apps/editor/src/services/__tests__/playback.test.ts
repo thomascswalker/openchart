@@ -36,9 +36,7 @@ function settings(metronomeEnabled = false): ApplicationSettings {
 }
 
 function midi(
-  tracks: object[] = [
-    { getNotes: () => [{ end: 960 }], getTimedEvents: () => [] },
-  ],
+  tracks: object[] = [{ getNotes: () => [{ end: 960 }] }],
   timeSignatures: {
     tick: number;
     numerator: number;
@@ -48,20 +46,16 @@ function midi(
 ): MidiData {
   const normalizedTracks = tracks.map((track) => {
     const source = track as {
-      events?: { deltaTime: number }[];
+      events?: { deltaTime: number; tick: number }[];
       getNotes?: () => { end: number }[];
-      getTimedEvents?: () => { tick: number }[];
     };
     if (source.events) return track;
-    const timedTicks = source.getTimedEvents?.().map(({ tick }) => tick);
-    const ticks = timedTicks?.length
-      ? timedTicks
-      : (source.getNotes?.().map(({ end }) => end) ?? []);
+    const ticks = source.getNotes?.().map(({ end }) => end) ?? [];
     let previousTick = 0;
     const events = ticks.map((tick) => {
       const deltaTime = tick - previousTick;
       previousTick = tick;
-      return { deltaTime };
+      return { deltaTime, tick };
     });
     return { ...source, events };
   });
@@ -209,7 +203,7 @@ describe("PlaybackService", () => {
 
     configure(service, {
       midiData: midi(
-        [{ getNotes: () => [{ end: 960 }], getTimedEvents: () => [] }],
+        [{ getNotes: () => [{ end: 960 }] }],
         [],
         [
           { tick: 0, microsecondsPerQuarterNote: 500_000 },
@@ -247,9 +241,7 @@ describe("PlaybackService", () => {
     const listener = vi.fn();
     service.subscribe(listener);
     configure(service, {
-      midiData: midi([
-        { getNotes: () => [{ end: 1_920 }], getTimedEvents: () => [] },
-      ]),
+      midiData: midi([{ getNotes: () => [{ end: 1_920 }] }]),
       snapEnabled: true,
     });
     service.setPlaybackTick(950);
@@ -271,9 +263,12 @@ describe("PlaybackService", () => {
       midiData: midi([
         {
           getNotes: () => [{ end: 960 }],
-          getTimedEvents: () => [{ tick: 960 }, { tick: 1_440 }],
+          events: [
+            { deltaTime: 960, tick: 960 },
+            { deltaTime: 480, tick: 1_440 },
+          ],
         },
-        { getNotes: () => [], getTimedEvents: () => [{ tick: 2_000 }] },
+        { getNotes: () => [], events: [{ deltaTime: 2_000, tick: 2_000 }] },
       ]),
     });
 
@@ -287,7 +282,7 @@ describe("PlaybackService", () => {
     const service = new PlaybackService();
     configure(service, {
       midiData: midi(
-        [{ getNotes: () => [], getTimedEvents: () => [{ tick: 2_000 }] }],
+        [{ getNotes: () => [], events: [{ deltaTime: 2_000, tick: 2_000 }] }],
         [{ tick: 0, numerator: 3, denominator: 2 }],
       ),
     });
@@ -299,12 +294,12 @@ describe("PlaybackService", () => {
   it("refreshes the timeline from the current document data", () => {
     const service = new PlaybackService();
     const currentTrack = {
-      events: [{ deltaTime: 961 }],
+      events: [{ deltaTime: 961, tick: 961 }],
       getNotes: () => [{ end: 961 }],
     };
     const currentMidi = midi([currentTrack]);
     configure(service, { midiData: currentMidi });
-    currentTrack.events = [{ deltaTime: 3_840 }];
+    currentTrack.events = [{ deltaTime: 3_840, tick: 3_840 }];
 
     service.refresh(currentMidi);
     expect(service.getSnapshot().totalTimelineTicks).toBe(7_680);
@@ -316,7 +311,7 @@ describe("PlaybackService", () => {
 
   it("follows document edits without an explicit refresh", () => {
     let listener = () => {};
-    const track = { events: [{ deltaTime: 961 }] };
+    const track = { events: [{ deltaTime: 961, tick: 961 }] };
     const currentMidi = midi([track]);
     const documentService = {
       subscribe: (next: () => void) => {
@@ -329,7 +324,10 @@ describe("PlaybackService", () => {
     configure(service, { midiData: currentMidi });
     expect(service.getSnapshot().totalTimelineTicks).toBe(4_801);
 
-    track.events = [{ deltaTime: 4_320 }, { deltaTime: 1 }];
+    track.events = [
+      { deltaTime: 4_320, tick: 4_320 },
+      { deltaTime: 1, tick: 4_321 },
+    ];
     listener();
     expect(service.getSnapshot().totalTimelineTicks).toBe(8_161);
     service.seekEnd();

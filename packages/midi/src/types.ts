@@ -132,15 +132,17 @@ export const isTextEvent = (event: MidiEvent): boolean => {
 export const BaseEventSchema = z.object({
   deltaTime: z.number(),
   status: z.number(),
+  /**
+   * Absolute tick: sum of this event's `deltaTime` and every preceding
+   * event's in its track. Maintained by `MidiTrack`; treat as read-only.
+   */
+  tick: z.number(),
+  /**
+   * Index of the event within its track's `events` after the last commit;
+   * breaks ties between events on the same tick. Maintained by `MidiTrack`.
+   */
+  order: z.optional(z.number()),
 });
-
-// export const TimedEventSchema = merge(
-//   BaseEventSchema,
-//   z.object({
-//     tick: z.number(),
-//     order: z.optional(z.number()),
-//   }),
-// );
 
 export const ChannelEventSchema = merge(
   BaseEventSchema,
@@ -260,19 +262,19 @@ export type MidiMetaPayload =
 export type DefaultMetaPayload = z.infer<typeof DefaultMetaPayloadSchema>;
 export type MidiSysExEvent = z.infer<typeof SysExEventSchema>;
 export type MidiEvent = z.infer<typeof EventSchema>;
-// export type TimedMidiEvent = z.infer<typeof TimedEventSchema> & {
-//   [key: string]: any;
-// };
 export type TextMidiEvent = z.infer<typeof TextEventSchema>;
 export type TempoEvent = z.infer<typeof TempoEventSchema>;
 export type TimeSignatureEvent = z.infer<typeof TimeSignatureEventSchema>;
 
-export function sortEvents(a: EventRecord, b: EventRecord) {
-  return a.tick - b.tick || (a.order || 0) - (b.order || 0);
+type TimedFields = Pick<BaseMidiEvent, "tick" | "order">;
+
+/** Orders events by absolute tick, then by `order` within a tick. */
+export function sortEvents(a: TimedFields, b: TimedFields): number {
+  return a.tick - b.tick || (a.order ?? 0) - (b.order ?? 0);
 }
 
 export function extractMetaPayload(event: MidiMetaEvent): MidiMetaPayload {
-  const excludedKeys = ["deltaTime", "status", "type"];
+  const excludedKeys = ["deltaTime", "status", "type", "tick", "order"];
   const payload: Record<string, any> = {};
   for (const [key, value] of Object.entries(event)) {
     if (!excludedKeys.includes(key)) {
@@ -284,20 +286,18 @@ export function extractMetaPayload(event: MidiMetaEvent): MidiMetaPayload {
 
 export const DefaultTempoEvent: TempoEvent = {
   deltaTime: 0,
+  tick: 0,
+  order: 0,
   status: 0xff,
   type: MetaType.Tempo,
   length: 3,
   microsecondsPerQuarterNote: 500_000,
 };
 
-export const DefaultTempoEventRecord: EventRecord = {
-  event: { ...DefaultTempoEvent },
-  tick: 0,
-  order: 0,
-};
-
 export const DefaultTimeSignatureEvent: TimeSignatureEvent = {
   deltaTime: 0,
+  tick: 0,
+  order: 0,
   status: 0xff,
   type: MetaType.TimeSignature,
   length: 4,
@@ -305,24 +305,7 @@ export const DefaultTimeSignatureEvent: TimeSignatureEvent = {
   denominator: 2,
 };
 
-export const DefaultTimeSignatureEventRecord: EventRecord = {
-  event: { ...DefaultTimeSignatureEvent },
-  tick: 0,
-  order: 0,
-};
-
-export interface EventRecord<T extends MidiEvent = MidiEvent> {
-  event: T;
-  tick: number;
-  order: number;
-}
-
-export type TempoRecord = EventRecord<TempoEvent>;
-export type TimeSignatureRecord = EventRecord<TimeSignatureEvent>;
-export type TextRecord = EventRecord<TextMidiEvent>;
-
 export interface MidiNote {
-  note: number;
   pitch: number;
   velocity: number;
   start: number;

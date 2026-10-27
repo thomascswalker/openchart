@@ -6,7 +6,7 @@ import {
   type MidiNote,
   type MidiTrack,
 } from "@openchart/midi";
-import { SongView } from "../chartView.js";
+import { SongView } from "../views/song.js";
 import {
   defaultConfig,
   type SongViewConfig,
@@ -119,11 +119,8 @@ export class ChartDocument implements ChartDocumentReader {
   ): readonly { id: EntityId; tick: number; text: string; metaType: number }[] {
     const track = this.midi.tracks[trackIndex];
     if (!track) return [];
-    return track.getTimedEvents().flatMap((timed) => {
-      const source =
-        timed.order === undefined ? undefined : track.events[timed.order];
+    return track.events.flatMap((source) => {
       if (
-        !source ||
         source.status !== 0xff ||
         !("type" in source) ||
         !("text" in source) ||
@@ -134,7 +131,7 @@ export class ChartDocument implements ChartDocumentReader {
       return [
         {
           id: formatTextId(trackIndex, track.getEventId(source)),
-          tick: timed.tick,
+          tick: source.tick,
           text: source.text,
           metaType: source.type,
         },
@@ -391,7 +388,7 @@ export class ChartDocument implements ChartDocumentReader {
     switch (command.type) {
       case "ADD_NOTES": {
         const createdIds = command.notes.map((spec) => {
-          const note = this.getTrack(spec.trackIndex).addNoteAt(spec);
+          const note = this.getTrack(spec.trackIndex).insertNote(spec);
           return formatNoteId(
             spec.trackIndex,
             this.getTrack(spec.trackIndex).getEventId(note.noteOn),
@@ -515,11 +512,7 @@ export class ChartDocument implements ChartDocumentReader {
           command.tick,
           command.text,
         );
-        const source =
-          text.order === undefined ? undefined : track.events[text.order];
-        if (!source)
-          throw new Error("Inserted text event is missing from its track");
-        const id = formatTextId(command.trackIndex, track.getEventId(source));
+        const id = formatTextId(command.trackIndex, track.getEventId(text));
         return { ...emptyEditResult(), changed: true, createdIds: [id] };
       }
       case "UPDATE_TEXT": {
@@ -529,10 +522,7 @@ export class ChartDocument implements ChartDocumentReader {
         if (event.status !== 0xff || !("text" in event)) {
           throw new Error("Validated text event changed before execution");
         }
-        const index = track.events.indexOf(event);
-        const currentTick = track
-          .getTimedEvents()
-          .find((timed) => timed.order === index)?.tick;
+        const currentTick = event.tick;
         const textChanged =
           command.text !== undefined && command.text !== event.text;
         const tickChanged =
@@ -786,13 +776,13 @@ export class ChartDocument implements ChartDocumentReader {
   ): MidiEvent | undefined {
     const track = this.midi.tracks[0];
     if (!track) return undefined;
-    const matching = track.getTimedEvents().flatMap((timed) => {
-      if (timed.tick !== tick || timed.order === undefined) return [];
-      const event = track.events[timed.order];
-      return event?.status === 0xff && "type" in event && event.type === type
-        ? [event]
-        : [];
-    });
+    const matching = track.events.filter(
+      (event) =>
+        event.tick === tick &&
+        event.status === 0xff &&
+        "type" in event &&
+        event.type === type,
+    );
     return position === "first" ? matching[0] : matching[matching.length - 1];
   }
 

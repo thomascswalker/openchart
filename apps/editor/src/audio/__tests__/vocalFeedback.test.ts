@@ -55,7 +55,7 @@ function fakeContext(oscillators: FakeOscillator[]): AudioContext {
 
 function vocal(pitch: number, start: number, end: number): MidiNote {
   return {
-    note: pitch,
+    pitch: pitch,
     velocity: 100,
     start,
     end,

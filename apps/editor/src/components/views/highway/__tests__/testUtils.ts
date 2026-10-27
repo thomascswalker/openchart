@@ -138,7 +138,7 @@ export function copyHighwaySelectionToClipboard(
       id,
       trackIndex,
       tick: note.start,
-      pitch: note.note,
+      pitch: note.pitch,
       duration: note.end - note.start,
       velocity: note.velocity,
     };

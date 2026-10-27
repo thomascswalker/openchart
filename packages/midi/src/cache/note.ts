@@ -22,14 +22,11 @@ export class NoteCache extends IEventCacheList<MidiNote, MidiEvent> {
     this._data = [];
     this._isBuilt = false;
 
-    let currentTick = 0;
     const activeNotes = new Map<number, PendingNote[]>();
     const notes: MidiNote[] = [];
     let previousNote: MidiNote | undefined;
 
     for (const event of events) {
-      currentTick += event.deltaTime;
-
       if (!isNoteEvent(event)) {
         continue;
       }
@@ -48,7 +45,7 @@ export class NoteCache extends IEventCacheList<MidiNote, MidiEvent> {
         const pending: PendingNote = {
           pitch,
           velocity,
-          startTick: currentTick,
+          startTick: event.tick,
           noteOn: event,
         };
 
@@ -70,11 +67,10 @@ export class NoteCache extends IEventCacheList<MidiNote, MidiEvent> {
         const pending = notesForPitch.shift()!;
 
         const newNote = {
-          note: pending.pitch,
           pitch: pending.pitch,
           velocity: pending.velocity,
           start: pending.startTick,
-          end: currentTick,
+          end: event.tick,
           noteOn: pending.noteOn,
           noteOff: event,
           previous: previousNote,

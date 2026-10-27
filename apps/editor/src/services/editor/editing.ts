@@ -297,7 +297,11 @@ export class EditingService extends Service {
       name,
       key,
       type: "instrument" as const,
-      noteCount: 128,
+      charts: [0, 1, 2, 3].map((difficulty) => ({
+        difficulty,
+        laneCount: 128,
+        range: { low: 0, high: 128 },
+      })),
       notes: {},
     };
     return {

@@ -319,7 +319,7 @@ describe("piano-roll profiles", () => {
     const targetY = h.coordinates.getGridTop() + (84 - 62) * 18 + 5;
     h.editing.updateMove(new Vector2(xAt(480), targetY));
 
-    expect(track.getNotes()[0]).toMatchObject({ start: 0, note: 60 });
+    expect(track.getNotes()[0]).toMatchObject({ start: 0, pitch: 60 });
     const preview = h.context.getDisplayNotes!(h.notes())[0]!;
     expect(preview).toMatchObject({
       tick: 480,
@@ -329,7 +329,7 @@ describe("piano-roll profiles", () => {
 
     h.editing.finishGesture();
 
-    expect(track.getNotes()[0]).toMatchObject({ start: 480, note: 62 });
+    expect(track.getNotes()[0]).toMatchObject({ start: 480, pitch: 62 });
     expect(h.standalone.history.undoDepth).toBe(1);
     expect(h.standalone.history.isInTransaction).toBe(false);
   });
@@ -358,7 +358,7 @@ describe("piano-roll profiles", () => {
 
     h.session.pasteClipboard(480);
     expect(track.getNotes()).toMatchObject([
-      { note: 60, start: 480, end: 600, velocity: 90 },
+      { pitch: 60, start: 480, end: 600, velocity: 90 },
     ]);
     expect(h.selection.notes[0]?.midiNote?.noteOn).not.toBe(noteOn);
   });

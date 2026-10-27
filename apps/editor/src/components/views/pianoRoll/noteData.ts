@@ -16,7 +16,7 @@ export function toPianoRollNote(
     id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
     tick: note.start,
     durationTicks: note.end - note.start,
-    pitch: note.note,
+    pitch: note.pitch,
     velocity: note.velocity,
     midiNote: note,
   };

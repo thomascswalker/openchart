@@ -69,7 +69,7 @@ describe("editing characterization: Piano Roll vocals", () => {
     expect(moved.changed).toBe(true);
     expect([
       resolveNote(pitchedId)?.start,
-      resolveNote(pitchedId)?.note,
+      resolveNote(pitchedId)?.pitch,
     ]).toEqual([
       characterization.vocal.pitchedMove.toTick,
       characterization.vocal.pitchedMove.clampedPitch,
@@ -86,7 +86,7 @@ describe("editing characterization: Piano Roll vocals", () => {
         characterization.vocal.nonPitchedMove.requestedPitch -
         characterization.vocal.nonPitchedMove.pitch,
     });
-    expect(resolveNote(laneNoteId)?.note).toBe(
+    expect(resolveNote(laneNoteId)?.pitch).toBe(
       characterization.vocal.nonPitchedMove.resultPitch,
     );
 
@@ -129,7 +129,7 @@ describe("editing characterization: Piano Roll vocals", () => {
       id: pitchedId,
       trackIndex,
       tick: currentPitched.start,
-      pitch: currentPitched.note,
+      pitch: currentPitched.pitch,
       duration: currentPitched.end - currentPitched.start,
       velocity: currentPitched.velocity,
     };

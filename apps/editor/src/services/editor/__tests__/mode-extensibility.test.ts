@@ -247,7 +247,7 @@ describe("editing mode extensibility acceptance", () => {
         .createdIds,
     ).toHaveLength(1);
     expect(documentService.data.tracks[0]!.getNotes()).toContainEqual(
-      expect.objectContaining({ start: 960, note: copiedNote.pitch }),
+      expect.objectContaining({ start: 960, pitch: copiedNote.pitch }),
     );
   });
 });

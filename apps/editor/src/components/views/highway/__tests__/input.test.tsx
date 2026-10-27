@@ -54,7 +54,7 @@ function createHarness(
     start = 0,
     end = start + 1,
   }: NoteFixture): MidiNote =>
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch,
       tick: start,
       duration: end - start,
@@ -66,11 +66,11 @@ function createHarness(
       setup.midiTrack.getEventId(note.noteOn),
     ),
     source: note,
-    pitch: note.note,
+    pitch: note.pitch,
     start: note.start,
     end: note.end,
     velocity: note.velocity,
-    lane: note.note - setup.chart.getOffset(),
+    lane: note.pitch - setup.chart.getOffset(),
     kind: "note",
     phraseKind: null,
   });
@@ -331,12 +331,12 @@ describe("HighwayInputController keyboard selection range", () => {
     const harness = createHarness({ mode: "select", phraseMode: null });
     detachInput = () => harness.input.detach();
     const offset = harness.chart.getOffset();
-    const inside = harness.setup.midiTrack.addNoteAt({
+    const inside = harness.setup.midiTrack.insertNote({
       pitch: offset,
       tick: 480,
       duration: 1,
     });
-    const outside = harness.setup.midiTrack.addNoteAt({
+    const outside = harness.setup.midiTrack.insertNote({
       pitch: offset + 1,
       tick: 1_440,
       duration: 1,
@@ -487,7 +487,7 @@ describe("HighwayInputController note interaction", () => {
     const harness = createHarness({ mode: "select", phraseMode: null });
     detachInput = () => harness.input.detach();
     harness.context.requestSeek(480);
-    harness.setup.midiTrack.addNoteAt({
+    harness.setup.midiTrack.insertNote({
       pitch: harness.chart.getOffset() + 1,
       tick: 720,
       duration: 1,
@@ -504,7 +504,7 @@ describe("HighwayInputController note interaction", () => {
     expect(
       harness.chart
         .getNotes()
-        .find((note) => note.note === harness.chart.getOffset())?.end,
+        .find((note) => note.pitch === harness.chart.getOffset())?.end,
     ).toBe(720);
   });
 

@@ -134,14 +134,14 @@ describe("EditingService", () => {
     expect(documentService.getSnapshot().canUndo).toBe(true);
     expect(documentService.data.tracks[0]?.getNotes()[0]).toMatchObject({
       start: 240,
-      note: 62,
+      pitch: 62,
     });
 
     documentService.undoEdit();
 
     expect(documentService.data.tracks[0]?.getNotes()[0]).toMatchObject({
       start: 0,
-      note: 60,
+      pitch: 60,
     });
     expect(documentService.getSnapshot().canUndo).toBe(false);
   });

@@ -106,8 +106,8 @@ describe("EditorClipboardService", () => {
     h.clipboard.paste();
 
     expect(track.getNotes()).toMatchObject([
-      { note: 96, start: 0, end: 120 },
-      { note: 96, start: 480, end: 600 },
+      { pitch: 96, start: 0, end: 120 },
+      { pitch: 96, start: 480, end: 600 },
     ]);
   });
 
@@ -127,8 +127,8 @@ describe("EditorClipboardService", () => {
     h.clipboard.paste();
 
     expect(track.getNotes()).toMatchObject([
-      { note: 96, start: 0, end: 120 },
-      { note: 96, start: 480, end: 600 },
+      { pitch: 96, start: 0, end: 120 },
+      { pitch: 96, start: 480, end: 600 },
     ]);
     expect(h.state.getSnapshot().error).toBeNull();
   });
@@ -151,7 +151,9 @@ describe("EditorClipboardService", () => {
     h.clipboard.copy();
     h.clipboard.paste();
 
-    expect(track.getNotes().map(({ note, start }) => [note, start])).toEqual([
+    expect(
+      track.getNotes().map(({ pitch: note, start }) => [note, start]),
+    ).toEqual([
       [95, 0],
       [95, 480],
     ]);

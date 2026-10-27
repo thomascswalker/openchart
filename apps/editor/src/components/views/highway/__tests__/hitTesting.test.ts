@@ -106,7 +106,7 @@ describe("drum note hit testing", () => {
       getEditingSession: () => null,
       getPreviewState: () => null,
     });
-    const note = { note: 100, start: 480 } as MidiNote;
+    const note = { pitch: 100, start: 480 } as MidiNote;
     const pad = hitTesting.getGemScreenBounds(note, 1, "pad")!;
     const cymbal = hitTesting.getGemScreenBounds(note, 1, "cymbal")!;
 
@@ -116,13 +116,13 @@ describe("drum note hit testing", () => {
 
   it("hits cymbals on their pad lane and excludes marker pitches", () => {
     const setup = createHighwayTestSetup("drums");
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 101,
       tick: 480,
       duration: 1,
       velocity: 90,
     });
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 104,
       tick: 480,
       duration: 1,
@@ -155,13 +155,13 @@ describe("drum note hit testing", () => {
 
   it("uses normalized kick bounds and ignores flam markers", () => {
     const setup = createHighwayTestSetup("drums");
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 95,
       tick: 480,
       duration: 1,
       velocity: 90,
     });
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 104,
       tick: 480,
       duration: 1,

@@ -335,7 +335,7 @@ describe("shared chart editing primitives", () => {
       }).changed,
     ).toBe(true);
     expect(
-      track.getNotes().map((note) => [note.note, note.start, note.end]),
+      track.getNotes().map((note) => [note.pitch, note.start, note.end]),
     ).toEqual([
       [98, 480, 600],
       [99, 840, 960],
@@ -361,7 +361,7 @@ describe("shared chart editing primitives", () => {
         endTick: 720,
       }).changed,
     ).toBe(true);
-    const phrase = track.getNotes().find((note) => note.note === 116)!;
+    const phrase = track.getNotes().find((note) => note.pitch === 116)!;
     const phraseId = document.getNoteId(0, phrase);
     expect(document.getNote(phraseId)).toMatchObject({
       tick: 480,
@@ -466,9 +466,9 @@ describe("shared chart editing primitives", () => {
     expect(result.changed).toBe(true);
     expect(result.createdIds).toHaveLength(2);
     expect(
-      track.getNotes().map(({ start, note, end, velocity }) => ({
+      track.getNotes().map(({ start, pitch, end, velocity }) => ({
         tick: start,
-        pitch: note,
+        pitch,
         duration: end - start,
         velocity,
       })),

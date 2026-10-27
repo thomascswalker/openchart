@@ -4,6 +4,7 @@ import {
   extractSections,
   getSustainCutOptions,
   getSustainCutTargets,
+  getDifficultyName,
   type ChartView,
   type EditablePhraseKind,
 } from "@openchart/views";
@@ -108,17 +109,14 @@ function fiveFretNoteStyles(
 ): Map<MidiNote, GuitarNoteStyle> {
   const descriptor = chart
     .getSong()
-    .getTrackDescriptors()
-    .find((item) => item.key === chart.getTrack().getKey());
-  const midiTrack = chart.getTrack().getMidiTrack();
+    ?.getTrackDescriptors()
+    .find((item) => item.key === chart.getTrack()?.getKey());
+  const midiTrack = chart.getTrack()?.getMidiTrack();
   if (!descriptor || descriptor.config.type !== "instrument" || !midiTrack) {
     return new Map();
   }
 
-  const difficulty = Object.entries(descriptor.config.offsets ?? {}).find(
-    ([, offset]) => offset === chart.getOffset(),
-  )?.[0];
-  if (!difficulty) return new Map();
+  const difficulty = getDifficultyName(chart.getDifficulty());
 
   const forceHopoPitch = descriptor.config.notes[`${difficulty}Hopo`];
   const forceStrumPitch = descriptor.config.notes[`${difficulty}Strum`];
@@ -134,7 +132,7 @@ function fiveFretNoteStyles(
       ...(tapMarkerPitch === undefined ? [] : [tapMarkerPitch]),
     ],
     ppqn,
-    tapSysExRanges: getTapSysExRanges(midiTrack.getTimedEvents()),
+    tapSysExRanges: getTapSysExRanges(midiTrack.events),
   });
 }
 
@@ -967,7 +965,7 @@ export class HighwayRenderer {
   }
 
   private drawSectionMarkers(chart: ChartView): void {
-    const track = chart.getTrack().getMidiTrack();
+    const track = chart.getTrack()?.getMidiTrack();
     if (!track) {
       this.hideSectionMarkers();
       return;
@@ -1132,7 +1130,7 @@ export class HighwayRenderer {
       return new Map();
     const sameLanePlacement =
       location.sustainHit !== null &&
-      location.sustainHit.note - chart.getOffset() === location.lane;
+      location.sustainHit.pitch - chart.getOffset() === location.lane;
     const targets = getSustainCutTargets(
       chart.getNotes(),
       location.tick,
@@ -1169,7 +1167,7 @@ export class HighwayRenderer {
     const cutTick = this.context.getGhostNoteLocation()?.tick;
     if (cutTick === undefined) return this.instancedPreviewTailBatch!.write([]);
     for (const note of cutPreview.values()) {
-      const lane = note.note - chart.getOffset();
+      const lane = note.pitch - chart.getOffset();
       if (lane < 0 || lane >= chart.getLaneCount()) continue;
       const start = Math.max(note.start, visibleStart, cutTick);
       const end = Math.min(note.end, visibleEnd);
@@ -1349,7 +1347,7 @@ export class HighwayRenderer {
       return;
     }
     const session = this.context.getEditingSession();
-    const track = chart.getTrack().getMidiTrack();
+    const track = chart.getTrack()?.getMidiTrack();
     const trackIndex = session?.target.trackIndex;
     const classification =
       session && track && trackIndex !== null && trackIndex !== undefined
@@ -1357,7 +1355,7 @@ export class HighwayRenderer {
             id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
             trackIndex,
             tick: note.start,
-            pitch: note.note,
+            pitch: note.pitch,
             duration: note.end - note.start,
             velocity: note.velocity,
           })
@@ -1370,12 +1368,12 @@ export class HighwayRenderer {
             id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
             trackIndex,
             tick: note.start,
-            pitch: note.note,
+            pitch: note.pitch,
             duration: note.end - note.start,
             velocity: note.velocity,
           })
         : null;
-    const lane = isKick ? 0 : (row?.index ?? note.note - chart.getOffset());
+    const lane = isKick ? 0 : (row?.index ?? note.pitch - chart.getOffset());
     const bounds = isKick
       ? this.hitTesting.getKickScreenBounds(note)
       : this.hitTesting.getGemScreenBounds(

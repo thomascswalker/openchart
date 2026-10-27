@@ -24,7 +24,7 @@ describe("history transaction rollback", () => {
     const restored = history.rollbackTransaction()!;
 
     expect(restored.tracks).toHaveLength(1);
-    expect(restored.tracks[0].getNotes().map((note) => note.note)).toEqual([
+    expect(restored.tracks[0].getNotes().map((note) => note.pitch)).toEqual([
       60,
     ]);
     expect(history.isInTransaction).toBe(false);

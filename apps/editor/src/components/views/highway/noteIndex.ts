@@ -118,7 +118,7 @@ export class HighwayNoteIndex {
     }
 
     const trackIndex = session.target.trackIndex;
-    const track = chart.getTrack().getMidiTrack();
+    const track = chart.getMidiTrack();
     const projection = session.getProjection();
     const entries: IndexedNote[] = [];
     if (trackIndex !== null && track) {
@@ -128,7 +128,7 @@ export class HighwayNoteIndex {
           id,
           trackIndex,
           tick: note.start,
-          pitch: note.note,
+          pitch: note.pitch,
           duration: note.end - note.start,
           velocity: note.velocity,
         };

@@ -49,7 +49,7 @@ export class HighwayNoteEditingController {
               shiftKey,
               preferredSustainId !== undefined,
               preferredNote !== null &&
-                preferredNote.note - chart.getOffset() === lane,
+                preferredNote.pitch - chart.getOffset() === lane,
             ),
             ...(preferredSustainId ? { preferredSustainId } : {}),
           };
@@ -276,7 +276,7 @@ export class HighwayNoteEditingController {
 
   private getEntityId(chart: ChartView, note: MidiNote): EntityId | null {
     const session = this.context.getEditingSession();
-    const track = chart.getTrack().getMidiTrack();
+    const track = chart.getMidiTrack();
     const trackIndex = session?.target.trackIndex;
     return session && track && trackIndex !== null && trackIndex !== undefined
       ? formatNoteId(trackIndex, track.getEventId(note.noteOn))
@@ -289,7 +289,7 @@ export class HighwayNoteEditingController {
       id,
       trackIndex,
       tick: note.start,
-      pitch: note.note,
+      pitch: note.pitch,
       duration: note.end - note.start,
       velocity: note.velocity,
     };

@@ -13,7 +13,7 @@ const strict = process.argv.includes("--strict");
 
 const documentMutators = [
   "addNote",
-  "addNoteAt",
+  "insertNote",
   "addNoteAtPitch",
   "removeNote",
   "setNoteStart",

@@ -4,8 +4,11 @@ import {
   type MidiTrack,
   type TextMidiEvent,
 } from "@openchart/midi";
-import type { MidiNotePhrase } from "./chartEditing.js";
-import type { InstrumentTrackViewConfig } from "./config.js";
+import type { MidiNotePhrase } from "./editing/phrase.js";
+import {
+  getVocalTrackConfig,
+  type InstrumentTrackViewConfig,
+} from "./config.js";
 
 /** Note kinds that live on the VOCALS track. */
 export type VocalNoteKind = "pitched" | "pitchless" | "percussion";
@@ -116,7 +119,8 @@ export function vocalLayoutFromConfig(
 ): VocalLayout {
   const notes = config.notes;
   const defaults = DEFAULT_VOCAL_LAYOUT;
-  const range = config.vocals?.range ?? defaults.range;
+  const vocalConfig = getVocalTrackConfig(config);
+  const range = vocalConfig?.range ?? defaults.range;
   const layout: VocalLayout = {
     range: {
       low: Math.min(range.low, range.high),
@@ -131,7 +135,7 @@ export function vocalLayoutFromConfig(
     pitchlessPlacement: defaults.pitchlessPlacement,
   };
   layout.pitchlessPlacement =
-    config.vocals?.pitchlessPlacement === "pitchlessLow"
+    vocalConfig?.pitchlessPlacement === "pitchlessLow"
       ? layout.pitchlessLow
       : layout.pitchlessHigh;
   return layout;
@@ -279,7 +283,7 @@ function insertNote(
   end: number,
   velocity = 100,
 ): MidiNote | null {
-  return track.addNoteAt({
+  return track.insertNote({
     tick: start,
     pitch,
     velocity,

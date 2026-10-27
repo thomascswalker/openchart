@@ -4,6 +4,7 @@ import {
   MidiTrack,
   getStatusString,
   type MidiChannelEvent,
+  type MidiEvent,
   type MidiMetaEvent,
 } from "@openchart/midi";
 import { SongView } from "@openchart/views";
@@ -26,7 +27,6 @@ import type { DropdownOption } from "../../shared/Dropdown";
 
 type EventType = "channel" | "meta" | "sysex";
 type Row = Record<string, any>;
-type TimedEvent = ReturnType<MidiTrack["getTimedEvents"]>[number];
 
 const columnHelper = createAppColumnHelper();
 const str = ({ cell }: any) => String(cell.getValue());
@@ -39,11 +39,11 @@ const baseColumns = () => [
 
 interface EventTypeConfig {
   filter: (event: any) => boolean;
-  toRow: (item: TimedEvent) => Row;
+  toRow: (item: MidiEvent) => Row;
   columnDefs: any[];
 }
 
-const baseRow = (event: TimedEvent): Row => ({
+const baseRow = (event: MidiEvent): Row => ({
   tick: event.tick,
   deltaTime: event.deltaTime,
   status: event.status,
@@ -53,7 +53,7 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
   channel: {
     filter: (event) => event.status < 0xf0,
     toRow: (item) => {
-      const event = item as MidiChannelEvent & { tick: number };
+      const event = item as MidiChannelEvent;
       return {
         ...baseRow(item),
         channel: event.channel,
@@ -76,7 +76,7 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
   meta: {
     filter: (event) => event.status === 0xff,
     toRow: (item) => {
-      const event = item as MidiMetaEvent & { tick: number };
+      const event = item as MidiMetaEvent;
       const payload = Object.entries(event)
         .filter(
           ([key]) =>
@@ -181,7 +181,7 @@ const EventList = () => {
   );
   const data = useMemo(
     () =>
-      (selectedTrack?.getTimedEvents() ?? [])
+      (selectedTrack?.events ?? [])
         .filter((event) => config.filter(event))
         .map((item, i) => ({ id: String(i), ...config.toRow(item) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps

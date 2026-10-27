@@ -23,7 +23,9 @@ export class EventIdCache {
 
   public removeEventId(event: MidiEvent): void {
     const id = this.#eventIds.get(event);
-    if (id) this.#eventsById.delete(id);
+    if (id) {
+      this.#eventsById.delete(id);
+    }
   }
 
   public clone(events: ReadonlyMap<MidiEvent, MidiEvent>): EventIdCache {

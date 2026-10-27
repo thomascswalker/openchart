@@ -15,9 +15,11 @@ function createMidi(): Midi {
   const controlTrack = new MidiTrack("Control Track");
   const notesTrack = new MidiTrack("Notes");
 
+  // tick/order are recomputed from deltaTime by the events setter.
   controlTrack.events = [
     {
       deltaTime: 0,
+      tick: 0,
       status: 0xff,
       type: MetaType.TrackName,
       length: 19,
@@ -25,6 +27,7 @@ function createMidi(): Midi {
     } as TextMidiEvent,
     {
       deltaTime: 0,
+      tick: 0,
       status: 0xff,
       type: MetaType.Tempo,
       length: 3,
@@ -32,6 +35,7 @@ function createMidi(): Midi {
     } as MidiMetaEvent,
     {
       deltaTime: 0,
+      tick: 0,
       status: 0xff,
       type: MetaType.TimeSignature,
       length: 4,
@@ -42,6 +46,7 @@ function createMidi(): Midi {
     } as MidiMetaEvent,
     {
       deltaTime: 120,
+      tick: 0,
       status: 0xf0,
       length: 3,
       data: new Uint8Array([0, 127, 1]),
@@ -51,6 +56,7 @@ function createMidi(): Midi {
   notesTrack.events = [
     {
       deltaTime: 0,
+      tick: 0,
       status: 0x95,
       channel: 5,
       messageType: ChannelMessage.NoteOn,
@@ -59,6 +65,7 @@ function createMidi(): Midi {
     } as MidiChannelEvent,
     {
       deltaTime: 120,
+      tick: 0,
       status: 0x85,
       channel: 5,
       messageType: ChannelMessage.NoteOff,
@@ -67,6 +74,7 @@ function createMidi(): Midi {
     } as MidiChannelEvent,
     {
       deltaTime: 0,
+      tick: 0,
       status: 0xc7,
       channel: 7,
       messageType: ChannelMessage.ProgramChange,

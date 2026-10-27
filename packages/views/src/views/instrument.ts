@@ -1,10 +1,11 @@
 import { MidiTrack } from "@openchart/midi";
 import {
-  InstrumentTrackViewConfig,
-  hasDifficulties,
-  getDifficultyNotePitch,
   describeTrack,
+  hasDifficulties,
+  type ChartViewConfig,
+  type InstrumentTrackViewConfig,
 } from "../config.js";
+import { drumLayoutFromConfig } from "../chart/drums.js";
 import { Difficulty } from "../types.js";
 import { ChartView } from "./chart.js";
 import { SongView } from "./song.js";
@@ -12,7 +13,6 @@ import { TrackView } from "./track.js";
 
 export class InstrumentTrackView extends TrackView {
   protected config: InstrumentTrackViewConfig;
-  /** Absent for instruments without difficulties (vocals). */
   private readonly charts: Map<Difficulty, ChartView> | null;
 
   constructor(
@@ -31,30 +31,37 @@ export class InstrumentTrackView extends TrackView {
       return;
     }
 
-    const offsets: Record<Difficulty, number> = {
-      [Difficulty.Expert]: config.offsets?.expert || 0,
-      [Difficulty.Hard]: config.offsets?.hard || 0,
-      [Difficulty.Medium]: config.offsets?.medium || 0,
-      [Difficulty.Easy]: config.offsets?.easy || 0,
-    };
     this.charts = new Map(
-      [
-        Difficulty.Expert,
-        Difficulty.Hard,
-        Difficulty.Medium,
-        Difficulty.Easy,
-      ].map((difficulty) => [
-        difficulty,
-        new ChartView(
-          this,
-          this.track,
-          difficulty,
-          offsets[difficulty],
-          config.noteCount,
-          config.role,
-          getDifficultyNotePitch(describeTrack(config), difficulty, "Kick2"),
-        ),
-      ]),
+      config.charts
+        .filter((chart): chart is ChartViewConfig => "difficulty" in chart)
+        .sort((left, right) => right.difficulty - left.difficulty)
+        .map((chart) => {
+          const descriptor = describeTrack(config);
+          const drumLayout = drumLayoutFromConfig(descriptor, chart.difficulty);
+          const specialPitches = drumLayout
+            ? [
+                drumLayout.kick,
+                drumLayout.kick2,
+                ...drumLayout.pads,
+                ...drumLayout.cymbals,
+                ...drumLayout.markers,
+              ].filter((pitch): pitch is number => pitch !== null)
+            : [];
+          return [
+            chart.difficulty,
+            new ChartView(
+              this.song,
+              this,
+              this.track,
+              chart,
+              specialPitches,
+              () => {
+                this.track ??= this.song.ensureMidiTrack(this.getKey());
+                return this.track;
+              },
+            ),
+          ];
+        }),
     );
   }
 

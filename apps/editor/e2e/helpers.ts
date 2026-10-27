@@ -12,9 +12,7 @@ export const SONG_PATH = resolve(
 const fixture = new Midi(new Uint8Array(readFileSync(SONG_PATH)));
 export const MIDI_END_TICK = Math.max(
   0,
-  ...fixture.tracks.map((track) =>
-    track.events.reduce((tick, event) => tick + event.deltaTime, 0),
-  ),
+  ...fixture.tracks.map((track) => track.events.at(-1)?.tick ?? 0),
 );
 
 export async function loadSong(page: Page): Promise<void> {

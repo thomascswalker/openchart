@@ -69,7 +69,7 @@ function getNoteSnapshot(
   note: MidiNote,
 ) {
   const session = context.getEditingSession();
-  const track = chart.getTrack().getMidiTrack();
+  const track = chart.getTrack()?.getMidiTrack();
   const trackIndex = session?.target.trackIndex;
   if (!session || !track || trackIndex === null || trackIndex === undefined) {
     return null;
@@ -78,7 +78,7 @@ function getNoteSnapshot(
     id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
     trackIndex,
     tick: note.start,
-    pitch: note.note,
+    pitch: note.pitch,
     duration: note.end - note.start,
     velocity: note.velocity,
   };
@@ -849,7 +849,7 @@ export class HighwayInputController {
   public seekSection(direction: -1 | 1): void {
     if (!this.canEditNotes) return;
     const chart = this.getCurrentChart();
-    const track = chart?.getTrack().getMidiTrack();
+    const track = chart?.getMidiTrack();
     const section = track
       ? findSection(track, this.context.getPlayheadTick(), direction)
       : null;

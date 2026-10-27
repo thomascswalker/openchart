@@ -1,5 +1,5 @@
 import { MidiTrack } from "@openchart/midi";
-import { SongView } from "../chartView.js";
+import { SongView } from "../views/song.js";
 import { describeTrack } from "../config.js";
 
 export class TrackView {

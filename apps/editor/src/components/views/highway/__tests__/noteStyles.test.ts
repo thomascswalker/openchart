@@ -7,7 +7,7 @@ import {
 } from "../rendering/noteStyles";
 
 function note(pitch: number, start: number, end = start): GuitarNoteLike {
-  return { note: pitch, start, end };
+  return { pitch: pitch, start, end };
 }
 
 describe("five-fret note styles", () => {
