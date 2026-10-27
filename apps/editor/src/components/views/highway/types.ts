@@ -1,9 +1,8 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import type { EditablePhraseKind } from "@openchart/views";
-import type { DrumNoteKind } from "./drumProfile";
+import type { EditablePhraseKind, EntityId } from "@openchart/views";
 
 export type HighwayTool = "select" | "place" | "remove";
-/** Phrases the Highway can place; vocal phrases live in the Piano Roll. */
+
 export type HighwayPhraseKind = Extract<
   EditablePhraseKind,
   "stagepower" | "solo"
@@ -23,16 +22,7 @@ export function getPhraseModeForHighwayMode(
   return mode === "stagepower" || mode === "solo" ? mode : null;
 }
 
-export interface HighwayClipboardNote {
-  relativeTick: number;
-  lane: number;
-  durationTicks: number;
-  velocity: number;
-  drumKind?: DrumNoteKind;
-  originalPitch?: number;
-}
-
-export interface PhraseDragState {
+export interface HighwayPhraseDragState {
   pointerId: number;
   kind: EditablePhraseKind;
   startTick: number;
@@ -41,17 +31,17 @@ export interface PhraseDragState {
   initialStartTick: number;
   initialEndTick: number;
   operation: "create" | "move" | "resize-start" | "resize-end";
-  note: MidiNote | null;
+  id: EntityId | null;
   moved: boolean;
 }
 
-export interface PhraseHoverState {
-  noteOn: MidiChannelEvent | null;
-  operation: PhraseDragState["operation"] | null;
+export interface HighwayPhraseHoverState {
+  id: EntityId | null;
+  operation: HighwayPhraseDragState["operation"] | null;
   placementTick: number | null;
 }
 
-export interface DragState {
+export interface HighwayDragState {
   pointerId: number;
   button: 0 | 2;
   shiftKey: boolean;
@@ -72,7 +62,7 @@ export interface DragState {
   changed: boolean;
 }
 
-export interface MarqueeDragState {
+export interface HighwayMarqueeDragState {
   pointerId: number;
   startX: number;
   startY: number;
@@ -82,14 +72,14 @@ export interface MarqueeDragState {
   moved: boolean;
 }
 
-export interface ScreenBounds {
+export interface HighwayScreenBounds {
   left: number;
   right: number;
   top: number;
   bottom: number;
 }
 
-export interface GhostNoteLocation {
+export interface HighwayGhostNoteLocation {
   lane: number;
   tick: number;
   shiftKey: boolean;

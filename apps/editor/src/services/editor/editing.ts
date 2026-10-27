@@ -1,0 +1,355 @@
+import type { Midi } from "@openchart/midi";
+import {
+  ChartDocument,
+  ClipboardService,
+  defaultConfig,
+  EditingModeRegistry,
+  SelectionModel,
+  SongView,
+  createEditingSession,
+  type EditingModeId,
+  type EditingSession,
+  type EditingTarget,
+  type EditResult,
+  type ModeRegistry,
+  type TrackDescriptor,
+} from "@openchart/views";
+import { Service } from "../../platform/services";
+import { DocumentService } from "../document";
+import { PlaybackService } from "../playback";
+import { ViewportService, type ViewportSession } from "./viewports";
+import { defaultModes } from "@openchart/views";
+
+type ResultListener = (result: EditResult) => void;
+
+/** Bridges editing modes and sessions to editor history and playback. */
+export class EditingService extends Service {
+  public static dependencies = ["document", "playback", "editor.viewports"];
+
+  /** @deprecated Removed after the Piano Roll migration in Phase 6. */
+  public readonly selection = new SelectionModel();
+  /** Shared payload used by every editing session. */
+  public readonly clipboard: ClipboardService;
+
+  public readonly registry: ModeRegistry;
+
+  private readonly documentService: DocumentService;
+  private readonly playbackService: PlaybackService;
+  private readonly viewportService: ViewportService;
+  private readonly resultListeners = new Set<ResultListener>();
+  private readonly sessions = new Map<string, EditingSession>();
+  private readonly sessionSignatures = new Map<string, string>();
+  private chartDocument: ChartDocument | null = null;
+  private midi: Midi | null = null;
+  private documentId = -1;
+  private lastResultValue: EditResult = emptyResult();
+
+  public constructor(
+    documentService: DocumentService,
+    playbackService: PlaybackService,
+    viewportService: ViewportService,
+  ) {
+    super();
+    this.documentService = documentService;
+    this.playbackService = playbackService;
+    this.viewportService = viewportService;
+    this.registry = new EditingModeRegistry();
+    defaultModes.forEach((mode) => this.registry.register(mode));
+    this.viewportService.setModeRegistry(this.registry);
+    this.viewportService.setTrackResolver(
+      (viewport) => this.resolveTrack(viewport).descriptor,
+    );
+    this.midi = documentService.data;
+    this.documentId = documentService.getSnapshot().documentId;
+    const chartDocument = this.createChartDocument(documentService.data);
+    this.chartDocument = chartDocument;
+    this.clipboard = new ClipboardService();
+    this.documentService.subscribe(this.syncDocument);
+    this.viewportService.subscribe(this.syncViewports);
+  }
+
+  /** Last result emitted to EditingService subscribers. */
+  public get lastResult(): EditResult {
+    return this.lastResultValue;
+  }
+
+  /** Subscribes to successful editing results. */
+  public subscribeResult(listener: ResultListener): () => void {
+    this.resultListeners.add(listener);
+    return () => this.resultListeners.delete(listener);
+  }
+
+  public readonly reset = (): void => {
+    this.selection.clear();
+    this.clipboard.clear();
+    this.sessions.clear();
+    this.sessionSignatures.clear();
+    this.syncDocument();
+    this.notify();
+  };
+
+  /** @deprecated Use the active EditingSession. */
+  public getDocument(): ChartDocument {
+    if (!this.chartDocument) {
+      throw new Error("There is no MIDI document to edit.");
+    }
+    return this.chartDocument;
+  }
+
+  /** Returns the cached session for the specified viewport, if supported. */
+  public getSession(
+    viewportId: string,
+    requestedModeId?: EditingModeId | "global",
+  ): EditingSession | null {
+    const viewport = this.viewportService.getViewport(viewportId);
+    if (!viewport || !this.chartDocument || !this.midi) return null;
+    const modeId =
+      requestedModeId === "global" ? "midi.global" : requestedModeId;
+    const cacheKey = modeId ? `${viewportId}::${modeId}` : viewportId;
+    const signature = this.sessionSignature(viewport, modeId);
+    if (this.sessionSignatures.get(cacheKey) === signature) {
+      const session = this.sessions.get(cacheKey) ?? null;
+      if (session) this.syncToolState(viewport, session);
+      return session;
+    }
+
+    this.sessions.delete(cacheKey);
+    this.sessionSignatures.delete(cacheKey);
+    const session = this.createSession(viewport, modeId);
+    if (!session) return null;
+    this.sessions.set(cacheKey, session);
+    this.sessionSignatures.set(cacheKey, signature);
+    this.syncToolState(viewport, session);
+    return session;
+  }
+
+  /** Applies a partial tool-state update after validating the mode schema. */
+  public updateToolState(
+    viewportId: string,
+    modeId: EditingModeId,
+    update: Record<string, unknown>,
+  ): void {
+    const viewport = this.viewportService.getViewport(viewportId);
+    const mode = this.registry.getById(modeId);
+    if (!viewport || !mode) {
+      throw new Error(`Unknown viewport or editing mode '${modeId}'`);
+    }
+    const current = viewport.tools[modeId] ?? mode.createDefaultToolState();
+    if (!isRecord(current)) {
+      throw new Error(`Tool state for mode '${modeId}' must be an object`);
+    }
+    const next = mode.toolStateSchema.parse({ ...current, ...update });
+    this.viewportService.setModeToolState(viewportId, modeId, next);
+    const primaryMode = this.registry.resolve(
+      this.resolveTrack(viewport).descriptor,
+      viewport.view,
+    );
+    const cacheKey =
+      primaryMode?.id === modeId ? viewportId : `${viewportId}::${modeId}`;
+    this.sessions.get(cacheKey)?.setToolState(next);
+    this.notify();
+  }
+
+  /** Reports whether the selected track can be hosted by the requested view. */
+  public canHost(viewportId: string, hostKind: string): boolean {
+    const viewport = this.viewportService.getViewport(viewportId);
+    if (!viewport || !this.midi) return false;
+    return this.registry.canHost(
+      this.resolveTrack(viewport).descriptor,
+      hostKind,
+    );
+  }
+
+  /** Returns the active viewport's session, if its view is supported. */
+  public getActiveSession(): EditingSession | null {
+    const viewport = this.viewportService.getActiveViewport();
+    return viewport ? this.getSession(viewport.id) : null;
+  }
+
+  private readonly syncDocument = (): void => {
+    const snapshot = this.documentService.getSnapshot();
+    const midi = snapshot.midi;
+    if (midi === this.midi && snapshot.documentId === this.documentId) return;
+
+    const projectChanged = snapshot.documentId !== this.documentId;
+    this.midi = midi;
+    this.documentId = snapshot.documentId;
+    this.chartDocument = midi ? this.createChartDocument(midi) : null;
+    this.sessions.clear();
+    this.sessionSignatures.clear();
+    if (projectChanged) {
+      this.selection.clear();
+      this.clipboard.clear();
+    }
+    this.notify();
+  };
+
+  private readonly syncViewports = (): void => {
+    const activeIds = new Set(
+      this.viewportService
+        .getSnapshot()
+        .viewportSessions.map((viewport) => viewport.id),
+    );
+    for (const cacheKey of this.sessions.keys()) {
+      const separator = cacheKey.indexOf("::");
+      const viewportId =
+        separator < 0 ? cacheKey : cacheKey.slice(0, separator);
+      const modeId =
+        separator < 0
+          ? undefined
+          : (cacheKey.slice(separator + 2) as EditingModeId);
+      const viewport = this.viewportService.getViewport(viewportId);
+      if (
+        !activeIds.has(viewportId) ||
+        !viewport ||
+        this.sessionSignatures.get(cacheKey) !==
+          this.sessionSignature(viewport, modeId)
+      ) {
+        this.sessions.delete(cacheKey);
+        this.sessionSignatures.delete(cacheKey);
+      }
+    }
+    this.notify();
+  };
+
+  private createSession(
+    viewport: ViewportSession,
+    modeId?: EditingModeId,
+  ): EditingSession | null {
+    if (!this.midi || !this.chartDocument) return null;
+    const { descriptor, trackIndex } = this.resolveTrack(viewport);
+    const mode = modeId
+      ? this.registry.getById(modeId)
+      : this.registry.resolve(descriptor, viewport.view);
+    if (!mode) return null;
+
+    const target: EditingTarget = {
+      trackKey: viewport.trackKey,
+      trackIndex,
+      difficulty: mode.id === "midi.global" ? null : viewport.difficulty,
+    };
+    return createEditingSession({
+      document: this.chartDocument,
+      mode,
+      target,
+      hostKind: mode.hostKinds.values().next().value ?? viewport.view,
+      config: defaultConfig,
+      transaction: {
+        begin: this.documentService.beginEdit,
+        record: this.documentService.recordEdit,
+        end: this.documentService.endEdit,
+        rollback: this.documentService.rollbackEdit,
+      },
+      selection: this.selection,
+      clipboard: this.clipboard,
+      onCommit: (result) => this.publishResult(result),
+    });
+  }
+
+  private syncToolState(
+    viewport: ViewportSession,
+    session: EditingSession,
+  ): void {
+    const state =
+      viewport.tools[session.mode.id] ?? session.mode.createDefaultToolState();
+    session.setToolState(state);
+  }
+
+  private resolveTrack(viewport: ViewportSession): {
+    descriptor: TrackDescriptor;
+    trackIndex: number | null;
+  } {
+    const midi = this.midi;
+    if (!midi) throw new Error("There is no MIDI document to resolve.");
+    const song = new SongView(midi);
+    const descriptors = song.getTrackDescriptors();
+    if (viewport.trackKey.startsWith("unmapped-")) {
+      const index = Number(viewport.trackKey.slice("unmapped-".length));
+      const track = Number.isSafeInteger(index)
+        ? song.getUnmappedMidiTracks()[index]
+        : undefined;
+      const descriptor = this.createSyntheticDescriptor(
+        viewport.trackKey,
+        track?.name ?? viewport.instrument,
+      );
+      return {
+        descriptor,
+        trackIndex: track ? midi.tracks.indexOf(track) : null,
+      };
+    }
+    const descriptor =
+      descriptors.find(
+        (item) =>
+          item.key === viewport.trackKey || item.name === viewport.instrument,
+      ) ??
+      this.createSyntheticDescriptor(viewport.trackKey, viewport.instrument);
+    const index = midi.tracks.findIndex(
+      (track) => track.name === descriptor.name,
+    );
+    return { descriptor, trackIndex: index >= 0 ? index : null };
+  }
+
+  private createSyntheticDescriptor(
+    key: string,
+    name: string,
+  ): TrackDescriptor {
+    const config = {
+      name,
+      key,
+      type: "instrument" as const,
+      noteCount: 128,
+      notes: {},
+    };
+    return {
+      key,
+      name,
+      type: "instrument",
+      visible: true,
+      editable: true,
+      config,
+    };
+  }
+
+  private sessionSignature(
+    viewport: ViewportSession,
+    modeId?: EditingModeId,
+  ): string {
+    const { trackIndex } = this.resolveTrack(viewport);
+    return [
+      this.documentId,
+      modeId ?? "primary",
+      viewport.trackKey,
+      trackIndex,
+      viewport.difficulty,
+      modeId ? "global" : viewport.view,
+    ].join(":");
+  }
+
+  private createChartDocument(midi: Midi): ChartDocument {
+    return new ChartDocument(midi, defaultConfig);
+  }
+
+  private publishResult(result: EditResult): void {
+    this.lastResultValue = result;
+    this.playbackService.refresh(this.documentService.data);
+    for (const listener of [...this.resultListeners]) listener(result);
+    this.notify();
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function emptyResult(): EditResult {
+  return {
+    changed: false,
+    createdIds: [],
+    updatedIds: [],
+    removedIds: [],
+    rejections: [],
+  };
+}
+
+/** @deprecated Use EditingService. */
+export type EditorEditingService = EditingService;

@@ -6,7 +6,6 @@ import {
   findSection,
   getNotePhrases,
   getPhrasePitch,
-  moveNoteGroup,
   removeNotePhrase,
   updateNotePhrase,
 } from "../../src/chartEditing.js";
@@ -55,29 +54,15 @@ describe("chart phrase editing", () => {
     ]);
   });
 
-  it("rolls back a phrase start if resizing fails", () => {
+  it("leaves a phrase unchanged when an atomic update is rejected", () => {
     const track = new MidiTrack("LEAD GUITAR");
     const phrase = addNotePhrase(track, 116, "solo", 480, 960)!;
-    const setDuration = track.setNoteDuration.bind(track);
-    track.setNoteDuration = () => false;
+    const updateNote = track.updateNote.bind(track);
+    track.updateNote = () => false;
 
     expect(updateNotePhrase(track, phrase.note, 720, 1_200)).toBe(false);
     expect(track.getNotes()).toMatchObject([{ start: 480, end: 960 }]);
-    track.setNoteDuration = setDuration;
-  });
-
-  it("moves a note group by one stable tick and pitch delta", () => {
-    const track = new MidiTrack("LEAD GUITAR");
-    track.addNote(96, 0, 100, 120);
-    track.addNote(97, 240, 100, 120);
-
-    expect(moveNoteGroup(track, track.getNotes(), 480, 2)).toBe(true);
-    expect(
-      track.getNotes().map((note) => [note.note, note.start, note.end]),
-    ).toEqual([
-      [98, 480, 600],
-      [99, 840, 960],
-    ]);
+    track.updateNote = updateNote;
   });
 
   it("extracts section markers and finds the adjacent section", () => {

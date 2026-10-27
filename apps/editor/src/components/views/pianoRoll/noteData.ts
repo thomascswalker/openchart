@@ -1,10 +1,19 @@
 import type { Midi, MidiNote, MidiTrack } from "@openchart/midi";
-import { buildNoteIndex, type PianoRollNoteIndex } from "./visibility";
+import { formatNoteId } from "@openchart/views";
+import {
+  buildNoteIndex,
+  type PianoRollNoteIndex,
+} from "./rendering/visibility";
 import type { PianoRollNote } from "./types";
 
 /** Converts a MIDI note into the piano roll's flattened representation. */
-export function toPianoRollNote(note: MidiNote): PianoRollNote {
+export function toPianoRollNote(
+  track: MidiTrack,
+  trackIndex: number,
+  note: MidiNote,
+): PianoRollNote {
   return {
+    id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
     tick: note.start,
     durationTicks: note.end - note.start,
     pitch: note.note,
@@ -38,7 +47,7 @@ export class NoteDataStore {
     const sourceNotes = track.getNotes();
     if (this.isCachedFor(track, sourceNotes)) return this.mappedNotes;
 
-    this.mapNotes(track, sourceNotes);
+    this.mapNotes(track, trackIndex, sourceNotes);
     return this.mappedNotes;
   }
 
@@ -68,10 +77,16 @@ export class NoteDataStore {
   }
 
   /** Rebuilds the cached mapping and its visibility index. */
-  private mapNotes(track: MidiTrack, sourceNotes: MidiNote[]): void {
+  private mapNotes(
+    track: MidiTrack,
+    trackIndex: number,
+    sourceNotes: MidiNote[],
+  ): void {
     this.mappedNotesTrack = track;
     this.mappedNotesSource = sourceNotes;
-    this.mappedNotes = sourceNotes.map(toPianoRollNote);
+    this.mappedNotes = sourceNotes.map((note) =>
+      toPianoRollNote(track, trackIndex, note),
+    );
     this.mappedNotesIndex = buildNoteIndex(this.mappedNotes);
   }
 }

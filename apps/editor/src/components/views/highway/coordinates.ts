@@ -2,16 +2,22 @@ import { Vector2 } from "three";
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
 import { laneCount, nearBoardZ } from "./constants";
-import { drumLaneCount } from "./drumProfile";
+import { DrumLaneCount } from "./profile";
+import { BaseCoordinates } from "../shared/coordinates";
 
 type HighwayCoordinateContext = Pick<
   HighwayContext,
   "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
 > &
-  Partial<Pick<HighwayContext, "getCurrentChart" | "getScrollSpeedMultiplier">>;
+  Partial<
+    Pick<
+      HighwayContext,
+      "getCurrentChart" | "getEditingSession" | "getScrollSpeedMultiplier"
+    >
+  >;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
-export class HighwayCoordinateSystem {
+export class HighwayCoordinateSystem extends BaseCoordinates {
   private readonly context: HighwayCoordinateContext;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly raycaster = new THREE.Raycaster();
@@ -24,6 +30,7 @@ export class HighwayCoordinateSystem {
     context: HighwayCoordinateContext,
     camera: THREE.PerspectiveCamera,
   ) {
+    super();
     this.context = context;
     this.camera = camera;
   }
@@ -94,12 +101,15 @@ export class HighwayCoordinateSystem {
   }
 
   public getPhysicalLaneCount(): number {
-    if (this.isDrumChart()) return drumLaneCount;
+    if (this.isDrumChart()) return DrumLaneCount;
     return this.context.getCurrentChart?.()?.getLaneCount() ?? laneCount;
   }
 
   private isDrumChart(): boolean {
-    return this.context.getState().selectedInstrument === "DRUMS";
+    return (
+      this.context.getEditingSession?.()?.mode.id === "chart.drums" ||
+      this.context.getState().selectedInstrument === "DRUMS"
+    );
   }
 
   public getNoteZ(tick: number): number {
@@ -138,12 +148,7 @@ export class HighwayCoordinateSystem {
     );
   }
 
-  public snapTick(tick: number): number {
-    const state = this.context.getState();
-    if (!state.snap.enabled) return Math.max(0, Math.round(tick));
-    const snapTicks = this.getSnapTicks();
-    return snapTicks > 0
-      ? Math.max(0, Math.floor(tick / snapTicks) * snapTicks)
-      : Math.max(0, Math.round(tick));
+  protected isSnapEnabled(): boolean {
+    return this.context.getState().snap.enabled;
   }
 }

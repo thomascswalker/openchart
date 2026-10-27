@@ -1,0 +1,173 @@
+{
+  "drums": {
+    "offsets": [60, 72, 84, 96],
+    "placements": {
+      "pad": [
+        [61, 62, 63, 64],
+        [73, 74, 75, 76],
+        [85, 86, 87, 88],
+        [97, 98, 99, 100]
+      ],
+      "cymbal": [
+        [null, 65, 66, 67],
+        [null, 77, 78, 79],
+        [null, 89, 90, 91],
+        [null, 101, 102, 103]
+      ],
+      "kick": [
+        [60, 60, 60, 60],
+        [72, 72, 72, 72],
+        [84, 84, 84, 84],
+        [96, 96, 96, 96]
+      ]
+    },
+    "kick2": {
+      "pitch": 95,
+      "movedPitch": 95,
+      "pastedPitch": 95
+    },
+    "move": {
+      "initialTick": 480,
+      "initialLane": 1,
+      "tickDelta": 253,
+      "laneDelta": 4,
+      "snapTicks": 240,
+      "laneCount": 4,
+      "expected": { "tick": 720, "lane": 3 },
+      "cymbalLane": 1,
+      "cymbalTargetLane": 2,
+      "cymbalExpectedPitch": 102,
+      "markerSlot": 8,
+      "markerMovable": false
+    },
+    "paste": {
+      "source": [
+        { "pitch": 96, "tick": 0, "kind": "kick" },
+        { "pitch": 95, "tick": 0, "kind": "kick" },
+        { "pitch": 101, "tick": 0, "kind": "cymbal" },
+        { "pitch": 104, "tick": 0, "kind": "marker" }
+      ],
+      "anchorTick": 480,
+      "occupied": [{ "pitch": 101, "tick": 480 }],
+      "expected": [
+        { "pitch": 96, "tick": 480 },
+        { "pitch": 95, "tick": 480 }
+      ]
+    }
+  },
+  "forcedMarkers": {
+    "tick": 480,
+    "difficulties": [
+      { "offset": 60, "markers": [65, 66, 67] },
+      { "offset": 72, "markers": [77, 78, 79] },
+      { "offset": 84, "markers": [89, 90, 91] },
+      { "offset": 96, "markers": [101, 102, 103] }
+    ],
+    "placementOrder": ["normal", "force-hopo", "force-strum", "tap"],
+    "expectedByPlacement": {
+      "normal": [],
+      "force-hopo": [0],
+      "force-strum": [1],
+      "tap": [2]
+    }
+  },
+  "sustains": {
+    "tick": 500,
+    "notes": [
+      { "id": "preferred", "start": 0, "end": 960 },
+      { "id": "other", "start": 240, "end": 720 }
+    ],
+    "cutCases": [
+      {
+        "shiftKey": false,
+        "preferredPresent": false,
+        "sameLanePlacement": false,
+        "expected": ["preferred", "other"]
+      },
+      {
+        "shiftKey": true,
+        "preferredPresent": false,
+        "sameLanePlacement": false,
+        "expected": []
+      },
+      {
+        "shiftKey": false,
+        "preferredPresent": true,
+        "sameLanePlacement": false,
+        "expected": ["preferred"]
+      },
+      {
+        "shiftKey": true,
+        "preferredPresent": true,
+        "sameLanePlacement": false,
+        "expected": ["preferred", "other"]
+      },
+      {
+        "shiftKey": false,
+        "preferredPresent": true,
+        "sameLanePlacement": true,
+        "expected": ["preferred", "other"]
+      },
+      {
+        "shiftKey": true,
+        "preferredPresent": true,
+        "sameLanePlacement": true,
+        "expected": ["preferred"]
+      },
+      {
+        "shiftKey": false,
+        "preferredPresent": false,
+        "sameLanePlacement": true,
+        "expected": ["preferred", "other"]
+      },
+      {
+        "shiftKey": true,
+        "preferredPresent": false,
+        "sameLanePlacement": true,
+        "expected": []
+      }
+    ],
+    "end": {
+      "noteStart": 480,
+      "pointerTick": 1200,
+      "nextStarts": [840],
+      "withoutExtended": 840,
+      "withExtended": 1200
+    }
+  },
+  "vocal": {
+    "pitchedMove": {
+      "fromPitch": 60,
+      "toPitch": 99,
+      "clampedPitch": 84,
+      "fromTick": 0,
+      "toTick": 480
+    },
+    "nonPitchedMove": { "pitch": 90, "requestedPitch": 50, "resultPitch": 90 },
+    "lyricTicksAfterMove": [480],
+    "phraseMove": { "firstStart": 50, "blockedDelta": 150, "resultStart": 50 },
+    "phraseResizeRejected": true,
+    "deleteRemovesLyric": true,
+    "pasteRestoresLyric": "la"
+  },
+  "phrases": {
+    "create": { "pointerTick": 480, "dragTick": 600, "expected": [480, 600] },
+    "move": { "pointerTick": 480, "dragTick": 0, "expected": [0, 120] },
+    "resizeStart": { "pointerTick": 0, "dragTick": -240, "expected": [0, 120] },
+    "resizeEnd": { "pointerTick": 120, "dragTick": 0, "expected": [0, 1] },
+    "solo": {
+      "create": {
+        "pointerTick": 960,
+        "dragTick": 1200,
+        "expected": [960, 1200]
+      },
+      "move": { "pointerTick": 960, "dragTick": 720, "expected": [720, 960] },
+      "resizeStart": {
+        "pointerTick": 720,
+        "dragTick": 2000,
+        "expected": [959, 960]
+      },
+      "resizeEnd": { "pointerTick": 960, "dragTick": 0, "expected": [959, 960] }
+    }
+  }
+}

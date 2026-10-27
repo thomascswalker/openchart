@@ -101,3 +101,49 @@ const nextSection = findSection(track, 720, 1);
 
 Phrase start and end values are absolute ticks. `findSection` looks for MIDI
 marker text matching `[section name]`.
+
+## Build an editing session
+
+The editor uses editing modes and sessions so a view can preview a gesture,
+commit it as one transaction, or cancel it without changing MIDI. A mode
+expands domain commands such as phrase edits into validated raw MIDI commands.
+The session also provides the mode's projection, selection, and shared
+clipboard.
+
+```ts
+import { Midi } from "@openchart/midi";
+import { createStandaloneEditing, Difficulty } from "@openchart/views";
+
+const midi = new Midi();
+const leadTrackIndex = midi.addTrack();
+midi.tracks[leadTrackIndex]!.name = "LEAD GUITAR";
+
+const editing = createStandaloneEditing(midi);
+const session = editing.createSession(
+  {
+    trackKey: "lead-guitar",
+    trackIndex: leadTrackIndex,
+    difficulty: Difficulty.Expert,
+  },
+  "highway",
+);
+
+const gesture = session.beginGesture();
+gesture.preview({
+  type: "PLACE_CHART_NOTE",
+  lane: 0,
+  tick: 480,
+  placement: "normal",
+  cutPolicy: "all",
+});
+const result = gesture.commit();
+```
+
+Use `gesture.cancel()` when the pointer operation is abandoned. For a
+single-step edit, call `session.execute(command)` instead. Editor UI code uses
+the app's `EditingService`, which binds sessions to document history and
+playback; `createStandaloneEditing` is for tests and embedded tools.
+
+For mode and view implementation walkthroughs, see
+[Adding a mode](../../docs/editing/ADDING_A_MODE.md) and
+[Adding a view](../../docs/editing/ADDING_A_VIEW.md).
