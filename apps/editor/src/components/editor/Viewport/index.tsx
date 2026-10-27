@@ -85,6 +85,15 @@ function updateCameraData(
   article.dataset.visibleTickSpan = String(view.getVisibleTickSpan());
 }
 
+function chartViewMatchesSession(
+  view: AnyChartView,
+  viewKind: ViewportSession["view"],
+): boolean {
+  return viewKind === "highway"
+    ? view instanceof HighwayView
+    : view instanceof PianoRollView;
+}
+
 function trackIndexForSession(
   midi: Midi,
   session: ViewportSession,
@@ -219,6 +228,9 @@ function ViewportPanel({
     : null;
 
   const handleReady = (view: AnyChartView | null): void => {
+    if (view && !chartViewMatchesSession(view, session.view)) {
+      return;
+    }
     view?.setEditingSession(editingSession);
     if (view instanceof PianoRollView) {
       view.setGlobalEditingSession(globalEditingSession);
@@ -426,13 +438,13 @@ function ViewportPanel({
   }, [chartView, drumPlacementKind, notePlacementType]);
 
   useLayoutEffect(() => {
-    if (!chartView) return;
+    if (!chartView || !chartViewMatchesSession(chartView, session.view)) return;
     chartView.setEditingSession(editingSession);
     if (chartView instanceof PianoRollView) {
       chartView.setGlobalEditingSession(globalEditingSession);
       chartView.applyCameraState(getPianoRollCamera());
     }
-  }, [chartView, editingSession, globalEditingSession]);
+  }, [chartView, editingSession, globalEditingSession, session.view]);
 
   useEffect(() => {
     if (chartView instanceof PianoRollView && vocalPlacement) {
