@@ -118,7 +118,7 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   ) as Record<string, number>;
   expect(renderCalls).toBeLessThan(100);
   expect(sceneObjects).toBeLessThan(500);
-  expect(instancedCounts.kick).toBeGreaterThan(0);
+  expect(instancedCounts.bar).toBeGreaterThan(0);
   expect(instancedCounts.cymbal).toBeGreaterThan(0);
 });
 
