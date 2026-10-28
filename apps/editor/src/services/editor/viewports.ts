@@ -1,14 +1,14 @@
 import {
   Difficulty,
-  describeTrack,
   EditingModeRegistry,
-  findTrackConfig,
+  type CompiledRuleset,
   type EditingModeId,
   type ModeRegistry,
   type TrackDescriptor,
 } from "@openchart/views";
 import { defaultModes } from "@openchart/views";
 import { StatefulService } from "../../platform/services";
+import type { RulesetService } from "../ruleset";
 
 export type ViewportKind = "piano-roll" | "highway";
 
@@ -56,18 +56,31 @@ export interface ViewportSnapshot {
 }
 
 const DEFAULT_VIEWPORT_ID = "viewport-1";
-const DEFAULT_TRACK_KEY = "lead-guitar";
+const DEFAULT_MAX_VIEWPORT_COUNT = 4;
+const DEFAULT_VIEW_ID = "piano-roll";
+
+/** The track new viewports open on: the first visible, editable track. */
+function defaultTrack(rules: CompiledRuleset): TrackDescriptor {
+  const descriptors = rules.descriptors();
+  const found =
+    descriptors.find((track) => track.visible && track.editable) ??
+    descriptors.find((track) => track.visible) ??
+    descriptors[0];
+  if (!found) throw new Error("The ruleset defines no tracks.");
+  return found;
+}
 
 function createViewportSession(
   id: string,
+  track: Pick<TrackDescriptor, "key" | "name">,
   view: ViewportKind = "piano-roll",
   cameraTick = 0,
 ): ViewportSession {
   return {
     id,
     view,
-    trackKey: DEFAULT_TRACK_KEY,
-    instrument: "LEAD GUITAR",
+    trackKey: track.key,
+    instrument: track.name,
     difficulty: Difficulty.Expert,
     camera: { tick: cameraTick },
     tools: Object.fromEntries(
@@ -78,38 +91,34 @@ function createViewportSession(
     ) as Record<string, unknown>,
   };
 }
-const defaultViewportSnapshot: ViewportSnapshot = {
-  viewportSessions: [createViewportSession(DEFAULT_VIEWPORT_ID)],
-  activeViewportId: DEFAULT_VIEWPORT_ID,
-  maxViewportCount: 4,
-  activeViewId: "piano-roll",
-  snapEnabled: true,
-  snapDenominator: 4,
-  lockCursor: true,
-  getViewport: (id: string) =>
-    defaultViewportSnapshot.viewportSessions.find((v) => v.id === id),
-  getActiveViewport: () =>
-    defaultViewportSnapshot.viewportSessions.find(
-      (v) => v.id === defaultViewportSnapshot.activeViewportId,
-    ),
-};
 
 export class ViewportService extends StatefulService<ViewportSnapshot> {
-  private viewportSessions: ViewportSession[] = [
-    createViewportSession(DEFAULT_VIEWPORT_ID),
-  ];
+  public static dependencies = ["ruleset"];
+
+  private readonly rulesetService: RulesetService;
+  private viewportSessions: ViewportSession[];
   private activeViewportId = DEFAULT_VIEWPORT_ID;
-  private maxViewportCount = 4;
-  private activeViewId = "piano-roll";
+  private maxViewportCount = DEFAULT_MAX_VIEWPORT_COUNT;
+  private activeViewId = DEFAULT_VIEW_ID;
   private snapEnabled = true;
   private snapDenominator = 4;
   private lockCursor = true;
   private modeRegistry: ModeRegistry | null = null;
-  private trackResolver:
-    ((session: ViewportSession) => TrackDescriptor) | null = null;
+  /** Always set: resolves from the ruleset until EditingService replaces it. */
+  private trackResolver: (session: ViewportSession) => TrackDescriptor = (
+    session,
+  ) => this.resolveFromRules(session);
 
-  constructor() {
+  constructor(rulesetService: RulesetService) {
     super();
+    this.rulesetService = rulesetService;
+    this.viewportSessions = [
+      createViewportSession(
+        DEFAULT_VIEWPORT_ID,
+        defaultTrack(rulesetService.compiled),
+      ),
+    ];
+    rulesetService.subscribe(this.syncRuleset);
     const registry = new EditingModeRegistry();
     defaultModes.forEach((mode) => registry.register(mode));
     this.modeRegistry = registry;
@@ -127,13 +136,46 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
   };
 
   public readonly reset = (): void => {
-    this.viewportSessions = [createViewportSession(DEFAULT_VIEWPORT_ID)];
-    this.activeViewportId = defaultViewportSnapshot.activeViewportId;
-    this.maxViewportCount = defaultViewportSnapshot.maxViewportCount;
-    this.activeViewId = defaultViewportSnapshot.activeViewId;
-    this.snapEnabled = defaultViewportSnapshot.snapEnabled;
-    this.snapDenominator = defaultViewportSnapshot.snapDenominator;
-    this.lockCursor = defaultViewportSnapshot.lockCursor;
+    this.viewportSessions = [
+      createViewportSession(
+        DEFAULT_VIEWPORT_ID,
+        defaultTrack(this.rulesetService.compiled),
+      ),
+    ];
+    this.activeViewportId = DEFAULT_VIEWPORT_ID;
+    this.maxViewportCount = DEFAULT_MAX_VIEWPORT_COUNT;
+    this.activeViewId = DEFAULT_VIEW_ID;
+    this.snapEnabled = true;
+    this.snapDenominator = 4;
+    this.lockCursor = true;
+    this.publish();
+  };
+
+  /**
+   * When the ruleset changes, viewports whose track no longer exists move to
+   * the default track, then every viewport is re-checked against the modes
+   * available for its (possibly different) track.
+   */
+  private readonly syncRuleset = (): void => {
+    const rules = this.rulesetService.compiled;
+    const fallback = defaultTrack(rules);
+    this.viewportSessions = this.viewportSessions.map((session) => {
+      const exists =
+        rules.byKey.has(session.trackKey) ||
+        session.trackKey.startsWith("unmapped-");
+      const next = exists
+        ? session
+        : {
+            ...session,
+            trackKey: fallback.key,
+            instrument: fallback.name,
+          };
+      return enforceAvailableView(next, (target, hostKind) =>
+        this.canHost(target, hostKind),
+      );
+    });
+    const active = this.getViewport(this.activeViewportId);
+    if (active) this.activeViewId = active.view;
     this.publish();
   };
 
@@ -163,6 +205,7 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
       ...this.viewportSessions.slice(0, insertAt),
       createViewportSession(
         created,
+        defaultTrack(this.rulesetService.compiled),
         view,
         this.viewportSessions[0]?.camera.tick ?? 0,
       ),
@@ -309,14 +352,19 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     this.notify();
   }
 
+  private resolveFromRules(session: ViewportSession): TrackDescriptor {
+    const rules = this.rulesetService.compiled;
+    const found = rules
+      .descriptors()
+      .find(
+        (item) =>
+          item.key === session.trackKey || item.name === session.instrument,
+      );
+    return found ?? defaultTrack(rules);
+  }
+
   private canHost(session: ViewportSession, hostKind: ViewportKind): boolean {
     if (!this.modeRegistry) return false;
-    const descriptor = this.trackResolver?.(session);
-    if (descriptor) return this.modeRegistry.canHost(descriptor, hostKind);
-    const config =
-      findTrackConfig(session.trackKey) ?? findTrackConfig(session.instrument);
-    return Boolean(
-      config && this.modeRegistry.canHost(describeTrack(config), hostKind),
-    );
+    return this.modeRegistry.canHost(this.trackResolver(session), hostKind);
   }
 }

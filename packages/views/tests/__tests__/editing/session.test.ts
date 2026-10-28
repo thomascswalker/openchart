@@ -7,7 +7,8 @@ import {
   computePreview,
   createStandaloneEditing,
   createEditingSession,
-  defaultConfig,
+  DefaultCompiledRuleset,
+  createRulesetContext,
   Difficulty,
   EditRejectedError,
   formatNoteId,
@@ -81,7 +82,9 @@ describe("standalone editing sessions", () => {
     const context: ModeContext = {
       reader: document,
       target: session.target,
-      config: defaultConfig,
+      rules: DefaultCompiledRuleset,
+      rulesContext: createRulesetContext({ ppqn: document.getPpqn() }),
+      validate: () => [],
     };
     const command = {
       type: "MOVE_NOTES" as const,
@@ -216,7 +219,7 @@ describe("standalone editing sessions", () => {
       mode,
       target,
       hostKind: "piano-roll",
-      config: defaultConfig,
+      rules: DefaultCompiledRuleset,
       transaction: standalone.history,
       onCommit: () => {
         throw new Error("notification failed");

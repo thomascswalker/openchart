@@ -12,6 +12,7 @@ import { StepSnapDenominatorAction } from "../editor/step-snap-denominator";
 import { TransposeSelectionAction } from "../piano-roll/transpose-selection";
 import { ToggleLaneNoteAction } from "../highway/toggle-lane-note";
 import { ReleaseLaneNoteAction } from "../highway/release-lane-note";
+import { createTestRulesetService } from "../../services/__tests__/testUtils";
 
 function accessor(services: Record<string, unknown>): ServicesAccessor {
   return { get: <T>(id: string) => services[id] as T };
@@ -22,6 +23,10 @@ describe("viewport tool actions", () => {
     const editing = {
       getActiveSession: () => ({
         mode: { id: modeId, tools: [{ stateKey: "phrase" }] },
+        getTools: () => [
+          { stateKey: "phrase", value: "solo" },
+          { stateKey: "phrase", value: "stagepower" },
+        ],
         getToolState: () => viewports.getActiveViewport()?.tools[modeId] ?? {},
       }),
       updateToolState: (
@@ -43,8 +48,13 @@ describe("viewport tool actions", () => {
   }
 
   it("sets the highway tool on the active viewport only", () => {
-    const viewports = new ViewportService();
+    const viewports = new ViewportService(createTestRulesetService());
     const other = viewports.getSnapshot().activeViewportId;
+    viewports.setModeToolState(other, "chart.frets", {
+      tool: "select",
+      phrase: null,
+      placement: "normal",
+    });
     const active = viewports.addViewport("highway")!;
     viewports.setModeToolState(active, "chart.frets", {
       tool: "select",
@@ -73,7 +83,7 @@ describe("viewport tool actions", () => {
   });
 
   it("toggles phrase tools back to select", () => {
-    const viewports = new ViewportService();
+    const viewports = new ViewportService(createTestRulesetService());
     const services = toolServices(viewports, "chart.frets");
     const action = new ToggleHighwayPhraseToolAction();
     action.run(services, "solo");
@@ -104,7 +114,7 @@ describe("viewport tool actions", () => {
   });
 
   it("toggles vocal phrases and keeps the note kind", () => {
-    const viewports = new ViewportService();
+    const viewports = new ViewportService(createTestRulesetService());
     const id = viewports.getSnapshot().activeViewportId;
     viewports.setModeToolState(id, "vocals", {
       noteKind: "percussion",
@@ -128,7 +138,7 @@ describe("viewport tool actions", () => {
   });
 
   it("steps the snap denominator through the available choices", () => {
-    const viewports = new ViewportService();
+    const viewports = new ViewportService(createTestRulesetService());
     viewports.setSnapDenominator(4);
     const action = new StepSnapDenominatorAction();
     const services = accessor({ "editor.viewports": viewports });

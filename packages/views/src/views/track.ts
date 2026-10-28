@@ -1,29 +1,25 @@
 import { MidiTrack } from "@openchart/midi";
-import { SongView } from "../views/song.js";
-import { TrackViewConfig } from "../config.js";
+import type { TrackRules } from "../ruleset/compile.js";
+import type { SongView } from "./song.js";
 
-export class TrackView<TConfig extends TrackViewConfig> {
+/** Base view of one MIDI track, driven by its compiled {@link TrackRules}. */
+export class TrackView {
   protected readonly song: SongView;
   protected track: MidiTrack | undefined;
-  protected readonly config: TConfig;
-  protected readonly validator: (track: MidiTrack) => boolean;
+  protected readonly rules: TrackRules;
 
   constructor(
     song: SongView,
     midiTrack: MidiTrack | undefined,
-    config: TConfig,
-    validator: (midiTrack: MidiTrack) => boolean = () => {
-      return true;
-    },
+    rules: TrackRules,
   ) {
     this.song = song;
     this.track = midiTrack;
-    this.config = config;
-    this.validator = validator;
+    this.rules = rules;
   }
 
   public isValid(): boolean {
-    return this.track !== undefined && this.validator(this.track);
+    return this.track !== undefined;
   }
 
   public getSong(): SongView {
@@ -31,14 +27,18 @@ export class TrackView<TConfig extends TrackViewConfig> {
   }
 
   public getKey(): string {
-    return this.config.key;
+    return this.rules.key;
+  }
+
+  public getName(): string {
+    return this.rules.name;
   }
 
   public getMidiTrack(): MidiTrack | undefined {
     return this.track;
   }
 
-  public getConfig(): TConfig {
-    return this.config;
+  public getRules(): TrackRules {
+    return this.rules;
   }
 }

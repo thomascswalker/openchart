@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ServicesAccessor } from "../../../platform/services";
-import { makeDefaultMetadata } from "../../../services/document/schema";
+import {
+  makeDefaultMetadata,
+  MetadataSchema,
+} from "../../../services/document/schema";
 import { ApplyProjectMetadataAction } from "../apply-project-metadata";
 
 describe("ApplyProjectMetadataAction", () => {
@@ -14,6 +17,7 @@ describe("ApplyProjectMetadataAction", () => {
     } as unknown as FileSystemDirectoryHandle;
     const document = {
       metadata: previousMetadata,
+      metadataSchema: MetadataSchema,
       snapshot: { directoryHandle: root },
     };
     const removeTrack = vi.fn();
@@ -48,6 +52,7 @@ describe("ApplyProjectMetadataAction", () => {
     const projectRoot = {} as FileSystemDirectoryHandle;
     const document = {
       metadata: makeDefaultMetadata(),
+      metadataSchema: MetadataSchema,
       snapshot: { directoryHandle: projectRoot },
     };
     const removeTrack = vi.fn();
@@ -81,6 +86,7 @@ describe("ApplyProjectMetadataAction", () => {
     const projectRoot = {} as FileSystemDirectoryHandle;
     const document = {
       metadata: makeDefaultMetadata(),
+      metadataSchema: MetadataSchema,
       snapshot: { directoryHandle: projectRoot },
     };
     const removeTrack = vi.fn();
@@ -122,6 +128,7 @@ describe("ApplyProjectMetadataAction", () => {
     previousMetadata.audio.lead = "lead.wav";
     const document = {
       metadata: previousMetadata,
+      metadataSchema: MetadataSchema,
       snapshot: { directoryHandle: projectRoot },
     };
     const removeTrack = vi.fn();
@@ -163,6 +170,7 @@ describe("ApplyProjectMetadataAction", () => {
     metadata.audio.song = "song.wav";
     const document = {
       metadata,
+      metadataSchema: MetadataSchema,
       snapshot: { directoryHandle: projectRoot },
     };
     const removeTrack = vi.fn();
@@ -195,7 +203,10 @@ describe("ApplyProjectMetadataAction", () => {
   });
 
   it("does not change mixer tracks when metadata is invalid", async () => {
-    const document = { metadata: makeDefaultMetadata() };
+    const document = {
+      metadata: makeDefaultMetadata(),
+      metadataSchema: MetadataSchema,
+    };
     const removeTrack = vi.fn();
     const addTrack = vi.fn();
     const clearError = vi.fn();

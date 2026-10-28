@@ -7,6 +7,7 @@ import {
 import { Difficulty } from "@openchart/views";
 import { useSettings } from "../../../hooks/useApplication";
 import { useDocument } from "../../../hooks/useDocument";
+import { useRuleset } from "../../../hooks/useRuleset";
 import { useViewport } from "../../../hooks/useViewport";
 import Platform from "../../../platform";
 import { PlaybackService } from "../../../services/playback";
@@ -25,7 +26,13 @@ export function Playback({ children }: { children: ReactNode }) {
         )
       : null;
   const { settings } = useSettings();
-  const selectedInstrument = activeViewport?.instrument ?? "LEAD GUITAR";
+  const { compiled: rules } = useRuleset();
+  // Fall back to the ruleset's first editable track, not a hard-coded name.
+  const selectedInstrument =
+    activeViewport?.instrument ??
+    rules.descriptors().find((track) => track.visible && track.editable)
+      ?.name ??
+    "";
   const selectedDifficulty = activeViewport?.difficulty ?? Difficulty.Expert;
   const playbackService = Platform.services.get<PlaybackService>("playback");
   const isPlaying = useSyncExternalStore(

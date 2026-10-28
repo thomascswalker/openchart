@@ -33,13 +33,14 @@ function createVocalsFixture(withNotes: boolean): Midi {
   midi.tracks.push(conductor);
   midi.addTempoEvent(0, 500_000);
   midi.addTimeSignatureEvent(0, 4, 2);
-  const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
-  vocals.ensureTrack();
+  const song = new SongView(midi);
+  song.ensureMidiTrack("vocals");
+  const view = song.getVocalTrackView("vocals")!;
   if (!withNotes) return midi;
 
-  vocals.addPhrase("vocal", 0, 3_840);
-  vocals.addPhrase("power-window", 1_920, 3_840);
-  vocals.addPhrase("stagepower", 2_880, 3_840);
+  view.addPhrase("vocal", 0, 3_840);
+  view.addPhrase("power-window", 1_920, 3_840);
+  view.addPhrase("stagepower", 2_880, 3_840);
   // Sung line as [pitch, start tick, duration ticks, lyric].
   const line: Array<[number, number, number, string | undefined]> = [
     [60, 0, 360, "Sing"],
@@ -50,10 +51,13 @@ function createVocalsFixture(withNotes: boolean): Midi {
     [65, 2_880, 480, undefined],
   ];
   for (const [pitch, start, duration, lyric] of line) {
-    vocals.addPitched(pitch, start, start + duration, lyric);
+    view.addNote("pitched", start, start + duration, {
+      pitch,
+      ...(lyric === undefined ? {} : { lyric }),
+    });
   }
-  vocals.addPitchless(3_360, 3_600, "hey!");
-  vocals.addPercussion(3_600, 3_720);
+  view.addNote("pitchless", 3_360, 3_600, { lyric: "hey!" });
+  view.addNote("percussion", 3_600, 3_720);
   return midi;
 }
 
@@ -79,8 +83,8 @@ export function createPianoRollFixture(
 
   midi.addTempoEvent(0, 500_000);
   midi.addTimeSignatureEvent(0, 4, 2);
-  lead.addTextEvent(MetaType.Marker, 0, "[section Verse]");
-  lead.addTextEvent(MetaType.Marker, 1_920, "[section Chorus]");
+  lead.addTextEvent(MetaType.Text, 0, "[section Verse]");
+  lead.addTextEvent(MetaType.Text, 1_920, "[section Chorus]");
 
   // Lead notes as [pitch, start tick, duration ticks, velocity].
   const leadNotes: Array<[number, number, number, number]> = [

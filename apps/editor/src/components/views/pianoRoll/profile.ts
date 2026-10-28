@@ -2,20 +2,20 @@ import type {
   EditingSession,
   Projection,
   ProjectionRow,
-  VocalLaneId,
   VocalLaneSpec,
   VocalLayout,
   VocalNoteKind,
   VocalPhraseKind,
 } from "@openchart/views";
-import { formatNoteId } from "@openchart/views";
+import { formatNoteId, VocalTrackView } from "@openchart/views";
 import type { PitchRange } from "../../../audio/soundboard";
 
 /** How a note is drawn and edited. Generic notes are plain pitched notes. */
 export type PianoRollNoteKind =
   "generic" | VocalNoteKind | `phrase:${VocalPhraseKind}` | "unknown";
 
-export type PinnedLaneId = VocalLaneId;
+/** Pinned lane ids come from the vocal projection (derived from the ruleset). */
+export type PinnedLaneId = string;
 export type LaneDef = VocalLaneSpec;
 export type PianoRollProfileId = "midi.raw" | "vocals";
 
@@ -90,7 +90,13 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
   const lanes = laneRows.map((row) =>
     laneFromProjection(row, projection, session),
   );
-  const layout = vocalLayoutFromProjection(range, lanes, projection, session);
+  // The layout comes from the session's rules; the projection only supplies
+  // rows (pitched range and pinned lanes) to draw.
+  const rules = session.rules.byKey.get(session.target.trackKey);
+  if (!rules) {
+    throw new Error(`Vocal track '${session.target.trackKey}' has no rules`);
+  }
+  const layout = VocalTrackView.layoutFromRules(rules);
   const laneByPitch = new Map<number, LaneDef>();
   for (const lane of lanes) {
     for (const pitch of lane.pitches) laneByPitch.set(pitch, lane);
@@ -98,7 +104,7 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
 
   return {
     id: "vocals",
-    pitchRange: range,
+    pitchRange: { low: range.low, high: range.high },
     pinnedLanes: lanes,
     keyboardLabels: true,
     header: VocalHeader,
@@ -134,47 +140,12 @@ function laneFromProjection(
     ? (`phrase:${phrase}` as const)
     : (row.kind as VocalNoteKind);
   return {
-    id: row.id as VocalLaneId,
+    id: row.id,
     label: row.label,
     pitches,
     createPitch,
     kind,
     phrase,
-  };
-}
-
-function vocalLayoutFromProjection(
-  range: PitchRange,
-  lanes: readonly LaneDef[],
-  projection: Projection,
-  session: EditingSession,
-): VocalLayout {
-  const pitchFor = (id: VocalLaneId): number => {
-    const lane = lanes.find((candidate) => candidate.id === id);
-    const row = projection.getRows().find((candidate) => candidate.id === id);
-    if (!lane || !row) {
-      throw new Error(`Vocal projection is missing lane '${id}'`);
-    }
-    return (
-      projection.pitchForRow(row, session.getToolState()) ?? lane.createPitch
-    );
-  };
-  const pitchless = lanes.find((lane) => lane.id === "pitchless");
-  if (!pitchless || pitchless.pitches.length < 2) {
-    throw new Error("Vocal projection must expose both pitchless pitches");
-  }
-  const [pitchlessLow, pitchlessHigh] = [...pitchless.pitches].sort(
-    (left, right) => left - right,
-  );
-  return {
-    range,
-    vocalPhrase: pitchFor("vocal-phrase"),
-    powerWindow: pitchFor("power-window"),
-    power: pitchFor("stagepower"),
-    percussion: pitchFor("percussion"),
-    pitchlessHigh,
-    pitchlessLow,
-    pitchlessPlacement: pitchless.createPitch,
   };
 }
 

@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { minimumSustainLengthTicks } from "@openchart/views";
 import {
   setMaterialStateForMaterial,
   type MaterialState,
@@ -104,10 +103,8 @@ export class SustainTailBatch {
 
   public write(instances: readonly SustainInstanceData[]): number {
     const writeStartedAt = performance.now();
-    const renderableInstances = instances.filter(
-      (instance) =>
-        instance.endTick - instance.startTick >= minimumSustainLengthTicks,
-    );
+    // Callers pass only real sustains (the ruleset's `sustainCutoff`).
+    const renderableInstances = instances;
     const needed = Math.min(renderableInstances.length, MAX_CAPACITY);
     if (needed > this.capacity) {
       this.resize(expandedCapacity(this.capacity, needed));

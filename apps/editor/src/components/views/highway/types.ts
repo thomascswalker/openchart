@@ -1,30 +1,34 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import type { EditablePhraseKind, EntityId } from "@openchart/views";
+import type { EntityId } from "@openchart/views";
 
 export type HighwayTool = "select" | "place" | "remove";
 
-export type HighwayPhraseKind = Extract<
-  EditablePhraseKind,
-  "stagepower" | "solo"
->;
+/** A phrase id from the track's ruleset (e.g. `stagePower`, `solo`). */
+export type HighwayPhraseKind = string;
+/** A tool (`select`/`place`/`remove`) or, for phrase tools, a phrase id. */
 export type HighwayMode = HighwayTool | HighwayPhraseKind;
-export type HighwayNotePlacementType =
-  "normal" | "force-hopo" | "force-strum" | "tap";
+/** Ruleset placement token: `normal`, `padType:<t>`, `bar:<lane>`, `marker:<effect>`. */
+export type HighwayNotePlacementType = string;
+
+export function isHighwayTool(value: unknown): value is HighwayTool {
+  return value === "select" || value === "place" || value === "remove";
+}
 
 export interface HighwaySelectionRange {
   start: number;
   end: number;
 }
 
+/** The phrase id for a phrase-tool mode, or null for the plain tools. */
 export function getPhraseModeForHighwayMode(
   mode: HighwayMode,
-): EditablePhraseKind | null {
-  return mode === "stagepower" || mode === "solo" ? mode : null;
+): HighwayPhraseKind | null {
+  return isHighwayTool(mode) ? null : mode;
 }
 
 export interface HighwayPhraseDragState {
   pointerId: number;
-  kind: EditablePhraseKind;
+  kind: HighwayPhraseKind;
   startTick: number;
   endTick: number;
   pointerTick: number;

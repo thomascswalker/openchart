@@ -1,7 +1,7 @@
 import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
 import {
+  DefaultCompiledRuleset,
   Difficulty,
-  SongView,
   createStandaloneEditing,
   type VocalNoteKind,
 } from "@openchart/views";
@@ -141,9 +141,9 @@ export function PianoRollStoryHost({
         `Piano Roll story track ${selectedTrackIndex} is missing`,
       );
     }
-    const descriptor = new SongView(midi)
-      .getTrackDescriptors()
-      .find((item) => item.name === track.name);
+    const descriptor = DefaultCompiledRuleset.descriptors().find(
+      (item) => item.name === track.name,
+    );
     return {
       trackKey: descriptor?.key ?? track.name,
       trackIndex: selectedTrackIndex,

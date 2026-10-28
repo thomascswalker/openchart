@@ -169,6 +169,34 @@ const violations = [
   ),
 ];
 
+// Views must be built from the active ruleset: `new SongView(midi)` silently
+// falls back to the bundled default rules and ignores a loaded ruleset.
+const appsRoot = path.join(root, "apps");
+const singleArgSongView = /new\s+SongView\(\s*[\w$.]+\s*\)/g;
+for (const filePath of walk(appsRoot)) {
+  if (filePath.includes(`${path.sep}node_modules${path.sep}`)) continue;
+  collectMatches(
+    fs.readFileSync(filePath, "utf8"),
+    singleArgSongView,
+    "SongView built without the ruleset",
+    filePath,
+    violations,
+  );
+}
+
+// Track names and lane counts are ruleset data, not component constants.
+const trackNameLiteral =
+  /["'`](?:DRUMS|VOCALS|LEAD GUITAR|RHYTHM GUITAR|CHART HEADER|FOUR PAD|FIVE PAD)["'`]/g;
+for (const filePath of walk(componentRoot)) {
+  collectMatches(
+    fs.readFileSync(filePath, "utf8"),
+    trackNameLiteral,
+    "track name literal (read it from the ruleset)",
+    filePath,
+    violations,
+  );
+}
+
 const entityIdPattern = /(["'`])(?:note:|text:|tempo:)/g;
 const specialPitchPattern = new RegExp(
   `(?:\\b(?:pitch|note|offset)\\b[^\\r\\n]{0,48}\\b(?:95|101|102|103|104|116|118)\\b|\\b(?:95|101|102|103|104|116|118)\\b[^\\r\\n]{0,48}\\b(?:pitch|note|offset)\\b)`,

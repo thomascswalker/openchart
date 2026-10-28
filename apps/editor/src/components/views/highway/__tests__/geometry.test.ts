@@ -46,7 +46,7 @@ describe("circular highway geometry", () => {
   });
 
   it("keeps normalized note and fret model transforms at identity", () => {
-    for (const id of ["note", "kick", "cymbal", "pad", "fret"] as const) {
+    for (const id of ["note", "bar", "cymbal", "pad", "fret"] as const) {
       expect(HIGHWAY_GEOMETRY_CATALOG[id].transform).toEqual({
         position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
@@ -56,14 +56,14 @@ describe("circular highway geometry", () => {
   });
 
   it("places pads and cymbals in the render pass after kicks", () => {
-    expect(HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.kick.renderPass]).toBe(
+    expect(HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.bar.renderPass]).toBe(
       10,
     );
     for (const id of ["pad", "cymbal"] as const) {
       expect(
         HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG[id].renderPass],
       ).toBeGreaterThan(
-        HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.kick.renderPass],
+        HIGHWAY_RENDER_ORDER[HIGHWAY_GEOMETRY_CATALOG.bar.renderPass],
       );
     }
   });

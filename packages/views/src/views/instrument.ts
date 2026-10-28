@@ -1,58 +1,33 @@
-import { MidiTrack } from "@openchart/midi";
-import {
-  hasDifficulties,
-  type ChartViewConfig,
-  type InstrumentViewConfig,
-} from "../config.js";
-import { drumLayoutFromConfig } from "../chart/drums.js";
-import { Difficulty } from "../types.js";
+import type { MidiTrack } from "@openchart/midi";
+import type { TrackRules } from "../ruleset/compile.js";
+import type { Difficulty } from "../types.js";
 import { ChartView } from "./chart.js";
-import { SongView } from "./song.js";
+import type { SongView } from "./song.js";
 import { TrackView } from "./track.js";
 
-export class InstrumentTrackView extends TrackView<InstrumentViewConfig> {
+/** Chart-bearing track (guitar, drums, gamepad): one ChartView per difficulty. */
+export class InstrumentTrackView extends TrackView {
   private readonly charts: Map<Difficulty, ChartView> | null;
 
   constructor(
     song: SongView,
     midiTrack: MidiTrack | undefined,
-    config: InstrumentViewConfig,
-    validator: (midiTrack: MidiTrack) => boolean = () => {
-      return true;
-    },
+    rules: TrackRules,
   ) {
-    super(song, midiTrack, config, validator);
+    super(song, midiTrack, rules);
 
-    if (!hasDifficulties(config)) {
+    if (rules.difficulties.size === 0) {
       this.charts = null;
       return;
     }
-
     this.charts = new Map(
-      config.charts
-        .filter((chart): chart is ChartViewConfig => "difficulty" in chart)
-        .sort((left, right) => right.difficulty - left.difficulty)
-        .map((chart) => {
-          const drumLayout = drumLayoutFromConfig(config, chart.difficulty);
-          const specialPitches = drumLayout
-            ? [
-                drumLayout.kick,
-                drumLayout.kick2,
-                ...drumLayout.pads,
-                ...drumLayout.cymbals,
-                ...drumLayout.markers,
-              ].filter((pitch): pitch is number => pitch !== null)
-            : [];
-          return [
-            chart.difficulty,
-            new ChartView(this.song, this, this.track, chart, specialPitches),
-          ];
-        }),
+      [...rules.difficulties.keys()]
+        .sort((left, right) => right - left)
+        .map((difficulty) => [
+          difficulty,
+          new ChartView(this.song, this, this.track, rules, difficulty),
+        ]),
     );
-  }
-
-  public getName(): string {
-    return this.config.name;
   }
 
   public hasDifficulties(): boolean {

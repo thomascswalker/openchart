@@ -47,6 +47,8 @@ describe("HighwayNoteIndex", () => {
       getNoteRevision: () => 1,
       getNotes: () => actualNotes,
       getMidiTrack: () => setup.chart.getMidiTrack(),
+      getLanes: () => setup.chart.getLanes(),
+      classify: (pitch: number) => setup.chart.classify(pitch),
     } as unknown as ChartView;
     const index = new HighwayNoteIndex();
 
@@ -86,12 +88,14 @@ describe("HighwayNoteIndex", () => {
       getNoteRevision: () => 1,
       getNotes: () => setup.chart.getNotes(),
       getMidiTrack: () => setup.chart.getMidiTrack(),
+      getLanes: () => setup.chart.getLanes(),
+      classify: (pitch: number) => setup.chart.classify(pitch),
     } as unknown as ChartView;
 
     index.query(chart, setup.session, null, 0, 1_000, actual);
     expect(actual.map(({ kind, lane }) => [kind, lane])).toEqual([
-      ["kick", 0],
-      ["kick", 0],
+      ["bar", 0],
+      ["bar", 0],
       ["cymbal", 1],
     ]);
 
@@ -100,11 +104,13 @@ describe("HighwayNoteIndex", () => {
       getNoteRevision: () => 2,
       getNotes: () => setup.chart.getNotes(),
       getMidiTrack: () => setup.chart.getMidiTrack(),
+      getLanes: () => setup.chart.getLanes(),
+      classify: (pitch: number) => setup.chart.classify(pitch),
     } as unknown as ChartView;
     index.query(revisedChart, setup.session, null, 0, 1_000, actual);
     expect(actual.map(({ kind }) => kind)).toEqual([
-      "kick",
-      "kick",
+      "bar",
+      "bar",
       "cymbal",
       "pad",
     ]);
@@ -137,6 +143,7 @@ describe("HighwayNoteIndex", () => {
       added: [],
       removed: new Set<EntityId>(),
       rejections: [],
+      diagnostics: [],
     };
     const index = new HighwayNoteIndex();
     const actual: IndexedNote[] = [];

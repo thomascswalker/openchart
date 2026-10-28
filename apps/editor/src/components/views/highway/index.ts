@@ -1,10 +1,6 @@
 import type { Midi, MidiNote } from "@openchart/midi";
-import type {
-  EditablePhraseKind,
-  EditingSession,
-  PreviewState,
-} from "@openchart/views";
-import { ChartView, SongView } from "@openchart/views";
+import type { EditingSession, PreviewState } from "@openchart/views";
+import { ChartView, SongView, type CompiledRuleset } from "@openchart/views";
 import * as THREE from "three";
 import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
 import type { Engine } from "../../../rendering/engine";
@@ -24,6 +20,7 @@ import {
   getPhraseModeForHighwayMode,
   type HighwayMode,
   type HighwayNotePlacementType,
+  type HighwayPhraseKind,
   type HighwaySelectionRange,
 } from "./types";
 import type { HighwayContext } from "./context";
@@ -36,10 +33,8 @@ import {
   HighwayRenderer,
   type HighwayRenderDiagnostics,
 } from "./rendering/rendering";
-import type { DrumPlacementKind } from "./profile";
 export type { HighwayMode, HighwayTool } from "./types";
-export type { HighwayNotePlacementType } from "./types";
-export type { DrumPlacementKind } from "./profile";
+export type { HighwayNotePlacementType, HighwayPhraseKind } from "./types";
 
 export class HighwayView extends AbstractChartView<MidiNote> {
   private readonly threeCamera = new THREE.PerspectiveCamera(
@@ -72,7 +67,6 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     setCameraTick: (tick) => this.setCameraTick(tick),
     getMode: () => this.mode,
     getNotePlacementType: () => this.notePlacementType,
-    getDrumPlacementKind: () => this.drumPlacementKind,
     getPhraseMode: () => this.phraseMode,
     getPhraseHoverState: () => this.input.getPhraseHoverState(),
     getSelectionRange: () => this.selectionRange,
@@ -124,6 +118,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   private viewportWidth = 1;
   private viewportHeight = 1;
   private songMidi: Midi | null = null;
+  private songRules: CompiledRuleset | null = null;
   private song: SongView | null = null;
   private playheadTick = 0;
   private cameraTick = 0;
@@ -134,8 +129,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   private selectionRange: HighwaySelectionRange | null = null;
   private mode: HighwayMode = "select";
   private notePlacementType: HighwayNotePlacementType = "normal";
-  private drumPlacementKind: DrumPlacementKind = "pad";
-  private phraseMode: EditablePhraseKind | null = null;
+  private phraseMode: HighwayPhraseKind | null = null;
 
   public constructor(
     registry?: ResourceRegistry,
@@ -271,15 +265,11 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.render();
   }
 
-  public setDrumPlacementKind(kind: DrumPlacementKind): void {
-    if (kind === this.drumPlacementKind) return;
-    this.drumPlacementKind = kind;
-    this.render();
-  }
-
   public setNotePlacementType(type: HighwayNotePlacementType): void {
     if (type === this.notePlacementType) return;
     this.notePlacementType = type;
+    // Ghost previews depend on the placement (pad type, bar, marker).
+    this.render();
   }
 
   public toggleLaneNote(lane: number, preserveSustain = false): void {
@@ -355,9 +345,12 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     super.destroy();
   }
   private getActiveChart(midi: Midi): ChartView | null {
-    if (this.songMidi !== midi) {
+    const rules = this.editingSession?.rules;
+    if (!rules) return null;
+    if (this.songMidi !== midi || this.songRules !== rules) {
       this.songMidi = midi;
-      this.song = new SongView(midi);
+      this.songRules = rules;
+      this.song = new SongView(midi, rules);
     }
     const target = this.editingSession?.target;
     if (!target || target.difficulty === null) return null;

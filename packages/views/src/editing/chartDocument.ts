@@ -8,10 +8,10 @@ import {
 } from "@openchart/midi";
 import { SongView } from "../views/song.js";
 import {
-  DefaultConfig,
-  type SongViewConfig,
+  DefaultCompiledRuleset,
+  type CompiledRuleset,
   type TrackDescriptor,
-} from "../config.js";
+} from "../ruleset/compile.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 import {
   formatNoteId,
@@ -34,13 +34,21 @@ export type { NoteSnapshot } from "./reader.js";
 export class ChartDocument implements ChartDocumentReader {
   private readonly midi: Midi;
   private readonly trackDescriptors: readonly TrackDescriptor[];
-  private readonly config: SongViewConfig;
+  private readonly rules: CompiledRuleset;
 
   /** Creates a reader and command executor for a mutable MIDI document. */
-  public constructor(midi: Midi, config: SongViewConfig = DefaultConfig) {
+  public constructor(
+    midi: Midi,
+    rules: CompiledRuleset = DefaultCompiledRuleset,
+  ) {
     this.midi = midi;
-    this.config = config;
-    this.trackDescriptors = new SongView(midi, config).getTrackConfigs();
+    this.rules = rules;
+    this.trackDescriptors = rules.descriptors();
+  }
+
+  /** The compiled ruleset this document was built with. */
+  public getRules(): CompiledRuleset {
+    return this.rules;
   }
 
   /** Returns the stable ID for a note on the given track. */
@@ -79,9 +87,7 @@ export class ChartDocument implements ChartDocumentReader {
 
   /** Materializes a configured target track and returns its current index. */
   public ensureTrack(trackKey: string): number | null {
-    const track = new SongView(this.midi, this.config).ensureMidiTrack(
-      trackKey,
-    );
+    const track = new SongView(this.midi, this.rules).ensureMidiTrack(trackKey);
     if (!track) return null;
     const index = this.midi.tracks.indexOf(track);
     return index >= 0 ? index : null;
@@ -185,6 +191,7 @@ export class ChartDocument implements ChartDocumentReader {
       updatedIds: [...updatedIds],
       removedIds: [...removedIds],
       rejections: [],
+      diagnostics: [],
     };
   }
 
@@ -573,6 +580,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds: [],
           removedIds: removedId ? [removedId] : [],
           rejections: [],
+          diagnostics: [],
         };
       }
       case "REMOVE_TEMPO":
@@ -613,6 +621,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds: [],
           removedIds: removedId ? [removedId] : [],
           rejections: [],
+          diagnostics: [],
         };
       }
       case "REMOVE_TIME_SIGNATURE":
@@ -810,6 +819,7 @@ export class ChartDocument implements ChartDocumentReader {
       updatedIds: [],
       removedIds: removed ? [id] : [],
       rejections: [],
+      diagnostics: [],
     };
   }
 

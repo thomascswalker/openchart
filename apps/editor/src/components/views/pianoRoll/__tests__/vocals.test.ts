@@ -4,7 +4,7 @@ import {
   Difficulty,
   parseEntityId,
   SongView,
-  validateVocalTrack,
+  VocalTrackView,
 } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
@@ -252,10 +252,12 @@ function harness(
 
 function seeded() {
   const midi = new Midi();
-  const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
-  vocals.addPitched(60, 0, 240, "one");
-  vocals.addPitched(62, 480, 720, "two");
-  vocals.addPercussion(960, 1080);
+  const song = new SongView(midi);
+  song.ensureMidiTrack("vocals");
+  const vocals = song.getVocalTrackView("VOCALS")!;
+  vocals.addNote("pitched", 0, 240, { pitch: 60, lyric: "one" });
+  vocals.addNote("pitched", 480, 720, { pitch: 62, lyric: "two" });
+  vocals.addNote("percussion", 960, 1080);
   return harness(midi);
 }
 
@@ -507,7 +509,7 @@ describe("piano-roll profiles", () => {
       [VOCALS, 0],
     ] as const) {
       const midi = new Midi();
-      const track = new SongView(midi).getVocalTrackView()!.ensureTrack()!;
+      const track = new SongView(midi).ensureMidiTrack("vocals")!;
       const header = new HeaderController(
         {
           getState: () => ({ isPlaying: false }),
@@ -522,7 +524,7 @@ describe("piano-roll profiles", () => {
             }) => {
               if (command.type !== "ADD_SECTION") return { changed: false };
               track.addTextEvent(
-                MetaType.Marker,
+                MetaType.Text,
                 command.tick!,
                 `[section ${command.name}]`,
               );
@@ -540,7 +542,7 @@ describe("piano-roll profiles", () => {
       header.handleLeftClick(new Vector2(300, HeaderHeight - 4));
       const markers = track
         .getTextEvents()
-        .filter((event) => event.type === MetaType.Marker);
+        .filter((event) => event.type === MetaType.Text);
       expect(markers).toHaveLength(expected);
     }
   });
@@ -569,7 +571,7 @@ describe("vocal note editing", () => {
       [60, 0, 480],
     ]);
     expect(h.lyrics()).toEqual([[0, "la"]]);
-    expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+    expect(VocalTrackView.validateTrack(h.track(), VOCALS.vocal!)).toEqual([]);
   });
 
   it("cancels an empty lyric submission without changing MIDI or history", () => {
@@ -765,6 +767,6 @@ describe("vocal note editing", () => {
       [2400, "two"],
     ]);
     expect(h.notes().filter((n) => n.pitch === 90)).toHaveLength(2);
-    expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+    expect(VocalTrackView.validateTrack(h.track(), VOCALS.vocal!)).toEqual([]);
   });
 });

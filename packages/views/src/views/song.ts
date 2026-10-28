@@ -1,95 +1,99 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import {
-  DefaultConfig,
-  InstrumentViewConfig,
-  SongViewConfig,
-  TrackViewConfig,
-} from "../config.js";
-import { Instrument } from "../types.js";
+  DefaultCompiledRuleset,
+  type CompiledRuleset,
+  type TrackDescriptor,
+  type TrackRules,
+} from "../ruleset/compile.js";
 import { GlobalTrackView } from "./global.js";
 import { InstrumentTrackView } from "./instrument.js";
+import type { TrackView } from "./track.js";
 import { VocalTrackView } from "./vocal.js";
 
 class SongView {
   private midi: Midi;
-  private config: SongViewConfig;
-  private instruments!: InstrumentTrackView[];
-  private global!: GlobalTrackView;
+  private rules: CompiledRuleset;
+  private views!: Map<string, TrackView>;
 
-  constructor(midi: Midi, config: SongViewConfig = DefaultConfig) {
+  constructor(midi: Midi, rules: CompiledRuleset = DefaultCompiledRuleset) {
     this.midi = midi;
-    this.config = config;
+    this.rules = rules;
     this.build();
   }
 
-  public getConfig(): SongViewConfig {
-    return this.config;
+  public getRuleset(): CompiledRuleset {
+    return this.rules;
   }
 
-  /**
-   * Build the track views for the song based on the current configuration.
-   */
+  /** (Re)build the track views from the compiled ruleset. */
   public build(): void {
-    this.instruments = [];
-    this.config.tracks.forEach((def: TrackViewConfig) => {
-      const midiTrack = this.midi.getTrack(def.name);
-
-      // Initialize the respective track view for the MIDI track
-      switch (def.type) {
-        case "global":
-          this.global = new GlobalTrackView(this, midiTrack, def);
-          break;
-        case "instrument":
-          switch (def.instrument) {
-            case "vocal":
-              this.instruments.push(new VocalTrackView(this, midiTrack, def));
-              break;
-            default:
-              this.instruments.push(
-                new InstrumentTrackView(
-                  this,
-                  midiTrack,
-                  def as InstrumentViewConfig,
-                ),
-              );
-              break;
-          }
-          break;
-        default:
-          console.error("Not implemented yet");
-          break;
-      }
-    });
+    this.views = new Map();
+    for (const rules of this.rules.tracks) {
+      const midiTrack = this.midi.getTrack(rules.name);
+      this.views.set(rules.key, this.createView(rules, midiTrack));
+    }
   }
 
-  public getInstrumentTrackView(
-    instrument: string | Instrument,
-  ): InstrumentTrackView | undefined {
-    return this.instruments.find(
-      (v) => v.getName() === instrument || v.getKey() === instrument,
+  private createView(
+    rules: TrackRules,
+    midiTrack: MidiTrack | undefined,
+  ): TrackView {
+    switch (rules.kind) {
+      case "header":
+      case "global":
+        return new GlobalTrackView(this, midiTrack, rules);
+      case "vocals":
+        return new VocalTrackView(this, midiTrack, rules);
+      case "guitar":
+      case "drums":
+      case "gamepad":
+        return new InstrumentTrackView(this, midiTrack, rules);
+    }
+  }
+
+  public getTrackDescriptors(): readonly TrackDescriptor[] {
+    return this.rules.descriptors();
+  }
+
+  public getVisibleTrackDescriptors(): readonly TrackDescriptor[] {
+    return this.getTrackDescriptors().filter(
+      (descriptor) => descriptor.visible && descriptor.kind !== "header",
     );
   }
 
+  /** The view for a track key or MIDI track name. */
+  public getTrackView(keyOrName: string): TrackView | undefined {
+    const byKey = this.views.get(keyOrName);
+    if (byKey) return byKey;
+    return [...this.views.values()].find((v) => v.getName() === keyOrName);
+  }
+
+  public getInstrumentTrackView(
+    keyOrName: string,
+  ): InstrumentTrackView | undefined {
+    const view = this.getTrackView(keyOrName);
+    return view instanceof InstrumentTrackView ? view : undefined;
+  }
+
   public getInstrumentTrackViews(): readonly InstrumentTrackView[] {
-    return this.instruments;
+    return [...this.views.values()].filter(
+      (v): v is InstrumentTrackView => v instanceof InstrumentTrackView,
+    );
   }
 
   /** The named vocal track, or the first configured one when omitted. */
-  public getVocalTrackView(
-    instrument?: string | Instrument,
-  ): VocalTrackView | undefined {
+  public getVocalTrackView(keyOrName?: string): VocalTrackView | undefined {
     const views = this.getVocalTrackViews();
-    return instrument === undefined
+    return keyOrName === undefined
       ? views[0]
       : views.find(
-          (view) =>
-            view.getName() === instrument || view.getKey() === instrument,
+          (view) => view.getName() === keyOrName || view.getKey() === keyOrName,
         );
   }
 
   public getVocalTrackViews(): readonly VocalTrackView[] {
-    return this.instruments.filter(
-      (view): view is VocalTrackView => view instanceof VocalTrackView,
+    return [...this.views.values()].filter(
+      (v): v is VocalTrackView => v instanceof VocalTrackView,
     );
   }
 
@@ -99,45 +103,51 @@ class SongView {
     }
   }
 
-  public getTrackConfigs(): readonly TrackViewConfig[] {
-    return this.config.tracks;
-  }
-
-  public getVisibleTrackDescriptors(): readonly TrackViewConfig[] {
-    return this.getTrackConfigs().filter(
-      (descriptor) => descriptor.visible && descriptor.name !== "CHART HEADER",
-    );
-  }
-
   public getMidiTrack(
-    keyOrConfig: string | TrackViewConfig,
+    keyOrDescriptor: string | TrackDescriptor,
   ): MidiTrack | undefined {
-    const key = typeof keyOrConfig === "string" ? keyOrConfig : keyOrConfig.key;
-    const config = this.getTrackConfigs().find((item) => item.key === key);
-    return config ? this.midi.getTrack(config.name) : undefined;
+    const key =
+      typeof keyOrDescriptor === "string"
+        ? keyOrDescriptor
+        : keyOrDescriptor.key;
+    const rules = this.rules.byKey.get(key);
+    return rules ? this.midi.getTrack(rules.name) : undefined;
   }
 
   /** Materialize a configured track only for an intentional edit. */
   public ensureMidiTrack(key: string): MidiTrack | undefined {
-    const descriptor = this.getTrackConfigs().find((item) => item.key === key);
-    if (!descriptor || descriptor.name === "CHART HEADER") return undefined;
-    const existing = this.midi.getTrack(descriptor.name);
+    const rules = this.rules.byKey.get(key);
+    if (!rules || rules.kind === "header") return undefined;
+    const existing = this.midi.getTrack(rules.name);
     if (existing) return existing;
-    const track = new MidiTrack(descriptor.name);
+
+    const track = new MidiTrack(rules.name);
     track.format = this.midi.header.format;
-    // Without a TrackName event the track would save to .mid unnamed and
-    // no longer map to its configured instrument on reload.
-    track.addTextEvent(MetaType.TrackName, 0, descriptor.name);
-    this.midi.tracks.push(track);
+    // Without a TrackName event the track would save to .mid unnamed and no
+    // longer map to its configured track on reload. The ruleset says where
+    // that event must sit (`midi.trackNameEvent`); tick 0 satisfies both
+    // `mustBeFirstEvent` and `mustBeAtTickZero` because the track is new.
+    track.addTextEvent(MetaType.TrackName, 0, rules.name);
+    this.insertAtPosition(track, rules.position);
     this.midi.header.trackCount = this.midi.tracks.length;
     this.build();
-    return this.midi.getTrack(descriptor.name);
+    return this.midi.getTrack(rules.name);
+  }
+
+  /** Honour a rule's required `position` when the file is long enough. */
+  private insertAtPosition(track: MidiTrack, position: number | undefined) {
+    if (position !== undefined && position <= this.midi.tracks.length) {
+      this.midi.tracks.splice(position, 0, track);
+    } else {
+      this.midi.tracks.push(track);
+    }
   }
 
   public getUnmappedMidiTracks(): readonly MidiTrack[] {
-    const names = new Set(this.getTrackConfigs().map((item) => item.name));
-    return this.midi.tracks.filter((track) => !names.has(track.name));
+    return this.midi.tracks.filter(
+      (track) => !this.rules.byName.has(track.name),
+    );
   }
 }
 
-export { SongView, Instrument };
+export { SongView };

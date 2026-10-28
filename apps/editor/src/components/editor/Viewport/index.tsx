@@ -1,5 +1,9 @@
 import type { Midi } from "@openchart/midi";
-import { Difficulty, InstrumentType, SongView } from "@openchart/views";
+import {
+  Difficulty,
+  type CompiledRuleset,
+  type ToolDescriptor,
+} from "@openchart/views";
 import { startCase } from "es-toolkit";
 import {
   useCallback,
@@ -13,6 +17,7 @@ import {
 import { runAction } from "../../../actions/execute";
 import { useSettings } from "../../../hooks/useApplication";
 import { useDocument } from "../../../hooks/useDocument";
+import { useRuleset } from "../../../hooks/useRuleset";
 import { usePlaybackSelector } from "../../../hooks/usePlayback";
 import { useViewport } from "../../../hooks/useViewport";
 import { ViewHotkeyScopes } from "../../../input/ViewportHotkeyScopes";
@@ -20,7 +25,6 @@ import Platform from "../../../platform";
 import type { EngineOptions } from "../../../rendering/engine";
 import { ActiveChartViewService } from "../../../services/editor/activeChartView";
 import type { EditingService } from "../../../services/editor/editing";
-import type { EditingMode } from "@openchart/views";
 import { type ViewportSession } from "../../../services/editor/viewports";
 import { PlaybackService } from "../../../services/playback";
 import { Button, CloseButton } from "../../shared";
@@ -39,11 +43,7 @@ import { ChartViewHost } from "../../views/ChartViewHost";
 import type { AnyChartView } from "../../views/ChartViews";
 import { ChartViews } from "../../views/ChartViews";
 import { HighwayView } from "../../views/highway";
-import type {
-  DrumPlacementKind,
-  HighwayMode,
-  HighwayNotePlacementType,
-} from "../../views/highway";
+import type { HighwayMode } from "../../views/highway";
 import { PianoRollView, type PianoRollNote } from "../../views/pianoRoll";
 import type { PianoRollVocalPlacement } from "../../views/pianoRoll";
 import { Timeline } from "../Timeline/Timeline";
@@ -51,24 +51,41 @@ import Toolbar from "../Toolbar";
 import { TrackList } from "../../dialogs";
 import styles from "./Viewport.module.css";
 
-function InstrumentIcon({ instrument }: { instrument: string }) {
-  switch (instrument) {
-    case InstrumentType.Lead:
-      return <GuitarIcon width={18} height={18} />;
-    case InstrumentType.FourPad:
-      return <FourpadIcon width={18} height={18} />;
-    case InstrumentType.FivePad:
-      return <FivepadIcon width={18} height={18} />;
-    case InstrumentType.Groove:
-    case InstrumentType.Bass:
-      return <BassIcon width={18} height={18} />;
-    case InstrumentType.Drums:
+/**
+ * Icon for a track, chosen by its ruleset `kind`. Guitar tracks whose name
+ * says RHYTHM use the bass icon; gamepad tracks pick by column count.
+ */
+function InstrumentIcon({
+  instrument,
+  rules,
+}: {
+  instrument: string;
+  rules: CompiledRuleset;
+}) {
+  const track = rules.byName.get(instrument);
+  switch (track?.kind) {
+    case "guitar":
+      return /RHYTHM|BASS/i.test(track.name) ? (
+        <BassIcon width={18} height={18} />
+      ) : (
+        <GuitarIcon width={18} height={18} />
+      );
+    case "gamepad":
+      return track.columns.length >= 5 ? (
+        <FivepadIcon width={18} height={18} />
+      ) : (
+        <FourpadIcon width={18} height={18} />
+      );
+    case "drums":
       return <DrumsIcon width={18} height={18} />;
-    case InstrumentType.Vocals:
-    case InstrumentType.Harmonies:
+    case "vocals":
       return <VocalsIcon width={18} height={18} />;
-    case InstrumentType.Synth:
-      return <PianoIcon width={18} height={18} />;
+    case undefined:
+      return /SYNTH|KEYS|PIANO/i.test(instrument) ? (
+        <PianoIcon width={18} height={18} />
+      ) : (
+        <NoteIcon width={18} height={18} />
+      );
     default:
       return <NoteIcon width={18} height={18} />;
   }
@@ -97,14 +114,11 @@ function chartViewMatchesSession(
 function trackIndexForSession(
   midi: Midi,
   session: ViewportSession,
+  rules: CompiledRuleset,
 ): number | null {
   if (session.trackKey.startsWith("unmapped-")) {
-    const names = new Set([
-      "CHART HEADER",
-      ...new SongView(midi)
-        .getTrackDescriptors()
-        .map((descriptor) => descriptor.name),
-    ]);
+    // Header tracks are part of the ruleset, so they are excluded here too.
+    const names = new Set(rules.tracks.map((track) => track.name));
     const tracks = midi.tracks.filter((track) => !names.has(track.name));
     const index = Number(session.trackKey.slice("unmapped-".length));
     const selected = tracks[index];
@@ -175,6 +189,7 @@ function ViewportPanel({
   ) => void;
 }) {
   const { midi: midiData } = useDocument();
+  const { compiled: rules } = useRuleset();
   const { settings } = useSettings();
   const {
     viewportSessions,
@@ -199,19 +214,12 @@ function ViewportPanel({
       : null;
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
   const modeState = getStateValues(editingSession?.getToolState());
-  const highwayMode = getHighwayMode(editingSession?.mode ?? null, modeState);
-  const drumPlacementKind = getModeValue(
-    editingSession?.mode ?? null,
-    modeState,
-    "drumKind",
-  );
-  const notePlacementType = getModeValue(
-    editingSession?.mode ?? null,
-    modeState,
-    "placement",
-  );
+  // Tools depend on the track's rules (phrases, placements), so ask the session.
+  const tools = editingSession?.getTools() ?? [];
+  const highwayMode = getHighwayMode(tools, modeState);
+  const notePlacementType = getModeValue(tools, modeState, "placement");
   const vocalPlacement = getVocalPlacement(
-    editingSession?.mode ?? null,
+    editingSession?.mode.id ?? null,
     modeState,
   );
   const activeView =
@@ -224,7 +232,7 @@ function ViewportPanel({
     };
   }, [settings.graphics.antialiasing]);
   const selectedTrackIndex = midiData
-    ? trackIndexForSession(midiData, session)
+    ? trackIndexForSession(midiData, session, rules)
     : null;
 
   const handleReady = (view: AnyChartView | null): void => {
@@ -279,70 +287,38 @@ function ViewportPanel({
   }
 
   function getModeValue(
-    mode: EditingMode | null | undefined,
+    tools: readonly ToolDescriptor[],
     state: Record<string, unknown>,
     stateKey: string,
   ): unknown {
-    return mode?.tools.some(
+    return tools.some(
       (tool) => tool.group === "placement" && tool.stateKey === stateKey,
     )
       ? state[stateKey]
       : undefined;
   }
 
+  /** The active phrase tool's phrase id, else the active plain tool. */
   function getHighwayMode(
-    mode: EditingMode | null,
+    tools: readonly ToolDescriptor[],
     state: Record<string, unknown>,
   ): HighwayMode | null {
-    const activePhrase = mode?.tools.find(
-      (tool) =>
-        tool.group === "highway-tools" &&
-        tool.stateKey === "phrase" &&
-        Object.is(state[tool.stateKey], tool.value),
-    );
-    if (activePhrase && isHighwayMode(activePhrase.value)) {
-      return activePhrase.value;
-    }
-    const activeTool = mode?.tools.find(
-      (tool) =>
-        tool.group === "highway-tools" &&
-        tool.stateKey === "tool" &&
-        Object.is(state[tool.stateKey], tool.value),
-    );
-    if (!activeTool) return null;
-    return isHighwayMode(activeTool.value) ? activeTool.value : null;
-  }
-
-  function isHighwayMode(value: unknown): value is HighwayMode {
-    return (
-      value === "select" ||
-      value === "place" ||
-      value === "remove" ||
-      value === "stagepower" ||
-      value === "solo"
-    );
-  }
-
-  function isDrumPlacementKind(value: unknown): value is DrumPlacementKind {
-    return value === "pad" || value === "cymbal" || value === "kick";
-  }
-
-  function isHighwayNotePlacementType(
-    value: unknown,
-  ): value is HighwayNotePlacementType {
-    return (
-      value === "normal" ||
-      value === "force-hopo" ||
-      value === "force-strum" ||
-      value === "tap"
-    );
+    const active = (stateKey: string) =>
+      tools.find(
+        (tool) =>
+          tool.group === "highway-tools" &&
+          tool.stateKey === stateKey &&
+          Object.is(state[tool.stateKey], tool.value),
+      );
+    const value = (active("phrase") ?? active("tool"))?.value;
+    return typeof value === "string" ? value : null;
   }
 
   function getVocalPlacement(
-    mode: EditingMode | null,
+    modeId: string | null,
     state: Record<string, unknown>,
   ): PianoRollVocalPlacement | null {
-    if (mode?.id !== "vocals") return null;
+    if (modeId !== "vocals") return null;
     const noteKind = state.noteKind;
     const phrase = state.phrase;
     if (
@@ -428,14 +404,11 @@ function ViewportPanel({
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {
-      if (isDrumPlacementKind(drumPlacementKind)) {
-        chartView.setDrumPlacementKind(drumPlacementKind);
-      }
-      if (isHighwayNotePlacementType(notePlacementType)) {
+      if (typeof notePlacementType === "string") {
         chartView.setNotePlacementType(notePlacementType);
       }
     }
-  }, [chartView, drumPlacementKind, notePlacementType]);
+  }, [chartView, notePlacementType]);
 
   useLayoutEffect(() => {
     if (!chartView || !chartViewMatchesSession(chartView, session.view)) return;
@@ -478,7 +451,7 @@ function ViewportPanel({
       <header className={styles.viewportPanelHeader}>
         <p className={styles.viewportPanelTitle}>
           <span className={styles.viewportPanelTitleIcon} aria-hidden="true">
-            <InstrumentIcon instrument={session.instrument} />
+            <InstrumentIcon instrument={session.instrument} rules={rules} />
           </span>
           <span className={styles.viewportPanelTitleText}>
             {session.view === "piano-roll"

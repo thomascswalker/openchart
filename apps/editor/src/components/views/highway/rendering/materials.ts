@@ -8,8 +8,10 @@ import type {
   ResolvedMaterialDefinition,
   ResolvedTextureResource,
 } from "../../../../assets/index";
-import type { DrumPlacementKind } from "../profile";
-import { HIGHWAY_GEOMETRY_CATALOG } from "./geometryCatalog";
+import {
+  HIGHWAY_GEOMETRY_CATALOG,
+  type NoteShapeKind,
+} from "./geometryCatalog";
 
 export type Rgb = [number, number, number];
 
@@ -33,7 +35,7 @@ export interface MaterialSet {
   noteGrayscale: THREE.ShaderMaterial;
   noteGhostTinted: THREE.ShaderMaterial;
   noteGhostGrayscale: THREE.ShaderMaterial;
-  drum: Record<DrumPlacementKind, NoteMaterialVariants>;
+  drum: Record<NoteShapeKind, NoteMaterialVariants>;
   sustain: THREE.ShaderMaterial;
   destroy(): void;
 }
@@ -228,13 +230,11 @@ export function createMaterialSet(registry: ResourceRegistry): MaterialSet {
   const sustain = manager.create("sustain", registry.getMaterial("sustain"), {
     transparent: true,
   });
-  const createDrumMaterials = (
-    kind: DrumPlacementKind,
-  ): NoteMaterialVariants => {
+  const createDrumMaterials = (kind: NoteShapeKind): NoteMaterialVariants => {
     const geometry = HIGHWAY_GEOMETRY_CATALOG[kind];
     return createVariants(
       geometry.materialKey as MaterialKey,
-      kind,
+      kind === "bar" ? "kick" : kind,
       geometry.renderPass !== "topNote",
     );
   };
@@ -246,7 +246,7 @@ export function createMaterialSet(registry: ResourceRegistry): MaterialSet {
     noteGhostTinted: note.noteGhostTinted,
     noteGhostGrayscale: note.noteGhostGrayscale,
     drum: {
-      kick: createDrumMaterials("kick"),
+      bar: createDrumMaterials("bar"),
       cymbal: createDrumMaterials("cymbal"),
       pad: createDrumMaterials("pad"),
     },

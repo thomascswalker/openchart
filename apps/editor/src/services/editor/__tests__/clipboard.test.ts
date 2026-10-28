@@ -10,15 +10,17 @@ import type { PlaybackService } from "../../playback";
 import { EditorStateService } from "../state";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
+import { createTestRulesetService } from "../../__tests__/testUtils";
 
 function createClipboardHarness(midi: Midi) {
+  const ruleset = createTestRulesetService();
   const logger = {
     debug: vi.fn(),
     info: vi.fn(),
     warning: vi.fn(),
     error: vi.fn(),
   } as unknown as LoggerService;
-  const document = new DocumentService(logger);
+  const document = new DocumentService(logger, ruleset);
   document.data = midi;
   const playbackListeners = new Set<() => void>();
   let isPlaying = false;
@@ -30,8 +32,18 @@ function createClipboardHarness(midi: Midi) {
       return () => playbackListeners.delete(listener);
     },
   } as unknown as PlaybackService;
-  const viewports = new ViewportService();
-  const editing = new EditingService(document, playback, viewports);
+  const viewports = new ViewportService(ruleset);
+  const firstTrack = midi.tracks[0];
+  const descriptor = firstTrack
+    ? ruleset.compiled.byName.get(firstTrack.name)
+    : undefined;
+  if (descriptor) {
+    viewports.updateViewport(viewports.getSnapshot().activeViewportId, {
+      trackKey: descriptor.key,
+      instrument: descriptor.name,
+    });
+  }
+  const editing = new EditingService(document, playback, viewports, ruleset);
   const activeView = new ActiveChartViewService();
   const state = new EditorStateService();
   const clipboard = new EditorClipboardService(
@@ -163,7 +175,7 @@ describe("EditorClipboardService", () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
     track.name = "LEAD GUITAR";
-    track.addNote(60, 0, 90, 120);
+    track.addNote(20, 0, 90, 120);
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
     setActiveView(h.activeView, "piano-roll", 0);
@@ -182,9 +194,11 @@ describe("EditorClipboardService", () => {
 
   it("preserves lyrics when copying and pasting Vocal notes", () => {
     const midi = new Midi();
-    const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
-    vocals.addPitched(60, 0, 240, "hello");
-    const track = vocals.ensureTrack()!;
+    const song = new SongView(midi);
+    song.ensureMidiTrack("vocals");
+    const vocals = song.getVocalTrackView("VOCALS")!;
+    vocals.addNote("pitched", 0, 240, { pitch: 60, lyric: "hello" });
+    const track = midi.getTrack("VOCALS")!;
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
     h.viewports.updateViewport(viewportId, {

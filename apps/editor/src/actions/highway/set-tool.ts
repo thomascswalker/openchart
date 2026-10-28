@@ -26,9 +26,9 @@ export class SetHighwayToolAction extends Action<
     if (session && viewport) {
       const update: Record<string, unknown> = { tool };
       if (
-        session.mode.tools.some(
-          (descriptor) => descriptor.stateKey === "phrase",
-        )
+        session
+          .getTools()
+          .some((descriptor) => descriptor.stateKey === "phrase")
       ) {
         update.phrase = null;
       }

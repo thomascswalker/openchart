@@ -1,4 +1,5 @@
 import type { EditCommand } from "./commands.js";
+import type { RuleViolation } from "../ruleset/index.js";
 import type { EntityId } from "./entityId.js";
 
 /** A command-specific explanation for an edit that could not be expanded. */
@@ -15,6 +16,8 @@ export interface EditResult {
   updatedIds: readonly EntityId[];
   removedIds: readonly EntityId[];
   rejections: readonly Rejection[];
+  /** Non-blocking `warning`/`info` rule violations from the ruleset. */
+  diagnostics: readonly RuleViolation[];
 }
 
 /** Fatal preflight rejection; the batch has not mutated the document. */
@@ -38,5 +41,6 @@ export function emptyEditResult(): EditResult {
     updatedIds: [],
     removedIds: [],
     rejections: [],
+    diagnostics: [],
   };
 }

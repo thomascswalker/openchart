@@ -2,7 +2,8 @@ import type { Midi } from "@openchart/midi";
 import {
   ChartDocument,
   ClipboardService,
-  defaultConfig,
+  createRulesetContext,
+  createUnmappedTrackRules,
   EditingModeRegistry,
   SelectionModel,
   SongView,
@@ -17,6 +18,7 @@ import {
 import { Service } from "../../platform/services";
 import { DocumentService } from "../document";
 import { PlaybackService } from "../playback";
+import type { RulesetService } from "../ruleset";
 import { ViewportService, type ViewportSession } from "./viewports";
 import { defaultModes } from "@openchart/views";
 
@@ -24,7 +26,12 @@ type ResultListener = (result: EditResult) => void;
 
 /** Bridges editing modes and sessions to editor history and playback. */
 export class EditingService extends Service {
-  public static dependencies = ["document", "playback", "editor.viewports"];
+  public static dependencies = [
+    "document",
+    "playback",
+    "editor.viewports",
+    "ruleset",
+  ];
 
   /** @deprecated Removed after the Piano Roll migration in Phase 6. */
   public readonly selection = new SelectionModel();
@@ -36,6 +43,7 @@ export class EditingService extends Service {
   private readonly documentService: DocumentService;
   private readonly playbackService: PlaybackService;
   private readonly viewportService: ViewportService;
+  private readonly rulesetService: RulesetService;
   private readonly resultListeners = new Set<ResultListener>();
   private readonly sessions = new Map<string, EditingSession>();
   private readonly sessionSignatures = new Map<string, string>();
@@ -48,8 +56,10 @@ export class EditingService extends Service {
     documentService: DocumentService,
     playbackService: PlaybackService,
     viewportService: ViewportService,
+    rulesetService: RulesetService,
   ) {
     super();
+    this.rulesetService = rulesetService;
     this.documentService = documentService;
     this.playbackService = playbackService;
     this.viewportService = viewportService;
@@ -66,6 +76,7 @@ export class EditingService extends Service {
     this.clipboard = new ClipboardService();
     this.documentService.subscribe(this.syncDocument);
     this.viewportService.subscribe(this.syncViewports);
+    this.rulesetService.subscribe(this.syncRuleset);
   }
 
   /** Last result emitted to EditingService subscribers. */
@@ -184,6 +195,15 @@ export class EditingService extends Service {
     this.notify();
   };
 
+  /** A new ruleset invalidates the document's track rules and every session. */
+  private readonly syncRuleset = (): void => {
+    const midi = this.midi;
+    this.chartDocument = midi ? this.createChartDocument(midi) : null;
+    this.sessions.clear();
+    this.sessionSignatures.clear();
+    this.notify();
+  };
+
   private readonly syncViewports = (): void => {
     const activeIds = new Set(
       this.viewportService
@@ -217,14 +237,18 @@ export class EditingService extends Service {
     modeId?: EditingModeId,
   ): EditingSession | null {
     if (!this.midi || !this.chartDocument) return null;
-    const { descriptor, trackIndex } = this.resolveTrack(viewport);
+    const viewportTarget = this.resolveTrack(viewport);
     const mode = modeId
       ? this.registry.getById(modeId)
-      : this.registry.resolve(descriptor, viewport.view);
+      : this.registry.resolve(viewportTarget.descriptor, viewport.view);
     if (!mode) return null;
 
+    const targetTrack =
+      mode.id === "midi.global" ? this.resolveGlobalTrack() : viewportTarget;
+    if (!targetTrack) return null;
+    const { descriptor, trackIndex } = targetTrack;
     const target: EditingTarget = {
-      trackKey: viewport.trackKey,
+      trackKey: descriptor.key,
       trackIndex,
       difficulty: mode.id === "midi.global" ? null : viewport.difficulty,
     };
@@ -233,7 +257,8 @@ export class EditingService extends Service {
       mode,
       target,
       hostKind: mode.hostKinds.values().next().value ?? viewport.view,
-      config: defaultConfig,
+      rules: this.rulesetService.compiled,
+      rulesContext: () => this.createRulesContext(),
       transaction: {
         begin: this.documentService.beginEdit,
         record: this.documentService.recordEdit,
@@ -244,6 +269,20 @@ export class EditingService extends Service {
       clipboard: this.clipboard,
       onCommit: (result) => this.publishResult(result),
     });
+  }
+
+  private resolveGlobalTrack(): {
+    descriptor: TrackDescriptor;
+    trackIndex: number | null;
+  } | null {
+    const descriptor = this.rulesetService.compiled
+      .descriptors()
+      .find((track) => track.kind === "global");
+    if (!descriptor) return null;
+    const index = this.midi!.tracks.findIndex(
+      (track) => track.name === descriptor.name,
+    );
+    return { descriptor, trackIndex: index >= 0 ? index : null };
   }
 
   private syncToolState(
@@ -261,19 +300,18 @@ export class EditingService extends Service {
   } {
     const midi = this.midi;
     if (!midi) throw new Error("There is no MIDI document to resolve.");
-    const song = new SongView(midi);
+    const song = new SongView(midi, this.rulesetService.compiled);
     const descriptors = song.getTrackDescriptors();
     if (viewport.trackKey.startsWith("unmapped-")) {
       const index = Number(viewport.trackKey.slice("unmapped-".length));
       const track = Number.isSafeInteger(index)
         ? song.getUnmappedMidiTracks()[index]
         : undefined;
-      const descriptor = this.createSyntheticDescriptor(
-        viewport.trackKey,
-        track?.name ?? viewport.instrument,
-      );
       return {
-        descriptor,
+        descriptor: this.createUnmappedDescriptor(
+          viewport.trackKey,
+          track?.name ?? viewport.instrument,
+        ),
         trackIndex: track ? midi.tracks.indexOf(track) : null,
       };
     }
@@ -282,36 +320,46 @@ export class EditingService extends Service {
         (item) =>
           item.key === viewport.trackKey || item.name === viewport.instrument,
       ) ??
-      this.createSyntheticDescriptor(viewport.trackKey, viewport.instrument);
+      this.createUnmappedDescriptor(viewport.trackKey, viewport.instrument);
     const index = midi.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
     return { descriptor, trackIndex: index >= 0 ? index : null };
   }
 
-  private createSyntheticDescriptor(
-    key: string,
-    name: string,
-  ): TrackDescriptor {
-    const config = {
-      name,
-      key,
-      type: "instrument" as const,
-      charts: [0, 1, 2, 3].map((difficulty) => ({
-        difficulty,
-        laneCount: 128,
-        range: { low: 0, high: 128 },
-      })),
-      notes: {},
-    };
+  /** A MIDI track the ruleset does not describe: editable but unconstrained. */
+  private createUnmappedDescriptor(key: string, name: string): TrackDescriptor {
+    const rules = createUnmappedTrackRules(name, key);
     return {
       key,
       name,
-      type: "instrument",
+      kind: rules.kind,
       visible: true,
       editable: true,
-      config,
+      rules,
     };
+  }
+
+  /** Rule-evaluation inputs: ppqn, project settings and player options. */
+  private createRulesContext() {
+    const midi = this.midi;
+    const settings = this.documentService.getSnapshot().metadata.settings;
+    const settingsSources = this.rulesetService.compiled.settingsSources;
+    return createRulesetContext({
+      ppqn: midi?.header.division ?? 480,
+      settings: (source, key) => {
+        const sourceDefinition = settingsSources.find(
+          (item) => item.id === source,
+        );
+        const value =
+          sourceDefinition?.file === "info.json" ? settings[key] : undefined;
+        return typeof value === "boolean" ||
+          typeof value === "number" ||
+          typeof value === "string"
+          ? value
+          : undefined;
+      },
+    });
   }
 
   private sessionSignature(
@@ -321,6 +369,7 @@ export class EditingService extends Service {
     const { trackIndex } = this.resolveTrack(viewport);
     return [
       this.documentId,
+      this.rulesetService.snapshot.revision,
       modeId ?? "primary",
       viewport.trackKey,
       trackIndex,
@@ -330,7 +379,7 @@ export class EditingService extends Service {
   }
 
   private createChartDocument(midi: Midi): ChartDocument {
-    return new ChartDocument(midi, defaultConfig);
+    return new ChartDocument(midi, this.rulesetService.compiled);
   }
 
   private publishResult(result: EditResult): void {
@@ -352,6 +401,7 @@ function emptyResult(): EditResult {
     updatedIds: [],
     removedIds: [],
     rejections: [],
+    diagnostics: [],
   };
 }
 

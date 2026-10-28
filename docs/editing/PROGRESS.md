@@ -225,3 +225,44 @@
   **Deviations from plan:** Did not add the strict boundary gate to `ci`; decision S-4 requires maintainer sign-off. The root `check` command enforces it. Full-format and Storybook gates remain blocked by the repository-wide formatting baseline and the installed Node.js version, respectively.
   **Performance:** highway instancing acceptance test passed with 3,000 visible notes, a 4,096-note capacity, zero dropped notes, 1.800 ms draw time, and 0.100 ms instance-buffer writes.
   **Open questions:** none
+
+## Ruleset views, Phases 1–2: `newConfig.ts` and the compiled rules layer (additive)
+
+**Status:** Phases 1 and 2 of `ruleset-views-implementation-plan.md` done; **Phases 3–6 (migrate `packages/views`, migrate `apps/editor`, config-driven project settings, cleanup/docs/guardrails) are not started.**
+**Summary:** Added a Zod mirror of `configs/schema.json` with the eight semantic checks, a loader and `DefaultRuleset`; and a ruleset compilation layer (`compileRuleset`, `classifyPitch`, `resolveThresholdTicks`, `evaluateCondition`, `RuleEnforcer` with one module per constraint rule plus the implicit `implicit.phraseSelfOverlap`). Nothing existing was changed except two export lines in `src/index.ts` and an `ajv` devDependency, so the (already broken) old-config consumers behave exactly as before.
+**Files changed:**
+
+- Views source: `src/newConfig.ts`, `src/rulesetSemantics.ts`, `src/ruleset/{compile,classify,thresholds,conditions,enforce,index}.ts`, `src/ruleset/rules/*.ts`, `src/index.ts` (two export lines)
+- Views tests: `tests/__tests__/newConfig.test.ts`, `tests/__tests__/ruleset.test.ts`
+- Views manifest: `package.json` (`ajv` devDependency, needed for the differential test)
+- Docs: `docs/editing/PROGRESS.md`
+
+**Tests:** added `newConfig.test.ts` (default ruleset, ~100 Ajv-vs-Zod differential mutants, one failing fixture per semantic rule) and `ruleset.test.ts` (compile, classify, thresholds, conditions, per-rule enforcer cases).
+**Gate results:** _not run in the authoring environment._ There was no network, no `node_modules`, and no Zod 4 / Vitest / Ajv, so `npm ci`, `check-types`, lint, vitest and `check:editing:strict` were **not** run. Substitute checks: the new files type-check under `tsc` 6.0.3 against Zod 3.23 with two Zod 4-only constructs swapped out (`partialRecord`, `.refine` returning `this`); `validateRulesetSemantics` runs clean on the default ruleset and flags every mutated fixture; `ruleset.test.ts` (29 cases) and the semantic cases of `newConfig.test.ts` pass under a throwaway Vitest shim. The Ajv differential test has never been executed. Run `npm ci && npm test --workspace=@openchart/views` first.
+**Intentional behaviour changes:** none yet (the §9 list applies once Phases 3–5 land).
+**Deviations from plan:**
+
+- The enforcer exposes `RuleEnforcer.checkEdits(edits, ctx)` / `validateTrack(...)` over a small structural input (post-edit notes + touched ids) instead of `check(rawCommands, reader, rulesCtx)`. The command → preview → `TrackEdit` adapter belongs to the session migration (Phase 3, §4.4) and is not written.
+- Constraints are evaluated over the whole post-edit track and filtered to violations involving touched notes, not over a tick window. This is O(n) per edit; windowing is a later optimisation.
+- Semantic rule 3 also checks `variants`, `versionCheck`, lane `onlyOnTracks`, and pad types against lane `padTypes`; rule 4 is per kind of definition (lanes, phrases, …), not one shared namespace.
+- `before`/`after` text-event relations are evaluated as `present`.
+
+**Open questions:** section markers are still written as `MetaType.Marker` while the ruleset's `section` text event is meta type 1 (plan §8). `phraseMustBeBetween` requires an instance of `between` on both sides, so the first/last `powerWindow` of a vocal track is rejected; confirm that is intended.
+
+## Ruleset views, Phase 3: migrate `packages/views`
+
+**Status:** done (verified only with substitute tooling; see gates).
+**Summary:** `config.ts` moved to `oldConfig.ts` (contents unchanged). `SongView`, `TrackView`, `InstrumentTrackView`, `ChartView`, `GlobalTrackView` and `VocalTrackView` are built from a `CompiledRuleset`; `ChartView`/`VocalTrackView` are read-only. `TrackDescriptor` is `{key,name,kind,visible,editable,rules}`. `ModeContext` carries `rules`, `rulesContext` and `validate()`; `EditingSession` runs `RuleEnforcer` after expansion (error → rejection `rule:<ruleId>`, warning/info → `diagnostics`), exposes `rules`, `getRulesContext()` and `getTools()`. `chart.lanes` replaces `chart.frets`/`chart.drums`; `EditingMode.createTools(context)` replaces `tools`. Text-event grammar is checked for ADD_TEXT/UPDATE_TEXT. Sections are written/read as `MetaType.Text` (ruleset meta type 1).
+**Files changed:** `packages/views/src/{views/*,editing/{mode,session,result,preview,reader,modeRegistry,chartDocument,standalone,phrase,ruleValidation}.ts,editing/modes/{chartLanes,vocals,rawMidi,globalTrack,common,index}.ts,ruleset/{textEvents,labels}.ts,vocals.ts,types.ts,chart/constants.ts,index.ts}`; deleted `editing/vocals.ts`, `chart/drums.ts`, `chart/forcedNotes.ts`, `editing/modes/{chartFrets,chartDrums}.ts`.
+**Tests:** ported `chartEditing`, `chartView`, `domainModes`, `vocals`, `editing`, `editing/session`; `config.test` split into `oldConfig.test`; added `ruleEnforcement.test` (error rejects with no MIDI change, throwOnReject, warnings commit with diagnostics, unmapped tracks unconstrained, preview rejections, vocal fallback offset, power window between phrases, text grammar, alternate-ruleset hierarchy).
+**Gate results:** _not run_ (no network/`node_modules`). Substitutes: new files type-check with `tsc` 6.0.3 against Zod 3 (Zod 4-only constructs swapped); ported views tests pass under a throwaway Vitest shim, except the cases that need the real `binary-parser`/Ajv.
+**Intentional behaviour changes:** items 1–7 of the plan's §9 (mode ids `chart.lanes`; sustain/HOPO threshold 160 inclusive; no same-lane/chord HOPO exclusion because `autoHopoExclusions: []`; drums kick bar `#F97316`, Kick2 ignored without `expertPlus`, new drum phrase and flam tools; no sustains on FOUR/FIVE PAD; raw Piano Roll subject to unknown/reserved pitch policies). Also: `CREATE_PHRASE` takes `phraseId`; `PLACE_CHART_NOTE.placement` is a ruleset token (`normal`, `padType:cymbal`, `bar:kick`, `marker:forceHopo`, `marker:flam`); vocal phrase overlap rejects as `rule:implicit.phraseSelfOverlap`; projection bar rows have kind `bar`; vocal phrase lane labels come from `phraseLabel`; free-text Text events on configured tracks are rejected unless declared; sections use meta type Text (was Marker).
+**Deviations from plan:** `RuleEnforcer` works on `TrackEdit`s built by `editing/ruleValidation.ts` (windowed to the touched span plus phrase pitches); removed-note effects on `phraseMustBeBetween` neighbours are not re-checked.
+**Open questions:** none.
+
+## Ruleset views, Phases 4–6: editor, project settings, guardrails
+
+**Status:** done for sources; editor tests only partly ported (see below).
+**Summary:** `RulesetService` (`services/ruleset.ts`) owns `{ruleset, compiled, revision}`; `setRuleset(json)` validates and reports through `editor.state`. `ViewportService`, `EditingService`, `PlaybackService` and `DocumentService` depend on it. Viewports open on the first visible+editable track and fall back when a ruleset drops their track; sessions and the chart document rebuild on change and include the revision in the session signature. Highway derives lane count/colours/shapes/sustains/HOPO styling/placements from rules; `HighwayPhraseKind`/`HighwayNotePlacementType` are strings; kick geometry/materials are `bar`. Toolbar groups come from `session.getTools()`; `toggle-phrase-tool` takes a phrase id (hotkeys `stagePower`, `solo`). Piano roll vocal layout comes from the session's rules. `TrackList`/`EventList`/`Viewport`/`Playback` read the compiled ruleset (`useRuleset`). Project settings: `buildMetadataSchema(ruleset)` adds one difficulty integer per playable track (legacy `lead`→`leadGuitar` via `normalizeLegacyMetadata`, unknown integer keys kept) and a flat `settings` section for `info.json` keys with defaults; `RulesetContext.settings` reads it. Boundary checker rejects single-argument `new SongView(` in `apps/**` and track-name literals in components.
+**Deviations from plan:** legacy-key aliasing is a normalise-then-parse helper instead of `z.preprocess` (the Form needs a plain `ZodObject`); settings are flat by key name; `TrackList` now hides tracks whose rules are `visible: false` (the CHART HEADER).
+**Gate results:** `check:editing:strict` ✓ (0 violations, run with Node 22). Everything else _not run_.

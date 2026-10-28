@@ -1,4 +1,4 @@
-import { defaultConfig } from "@openchart/views";
+import { DefaultCompiledRuleset, Difficulty } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import {
   getFiveFretNoteStyles,
@@ -18,15 +18,23 @@ describe("five-fret note styles", () => {
       medium: [79, 78, 77],
       easy: [67, 66, 65],
     };
+    const difficulties = [
+      Difficulty.Expert,
+      Difficulty.Hard,
+      Difficulty.Medium,
+      Difficulty.Easy,
+    ];
     for (const key of ["lead-guitar", "rhythm-guitar"]) {
-      const config = defaultConfig.tracks.find((track) => track.key === key);
-      expect(config?.type).toBe("instrument");
-      if (config?.type !== "instrument") continue;
-      for (const [difficulty, [tap, strum, hopo]] of Object.entries(expected)) {
-        expect(config.notes[`${difficulty}Tap`]).toBe(tap);
-        expect(config.notes[`${difficulty}Strum`]).toBe(strum);
-        expect(config.notes[`${difficulty}Hopo`]).toBe(hopo);
-      }
+      const track = DefaultCompiledRuleset.byKey.get(key);
+      expect(track?.kind).toBe("guitar");
+      if (!track) continue;
+      difficulties.forEach((difficulty, index) => {
+        const [tap, strum, hopo] = Object.values(expected)[index]!;
+        const chart = track.difficulties.get(difficulty);
+        expect(chart?.pitchForMarker("forceTap")).toBe(tap);
+        expect(chart?.pitchForMarker("forceStrum")).toBe(strum);
+        expect(chart?.pitchForMarker("forceHopo")).toBe(hopo);
+      });
     }
   });
 
@@ -55,7 +63,8 @@ describe("five-fret note styles", () => {
         forceHopoPitch: 101,
         forceStrumPitch: 102,
         tapMarkerPitches: [103, 104],
-        ppqn: 480,
+        hopoThresholdTicks: 170,
+        autoHopoExclusions: ["sameLaneAsPrevious", "chord"],
       },
     );
 
@@ -93,7 +102,7 @@ describe("five-fret note styles", () => {
     const styles = getFiveFretNoteStyles(
       [markerTap, phraseTap, strum],
       [note(103, 10, 10)],
-      { tapMarkerPitches: [103], ppqn: 480, tapSysExRanges: sysexRanges },
+      { tapMarkerPitches: [103], tapSysExRanges: sysexRanges },
     );
 
     expect(styles.get(markerTap)?.tap).toBe(true);

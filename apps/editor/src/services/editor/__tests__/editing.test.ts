@@ -6,15 +6,18 @@ import type { LoggerService } from "../../logger";
 import type { PlaybackService } from "../../playback";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
+import { createTestRulesetService } from "../../__tests__/testUtils";
 
-function createDocumentService(): DocumentService {
+function createDocumentService(
+  ruleset: ReturnType<typeof createTestRulesetService>,
+): DocumentService {
   const logger = {
     debug: vi.fn(),
     info: vi.fn(),
     warning: vi.fn(),
     error: vi.fn(),
   } as unknown as LoggerService;
-  return new DocumentService(logger);
+  return new DocumentService(logger, ruleset);
 }
 
 describe("EditingService", () => {
@@ -23,7 +26,8 @@ describe("EditingService", () => {
   });
 
   it("routes commands through document history and keeps note selection across undo snapshots", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = "LEAD GUITAR";
@@ -33,7 +37,8 @@ describe("EditingService", () => {
     const editing = new EditingService(
       documentService,
       playback,
-      new ViewportService(),
+      new ViewportService(ruleset),
+      ruleset,
     );
     const noteId = editing
       .getDocument()
@@ -63,7 +68,8 @@ describe("EditingService", () => {
   });
 
   it("clears selection and clipboard when a new project is loaded", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.addNote(60, 0, 100, 120);
@@ -71,7 +77,8 @@ describe("EditingService", () => {
     const editing = new EditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
-      new ViewportService(),
+      new ViewportService(ruleset),
+      ruleset,
     );
     const noteId = editing
       .getDocument()
@@ -105,7 +112,8 @@ describe("EditingService", () => {
   });
 
   it("commits a generic gesture in one undo step and refreshes playback", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = "LEAD GUITAR";
@@ -115,7 +123,8 @@ describe("EditingService", () => {
     const editing = new EditingService(
       documentService,
       playback,
-      new ViewportService(),
+      new ViewportService(ruleset),
+      ruleset,
     );
     const session = editing.getSession("viewport-1")!;
     const id = editing
@@ -147,17 +156,21 @@ describe("EditingService", () => {
   });
 
   it("provides an isolated global header session for tempo and section edits", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
-    midi.tracks[0]!.name = "LEAD GUITAR";
+    midi.tracks[0]!.name = "GLOBAL";
+    midi.addTrack();
+    midi.tracks[1]!.name = "LEAD GUITAR";
     midi.addTempoEvent(0, 500_000);
     documentService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
     const editing = new EditingService(
       documentService,
       playback,
-      new ViewportService(),
+      new ViewportService(ruleset),
+      ruleset,
     );
 
     const global = editing.getSession("viewport-1", "global");
@@ -184,18 +197,22 @@ describe("EditingService", () => {
       }),
     );
     expect(
-      documentService.data.tracks[0]!.getTextEvents().some(
-        (event) =>
-          event.type === MetaType.Marker &&
-          event.text === "[section Verse]" &&
-          event.tick === 960,
-      ),
+      documentService.data
+        .getTrack("GLOBAL")!
+        .getTextEvents()
+        .some(
+          (event) =>
+            event.type === MetaType.Text &&
+            event.text === "[section Verse]" &&
+            event.tick === 960,
+        ),
     ).toBe(true);
     expect(playback.refresh).toHaveBeenCalledTimes(2);
   });
 
   it("rejects lyric mutations through the global session", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = "VOCALS";
@@ -204,7 +221,8 @@ describe("EditingService", () => {
     const editing = new EditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
-      new ViewportService(),
+      new ViewportService(ruleset),
+      ruleset,
     );
     const global = editing.getSession("viewport-1", "global")!;
     const lyricId = editing.getDocument().getTextEvents(0)[0]!.id;
@@ -223,16 +241,18 @@ describe("EditingService", () => {
   });
 
   it("schema-validates and stores mode tool state per viewport", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = "LEAD GUITAR";
     documentService.data = midi;
-    const viewports = new ViewportService();
+    const viewports = new ViewportService(ruleset);
     const editing = new EditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       viewports,
+      ruleset,
     );
     const active = viewports.getSnapshot().activeViewportId;
     const other = viewports.addViewport("piano-roll")!;

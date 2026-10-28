@@ -1,5 +1,4 @@
 import type { MaterialKey, MeshKey } from "../../../../rendering/registry";
-import type { DrumPlacementKind } from "../profile";
 
 export interface IVector3 {
   x: number;
@@ -23,24 +22,30 @@ export type GeometryId =
   | "strikeline"
   | "sustain"
   | "note"
-  | "kick"
+  | "bar"
   | "cymbal"
   | "pad"
-  | "kickGhost"
+  | "barGhost"
   | "cymbalGhost"
   | "padGhost"
   | "fret"
   | "ghost";
 
-export type DrumGhostGeometryId = "kickGhost" | "cymbalGhost" | "padGhost";
+/**
+ * Mesh family of a lane note, from the ruleset lane shape: `pad` (pad type
+ * tom), `cymbal` (pad type cymbal) or `bar` (kickBar/openBar). Round `gem`
+ * lanes use the plain `note` geometry.
+ */
+export type NoteShapeKind = "pad" | "cymbal" | "bar";
+export type ShapeGhostGeometryId = "barGhost" | "cymbalGhost" | "padGhost";
 export type GeometryRenderPass =
   "opaque" | "sustain" | "note" | "topNote" | "overlay";
 
-export const DRUM_GHOST_GEOMETRY_IDS: Record<
-  DrumPlacementKind,
-  DrumGhostGeometryId
+export const SHAPE_GHOST_GEOMETRY_IDS: Record<
+  NoteShapeKind,
+  ShapeGhostGeometryId
 > = {
-  kick: "kickGhost",
+  bar: "barGhost",
   cymbal: "cymbalGhost",
   pad: "padGhost",
 };
@@ -157,8 +162,8 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     layer: HIGHWAY_DEPTH_LAYERS.sustain,
     renderPass: "sustain",
   },
-  kick: {
-    id: "kick",
+  bar: {
+    id: "bar",
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
     meshKey: "kickNote",
@@ -166,8 +171,8 @@ export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
     layer: HIGHWAY_DEPTH_LAYERS.note,
     renderPass: "sustain",
   },
-  kickGhost: {
-    id: "kickGhost",
+  barGhost: {
+    id: "barGhost",
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
     meshKey: "kickNote",

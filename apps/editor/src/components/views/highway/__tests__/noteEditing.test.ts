@@ -1,10 +1,9 @@
 import type { MidiNote } from "@openchart/midi";
 import {
-  defaultConfig,
+  DefaultCompiledRuleset,
   Difficulty,
   formatNoteId,
   type EntityId,
-  type SongViewConfig,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
@@ -38,26 +37,6 @@ function getNoteId(
     setup.session.target.trackIndex!,
     setup.midiTrack.getEventId(note.noteOn),
   );
-}
-
-function createMarkerConfig(): SongViewConfig {
-  return {
-    ...defaultConfig,
-    tracks: defaultConfig.tracks.map((track) => {
-      if (track.key !== "lead-guitar" || track.type !== "instrument") {
-        return track;
-      }
-      return {
-        ...track,
-        notes: {
-          ...track.notes,
-          expertHopo: 101,
-          expertStrum: 102,
-          expertTap: 103,
-        },
-      };
-    }),
-  };
 }
 
 describe("HighwayNoteEditingController", () => {
@@ -140,7 +119,7 @@ describe("HighwayNoteEditingController", () => {
     (placementType: NotePlacement, markerPitch: number) => {
       const setup = createHighwayTestSetup(
         "lead-guitar",
-        createMarkerConfig(),
+        DefaultCompiledRuleset,
         Difficulty.Expert,
       );
       setup.setNotePlacementType(placementType);

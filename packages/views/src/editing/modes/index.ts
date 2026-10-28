@@ -1,7 +1,6 @@
 import type { EditingMode } from "../mode.js";
 import { EditingModeRegistry } from "../modeRegistry.js";
-import { createChartDrumsMode } from "./chartDrums.js";
-import { createChartFretsMode } from "./chartFrets.js";
+import { createChartLanesMode } from "./chartLanes.js";
 import { createGlobalTrackMode } from "./globalTrack.js";
 import { createRawMidiMode } from "./rawMidi.js";
 import { createVocalsMode } from "./vocals.js";
@@ -11,8 +10,7 @@ export function createDefaultModes(): readonly EditingMode[] {
   return [
     createGlobalTrackMode(),
     createVocalsMode(),
-    createChartDrumsMode(),
-    createChartFretsMode(),
+    createChartLanesMode(),
     createRawMidiMode(),
   ];
 }

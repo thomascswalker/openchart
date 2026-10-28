@@ -1,4 +1,10 @@
-import type { SongViewConfig } from "../config.js";
+import {
+  createRulesetContext,
+  type RuleViolation,
+  type RulesetContext,
+  type CompiledRuleset,
+} from "../ruleset/index.js";
+import { validateRawCommands } from "./ruleValidation.js";
 import type { ChartDocument } from "./chartDocument.js";
 import type { EditCommand, RawCommand, RawCommandType } from "./commands.js";
 import { computePreview, type PreviewState } from "./preview.js";
@@ -16,6 +22,7 @@ import type {
   EditingTarget,
   ModeContext,
   Projection,
+  ToolDescriptor,
 } from "./mode.js";
 import type { NoteSnapshot } from "./reader.js";
 
@@ -37,9 +44,15 @@ export interface EditingSession {
   readonly mode: EditingMode;
   readonly target: EditingTarget;
   readonly hostKind: string;
+  /** The compiled ruleset this session edits under. */
+  readonly rules: CompiledRuleset;
   readonly selection: SelectionModel;
   readonly clipboard: ClipboardService;
   getProjection(): Projection;
+  /** Current inputs for rule evaluation (ppqn, project settings, player options). */
+  getRulesContext(): RulesetContext;
+  /** Toolbar tools for the current target; they depend on the track's rules. */
+  getTools(): readonly ToolDescriptor[];
   classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]>;
   can(commandType: string): boolean;
   execute(command: EditCommand, options?: ExecuteOptions): EditResult;
@@ -67,7 +80,14 @@ export interface CreateEditingSessionOptions {
   mode: EditingMode;
   target: EditingTarget;
   hostKind: string;
-  config: SongViewConfig;
+  /** Compiled ruleset; drives mode behaviour and edit enforcement. */
+  rules: CompiledRuleset;
+  /**
+   * Project settings and player options used to evaluate rules. A function is
+   * re-read on every edit so settings changes take effect immediately.
+   * Defaults to no settings, no player options and the document's ppqn.
+   */
+  rulesContext?: RulesetContext | (() => RulesetContext);
   transaction: EditTransactionPort;
   selection?: SelectionModel;
   clipboard?: ClipboardService;
@@ -86,8 +106,10 @@ class EditingSessionImpl implements EditingSession {
   public readonly hostKind: string;
   public readonly selection: SelectionModel;
   public readonly clipboard: ClipboardService;
+  public readonly rules: CompiledRuleset;
   private readonly document: ChartDocument;
-  private readonly config: SongViewConfig;
+  private readonly rulesContextSource:
+    RulesetContext | (() => RulesetContext) | undefined;
   private readonly transaction: EditTransactionPort;
   private readonly onCommit: ((result: EditResult) => void) | undefined;
   private targetValue: EditingTarget;
@@ -98,7 +120,8 @@ class EditingSessionImpl implements EditingSession {
     this.mode = options.mode;
     this.targetValue = { ...options.target };
     this.hostKind = options.hostKind;
-    this.config = options.config;
+    this.rules = options.rules;
+    this.rulesContextSource = options.rulesContext;
     this.transaction = options.transaction;
     this.selection = options.selection ?? new SelectionModelImpl();
     this.clipboard = options.clipboard ?? new ClipboardService();
@@ -149,7 +172,29 @@ class EditingSessionImpl implements EditingSession {
       return { ...emptyEditResult(), rejections };
     }
 
-    return this.commitExpanded(rawCommands, rejections, rawCommands[0]!);
+    const enforced = this.enforce(rawCommands);
+    if (enforced.errors.length > 0) {
+      const ruleRejections = this.toRejections(enforced.errors, commands[0]!);
+      if (options.throwOnReject) {
+        throw new EditRejectedError(
+          ruleRejections[0]!.code,
+          ruleRejections[0]!.message,
+          commands[0]!,
+        );
+      }
+      return {
+        ...emptyEditResult(),
+        rejections: [...rejections, ...ruleRejections],
+        diagnostics: enforced.diagnostics,
+      };
+    }
+
+    return this.commitExpanded(
+      rawCommands,
+      rejections,
+      rawCommands[0]!,
+      enforced.diagnostics,
+    );
   }
 
   public pasteClipboard(anchorTick: number): EditResult {
@@ -169,10 +214,23 @@ class EditingSessionImpl implements EditingSession {
       return { ...emptyEditResult(), rejections: [...expansion.rejections] };
     }
 
+    const pasteCommand: EditCommand = { type: "PASTE_CLIPBOARD" };
+    const enforced = this.enforce(expansion.commands);
+    if (enforced.errors.length > 0) {
+      return {
+        ...emptyEditResult(),
+        rejections: [
+          ...expansion.rejections,
+          ...this.toRejections(enforced.errors, pasteCommand),
+        ],
+        diagnostics: enforced.diagnostics,
+      };
+    }
     const result = this.commitExpanded(
       expansion.commands,
       expansion.rejections,
-      { type: "PASTE_CLIPBOARD" },
+      pasteCommand,
+      enforced.diagnostics,
     );
     if (result.createdIds.length > 0) {
       this.selection.setSelectedIds(result.createdIds);
@@ -184,6 +242,7 @@ class EditingSessionImpl implements EditingSession {
     rawCommands: readonly RawCommand[],
     rejections: readonly Rejection[],
     triggerCommand: EditCommand,
+    diagnostics: readonly RuleViolation[] = [],
   ): EditResult {
     const targetBeforeTransaction = this.targetValue;
     let transactionStarted = false;
@@ -197,7 +256,7 @@ class EditingSessionImpl implements EditingSession {
       this.transaction.end();
       transactionStarted = false;
 
-      combinedResult = { ...result, rejections: [...rejections] };
+      combinedResult = { ...result, rejections: [...rejections], diagnostics };
     } catch (error) {
       if (transactionStarted) {
         let rolledBack: boolean;
@@ -238,9 +297,15 @@ class EditingSessionImpl implements EditingSession {
   public previewCommand(command: EditCommand): PreviewState {
     const expansion = this.expand(command);
     const preview = computePreview(expansion.commands, this.document);
+    const enforced = this.enforce(expansion.commands);
     return {
       ...preview,
-      rejections: [...expansion.rejections, ...preview.rejections],
+      rejections: [
+        ...expansion.rejections,
+        ...preview.rejections,
+        ...this.toRejections(enforced.errors, command),
+      ],
+      diagnostics: enforced.diagnostics,
     };
   }
 
@@ -248,12 +313,59 @@ class EditingSessionImpl implements EditingSession {
     return this.toolState;
   }
 
+  public getTools(): readonly ToolDescriptor[] {
+    return this.mode.createTools(this.createModeContext());
+  }
+
+  public getRulesContext(): RulesetContext {
+    const source = this.rulesContextSource;
+    if (typeof source === "function") return source();
+    return source ?? createRulesetContext({ ppqn: this.document.getPpqn() });
+  }
+
   private createModeContext(): ModeContext {
+    const target = this.targetValue;
+    const rulesContext = this.getRulesContext();
     return {
       reader: this.document,
-      target: this.targetValue,
-      config: this.config,
+      target,
+      rules: this.rules,
+      rulesContext,
+      validate: (commands) =>
+        validateRawCommands(
+          commands,
+          this.document,
+          target,
+          this.rules,
+          rulesContext,
+        ),
     };
+  }
+
+  /**
+   * Runs the rule enforcer on expanded commands. `error` violations block the
+   * edit; the rest are surfaced as diagnostics.
+   */
+  private enforce(commands: readonly RawCommand[]): {
+    errors: RuleViolation[];
+    diagnostics: RuleViolation[];
+  } {
+    const violations = this.createModeContext().validate(commands);
+    return {
+      errors: violations.filter((v) => v.severity === "error"),
+      diagnostics: violations.filter((v) => v.severity !== "error"),
+    };
+  }
+
+  private toRejections(
+    errors: readonly RuleViolation[],
+    command: EditCommand,
+  ): Rejection[] {
+    return errors.map((v) => ({
+      code: `rule:${v.ruleId}`,
+      message: v.message,
+      command,
+    }));
   }
 
   private expand(command: EditCommand) {

@@ -1,4 +1,5 @@
-import { createChartFretsMode, createVocalsMode } from "@openchart/views";
+import { Midi } from "@openchart/midi";
+import { Difficulty, createStandaloneEditing } from "@openchart/views";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
@@ -18,7 +19,15 @@ describe("mode-driven toolbar rendering", () => {
   });
 
   it("preserves Highway tool labels and ordering from mode descriptors", () => {
-    const mode = createChartFretsMode();
+    const midi = new Midi();
+    const track = midi.tracks[midi.addTrack()]!;
+    track.name = "LEAD GUITAR";
+    const sessionEditing = createStandaloneEditing(midi);
+    const editingSession = sessionEditing.createSession(
+      { trackKey: "lead-guitar", trackIndex: 0, difficulty: Difficulty.Expert },
+      "highway",
+    );
+    const mode = editingSession.mode;
     const session = {
       id: "viewport-1",
       view: "highway" as const,
@@ -46,7 +55,7 @@ describe("mode-driven toolbar rendering", () => {
     };
     container = document.createElement("div");
     root = createRoot(container);
-    const highwayGroup = createModeToolbarGroups(mode).find(
+    const highwayGroup = createModeToolbarGroups(editingSession).find(
       (group) => group.id === "highway-tools",
     )!;
 
@@ -68,18 +77,26 @@ describe("mode-driven toolbar rendering", () => {
       "Select, move, and edit sustains",
       "Place notes",
       "Remove notes",
-      "Stagepower phrase",
       "Solo phrase",
+      "Stage Power phrase",
     ]);
     expect(
-      createModeToolbarGroups(mode)
+      createModeToolbarGroups(editingSession)
         .find((group) => group.id === "difficulty")
         ?.items.map((item) => item.label),
     ).toEqual(["easy", "medium", "hard", "expert"]);
   });
 
   it("preserves Piano Roll vocal tools and playback control", () => {
-    const mode = createVocalsMode();
+    const midi = new Midi();
+    const track = midi.tracks[midi.addTrack()]!;
+    track.name = "VOCALS";
+    const sessionEditing = createStandaloneEditing(midi);
+    const editingSession = sessionEditing.createSession(
+      { trackKey: "vocals", trackIndex: 0, difficulty: Difficulty.Expert },
+      "piano-roll",
+    );
+    const mode = editingSession.mode;
     const session = {
       id: "viewport-1",
       view: "piano-roll" as const,
@@ -107,7 +124,7 @@ describe("mode-driven toolbar rendering", () => {
     };
     container = document.createElement("div");
     root = createRoot(container);
-    const vocalGroup = createModeToolbarGroups(mode).find(
+    const vocalGroup = createModeToolbarGroups(editingSession).find(
       (group) => group.id === "vocal-tools",
     )!;
 
@@ -126,9 +143,9 @@ describe("mode-driven toolbar rendering", () => {
         button.getAttribute("aria-label"),
       ),
     ).toEqual([
-      "Vocal phrase",
-      "Power window",
-      "Stagepower phrase",
+      "Vocal Phrase phrase",
+      "Power Window phrase",
+      "Stage Power phrase",
       "Vocal pitch feedback",
     ]);
   });

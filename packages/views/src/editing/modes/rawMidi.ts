@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isUnmappedTrackRules } from "../../ruleset/compile.js";
 import type { ClipboardPayload } from "../clipboard.js";
 import type { EditCommand, RawCommand, RawCommandType } from "../commands.js";
 import type { EntityId } from "../entityId.js";
@@ -33,7 +34,9 @@ export function createRawMidiMode(): EditingMode<Record<string, never>> {
     id: "midi.raw",
     label: "Raw MIDI",
     hostKinds: new Set(["piano-roll"]),
-    appliesTo: (track) => track.type === "instrument",
+    appliesTo: (track) =>
+      isUnmappedTrackRules(track.rules) ||
+      (track.kind !== "header" && track.kind !== "global"),
     capabilities: {
       rawCommands: noteCommandTypes,
       domainCommands: new Set(),
@@ -41,7 +44,7 @@ export function createRawMidiMode(): EditingMode<Record<string, never>> {
       canCreateTrack: true,
       requiresDifficulty: false,
     },
-    tools: [],
+    createTools: () => [],
     toolStateSchema: z.object({}),
     createDefaultToolState: () => ({}),
     createProjection: (): Projection => ({

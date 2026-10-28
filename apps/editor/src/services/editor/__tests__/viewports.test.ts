@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { enforceAvailableView, ViewportService } from "../viewports";
+import { createTestRulesetService } from "../../__tests__/testUtils";
 
 describe("ViewportService", () => {
   it("owns viewport sessions and publishes focus and snap changes", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const listener = vi.fn();
     service.subscribe(listener);
 
@@ -25,7 +26,7 @@ describe("ViewportService", () => {
   });
 
   it("forces the Piano Roll when Vocals is selected from any view", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const id = service.addViewport("highway")!;
     expect(service.getSnapshot().activeViewId).toBe("highway");
 
@@ -48,7 +49,7 @@ describe("ViewportService", () => {
   });
 
   it("keeps camera-only updates from touching the active view id", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const id = service.getSnapshot().activeViewportId;
     service.setActiveView("custom");
     service.updateViewport(id, { camera: { tick: 480 } });
@@ -57,7 +58,7 @@ describe("ViewportService", () => {
   });
 
   it("falls back to the first host allowed by a mode registry", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const session = service.getActiveViewport()!;
     const available = enforceAvailableView(
       session,
@@ -67,7 +68,7 @@ describe("ViewportService", () => {
   });
 
   it("keeps every viewport on the same camera tick", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const firstId = service.getSnapshot().activeViewportId;
     const secondId = service.addViewport("highway")!;
 
@@ -90,7 +91,7 @@ describe("ViewportService", () => {
   });
 
   it("stores arbitrary mode tool state independently per viewport", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const first = service.getSnapshot().activeViewportId;
     const second = service.addViewport("highway")!;
 
@@ -117,7 +118,7 @@ describe("ViewportService", () => {
   });
 
   it("preserves tools when other session fields update", () => {
-    const service = new ViewportService();
+    const service = new ViewportService(createTestRulesetService());
     const id = service.getSnapshot().activeViewportId;
     service.setModeToolState(id, "chart.frets", {
       tool: "solo",

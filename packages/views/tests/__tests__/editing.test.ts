@@ -356,7 +356,7 @@ describe("shared chart editing primitives", () => {
     expect(
       session.execute({
         type: "CREATE_PHRASE",
-        phraseKind: "stagepower",
+        phraseId: "stagePower",
         startTick: 480,
         endTick: 720,
       }).changed,

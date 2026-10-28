@@ -59,9 +59,9 @@ export const highwayBindings = defineBindings("highway", {
     name: "Remove tool",
     group: "Highway tools",
   },
-  "highway.toggle-phrase-tool#stagepower": {
+  "highway.toggle-phrase-tool#stagePower": {
     hotkey: "R",
-    args: ["stagepower"],
+    args: ["stagePower"],
     name: "Stagepower phrase tool",
     group: "Highway tools",
   },

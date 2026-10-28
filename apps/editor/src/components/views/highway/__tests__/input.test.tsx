@@ -1,10 +1,5 @@
 import type { MidiNote } from "@openchart/midi";
-import {
-  Difficulty,
-  formatNoteId,
-  getPhrasePitch,
-  type EditablePhraseKind,
-} from "@openchart/views";
+import { Difficulty, formatNoteId } from "@openchart/views";
 import { Vector2 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HighwayView } from "../index";
@@ -15,7 +10,7 @@ import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayPhrase } from "../hitTesting";
 import { HighwayInputController } from "../input/input";
 import type { IndexedNote } from "../noteIndex";
-import { createHighwayTestSetup } from "./testUtils";
+import { createHighwayTestSetup, getPhrasePitch } from "./testUtils";
 
 interface NoteFixture {
   pitch?: number;
@@ -26,7 +21,7 @@ interface NoteFixture {
 interface PhraseFixture {
   start: number;
   end: number;
-  kind?: EditablePhraseKind;
+  kind?: string;
 }
 
 function createHarness(
@@ -73,6 +68,7 @@ function createHarness(
     lane: note.pitch - setup.chart.getOffset(),
     kind: "note",
     phraseKind: null,
+    laneId: null,
   });
   const addPhrase = (fixture: PhraseFixture): HighwayPhrase => {
     const kind = fixture.kind ?? "solo";
@@ -119,11 +115,7 @@ function createHarness(
     getSustainAt: () =>
       options.sustain && hoveredNote ? hoveredNote : undefined,
     getNoteAt: () => hoveredNote,
-    getPhraseAt: (
-      _chart: unknown,
-      _event: unknown,
-      kind: EditablePhraseKind,
-    ) =>
+    getPhraseAt: (_chart: unknown, _event: unknown, kind: string) =>
       options.outsidePhraseBand
         ? undefined
         : (phrases.find((phrase) => phrase.kind === kind) ?? undefined),

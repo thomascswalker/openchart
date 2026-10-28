@@ -25,7 +25,10 @@ vi.mock("../../audio/soundboard", () => ({
 vi.mock("@openchart/views", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@openchart/views")>()),
   SongView: vi.fn(function () {
-    return { getInstrumentTrackView: () => undefined };
+    return {
+      getInstrumentTrackView: () => undefined,
+      getVocalTrackView: () => undefined,
+    };
   }),
 }));
 

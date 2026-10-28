@@ -1,125 +1,104 @@
-import { MidiTrack, MidiNote } from "@openchart/midi";
-import { Difficulty } from "../types.js";
-import { ChartViewConfig } from "../config.js";
-import { InstrumentTrackView, SongView } from "../index.js";
+import type { MidiNote, MidiTrack } from "@openchart/midi";
+import type { PhraseDef } from "../config.js";
+import { classifyPitch, type PitchRole } from "../ruleset/classify.js";
+import {
+  difficultyName,
+  type ChartRules,
+  type CompiledLane,
+  type TrackRules,
+} from "../ruleset/compile.js";
+import type { Difficulty } from "../types.js";
+import type { InstrumentTrackView } from "./instrument.js";
+import type { SongView } from "./song.js";
 
+/**
+ * Read-only view of one difficulty of a chart track. All semantics (lanes,
+ * markers, phrases) come from the compiled ruleset; edits go through the
+ * editing session, never through this class.
+ */
 export class ChartView {
   #song: SongView | undefined;
   #track: InstrumentTrackView | undefined;
   #midiTrack: MidiTrack | undefined;
-  #config: ChartViewConfig;
-  #specialPitches: readonly number[];
-  #ensureTrack: (() => MidiTrack | undefined) | undefined;
+  #rules: TrackRules;
+  #difficulty: Difficulty;
+  #cache: { revision: number; notes: MidiNote[] } | null = null;
 
   constructor(
     song: SongView | undefined,
     track: InstrumentTrackView | undefined,
     midiTrack: MidiTrack | undefined,
-    config: ChartViewConfig,
-    specialPitches: readonly number[] = [],
-    ensureTrack?: () => MidiTrack | undefined,
+    rules: TrackRules,
+    difficulty: Difficulty,
   ) {
     this.#song = song;
     this.#track = track;
     this.#midiTrack = midiTrack;
-    this.#config = config;
-    this.#specialPitches = specialPitches;
-    this.#ensureTrack = ensureTrack;
+    this.#rules = rules;
+    this.#difficulty = difficulty;
   }
 
   public getDifficulty(): Difficulty {
-    return this.#config.difficulty;
+    return this.#difficulty;
   }
 
-  public getLaneCount(): number {
-    return this.#config.laneCount;
+  public getRules(): TrackRules {
+    return this.#rules;
   }
 
-  public getOffset(): number {
-    return this.#config.range.low;
+  public getChartRules(): ChartRules {
+    return this.#rules.difficulties.get(this.#difficulty)!;
+  }
+
+  /** Lanes that exist on this track, sorted by `index`. */
+  public getLanes(): readonly CompiledLane[] {
+    return this.#rules.lanes;
+  }
+
+  /** Lanes that occupy a visual column (gems and pads). */
+  public getColumns(): readonly CompiledLane[] {
+    return this.#rules.columns;
+  }
+
+  /** Full-width bar lanes (kick, open). */
+  public getBars(): readonly CompiledLane[] {
+    return this.#rules.bars;
   }
 
   public getNoteRevision(): number {
     return this.#midiTrack?.getNoteRevision() ?? 0;
   }
 
+  /** Notes whose pitch is a lane note or marker of this difficulty. */
   public getNotes(): MidiNote[] {
-    return this.#midiTrack?.getNotes({ pitch: this.#config.range }) ?? [];
+    const track = this.#midiTrack;
+    if (!track) return [];
+    // The same array is returned until the track's note revision changes.
+    const revision = track.getNoteRevision();
+    if (this.#cache?.revision === revision) return this.#cache.notes;
+    const chart = this.getChartRules();
+    const notes = track
+      .getNotes()
+      .filter(
+        (note) => chart.notes.has(note.pitch) || chart.markers.has(note.pitch),
+      );
+    this.#cache = { revision, notes };
+    return notes;
   }
 
-  public addNote(
-    note: number,
-    start: number,
-    end: number = 0,
-    velocity: number = 100,
-  ): boolean {
-    if (note < 0 || note >= this.#config.laneCount) {
-      return false;
-    }
-    return this.addNoteAtPitch(
-      this.#config.range.low + note,
-      start,
-      end,
-      velocity,
+  /** Phrases that apply to this difficulty. */
+  public getPhrases(): readonly PhraseDef[] {
+    const name = difficultyName(this.#difficulty);
+    return this.#rules.phrases.filter(
+      (phrase) =>
+        !phrase.appliesTo ||
+        phrase.appliesTo === "all" ||
+        phrase.appliesTo.includes(name),
     );
   }
 
-  public addNoteAtPitch(
-    pitch: number,
-    start: number,
-    end: number = 0,
-    velocity: number = 100,
-  ): boolean {
-    if (
-      !this.#midiTrack ||
-      !this.isValidPitch(pitch) ||
-      start < 0 ||
-      (end !== 0 && end < start)
-    ) {
-      return false;
-    }
-
-    this.#midiTrack.insertNote({
-      tick: start,
-      pitch,
-      velocity,
-      duration: Math.max(1, (end > start ? end : start + 1) - start),
-    });
-    return true;
-  }
-
-  public removeNote(note: MidiNote): boolean {
-    if (!this.isValidNote(note) || !this.#midiTrack) {
-      return false;
-    }
-
-    return this.#midiTrack.removeNote(note.noteOn, note.noteOff);
-  }
-
-  public moveNote(note: MidiNote, lane: number, start: number): boolean {
-    if (
-      start < 0 ||
-      lane < 0 ||
-      lane >= this.#config.laneCount ||
-      !this.isValidNote(note) ||
-      !this.#midiTrack
-    ) {
-      return false;
-    }
-
-    return this.#midiTrack.updateNote(note, {
-      start,
-      pitch: this.#config.range.low + lane,
-      duration: note.end - note.start,
-    });
-  }
-
-  public setNoteEnd(note: MidiNote, end: number): boolean {
-    if (end <= note.start || !this.isValidNote(note) || !this.#midiTrack) {
-      return false;
-    }
-
-    return this.#midiTrack.setNoteDuration(note, end - note.start);
+  public classify(pitch: number): PitchRole {
+    return classifyPitch(this.#rules, pitch, this.#difficulty);
   }
 
   public getMidiTrack(): MidiTrack | undefined {
@@ -132,24 +111,5 @@ export class ChartView {
 
   public getTrack(): InstrumentTrackView | undefined {
     return this.#track;
-  }
-
-  private ensureTrack(): MidiTrack | undefined {
-    if (!this.#midiTrack && this.#ensureTrack) {
-      this.#midiTrack = this.#ensureTrack();
-    }
-    return this.#midiTrack;
-  }
-
-  private isValidNote(note: MidiNote): boolean {
-    return this.isValidPitch(note.pitch);
-  }
-
-  private isValidPitch(pitch: number): boolean {
-    const { low, high } = this.#config.range;
-    return (
-      (pitch >= low && pitch <= high && pitch < low + this.#config.laneCount) ||
-      this.#specialPitches.includes(pitch)
-    );
   }
 }

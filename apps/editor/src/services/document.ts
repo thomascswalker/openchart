@@ -3,18 +3,19 @@ import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
 import type { SaveFile } from "./filesystem/types";
 import type { LoggerService } from "./logger";
 import { StatefulService } from "../platform/services";
+import type { RulesetService } from "./ruleset";
 import {
+  buildMetadataSchema,
   makeDefaultMetadata,
-  MetadataSchema,
+  normalizeLegacyMetadata,
   type Metadata,
 } from "./document/schema";
 import { toArrayBuffer } from "../util/array";
-import { SongView } from "@openchart/views";
+import type { CompiledRuleset } from "@openchart/views";
 
-function createDefaultMidi() {
+function createDefaultMidi(rules: CompiledRuleset) {
   const midi = new Midi();
-  const view = new SongView(midi);
-  view.getTrackDescriptors().map((desc) => {
+  rules.descriptors().forEach((desc) => {
     const index = midi.addTrack();
     const track = midi.tracks[index];
     track.name = desc.name;
@@ -57,21 +58,27 @@ export interface OpenedProject {
 }
 
 export class DocumentService extends StatefulService<DocumentSnapshot> {
-  static dependencies = ["logger"];
+  static dependencies = ["logger", "ruleset"];
 
   #logger: LoggerService;
+  readonly #rulesetService: RulesetService;
+  #metadataSchema: ReturnType<typeof buildMetadataSchema>;
   #data: Midi | null = new Midi();
   #documentId = 0;
   #fileName: string | null = null;
   #fileHandle: FileSystemFileHandle | null = null;
   #directoryHandle: FileSystemDirectoryHandle | null = null;
   #isDirty = false;
-  #metadata: Metadata = makeDefaultMetadata();
+  #metadata: Metadata;
   readonly #history = new History(DEFAULT_HISTORY_CAPACITY);
 
-  constructor(logger: LoggerService) {
+  constructor(logger: LoggerService, rulesetService: RulesetService) {
     super();
     this.#logger = logger;
+    this.#rulesetService = rulesetService;
+    this.#metadataSchema = buildMetadataSchema(rulesetService.snapshot.ruleset);
+    this.#metadata = makeDefaultMetadata(rulesetService.snapshot.ruleset);
+    rulesetService.subscribe(this.syncRuleset);
     this.#history.reset(this.#data!);
     this.publish();
   }
@@ -92,8 +99,34 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
     return this.#metadata;
   }
 
+  /** Project-settings schema for the active ruleset (rebuilt when it changes). */
+  public get metadataSchema(): ReturnType<typeof buildMetadataSchema> {
+    return this.#metadataSchema;
+  }
+
+  /** Parses metadata of any age against the active ruleset's schema. */
+  public parseMetadata(raw: unknown): Metadata {
+    return this.#metadataSchema.parse(normalizeLegacyMetadata(raw)) as Metadata;
+  }
+
+  /**
+   * A new ruleset changes the difficulty and settings fields. Existing values
+   * are kept where the new schema accepts them; otherwise defaults apply.
+   */
+  private readonly syncRuleset = (): void => {
+    const { ruleset } = this.#rulesetService.snapshot;
+    this.#metadataSchema = buildMetadataSchema(ruleset);
+    const migrated = this.#metadataSchema.safeParse(
+      normalizeLegacyMetadata(this.#metadata),
+    );
+    this.#metadata = migrated.success
+      ? (migrated.data as Metadata)
+      : makeDefaultMetadata(ruleset);
+    this.publish();
+  };
+
   public set metadata(metadata: Metadata) {
-    this.#metadata = MetadataSchema.parse(metadata);
+    this.#metadata = this.parseMetadata(metadata);
     this.#isDirty = true;
     this.publish();
   }
@@ -111,7 +144,13 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this.update(createDefaultMidi(), null, null, null, makeDefaultMetadata());
+    this.update(
+      createDefaultMidi(this.#rulesetService.compiled),
+      null,
+      null,
+      null,
+      makeDefaultMetadata(this.#rulesetService.snapshot.ruleset),
+    );
   };
 
   public async open(): Promise<boolean> {
@@ -122,7 +161,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
           return false;
         }
         this.#logger.info("Project directory opened...");
-        const metadata = MetadataSchema.parse(
+        const metadata = this.parseMetadata(
           JSON.parse(new TextDecoder().decode(project.projectBytes)),
         );
 

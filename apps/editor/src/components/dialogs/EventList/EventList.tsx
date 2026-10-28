@@ -7,10 +7,10 @@ import {
   type MidiEvent,
   type MidiMetaEvent,
 } from "@openchart/midi";
-import { SongView } from "@openchart/views";
 import { startCase } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { useDocument } from "../../../hooks/useDocument";
+import { useRuleset } from "../../../hooks/useRuleset";
 import { useViewport } from "../../../hooks/useViewport";
 import { vars } from "../../../util/css";
 import {
@@ -133,11 +133,7 @@ const EventList = () => {
   const documentSnapshot = useDocument();
   const { midi } = documentSnapshot;
   const { viewportSessions, activeViewportId } = useViewport();
-  const view = useMemo(
-    () => (midi ? new SongView(midi) : null),
-    // A new snapshot is published on every edit, even if midi is mutated in place.
-    [midi, documentSnapshot],
-  );
+  const { compiled } = useRuleset();
 
   const [selectedTrackName, setSelectedTrackName] = useState<string | null>(
     null,
@@ -150,7 +146,7 @@ const EventList = () => {
       setSelectedTrackName(null);
       return;
     }
-    const desc = view?.getTrackDescriptors() ?? [];
+    const desc = compiled.descriptors();
     if (!desc.length) {
       setSelectedTrackName(null);
       return;
@@ -162,7 +158,7 @@ const EventList = () => {
     }
     const trackName = midi?.getTrack(trackDesc.name)?.name;
     setSelectedTrackName(trackName ?? null);
-  }, [viewportSessions, activeViewportId, midi, view]);
+  }, [viewportSessions, activeViewportId, midi, compiled]);
 
   const [eventType, setEventType] = useState<EventType>("channel");
   const config = eventTypeConfigs[eventType];

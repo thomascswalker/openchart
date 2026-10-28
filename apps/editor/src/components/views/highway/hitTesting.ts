@@ -1,4 +1,4 @@
-import type { ChartView, EditablePhraseKind, EntityId } from "@openchart/views";
+import type { ChartView, EntityId } from "@openchart/views";
 import { Vector2 } from "three";
 import * as THREE from "three";
 import {
@@ -17,7 +17,7 @@ export interface HighwayPhrase {
   id: EntityId;
   start: number;
   end: number;
-  kind: EditablePhraseKind;
+  kind: string;
 }
 
 export interface PhraseBoundaryProjection {
@@ -58,6 +58,11 @@ function distanceToSegment(
           Math.min(1, point.clone().sub(start).dot(segment) / lengthSquared),
         );
   return point.distanceTo(start.clone().addScaledVector(segment, projection));
+}
+
+/** Sustain tails exist only on tracks whose ruleset defines `sustainCutoff`. */
+export function chartHasSustains(chart: ChartView): boolean {
+  return chart.getRules().mechanics?.sustainCutoff !== undefined;
 }
 
 export class HighwayHitTester {
@@ -109,8 +114,8 @@ export class HighwayHitTester {
     for (const note of candidates) {
       if (note.kind === "phrase") continue;
       const gemBounds =
-        note.kind === "kick"
-          ? this.getKickScreenBounds(note)
+        note.kind === "bar"
+          ? this.getBarScreenBounds(note)
           : this.getGemScreenBounds(
               note,
               note.lane,
@@ -143,7 +148,7 @@ export class HighwayHitTester {
     tick: number,
   ): IndexedNote | undefined {
     const session = this.context.getEditingSession();
-    if (!session || session.mode.id === "chart.drums") return undefined;
+    if (!session || !chartHasSustains(chart)) return undefined;
     const pointer = this.coordinates.getCanvasPoint(event);
     if (!pointer) return undefined;
     let hit: IndexedNote | undefined;
@@ -176,7 +181,7 @@ export class HighwayHitTester {
   public getPhraseAt(
     chart: ChartView,
     event: MouseEvent,
-    kind: EditablePhraseKind,
+    kind: string,
   ): HighwayPhrase | undefined {
     const point = this.coordinates.getCanvasPoint(event);
     const session = this.context.getEditingSession();
@@ -344,10 +349,11 @@ export class HighwayHitTester {
     };
   }
 
-  public getKickScreenBounds(
+  /** Bounds of a full-width bar note (kick, open). */
+  public getBarScreenBounds(
     note: Pick<IndexedNote, "start" | "end">,
   ): HighwayScreenBounds | null {
-    return this.getGemScreenBounds(note, 0, "kick");
+    return this.getGemScreenBounds(note, 0, "bar");
   }
 
   public getTailScreenBounds(

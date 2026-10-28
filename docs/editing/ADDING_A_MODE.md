@@ -16,17 +16,21 @@ cancel/commit/undo without changing an existing production mode or view.
 1. **Define the mode in `@openchart/views`.** Add a file under
    `packages/views/src/editing/modes/` and implement `EditingMode<TToolState>`.
    Give it a stable ID and label, declare `hostKinds`, and make `appliesTo`
-   depend on the supplied `TrackDescriptor`, not an app-level instrument-name
-   check.
+   depend on the supplied `TrackDescriptor` (`track.kind`, `track.rules`), not
+   an app-level instrument-name check.
 2. **Declare capabilities and tools.** List supported raw and domain command
    types and entity kinds. Set track-creation and difficulty requirements.
    Describe toolbar items with IDs, labels, icon keys, groups, state keys,
-   values, and optional action/shortcut metadata. Define a Zod
+   values, and optional action/shortcut metadata by implementing
+   `createTools(context)`; tools may depend on the target track's rules. Define a Zod
    `toolStateSchema` and a valid default state.
 3. **Implement projection and classification.** Map note snapshots to the
    mode's rows and rows back to MIDI pitches. Classify projected entities so
    move, resize, selection, and clipboard behavior use the same semantics.
-4. **Expand domain commands.** Validate domain intent in `expand`, return
+4. **Expand domain commands.** Rule enforcement happens after expansion in the
+   session; do not re-implement ruleset constraints in the mode (call
+   `context.validate(commands)` if you need a dry run).
+   Validate domain intent in `expand`, return
    errors as rejections, and translate accepted operations into raw commands.
    `ChartDocument` validates the raw commands before mutation. Keep this logic
    pure: do not mutate a `MidiTrack`, read editor services, or import app code.
@@ -57,7 +61,7 @@ const mode: EditingMode<ToolState> = {
   id: "chart.example",
   label: "Example",
   hostKinds: new Set(["example-view"]),
-  appliesTo: (track) => track.type === "instrument",
+  appliesTo: (track) => track.kind === "guitar",
   capabilities: {
     rawCommands: new Set(["DELETE_ENTITIES"]),
     domainCommands: new Set(["PLACE_EXAMPLE_NOTE"]),
@@ -65,7 +69,7 @@ const mode: EditingMode<ToolState> = {
     canCreateTrack: false,
     requiresDifficulty: true,
   },
-  tools: [],
+  createTools: () => [],
   toolStateSchema,
   createDefaultToolState: () => defaultToolState,
   createProjection,

@@ -1,9 +1,9 @@
-import { formatNoteId, getPhrasePitch } from "@openchart/views";
+import { formatNoteId } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import type { HighwayCoordinateSystem } from "../coordinates";
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayPhrase } from "../hitTesting";
-import { createHighwayTestSetup } from "./testUtils";
+import { createHighwayTestSetup, getPhrasePitch } from "./testUtils";
 
 function createController() {
   const setup = createHighwayTestSetup();
@@ -18,7 +18,7 @@ function createController() {
 
 function addPhrase(
   setup: ReturnType<typeof createHighwayTestSetup>,
-  kind: "stagepower" | "solo",
+  kind: "stagePower" | "solo",
   start: number,
   end: number,
 ): HighwayPhrase {
@@ -52,7 +52,7 @@ describe("HighwayPhraseEditingController", () => {
   it("previews creation and cancels without changing MIDI or history", () => {
     const { setup, editing } = createController();
     const before = setup.midi.toBuffer();
-    editing.beginPhraseDrag(7, "stagepower", 120, null, "create");
+    editing.beginPhraseDrag(7, "stagePower", 120, null, "create");
     editing.updatePhraseDrag(360);
 
     expect(editing.getDragState()).toMatchObject({
@@ -87,7 +87,7 @@ describe("HighwayPhraseEditingController", () => {
 
   it("commits creation, movement, and resizing as session transactions", () => {
     const { setup, editing } = createController();
-    editing.beginPhraseDrag(1, "stagepower", 120, null, "create");
+    editing.beginPhraseDrag(1, "stagePower", 120, null, "create");
     editing.updatePhraseDrag(360);
     expect(editing.finishPhraseDrag()).toBe(true);
     const phrase = addPhrase(setup, "solo", 480, 960);
@@ -125,7 +125,7 @@ describe("HighwayPhraseEditingController", () => {
 
   it("keeps phrase selection stable by ID and deletes selected phrases once", () => {
     const { setup, editing } = createController();
-    const first = addPhrase(setup, "stagepower", 0, 240);
+    const first = addPhrase(setup, "stagePower", 0, 240);
     const second = addPhrase(setup, "solo", 480, 960);
     editing.selectPhrases([first.id], false);
     editing.selectPhrases([second.id], true);

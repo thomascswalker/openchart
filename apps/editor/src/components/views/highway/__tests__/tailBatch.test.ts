@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { minimumSustainLengthTicks } from "@openchart/views";
 import { rgbFromHex } from "../rendering/materials";
 import { SustainTailBatch } from "../rendering/tailBatch";
 
@@ -96,7 +95,7 @@ describe("SustainTailBatch", () => {
     material.dispose();
   });
 
-  it("renders sustains only when they meet the minimum sustain length", () => {
+  it("writes every supplied sustain tail", () => {
     const scene = new THREE.Scene();
     const material = new THREE.ShaderMaterial();
     const batch = new SustainTailBatch(scene, material, 4, 10, {});
@@ -109,13 +108,13 @@ describe("SustainTailBatch", () => {
       color: rgbFromHex(0x00ff00),
       selected: false,
       startTick: 0,
-      endTick: minimumSustainLengthTicks,
+      endTick: 240,
     };
 
     expect(
       batch.write([{ ...tail, endTick: 239 }, tail, { ...tail, endTick: 241 }]),
-    ).toBe(2);
-    expect(batch.mesh.count).toBe(2);
+    ).toBe(3);
+    expect(batch.mesh.count).toBe(3);
 
     batch.dispose();
     material.dispose();

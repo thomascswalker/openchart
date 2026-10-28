@@ -4,10 +4,11 @@ import type { EditingService } from "../../services/editor/editing";
 import { ViewportService } from "../../services/editor/viewports";
 import { ActiveHighway } from "../conditions";
 
-/** Toggles a Highway phrase tool; toggling the active one returns to Select. */
-export class ToggleHighwayPhraseToolAction extends Action<
-  ["stagepower" | "solo"]
-> {
+/**
+ * Toggles a Highway phrase tool by phrase id (from the track's ruleset, e.g.
+ * `stagePower` or `solo`); toggling the active one returns to Select.
+ */
+export class ToggleHighwayPhraseToolAction extends Action<[string]> {
   constructor() {
     super({
       condition: {
@@ -17,13 +18,18 @@ export class ToggleHighwayPhraseToolAction extends Action<
     });
   }
 
-  run(accessor: ServicesAccessor, kind: "stagepower" | "solo"): void {
+  run(accessor: ServicesAccessor, kind: string): void {
     const editing = accessor.get<EditingService>("editor.editing");
     const session = editing.getActiveSession();
     const viewport = accessor
       .get<ViewportService>("editor.viewports")
       .getActiveViewport();
     if (!session || !viewport) return;
+    // Ignore phrases the current track does not offer (e.g. no solo on vocals).
+    const offered = session
+      .getTools()
+      .some((tool) => tool.stateKey === "phrase" && tool.value === kind);
+    if (!offered) return;
     const state = session.getToolState();
     const phrase = isRecord(state) && state.phrase === kind ? null : kind;
     editing.updateToolState(viewport.id, session.mode.id, {

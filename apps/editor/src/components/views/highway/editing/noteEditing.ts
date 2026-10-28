@@ -8,7 +8,8 @@ import type {
 } from "@openchart/views";
 import { formatNoteId, parseEntityId } from "@openchart/views";
 import type { HighwayContext } from "../context";
-import type { IndexedNote } from "../noteIndex";
+import { chartHasSustains } from "../hitTesting";
+import { laneVisualFor, type IndexedNote } from "../noteIndex";
 
 export class HighwayNoteEditingController {
   private readonly context: HighwayContext;
@@ -32,27 +33,19 @@ export class HighwayNoteEditingController {
     const preferredSustainId = preferredNote
       ? (this.getEntityId(chart, preferredNote) ?? undefined)
       : undefined;
-    const command =
-      session.mode.id === "chart.drums"
-        ? {
-            type: "PLACE_CHART_NOTE",
-            lane,
-            tick,
-            drumKind: this.context.getDrumPlacementKind(),
-          }
-        : {
-            type: "PLACE_CHART_NOTE",
-            lane,
-            tick,
-            placement: this.context.getNotePlacementType?.() ?? "normal",
-            cutPolicy: getCutPolicy(
-              shiftKey,
-              preferredSustainId !== undefined,
-              preferredNote !== null &&
-                preferredNote.pitch - chart.getOffset() === lane,
-            ),
-            ...(preferredSustainId ? { preferredSustainId } : {}),
-          };
+    const command = {
+      type: "PLACE_CHART_NOTE",
+      lane,
+      tick,
+      placement: this.context.getNotePlacementType?.() ?? "normal",
+      cutPolicy: getCutPolicy(
+        shiftKey,
+        preferredSustainId !== undefined,
+        preferredNote !== null &&
+          laneVisualFor(chart, preferredNote.pitch)?.lane === lane,
+      ),
+      ...(preferredSustainId ? { preferredSustainId } : {}),
+    };
     return session.execute(command).changed;
   }
 
@@ -65,23 +58,14 @@ export class HighwayNoteEditingController {
     const session = this.context.getEditingSession();
     if (!session) return false;
     this.gesture ??= session.beginGesture();
-    const command =
-      session.mode.id === "chart.drums"
-        ? {
-            type: "PLACE_CHART_NOTE",
-            lane,
-            tick: startTick,
-            endTick: Math.max(startTick + 1, endTick),
-            drumKind: this.context.getDrumPlacementKind(),
-          }
-        : {
-            type: "PLACE_CHART_NOTE",
-            lane,
-            tick: startTick,
-            endTick: Math.max(startTick + 1, endTick),
-            placement: this.context.getNotePlacementType?.() ?? "normal",
-            cutPolicy: preserveSustain ? "none" : "all",
-          };
+    const command = {
+      type: "PLACE_CHART_NOTE",
+      lane,
+      tick: startTick,
+      endTick: Math.max(startTick + 1, endTick),
+      placement: this.context.getNotePlacementType?.() ?? "normal",
+      cutPolicy: preserveSustain ? "none" : "all",
+    };
     const preview = this.gesture.preview(command);
     this.context.setPreviewState(preview);
     return preview.rejections.length === 0 && preview.added.length > 0;
@@ -95,8 +79,8 @@ export class HighwayNoteEditingController {
     sameLanePlacement = false,
   ): boolean {
     const session = this.context.getEditingSession();
-    if (!session || session.mode.id === "chart.drums") return false;
     const chart = this.context.getCurrentChart();
+    if (!session || !chart || !chartHasSustains(chart)) return false;
     const source =
       preferredSustain === null ? null : getMidiNote(preferredSustain);
     const preferredSustainId =
@@ -166,7 +150,7 @@ export class HighwayNoteEditingController {
     const source = getMidiNote(note);
     if (!source) return false;
     const id = this.getEntityId(chart, source);
-    if (!session || !id || session.mode.id === "chart.drums") return false;
+    if (!session || !id || !chartHasSustains(chart)) return false;
     this.gesture ??= session.beginGesture();
     this.context.setPreviewState(
       this.gesture.preview({
@@ -211,11 +195,7 @@ export class HighwayNoteEditingController {
     const targetIds = notes
       .map((note) => this.getEntityId(chart, note))
       .filter((id): id is EntityId => id !== null);
-    if (
-      !session ||
-      targetIds.length === 0 ||
-      session.mode.id === "chart.drums"
-    ) {
+    if (!session || targetIds.length === 0 || !chartHasSustains(chart)) {
       return false;
     }
     this.gesture ??= session.beginGesture();
@@ -302,11 +282,11 @@ export class HighwayNoteEditingController {
     if (!session) return null;
     const classification = session.classifyNote(snapshot);
     if (classification.kind !== "note" || !classification.movable) return null;
-    if (
-      session.mode.id === "chart.drums" &&
-      classification.subtype === "kick"
-    ) {
-      return 0;
+    // Bar lanes (kick, open) span the highway and sit on lane 0.
+    const chart = this.context.getCurrentChart();
+    if (chart) {
+      const role = chart.classify(snapshot.pitch);
+      if (role.kind === "laneNote" && role.bar) return 0;
     }
     return session.getProjection().rowForNote(snapshot)?.index ?? null;
   }

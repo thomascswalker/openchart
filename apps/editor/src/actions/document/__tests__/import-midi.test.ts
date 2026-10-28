@@ -5,6 +5,7 @@ import { DocumentService } from "../../../services/document";
 import type { LoggerService } from "../../../services/logger";
 import { makeDefaultMetadata } from "../../../services/document/schema";
 import { ImportMidiAction } from "../import-midi";
+import { createTestRulesetService } from "../../../services/__tests__/testUtils";
 
 describe("ImportMidiAction", () => {
   it("replaces the current MIDI while preserving project metadata", async () => {
@@ -12,9 +13,12 @@ describe("ImportMidiAction", () => {
     importedMidi.addTrack();
     const metadata = makeDefaultMetadata();
     metadata.song.name = "Keep this metadata";
-    const document = new DocumentService({
-      info: vi.fn(),
-    } as unknown as LoggerService);
+    const document = new DocumentService(
+      {
+        info: vi.fn(),
+      } as unknown as LoggerService,
+      createTestRulesetService(),
+    );
     document.metadata = metadata;
     const read = vi.fn(async () => ({
       name: "imported.mid",

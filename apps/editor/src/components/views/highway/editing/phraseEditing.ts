@@ -1,8 +1,4 @@
-import type {
-  EditablePhraseKind,
-  EntityId,
-  GestureHandle,
-} from "@openchart/views";
+import type { EntityId, GestureHandle } from "@openchart/views";
 import { formatNoteId } from "@openchart/views";
 import type { HighwayContext } from "../context";
 import { HighwayCoordinateSystem } from "../coordinates";
@@ -70,7 +66,7 @@ export class HighwayPhraseEditingController {
 
   public beginPhraseDrag(
     pointerId: number,
-    kind: EditablePhraseKind,
+    kind: string,
     tick: number,
     phrase: HighwayPhrase | null,
     operation: HighwayPhraseDragState["operation"],
@@ -177,7 +173,7 @@ export class HighwayPhraseEditingController {
         }
       : {
           type: "CREATE_PHRASE",
-          phraseKind: drag.kind,
+          phraseId: drag.kind,
           startTick,
           endTick,
         };

@@ -136,7 +136,7 @@ describe("manifest highway material factory", () => {
     expect(materials.drum.pad.noteTinted.fragmentShader).toBe(
       definitions.roundNote.fragmentShader,
     );
-    expect(materials.drum.kick.noteTinted.uniforms.uEmissionTexture.value).toBe(
+    expect(materials.drum.bar.noteTinted.uniforms.uEmissionTexture.value).toBe(
       textures.kickEmission,
     );
     expect(materials.noteTinted.uniforms.uEmissionMaskTexture.value).toBe(
@@ -229,7 +229,7 @@ describe("manifest highway material factory", () => {
     });
     const materials = createMaterialSet(registry);
 
-    expect(materials.drum.kick.noteTinted.depthTest).toBe(true);
+    expect(materials.drum.bar.noteTinted.depthTest).toBe(true);
     // for (const kind of ["pad", "cymbal"] as const) {
     //   // expect(materials.drum[kind].noteTinted.depthTest).toBe(false);
     //   // expect(materials.drum[kind].noteTinted.depthWrite).toBe(false);

@@ -13,7 +13,6 @@ import {
   getSustainCutTargets,
   getSustainsAtTick,
   minimumMidiNoteDurationTicks,
-  minimumSustainLengthTicks,
 } from "@openchart/views";
 import { getPhraseModeForHighwayMode } from "../types";
 
@@ -28,10 +27,6 @@ describe("highway interaction helpers", () => {
 
   it("uses the minimum valid MIDI duration for a click-created note", () => {
     expect(minimumMidiNoteDurationTicks).toBe(1);
-  });
-
-  it("uses a 240-tick minimum sustain length", () => {
-    expect(minimumSustainLengthTicks).toBe(240);
   });
 
   it("computes bounded phrase edge-scroll targets in both directions", () => {

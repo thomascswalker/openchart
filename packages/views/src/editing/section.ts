@@ -7,7 +7,7 @@ export interface SectionMarker {
 export function extractSections(track: MidiTrack): SectionMarker[] {
   return track
     .getTextEvents()
-    .filter((event) => event.type === MetaType.Marker)
+    .filter((event) => event.type === MetaType.Text)
     .map((event) => ({ name: event.text, tick: event.tick }))
     .filter((section) => /^\s*\[section\s+.+\]\s*$/i.test(section.name));
 }
