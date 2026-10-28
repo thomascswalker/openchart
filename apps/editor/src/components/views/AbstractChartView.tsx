@@ -1,5 +1,9 @@
 import type { Midi } from "@openchart/midi";
-import { Difficulty, type EditingSession } from "@openchart/views";
+import {
+  DefaultCompiledRuleset,
+  Difficulty,
+  type EditingSession,
+} from "@openchart/views";
 import * as THREE from "three";
 import { Box2, Vector2 } from "three";
 import { Engine, type EngineOptions } from "../../rendering/engine";
@@ -38,7 +42,10 @@ export abstract class AbstractChartView<T> {
     midi: null,
     selectedTrackKey: null,
     selectedTrackIndex: null,
-    selectedInstrument: "LEAD GUITAR",
+    // Overwritten by the viewport; the first editable track of the default rules.
+    selectedInstrument:
+      DefaultCompiledRuleset.descriptors().find((t) => t.visible && t.editable)
+        ?.name ?? "",
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
     lockCursor: false,

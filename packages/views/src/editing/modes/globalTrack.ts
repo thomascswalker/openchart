@@ -51,7 +51,7 @@ export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
       canCreateTrack: false,
       requiresDifficulty: false,
     },
-    tools: [],
+    createTools: () => [],
     toolStateSchema: EmptyToolStateSchema,
     createDefaultToolState: () => ({}),
     createProjection: (): Projection => ({
@@ -94,7 +94,7 @@ function expandGlobalCommand(
     const raw: RawCommand = {
       type: "ADD_TEXT",
       trackIndex: context.target.trackIndex,
-      metaType: MetaType.Marker,
+      metaType: MetaType.Text,
       tick: section.tick,
       text: `[section ${section.name}]`,
     };

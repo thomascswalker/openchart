@@ -1,6 +1,11 @@
 import type { ZodType } from "zod";
-import type { Difficulty } from "../chartView.js";
-import type { SongViewConfig, TrackDescriptor } from "../config.js";
+import type { Difficulty } from "../types.js";
+import { RuleViolation } from "../ruleset/context.js";
+import type {
+  CompiledRuleset,
+  TrackDescriptor,
+  RulesetContext,
+} from "../ruleset/index.js";
 import type { ClipboardPayload } from "./clipboard.js";
 import type { NoteSnapshot } from "./reader.js";
 import type { EntityKind } from "./entityId.js";
@@ -10,18 +15,21 @@ import type { Rejection } from "./result.js";
 
 /** Stable identifier for a registered editing mode. */
 export type EditingModeId =
-  | "midi.raw"
-  | "midi.global"
-  | "chart.frets"
-  | "chart.drums"
-  | "vocals"
-  | (string & {});
+  "midi.raw" | "midi.global" | "chart.lanes" | "vocals" | (string & {});
 
 /** Document, target, and configuration visible to a pure editing mode. */
 export interface ModeContext {
   reader: ChartDocumentReader;
   target: EditingTarget;
-  config: SongViewConfig;
+  /** Compiled ruleset describing every track's lanes, phrases and rules. */
+  rules: CompiledRuleset;
+  /** Project settings, player options and ppqn used to evaluate rules. */
+  rulesContext: RulesetContext;
+  /**
+   * Dry-run enforcement of raw commands against the ruleset. Lets a mode ask
+   * "would this be accepted?" (e.g. to fall back to a previous valid offset).
+   */
+  validate(commands: readonly RawCommand[]): RuleViolation[];
 }
 
 /** Track and difficulty selected by one viewport. */
@@ -81,7 +89,8 @@ export interface EditingMode<TToolState = unknown> {
   readonly hostKinds: ReadonlySet<string>;
   appliesTo(track: TrackDescriptor): boolean;
   readonly capabilities: ModeCapabilities;
-  readonly tools: readonly ToolDescriptor[];
+  /** Tools depend on the target track's rules, so they are derived per context. */
+  createTools(context: ModeContext): readonly ToolDescriptor[];
   readonly toolStateSchema: ZodType<TToolState>;
   createDefaultToolState(): TToolState;
   createProjection(context: ModeContext): Projection;

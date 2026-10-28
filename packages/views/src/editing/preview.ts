@@ -1,6 +1,7 @@
 import type { EditCommand, RawCommand } from "./commands.js";
 import type { EntityId } from "./entityId.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
+import type { RuleViolation } from "../ruleset/index.js";
 import type { Rejection } from "./result.js";
 
 /** Volatile note projection produced without changing MIDI or history. */
@@ -9,6 +10,8 @@ export interface PreviewState {
   added: readonly NoteSnapshot[];
   removed: ReadonlySet<EntityId>;
   rejections: readonly Rejection[];
+  /** Rule violations the edit would cause (errors become rejections on commit). */
+  diagnostics: readonly RuleViolation[];
 }
 
 /** Computes the visible note overlay for raw commands without mutating reader. */
@@ -200,6 +203,7 @@ export function computePreview(
     added: [...added.values()],
     removed,
     rejections,
+    diagnostics: [],
   };
 }
 

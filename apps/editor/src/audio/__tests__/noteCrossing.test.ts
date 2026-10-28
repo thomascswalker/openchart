@@ -4,7 +4,7 @@ import { NoteCrossingTracker } from "../noteCrossing";
 
 function note(start: number, pitch: number): MidiNote {
   return {
-    note: pitch,
+    pitch: pitch,
     velocity: 100,
     start,
     end: start + 120,

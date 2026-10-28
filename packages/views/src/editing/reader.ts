@@ -1,4 +1,4 @@
-import type { TrackDescriptor } from "../config.js";
+import type { TrackDescriptor } from "../ruleset/compile.js";
 import type { EntityId } from "./entityId.js";
 
 /** Read-only snapshot of a MIDI note exposed to modes and projections. */

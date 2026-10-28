@@ -73,7 +73,7 @@ export enum TrackEventType {
 
 export enum MetaType {
   SequenceNumber = 0x00,
-  TextMidiEvent = 0x01,
+  Text = 0x01,
   Copyright = 0x02,
   TrackName = 0x03,
   InstrumentName = 0x04,
@@ -88,14 +88,14 @@ export enum MetaType {
 }
 
 const TextMetaTypeValues = {
-  TextMidiEvent: MetaType.TextMidiEvent,
+  Text: MetaType.Text,
   Copyright: MetaType.Copyright,
   TrackName: MetaType.TrackName,
   InstrumentName: MetaType.InstrumentName,
   Lyric: MetaType.Lyric,
   Marker: MetaType.Marker,
   CuePoint: MetaType.CuePoint,
-  [MetaType.TextMidiEvent]: "TextMidiEvent",
+  [MetaType.Text]: "Text",
   [MetaType.Copyright]: "Copyright",
   [MetaType.TrackName]: "TrackName",
   [MetaType.InstrumentName]: "InstrumentName",
@@ -108,7 +108,7 @@ export const TextMetaType: typeof TextMetaTypeValues & Record<number, string> =
   TextMetaTypeValues;
 
 export type TextMetaType =
-  | MetaType.TextMidiEvent
+  | MetaType.Text
   | MetaType.Copyright
   | MetaType.TrackName
   | MetaType.InstrumentName
@@ -116,22 +116,33 @@ export type TextMetaType =
   | MetaType.Marker
   | MetaType.CuePoint;
 
-const TextMetaTypeSchema = z.custom<TextMetaType>(
-  (value) => typeof value === "number" && Object.hasOwn(TextMetaType, value),
-);
+export const isTextEvent = (event: MidiEvent): boolean => {
+  return (
+    event.status === 0xff &&
+    ((event as MidiMetaEvent).type === MetaType.Text ||
+      (event as MidiMetaEvent).type === MetaType.Copyright ||
+      (event as MidiMetaEvent).type === MetaType.TrackName ||
+      (event as MidiMetaEvent).type === MetaType.InstrumentName ||
+      (event as MidiMetaEvent).type === MetaType.Lyric ||
+      (event as MidiMetaEvent).type === MetaType.Marker ||
+      (event as MidiMetaEvent).type === MetaType.CuePoint)
+  );
+};
 
 export const BaseEventSchema = z.object({
   deltaTime: z.number(),
   status: z.number(),
+  /**
+   * Absolute tick: sum of this event's `deltaTime` and every preceding
+   * event's in its track. Maintained by `MidiTrack`; treat as read-only.
+   */
+  tick: z.number(),
+  /**
+   * Index of the event within its track's `events` after the last commit;
+   * breaks ties between events on the same tick. Maintained by `MidiTrack`.
+   */
+  order: z.optional(z.number()),
 });
-
-export const TimedEventSchema = merge(
-  BaseEventSchema,
-  z.object({
-    tick: z.number(),
-    order: z.optional(z.number()),
-  }),
-);
 
 export const ChannelEventSchema = merge(
   BaseEventSchema,
@@ -144,7 +155,6 @@ export const ChannelEventSchema = merge(
 );
 
 export const TextMetaPayloadSchema = z.object({
-  type: TextMetaTypeSchema,
   text: z.string(),
 });
 
@@ -211,21 +221,12 @@ export const SysExEventSchema = merge(
   }),
 );
 
-export const TextEventSchema = merge(
-  MetaEventSchema.omit({ type: true }),
-  TimedEventSchema,
-  TextMetaPayloadSchema,
-);
+// Specific meta event schemas
 
-export const TempoEventSchema = merge(
-  MetaEventSchema,
-  TimedEventSchema,
-  TempoMetaPayloadSchema,
-);
-
+export const TextEventSchema = merge(MetaEventSchema, TextMetaPayloadSchema);
+export const TempoEventSchema = merge(MetaEventSchema, TempoMetaPayloadSchema);
 export const TimeSignatureEventSchema = merge(
   MetaEventSchema,
-  TimedEventSchema,
   TimeSignatureMetaPayloadSchema,
 );
 
@@ -261,22 +262,19 @@ export type MidiMetaPayload =
 export type DefaultMetaPayload = z.infer<typeof DefaultMetaPayloadSchema>;
 export type MidiSysExEvent = z.infer<typeof SysExEventSchema>;
 export type MidiEvent = z.infer<typeof EventSchema>;
-export type TimedMidiEvent = z.infer<typeof TimedEventSchema> & {
-  [key: string]: any;
-};
 export type TextMidiEvent = z.infer<typeof TextEventSchema>;
 export type TempoEvent = z.infer<typeof TempoEventSchema>;
 export type TimeSignatureEvent = z.infer<typeof TimeSignatureEventSchema>;
 
-export function sortEvents(
-  a: Pick<TimedMidiEvent, "tick"> & { order?: number },
-  b: Pick<TimedMidiEvent, "tick"> & { order?: number },
-) {
-  return a.tick - b.tick || (a.order || 0) - (b.order || 0);
+type TimedFields = Pick<BaseMidiEvent, "tick" | "order">;
+
+/** Orders events by absolute tick, then by `order` within a tick. */
+export function sortEvents(a: TimedFields, b: TimedFields): number {
+  return a.tick - b.tick || (a.order ?? 0) - (b.order ?? 0);
 }
 
 export function extractMetaPayload(event: MidiMetaEvent): MidiMetaPayload {
-  const excludedKeys = ["deltaTime", "status", "type"];
+  const excludedKeys = ["deltaTime", "status", "type", "tick", "order"];
   const payload: Record<string, any> = {};
   for (const [key, value] of Object.entries(event)) {
     if (!excludedKeys.includes(key)) {
@@ -288,31 +286,27 @@ export function extractMetaPayload(event: MidiMetaEvent): MidiMetaPayload {
 
 export const DefaultTempoEvent: TempoEvent = {
   deltaTime: 0,
+  tick: 0,
+  order: 0,
   status: 0xff,
   type: MetaType.Tempo,
   length: 3,
-  tick: 0,
   microsecondsPerQuarterNote: 500_000,
 };
 
 export const DefaultTimeSignatureEvent: TimeSignatureEvent = {
   deltaTime: 0,
+  tick: 0,
+  order: 0,
   status: 0xff,
   type: MetaType.TimeSignature,
   length: 4,
-  tick: 0,
   numerator: 4,
   denominator: 2,
 };
 
-export interface TimedEventRecord {
-  event: MidiEvent;
-  tick: number;
-  order: number;
-}
-
 export interface MidiNote {
-  note: number;
+  pitch: number;
   velocity: number;
   start: number;
   end: number;
@@ -321,12 +315,17 @@ export interface MidiNote {
   previous?: MidiNote;
 }
 
-export interface AddNoteSpec {
+export interface InsertNoteOptions {
   pitch: number;
   tick: number;
   duration: number;
   velocity?: number;
   channel?: number;
+}
+
+export interface AddNoteResult {
+  noteOn: MidiChannelEvent;
+  noteOff: MidiChannelEvent;
 }
 
 export interface NotePatchFields {
@@ -342,3 +341,41 @@ export interface GetNotesOptions {
     high: number;
   };
 }
+
+export const isChannelEvent = (event: MidiEvent): event is MidiChannelEvent => {
+  return event.status < 0xff;
+};
+
+export const isNoteEvent = (event: MidiEvent): event is MidiChannelEvent => {
+  return (
+    isChannelEvent(event) &&
+    (event.messageType === ChannelMessage.NoteOn ||
+      event.messageType === ChannelMessage.NoteOff)
+  );
+};
+
+export const isEndOfTrack = (
+  event: MidiEvent,
+): event is MidiMetaEvent | TextMidiEvent => {
+  return (
+    event.status === 0xff &&
+    "type" in event &&
+    event.type === MetaType.EndOfTrack
+  );
+};
+
+export const isTimeSignatureEvent = (
+  event: MidiEvent,
+): event is TimeSignatureEvent => {
+  return (
+    event.status === 0xff &&
+    "type" in event &&
+    event.type === MetaType.TimeSignature
+  );
+};
+
+export const isTempoEvent = (event: MidiEvent): event is TempoEvent => {
+  return (
+    event.status === 0xff && "type" in event && event.type === MetaType.Tempo
+  );
+};

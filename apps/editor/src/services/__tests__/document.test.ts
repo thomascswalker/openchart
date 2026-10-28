@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService, type OpenedProject } from "../document";
 import type { LoggerService } from "../logger";
 import { makeDefaultMetadata } from "../document/schema";
+import { createTestRulesetService } from "./testUtils";
 
 const DefaultOpenedProject: OpenedProject = {
   projectBytes: new Uint8Array(),
@@ -20,7 +21,7 @@ function createDocumentService(
     warning: vi.fn(),
     error: vi.fn(),
   } as unknown as LoggerService;
-  const service = new DocumentService(logger);
+  const service = new DocumentService(logger, createTestRulesetService());
 
   Object.assign(service, {
     readProject: vi.fn(async () => openedProject),
@@ -161,12 +162,15 @@ describe("DocumentService", () => {
       showDirectoryPicker,
     });
 
-    const service = new DocumentService({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warning: vi.fn(),
-      error: vi.fn(),
-    } as unknown as LoggerService);
+    const service = new DocumentService(
+      {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warning: vi.fn(),
+        error: vi.fn(),
+      } as unknown as LoggerService,
+      createTestRulesetService(),
+    );
     await expect(service.readProject()).resolves.toEqual({
       projectBytes,
       midiBytes,

@@ -19,6 +19,7 @@ import { createEditingContextSnapshot } from "../editingContext";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
 import { z } from "zod";
+import { createTestRulesetService } from "../../__tests__/testUtils";
 
 const lanes = ["green", "red", "yellow", "blue"] as const;
 type FourLaneToolState = { lane: (typeof lanes)[number] };
@@ -48,16 +49,17 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
       canCreateTrack: false,
       requiresDifficulty: false,
     },
-    tools: lanes.map((lane) => ({
-      id: `lane-${lane}`,
-      label: `${lane[0]!.toUpperCase()}${lane.slice(1)} lane`,
-      icon: "note",
-      group: "four-lane-tools",
-      stateKey: "lane",
-      value: lane,
-    })),
     toolStateSchema: z.object({ lane: z.enum(lanes) }),
     createDefaultToolState: () => ({ lane: "green" }),
+    createTools: () =>
+      lanes.map((lane) => ({
+        id: `lane-${lane}`,
+        label: `${lane[0]!.toUpperCase()}${lane.slice(1)} lane`,
+        icon: "note",
+        group: "four-lane-tools",
+        stateKey: "lane",
+        value: lane,
+      })),
     createProjection: (): Projection => ({
       getRows: () =>
         lanes.map((id, index) => ({
@@ -114,28 +116,35 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
   };
 }
 
-function createDocumentService(): DocumentService {
-  return new DocumentService({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
-    error: vi.fn(),
-  } as unknown as LoggerService);
+function createDocumentService(
+  ruleset: ReturnType<typeof createTestRulesetService>,
+): DocumentService {
+  return new DocumentService(
+    {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+    } as unknown as LoggerService,
+    ruleset,
+  );
 }
 
 describe("editing mode extensibility acceptance", () => {
   it("resolves, renders, publishes context, executes, pastes, and gestures a test mode", () => {
-    const documentService = createDocumentService();
+    const ruleset = createTestRulesetService();
+    const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = "LEAD GUITAR";
     midi.tracks[0]!.addNote(60, 0, 100, 120);
     documentService.data = midi;
-    const viewports = new ViewportService();
+    const viewports = new ViewportService(ruleset);
     const editing = new EditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       viewports,
+      ruleset,
     );
     const mode = fourLaneMode();
     editing.registry.register(mode);
@@ -146,7 +155,8 @@ describe("editing mode extensibility acceptance", () => {
     expect(editing.registry.resolve(descriptor, "test-view")?.id).toBe(
       "test.fourLane",
     );
-    const groups = createModeToolbarGroups(mode);
+    const toolbarSession = editing.getSession("viewport-1", mode.id)!;
+    const groups = createModeToolbarGroups(toolbarSession);
     expect(groups[0]?.items.map((tool) => tool.id)).toEqual(
       lanes.map((lane) => `lane-${lane}`),
     );
@@ -247,7 +257,7 @@ describe("editing mode extensibility acceptance", () => {
         .createdIds,
     ).toHaveLength(1);
     expect(documentService.data.tracks[0]!.getNotes()).toContainEqual(
-      expect.objectContaining({ start: 960, note: copiedNote.pitch }),
+      expect.objectContaining({ start: 960, pitch: copiedNote.pitch }),
     );
   });
 });

@@ -1,7 +1,6 @@
 {
   "name": "Default",
   "ppqn": 480,
-  "tempoTrack": "GLOBAL",
   "tracks": [
     {
       "name": "CHART HEADER",
@@ -9,8 +8,7 @@
       "key": "chart-header",
       "visible": false,
       "editable": false,
-      "notes": {},
-      "events": {}
+      "notes": {}
     },
     {
       "name": "GLOBAL",
@@ -18,21 +16,19 @@
       "key": "global",
       "visible": true,
       "editable": false,
-      "notes": {},
-      "events": {}
+      "notes": {}
     },
     {
       "name": "LEAD GUITAR",
       "type": "instrument",
       "key": "lead-guitar",
       "role": "lead",
-      "noteCount": 5,
-      "offsets": {
-        "expert": 96,
-        "hard": 84,
-        "medium": 72,
-        "easy": 60
-      },
+      "charts": [
+        { "difficulty": 0, "laneCount": 5, "range": { "low": 60, "high": 64 } },
+        { "difficulty": 1, "laneCount": 5, "range": { "low": 72, "high": 76 } },
+        { "difficulty": 2, "laneCount": 5, "range": { "low": 84, "high": 88 } },
+        { "difficulty": 3, "laneCount": 5, "range": { "low": 96, "high": 100 } }
+      ],
       "notes": {
         "power": 116,
         "solo": 118,
@@ -77,13 +73,12 @@
       "type": "instrument",
       "key": "rhythm-guitar",
       "role": "rhythm",
-      "noteCount": 5,
-      "offsets": {
-        "expert": 96,
-        "hard": 84,
-        "medium": 72,
-        "easy": 60
-      },
+      "charts": [
+        { "difficulty": 0, "laneCount": 5, "range": { "low": 60, "high": 64 } },
+        { "difficulty": 1, "laneCount": 5, "range": { "low": 72, "high": 76 } },
+        { "difficulty": 2, "laneCount": 5, "range": { "low": 84, "high": 88 } },
+        { "difficulty": 3, "laneCount": 5, "range": { "low": 96, "high": 100 } }
+      ],
       "notes": {
         "power": 116,
         "solo": 118,
@@ -128,13 +123,12 @@
       "type": "instrument",
       "key": "drums",
       "role": "drums",
-      "noteCount": 9,
-      "offsets": {
-        "expert": 96,
-        "hard": 84,
-        "medium": 72,
-        "easy": 60
-      },
+      "charts": [
+        { "difficulty": 0, "laneCount": 4, "range": { "low": 60, "high": 68 } },
+        { "difficulty": 1, "laneCount": 4, "range": { "low": 72, "high": 80 } },
+        { "difficulty": 2, "laneCount": 4, "range": { "low": 84, "high": 92 } },
+        { "difficulty": 3, "laneCount": 4, "range": { "low": 96, "high": 104 } }
+      ],
       "notes": {
         "solo": 118,
         "powerActivation": 117,
@@ -186,11 +180,12 @@
       "type": "instrument",
       "key": "vocals",
       "role": "vocals",
-      "hasDifficulties": false,
-      "vocals": {
-        "range": { "low": 36, "high": 84 },
-        "pitchlessPlacement": "pitchlessHigh"
-      },
+      "charts": [
+        {
+          "range": { "low": 36, "high": 84 },
+          "pitchlessPlacement": "pitchlessHigh"
+        }
+      ],
       "notes": {
         "power": 116,
         "powerWindow": 111,
@@ -204,16 +199,24 @@
       "name": "FOUR PAD",
       "type": "instrument",
       "key": "four-pad",
-      "noteCount": 4,
-      "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
+      "charts": [
+        { "difficulty": 0, "laneCount": 4, "range": { "low": 60, "high": 63 } },
+        { "difficulty": 1, "laneCount": 4, "range": { "low": 72, "high": 75 } },
+        { "difficulty": 2, "laneCount": 4, "range": { "low": 84, "high": 87 } },
+        { "difficulty": 3, "laneCount": 4, "range": { "low": 96, "high": 99 } }
+      ],
       "notes": {}
     },
     {
       "name": "FIVE PAD",
       "type": "instrument",
       "key": "five-pad",
-      "noteCount": 5,
-      "offsets": { "expert": 96, "hard": 84, "medium": 72, "easy": 60 },
+      "charts": [
+        { "difficulty": 0, "laneCount": 5, "range": { "low": 60, "high": 64 } },
+        { "difficulty": 1, "laneCount": 5, "range": { "low": 72, "high": 76 } },
+        { "difficulty": 2, "laneCount": 5, "range": { "low": 84, "high": 88 } },
+        { "difficulty": 3, "laneCount": 5, "range": { "low": 96, "high": 100 } }
+      ],
       "notes": {}
     }
   ]

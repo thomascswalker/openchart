@@ -1,4 +1,4 @@
-import type { EditingMode } from "@openchart/views";
+import type { EditingSession } from "@openchart/views";
 import { Difficulty } from "@openchart/views";
 import {
   EasyIcon,
@@ -77,9 +77,14 @@ export const ToolbarGroups: ToolGroupDef[] = [
 ];
 
 /** Builds button groups directly from the active mode's tool descriptors. */
-export function createModeToolbarGroups(mode: EditingMode): ToolGroupDef[] {
+export function createModeToolbarGroups(
+  session: EditingSession,
+): ToolGroupDef[] {
+  const mode = session.mode;
+  // Tools depend on the target track's rules, so they come from the session.
+  const tools = session.getTools();
   const groups = new Map<string, ToolItemDef[]>();
-  for (const tool of mode.tools) {
+  for (const tool of tools) {
     if (tool.group === "placement") continue;
     const items = groups.get(tool.group) ?? [];
     items.push({
@@ -99,7 +104,7 @@ export function createModeToolbarGroups(mode: EditingMode): ToolGroupDef[] {
             update.tool = "select";
           } else if (
             tool.stateKey === "tool" &&
-            mode.tools.some((descriptor) => descriptor.stateKey === "phrase")
+            tools.some((descriptor) => descriptor.stateKey === "phrase")
           ) {
             update.phrase = null;
           }

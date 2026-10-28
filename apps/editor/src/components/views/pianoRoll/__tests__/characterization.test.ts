@@ -1,17 +1,13 @@
 import { MetaType, Midi, type MidiNote } from "@openchart/midi";
 import {
-  addVocalNote,
-  addVocalPhrase,
   createStandaloneEditing,
   Difficulty,
   formatNoteId,
-  getLyrics,
   parseEntityId,
   SongView,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
-import { profileFromSession } from "../profile";
 
 describe("editing characterization: Piano Roll vocals", () => {
   it("preserves vocal move, lane, phrase, delete, and paste behavior through a session", () => {
@@ -22,17 +18,8 @@ describe("editing characterization: Piano Roll vocals", () => {
       .getTrackDescriptors()
       .find((item) => item.name === "VOCALS")!;
     const standalone = createStandaloneEditing(midi);
-    const initialSession = standalone.createSession(
-      {
-        trackKey: descriptor.key,
-        trackIndex: null,
-        difficulty: Difficulty.Expert,
-      },
-      "piano-roll",
-    );
-    const layout = profileFromSession(initialSession).vocal!;
+    const track = song.ensureMidiTrack("vocals")!;
     const vocalView = song.getVocalTrackView("VOCALS")!;
-    const track = vocalView.ensureTrack()!;
     const session = standalone.createSession(
       {
         trackKey: descriptor.key,
@@ -41,11 +28,11 @@ describe("editing characterization: Piano Roll vocals", () => {
       },
       "piano-roll",
     );
-    const pitched = addVocalNote(track, layout, "pitched", 0, 120, {
+    const pitched = vocalView.addNote("pitched", 0, 120, {
       pitch: characterization.vocal.pitchedMove.fromPitch,
       lyric: characterization.vocal.pasteRestoresLyric,
     })!.note;
-    const laneNote = addVocalNote(track, layout, "percussion", 240, 360)!.note;
+    const laneNote = vocalView.addNote("percussion", 240, 360)!.note;
     const trackIndex = midi.tracks.indexOf(track);
     const idOf = (note: MidiNote) =>
       formatNoteId(trackIndex, track.getEventId(note.noteOn));
@@ -69,12 +56,12 @@ describe("editing characterization: Piano Roll vocals", () => {
     expect(moved.changed).toBe(true);
     expect([
       resolveNote(pitchedId)?.start,
-      resolveNote(pitchedId)?.note,
+      resolveNote(pitchedId)?.pitch,
     ]).toEqual([
       characterization.vocal.pitchedMove.toTick,
       characterization.vocal.pitchedMove.clampedPitch,
     ]);
-    expect(getLyrics(track).map((lyric) => lyric.tick)).toEqual(
+    expect(vocalView.getLyrics().map((lyric) => lyric.tick)).toEqual(
       characterization.vocal.lyricTicksAfterMove,
     );
 
@@ -86,12 +73,12 @@ describe("editing characterization: Piano Roll vocals", () => {
         characterization.vocal.nonPitchedMove.requestedPitch -
         characterization.vocal.nonPitchedMove.pitch,
     });
-    expect(resolveNote(laneNoteId)?.note).toBe(
+    expect(resolveNote(laneNoteId)?.pitch).toBe(
       characterization.vocal.nonPitchedMove.resultPitch,
     );
 
-    const firstPhrase = addVocalPhrase(track, layout, "stagepower", 0, 100)!;
-    addVocalPhrase(track, layout, "stagepower", 200, 300);
+    const firstPhrase = vocalView.addPhrase("stagepower", 0, 100)!;
+    vocalView.addPhrase("stagepower", 200, 300);
     const phraseId = idOf(firstPhrase.note);
     const gesture = session.beginGesture();
     gesture.preview({
@@ -129,7 +116,7 @@ describe("editing characterization: Piano Roll vocals", () => {
       id: pitchedId,
       trackIndex,
       tick: currentPitched.start,
-      pitch: currentPitched.note,
+      pitch: currentPitched.pitch,
       duration: currentPitched.end - currentPitched.start,
       velocity: currentPitched.velocity,
     };
@@ -143,9 +130,9 @@ describe("editing characterization: Piano Roll vocals", () => {
           pitch: snapshot.pitch,
           row: session.getProjection().rowForNote(snapshot)?.id,
           classification: session.classifyNote(snapshot),
-          lyric: getLyrics(track).find(
-            (lyric) => lyric.tick === currentPitched.start,
-          )?.text,
+          lyric: vocalView
+            .getLyrics()
+            .find((lyric) => lyric.tick === currentPitched.start)?.text,
         },
       ],
     });
@@ -155,7 +142,9 @@ describe("editing characterization: Piano Roll vocals", () => {
       targetIds: [pitchedId],
     });
     expect(
-      getLyrics(track).some((lyric) => lyric.tick === currentPitched.start),
+      vocalView
+        .getLyrics()
+        .some((lyric) => lyric.tick === currentPitched.start),
     ).toBe(false);
     session.execute({
       type: "ADD_VOCAL_NOTE",
@@ -165,11 +154,11 @@ describe("editing characterization: Piano Roll vocals", () => {
       pitch: copiedNote.pitch,
       ...(copiedNote.lyric ? { lyric: copiedNote.lyric } : {}),
     });
-    expect(getLyrics(track).find((lyric) => lyric.tick === 960)?.text).toBe(
-      characterization.vocal.pasteRestoresLyric,
-    );
     expect(
-      getLyrics(track).every((lyric) => lyric.type === MetaType.Lyric),
+      vocalView.getLyrics().find((lyric) => lyric.tick === 960)?.text,
+    ).toBe(characterization.vocal.pasteRestoresLyric);
+    expect(
+      vocalView.getLyrics().every((lyric) => lyric.type === MetaType.Lyric),
     ).toBe(true);
   });
 });

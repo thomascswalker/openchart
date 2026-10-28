@@ -1,5 +1,4 @@
-import type { TrackDescriptor } from "../../config.js";
-import { describeTrack } from "../../config.js";
+import type { TrackDescriptor, TrackRules } from "../../ruleset/compile.js";
 import type { EntityId } from "../entityId.js";
 import type { EditCommand, RawCommand } from "../commands.js";
 import type { ModeContext } from "../mode.js";
@@ -31,10 +30,16 @@ export function targetDescriptor(context: ModeContext): TrackDescriptor | null {
       ? null
       : context.reader.getTrackDescriptor(context.target.trackIndex);
   if (byIndex) return byIndex;
-  const config = context.config.tracks.find(
-    (track) => describeTrack(track).key === context.target.trackKey,
+  return (
+    context.rules
+      .descriptors()
+      .find((track) => track.key === context.target.trackKey) ?? null
   );
-  return config ? describeTrack(config) : null;
+}
+
+/** Compiled rules of the session's target track, if it is configured. */
+export function targetRules(context: ModeContext): TrackRules | null {
+  return targetDescriptor(context)?.rules ?? null;
 }
 
 export function targetNotes(context: ModeContext): readonly NoteSnapshot[] {

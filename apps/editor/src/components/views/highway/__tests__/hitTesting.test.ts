@@ -106,7 +106,7 @@ describe("drum note hit testing", () => {
       getEditingSession: () => null,
       getPreviewState: () => null,
     });
-    const note = { note: 100, start: 480 } as MidiNote;
+    const note = { pitch: 100, start: 480 } as MidiNote;
     const pad = hitTesting.getGemScreenBounds(note, 1, "pad")!;
     const cymbal = hitTesting.getGemScreenBounds(note, 1, "cymbal")!;
 
@@ -116,13 +116,13 @@ describe("drum note hit testing", () => {
 
   it("hits cymbals on their pad lane and excludes marker pitches", () => {
     const setup = createHighwayTestSetup("drums");
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 101,
       tick: 480,
       duration: 1,
       velocity: 90,
     });
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 104,
       tick: 480,
       duration: 1,
@@ -155,13 +155,13 @@ describe("drum note hit testing", () => {
 
   it("uses normalized kick bounds and ignores flam markers", () => {
     const setup = createHighwayTestSetup("drums");
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 95,
       tick: 480,
       duration: 1,
       velocity: 90,
     });
-    setup.midiTrack.addNoteAt({
+    setup.midiTrack.insertNote({
       pitch: 104,
       tick: 480,
       duration: 1,
@@ -179,7 +179,17 @@ describe("drum note hit testing", () => {
     } as unknown as HighwayCoordinateSystem;
     const hitTesting = new HighwayHitTester(coordinates, setup.context);
 
-    const bounds = hitTesting.getKickScreenBounds(kick);
+    const candidates: IndexedNote[] = [];
+    getHighwayNoteIndex(setup.chart).query(
+      setup.chart,
+      setup.session,
+      null,
+      0,
+      1_000,
+      candidates,
+    );
+    const kickEntry = candidates.find(({ source }) => source === kick)!;
+    const bounds = hitTesting.getBarScreenBounds(kickEntry);
     expect(bounds).toMatchObject({ left: 250, right: 350 });
     expect(hitTesting.getNoteAt(setup.chart, {} as MouseEvent)?.source).toBe(
       kick,

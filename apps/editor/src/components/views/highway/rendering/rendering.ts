@@ -1,22 +1,22 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import {
-  formatNoteId,
   extractSections,
   getSustainCutOptions,
   getSustainCutTargets,
+  resolveThreshold,
+  thresholdContext,
   type ChartView,
-  type EditablePhraseKind,
+  type EditingSession,
 } from "@openchart/views";
 import * as THREE from "three";
 import { ResourceRegistry } from "./assets";
 import {
   farBoardZ,
-  drumLaneRgbColors,
-  kickColor,
+  fallbackBarRgb,
+  fallbackLaneRgbColors,
   instanceSizeBeatLines,
   instanceSizePhraseSpans,
-  laneCount,
-  laneRgbColors,
+  maxLaneColumns,
   nearBoardZ,
   phraseBoundaryIndicatorThickness,
   phraseEndBoundaryIndicatorColor,
@@ -28,17 +28,24 @@ import {
 import type { HighwayContext } from "../context";
 import { HighwayCoordinateSystem } from "../coordinates";
 import { noteWorldPosition, sustainWorldTransform } from "./geometry";
-import { HighwayHitTester } from "../hitTesting";
-import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
+import { chartHasSustains, HighwayHitTester } from "../hitTesting";
 import {
-  DRUM_GHOST_GEOMETRY_IDS,
+  getHighwayNoteIndex,
+  laneVisualFor,
+  type IndexedNote,
+} from "../noteIndex";
+import {
+  SHAPE_GHOST_GEOMETRY_IDS,
   HIGHWAY_GEOMETRY_CATALOG,
   HIGHWAY_RENDER_ORDER,
+  type NoteShapeKind,
 } from "./geometryCatalog";
 import {
   createMaterialSet,
+  rgbFromHex,
   setMaterialState,
   type MaterialSet,
+  type Rgb,
 } from "./materials";
 import {
   createFretAssembly,
@@ -56,7 +63,6 @@ import {
 } from "./noteStyles";
 import type { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayMarqueeDragState } from "../types";
-import { DrumLaneCount, type DrumPlacementKind } from "../profile";
 
 interface InstancedBeatLine {
   mesh: THREE.Mesh;
@@ -102,40 +108,94 @@ function setIndicatorSegment(
   mesh.scale.set(length, thickness, thickness);
 }
 
+/** Lane colour from the ruleset (`#RRGGBB`), else a neutral fallback. */
+function laneRgb(color: string | undefined, index: number): Rgb {
+  const hex = color ? Number.parseInt(color.slice(1), 16) : Number.NaN;
+  return Number.isFinite(hex)
+    ? rgbFromHex(hex)
+    : fallbackLaneRgbColors[index % fallbackLaneRgbColors.length]!;
+}
+
+/** Colours of the chart's visual columns, left to right. */
+function columnColors(chart: ChartView): Rgb[] {
+  return chart.getColumns().map((lane, index) => laneRgb(lane.color, index));
+}
+
+/** Colour of the chart's first bar lane (kick/open). */
+function barColor(chart: ChartView): Rgb {
+  const bar = chart.getBars()[0];
+  return bar?.color ? laneRgb(bar.color, 0) : fallbackBarRgb;
+}
+
+/**
+ * Whether a length is a sustain under the ruleset's `sustainCutoff` (strictly
+ * longer when the threshold is inclusive). Tracks without one have none.
+ */
+function sustainLengthTest(
+  chart: ChartView,
+  session: EditingSession,
+  ppqn: number,
+): (length: number) => boolean {
+  const cutoff = chart.getRules().mechanics?.sustainCutoff;
+  if (!cutoff) return () => false;
+  const resolved = resolveThreshold(
+    cutoff,
+    thresholdContext(session.rules, { ...session.getRulesContext(), ppqn }),
+  );
+  if (!resolved) return () => false;
+  return (length) =>
+    resolved.inclusive ? length > resolved.ticks : length >= resolved.ticks;
+}
+
 function fiveFretNoteStyles(
   chart: ChartView,
+  session: EditingSession,
   ppqn: number,
 ): Map<MidiNote, GuitarNoteStyle> {
-  const descriptor = chart
-    .getSong()
-    .getTrackDescriptors()
-    .find((item) => item.key === chart.getTrack().getKey());
-  const midiTrack = chart.getTrack().getMidiTrack();
-  if (!descriptor || descriptor.config.type !== "instrument" || !midiTrack) {
+  const midiTrack = chart.getMidiTrack();
+  if (!midiTrack) return new Map();
+  const chartRules = chart.getChartRules();
+  const mechanics = chart.getRules().mechanics;
+  const forceHopoPitch = chartRules.pitchForMarker("forceHopo");
+  const forceStrumPitch = chartRules.pitchForMarker("forceStrum");
+  const tapMarkerPitch = chartRules.pitchForMarker("forceTap");
+  const hopo = mechanics?.hopoThreshold;
+  // Style only tracks that can have HOPOs or forced notes at all.
+  if (
+    forceHopoPitch === undefined &&
+    forceStrumPitch === undefined &&
+    tapMarkerPitch === undefined &&
+    !hopo
+  ) {
     return new Map();
   }
+  const resolved = hopo
+    ? resolveThreshold(
+        hopo,
+        thresholdContext(session.rules, {
+          ...session.getRulesContext(),
+          ppqn,
+        }),
+      )
+    : null;
 
-  const difficulty = Object.entries(descriptor.config.offsets ?? {}).find(
-    ([, offset]) => offset === chart.getOffset(),
-  )?.[0];
-  if (!difficulty) return new Map();
-
-  const forceHopoPitch = descriptor.config.notes[`${difficulty}Hopo`];
-  const forceStrumPitch = descriptor.config.notes[`${difficulty}Strum`];
-  const tapMarkerPitch = descriptor.config.notes[`${difficulty}Tap`];
-  if (forceHopoPitch === undefined || forceStrumPitch === undefined) {
-    return new Map();
-  }
-
-  return getFiveFretNoteStyles(chart.getNotes(), midiTrack.getNotes(), {
-    forceHopoPitch,
-    forceStrumPitch,
-    tapMarkerPitches: [
-      ...(tapMarkerPitch === undefined ? [] : [tapMarkerPitch]),
-    ],
-    ppqn,
-    tapSysExRanges: getTapSysExRanges(midiTrack.getTimedEvents()),
-  });
+  return getFiveFretNoteStyles(
+    chart.getNotes().filter((note) => chartRules.notes.has(note.pitch)),
+    midiTrack.getNotes(),
+    {
+      ...(forceHopoPitch === undefined ? {} : { forceHopoPitch }),
+      ...(forceStrumPitch === undefined ? {} : { forceStrumPitch }),
+      tapMarkerPitches: tapMarkerPitch === undefined ? [] : [tapMarkerPitch],
+      ...(resolved
+        ? {
+            hopoThresholdTicks: resolved.ticks,
+            hopoInclusive: resolved.inclusive,
+          }
+        : {}),
+      autoHopoExclusions: mechanics?.autoHopoExclusions ?? [],
+      tapSysExRanges: getTapSysExRanges(midiTrack.events),
+    },
+  );
 }
 
 export class HighwayRenderer {
@@ -157,7 +217,7 @@ export class HighwayRenderer {
   private instancedTailBatch: SustainTailBatch | null = null;
   private instancedPreviewTailBatch: SustainTailBatch | null = null;
   private readonly instancedGemBatches: Partial<
-    Record<"note" | DrumPlacementKind, NoteInstanceBatch>
+    Record<"note" | NoteShapeKind, NoteInstanceBatch>
   > = {};
   private readonly sustainCutPreviewLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
@@ -242,10 +302,10 @@ export class HighwayRenderer {
   private fretAssemblies: THREE.Group[] = [];
   private ghostGem: InstancedNote | null = null;
   private readonly drumGhostGems: Partial<
-    Record<DrumPlacementKind, InstancedNote>
+    Record<NoteShapeKind, InstancedNote>
   > = {};
-  private fretPaletteIsDrums = false;
-  private fretPaletteLaneCount = laneCount;
+  /** Identity of the last palette applied to the board (colours + count). */
+  private fretPaletteKey = "";
   private lastInstancedChart: ChartView | null = null;
   private lastInstancedChartRevision = -1;
   private lastInstancedSelectionRevision = -1;
@@ -346,15 +406,13 @@ export class HighwayRenderer {
       return;
     }
 
-    const isDrumChart = session.mode.id === "chart.drums";
+    const hasSustains = chartHasSustains(chart);
     this.drawBeatLines();
     const visibleStart = this.coordinates.getTickAtDepth(nearBoardZ);
     const visibleEnd = this.coordinates.getTickAtDepth(farBoardZ);
-    const laneColors = isDrumChart ? drumLaneRgbColors : laneRgbColors;
-    this.updateFretboardPalette(
-      isDrumChart,
-      isDrumChart ? DrumLaneCount : chart.getLaneCount(),
-    );
+    const laneColors = columnColors(chart);
+    const kickRgb = barColor(chart);
+    this.updateFretboardPalette(laneColors);
     const visibleNotes: IndexedNote[] = [];
     getHighwayNoteIndex(chart).query(
       chart,
@@ -367,9 +425,13 @@ export class HighwayRenderer {
 
     const tailData: SustainInstanceData[] = [];
     const visibleTailEnd = this.coordinates.getTickAtDepth(farBoardZ);
-    for (const note of isDrumChart
-      ? []
-      : visibleNotes.filter((entry) => entry.kind === "note")) {
+    const isSustain = sustainLengthTest(chart, session, this.context.getPpqn());
+    for (const note of hasSustains
+      ? visibleNotes.filter(
+          (entry) =>
+            entry.kind === "note" && isSustain(entry.end - entry.start),
+        )
+      : []) {
       const tailStart = Math.max(note.start, visibleStart);
       const tailEnd = Math.min(note.end, visibleTailEnd);
       if (tailEnd <= tailStart) continue;
@@ -392,7 +454,7 @@ export class HighwayRenderer {
         z: 0,
         width: transform.scale.x,
         halfLength: transform.scale.y,
-        color: laneRgbColors[note.lane],
+        color: laneColors[note.lane] ?? fallbackBarRgb,
         selected,
         startTick: tailStart,
         endTick: solidTailEnd,
@@ -402,7 +464,7 @@ export class HighwayRenderer {
       });
     }
     let visibleTails = 0;
-    if (!isDrumChart) {
+    if (hasSustains) {
       this.ensureInstancedTailBatches();
       this.instancedTailBatch!.updateScroll(
         this.context.getCameraTick(),
@@ -415,7 +477,7 @@ export class HighwayRenderer {
       this.instancedTailBatch?.write([]);
       this.instancedPreviewTailBatch?.write([]);
     }
-    const previewSustains = isDrumChart
+    const previewSustains = !hasSustains
       ? 0
       : this.drawSustainCutPreviewRemainders(
           chart,
@@ -438,23 +500,27 @@ export class HighwayRenderer {
         (entry, index) => this.lastInstancedVisibleEntries[index] !== entry,
       );
     this.scene.userData.noteBatchDirty = noteBatchDirty;
-    const noteData: Record<"note" | DrumPlacementKind, NoteInstanceData[]> = {
+    const noteData: Record<"note" | NoteShapeKind, NoteInstanceData[]> = {
       note: [],
-      kick: [],
+      bar: [],
       cymbal: [],
       pad: [],
     };
     if (noteBatchDirty) {
-      const noteStyles = fiveFretNoteStyles(chart, this.context.getPpqn());
+      const noteStyles = fiveFretNoteStyles(
+        chart,
+        session,
+        this.context.getPpqn(),
+      );
       for (const note of visibleNotes) {
         if (note.kind === "phrase") continue;
         const instanceKind =
-          note.kind === "kick" || note.kind === "cymbal" || note.kind === "pad"
+          note.kind === "bar" || note.kind === "cymbal" || note.kind === "pad"
             ? note.kind
             : undefined;
         const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
         const position = noteWorldPosition(
-          note.kind === "kick" ? 0 : this.coordinates.getLaneX(note.lane),
+          note.kind === "bar" ? 0 : this.coordinates.getLaneX(note.lane),
           this.coordinates.getNoteZ(note.start),
           placement.transform,
           placement.placementOffset,
@@ -463,7 +529,10 @@ export class HighwayRenderer {
           x: position.x,
           y: position.y,
           z: position.z - this.coordinates.getNoteZ(note.start),
-          color: note.kind === "kick" ? kickColor : laneColors[note.lane],
+          color:
+            note.kind === "bar"
+              ? kickRgb
+              : (laneColors[note.lane] ?? fallbackBarRgb),
           selected: selection.isSelected(note.id),
           hopo: note.source ? noteStyles.get(note.source)?.hopo : undefined,
           tap: note.source ? noteStyles.get(note.source)?.tap : undefined,
@@ -474,7 +543,7 @@ export class HighwayRenderer {
         });
       }
     }
-    for (const kind of ["note", "kick", "cymbal", "pad"] as const) {
+    for (const kind of ["note", "bar", "cymbal", "pad"] as const) {
       const instances = noteData[kind];
       const batch = this.instancedGemBatches[kind];
       if (instances.length > 0) this.ensureInstancedGemBatch(kind);
@@ -544,7 +613,7 @@ export class HighwayRenderer {
   public dispose(): void {
     Object.values(this.instancedGemBatches).forEach((batch) => batch.dispose());
     Object.keys(this.instancedGemBatches).forEach((key) => {
-      delete this.instancedGemBatches[key as "note" | DrumPlacementKind];
+      delete this.instancedGemBatches[key as "note" | NoteShapeKind];
     });
     this.instancedTailBatch?.dispose();
     this.instancedPreviewTailBatch?.dispose();
@@ -593,7 +662,7 @@ export class HighwayRenderer {
     this.fretAssemblies.length = 0;
     this.ghostGem = null;
     Object.keys(this.drumGhostGems).forEach((kind) => {
-      delete this.drumGhostGems[kind as DrumPlacementKind];
+      delete this.drumGhostGems[kind as NoteShapeKind];
     });
     this.disposeSectionMarkers();
     this.materials?.destroy();
@@ -620,31 +689,29 @@ export class HighwayRenderer {
         note.definition.definition,
       );
       const drumModels = {
-        kick: this.assetRegistry.getMesh("kickNote"),
+        bar: this.assetRegistry.getMesh("kickNote"),
         cymbal: this.assetRegistry.getMesh("cymbalNote"),
         pad: this.assetRegistry.getMesh("roundNote"),
       };
-      const drumPrimitiveRoles: Record<
-        DrumPlacementKind,
-        PrimitiveMaterialRole[]
-      > = {
-        kick: primitiveRolesForModel(
-          drumModels.kick.value!,
-          drumModels.kick.definition.definition,
-        ),
-        cymbal: primitiveRolesForModel(
-          drumModels.cymbal.value!,
-          drumModels.cymbal.definition.definition,
-        ),
-        pad: primitiveRolesForModel(
-          drumModels.pad.value!,
-          drumModels.pad.definition.definition,
-        ),
-      };
-      for (const kind of ["kick", "cymbal", "pad"] as const) {
+      const drumPrimitiveRoles: Record<NoteShapeKind, PrimitiveMaterialRole[]> =
+        {
+          bar: primitiveRolesForModel(
+            drumModels.bar.value!,
+            drumModels.bar.definition.definition,
+          ),
+          cymbal: primitiveRolesForModel(
+            drumModels.cymbal.value!,
+            drumModels.cymbal.definition.definition,
+          ),
+          pad: primitiveRolesForModel(
+            drumModels.pad.value!,
+            drumModels.pad.definition.definition,
+          ),
+        };
+      for (const kind of ["bar", "cymbal", "pad"] as const) {
         const variants = this.materials.drum[kind];
         const ghostGeometry =
-          HIGHWAY_GEOMETRY_CATALOG[DRUM_GHOST_GEOMETRY_IDS[kind]];
+          HIGHWAY_GEOMETRY_CATALOG[SHAPE_GHOST_GEOMETRY_IDS[kind]];
         const ghost = createModelInstance(
           drumModels[kind].value!,
           (primitiveIndex) =>
@@ -656,13 +723,11 @@ export class HighwayRenderer {
         );
         ghost.meshes.forEach((mesh, primitiveIndex) =>
           setMaterialState(mesh, {
-            baseColor: kind === "kick" ? kickColor : drumLaneRgbColors[0],
+            baseColor: fallbackBarRgb,
             emissionColor:
               drumPrimitiveRoles[kind][primitiveIndex] === "neutral"
                 ? [1, 1, 1]
-                : kind === "kick"
-                  ? kickColor
-                  : drumLaneRgbColors[0],
+                : fallbackBarRgb,
             alpha: 0.35,
             ghost: true,
             tint: drumPrimitiveRoles[kind][primitiveIndex] === "tinted",
@@ -671,32 +736,34 @@ export class HighwayRenderer {
         this.drumGhostGems[kind] = ghost;
         this.scene.add(ghost.object);
       }
-      this.fretAssemblies = laneRgbColors.map((color, lane) => {
-        const fretRoles = primitiveRolesForModel(
-          fret.value!,
-          fret.definition.definition,
-        );
-        const assembly = createFretAssembly(
-          this.scene,
-          fret.value!,
-          this.materials!.fretTinted,
-          color,
-          fretRoles,
-          this.materials!.fretGrayscale,
-          HIGHWAY_GEOMETRY_CATALOG.fret.transform,
-        );
-        const placement = HIGHWAY_GEOMETRY_CATALOG.fret.placementOffset ?? {
-          x: 0,
-          y: 0,
-          z: 0,
-        };
-        assembly.position.set(
-          this.coordinates.getLaneX(lane) + placement.x,
-          placement.y,
-          strikeLineZ + placement.z,
-        );
-        return assembly;
-      });
+      this.fretAssemblies = fallbackLaneRgbColors
+        .slice(0, maxLaneColumns)
+        .map((color, lane) => {
+          const fretRoles = primitiveRolesForModel(
+            fret.value!,
+            fret.definition.definition,
+          );
+          const assembly = createFretAssembly(
+            this.scene,
+            fret.value!,
+            this.materials!.fretTinted,
+            color,
+            fretRoles,
+            this.materials!.fretGrayscale,
+            HIGHWAY_GEOMETRY_CATALOG.fret.transform,
+          );
+          const placement = HIGHWAY_GEOMETRY_CATALOG.fret.placementOffset ?? {
+            x: 0,
+            y: 0,
+            z: 0,
+          };
+          assembly.position.set(
+            this.coordinates.getLaneX(lane) + placement.x,
+            placement.y,
+            strikeLineZ + placement.z,
+          );
+          return assembly;
+        });
       this.ghostGem = createModelInstance(
         note.value!,
         (primitiveIndex) =>
@@ -708,11 +775,11 @@ export class HighwayRenderer {
       );
       this.ghostGem.meshes.forEach((mesh, primitiveIndex) =>
         setMaterialState(mesh, {
-          baseColor: laneRgbColors[0],
+          baseColor: fallbackLaneRgbColors[0]!,
           emissionColor:
             noteRoles[primitiveIndex] === "neutral"
               ? [1, 1, 1]
-              : laneRgbColors[0],
+              : fallbackLaneRgbColors[0]!,
           alpha: 0.35,
           ghost: true,
           tint: noteRoles[primitiveIndex] === "tinted",
@@ -736,12 +803,16 @@ export class HighwayRenderer {
     board.position.set(0, -0.25, boardCenterZ);
     board.renderOrder = 0;
     this.scene.add(board);
-    for (let lane = 0; lane <= laneCount; lane++) {
+    for (let lane = 0; lane <= maxLaneColumns; lane++) {
       const divider = new THREE.Mesh(
         new THREE.BoxGeometry(0.05, 0.08, boardDepth),
         new THREE.MeshBasicMaterial({ color: 0x64748b }),
       );
-      divider.position.set(-3 + (6 * lane) / laneCount, -0.05, boardCenterZ);
+      divider.position.set(
+        -3 + (6 * lane) / maxLaneColumns,
+        -0.05,
+        boardCenterZ,
+      );
       divider.renderOrder = 2;
       this.scene.add(divider);
       this.laneDividers.push(divider);
@@ -803,7 +874,7 @@ export class HighwayRenderer {
       id: string | null;
       start: number;
       end: number;
-      kind: EditablePhraseKind;
+      kind: string;
     }> = visibleEntries
       .filter(
         (entry) =>
@@ -847,9 +918,7 @@ export class HighwayRenderer {
               phrase.id === this.context.getPhraseHoverState()?.id &&
               this.context.getPhraseHoverState()?.operation === "move"
             ? this.hoveredPhraseMaterial
-            : phrase.kind === "stagepower"
-              ? this.stagepowerMaterial
-              : this.soloMaterial;
+            : this.phraseMaterialFor(chart, phrase.kind);
       mesh.visible = true;
     }
     for (; index < this.phraseSpanInstances.length; index++) {
@@ -858,12 +927,20 @@ export class HighwayRenderer {
     this.drawPhraseAffordances(phrases, phraseDrag);
   }
 
+  /** Stage-power style phrases are gold; every other phrase effect is blue. */
+  private phraseMaterialFor(chart: ChartView, phraseId: string) {
+    const effect = chart.getPhrases().find((p) => p.id === phraseId)?.effect;
+    return effect === "starPower" || effect === "starPowerActivation"
+      ? this.stagepowerMaterial
+      : this.soloMaterial;
+  }
+
   private drawPhraseAffordances(
     phrases: Array<{
       id: string | null;
       start: number;
       end: number;
-      kind: EditablePhraseKind;
+      kind: string;
     }>,
     phraseDrag: ReturnType<HighwayPhraseEditingController["getDragState"]>,
   ): void {
@@ -967,7 +1044,7 @@ export class HighwayRenderer {
   }
 
   private drawSectionMarkers(chart: ChartView): void {
-    const track = chart.getTrack().getMidiTrack();
+    const track = chart.getTrack()?.getMidiTrack();
     if (!track) {
       this.hideSectionMarkers();
       return;
@@ -1124,17 +1201,15 @@ export class HighwayRenderer {
   private getSustainCutPreview(
     chart: ChartView,
   ): Map<MidiChannelEvent, MidiNote> {
-    if (this.context.getEditingSession()?.mode.id === "chart.drums") {
-      return new Map();
-    }
+    if (!chartHasSustains(chart)) return new Map();
     const location = this.context.getGhostNoteLocation();
     if (!location || !this.context.canShowNotePlacementPreview())
       return new Map();
     const sameLanePlacement =
       location.sustainHit !== null &&
-      location.sustainHit.note - chart.getOffset() === location.lane;
+      laneVisualFor(chart, location.sustainHit.pitch)?.lane === location.lane;
     const targets = getSustainCutTargets(
-      chart.getNotes(),
+      chart.getNotes().filter((note) => laneVisualFor(chart, note.pitch)),
       location.tick,
       getSustainCutOptions(
         location.shiftKey,
@@ -1169,8 +1244,9 @@ export class HighwayRenderer {
     const cutTick = this.context.getGhostNoteLocation()?.tick;
     if (cutTick === undefined) return this.instancedPreviewTailBatch!.write([]);
     for (const note of cutPreview.values()) {
-      const lane = note.note - chart.getOffset();
-      if (lane < 0 || lane >= chart.getLaneCount()) continue;
+      const visual = laneVisualFor(chart, note.pitch);
+      if (!visual || visual.kind === "bar") continue;
+      const lane = visual.lane;
       const start = Math.max(note.start, visibleStart, cutTick);
       const end = Math.min(note.end, visibleEnd);
       if (end <= start) continue;
@@ -1185,7 +1261,7 @@ export class HighwayRenderer {
         z: 0,
         width: transform.scale.x,
         halfLength: transform.scale.y,
-        color: laneRgbColors[lane],
+        color: columnColors(chart)[lane] ?? fallbackBarRgb,
         selected: false,
         startTick: start,
         endTick: end,
@@ -1226,10 +1302,10 @@ export class HighwayRenderer {
     );
   }
 
-  private ensureInstancedGemBatch(kind: "note" | DrumPlacementKind): void {
+  private ensureInstancedGemBatch(kind: "note" | NoteShapeKind): void {
     if (this.instancedGemBatches[kind] || !this.materials) return;
     const meshKey =
-      kind === "kick"
+      kind === "bar"
         ? "kickNote"
         : kind === "cymbal"
           ? "cymbalNote"
@@ -1252,52 +1328,53 @@ export class HighwayRenderer {
   private drawGhostGem(): void {
     const location = this.context.getGhostNoteLocation();
     const session = this.context.getEditingSession();
-    const isDrumChart = session?.mode.id === "chart.drums";
-    const drumKind = isDrumChart
-      ? this.context.getDrumPlacementKind()
-      : undefined;
-    const ghostGem = drumKind ? this.drumGhostGems[drumKind] : this.ghostGem;
+    const chart = this.context.getCurrentChart();
     if (this.ghostGem) this.ghostGem.object.visible = false;
     Object.values(this.drumGhostGems).forEach((gem) => {
       if (gem) gem.object.visible = false;
     });
-    if (!ghostGem) return;
-    if (!location || !this.context.canShowNotePlacementPreview()) {
-      ghostGem.object.visible = false;
+    if (
+      !location ||
+      !session ||
+      !chart ||
+      !this.context.canShowNotePlacementPreview()
+    ) {
       return;
     }
-    if (isDrumChart) {
-      const projection = session.getProjection();
-      const row = projection
-        .getRows()
-        .find((candidate) => candidate.index === location.lane);
-      if (
-        !row ||
-        projection.pitchForRow(row, {
-          tool: "place",
-          drumKind: this.context.getDrumPlacementKind(),
-        }) === null
-      ) {
-        ghostGem.object.visible = false;
-        return;
-      }
-    }
-    const isDrumKick = isDrumChart && drumKind === "kick";
+
+    // What would be written here? The mode's projection resolves the pitch
+    // for the current placement; the ruleset says what that pitch looks like.
+    const projection = session.getProjection();
+    const row = projection
+      .getRows()
+      .find(
+        (candidate) =>
+          candidate.kind === "lane" && candidate.index === location.lane,
+      );
+    const pitch = row
+      ? projection.pitchForRow(row, session.getToolState())
+      : null;
+    const visual = pitch === null ? null : laneVisualFor(chart, pitch);
+    if (!visual) return;
+
+    const shape: NoteShapeKind | null =
+      visual.kind === "note" ? null : visual.kind;
+    const ghostGem = shape ? this.drumGhostGems[shape] : this.ghostGem;
+    if (!ghostGem) return;
     const placement =
       HIGHWAY_GEOMETRY_CATALOG[
-        drumKind ? DRUM_GHOST_GEOMETRY_IDS[drumKind] : "ghost"
+        shape ? SHAPE_GHOST_GEOMETRY_IDS[shape] : "ghost"
       ];
     const position = noteWorldPosition(
-      isDrumKick ? 0 : this.coordinates.getLaneX(location.lane),
+      visual.kind === "bar" ? 0 : this.coordinates.getLaneX(location.lane),
       this.coordinates.getNoteZ(location.tick),
       placement.transform,
       placement.placementOffset,
     );
-    const laneColor = isDrumKick
-      ? kickColor
-      : isDrumChart
-        ? drumLaneRgbColors[location.lane]
-        : laneRgbColors[location.lane];
+    const laneColor =
+      visual.kind === "bar"
+        ? barColor(chart)
+        : (columnColors(chart)[location.lane] ?? fallbackBarRgb);
     ghostGem.meshes.forEach((mesh) =>
       setMaterialState(mesh, {
         baseColor: laneColor,
@@ -1309,16 +1386,15 @@ export class HighwayRenderer {
     ghostGem.object.visible = true;
   }
 
-  private updateFretboardPalette(
-    isDrums: boolean,
-    activeLaneCount: number,
-  ): void {
-    const paletteChanged =
-      this.fretPaletteIsDrums !== isDrums ||
-      this.fretPaletteLaneCount !== activeLaneCount;
-    this.fretPaletteIsDrums = isDrums;
-    this.fretPaletteLaneCount = activeLaneCount;
-    const colors = isDrums ? drumLaneRgbColors : laneRgbColors;
+  /** Lays out dividers and fret caps for the chart's columns and colours. */
+  private updateFretboardPalette(colors: readonly Rgb[]): void {
+    const activeLaneCount = Math.max(
+      1,
+      Math.min(colors.length, maxLaneColumns),
+    );
+    const key = colors.map((color) => color.join(",")).join("|");
+    const paletteChanged = this.fretPaletteKey !== key;
+    this.fretPaletteKey = key;
     this.laneDividers.forEach((divider, index) => {
       divider.visible = index <= activeLaneCount;
       if (divider.visible) {
@@ -1328,12 +1404,13 @@ export class HighwayRenderer {
     this.fretAssemblies.forEach((assembly, lane) => {
       assembly.visible = lane < activeLaneCount;
       assembly.position.x = this.coordinates.getLaneX(lane);
-      if (!paletteChanged || lane >= activeLaneCount) return;
+      const color = colors[lane];
+      if (!paletteChanged || lane >= activeLaneCount || !color) return;
       assembly.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
         setMaterialState(object, {
-          baseColor: colors[lane],
-          emissionColor: colors[lane],
+          baseColor: color,
+          emissionColor: color,
         });
       });
     });
@@ -1348,45 +1425,12 @@ export class HighwayRenderer {
       this.hoverOutline.visible = false;
       return;
     }
-    const session = this.context.getEditingSession();
-    const track = chart.getTrack().getMidiTrack();
-    const trackIndex = session?.target.trackIndex;
-    const classification =
-      session && track && trackIndex !== null && trackIndex !== undefined
-        ? session.classifyNote({
-            id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
-            trackIndex,
-            tick: note.start,
-            pitch: note.note,
-            duration: note.end - note.start,
-            velocity: note.velocity,
-          })
-        : null;
-    const isDrumChart = session?.mode.id === "chart.drums";
-    const isKick = isDrumChart && classification?.subtype === "kick";
-    const row =
-      session && track && trackIndex !== null && trackIndex !== undefined
-        ? session.getProjection().rowForNote({
-            id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
-            trackIndex,
-            tick: note.start,
-            pitch: note.note,
-            duration: note.end - note.start,
-            velocity: note.velocity,
-          })
-        : null;
-    const lane = isKick ? 0 : (row?.index ?? note.note - chart.getOffset());
-    const bounds = isKick
-      ? this.hitTesting.getKickScreenBounds(note)
-      : this.hitTesting.getGemScreenBounds(
-          note,
-          lane,
-          classification?.kind === "note" &&
-            (classification.subtype === "pad" ||
-              classification.subtype === "cymbal")
-            ? classification.subtype
-            : "note",
-        );
+    const visual = laneVisualFor(chart, note.pitch);
+    const bounds = !visual
+      ? null
+      : visual.kind === "bar"
+        ? this.hitTesting.getBarScreenBounds(note)
+        : this.hitTesting.getGemScreenBounds(note, visual.lane, visual.kind);
     if (!bounds) {
       this.hoverOutline.visible = false;
       return;

@@ -1,8 +1,4 @@
-import type {
-  EditablePhraseKind,
-  EntityId,
-  GestureHandle,
-} from "@openchart/views";
+import type { EntityId, GestureHandle } from "@openchart/views";
 import { formatNoteId } from "@openchart/views";
 import type { HighwayContext } from "../context";
 import { HighwayCoordinateSystem } from "../coordinates";
@@ -30,7 +26,7 @@ export class HighwayPhraseEditingController {
   public getSelectedPhraseIds(): EntityId[] {
     const session = this.context.getEditingSession();
     const chart = this.context.getCurrentChart();
-    const track = chart?.getTrack().getMidiTrack();
+    const track = chart?.getMidiTrack();
     const trackIndex = session?.target.trackIndex;
     if (!session || !track || trackIndex === null || trackIndex === undefined) {
       return [];
@@ -43,7 +39,7 @@ export class HighwayPhraseEditingController {
         id,
         trackIndex,
         tick: note.start,
-        pitch: note.note,
+        pitch: note.pitch,
         duration: note.end - note.start,
         velocity: note.velocity,
       });
@@ -70,7 +66,7 @@ export class HighwayPhraseEditingController {
 
   public beginPhraseDrag(
     pointerId: number,
-    kind: EditablePhraseKind,
+    kind: string,
     tick: number,
     phrase: HighwayPhrase | null,
     operation: HighwayPhraseDragState["operation"],
@@ -177,7 +173,7 @@ export class HighwayPhraseEditingController {
         }
       : {
           type: "CREATE_PHRASE",
-          phraseKind: drag.kind,
+          phraseId: drag.kind,
           startTick,
           endTick,
         };

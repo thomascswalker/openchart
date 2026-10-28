@@ -1,6 +1,5 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
-import { SongView } from "../../../src/chartView.js";
 import { ChartDocument } from "../../../src/editing/chartDocument.js";
 import { EditingModeRegistry } from "../../../src/editing/modeRegistry.js";
 import { createRawMidiMode } from "../../../src/editing/modes/rawMidi.js";
@@ -8,12 +7,14 @@ import {
   computePreview,
   createStandaloneEditing,
   createEditingSession,
-  defaultConfig,
+  DefaultCompiledRuleset,
+  createRulesetContext,
   Difficulty,
   EditRejectedError,
   formatNoteId,
   type ModeContext,
 } from "../../../src/index.js";
+import { SongView } from "../../../src/views/song.js";
 
 function createMidi(withTrack = true): Midi {
   const midi = new Midi();
@@ -81,7 +82,9 @@ describe("standalone editing sessions", () => {
     const context: ModeContext = {
       reader: document,
       target: session.target,
-      config: defaultConfig,
+      rules: DefaultCompiledRuleset,
+      rulesContext: createRulesetContext({ ppqn: document.getPpqn() }),
+      validate: () => [],
     };
     const command = {
       type: "MOVE_NOTES" as const,
@@ -182,13 +185,13 @@ describe("standalone editing sessions", () => {
     expect(standalone.history.undoDepth).toBe(1);
     expect(midi.tracks[0]!.getNotes()[0]).toMatchObject({
       start: 120,
-      note: 62,
+      pitch: 62,
     });
 
     expect(standalone.history.undo()).toBe(true);
     expect(midi.tracks[0]!.getNotes()[0]).toMatchObject({
       start: 0,
-      note: 60,
+      pitch: 60,
     });
     expect(standalone.history.isDirty).toBe(false);
 
@@ -216,7 +219,7 @@ describe("standalone editing sessions", () => {
       mode,
       target,
       hostKind: "piano-roll",
-      config: defaultConfig,
+      rules: DefaultCompiledRuleset,
       transaction: standalone.history,
       onCommit: () => {
         throw new Error("notification failed");
@@ -237,7 +240,7 @@ describe("standalone editing sessions", () => {
     ).toThrow("notification failed");
     expect(midi.tracks[0]!.getNotes()[0]).toMatchObject({
       start: 120,
-      note: 61,
+      pitch: 61,
     });
     expect(standalone.history.undoDepth).toBe(1);
   });
@@ -248,12 +251,12 @@ describe("standalone editing sessions", () => {
     const session = standalone.createSession(createTarget(midi), "piano-roll");
     const track = midi.tracks[0]!;
     const before = midi.toBuffer();
-    const addNoteAt = track.addNoteAt.bind(track);
+    const insertNote = track.insertNote.bind(track);
     let calls = 0;
-    vi.spyOn(track, "addNoteAt").mockImplementation((spec) => {
+    vi.spyOn(track, "insertNote").mockImplementation((spec) => {
       calls += 1;
       if (calls === 2) throw new Error("simulated insertion failure");
-      return addNoteAt(spec);
+      return insertNote(spec);
     });
 
     expect(() =>

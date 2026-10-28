@@ -1,15 +1,17 @@
 import type { Midi, MidiChannelEvent } from "@openchart/midi";
 import type { ChartView, EditingSession, PreviewState } from "@openchart/views";
 import type { ChartViewState } from "../AbstractChartView";
-import type { EditablePhraseKind } from "@openchart/views";
 import type {
   HighwayGhostNoteLocation,
   HighwaySelectionRange,
   HighwayMarqueeDragState,
   HighwayPhraseHoverState,
 } from "./types";
-import type { HighwayMode, HighwayNotePlacementType } from "./types";
-import type { DrumPlacementKind } from "./profile";
+import type {
+  HighwayMode,
+  HighwayNotePlacementType,
+  HighwayPhraseKind,
+} from "./types";
 
 /** Narrow view services available to highway-specific collaborators. */
 export interface HighwayContext {
@@ -27,8 +29,7 @@ export interface HighwayContext {
   setCameraTick(tick: number): void;
   getMode(): HighwayMode;
   getNotePlacementType?(): HighwayNotePlacementType;
-  getDrumPlacementKind(): DrumPlacementKind;
-  getPhraseMode(): EditablePhraseKind | null;
+  getPhraseMode(): HighwayPhraseKind | null;
   getPhraseHoverState(): HighwayPhraseHoverState | null;
   getSelectionRange(): HighwaySelectionRange | null;
   getGhostNoteLocation(): HighwayGhostNoteLocation | null;

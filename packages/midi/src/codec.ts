@@ -184,7 +184,7 @@ export function encodeMetaPayload(
       return result;
     }
 
-    case MetaType.TextMidiEvent:
+    case MetaType.Text:
     case MetaType.Copyright:
     case MetaType.TrackName:
     case MetaType.InstrumentName:
@@ -269,7 +269,7 @@ export function decodeMetaPayload(
       requireLength(2);
       return { sequenceNumber: (bytes[0] << 8) | bytes[1] };
 
-    case MetaType.TextMidiEvent:
+    case MetaType.Text:
     case MetaType.Copyright:
     case MetaType.TrackName:
     case MetaType.InstrumentName:

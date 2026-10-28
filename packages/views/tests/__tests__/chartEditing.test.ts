@@ -1,75 +1,37 @@
 import { MetaType, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import {
-  addNotePhrase,
-  extractSections,
-  findSection,
-  getNotePhrases,
-  getPhrasePitch,
-  removeNotePhrase,
-  updateNotePhrase,
-} from "../../src/chartEditing.js";
-import { defaultConfig, describeTrack } from "../../src/config.js";
+import { getNotePhrases } from "../../src/editing/phrase.js";
+import { extractSections, findSection } from "../../src/editing/section.js";
+import { DefaultCompiledRuleset } from "../../src/ruleset/index.js";
 
-const leadDescriptor = describeTrack(
-  defaultConfig.tracks.find((track) => track.name === "LEAD GUITAR")!,
-);
+const lead = DefaultCompiledRuleset.byKey.get("lead-guitar")!;
 
-describe("chart phrase editing", () => {
-  it("resolves phrase pitches from the instrument configuration", () => {
-    expect(getPhrasePitch(leadDescriptor, "stagepower")).toBe(116);
-    expect(getPhrasePitch(leadDescriptor, "solo")).toBe(118);
+describe("chart phrases and sections", () => {
+  it("resolves phrase pitches from the track rules", () => {
+    const pitch = (id: string) =>
+      lead.phrases.find((p) => p.id === id)?.pitches[0];
+    expect(pitch("stagePower")).toBe(116);
+    expect(pitch("solo")).toBe(118);
   });
 
-  it("creates, moves, resizes, and removes a MIDI-note phrase", () => {
+  it("reads phrases stored as MIDI notes", () => {
     const track = new MidiTrack("LEAD GUITAR");
+    track.insertNote({ tick: 480, pitch: 116, velocity: 100, duration: 480 });
+    track.insertNote({ tick: 0, pitch: 60, velocity: 100, duration: 10 });
 
-    const phrase = addNotePhrase(track, 116, "stagepower", 480, 960);
-
-    expect(phrase).toMatchObject({ start: 480, end: 960, kind: "stagepower" });
-    expect(track.getNotes()).toHaveLength(1);
-    expect(getNotePhrases(track, 116, "stagepower")).toEqual([phrase]);
-
-    expect(updateNotePhrase(track, phrase!.note, 720, 1_200)).toBe(true);
-    expect(getNotePhrases(track, 116, "stagepower")).toMatchObject([
-      { start: 720, end: 1_200, kind: "stagepower" },
+    expect(getNotePhrases(track, 116, "stagePower")).toMatchObject([
+      { start: 480, end: 960, kind: "stagePower" },
     ]);
-    expect(track.getNotes()[0]?.noteOn).toBe(phrase!.note.noteOn);
-
-    expect(removeNotePhrase(track, phrase!.note)).toBe(true);
-    expect(track.getNotes()).toHaveLength(0);
+    expect(getNotePhrases(track, 200, "x")).toEqual([]);
   });
 
-  it("rejects invalid phrase bounds without changing the track", () => {
+  it("extracts section markers (meta type Text) and finds the adjacent section", () => {
     const track = new MidiTrack("LEAD GUITAR");
-
-    expect(addNotePhrase(track, 116, "solo", -1, 480)).toBeNull();
-    expect(addNotePhrase(track, 116, "solo", 480, 480)).toBeNull();
-    expect(track.getNotes()).toHaveLength(0);
-
-    const phrase = addNotePhrase(track, 116, "solo", 0, 480)!;
-    expect(updateNotePhrase(track, phrase.note, 120, 120)).toBe(false);
-    expect(getNotePhrases(track, 116, "solo")).toMatchObject([
-      { start: 0, end: 480 },
-    ]);
-  });
-
-  it("leaves a phrase unchanged when an atomic update is rejected", () => {
-    const track = new MidiTrack("LEAD GUITAR");
-    const phrase = addNotePhrase(track, 116, "solo", 480, 960)!;
-    const updateNote = track.updateNote.bind(track);
-    track.updateNote = () => false;
-
-    expect(updateNotePhrase(track, phrase.note, 720, 1_200)).toBe(false);
-    expect(track.getNotes()).toMatchObject([{ start: 480, end: 960 }]);
-    track.updateNote = updateNote;
-  });
-
-  it("extracts section markers and finds the adjacent section", () => {
-    const track = new MidiTrack("LEAD GUITAR");
-    track.addTextEvent(MetaType.Marker, 480, "[section Verse]");
-    track.addTextEvent(MetaType.Marker, 960, "[section Chorus]");
-    track.addTextEvent(MetaType.Marker, 1_440, "Bridge");
+    track.addTextEvent(MetaType.Text, 480, "[section Verse]");
+    track.addTextEvent(MetaType.Text, 960, "[section Chorus]");
+    track.addTextEvent(MetaType.Text, 1_440, "Bridge");
+    // Markers are not sections: sections are Text events (ruleset meta type 1).
+    track.addTextEvent(MetaType.Marker, 1_920, "[section Outro]");
 
     expect(extractSections(track)).toEqual([
       { name: "[section Verse]", tick: 480 },

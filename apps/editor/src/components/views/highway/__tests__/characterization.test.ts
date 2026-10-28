@@ -1,13 +1,10 @@
 import {
-  defaultConfig,
+  DefaultCompiledRuleset,
   Difficulty,
   formatNoteId,
-  getPhrasePitch,
   getHighwaySustainEnd,
   getSustainCutOptions,
   getSustainCutTargets,
-  type EditablePhraseKind,
-  type SongViewConfig,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
@@ -15,27 +12,40 @@ import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayPhrase } from "../hitTesting";
 import { getHighwayDragTarget } from "../interactionMath";
-import { getDrumNoteProfile, getDrumPitchForPlacement } from "../profile";
 import {
   copyHighwaySelectionToClipboard,
   createHighwayTestSetup,
+  getPhrasePitch,
 } from "./testUtils";
 
 type NotePlacement = "normal" | "force-hopo" | "force-strum" | "tap";
 
 describe("editing characterization: Highway", () => {
   it("records drum placement pitches for every difficulty, kind, and lane", () => {
-    const { offsets, placements } = characterization.drums;
-    const kinds = ["pad", "cymbal", "kick"] as const;
+    const { placements } = characterization.drums;
+    const track = DefaultCompiledRuleset.byKey.get("drums")!;
+    const difficulties = [
+      Difficulty.Easy,
+      Difficulty.Medium,
+      Difficulty.Hard,
+      Difficulty.Expert,
+    ];
 
-    offsets.forEach((offset, difficultyIndex) => {
-      for (const kind of kinds) {
-        for (let lane = 0; lane < 4; lane++) {
-          expect(getDrumPitchForPlacement(kind, lane, offset)).toBe(
-            placements[kind][difficultyIndex][lane],
+    difficulties.forEach((difficulty, difficultyIndex) => {
+      const chart = track.difficulties.get(difficulty)!;
+      track.columns.forEach((lane, index) => {
+        expect(chart.pitchForLane(lane.id, "tom")).toBe(
+          placements.pad[difficultyIndex]![index],
+        );
+        if (index > 0) {
+          expect(chart.pitchForLane(lane.id, "cymbal")).toBe(
+            placements.cymbal[difficultyIndex]![index],
           );
         }
-      }
+      });
+      expect(chart.pitchForLane("kick")).toBe(
+        placements.kick[difficultyIndex]![0],
+      );
     });
   });
 
@@ -51,36 +61,9 @@ describe("editing characterization: Highway", () => {
 
     for (const [difficultyIndex, difficulty] of difficulties.entries()) {
       for (const placement of placementOrder as NotePlacement[]) {
-        const difficultyName = ["easy", "medium", "hard", "expert"][
-          difficultyIndex
-        ]!;
-        const config: SongViewConfig = {
-          ...defaultConfig,
-          tracks: defaultConfig.tracks.map((track) => {
-            if (track.key !== "lead-guitar" || track.type !== "instrument") {
-              return track;
-            }
-            return {
-              ...track,
-              offsets: {
-                easy: track.offsets?.easy ?? 60,
-                medium: track.offsets?.medium ?? 72,
-                hard: track.offsets?.hard ?? 84,
-                expert: track.offsets?.expert ?? 96,
-                [difficultyName]: difficulty.offset,
-              },
-              notes: {
-                ...track.notes,
-                [`${difficultyName}Hopo`]: difficulty.markers[0]!,
-                [`${difficultyName}Strum`]: difficulty.markers[1]!,
-                [`${difficultyName}Tap`]: difficulty.markers[2]!,
-              },
-            };
-          }),
-        };
         const setup = createHighwayTestSetup(
           "lead-guitar",
-          config,
+          DefaultCompiledRuleset,
           [
             Difficulty.Easy,
             Difficulty.Medium,
@@ -89,7 +72,7 @@ describe("editing characterization: Highway", () => {
           ][difficultyIndex]!,
         );
         for (const pitch of difficulty.markers) {
-          setup.midiTrack.addNoteAt({
+          setup.midiTrack.insertNote({
             pitch,
             tick,
             velocity: 100,
@@ -102,14 +85,28 @@ describe("editing characterization: Highway", () => {
           type: "PLACE_CHART_NOTE",
           lane: 0,
           tick,
-          placement,
+          placement:
+            placement === "force-hopo"
+              ? "marker:forceHopo"
+              : placement === "force-strum"
+                ? "marker:forceStrum"
+                : placement === "tap"
+                  ? "marker:forceTap"
+                  : "normal",
           cutPolicy: "all",
         });
         setup.session.execute({
           type: "PLACE_CHART_NOTE",
           lane: 0,
           tick,
-          placement,
+          placement:
+            placement === "force-hopo"
+              ? "marker:forceHopo"
+              : placement === "force-strum"
+                ? "marker:forceStrum"
+                : placement === "tap"
+                  ? "marker:forceTap"
+                  : "normal",
           cutPolicy: "all",
         });
 
@@ -123,8 +120,8 @@ describe("editing characterization: Highway", () => {
         expect(
           setup.midiTrack
             .getNotes()
-            .filter((note) => markerPitches.has(note.note))
-            .map((note) => note.note)
+            .filter((note) => markerPitches.has(note.pitch))
+            .map((note) => note.pitch)
             .sort((left, right) => left - right),
         ).toEqual(expected);
         expect(markerTypes).toContain(placement);
@@ -179,7 +176,7 @@ describe("editing characterization: Highway", () => {
     const cymbalPitch = drums.move.cymbalLane + 100;
     const markerPitch = 96 + drums.move.markerSlot;
     for (const pitch of [kick2Pitch, cymbalPitch, markerPitch]) {
-      setup.midiTrack.addNoteAt({
+      setup.midiTrack.insertNote({
         pitch,
         tick: drums.move.initialTick,
         velocity: 100,
@@ -187,13 +184,16 @@ describe("editing characterization: Highway", () => {
       });
     }
     const entityId = (pitch: number) => {
-      const note = setup.chart.getNotes().find((item) => item.note === pitch)!;
+      const note = setup.chart.getNotes().find((item) => item.pitch === pitch)!;
       return formatNoteId(
         setup.session.target.trackIndex!,
         setup.midiTrack.getEventId(note.noteOn),
       );
     };
-    expect(getDrumNoteProfile(drums.kick2.pitch, 96)?.kind).toBe("kick");
+    expect(setup.chart.classify(drums.kick2.pitch)).toMatchObject({
+      kind: "laneNote",
+      laneId: "kick",
+    });
     expect(
       setup.session.execute({
         type: "MOVE_CHART_NOTES",
@@ -221,7 +221,7 @@ describe("editing characterization: Highway", () => {
     expect(
       setup.chart
         .getNotes()
-        .map((note) => note.note)
+        .map((note) => note.pitch)
         .sort(),
     ).toEqual(
       [
@@ -236,7 +236,7 @@ describe("editing characterization: Highway", () => {
     const { paste } = characterization.drums;
     const setup = createHighwayTestSetup("drums");
     for (const note of [...paste.source, ...paste.occupied]) {
-      setup.midiTrack.addNoteAt({
+      setup.midiTrack.insertNote({
         pitch: note.pitch,
         tick: note.tick,
         velocity: 100,
@@ -247,7 +247,7 @@ describe("editing characterization: Highway", () => {
       const note = setup.midiTrack
         .getNotes()
         .find(
-          (candidate) => candidate.note === pitch && candidate.start === tick,
+          (candidate) => candidate.pitch === pitch && candidate.start === tick,
         )!;
       return formatNoteId(
         setup.session.target.trackIndex!,
@@ -265,16 +265,16 @@ describe("editing characterization: Highway", () => {
           (note) =>
             !paste.source.some(
               (sourceNote) =>
-                sourceNote.pitch === note.note &&
+                sourceNote.pitch === note.pitch &&
                 sourceNote.tick === note.start,
             ) &&
             !paste.occupied.some(
               (occupiedNote) =>
-                occupiedNote.pitch === note.note &&
+                occupiedNote.pitch === note.pitch &&
                 occupiedNote.tick === note.start,
             ),
         )
-        .map(({ note, start }) => ({ pitch: note, tick: start }))
+        .map(({ pitch: note, start }) => ({ pitch: note, tick: start }))
         .sort((left, right) => left.pitch - right.pitch),
     ).toEqual(
       [...paste.expected].sort((left, right) => left.pitch - right.pitch),
@@ -293,11 +293,11 @@ describe("editing characterization: Highway", () => {
     const descriptor = setup.song
       .getTrackDescriptors()
       .find((track) => track.key === "lead-guitar")!;
-    const getPhrase = (kind: EditablePhraseKind): HighwayPhrase => {
+    const getPhrase = (kind: string): HighwayPhrase => {
       const pitch = getPhrasePitch(descriptor, kind)!;
       const note = setup.midiTrack
         .getNotes()
-        .find((candidate) => candidate.note === pitch)!;
+        .find((candidate) => candidate.pitch === pitch)!;
       return {
         id: formatNoteId(
           setup.session.target.trackIndex!,
@@ -312,14 +312,14 @@ describe("editing characterization: Highway", () => {
     const { create, move, resizeStart, resizeEnd } = characterization.phrases;
     editing.beginPhraseDrag(
       1,
-      "stagepower",
+      "stagePower",
       create.pointerTick,
       null,
       "create",
     );
     editing.updatePhraseDrag(create.dragTick);
     expect(editing.finishPhraseDrag()).toBe(true);
-    let stagepower = getPhrase("stagepower");
+    let stagepower = getPhrase("stagePower");
     expect([stagepower.start, stagepower.end]).toEqual(create.expected);
 
     editing.beginPhraseDrag(1, "solo", 960, null, "create");

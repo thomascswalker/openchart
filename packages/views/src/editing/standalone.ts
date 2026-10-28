@@ -1,10 +1,11 @@
 import { Midi } from "@openchart/midi";
 import {
-  defaultConfig,
-  type SongViewConfig,
+  DefaultCompiledRuleset,
+  createUnmappedTrackRules,
+  type CompiledRuleset,
   type TrackDescriptor,
-} from "../config.js";
-import { SongView } from "../chartView.js";
+} from "../ruleset/compile.js";
+import type { RulesetContext } from "../ruleset/enforce.js";
 import { ChartDocument } from "./chartDocument.js";
 import { ClipboardService } from "./clipboard.js";
 import type { EditingTarget, ModeRegistry } from "./mode.js";
@@ -37,9 +38,10 @@ export interface StandaloneEditing {
 /** Creates a registry, raw editing sessions, and in-memory snapshot history. */
 export function createStandaloneEditing(
   midi: Midi,
-  config: SongViewConfig = defaultConfig,
+  rules: CompiledRuleset = DefaultCompiledRuleset,
+  rulesContext?: RulesetContext | (() => RulesetContext),
 ): StandaloneEditing {
-  const document = createDocument(midi, config);
+  const document = new ChartDocument(midi, rules);
   const history = new StandaloneHistoryImpl(midi);
   const registry = createDefaultModeRegistry();
   const selection = new SelectionModel();
@@ -56,7 +58,7 @@ export function createStandaloneEditing(
         normalizedTarget.trackKey,
         normalizedTarget.trackIndex,
         midi,
-        config,
+        rules,
       );
       const mode = registry.resolve(descriptor, hostKind);
       if (!mode) {
@@ -69,17 +71,14 @@ export function createStandaloneEditing(
         mode,
         target: normalizedTarget,
         hostKind,
-        config,
+        rules,
+        ...(rulesContext ? { rulesContext } : {}),
         transaction: history,
         selection,
         clipboard,
       });
     },
   };
-}
-
-function createDocument(midi: Midi, config: SongViewConfig): ChartDocument {
-  return new ChartDocument(midi, config);
 }
 
 function resolveTarget(
@@ -96,30 +95,21 @@ function descriptorForTarget(
   trackKey: string,
   trackIndex: number | null,
   midi: Midi,
-  config: SongViewConfig,
+  rules: CompiledRuleset,
 ): TrackDescriptor {
-  const song = new SongView(midi, config);
-  const descriptor = song
-    .getTrackDescriptors()
-    .find((item) => item.key === trackKey);
-  if (descriptor) return descriptor;
+  const configured = rules.descriptors().find((item) => item.key === trackKey);
+  if (configured) return configured;
 
   const track = trackIndex === null ? undefined : midi.tracks[trackIndex];
   const name = track?.name ?? trackKey;
-  const syntheticConfig = {
-    name,
-    key: trackKey,
-    type: "instrument" as const,
-    noteCount: 128,
-    notes: {},
-  };
+  const unmapped = createUnmappedTrackRules(name, trackKey);
   return {
     key: trackKey,
     name,
-    type: "instrument",
+    kind: unmapped.kind,
     visible: true,
     editable: true,
-    config: syntheticConfig,
+    rules: unmapped,
   };
 }
 

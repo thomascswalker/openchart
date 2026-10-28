@@ -1,9 +1,25 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import { ChannelMessage, Midi, MidiTrack } from "@openchart/midi";
-import { expect, describe, beforeAll, it, vi } from "vitest";
-import { SongView, Difficulty, Note } from "../../src/chartView.js";
+import { Midi, MidiTrack } from "@openchart/midi";
+import { expect, describe, beforeAll, it } from "vitest";
 import * as fs from "fs";
+import { SongView, createStandaloneEditing } from "../../src/index.js";
+import { Difficulty } from "../../src/types.js";
+
+function placeSession(midi: Midi, trackKey: string) {
+  const editing = createStandaloneEditing(midi);
+  const trackIndex = midi.tracks.findIndex(
+    (track) => track.name === trackKey.toUpperCase().replace("-", " "),
+  );
+  return editing.createSession(
+    {
+      trackKey,
+      trackIndex: trackIndex < 0 ? null : trackIndex,
+      difficulty: Difficulty.Expert,
+    },
+    "highway",
+  );
+}
 
 describe("data.json", () => {
   let midi: Midi;
@@ -11,17 +27,14 @@ describe("data.json", () => {
 
   beforeAll(async () => {
     const { default: testData } = await import("../data.json");
-
     const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const midiPath = path.join(currentDir, "..", testData.filename);
-    const content = fs.readFileSync(midiPath);
-    midi = new Midi(content);
-    expect(midi).toBeDefined();
-
+    midi = new Midi(
+      fs.readFileSync(path.join(currentDir, "..", testData.filename)),
+    );
     song = new SongView(midi);
   });
 
-  it("instrument parsing", async () => {
+  it("instrument parsing", () => {
     const lead = song.getInstrumentTrackView("LEAD GUITAR")!;
     expect(lead).toBeDefined();
     expect(
@@ -30,106 +43,78 @@ describe("data.json", () => {
       "LEAD GUITAR",
       "RHYTHM GUITAR",
       "DRUMS",
-      "VOCALS",
       "FOUR PAD",
       "FIVE PAD",
     ]);
     expect(song.getInstrumentTrackView("RHYTHM GUITAR")).toBeDefined();
     expect(song.getInstrumentTrackView("DRUMS")).toBeDefined();
-    expect(song.getInstrumentTrackView("VOCALS")).toBeDefined();
+    expect(song.getVocalTrackView()?.getName()).toBe("VOCALS");
     expect(
       song
         .getInstrumentTrackView("FOUR PAD")
         ?.getChart(Difficulty.Expert)
-        .getLaneCount(),
-    ).toBe(4);
+        ?.getColumns(),
+    ).toHaveLength(4);
     expect(
       song
         .getInstrumentTrackView("FIVE PAD")
         ?.getChart(Difficulty.Expert)
-        .getLaneCount(),
-    ).toBe(5);
+        ?.getColumns(),
+    ).toHaveLength(5);
 
-    const noteCounts = [
-      1954, // Expert
-      1425, // Hard
-      980, // Medium
-      661, // Easy
-    ];
+    const noteCounts = [1998, 1725, 1094, 685]; // Expert, Hard, Medium, Easy
     lead.getCharts().forEach((chart, index) => {
-      const notes = chart.getNotes();
-      expect(notes.length).toBe(noteCounts[index]);
+      expect(chart.getNotes().length).toBe(noteCounts[index]);
     });
   });
+});
 
-  it("maps four- and five-pad difficulty lanes and note pitches", () => {
-    const midi = new Midi();
-    const song = new SongView(midi);
-    const fourPad = song.getInstrumentTrackView("FOUR PAD")!;
-    const fivePad = song.getInstrumentTrackView("FIVE PAD")!;
-
-    expect(
-      fourPad
-        .getCharts()
-        .map((chart) => [chart.getOffset(), chart.getLaneCount()]),
-    ).toEqual([
-      [96, 4],
-      [84, 4],
-      [72, 4],
-      [60, 4],
+describe("SongView", () => {
+  it("builds views by track kind and exposes descriptors", () => {
+    const song = new SongView(new Midi());
+    expect(song.getTrackDescriptors().map((d) => d.key)).toEqual([
+      "chart-header",
+      "global",
+      "lead-guitar",
+      "rhythm-guitar",
+      "drums",
+      "vocals",
+      "four-pad",
+      "five-pad",
     ]);
-    expect(
-      fivePad
-        .getCharts()
-        .map((chart) => [chart.getOffset(), chart.getLaneCount()]),
-    ).toEqual([
-      [96, 5],
-      [84, 5],
-      [72, 5],
-      [60, 5],
-    ]);
-
-    const fourPadExpert = fourPad.getChart(Difficulty.Expert);
-    const fivePadExpert = fivePad.getChart(Difficulty.Expert);
-    expect(fourPadExpert.addNote(3, 0, 120)).toBe(true);
-    expect(fourPadExpert.addNote(4, 240, 360)).toBe(false);
-    expect(fourPadExpert.addNoteAtPitch(116, 480, 600)).toBe(false);
-    expect(fourPadExpert.getNotes().map((note) => note.note)).toEqual([99]);
-    expect(fivePadExpert.addNote(4, 0, 120)).toBe(true);
-    expect(fivePadExpert.getNotes().map((note) => note.note)).toEqual([100]);
+    expect(song.getVisibleTrackDescriptors().map((d) => d.key)).not.toContain(
+      "chart-header",
+    );
+    expect(song.getTrackView("lead-guitar")).toBe(
+      song.getTrackView("LEAD GUITAR"),
+    );
+    // Vocals are found even though the old config used `role: "vocals"`.
+    expect(song.getVocalTrackViews()).toHaveLength(1);
   });
 
-  it("mutates both the ChartView and its underlying MidiTrack", () => {
-    const midi = new Midi();
-    const track = new MidiTrack();
-    track.name = "LEAD GUITAR";
-    midi.tracks = [track];
+  it("maps four- and five-pad difficulty lanes", () => {
+    const song = new SongView(new Midi());
+    const columns = (name: string) =>
+      song
+        .getInstrumentTrackView(name)!
+        .getCharts()
+        .map((chart) => chart.getColumns().length);
+    expect(columns("FOUR PAD")).toEqual([4, 4, 4, 4]);
+    expect(columns("FIVE PAD")).toEqual([5, 5, 5, 5]);
+  });
 
-    const chart = new SongView(midi)
-      .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert);
-
-    chart.addNote(Note.Green, 480, 720);
-
-    const events = track.getChannelEvents();
-    expect(events).toHaveLength(2);
-    expect(events.map((event) => event.deltaTime)).toEqual([480, 240]);
-    expect(events[0]?.status).toBe(0x90);
-    expect(events[1]?.status).toBe(0x80);
-    expect(events[0]?.messageType).toBe(ChannelMessage.NoteOn);
-    expect(events[1]?.messageType).toBe(ChannelMessage.NoteOff);
-    expect(events[0]?.data1).toBe(96); // Expert offset + Green lane
-    expect(events[1]?.data1).toBe(96);
-
-    const notes = chart.getNotes();
-    expect(notes).toHaveLength(1);
-    expect(notes[0]?.start).toBe(480);
-    expect(notes[0]?.end).toBe(720);
-    expect(midi.getTrack("LEAD GUITAR")?.events).toBe(track.events);
-
-    expect(chart.removeNote(notes[0])).toBe(true);
-    expect(track.events).toHaveLength(0);
-    expect(chart.getNotes()).toHaveLength(0);
+  it("lists lanes, columns and bars from the rules", () => {
+    const drums = new SongView(new Midi())
+      .getInstrumentTrackView("DRUMS")!
+      .getChart(Difficulty.Expert)!;
+    expect(drums.getColumns().map((l) => l.id)).toEqual([
+      "red",
+      "yellow",
+      "blue",
+      "green",
+    ]);
+    expect(drums.getBars().map((l) => l.id)).toEqual(["kick"]);
+    expect(drums.getLanes()).toHaveLength(5);
   });
 
   it("reuses its sorted note list until the track revision changes", () => {
@@ -139,66 +124,32 @@ describe("data.json", () => {
     track.addNote(96, 0, 100, 1);
     const chart = new SongView(midi)
       .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert);
+      .getChart(Difficulty.Expert)!;
 
     const cached = chart.getNotes();
     expect(chart.getNotes()).toBe(cached);
-
-    chart.addNote(Note.Red, 240, 360);
+    track.addNote(97, 240, 100, 120);
     expect(chart.getNotes()).not.toBe(cached);
     expect(chart.getNotes()).toHaveLength(2);
   });
 
-  it("moves and resizes notes within its configured chart lanes", () => {
-    const midi = new Midi();
-    const track = new MidiTrack("LEAD GUITAR");
-    midi.tracks = [track];
-
-    const chart = new SongView(midi)
+  it("classifies pitches through the chart's rules", () => {
+    const chart = new SongView(new Midi())
       .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert);
-    chart.addNote(Note.Green, 480, 720);
-
-    const note = chart.getNotes()[0]!;
-    expect(chart.moveNote(note, Note.Orange, 960)).toBe(true);
-    expect(chart.setNoteEnd(note, 1_680)).toBe(true);
-    expect(
-      chart.getNotes().map((value) => [value.note, value.start, value.end]),
-    ).toEqual([[100, 960, 1_680]]);
-    expect(chart.moveNote(note, 5 as Note, 1_920)).toBe(false);
-    expect(chart.setNoteEnd(note, 960)).toBe(false);
-  });
-
-  it("moves a note with one atomic track update", () => {
-    const midi = new Midi();
-    const track = new MidiTrack("LEAD GUITAR");
-    midi.tracks = [track];
-    track.addNote(96, 480, 100, 240);
-
-    const chart = new SongView(midi)
-      .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert);
-    const note = chart.getNotes()[0]!;
-    const updateNote = vi.spyOn(track, "updateNote").mockReturnValue(false);
-
-    expect(chart.moveNote(note, Note.Orange, 960)).toBe(false);
-    expect(updateNote).toHaveBeenCalledWith(note, {
-      start: 960,
-      pitch: 100,
-      duration: 240,
+      .getChart(Difficulty.Expert)!;
+    expect(chart.classify(96)).toMatchObject({
+      kind: "laneNote",
+      laneId: "green",
     });
-    expect([note.note, note.start, note.end]).toEqual([96, 480, 720]);
-  });
-
-  it("adds a missing instrument track when its chart is first edited", () => {
-    const midi = new Midi();
-    const chart = new SongView(midi)
-      .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert);
-
-    chart.addNote(Note.Green, 480, 720);
-
-    expect(midi.getTrack("LEAD GUITAR")?.getNotes()).toHaveLength(1);
+    expect(chart.classify(101)).toMatchObject({
+      kind: "marker",
+      effect: "forceHopo",
+    });
+    expect(chart.classify(116)).toMatchObject({
+      kind: "phrase",
+      id: "stagePower",
+    });
+    expect(chart.getPhrases().map((p) => p.id)).toEqual(["solo", "stagePower"]);
   });
 
   it("includes the Expert drum Kick2 boundary pitch without widening other charts", () => {
@@ -206,84 +157,60 @@ describe("data.json", () => {
     const drums = new MidiTrack("DRUMS");
     const guitar = new MidiTrack("LEAD GUITAR");
     midi.tracks = [drums, guitar];
-    drums.addNote(95, 0, 100, 1);
-    drums.addNote(96, 0, 100, 1);
-    drums.addNote(104, 0, 100, 1);
-    drums.addNote(105, 0, 100, 1);
+    for (const pitch of [95, 96, 104, 105]) drums.addNote(pitch, 0, 100, 1);
     guitar.addNote(95, 0, 100, 1);
 
     const song = new SongView(midi);
-    const drumNotes = song
-      .getInstrumentTrackView("DRUMS")!
-      .getChart(Difficulty.Expert)
-      .getNotes();
-    const guitarNotes = song
-      .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert)
-      .getNotes();
-
-    expect(drumNotes.map((note) => note.note)).toEqual([95, 96, 104]);
-    expect(guitarNotes).toHaveLength(0);
+    const view = song.getInstrumentTrackView("DRUMS")!;
+    expect(
+      view
+        .getChart(Difficulty.Expert)!
+        .getNotes()
+        .map((n) => n.pitch),
+    ).toEqual([95, 96, 104]);
     expect(
       song
-        .getInstrumentTrackView("DRUMS")!
-        .getChart(Difficulty.Hard)
-        .getNotes()
-        .map((note) => note.note),
-    ).toEqual([]);
+        .getInstrumentTrackView("LEAD GUITAR")!
+        .getChart(Difficulty.Expert)!
+        .getNotes(),
+    ).toHaveLength(0);
+    expect(view.getChart(Difficulty.Hard)!.getNotes()).toEqual([]);
   });
 
-  it("adds and removes Expert Kick2 without changing pitch 95", () => {
+  it("materialises a missing configured track with a TrackName event", () => {
     const midi = new Midi();
-    const track = new MidiTrack("DRUMS");
-    midi.tracks = [track];
-    const chart = new SongView(midi)
-      .getInstrumentTrackView("DRUMS")!
-      .getChart(Difficulty.Expert);
-
-    expect(chart.addNoteAtPitch(95, 480, 720)).toBe(true);
-    const kick2 = chart.getNotes()[0]!;
-    expect(kick2.note).toBe(95);
-    expect(chart.removeNote(kick2)).toBe(true);
-    expect(chart.getNotes()).toEqual([]);
+    const song = new SongView(midi);
+    const track = song.ensureMidiTrack("lead-guitar")!;
+    expect(track.name).toBe("LEAD GUITAR");
+    expect(midi.getTrack("LEAD GUITAR")).toBe(track);
+    expect(song.ensureMidiTrack("chart-header")).toBeUndefined();
+    expect(song.getUnmappedMidiTracks()).toHaveLength(0);
   });
+});
 
-  it("keeps MidiTrack relative timing and ChartView absolute timing separate", () => {
+describe("editing through a session", () => {
+  it("creates the track on the first placed note and keeps relative timing", () => {
     const midi = new Midi();
-    const track = new MidiTrack();
-    track.name = "LEAD GUITAR";
-    midi.tracks = [track];
+    midi.tracks = [new MidiTrack("")]; // sync track; a MIDI file needs a track
+    const session = placeSession(midi, "lead-guitar");
+    const result = session.execute({
+      type: "PLACE_CHART_NOTE",
+      lane: 0,
+      tick: 480,
+      endTick: 720,
+      placement: "normal",
+      cutPolicy: "none",
+    });
+    expect(result.changed).toBe(true);
 
-    track.addNote(97, 0, 100, 960);
-    track.addNote(98, 240, 100, 240);
-
+    const track = midi.getTrack("LEAD GUITAR")!;
     const chart = new SongView(midi)
       .getInstrumentTrackView("LEAD GUITAR")!
-      .getChart(Difficulty.Expert);
-
-    chart.addNote(Note.Green, 480, 720);
-
-    expect(track.events.map((event) => event.deltaTime)).toEqual([
-      0, 480, 240, 240, 240, 240,
-    ]);
-    expect(
-      chart.getNotes().map((note) => [note.note, note.start, note.end]),
-    ).toEqual([
-      [97, 0, 960],
+      .getChart(Difficulty.Expert)!;
+    const notes = chart.getNotes();
+    expect(notes.map((n) => [n.pitch, n.start, n.end])).toEqual([
       [96, 480, 720],
-      [98, 1200, 1440],
     ]);
-
-    const added = chart.getNotes().find((note) => note.note === 96)!;
-    expect(chart.removeNote(added)).toBe(true);
-    expect(track.events.map((event) => event.deltaTime)).toEqual([
-      0, 960, 240, 240,
-    ]);
-    expect(
-      chart.getNotes().map((note) => [note.note, note.start, note.end]),
-    ).toEqual([
-      [97, 0, 960],
-      [98, 1200, 1440],
-    ]);
+    expect(track.getNotes()).toHaveLength(1);
   });
 });

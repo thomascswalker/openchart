@@ -1,10 +1,9 @@
 import type { MidiNote } from "@openchart/midi";
 import {
-  defaultConfig,
+  DefaultCompiledRuleset,
   Difficulty,
   formatNoteId,
   type EntityId,
-  type SongViewConfig,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
@@ -22,7 +21,7 @@ function addNote(
   duration: number,
   velocity = 90,
 ): MidiNote {
-  return setup.midiTrack.addNoteAt({
+  return setup.midiTrack.insertNote({
     pitch,
     tick,
     duration,
@@ -38,26 +37,6 @@ function getNoteId(
     setup.session.target.trackIndex!,
     setup.midiTrack.getEventId(note.noteOn),
   );
-}
-
-function createMarkerConfig(): SongViewConfig {
-  return {
-    ...defaultConfig,
-    tracks: defaultConfig.tracks.map((track) => {
-      if (track.key !== "lead-guitar" || track.type !== "instrument") {
-        return track;
-      }
-      return {
-        ...track,
-        notes: {
-          ...track.notes,
-          expertHopo: 101,
-          expertStrum: 102,
-          expertTap: 103,
-        },
-      };
-    }),
-  };
 }
 
 describe("HighwayNoteEditingController", () => {
@@ -81,7 +60,7 @@ describe("HighwayNoteEditingController", () => {
           !source.some((sourceNote) => note.noteOn === sourceNote.noteOn),
       );
     expect(
-      pasted.map(({ note, start, end, velocity }) => ({
+      pasted.map(({ pitch: note, start, end, velocity }) => ({
         pitch: note,
         start,
         end,
@@ -116,7 +95,7 @@ describe("HighwayNoteEditingController", () => {
     expect(editing.placeNoteAt(setup.chart, 1, 480, false)).toBe(true);
     expect(editing.placeNoteAt(setup.chart, 0, 960, false)).toBe(false);
     expect(
-      setup.chart.getNotes().map(({ note, start }) => [note, start]),
+      setup.chart.getNotes().map(({ pitch: note, start }) => [note, start]),
     ).toEqual([[101, 480]]);
   });
 
@@ -127,7 +106,7 @@ describe("HighwayNoteEditingController", () => {
 
     expect(editing.placeNoteAt(setup.chart, 3, 480, false)).toBe(true);
     expect(
-      setup.chart.getNotes().map(({ note, start }) => [note, start]),
+      setup.chart.getNotes().map(({ pitch: note, start }) => [note, start]),
     ).toEqual([[96, 480]]);
   });
 
@@ -140,7 +119,7 @@ describe("HighwayNoteEditingController", () => {
     (placementType: NotePlacement, markerPitch: number) => {
       const setup = createHighwayTestSetup(
         "lead-guitar",
-        createMarkerConfig(),
+        DefaultCompiledRuleset,
         Difficulty.Expert,
       );
       setup.setNotePlacementType(placementType);
@@ -150,7 +129,7 @@ describe("HighwayNoteEditingController", () => {
       expect(
         setup.midiTrack
           .getNotes({ pitch: { low: markerPitch, high: markerPitch + 1 } })
-          .map(({ note, start }) => [note, start]),
+          .map(({ pitch: note, start }) => [note, start]),
       ).toEqual([[markerPitch, 480]]);
     },
   );
@@ -171,12 +150,12 @@ describe("HighwayNoteEditingController", () => {
       tick: 720,
       pitch: 102,
     });
-    expect([cymbal.note, cymbal.start]).toEqual([101, 480]);
+    expect([cymbal.pitch, cymbal.start]).toEqual([101, 480]);
     expect(editing.commitGesture()).toBe(true);
     const movedCymbal = setup.chart
       .getNotes()
       .find((note) => getNoteId(setup, note) === cymbalId)!;
-    expect([movedCymbal.note, movedCymbal.start]).toEqual([102, 720]);
+    expect([movedCymbal.pitch, movedCymbal.start]).toEqual([102, 720]);
 
     const currentKick2 = setup.chart
       .getNotes()
@@ -186,11 +165,11 @@ describe("HighwayNoteEditingController", () => {
     const movedKick2 = setup.chart
       .getNotes()
       .find((note) => getNoteId(setup, note) === kick2Id)!;
-    expect([movedKick2.note, movedKick2.start]).toEqual([95, 1200]);
+    expect([movedKick2.pitch, movedKick2.start]).toEqual([95, 1200]);
 
     const currentMarker = setup.midiTrack
       .getNotes()
-      .find((note) => note.note === marker.note)!;
+      .find((note) => note.pitch === marker.pitch)!;
     expect(editing.moveNote(setup.chart, currentMarker, 0, 1440)).toBe(false);
     expect(editing.commitGesture()).toBe(false);
   });
@@ -213,7 +192,7 @@ describe("HighwayNoteEditingController", () => {
           (note) =>
             note.noteOn !== kick2.noteOn && note.noteOn !== cymbal.noteOn,
         )
-        .map(({ note, start }) => [note, start]),
+        .map(({ pitch: note, start }) => [note, start]),
     ).toEqual([
       [95, 600],
       [101, 720],

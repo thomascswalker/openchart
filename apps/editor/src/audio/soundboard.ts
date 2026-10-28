@@ -462,7 +462,7 @@ export class Soundboard {
       context.currentTime + Math.max(0, this.tickToMs(tick) - nowMs) / 1_000;
 
     const playable = (note: MidiNote): boolean =>
-      note.end > note.start && note.note >= 0 && note.note <= 127;
+      note.end > note.start && note.pitch >= 0 && note.pitch <= 127;
 
     if (this.vocalNeedsCatchUp) {
       // After start/seek, the note under the playhead sounds immediately. The
@@ -474,7 +474,7 @@ export class Soundboard {
       }
       if (sounding) {
         this.scheduleVocalVoice(
-          sounding.note,
+          sounding.pitch,
           context.currentTime,
           timeAt(sounding.end),
         );
@@ -487,7 +487,7 @@ export class Soundboard {
         note.start >= this.vocalCursorTick &&
         (note.start > this.vocalCursorTick || this.vocalNeedsCatchUp);
       if (!isNewOnset || !playable(note)) continue;
-      this.scheduleVocalVoice(note.note, timeAt(note.start), timeAt(note.end));
+      this.scheduleVocalVoice(note.pitch, timeAt(note.start), timeAt(note.end));
     }
     this.vocalNeedsCatchUp = false;
     this.vocalCursorTick = Math.max(this.vocalCursorTick, endTick);

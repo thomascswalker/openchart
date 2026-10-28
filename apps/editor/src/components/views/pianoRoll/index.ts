@@ -7,11 +7,9 @@ import {
   type TimeSignatureEvent,
 } from "@openchart/midi";
 import {
-  getVocalNotes,
   formatNoteId,
   parseEntityId,
-  validateVocalTrack,
-  vocalKindNeedsLyric,
+  VocalTrackView,
   type EditingSession,
   type PreviewState,
 } from "@openchart/views";
@@ -595,7 +593,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     }
     const missingLyric = new Set<MidiChannelEvent>();
     const missingTicks: number[] = [];
-    for (const issue of validateVocalTrack(track, layout)) {
+    for (const issue of VocalTrackView.validateTrack(track, layout)) {
       if (issue.type !== "missing-lyric") continue;
       missingLyric.add(issue.note.noteOn);
       missingTicks.push(issue.tick);
@@ -613,8 +611,8 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     const layout = this.profile.vocal;
     const track = this.getSelectedTrack();
     if (!layout || !track || this.state.isPlaying) return;
-    const next = getVocalNotes(track, layout)
-      .filter((item) => vocalKindNeedsLyric(item.kind))
+    const next = VocalTrackView.readNotes(track, layout)
+      .filter((item) => VocalTrackView.kindNeedsLyric(item.kind))
       .find((item) => item.note.start > afterTick);
     if (!next) return;
 

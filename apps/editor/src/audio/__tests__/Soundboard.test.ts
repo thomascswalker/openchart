@@ -82,7 +82,7 @@ function settings(
 
 function note(start: number): MidiNote {
   return {
-    note: 60,
+    pitch: 60,
     velocity: 100,
     start,
     end: start + 120,

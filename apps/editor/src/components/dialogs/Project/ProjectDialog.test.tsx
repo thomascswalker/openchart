@@ -64,6 +64,7 @@ describe("ProjectDialog", () => {
       "Difficulty",
       "Audio",
       "Credits",
+      "Settings",
     ]);
 
     act(() => tabs.find((tab) => tab.textContent === "Audio")?.click());

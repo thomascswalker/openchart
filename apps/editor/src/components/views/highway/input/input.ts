@@ -4,7 +4,6 @@ import {
   formatNoteId,
   getHighwaySustainEnd,
   type ChartView,
-  type EditablePhraseKind,
   type EntityId,
   type EditingSession,
 } from "@openchart/views";
@@ -20,8 +19,8 @@ import {
 } from "../interactionMath";
 import { HighwayNoteEditingController } from "../editing/noteEditing";
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
+import { isHighwayTool, type HighwayDragState } from "../types";
 import type {
-  HighwayDragState,
   HighwayGhostNoteLocation,
   HighwayMarqueeDragState,
 } from "../types";
@@ -33,7 +32,11 @@ import {
   wheelTicksPerPixel,
 } from "../constants";
 import type { HighwayPhraseHoverState } from "../types";
-import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
+import {
+  getHighwayNoteIndex,
+  laneVisualFor,
+  type IndexedNote,
+} from "../noteIndex";
 
 function physicalLaneForNote(
   context: HighwayContext,
@@ -44,9 +47,9 @@ function physicalLaneForNote(
   const session = context.getEditingSession();
   if (!classification || !session) return -1;
   if (classification.kind !== "note" || !classification.movable) return -1;
-  if (session.mode.id === "chart.drums" && classification.subtype === "kick") {
-    return 0;
-  }
+  // Bar lanes (kick, open) span the whole highway and sit on lane 0.
+  const role = chart.classify(note.pitch);
+  if (role.kind === "laneNote" && role.bar) return 0;
   const snapshot = getNoteSnapshot(context, chart, note);
   return snapshot
     ? (session.getProjection().rowForNote(snapshot)?.index ?? -1)
@@ -69,7 +72,7 @@ function getNoteSnapshot(
   note: MidiNote,
 ) {
   const session = context.getEditingSession();
-  const track = chart.getTrack().getMidiTrack();
+  const track = chart.getTrack()?.getMidiTrack();
   const trackIndex = session?.target.trackIndex;
   if (!session || !track || trackIndex === null || trackIndex === undefined) {
     return null;
@@ -78,7 +81,7 @@ function getNoteSnapshot(
     id: formatNoteId(trackIndex, track.getEventId(note.noteOn)),
     trackIndex,
     tick: note.start,
-    pitch: note.note,
+    pitch: note.pitch,
     duration: note.end - note.start,
     velocity: note.velocity,
   };
@@ -234,7 +237,7 @@ export class HighwayInputController {
 
   private get tool(): "select" | "place" | "remove" {
     const mode = this.context.getMode();
-    return mode === "stagepower" || mode === "solo" ? "select" : mode;
+    return isHighwayTool(mode) ? mode : "select";
   }
 
   private get canEditNotes(): boolean {
@@ -601,24 +604,16 @@ export class HighwayInputController {
               if (classification?.kind !== "note" || !classification.movable) {
                 return false;
               }
-              if (classification.subtype === "kick") {
-                const noteBounds = this.hitTesting.getKickScreenBounds(note);
-                return (
-                  noteBounds !== null &&
-                  noteBounds.right >= bounds.left &&
-                  noteBounds.left <= bounds.right &&
-                  noteBounds.bottom >= bounds.top &&
-                  noteBounds.top <= bounds.bottom
-                );
-              }
-              const noteBounds = this.hitTesting.getGemScreenBounds(
-                note,
-                chart ? physicalLaneForNote(this.context, chart, note) : -1,
-                classification.subtype === "pad" ||
-                  classification.subtype === "cymbal"
-                  ? classification.subtype
-                  : "note",
-              );
+              const visual = laneVisualFor(chart, note.pitch);
+              if (!visual) return false;
+              const noteBounds =
+                visual.kind === "bar"
+                  ? this.hitTesting.getBarScreenBounds(note)
+                  : this.hitTesting.getGemScreenBounds(
+                      note,
+                      visual.lane,
+                      visual.kind,
+                    );
               return (
                 noteBounds !== null &&
                 noteBounds.right >= bounds.left &&
@@ -759,15 +754,24 @@ export class HighwayInputController {
     const session = this.context.getEditingSession();
     if (!chart || !session) return;
     const playheadTick = this.context.getPlayheadTick();
+    // The pitch the current placement would write on this lane (pad vs
+    // cymbal vs bar), so toggling removes only a note of that kind.
+    const projection = session.getProjection();
+    const row = projection
+      .getRows()
+      .find(
+        (candidate) => candidate.kind === "lane" && candidate.index === lane,
+      );
+    const expectedPitch = row
+      ? projection.pitchForRow(row, session.getToolState())
+      : null;
     const note = chart
       .getNotes()
       .find(
         (candidate) =>
           candidate.start === playheadTick &&
           physicalLaneForNote(this.context, chart, candidate) === lane &&
-          (session.mode.id !== "chart.drums" ||
-            getClassification(this.context, chart, candidate)?.subtype ===
-              this.context.getDrumPlacementKind()),
+          (expectedPitch === null || candidate.pitch === expectedPitch),
       );
     if (note) {
       this.editing.deleteNote(chart, note, false);
@@ -849,7 +853,7 @@ export class HighwayInputController {
   public seekSection(direction: -1 | 1): void {
     if (!this.canEditNotes) return;
     const chart = this.getCurrentChart();
-    const track = chart?.getTrack().getMidiTrack();
+    const track = chart?.getMidiTrack();
     const section = track
       ? findSection(track, this.context.getPlayheadTick(), direction)
       : null;
@@ -1010,7 +1014,7 @@ export class HighwayInputController {
 
   private beginPhraseGesture(
     event: PointerEvent,
-    kind: EditablePhraseKind,
+    kind: string,
     tick: number,
     phrase: HighwayPhrase | null | undefined,
     operation: "create" | "move" | "resize-start" | "resize-end",
@@ -1088,7 +1092,7 @@ export class HighwayInputController {
 
   private getPhrasesInMarquee(
     chart: ChartView,
-    kind: EditablePhraseKind,
+    kind: string,
     bounds: { left: number; right: number; top: number; bottom: number },
   ): EntityId[] {
     const session = this.context.getEditingSession();

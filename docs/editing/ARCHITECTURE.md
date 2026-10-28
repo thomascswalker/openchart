@@ -34,12 +34,39 @@ apps/editor/src/components/editor/**        Mode/tool descriptors and actions
 3. Views do not call document history methods. The editing service owns
    transactions and post-commit side effects.
 4. Entity ID strings are formatted and parsed only in `editing/entityId.ts`.
-5. Special chart pitches are obtained through configuration and domain helpers,
-   not numeric literals in app components.
+5. Chart semantics (lanes, pitches, markers, phrases, thresholds) come from the
+   compiled ruleset, never from numeric or track-name literals in app
+   components.
+6. Views are built from the active ruleset: `new SongView(midi)` without the
+   ruleset argument is rejected in `apps/**`.
 
 The report-mode boundary checker is `scripts/check-editing-boundaries.mjs`.
 Strict mode is part of the root `check` command. Its allowlist is empty; the
-checker also rejects configured pitch literals in editor component source.
+checker also rejects configured pitch literals and track-name literals in
+editor component source, and single-argument `new SongView(` in `apps/**`.
+
+## Edit enforcement
+
+Every edit is validated by one choke point. A command is expanded by its mode
+into raw commands; the session then calls `RuleEnforcer` (through
+`validateRawCommands`) on the post-edit overlay of each affected track:
+
+1. **Pitch policies**: unknown pitch, reserved pitch, a lane that does not exist
+   on the track, a lane note whose `enabledWhen` is false, and zero-length notes.
+2. **Constraint rules** from the ruleset (`noOverlappingSamePitch`,
+   `noOverlappingSameLane`, `mutuallyExclusiveAtTick`, `phrasesMayNotOverlap`,
+   `phraseMustBeBetween`, `notesWithinPhrase`, `monophonic`, `forbiddenPitches`,
+   `noSustains`), plus the implicit `implicit.phraseSelfOverlap`.
+3. **Text-event grammar** for `ADD_TEXT`/`UPDATE_TEXT` of meta types listed in
+   `textEventGrammar.metaEventTypes` on configured tracks.
+
+Any `error` violation rejects the whole edit with code `rule:<ruleId>` and
+nothing is applied (`throwOnReject` throws). `warning`/`info` violations commit
+and are reported in `EditResult.diagnostics`; previews report both.
+Unmapped tracks get no ruleset validation. Modes may call `context.validate()`
+to ask whether raw commands would be accepted (the vocals mode uses it for the
+`previousValidTickDelta` fallback). Enforcement is edit-scoped; whole-file
+validation is `RuleEnforcer.validateTrack`.
 
 ## 2. Core concepts
 
@@ -132,13 +159,17 @@ rejections. The same expansion is used for preview and commit.
 Registration order is priority order. `resolve(track, hostKind)` returns the
 first mode that applies to both. `canHost` is the single availability check.
 
-| Mode          | Applies to                         | Host kinds   |
-| ------------- | ---------------------------------- | ------------ |
-| `vocals`      | Vocal track config                 | `piano-roll` |
-| `chart.drums` | Drum role with difficulties        | `highway`    |
-| `chart.frets` | Other instrument with difficulties | `highway`    |
-| `midi.global` | Global header entities             | `global`     |
-| `midi.raw`    | Instrument or unmapped MIDI track  | `piano-roll` |
+| Mode          | Applies to                                           | Host kinds   |
+| ------------- | ---------------------------------------------------- | ------------ |
+| `vocals`      | Track kind `vocals`                                  | `piano-roll` |
+| `chart.lanes` | Kinds `guitar`, `gamepad`, `drums` with difficulties | `highway`    |
+| `midi.global` | Global header entities                               | `global`     |
+| `midi.raw`    | Any non-header, non-global or unmapped track         | `piano-roll` |
+
+`chart.lanes` is one generic mode: lanes, pad types, bar lanes, markers, phrase
+tools and the sustain threshold all come from the target track's `TrackRules`.
+Tools are therefore derived per session (`mode.createTools(context)`,
+`session.getTools()`), not declared statically.
 
 A Piano Roll on a chart track is deliberately raw MIDI editing. Vocals are not
 available in the Highway unless a future mode explicitly declares that host.
@@ -232,7 +263,7 @@ For implementation walkthroughs, see
 | D-6  | Clipboard payloads carry source mode and raw-pitch fallback.                     | Enables chart/raw interoperability while retaining same-mode fidelity. |
 | D-7  | Resolve modes by `(track descriptor, host kind)` in registry priority order.     | Supports constrained chart editing and arbitrary MIDI editing.         |
 | D-8  | Enforce constraints in pure mode expansion; preview uses that same expansion.    | Keeps preview and commit behavior aligned.                             |
-| D-9  | Read chart semantics and special pitches from `TrackViewConfig`.                 | Removes duplicated pitch literals and app-level chart rules.           |
+| D-9  | Read chart semantics from the compiled ruleset (`TrackRules`).                   | Removes duplicated pitch literals and app-level chart rules.           |
 | D-10 | Global-track editing is the `midi.global` mode and migrates last.                | Keeps header changes separate from note-mode migration.                |
 | D-11 | Keep snapshot-based undo.                                                        | Inverse-command history is not part of this work.                      |
 | D-12 | Keep SCREAMING_SNAKE command discriminants; use `pitchDelta` for pitch changes.  | Avoids ambiguity between MIDI track and pitch.                         |

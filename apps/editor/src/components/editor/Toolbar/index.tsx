@@ -47,9 +47,12 @@ export default function Toolbar({ session }: ToolbarProps) {
     lockCursor,
     vocalPitchFeedbackEnabled,
   };
-  const modeGroups = mode ? createModeToolbarGroups(mode) : [];
+  const modeGroups = editingSession
+    ? createModeToolbarGroups(editingSession)
+    : [];
   const placementTools =
-    mode?.tools.filter((tool) => tool.group === "placement") ?? [];
+    editingSession?.getTools().filter((tool) => tool.group === "placement") ??
+    [];
   const placementState = getStateValues(toolState);
   const placementStateKey = placementTools[0]?.stateKey;
   const placementValue =
@@ -146,13 +149,8 @@ export default function Toolbar({ session }: ToolbarProps) {
 
 function placementLabel(value: string, fallback: string): string {
   const labels: Record<string, string> = {
-    normal: "Normal",
-    "force-hopo": "Force HOPO",
-    "force-strum": "Force Strum",
-    tap: "Tap",
-    pad: "Pad",
-    cymbal: "Cymbal",
-    kick: "Kick",
+    // Chart placement labels come from the ruleset tool descriptors
+    // (`fallback`); only the vocal note kinds are named here.
     pitched: "Pitched",
     percussion: "Percussion",
     pitchless: "Pitchless",

@@ -2,18 +2,15 @@ import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import characterization from "../fixtures/characterization/editing.json" with { type: "json" };
 import {
+  DefaultCompiledRuleset,
+  DefaultRuleset,
+  compileRuleset,
   createDefaultModeRegistry,
   createStandaloneEditing,
-  defaultConfig,
-  describeTrack,
   Difficulty,
   formatNoteId,
-  getDifficultyName,
-  getDifficultyNotePitch,
-  getDrumPitchForPlacement,
-  getPhrasePitch,
+  type CompiledRuleset,
   type EditingSession,
-  type SongViewConfig,
 } from "../../src/index.js";
 
 const difficultyValues = [
@@ -35,13 +32,11 @@ function makeSession(
   trackName: string,
   difficulty: Difficulty | null,
   hostKind: string,
-  config: SongViewConfig = defaultConfig,
+  rules: CompiledRuleset = DefaultCompiledRuleset,
 ): EditingSession {
-  const descriptor = config.tracks
-    .map(describeTrack)
-    .find((track) => track.name === trackName)!;
+  const descriptor = rules.byName.get(trackName)!;
   const trackIndex = midi.tracks.findIndex((track) => track.name === trackName);
-  return createStandaloneEditing(midi, config).createSession(
+  return createStandaloneEditing(midi, rules).createSession(
     {
       trackKey: descriptor.key,
       trackIndex: trackIndex < 0 ? null : trackIndex,
@@ -56,6 +51,14 @@ function noteId(track: MidiTrack, trackIndex: number, noteIndex = 0) {
   return formatNoteId(trackIndex, track.getEventId(note.noteOn));
 }
 
+/** Old placement names -> ruleset placement tokens. */
+const PLACEMENT_TOKEN: Record<string, string> = {
+  normal: "normal",
+  "force-hopo": "marker:forceHopo",
+  "force-strum": "marker:forceStrum",
+  tap: "marker:forceTap",
+};
+
 function placeFretsMarker(
   placement: "normal" | "force-hopo" | "force-strum" | "tap",
   difficulty: Difficulty,
@@ -63,14 +66,14 @@ function placeFretsMarker(
 ) {
   const { midi, track } = makeMidi("LEAD GUITAR");
   for (const pitch of existingMarkers) {
-    track.addNoteAt({ tick: 480, pitch, duration: 1 });
+    track.insertNote({ tick: 480, pitch, duration: 1 });
   }
   const session = makeSession(midi, "LEAD GUITAR", difficulty, "highway");
   const result = session.execute({
     type: "PLACE_CHART_NOTE",
     lane: 0,
     tick: 480,
-    placement,
+    placement: PLACEMENT_TOKEN[placement],
     cutPolicy: "none",
   });
   return { track, result };
@@ -79,59 +82,50 @@ function placeFretsMarker(
 describe("default editing modes", () => {
   it("resolves every configured track against both editing hosts", () => {
     const registry = createDefaultModeRegistry();
-    const expected = (trackName: string, host: string) => {
-      if (trackName === "VOCALS")
-        return host === "piano-roll" ? "vocals" : null;
-      if (trackName === "DRUMS")
-        return host === "highway" ? "chart.drums" : "midi.raw";
-      if (
-        trackName === "LEAD GUITAR" ||
-        trackName === "RHYTHM GUITAR" ||
-        trackName === "FOUR PAD" ||
-        trackName === "FIVE PAD"
-      ) {
-        return host === "highway" ? "chart.frets" : "midi.raw";
+    const expected = (kind: string, host: string) => {
+      if (kind === "vocals") return host === "piano-roll" ? "vocals" : null;
+      if (kind === "guitar" || kind === "drums" || kind === "gamepad") {
+        return host === "highway" ? "chart.lanes" : "midi.raw";
       }
       return null;
     };
 
-    for (const track of defaultConfig.tracks.map(describeTrack)) {
+    for (const track of DefaultCompiledRuleset.descriptors()) {
       for (const host of ["piano-roll", "highway"]) {
         expect(registry.resolve(track, host)?.id ?? null).toBe(
-          expected(track.name, host),
+          expected(track.kind, host),
         );
         expect(registry.canHost(track, host)).toBe(
-          expected(track.name, host) !== null,
+          expected(track.kind, host) !== null,
         );
       }
     }
     expect(registry.listForHost("highway").map((mode) => mode.id)).toEqual([
-      "chart.drums",
-      "chart.frets",
+      "chart.lanes",
     ]);
   });
 
-  it("uses configured role and note pitches for frets and drum layouts", () => {
-    const lead = defaultConfig.tracks
-      .map(describeTrack)
-      .find((track) => track.name === "LEAD GUITAR")!;
-    const drums = defaultConfig.tracks
-      .map(describeTrack)
-      .find((track) => track.name === "DRUMS")!;
-    expect(getDifficultyName(Difficulty.Expert)).toBe("expert");
-    expect(getDifficultyNotePitch(lead, Difficulty.Expert, "Hopo")).toBe(101);
+  it("uses ruleset lanes and pitches for fret and drum layouts", () => {
+    const lead = DefaultCompiledRuleset.byName.get("LEAD GUITAR")!;
+    const drums = DefaultCompiledRuleset.byName.get("DRUMS")!;
+    expect(
+      lead.difficulties.get(Difficulty.Expert)!.pitchForMarker("forceHopo"),
+    ).toBe(101);
 
     difficultyValues.forEach((difficulty, index) => {
-      const offset = characterization.drums.offsets[index]!;
-      const pitch = getDifficultyNotePitch(drums, difficulty, "Kick");
-      expect(pitch).toBe(offset);
-      for (const kind of ["pad", "cymbal", "kick"] as const) {
-        for (let lane = 0; lane < 4; lane++) {
-          expect(getDrumPitchForPlacement(kind, lane, offset)).toBe(
-            characterization.drums.placements[kind][index]![lane],
-          );
-        }
-      }
+      const chart = drums.difficulties.get(difficulty)!;
+      expect(chart.pitchForLane("kick")).toBe(
+        characterization.drums.offsets[index],
+      );
+      const cymbalLanes = ["red", "yellow", "blue", "green"];
+      cymbalLanes.forEach((laneId, lane) => {
+        expect(chart.pitchForLane(laneId, "tom") ?? null).toBe(
+          characterization.drums.placements.pad[index]![lane],
+        );
+        expect(chart.pitchForLane(laneId, "cymbal") ?? null).toBe(
+          characterization.drums.placements.cymbal[index]![lane],
+        );
+      });
     });
   });
 
@@ -147,14 +141,18 @@ describe("default editing modes", () => {
             type: "PLACE_CHART_NOTE",
             lane,
             tick: 480,
-            drumKind: kind,
+            placement: {
+              pad: "normal",
+              cymbal: "padType:cymbal",
+              kick: "bar:kick",
+            }[kind],
           });
           if (expected === null) {
             expect(result.rejections[0]?.code).toBe("invalid-lane");
             expect(track.getNotes()).toEqual([]);
           } else {
             expect(result.rejections).toEqual([]);
-            expect(track.getNotes().map((note) => note.note)).toEqual([
+            expect(track.getNotes().map((note) => note.pitch)).toEqual([
               expected,
             ]);
           }
@@ -165,7 +163,7 @@ describe("default editing modes", () => {
 
   it("projects configured frets lanes and creates or updates configured phrases", () => {
     const { midi, track } = makeMidi("LEAD GUITAR");
-    const note = track.addNoteAt({ tick: 480, pitch: 96, duration: 120 });
+    const note = track.insertNote({ tick: 480, pitch: 96, duration: 120 });
     const session = makeSession(
       midi,
       "LEAD GUITAR",
@@ -194,14 +192,14 @@ describe("default editing modes", () => {
 
     const created = session.execute({
       type: "CREATE_PHRASE",
-      phraseKind: "stagepower",
+      phraseId: "stagePower",
       startTick: 960,
       endTick: 1200,
     });
     expect(created.rejections).toEqual([]);
     const phrase = track
       .getNotes()
-      .find((candidate) => candidate.note === 116)!;
+      .find((candidate) => candidate.pitch === 116)!;
     const phraseId = formatNoteId(0, track.getEventId(phrase.noteOn));
     const updated = session.execute({
       type: "UPDATE_PHRASE",
@@ -226,20 +224,18 @@ describe("default editing modes", () => {
     const fixture = characterization.phrases;
     for (const kind of ["stagepower", "solo"] as const) {
       const phraseFixture = kind === "stagepower" ? fixture : fixture.solo;
-      const pitch = getPhrasePitch(
-        describeTrack(
-          defaultConfig.tracks.find((config) => config.name === "LEAD GUITAR")!,
-        ),
-        kind,
-      )!;
+      const phraseId = kind === "stagepower" ? "stagePower" : "solo";
+      const pitch = DefaultCompiledRuleset.byName
+        .get("LEAD GUITAR")!
+        .phrases.find((p) => p.id === phraseId)!.pitches[0]!;
       const created = session.execute({
         type: "CREATE_PHRASE",
-        phraseKind: kind,
+        phraseId,
         startTick: phraseFixture.create.expected[0],
         endTick: phraseFixture.create.expected[1],
       });
       expect(created.rejections).toEqual([]);
-      const phrase = track.getNotes().find((note) => note.note === pitch)!;
+      const phrase = track.getNotes().find((note) => note.pitch === pitch)!;
       const id = formatNoteId(0, track.getEventId(phrase.noteOn));
       const updates =
         kind === "stagepower"
@@ -286,26 +282,26 @@ describe("default editing modes", () => {
     }
   });
 
-  it("rejects forced-marker placement when its difficulty key is missing", () => {
-    const config = structuredClone(defaultConfig);
-    const lead = config.tracks.find((track) => track.name === "LEAD GUITAR")!;
-    if (lead.type !== "instrument")
-      throw new Error("Expected an instrument config");
-    delete lead.notes.expertHopo;
+  it("rejects forced-marker placement when the difficulty has no such marker", () => {
+    const ruleset = structuredClone(DefaultRuleset);
+    const lead = ruleset.tracks.find((track) => track.id === "guitar")!;
+    if (lead.kind !== "guitar") throw new Error("Expected a guitar track");
+    const expert = lead.difficulties.expert!;
+    expert.markers = expert.markers!.filter((m) => m.effect !== "forceHopo");
     const { midi, track } = makeMidi("LEAD GUITAR");
     const session = makeSession(
       midi,
       "LEAD GUITAR",
       Difficulty.Expert,
       "highway",
-      config,
+      compileRuleset(ruleset),
     );
     const before = midi.toBuffer();
     const result = session.execute({
       type: "PLACE_CHART_NOTE",
       lane: 0,
       tick: 480,
-      placement: "force-hopo",
+      placement: "marker:forceHopo",
       cutPolicy: "none",
     });
     expect(result.rejections[0]?.code).toBe("missing-config-note");
@@ -315,7 +311,7 @@ describe("default editing modes", () => {
 
   it("moves frets notes with lane and tick clamps", () => {
     const { midi, track } = makeMidi("LEAD GUITAR");
-    const note = track.addNoteAt({ tick: 480, pitch: 96, duration: 120 });
+    const note = track.insertNote({ tick: 480, pitch: 96, duration: 120 });
     const session = makeSession(
       midi,
       "LEAD GUITAR",
@@ -329,10 +325,10 @@ describe("default editing modes", () => {
       laneDelta: 99,
     });
     expect(result.rejections).toEqual([]);
-    expect(track.getNotes()[0]).toMatchObject({ start: 0, note: 100 });
+    expect(track.getNotes()[0]).toMatchObject({ start: 0, pitch: 100 });
   });
 
-  it("replays forced-marker replacement and duplicate suppression through chart.frets", () => {
+  it("replays forced-marker replacement and duplicate suppression through chart.lanes", () => {
     const { difficulties, placementOrder, expectedByPlacement } =
       characterization.forcedMarkers;
     const placements = placementOrder;
@@ -354,7 +350,7 @@ describe("default editing modes", () => {
         expect(
           track
             .getNotes()
-            .map((note) => note.note)
+            .map((note) => note.pitch)
             .filter((pitch) => markers.includes(pitch))
             .sort((left, right) => left - right),
         ).toEqual(expected.sort((left, right) => left - right));
@@ -362,7 +358,7 @@ describe("default editing modes", () => {
     }
   });
 
-  it("replays sustain cut policies and end clamping through chart.frets", () => {
+  it("replays sustain cut policies and end clamping through chart.lanes", () => {
     const fixture = characterization.sustains;
     const cutPolicy = (
       shiftKey: boolean,
@@ -375,13 +371,14 @@ describe("default editing modes", () => {
     };
     for (const testCase of fixture.cutCases) {
       const { midi, track } = makeMidi("LEAD GUITAR");
-      for (const item of fixture.notes) {
-        track.addNoteAt({
+      // Distinct lanes: same-lane sustains may not overlap (ruleset constraint).
+      fixture.notes.forEach((item, index) => {
+        track.insertNote({
           tick: item.start,
-          pitch: 96,
+          pitch: 96 + index,
           duration: item.end - item.start,
         });
-      }
+      });
       const session = makeSession(
         midi,
         "LEAD GUITAR",
@@ -410,8 +407,8 @@ describe("default editing modes", () => {
 
     for (const extendPastNext of ["stop-at-next", "allow"] as const) {
       const { midi, track } = makeMidi("LEAD GUITAR");
-      track.addNoteAt({ tick: 480, pitch: 96, duration: 480 });
-      track.addNoteAt({ tick: 840, pitch: 97, duration: 120 });
+      track.insertNote({ tick: 480, pitch: 96, duration: 480 });
+      track.insertNote({ tick: 840, pitch: 97, duration: 120 });
       const session = makeSession(
         midi,
         "LEAD GUITAR",
@@ -442,9 +439,9 @@ describe("default editing modes", () => {
 
   it("replays drum move and paste rules, including Kick2 and marker clipping", () => {
     const { midi, track } = makeMidi("DRUMS");
-    const kick2 = track.addNoteAt({ tick: 480, pitch: 95, duration: 120 });
-    const cymbal = track.addNoteAt({ tick: 480, pitch: 101, duration: 120 });
-    const marker = track.addNoteAt({ tick: 480, pitch: 104, duration: 120 });
+    const kick2 = track.insertNote({ tick: 480, pitch: 95, duration: 120 });
+    const cymbal = track.insertNote({ tick: 480, pitch: 101, duration: 120 });
+    const marker = track.insertNote({ tick: 480, pitch: 104, duration: 120 });
     const session = makeSession(midi, "DRUMS", Difficulty.Expert, "highway");
     const ids = track.getNotes().map((_, index) => noteId(track, 0, index));
 
@@ -458,7 +455,7 @@ describe("default editing modes", () => {
     ).toEqual([]);
     expect(
       track.getNotes().find((note) => note.noteOn === kick2.noteOn),
-    ).toMatchObject({ note: 95, start: 720 });
+    ).toMatchObject({ pitch: 95, start: 720 });
     expect(
       session.execute({
         type: "MOVE_CHART_NOTES",
@@ -468,7 +465,7 @@ describe("default editing modes", () => {
       }).rejections,
     ).toEqual([]);
     expect(
-      track.getNotes().find((note) => note.noteOn === cymbal.noteOn)?.note,
+      track.getNotes().find((note) => note.noteOn === cymbal.noteOn)?.pitch,
     ).toBe(102);
     expect(
       session.execute({
@@ -481,7 +478,7 @@ describe("default editing modes", () => {
     expect(marker.start).toBe(480);
 
     const pasted = makeMidi("DRUMS");
-    const occupied = pasted.track.addNoteAt({
+    const occupied = pasted.track.insertNote({
       tick: 480,
       pitch: 101,
       duration: 120,
@@ -499,34 +496,36 @@ describe("default editing modes", () => {
       notes: [
         {
           relativeTick: 0,
-          lane: 0,
+          lane: -1,
+          laneId: "kick",
           durationTicks: 1,
           velocity: 100,
-          drumKind: "kick",
           originalPitch: 96,
         },
         {
           relativeTick: 0,
-          lane: 0,
+          lane: -1,
+          laneId: "kick",
           durationTicks: 1,
           velocity: 100,
-          drumKind: "kick",
           originalPitch: 95,
         },
         {
           relativeTick: 0,
           lane: 1,
+          laneId: "yellow",
+          padType: "cymbal",
           durationTicks: 1,
           velocity: 100,
-          drumKind: "cymbal",
           originalPitch: 101,
         },
+        // Markers are not lane notes and are skipped by paste.
         {
           relativeTick: 0,
           lane: 8,
+          laneId: "nope",
           durationTicks: 1,
           velocity: 100,
-          drumKind: "marker",
           originalPitch: 104,
         },
       ],
@@ -539,17 +538,21 @@ describe("default editing modes", () => {
           (note) =>
             note.start === paste.anchorTick && note.noteOn !== occupied.noteOn,
         )
-        .map((note) => ({ pitch: note.note, tick: note.start })),
+        .map((note) => ({ pitch: note.pitch, tick: note.start })),
     ).toEqual(paste.expected);
   });
 
   it("replays vocal movement, lyric association, overlap, and deletion rules", () => {
     const { midi, track } = makeMidi("VOCALS");
-    const pitched = track.addNoteAt({ tick: 0, pitch: 60, duration: 120 });
+    const pitched = track.insertNote({ tick: 0, pitch: 60, duration: 120 });
     track.addTextEvent(MetaType.Lyric, 0, "la");
-    const percussion = track.addNoteAt({ tick: 0, pitch: 90, duration: 120 });
-    const firstPhrase = track.addNoteAt({ tick: 0, pitch: 116, duration: 100 });
-    track.addNoteAt({ tick: 200, pitch: 116, duration: 100 });
+    const percussion = track.insertNote({ tick: 0, pitch: 90, duration: 120 });
+    const firstPhrase = track.insertNote({
+      tick: 0,
+      pitch: 116,
+      duration: 100,
+    });
+    track.insertNote({ tick: 200, pitch: 116, duration: 100 });
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const idForNoteOn = new Map(
       track
@@ -576,13 +579,13 @@ describe("default editing modes", () => {
     });
     expect(move.rejections).toEqual([]);
     expect(
-      track.getNotes().find((note) => note.noteOn === pitched.noteOn)?.note,
+      track.getNotes().find((note) => note.noteOn === pitched.noteOn)?.pitch,
     ).toBe(characterization.vocal.pitchedMove.clampedPitch);
     expect(
       track.getNotes().find((note) => note.noteOn === pitched.noteOn)?.start,
     ).toBe(characterization.vocal.pitchedMove.toTick);
     expect(
-      track.getNotes().find((note) => note.noteOn === percussion.noteOn)?.note,
+      track.getNotes().find((note) => note.noteOn === percussion.noteOn)?.pitch,
     ).toBe(characterization.vocal.nonPitchedMove.resultPitch);
     expect(
       track.getTextEvents().find((event) => event.text === "la")?.tick,
@@ -605,7 +608,7 @@ describe("default editing modes", () => {
       targetIds: [phraseId!],
       durationDelta: 250,
     });
-    expect(resize.rejections[0]?.code).toBe("phrase-overlap");
+    expect(resize.rejections[0]?.code).toBe("rule:implicit.phraseSelfOverlap");
 
     const deleteResult = session.execute({
       type: "DELETE_ENTITIES",
@@ -622,7 +625,7 @@ describe("default editing modes", () => {
 
   it("creates vocal notes with lyrics and rejects overlapping phrase creation", () => {
     const { midi, track } = makeMidi("VOCALS");
-    track.addNoteAt({ tick: 200, pitch: 116, duration: 100 });
+    track.insertNote({ tick: 200, pitch: 116, duration: 100 });
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const note = session.execute({
       type: "ADD_VOCAL_NOTE",
@@ -641,13 +644,13 @@ describe("default editing modes", () => {
         startTick: 250,
         endTick: 400,
       }).rejections[0]?.code,
-    ).toBe("phrase-overlap");
+    ).toBe("rule:implicit.phraseSelfOverlap");
   });
 
   it("materializes the configured vocal track before writing its lyric", () => {
     const midi = new Midi();
     const global = new MidiTrack("GLOBAL");
-    global.addNoteAt({ tick: 200, pitch: 116, duration: 100 });
+    global.insertNote({ tick: 200, pitch: 116, duration: 100 });
     midi.tracks = [global];
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const result = session.execute({
@@ -673,11 +676,6 @@ describe("default editing modes", () => {
   });
 
   it("exposes vocal lane specifications from the views layer", () => {
-    const vocalConfig = defaultConfig.tracks.find(
-      (track) => track.name === "VOCALS",
-    )!;
-    const descriptor = describeTrack(vocalConfig);
-    expect(descriptor.config.type).toBe("instrument");
     const { midi } = makeMidi("VOCALS");
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const rows = session.getProjection().getRows();

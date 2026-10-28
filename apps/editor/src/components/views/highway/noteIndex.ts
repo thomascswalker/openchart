@@ -3,13 +3,17 @@ import type {
   ChartView,
   EditingSession,
   EntityId,
-  EditablePhraseKind,
   NoteSnapshot,
   PreviewState,
 } from "@openchart/views";
 import { formatNoteId } from "@openchart/views";
 
-export type IndexedNoteKind = "note" | "kick" | "cymbal" | "pad" | "phrase";
+/**
+ * Visual kind of an indexed entry, derived from the lane's shape and pad type:
+ * `gem` -> `note`, `pad` (tom) -> `pad`, `pad` (cymbal) -> `cymbal`,
+ * `kickBar`/`openBar` -> `bar`.
+ */
+export type IndexedNoteKind = "note" | "bar" | "cymbal" | "pad" | "phrase";
 
 export interface IndexedNote {
   id: EntityId;
@@ -20,7 +24,10 @@ export interface IndexedNote {
   velocity: number;
   lane: number;
   kind: IndexedNoteKind;
-  phraseKind: EditablePhraseKind | null;
+  /** Phrase id (from the ruleset) for phrase entries, else null. */
+  phraseKind: string | null;
+  /** Ruleset lane id for lane notes, else null. */
+  laneId: string | null;
 }
 
 export class HighwayNoteIndex {
@@ -77,13 +84,14 @@ export class HighwayNoteIndex {
         this.entriesById.get(snapshot.id)?.source ?? null,
         session,
         projection,
+        chart,
       );
       if (entry && intersects(entry, visibleStart, visibleEnd)) {
         overlay.push(entry);
       }
     }
     for (const snapshot of preview.added) {
-      const entry = this.project(snapshot, null, session, projection);
+      const entry = this.project(snapshot, null, session, projection, chart);
       if (entry && intersects(entry, visibleStart, visibleEnd)) {
         overlay.push(entry);
       }
@@ -118,7 +126,7 @@ export class HighwayNoteIndex {
     }
 
     const trackIndex = session.target.trackIndex;
-    const track = chart.getTrack().getMidiTrack();
+    const track = chart.getMidiTrack();
     const projection = session.getProjection();
     const entries: IndexedNote[] = [];
     if (trackIndex !== null && track) {
@@ -128,11 +136,11 @@ export class HighwayNoteIndex {
           id,
           trackIndex,
           tick: note.start,
-          pitch: note.note,
+          pitch: note.pitch,
           duration: note.end - note.start,
           velocity: note.velocity,
         };
-        const entry = this.project(snapshot, note, session, projection);
+        const entry = this.project(snapshot, note, session, projection, chart);
         if (entry) entries.push(entry);
       }
     }
@@ -158,37 +166,38 @@ export class HighwayNoteIndex {
     source: MidiNote | null,
     session: EditingSession,
     projection: ReturnType<EditingSession["getProjection"]>,
+    chart: ChartView,
   ): IndexedNote | null {
     const classification = session.classifyNote(snapshot);
     let kind: IndexedNoteKind;
-    let phraseKind: EditableNotePhraseKind | null = null;
+    let phraseKind: string | null = null;
+    let laneId: string | null = null;
     let lane = 0;
     if (classification.kind === "phrase") {
       kind = "phrase";
-      phraseKind =
-        classification.subtype === "stagepower" ||
-        classification.subtype === "solo"
-          ? classification.subtype
-          : null;
+      phraseKind = classification.subtype;
     } else {
       if (!classification.movable || classification.subtype === "unmapped") {
         return null;
       }
       const row = projection.rowForNote(snapshot);
       if (!row) return null;
-      lane = row.index;
-      if (session.mode.id === "chart.drums") {
-        if (
-          classification.subtype !== "kick" &&
-          classification.subtype !== "cymbal" &&
-          classification.subtype !== "pad"
-        ) {
-          return null;
-        }
-        kind = classification.subtype;
-        if (kind === "kick") lane = 0;
+      const role = chart.classify(snapshot.pitch);
+      if (role.kind !== "laneNote" || !role.available) return null;
+      const laneDef = chart.getLanes().find((l) => l.id === role.laneId);
+      if (!laneDef) return null;
+      laneId = laneDef.id;
+      if (laneDef.isBar) {
+        kind = "bar";
+        lane = 0;
       } else {
-        kind = "note";
+        lane = row.index;
+        kind =
+          laneDef.shape === "pad"
+            ? role.padType === "cymbal"
+              ? "cymbal"
+              : "pad"
+            : "note";
       }
     }
     return {
@@ -201,14 +210,10 @@ export class HighwayNoteIndex {
       lane,
       kind,
       phraseKind,
+      laneId,
     };
   }
 }
-
-type EditableNotePhraseKind = Extract<
-  EditablePhraseKind,
-  "stagepower" | "solo"
->;
 
 const indexes = new WeakMap<ChartView, HighwayNoteIndex>();
 
@@ -231,4 +236,31 @@ function intersects(
 
 function compareEntries(left: IndexedNote, right: IndexedNote): number {
   return left.start - right.start || left.pitch - right.pitch;
+}
+
+/**
+ * Visual kind and lane of a pitch on a chart, from the ruleset: bar lanes sit
+ * on lane 0; pad lanes split into `pad`/`cymbal` by pad type; gems are `note`.
+ * Returns null for pitches that are not lane notes of the chart's difficulty.
+ */
+export function laneVisualFor(
+  chart: ChartView,
+  pitch: number,
+): {
+  kind: Exclude<IndexedNoteKind, "phrase">;
+  lane: number;
+  laneId: string;
+} | null {
+  const role = chart.classify(pitch);
+  if (role.kind !== "laneNote" || !role.available) return null;
+  const laneDef = chart.getLanes().find((l) => l.id === role.laneId);
+  if (!laneDef) return null;
+  if (laneDef.isBar) return { kind: "bar", lane: 0, laneId: laneDef.id };
+  const kind =
+    laneDef.shape === "pad"
+      ? role.padType === "cymbal"
+        ? "cymbal"
+        : "pad"
+      : "note";
+  return { kind, lane: laneDef.column, laneId: laneDef.id };
 }

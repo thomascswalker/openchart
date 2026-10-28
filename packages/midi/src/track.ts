@@ -1,3 +1,8 @@
+import { NoteByEventIdCache } from "./cache/eventId.js";
+import { PitchCache } from "./cache/pitch.js";
+import { NoteCache } from "./cache/note.js";
+import { EventIdCache } from "./cache/eventId.js";
+import { TextEventCache } from "./cache/text.js";
 import {
   textByteLength,
   encodeMidiEvent,
@@ -11,161 +16,196 @@ import {
   MidiNote,
   MidiEventId,
   TextMidiEvent,
-  MidiMetaEvent,
   MidiSysExEvent,
   MidiChannelEvent,
   ChannelMessage,
-  TimedMidiEvent,
-  TimedEventRecord,
   TempoEvent,
   MetaType,
   sortEvents,
   TimeSignatureEvent,
   TextMetaType,
   GetNotesOptions,
-  AddNoteSpec,
+  InsertNoteOptions,
   NotePatchFields,
+  AddNoteResult,
+  isTextEvent,
+  isEndOfTrack,
 } from "./types.js";
+import { inRange } from "es-toolkit";
+import { LyricEntry, LyricNoteCache } from "./cache/lyric.js";
+import { TimeSignatureEventCache } from "./cache/timeSignature.js";
+import { TempoEventCache } from "./cache/tempo.js";
+
+/** `order` for EndOfTrack so it always sorts last on its tick. */
+const END_OF_TRACK_ORDER = Number.MAX_SAFE_INTEGER;
+/** `order` for a moved event so it sorts after existing events on its tick. */
+const MOVED_EVENT_ORDER = Number.MAX_SAFE_INTEGER - 1;
+
+class CacheMap {
+  note: NoteCache;
+  pitch: PitchCache;
+  noteByEventId: NoteByEventIdCache;
+  eventId: EventIdCache;
+  text: TextEventCache;
+  lyric: LyricNoteCache;
+  timeSignature: TimeSignatureEventCache;
+  tempo: TempoEventCache;
+
+  constructor() {
+    // Channel events
+    this.note = new NoteCache(this.onNoteCacheChange);
+    this.pitch = new PitchCache();
+    this.eventId = new EventIdCache();
+    this.noteByEventId = new NoteByEventIdCache();
+
+    // Text events
+    this.text = new TextEventCache(this.onTextEventCacheChange);
+    this.lyric = new LyricNoteCache();
+
+    // Other meta events
+    this.timeSignature = new TimeSignatureEventCache();
+    this.tempo = new TempoEventCache();
+  }
+
+  private onNoteCacheChange = (): void => {
+    this.pitch.build(this.note.data);
+    this.noteByEventId.build(
+      this.note.data.map((note) => [
+        this.eventId.getEventId(note.noteOn),
+        note,
+      ]),
+    );
+  };
+
+  private onTextEventCacheChange = (): void => {
+    const entries: LyricEntry[] = [];
+    this.text.data.forEach((event) => {
+      if (!isTextEvent(event) || event.type !== TextMetaType.Lyric) {
+        return;
+      }
+      // Get the corresponding note for this lyric event (if it exists)
+      const note = this.note.data.find(
+        (candidate) => candidate.start === event.tick,
+      );
+      entries.push([event, note]);
+    });
+    this.lyric.build(entries);
+  };
+
+  /** Builds any invalidated event cache. Note cache first: lyrics read it. */
+  rebuildAll(events: MidiEvent[]): void {
+    this.note.rebuild(events);
+    this.text.rebuild(events);
+    this.timeSignature.rebuild(events);
+    this.tempo.rebuild(events);
+  }
+
+  /** Marks every event-derived cache stale after a structural change. */
+  invalidateAll(): void {
+    this.note.invalidate();
+    this.text.invalidate();
+    this.timeSignature.invalidate();
+    this.tempo.invalidate();
+  }
+}
 
 export class MidiTrack {
   format: MidiFormat = 0;
   name: string = "";
-  events: MidiEvent[] = [];
+  #events: MidiEvent[] = [];
 
-  private noteCache: MidiNote[] | null = null;
-  private noteCacheByPitch: Map<number, MidiNote[]> | null = null;
-  private noteCacheByEventId: Map<MidiEventId, MidiNote> | null = null;
-  private noteRevision = 0;
-  private readonly eventIds = new WeakMap<object, MidiEventId>();
-  private readonly eventsById = new Map<MidiEventId, MidiEvent>();
-  private readonly textEventSources = new WeakMap<
-    TextMidiEvent,
-    TextMidiEvent
-  >();
-  private nextEventId = 1;
+  readonly #caches = new CacheMap();
 
   public constructor(name: string = "") {
     this.name = name;
+  }
+
+  /**
+   * The track's events in file order. Each event's `tick` (absolute time) and
+   * `order` (index in this array) are kept current by MidiTrack; treat them as
+   * read-only and change timing through MidiTrack methods. To replace the
+   * list, assign a new array — do not push/splice the returned array.
+   */
+  public get events(): MidiEvent[] {
+    return this.#events;
+  }
+
+  /** Replaces all events. `deltaTime` wins; `tick`/`order` are derived. */
+  public set events(events: MidiEvent[]) {
+    this.#events = events;
+    this.syncTiming();
+    this.#caches.invalidateAll();
   }
 
   public clone(): MidiTrack {
     const track = new MidiTrack(this.name);
     track.format = this.format;
     track.events = this.events.map((event) => {
+      let clonedEvent: MidiEvent;
       if (event.status === 0xff) {
-        if ("text" in event) return { ...event };
-        const metaEvent = event as MidiMetaEvent;
-        return { ...metaEvent };
-      }
-      if (event.status === 0xf0 || event.status === 0xf7) {
+        clonedEvent = { ...event } as MidiEvent;
+      } else if (event.status === 0xf0 || event.status === 0xf7) {
         const sysExEvent = event as MidiSysExEvent;
-        return { ...sysExEvent, data: sysExEvent.data.slice() };
+        clonedEvent = { ...sysExEvent, data: sysExEvent.data.slice() };
+      } else {
+        clonedEvent = { ...event };
       }
-      return { ...event };
+      return clonedEvent;
     });
+    const clonedEvents = new Map<MidiEvent, MidiEvent>();
     this.events.forEach((event, index) => {
-      const clonedEvent = track.events[index];
-      if (clonedEvent) {
-        const id = this.getEventId(event);
-        track.eventIds.set(clonedEvent, id);
-        track.eventsById.set(id, clonedEvent);
-      }
+      clonedEvents.set(event, track.events[index]!);
     });
-    track.nextEventId = this.nextEventId;
+    track.#caches.eventId = this.#caches.eventId.clone(clonedEvents);
     return track;
   }
 
-  public getChannelEvents(): MidiChannelEvent[] {
-    return this.events.filter(
-      (event) => event.status < 0xff,
-    ) as MidiChannelEvent[];
-  }
-
-  public getMetaEvents(): Array<MidiMetaEvent | TextMidiEvent> {
-    return this.events.filter((event) => event.status === 0xff) as Array<
-      MidiMetaEvent | TextMidiEvent
-    >;
-  }
-
-  public getSysExEvents(): MidiSysExEvent[] {
-    return this.events.filter(
-      (event) => event.status === 0xf0 || event.status === 0xf7,
-    ) as MidiSysExEvent[];
-  }
-
-  public getNoteEvents(): MidiChannelEvent[] {
-    return this.getChannelEvents().filter((event) =>
-      [ChannelMessage.NoteOn, ChannelMessage.NoteOff].includes(
-        event.messageType,
-      ),
-    );
-  }
-
-  public getNoteEventsInPitchRange(
-    low: number,
-    high: number,
-  ): MidiChannelEvent[] {
-    return this.getNoteEvents().filter(
-      (event) => low <= event.data1 && event.data1 < high,
-    );
-  }
-
-  public getTimedEvents(): TimedMidiEvent[] {
-    return this.getTimedEventRecords().map(({ event, tick, order }) => ({
-      ...event,
-      tick,
-      order,
-    })) as TimedMidiEvent[];
-  }
-
-  private getTimedEventRecords(): TimedEventRecord[] {
-    let tick = 0;
-
-    return this.events.map((event, order) => {
-      tick += event.deltaTime;
-      return { event, tick, order };
-    });
-  }
-
-  public getEventId(event: MidiEvent): MidiEventId {
-    let id = this.eventIds.get(event);
-    if (!id) {
-      id = `event-${this.nextEventId++}`;
-      this.eventIds.set(event, id);
-      this.eventsById.set(id, event);
-    }
-    return id;
-  }
-
-  public getEventById(id: MidiEventId): MidiEvent | undefined {
-    return this.eventsById.get(id);
-  }
-
-  /** Returns the cached note paired with a NoteOn event ID, if it exists. */
-  public getNoteByEventId(id: MidiEventId): MidiNote | undefined {
-    if (this.noteCache === null || this.noteCacheByEventId === null) {
-      this.buildNoteCache();
-    }
-    return this.noteCacheByEventId!.get(id);
-  }
-
   public insertEventAt(tick: number, event: MidiEvent): MidiEventId {
-    this.insertEventsAt([{ tick, event }]);
-    return this.getEventId(event);
+    event.tick = tick;
+    this.insertEventsAt([event]);
+    return this.#caches.eventId.getEventId(event);
   }
 
   public updateEventAt(id: MidiEventId, patch: Partial<MidiEvent>): boolean {
-    const event = this.getEventById(id);
+    const event = this.#caches.eventId.getEventById(id);
     return event ? this.updateEvent(event, patch) : false;
   }
 
   public moveEventById(id: MidiEventId, tick: number): boolean {
-    const event = this.getEventById(id);
+    const event = this.#caches.eventId.getEventById(id);
     return event ? this.moveEvent(event, tick) : false;
   }
 
+  public getEventId(event: MidiEvent): MidiEventId {
+    return this.#caches.eventId.getEventId(event);
+  }
+
+  public getEventById(id: MidiEventId): MidiEvent | undefined {
+    return this.#caches.eventId.getEventById(id);
+  }
+
+  public getNoteByEventId(id: MidiEventId): MidiNote | undefined {
+    this.ensureCaches();
+    return this.#caches.noteByEventId.data.get(id);
+  }
+
+  public getTempoEvents(): TempoEvent[] {
+    this.ensureCaches();
+    return this.#caches.tempo.data;
+  }
+
+  public getTimeSignatureEvents(): TimeSignatureEvent[] {
+    this.ensureCaches();
+    return this.#caches.timeSignature.data;
+  }
+
+  public getTextEvents(): TextMidiEvent[] {
+    this.ensureCaches();
+    return this.#caches.text.data;
+  }
+
   public addTempoEvent(tick: number, bpm: number): TempoEvent {
-    if (!Number.isInteger(tick) || tick < 0) {
+    if (tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
     const microsecondsPerQuarterNote = Math.round(60000000 / bpm);
@@ -174,8 +214,8 @@ export class MidiTrack {
     data[1] = (microsecondsPerQuarterNote >> 8) & 0xff;
     data[2] = microsecondsPerQuarterNote & 0xff;
     const event: TempoEvent = {
-      tick,
       deltaTime: 0,
+      tick,
       status: 0xff,
       type: MetaType.Tempo,
       length: data.length,
@@ -185,31 +225,17 @@ export class MidiTrack {
     return event;
   }
 
-  public getTempoEvents(): TempoEvent[] {
-    return this.getTimedEventRecords()
-      .filter(
-        ({ event }) =>
-          event.status === 0xff &&
-          "type" in event &&
-          event.type === MetaType.Tempo,
-      )
-      .map(
-        ({ event, tick, order }) => ({ ...event, tick, order }) as TempoEvent,
-      )
-      .sort(sortEvents);
-  }
-
   public addTimeSignatureEvent(
     tick: number,
     numerator: number = 4,
     denominator: number = 4,
   ): TimeSignatureEvent {
-    if (!Number.isInteger(tick) || tick < 0) {
+    if (tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
     const event: TimeSignatureEvent = {
-      tick,
       deltaTime: 0,
+      tick,
       status: 0xff,
       type: MetaType.TimeSignature,
       length: 4,
@@ -220,294 +246,210 @@ export class MidiTrack {
     return event;
   }
 
-  public getTimeSignatureEvents(): TimeSignatureEvent[] {
-    return this.getTimedEventRecords()
-      .filter(
-        ({ event }) =>
-          event.status === 0xff &&
-          "type" in event &&
-          event.type === MetaType.TimeSignature,
-      )
-      .map(
-        ({ event, tick, order }) =>
-          ({ ...event, tick, order }) as TimeSignatureEvent,
-      )
-      .sort(sortEvents);
-  }
-
-  public getTextEvents(): TextMidiEvent[] {
-    const events: TextMidiEvent[] = [];
-    for (const timed of this.getTimedEventRecords()) {
-      const event = timed.event;
-      if (
-        event.status !== 0xff ||
-        !("type" in event) ||
-        !("text" in event) ||
-        !TextMetaType[event.type]
-      ) {
-        continue;
-      }
-      events.push(this.createTextEvent(event, timed.tick, timed.order));
-    }
-    return events;
-  }
-
-  private createTextEvent(
-    event: TextMidiEvent,
-    tick: number,
-    order?: number,
-  ): TextMidiEvent {
-    const textEvent: TextMidiEvent = {
-      ...event,
-      tick,
-      order,
-    };
-    this.textEventSources.set(textEvent, event);
-    return textEvent;
-  }
-
   /** Creates a text-bearing meta event at an absolute tick. */
   public addTextEvent(
     type: TextMetaType,
     tick: number,
     text: string,
   ): TextMidiEvent {
-    if (!Number.isInteger(tick) || tick < 0) {
+    if (tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
     if (!text.trim()) {
       throw new Error("Text events must contain text");
     }
     const event: TextMidiEvent = {
-      tick,
       deltaTime: 0,
+      tick,
       status: 0xff,
       type,
       length: textByteLength(text),
       text: text,
     };
     this.insertEventAt(tick, event);
-    const order = this.events.indexOf(event);
-    if (order < 0) {
-      throw new Error("Inserted text event is missing from its track");
-    }
-    return this.createTextEvent(event, tick, order);
+    return event;
   }
 
   public updateTextEvent(event: TextMidiEvent, text: string): boolean {
-    const source = this.resolveEvent(event);
-    if (!source || !("text" in source) || !text.trim()) return false;
-    source.text = text;
-    source.length = textByteLength(text);
+    if (!this.hasEvent(event) || !isTextEvent(event)) {
+      return false;
+    }
     event.text = text;
-    event.length = source.length;
-    this.invalidateCaches();
+    event.length = textByteLength(text);
+    this.#caches.text.invalidate();
     return true;
   }
 
-  /** Moves any event while preserving absolute ordering and delta times. */
   public moveEvent(event: MidiEvent, tick: number): boolean {
-    const source = this.resolveEvent(event);
-    if (!source) return false;
-    if (!Number.isInteger(tick) || tick < 0) {
+    if (!this.hasEvent(event)) {
+      return false;
+    }
+    if (tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
-    const timedEvents = this.getTimedEventRecords();
-    const timed = timedEvents.find((item) => item.event === source);
-    if (!timed) return false;
-    timed.tick = tick;
-    timed.order = Number.MAX_SAFE_INTEGER;
-    this.replaceTimedEvents(this.keepEndOfTrackLast(timedEvents));
+    event.tick = tick;
+    event.order = MOVED_EVENT_ORDER;
+    this.commitByTick(this.#events.slice());
     return true;
-  }
-
-  public updateEvent(event: MidiEvent, patch: Partial<MidiEvent>): boolean {
-    if (!this.events.includes(event)) return false;
-    Object.assign(event, patch);
-    this.invalidateCaches();
-    return true;
-  }
-
-  private resolveEvent(event: MidiEvent): MidiEvent | undefined {
-    if (this.events.includes(event)) return event;
-    if ("text" in event) {
-      const source = this.textEventSources.get(event as TextMidiEvent);
-      if (source && this.events.includes(source)) return source;
-    }
-    return undefined;
-  }
-
-  private isEndOfTrack(
-    event: MidiEvent,
-  ): event is MidiMetaEvent | TextMidiEvent {
-    return (
-      event.status === 0xff &&
-      "type" in event &&
-      event.type === MetaType.EndOfTrack
-    );
-  }
-
-  private replaceTimedEvents(timedEvents: TimedEventRecord[]): void {
-    let previousTick = 0;
-
-    for (const timedEvent of timedEvents) {
-      if (timedEvent.tick < previousTick) {
-        throw new Error("MIDI events must be ordered by absolute tick");
-      }
-
-      timedEvent.event.deltaTime = timedEvent.tick - previousTick;
-
-      previousTick = timedEvent.tick;
-    }
-
-    this.events.splice(
-      0,
-      this.events.length,
-      ...timedEvents.map(({ event }) => event),
-    );
-    for (const event of this.events) {
-      const id = this.eventIds.get(event);
-      if (id) this.eventsById.set(id, event);
-    }
-
-    this.invalidateCaches();
-  }
-
-  private invalidateCaches(): void {
-    this.noteCache = null;
-    this.noteCacheByPitch = null;
-    this.noteCacheByEventId = null;
-    this.noteRevision += 1;
-  }
-
-  private removeEventId(event: MidiEvent): void {
-    const id = this.eventIds.get(event);
-    if (id) this.eventsById.delete(id);
-  }
-
-  public getNoteRevision(): number {
-    return this.noteRevision;
-  }
-
-  private keepEndOfTrackLast(events: TimedEventRecord[]): TimedEventRecord[] {
-    const finalTick = events
-      .filter(({ event }) => !this.isEndOfTrack(event))
-      .reduce((maximum, item) => Math.max(maximum, item.tick), 0);
-    for (const item of events) {
-      if (this.isEndOfTrack(item.event)) {
-        item.tick = Math.max(item.tick, finalTick);
-        item.order = Number.MAX_SAFE_INTEGER;
-      }
-    }
-    return events.sort(sortEvents);
-  }
-
-  public getAbsoluteTickAt(eventIndex: number): number {
-    if (
-      !Number.isInteger(eventIndex) ||
-      eventIndex < 0 ||
-      eventIndex > this.events.length
-    ) {
-      throw new RangeError("eventIndex is outside the MIDI track");
-    }
-
-    let tick = 0;
-
-    for (let index = 0; index < eventIndex; index++) {
-      tick += this.events.at(index)?.deltaTime || 0;
-    }
-
-    return tick;
-  }
-
-  public getInsertionIndexAt(absoluteTick: number): number {
-    if (!Number.isInteger(absoluteTick) || absoluteTick < 0) {
-      throw new RangeError("absoluteTick must be a non-negative integer");
-    }
-
-    let tick = 0;
-    const endOfTrackIndex = this.events.findIndex((event) =>
-      this.isEndOfTrack(event),
-    );
-
-    const eventLimit =
-      endOfTrackIndex < 0 ? this.events.length : endOfTrackIndex;
-
-    for (let index = 0; index < eventLimit; index++) {
-      tick += this.events.at(index)?.deltaTime || 0;
-
-      if (tick > absoluteTick) {
-        return index;
-      }
-    }
-
-    return eventLimit;
   }
 
   /**
-   * Inserts one or more events at absolute ticks in a single pass, bumping
-   * any trailing EndOfTrack event so it stays last. Shared by note creation
-   * and single meta-event insertion (tempo/time-signature events).
+   * Applies a field patch to an event. A `tick` in the patch moves the event;
+   * `order` is ignored because MidiTrack owns it.
    */
-  public insertEventsAt(entries: { tick: number; event: MidiEvent }[]): void {
-    const timedEvents = this.getTimedEventRecords();
-    const firstNewOrder = timedEvents.length;
+  public updateEvent(event: MidiEvent, patch: Partial<MidiEvent>): boolean {
+    if (!this.#events.includes(event)) {
+      return false;
+    }
+    const fields: Partial<MidiEvent> = { ...patch };
+    const tick = fields.tick;
+    delete fields.tick;
+    delete fields.order;
+    Object.assign(event, fields);
+    if (tick !== undefined && tick !== event.tick) {
+      return this.moveEvent(event, tick);
+    }
+    if ("deltaTime" in fields) {
+      this.syncTiming();
+    }
+    this.#caches.invalidateAll();
+    return true;
+  }
 
-    entries.forEach(({ tick, event }, index) => {
-      if (!Number.isInteger(tick) || tick < 0) {
-        throw new RangeError("tick must be a non-negative integer");
-      }
+  /**
+   * Resolves an event to the actual event instance within the track.
+   * @param event The event to resolve.
+   * @returns The resolved event if it exists in the track, otherwise undefined.
+   */
+  private hasEvent(event: MidiEvent): boolean {
+    return this.events.includes(event);
+  }
 
-      timedEvents.push({ event, tick, order: firstNewOrder + index });
+  /** Recomputes `tick` and `order` from `deltaTime`. */
+  private syncTiming(): void {
+    let tick = 0;
+    this.#events.forEach((event, index) => {
+      tick += event.deltaTime;
+      event.tick = tick;
+      event.order = index;
     });
+  }
 
-    const finalTick = timedEvents
-      .filter(({ event }) => !this.isEndOfTrack(event))
-      .reduce((maximum, timedEvent) => Math.max(maximum, timedEvent.tick), 0);
-
-    for (const timedEvent of timedEvents) {
-      if (this.isEndOfTrack(timedEvent.event)) {
-        timedEvent.tick = Math.max(timedEvent.tick, finalTick);
-        timedEvent.order = Number.MAX_SAFE_INTEGER;
+  /** Bumps EndOfTrack to at least the last event's tick and sorts it last. */
+  private keepEndOfTrackLast(events: MidiEvent[]): void {
+    const finalTick = events.reduce(
+      (maximum, event) =>
+        isEndOfTrack(event) ? maximum : Math.max(maximum, event.tick),
+      0,
+    );
+    for (const event of events) {
+      if (isEndOfTrack(event)) {
+        event.tick = Math.max(event.tick, finalTick);
+        event.order = END_OF_TRACK_ORDER;
       }
     }
+  }
 
-    timedEvents.sort(sortEvents);
+  /**
+   * Commits `events` using each event's `tick` as authoritative: sorts by
+   * (tick, order), derives `deltaTime`, writes the result into the track in
+   * place and renumbers `order`. Together with the `events` setter this is
+   * the only place timing is recomputed.
+   */
+  private commitByTick(events: MidiEvent[]): void {
+    this.keepEndOfTrackLast(events);
+    events.sort(sortEvents);
+    let previousTick = 0;
+    for (const event of events) {
+      event.deltaTime = event.tick - previousTick;
+      previousTick = event.tick;
+    }
+    this.#events.splice(0, this.#events.length, ...events);
+    this.#events.forEach((event, index) => {
+      event.order = index;
+    });
+    this.#caches.invalidateAll();
+  }
 
-    this.replaceTimedEvents(timedEvents);
+  /** Builds any stale caches from the current events. */
+  private ensureCaches(): void {
+    this.#caches.rebuildAll(this.#events);
+  }
+
+  private removeEventId(event: MidiEvent): void {
+    this.#caches.eventId.removeEventId(event);
+  }
+
+  public getNoteRevision(): number {
+    return this.#caches.note.revision;
+  }
+
+  public getAbsoluteTickAt(eventIndex: number): number {
+    if (eventIndex < 0 || eventIndex > this.events.length) {
+      throw new RangeError("eventIndex is outside the MIDI track");
+    }
+
+    return eventIndex === 0 ? 0 : this.#events[eventIndex - 1]!.tick;
+  }
+
+  public getInsertionIndexAt(absoluteTick: number): number {
+    if (absoluteTick < 0) {
+      throw new RangeError("absoluteTick must be a non-negative integer");
+    }
+
+    const endOfTrackIndex = this.#events.findIndex(isEndOfTrack);
+    const eventLimit =
+      endOfTrackIndex < 0 ? this.#events.length : endOfTrackIndex;
+    const index = this.#events.findIndex(
+      (event, eventIndex) =>
+        eventIndex < eventLimit && event.tick > absoluteTick,
+    );
+    return index < 0 ? eventLimit : index;
+  }
+
+  /**
+   * Inserts events at their own absolute `tick` in one pass. Inserted events
+   * sort after existing events on the same tick, in the given order, and a
+   * trailing EndOfTrack is bumped so it stays last. Shared by note creation
+   * and single meta-event insertion (tempo/time-signature events).
+   */
+  public insertEventsAt(events: readonly MidiEvent[]): void {
+    for (const event of events) {
+      if (event.tick < 0) {
+        throw new RangeError("tick must be a non-negative integer");
+      }
+    }
+    const firstNewOrder = this.#events.length;
+    events.forEach((event, index) => {
+      event.order = firstNewOrder + index;
+    });
+    this.commitByTick([...this.#events, ...events]);
   }
 
   public addNote(
-    note: number,
+    pitch: number,
     startDelta: number,
     velocity: number = 100,
     endDelta: number = 240,
     insertAt: number = this.events.length,
-  ): {
-    noteOn: MidiChannelEvent;
-    noteOff: MidiChannelEvent;
-  } {
-    if (!Number.isInteger(note) || note < 0 || note > 127) {
+  ): AddNoteResult {
+    if (pitch < 0 || pitch > 127) {
       throw new RangeError("MIDI note must be between 0 and 127");
     }
 
-    if (!Number.isInteger(startDelta) || startDelta < 0) {
+    if (startDelta < 0) {
       throw new RangeError("startDelta must be a non-negative integer");
     }
 
-    if (!Number.isInteger(endDelta) || endDelta < 0) {
+    if (endDelta < 0) {
       throw new RangeError("endDelta must be a non-negative integer");
     }
 
-    if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+    if (velocity < 1 || velocity > 127) {
       throw new RangeError("NoteOn velocity must be between 1 and 127");
     }
 
-    if (
-      !Number.isInteger(insertAt) ||
-      insertAt < 0 ||
-      insertAt > this.events.length
-    ) {
+    if (insertAt < 0 || insertAt > this.events.length) {
       throw new RangeError("insertAt is outside the MIDI track");
     }
 
@@ -517,51 +459,51 @@ export class MidiTrack {
 
     const noteOn: MidiChannelEvent = {
       deltaTime: 0,
+      tick: startTick,
       status: 0x90 | channel,
       channel,
       messageType: ChannelMessage.NoteOn,
-      data1: note,
+      data1: pitch,
       data2: velocity,
     };
 
     const noteOff: MidiChannelEvent = {
       deltaTime: 0,
+      tick: endTick,
       status: 0x80 | channel,
       channel,
       messageType: ChannelMessage.NoteOff,
-      data1: note,
+      data1: pitch,
       data2: 0,
     };
 
-    this.insertEventsAt([
-      { tick: startTick, event: noteOn },
-      { tick: endTick, event: noteOff },
-    ]);
+    this.insertEventsAt([noteOn, noteOff]);
 
     return { noteOn, noteOff };
   }
 
   /** Inserts a note at an absolute tick and returns its cached note snapshot. */
-  public addNoteAt(spec: AddNoteSpec): MidiNote {
-    const { tick, pitch, duration, velocity = 100, channel = 0 } = spec;
-    if (!Number.isInteger(tick) || tick < 0) {
+  public insertNote(options: InsertNoteOptions): MidiNote {
+    const { tick, pitch, duration, velocity = 100, channel = 0 } = options;
+    if (tick < 0) {
       throw new RangeError("tick must be a non-negative integer");
     }
-    if (!Number.isInteger(duration) || duration < 1) {
+    if (duration < 1) {
       throw new RangeError("duration must be a positive integer");
     }
-    if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
+    if (pitch < 0 || pitch > 127) {
       throw new RangeError("MIDI note must be between 0 and 127");
     }
-    if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+    if (velocity < 1 || velocity > 127) {
       throw new RangeError("NoteOn velocity must be between 1 and 127");
     }
-    if (!Number.isInteger(channel) || channel < 0 || channel > 15) {
+    if (channel < 0 || channel > 15) {
       throw new RangeError("MIDI channel must be between 0 and 15");
     }
 
     const noteOn: MidiChannelEvent = {
       deltaTime: 0,
+      tick,
       status: 0x90 | channel,
       channel,
       messageType: ChannelMessage.NoteOn,
@@ -570,17 +512,15 @@ export class MidiTrack {
     };
     const noteOff: MidiChannelEvent = {
       deltaTime: 0,
+      tick: tick + duration,
       status: 0x80 | channel,
       channel,
       messageType: ChannelMessage.NoteOff,
       data1: pitch,
       data2: 0,
     };
-    this.insertEventsAt([
-      { tick, event: noteOn },
-      { tick: tick + duration, event: noteOff },
-    ]);
-    const note = this.getNoteByEventId(this.getEventId(noteOn));
+    this.insertEventsAt([noteOn, noteOff]);
+    const note = this.getNoteByEventId(this.#caches.eventId.getEventId(noteOn));
     if (!note) throw new Error("Inserted note was not found in the note cache");
     return note;
   }
@@ -613,11 +553,7 @@ export class MidiTrack {
     this.removeEventId(noteOn);
     this.removeEventId(noteOff);
 
-    const remaining = this.getTimedEventRecords().filter(
-      ({ event }) => !removed.has(event),
-    );
-
-    this.replaceTimedEvents(remaining);
+    this.commitByTick(this.#events.filter((event) => !removed.has(event)));
     return true;
   }
 
@@ -626,7 +562,7 @@ export class MidiTrack {
    * and invalidating the note cache so subsequent getNotes() calls rebuild.
    */
   public setNotePitch(note: MidiNote, pitch: number): boolean {
-    if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
+    if (!inRange(pitch, 0, 127)) {
       throw new RangeError("MIDI note must be between 0 and 127");
     }
     return this.updateNote(note, { pitch });
@@ -634,58 +570,52 @@ export class MidiTrack {
 
   /** Atomically updates note properties and rebuilds timed events once. */
   public updateNote(note: MidiNote, patch: NotePatchFields): boolean {
-    const currentNote = this.getNoteByEventId(this.getEventId(note.noteOn));
+    const currentNote = this.getNoteByEventId(
+      this.#caches.eventId.getEventId(note.noteOn),
+    );
     if (!currentNote || !this.events.includes(currentNote.noteOff)) {
       return false;
     }
 
-    const pitch = patch.pitch ?? currentNote.note;
+    const pitch = patch.pitch ?? currentNote.pitch;
     const velocity = patch.velocity ?? currentNote.velocity;
     const start = patch.start ?? currentNote.start;
     const duration = patch.duration ?? currentNote.end - currentNote.start;
     const end = start + duration;
-    if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
+    if (!inRange(pitch, 0, 127)) {
       throw new RangeError("MIDI note must be between 0 and 127");
     }
-    if (!Number.isInteger(velocity) || velocity < 1 || velocity > 127) {
+    if (!inRange(velocity, 1, 127)) {
       throw new RangeError("NoteOn velocity must be between 1 and 127");
     }
-    if (!Number.isInteger(start) || start < 0) {
+    if (start < 0) {
       throw new RangeError("startTick must be a non-negative integer");
     }
-    if (!Number.isInteger(duration) || duration < 1) {
+    if (duration < 1) {
       throw new RangeError("duration must be a positive integer");
     }
-    if (!Number.isInteger(end)) {
-      throw new RangeError("endTick must be an integer");
-    }
 
-    const timedEvents = this.getTimedEventRecords();
-    const noteOnTimed = timedEvents.find(
-      (timedEvent) => timedEvent.event === currentNote.noteOn,
-    );
-    const noteOffTimed = timedEvents.find(
-      (timedEvent) => timedEvent.event === currentNote.noteOff,
-    );
-    if (!noteOnTimed || !noteOffTimed) return false;
+    if (!this.#events.includes(currentNote.noteOn)) return false;
 
     currentNote.noteOn.data1 = pitch;
     currentNote.noteOff.data1 = pitch;
     currentNote.noteOn.data2 = velocity;
-    currentNote.note = pitch;
+    currentNote.pitch = pitch;
+    currentNote.pitch = pitch;
     currentNote.velocity = velocity;
     currentNote.start = start;
     currentNote.end = end;
     if (note !== currentNote) {
-      note.note = pitch;
+      note.pitch = pitch;
+      note.pitch = pitch;
       note.velocity = velocity;
       note.start = start;
       note.end = end;
     }
 
-    noteOnTimed.tick = start;
-    noteOffTimed.tick = end;
-    this.replaceTimedEvents(this.keepEndOfTrackLast(timedEvents));
+    currentNote.noteOn.tick = start;
+    currentNote.noteOff.tick = end;
+    this.commitByTick(this.#events.slice());
     return true;
   }
 
@@ -694,10 +624,12 @@ export class MidiTrack {
    * re-sorting events by absolute tick and invalidating the note cache.
    */
   public setNoteDuration(note: MidiNote, durationTicks: number): boolean {
-    if (!Number.isInteger(durationTicks) || durationTicks < 1) {
+    if (durationTicks < 1) {
       throw new RangeError("durationTicks must be a positive integer");
     }
-    const currentNote = this.getNoteByEventId(this.getEventId(note.noteOn));
+    const currentNote = this.getNoteByEventId(
+      this.#caches.eventId.getEventId(note.noteOn),
+    );
     return currentNote
       ? this.updateNote(note, { duration: durationTicks })
       : false;
@@ -709,11 +641,15 @@ export class MidiTrack {
    * note cache.
    */
   public setNoteStart(note: MidiNote, startTick: number): boolean {
-    if (!Number.isInteger(startTick) || startTick < 0) {
+    if (startTick < 0) {
       throw new RangeError("startTick must be a non-negative integer");
     }
-    const currentNote = this.getNoteByEventId(this.getEventId(note.noteOn));
-    if (!currentNote) return false;
+    const currentNote = this.getNoteByEventId(
+      this.#caches.eventId.getEventId(note.noteOn),
+    );
+    if (!currentNote) {
+      return false;
+    }
     const duration = currentNote.end - currentNote.start;
     return this.updateNote(note, {
       start: startTick,
@@ -722,135 +658,28 @@ export class MidiTrack {
   }
 
   public removeEvent(event: MidiEvent): boolean {
-    const source = this.resolveEvent(event);
-    if (!source) return false;
+    if (!this.hasEvent(event)) {
+      return false;
+    }
 
-    this.removeEventId(source);
-    const remaining = this.getTimedEventRecords().filter(
-      (timedEvent) => timedEvent.event !== source,
-    );
-
-    this.replaceTimedEvents(remaining);
+    this.removeEventId(event);
+    this.commitByTick(this.#events.filter((candidate) => candidate !== event));
     return true;
   }
 
   public removeEventById(id: MidiEventId): boolean {
-    const event = this.getEventById(id);
+    const event = this.#caches.eventId.getEventById(id);
     return event ? this.removeEvent(event) : false;
   }
 
-  private buildNoteCache(): void {
-    interface PendingNote {
-      pitch: number;
-      velocity: number;
-      startTick: number;
-      noteOn: MidiChannelEvent;
-    }
-
-    const isChannelEvent = (event: MidiEvent): event is MidiChannelEvent =>
-      event.status < 0xff;
-
-    let currentTick = 0;
-    const activeNotes = new Map<number, PendingNote[]>();
-    const notes: MidiNote[] = [];
-    let previousNote: MidiNote | undefined;
-
-    for (const event of this.events) {
-      currentTick += event.deltaTime;
-
-      if (
-        !isChannelEvent(event) ||
-        ![ChannelMessage.NoteOn, ChannelMessage.NoteOff].includes(
-          event.messageType,
-        )
-      ) {
-        continue;
-      }
-
-      const pitch = event.data1;
-      const velocity = event.data2 ?? 0;
-
-      const isNoteOn =
-        event.messageType === ChannelMessage.NoteOn && velocity > 0;
-
-      const isNoteOff =
-        event.messageType === ChannelMessage.NoteOff ||
-        (event.messageType === ChannelMessage.NoteOn && velocity === 0);
-
-      if (isNoteOn) {
-        const pending: PendingNote = {
-          pitch,
-          velocity,
-          startTick: currentTick,
-          noteOn: event,
-        };
-
-        const notesForPitch = activeNotes.get(pitch) ?? [];
-        notesForPitch.push(pending);
-        activeNotes.set(pitch, notesForPitch);
-
-        continue;
-      }
-
-      if (isNoteOff) {
-        const notesForPitch = activeNotes.get(pitch);
-
-        if (!notesForPitch || notesForPitch.length === 0) {
-          console.error(`Unmatched NoteOff event: ${notesForPitch}`);
-          continue;
-        }
-
-        const pending = notesForPitch.shift()!;
-
-        const newNote = {
-          note: pending.pitch,
-          velocity: pending.velocity,
-          start: pending.startTick,
-          end: currentTick,
-          noteOn: pending.noteOn,
-          noteOff: event,
-          previous: previousNote,
-        } as MidiNote;
-
-        notes.push(newNote);
-
-        // Store the previous note which is not the same tick position
-        // as this current note.
-        if (previousNote && previousNote.start !== newNote.start) {
-          previousNote = newNote;
-        }
-
-        if (notesForPitch.length === 0) {
-          activeNotes.delete(pitch);
-        }
-      }
-    }
-    notes.sort((a, b) => a.start - b.start);
-
-    const notesByPitch = new Map<number, MidiNote[]>();
-    const notesByEventId = new Map<MidiEventId, MidiNote>();
-    for (const note of notes) {
-      const group = notesByPitch.get(note.note) ?? [];
-      group.push(note);
-      notesByPitch.set(note.note, group);
-      notesByEventId.set(this.getEventId(note.noteOn), note);
-    }
-
-    this.noteCache = notes;
-    this.noteCacheByPitch = notesByPitch;
-    this.noteCacheByEventId = notesByEventId;
-  }
-
   public getNotes(options: GetNotesOptions = {}): MidiNote[] {
-    if (this.noteCache === null || this.noteCacheByPitch === null) {
-      this.buildNoteCache();
-    }
+    this.ensureCaches();
 
     if (options.pitch) {
       const { low, high } = options.pitch;
       const rangeNotes: MidiNote[] = [];
 
-      for (const [pitch, notesForPitch] of this.noteCacheByPitch!) {
+      for (const [pitch, notesForPitch] of this.#caches.pitch.data) {
         if (pitch >= low && pitch < high) {
           rangeNotes.push(...notesForPitch);
         }
@@ -860,12 +689,12 @@ export class MidiTrack {
       return rangeNotes;
     }
 
-    return this.noteCache!;
+    return this.#caches.note.data;
   }
 
-  public toBuffer(): Uint8Array {
+  public validate(): void {
     const endOfTrackIndices = this.events
-      .map((event, index) => (this.isEndOfTrack(event) ? index : -1))
+      .map((event, index) => (isEndOfTrack(event) ? index : -1))
       .filter((index) => index >= 0);
 
     if (
@@ -875,13 +704,12 @@ export class MidiTrack {
     ) {
       throw new Error("EndOfTrack must be the final event in a MIDI track");
     }
+  }
+
+  public toBuffer(): Uint8Array {
+    this.validate();
 
     const eventBytes = this.events.map(encodeMidiEvent);
-
-    if (endOfTrackIndices.length === 0) {
-      eventBytes.push(new Uint8Array([0x00, 0xff, 0x2f, 0x00]));
-    }
-
     const body = concatBytes(eventBytes);
     const chunk = new Uint8Array(8);
 

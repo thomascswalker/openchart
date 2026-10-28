@@ -9,7 +9,7 @@ function addNote(
   start: number,
   duration: number,
 ): void {
-  setup.midiTrack.addNoteAt({
+  setup.midiTrack.insertNote({
     pitch,
     tick: start,
     velocity: 90,
@@ -46,7 +46,9 @@ describe("HighwayNoteIndex", () => {
     const chart = {
       getNoteRevision: () => 1,
       getNotes: () => actualNotes,
-      getTrack: () => setup.chart.getTrack(),
+      getMidiTrack: () => setup.chart.getMidiTrack(),
+      getLanes: () => setup.chart.getLanes(),
+      classify: (pitch: number) => setup.chart.classify(pitch),
     } as unknown as ChartView;
     const index = new HighwayNoteIndex();
 
@@ -56,13 +58,13 @@ describe("HighwayNoteIndex", () => {
       const expected = actualNotes
         .filter(
           (note) =>
-            note.note >= offset &&
-            note.note < offset + setup.chart.getLaneCount() &&
+            note.pitch >= offset &&
+            note.pitch < offset + setup.chart.getLaneCount() &&
             note.end >= start &&
             note.start <= end,
         )
         .sort(
-          (left, right) => left.start - right.start || left.note - right.note,
+          (left, right) => left.start - right.start || left.pitch - right.pitch,
         );
       const actual: IndexedNote[] = [];
       index.query(chart, setup.session, null, start, end, actual);
@@ -85,13 +87,15 @@ describe("HighwayNoteIndex", () => {
     const chart = {
       getNoteRevision: () => 1,
       getNotes: () => setup.chart.getNotes(),
-      getTrack: () => setup.chart.getTrack(),
+      getMidiTrack: () => setup.chart.getMidiTrack(),
+      getLanes: () => setup.chart.getLanes(),
+      classify: (pitch: number) => setup.chart.classify(pitch),
     } as unknown as ChartView;
 
     index.query(chart, setup.session, null, 0, 1_000, actual);
     expect(actual.map(({ kind, lane }) => [kind, lane])).toEqual([
-      ["kick", 0],
-      ["kick", 0],
+      ["bar", 0],
+      ["bar", 0],
       ["cymbal", 1],
     ]);
 
@@ -99,12 +103,14 @@ describe("HighwayNoteIndex", () => {
     const revisedChart = {
       getNoteRevision: () => 2,
       getNotes: () => setup.chart.getNotes(),
-      getTrack: () => setup.chart.getTrack(),
+      getMidiTrack: () => setup.chart.getMidiTrack(),
+      getLanes: () => setup.chart.getLanes(),
+      classify: (pitch: number) => setup.chart.classify(pitch),
     } as unknown as ChartView;
     index.query(revisedChart, setup.session, null, 0, 1_000, actual);
     expect(actual.map(({ kind }) => kind)).toEqual([
-      "kick",
-      "kick",
+      "bar",
+      "bar",
       "cymbal",
       "pad",
     ]);
@@ -137,6 +143,7 @@ describe("HighwayNoteIndex", () => {
       added: [],
       removed: new Set<EntityId>(),
       rejections: [],
+      diagnostics: [],
     };
     const index = new HighwayNoteIndex();
     const actual: IndexedNote[] = [];

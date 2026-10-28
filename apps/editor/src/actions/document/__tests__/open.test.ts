@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ServicesAccessor } from "../../../platform/services";
-import { makeDefaultMetadata } from "../../../services/document/schema";
+import {
+  makeDefaultMetadata,
+  MetadataSchema,
+} from "../../../services/document/schema";
 import { OpenDocumentAction } from "../open";
 
 describe("OpenDocumentAction", () => {
@@ -13,6 +16,7 @@ describe("OpenDocumentAction", () => {
       isDirty: false,
       open: vi.fn(async () => true),
       metadata,
+      metadataSchema: MetadataSchema,
       snapshot: { directoryHandle: root },
     };
     const removeTrack = vi.fn();

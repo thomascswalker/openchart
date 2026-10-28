@@ -2,6 +2,7 @@ import { Midi } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import { DocumentService } from "../../services/document.js";
 import { History } from "../History.js";
+import { createTestRulesetService } from "../../services/__tests__/testUtils";
 
 function createMidi(): Midi {
   const midi = new Midi();
@@ -24,7 +25,7 @@ describe("history transaction rollback", () => {
     const restored = history.rollbackTransaction()!;
 
     expect(restored.tracks).toHaveLength(1);
-    expect(restored.tracks[0].getNotes().map((note) => note.note)).toEqual([
+    expect(restored.tracks[0].getNotes().map((note) => note.pitch)).toEqual([
       60,
     ]);
     expect(history.isInTransaction).toBe(false);
@@ -41,7 +42,10 @@ describe("history transaction rollback", () => {
 
   it("replaces the document's MIDI and publishes on rollback", () => {
     const logger = { debug() {}, info() {}, warn() {}, error() {} };
-    const document = new DocumentService(logger as never);
+    const document = new DocumentService(
+      logger as never,
+      createTestRulesetService(),
+    );
     let published = 0;
     document.subscribe(() => published++);
     const before = document.data!;

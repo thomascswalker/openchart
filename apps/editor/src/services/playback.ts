@@ -6,7 +6,12 @@ import {
   type MidiNote,
   type TempoEvent,
 } from "@openchart/midi";
-import { Difficulty, SongView, VocalTrackView } from "@openchart/views";
+import {
+  DefaultCompiledRuleset,
+  Difficulty,
+  SongView,
+  type CompiledRuleset,
+} from "@openchart/views";
 import {
   Soundboard,
   type SoundboardSettings,
@@ -15,6 +20,7 @@ import {
 } from "../audio/soundboard";
 import type { DocumentService } from "./document";
 import type { MixerService } from "./mixer";
+import type { RulesetService } from "./ruleset";
 import type { ApplicationSettings } from "./settings/schema";
 import { StatefulService } from "../platform/services";
 
@@ -82,9 +88,10 @@ function notesForHighway(
   midi: Midi | null | undefined,
   instrument: string,
   difficulty: Difficulty,
+  rules: CompiledRuleset,
 ): readonly MidiNote[] {
   if (!midi) return [];
-  const song = new SongView(midi);
+  const song = new SongView(midi, rules);
   return (
     song.getInstrumentTrackView(instrument)?.getChart(difficulty)?.getNotes() ??
     []
@@ -99,30 +106,23 @@ function notesForHighway(
 export function notesForVocalFeedback(
   midi: Midi | null | undefined,
   instrument: string,
+  rules: CompiledRuleset = DefaultCompiledRuleset,
 ): readonly MidiNote[] {
   if (!midi) return [];
-  const song = new SongView(midi);
-  const selected = song.getInstrumentTrackView(instrument);
-  const view =
-    selected instanceof VocalTrackView
-      ? selected
-      : song
-          .getInstrumentTrackViews?.()
-          .find(
-            (item): item is VocalTrackView => item instanceof VocalTrackView,
-          );
+  const song = new SongView(midi, rules);
+  const view = song.getVocalTrackView(instrument) ?? song.getVocalTrackView();
   return view?.getNotes("pitched").map((item) => item.note) ?? [];
 }
 
 export class PlaybackService extends StatefulService<PlaybackSnapshot> {
-  static dependencies = ["document", "mixer"];
+  static dependencies = ["document", "mixer", "ruleset"];
 
   private engine = new Soundboard();
   private documentUnsubscribe: (() => void) | undefined;
   private midiData: Midi | null | undefined;
   private documentId: number | undefined;
   private settings: ApplicationSettings | null = null;
-  private selectedInstrument = "LEAD GUITAR";
+  private selectedInstrument = "";
   private selectedDifficulty: Difficulty = Difficulty.Expert;
   private selectedTrackIndex: number | null = null;
   private metronomeEnabled = false;
@@ -147,23 +147,48 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private configured = false;
   private readonly mixerService?: MixerService;
 
-  constructor(documentService?: DocumentService, mixerService?: MixerService) {
+  private readonly rulesetService: RulesetService | undefined;
+
+  constructor(
+    documentService?: DocumentService,
+    mixerService?: MixerService,
+    rulesetService?: RulesetService,
+  ) {
     super();
     this.mixerService = mixerService;
+    this.rulesetService = rulesetService;
+    this.selectedInstrument = this.defaultInstrument();
     // Edits publish synchronously, so the end never lags behind the document.
     this.documentUnsubscribe = documentService?.subscribe(() => {
       if (this.configured) {
         this.refresh(documentService.data);
       }
     });
+    rulesetService?.subscribe(() => {
+      if (this.configured) this.refresh(this.midiData ?? null);
+    });
     this._snapshot = this.buildSnapshot();
+  }
+
+  private get rules(): CompiledRuleset {
+    return this.rulesetService?.compiled ?? DefaultCompiledRuleset;
+  }
+
+  /** The first visible, editable track of the active ruleset. */
+  private defaultInstrument(): string {
+    const tracks = this.rules.descriptors();
+    return (
+      tracks.find((track) => track.visible && track.editable)?.name ??
+      tracks[0]?.name ??
+      ""
+    );
   }
 
   public readonly reset = (): void => {
     this.stopPlayback(true);
     this.engine.stopPreview();
     this.midiData = null;
-    this.selectedInstrument = "LEAD GUITAR";
+    this.selectedInstrument = this.defaultInstrument();
     this.selectedDifficulty = Difficulty.Expert;
     this.selectedTrackIndex = null;
     this.highwayNotes = [];
@@ -201,6 +226,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
         this.midiData,
         this.selectedInstrument,
         this.selectedDifficulty,
+        this.rules,
       );
       this.updateVocalNotes();
     }
@@ -229,6 +255,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
         midiData,
         this.selectedInstrument,
         this.selectedDifficulty,
+        this.rules,
       );
       this.updateVocalNotes();
       this.configureEngine();
@@ -238,11 +265,8 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     let hasEvents = false;
     for (const track of this.midiData?.tracks ?? []) {
       if (track.events.length > 0) hasEvents = true;
-      let trackEndTick = 0;
-      for (const event of track.events) {
-        trackEndTick += event.deltaTime;
-      }
-      maxTick = Math.max(maxTick, trackEndTick);
+      // Events are sorted with EndOfTrack last, so the last one ends the track.
+      maxTick = Math.max(maxTick, track.events.at(-1)?.tick ?? 0);
     }
     this.midiTotalTicks = Math.max(maxTick, hasEvents ? 1 : 0);
     if (hasEvents) {
@@ -357,7 +381,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     if (!track) return;
     this.engine.previewTrack(
       track.getNotes().map((note) => ({
-        pitch: note.note,
+        pitch: note.pitch,
         startTick: note.start,
         endTick: note.end,
         velocity: note.velocity,
@@ -430,7 +454,11 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   // with the document or selection, which the engine uses to reset.
   private updateVocalNotes(): void {
     this.vocalNotes = this.vocalFeedbackEnabled
-      ? notesForVocalFeedback(this.midiData, this.selectedInstrument)
+      ? notesForVocalFeedback(
+          this.midiData,
+          this.selectedInstrument,
+          this.rules,
+        )
       : [];
   }
 

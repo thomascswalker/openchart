@@ -21,6 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 const midiChannelEvent: MidiChannelEvent = {
   deltaTime: 0,
+  tick: 0,
   status: 0,
   channel: 0,
   messageType: ChannelMessage.NoteOn,
@@ -31,6 +32,7 @@ type MidiChannelEventHeader = (keyof MidiChannelEvent & { tick?: string })[];
 
 const midiMetaEvent: MidiMetaEvent & { bytes: Uint8Array } = {
   deltaTime: 0,
+  tick: 0,
   status: 0xff,
   type: MetaType.SequenceNumber,
   length: 0,
@@ -50,7 +52,7 @@ const makeChannelEvents = (
   const track = makeTrack();
   addRandomChannelEvents(track, rowCount);
 
-  return track.getTimedEvents().map((event) => {
+  return track.events.map((event) => {
     const { tick } = event;
     const row: Record<string, string> = { tick: String(tick) };
     headers.forEach((header) => {
@@ -64,7 +66,7 @@ const makeMetaEvents = (headers: MidiMetaEventHeader, rowCount: number) => {
   const track = makeTrack();
   addRandomMetaEvents(track, rowCount);
 
-  return track.getTimedEvents().map((event) => {
+  return track.events.map((event) => {
     const { tick } = event;
     const row: Record<string, string> = { tick: String(tick) };
     headers.forEach((header) => {

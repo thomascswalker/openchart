@@ -4,7 +4,7 @@ import {
   Difficulty,
   parseEntityId,
   SongView,
-  validateVocalTrack,
+  VocalTrackView,
 } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
@@ -252,10 +252,12 @@ function harness(
 
 function seeded() {
   const midi = new Midi();
-  const vocals = new SongView(midi).getVocalTrackView("VOCALS")!;
-  vocals.addPitched(60, 0, 240, "one");
-  vocals.addPitched(62, 480, 720, "two");
-  vocals.addPercussion(960, 1080);
+  const song = new SongView(midi);
+  song.ensureMidiTrack("vocals");
+  const vocals = song.getVocalTrackView("VOCALS")!;
+  vocals.addNote("pitched", 0, 240, { pitch: 60, lyric: "one" });
+  vocals.addNote("pitched", 480, 720, { pitch: 62, lyric: "two" });
+  vocals.addNote("percussion", 960, 1080);
   return harness(midi);
 }
 
@@ -319,7 +321,7 @@ describe("piano-roll profiles", () => {
     const targetY = h.coordinates.getGridTop() + (84 - 62) * 18 + 5;
     h.editing.updateMove(new Vector2(xAt(480), targetY));
 
-    expect(track.getNotes()[0]).toMatchObject({ start: 0, note: 60 });
+    expect(track.getNotes()[0]).toMatchObject({ start: 0, pitch: 60 });
     const preview = h.context.getDisplayNotes!(h.notes())[0]!;
     expect(preview).toMatchObject({
       tick: 480,
@@ -329,7 +331,7 @@ describe("piano-roll profiles", () => {
 
     h.editing.finishGesture();
 
-    expect(track.getNotes()[0]).toMatchObject({ start: 480, note: 62 });
+    expect(track.getNotes()[0]).toMatchObject({ start: 480, pitch: 62 });
     expect(h.standalone.history.undoDepth).toBe(1);
     expect(h.standalone.history.isInTransaction).toBe(false);
   });
@@ -358,7 +360,7 @@ describe("piano-roll profiles", () => {
 
     h.session.pasteClipboard(480);
     expect(track.getNotes()).toMatchObject([
-      { note: 60, start: 480, end: 600, velocity: 90 },
+      { pitch: 60, start: 480, end: 600, velocity: 90 },
     ]);
     expect(h.selection.notes[0]?.midiNote?.noteOn).not.toBe(noteOn);
   });
@@ -507,7 +509,7 @@ describe("piano-roll profiles", () => {
       [VOCALS, 0],
     ] as const) {
       const midi = new Midi();
-      const track = new SongView(midi).getVocalTrackView()!.ensureTrack()!;
+      const track = new SongView(midi).ensureMidiTrack("vocals")!;
       const header = new HeaderController(
         {
           getState: () => ({ isPlaying: false }),
@@ -522,7 +524,7 @@ describe("piano-roll profiles", () => {
             }) => {
               if (command.type !== "ADD_SECTION") return { changed: false };
               track.addTextEvent(
-                MetaType.Marker,
+                MetaType.Text,
                 command.tick!,
                 `[section ${command.name}]`,
               );
@@ -540,7 +542,7 @@ describe("piano-roll profiles", () => {
       header.handleLeftClick(new Vector2(300, HeaderHeight - 4));
       const markers = track
         .getTextEvents()
-        .filter((event) => event.type === MetaType.Marker);
+        .filter((event) => event.type === MetaType.Text);
       expect(markers).toHaveLength(expected);
     }
   });
@@ -569,7 +571,7 @@ describe("vocal note editing", () => {
       [60, 0, 480],
     ]);
     expect(h.lyrics()).toEqual([[0, "la"]]);
-    expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+    expect(VocalTrackView.validateTrack(h.track(), VOCALS.vocal!)).toEqual([]);
   });
 
   it("cancels an empty lyric submission without changing MIDI or history", () => {
@@ -765,6 +767,6 @@ describe("vocal note editing", () => {
       [2400, "two"],
     ]);
     expect(h.notes().filter((n) => n.pitch === 90)).toHaveLength(2);
-    expect(validateVocalTrack(h.track(), VOCALS.vocal!)).toEqual([]);
+    expect(VocalTrackView.validateTrack(h.track(), VOCALS.vocal!)).toEqual([]);
   });
 });

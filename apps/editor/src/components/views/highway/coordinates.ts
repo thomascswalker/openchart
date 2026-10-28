@@ -1,20 +1,14 @@
 import { Vector2 } from "three";
 import * as THREE from "three";
 import type { HighwayContext } from "./context";
-import { laneCount, nearBoardZ } from "./constants";
-import { DrumLaneCount } from "./profile";
+import { nearBoardZ } from "./constants";
 import { BaseCoordinates } from "../shared/coordinates";
 
 type HighwayCoordinateContext = Pick<
   HighwayContext,
   "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
 > &
-  Partial<
-    Pick<
-      HighwayContext,
-      "getCurrentChart" | "getEditingSession" | "getScrollSpeedMultiplier"
-    >
-  >;
+  Partial<Pick<HighwayContext, "getCurrentChart" | "getScrollSpeedMultiplier">>;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
 export class HighwayCoordinateSystem extends BaseCoordinates {
@@ -100,16 +94,10 @@ export class HighwayCoordinateSystem extends BaseCoordinates {
     return -3 + ((lane + 0.5) * 6) / laneCount;
   }
 
+  /** Visual columns of the current chart; bar lanes span all of them. */
   public getPhysicalLaneCount(): number {
-    if (this.isDrumChart()) return DrumLaneCount;
-    return this.context.getCurrentChart?.()?.getLaneCount() ?? laneCount;
-  }
-
-  private isDrumChart(): boolean {
-    return (
-      this.context.getEditingSession?.()?.mode.id === "chart.drums" ||
-      this.context.getState().selectedInstrument === "DRUMS"
-    );
+    const columns = this.context.getCurrentChart?.()?.getColumns().length;
+    return columns !== undefined && columns > 0 ? columns : 1;
   }
 
   public getNoteZ(tick: number): number {

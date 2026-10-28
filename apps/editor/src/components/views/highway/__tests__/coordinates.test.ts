@@ -18,7 +18,11 @@ describe("HighwayCoordinateSystem", () => {
   };
   let cameraTick = 100;
   let scrollSpeedMultiplier = 1;
-  let currentChart: ChartView | null = null;
+  const chartWithColumns = (count: number) =>
+    ({
+      getColumns: () => Array.from({ length: count }),
+    }) as unknown as ChartView;
+  let currentChart: ChartView | null = chartWithColumns(5);
   const coordinates = new HighwayCoordinateSystem(
     {
       getCanvas: () => null,
@@ -39,18 +43,20 @@ describe("HighwayCoordinateSystem", () => {
 
   it("uses four centered physical lanes for drums", () => {
     state.selectedInstrument = "DRUMS";
+    currentChart = chartWithColumns(4);
     expect(coordinates.getPhysicalLaneCount()).toBe(4);
     expect([0, 1, 2, 3].map((lane) => coordinates.getLaneX(lane))).toEqual([
       -2.25, -0.75, 0.75, 2.25,
     ]);
     state.selectedInstrument = "LEAD GUITAR";
+    currentChart = chartWithColumns(5);
     expect(coordinates.getPhysicalLaneCount()).toBe(5);
   });
 
   it("uses the configured lane count for pad tracks", () => {
     currentChart = {
-      getLaneCount: () => 4,
-    } as ChartView;
+      getColumns: () => Array.from({ length: 4 }),
+    } as unknown as ChartView;
     state.selectedInstrument = "FOUR PAD";
     expect(coordinates.getPhysicalLaneCount()).toBe(4);
     expect([0, 1, 2, 3].map((lane) => coordinates.getLaneX(lane))).toEqual([
@@ -58,8 +64,8 @@ describe("HighwayCoordinateSystem", () => {
     ]);
 
     currentChart = {
-      getLaneCount: () => 5,
-    } as ChartView;
+      getColumns: () => Array.from({ length: 5 }),
+    } as unknown as ChartView;
     state.selectedInstrument = "FIVE PAD";
     expect(coordinates.getPhysicalLaneCount()).toBe(5);
     [0, 1, 2, 3, 4].forEach((lane, index) => {

@@ -1,7 +1,7 @@
-import type { TimedMidiEvent } from "@openchart/midi";
+import type { MidiEvent } from "@openchart/midi";
 
 export interface GuitarNoteLike {
-  note: number;
+  pitch: number;
   start: number;
   end: number;
 }
@@ -21,9 +21,7 @@ interface SysExEventLike {
   data: Uint8Array;
 }
 
-function isSysExEvent(
-  event: TimedMidiEvent,
-): event is TimedMidiEvent & SysExEventLike {
+function isSysExEvent(event: MidiEvent): event is MidiEvent & SysExEventLike {
   return (
     (event.status === 0xf0 || event.status === 0xf7) &&
     "data" in event &&
@@ -31,7 +29,7 @@ function isSysExEvent(
   );
 }
 
-function isTapSysEx(event: TimedMidiEvent): boolean {
+function isTapSysEx(event: MidiEvent): boolean {
   if (!isSysExEvent(event)) return false;
   const data = event.data;
   return data.some(
@@ -43,9 +41,7 @@ function isTapSysEx(event: TimedMidiEvent): boolean {
   );
 }
 
-export function getTapSysExRanges(
-  events: readonly TimedMidiEvent[],
-): TickRange[] {
+export function getTapSysExRanges(events: readonly MidiEvent[]): TickRange[] {
   const ranges: TickRange[] = [];
   let phraseStart: number | null = null;
   for (const event of events) {
@@ -61,6 +57,13 @@ export function getTapSysExRanges(
   return ranges;
 }
 
+export type AutoHopoExclusion = "sameLaneAsPrevious" | "chord";
+
+/**
+ * HOPO / tap styling for lane notes. Everything comes from the track's
+ * ruleset: marker pitches (by effect), the HOPO threshold (resolved to ticks,
+ * with its own inclusivity) and which cases still default to strum.
+ */
 export function getFiveFretNoteStyles<T extends GuitarNoteLike>(
   notes: readonly T[],
   trackNotes: readonly GuitarNoteLike[],
@@ -68,7 +71,12 @@ export function getFiveFretNoteStyles<T extends GuitarNoteLike>(
     forceHopoPitch?: number;
     forceStrumPitch?: number;
     tapMarkerPitches?: readonly number[];
-    ppqn: number;
+    /** Natural HOPO window in ticks; omitted = no natural HOPOs. */
+    hopoThresholdTicks?: number;
+    /** `<=` when true (the ruleset default for guitar), `<` otherwise. */
+    hopoInclusive?: boolean;
+    /** Cases where a note inside the window still defaults to strum. */
+    autoHopoExclusions?: readonly AutoHopoExclusion[];
     tapSysExRanges?: readonly TickRange[];
   },
 ): Map<T, GuitarNoteStyle> {
@@ -85,38 +93,44 @@ export function getFiveFretNoteStyles<T extends GuitarNoteLike>(
   for (const note of trackNotes) {
     if (
       options.forceHopoPitch !== undefined &&
-      note.note === options.forceHopoPitch
+      note.pitch === options.forceHopoPitch
     ) {
       forceHopoTicks.add(note.start);
     }
     if (
       options.forceStrumPitch !== undefined &&
-      note.note === options.forceStrumPitch
+      note.pitch === options.forceStrumPitch
     ) {
       forceStrumTicks.add(note.start);
     }
-    if (options.tapMarkerPitches?.includes(note.note)) {
+    if (options.tapMarkerPitches?.includes(note.pitch)) {
       tapRanges.push({ start: note.start, end: note.end });
     }
   }
+
+  const exclusions = new Set(options.autoHopoExclusions ?? []);
+  const threshold = options.hopoThresholdTicks;
+  const inclusive = options.hopoInclusive ?? false;
+  const withinThreshold = (gap: number): boolean =>
+    threshold !== undefined && (inclusive ? gap <= threshold : gap < threshold);
 
   const orderedGroups = [...notesByTick.entries()].sort(
     ([left], [right]) => left - right,
   );
   const styles = new Map<T, GuitarNoteStyle>();
-  const hopoThreshold = Math.floor(options.ppqn / 3) + 1;
   let previous: { tick: number; notes: T[] } | null = null;
   for (const [tick, group] of orderedGroups) {
     const forceHopo = forceHopoTicks.has(tick);
     const forceStrum = forceStrumTicks.has(tick);
     const naturalHopo =
       !forceStrum &&
-      group.length === 1 &&
       previous !== null &&
-      tick - previous.tick <= hopoThreshold &&
-      !previous.notes.some(
-        (previousNote) => previousNote.note === group[0].note,
-      );
+      withinThreshold(tick - previous.tick) &&
+      (!exclusions.has("chord") || group.length === 1) &&
+      (!exclusions.has("sameLaneAsPrevious") ||
+        !previous.notes.some((previousNote) =>
+          group.some((note) => note.pitch === previousNote.pitch),
+        ));
     for (const note of group) {
       styles.set(note, {
         hopo: forceHopo || naturalHopo,

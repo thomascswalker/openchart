@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { ChannelMessage, MetaType, Midi, MidiTrack } from "@openchart/midi";
+import {
+  ChannelMessage,
+  MetaType,
+  Midi,
+  MidiTrack,
+  sortEvents,
+  type MidiEvent,
+} from "@openchart/midi";
 import {
   addViewport,
   cameraTick,
@@ -13,50 +20,40 @@ function createDenseMidi(noteCount: number): Uint8Array {
   const midi = new Midi();
   const track = new MidiTrack("LEAD GUITAR");
   const trackName = track.addTextEvent(MetaType.TrackName, 0, "LEAD GUITAR");
-  const events: Array<{
-    tick: number;
-    order: number;
-    event: (typeof track.events)[number];
-  }> = [{ tick: 0, order: -1, event: trackName }];
+  const events: MidiEvent[] = [{ ...trackName, tick: 0, order: -1 }];
   for (let index = 0; index < noteCount; index += 1) {
     const tick = Math.floor(index / 10);
     const pitch = 96 + (index % 5);
     events.push(
       {
+        deltaTime: 0,
         tick,
         order: index * 2 + 1,
-        event: {
-          deltaTime: 0,
-          status: 0x90,
-          channel: 0,
-          messageType: ChannelMessage.NoteOn,
-          data1: pitch,
-          data2: 100,
-        },
+        status: 0x90,
+        channel: 0,
+        messageType: ChannelMessage.NoteOn,
+        data1: pitch,
+        data2: 100,
       },
       {
+        deltaTime: 0,
         tick: tick + 1,
         order: index * 2,
-        event: {
-          deltaTime: 0,
-          status: 0x80,
-          channel: 0,
-          messageType: ChannelMessage.NoteOff,
-          data1: pitch,
-          data2: 0,
-        },
+        status: 0x80,
+        channel: 0,
+        messageType: ChannelMessage.NoteOff,
+        data1: pitch,
+        data2: 0,
       },
     );
   }
-  events.sort(
-    (left, right) => left.tick - right.tick || left.order - right.order,
-  );
+  events.sort(sortEvents);
   let previousTick = 0;
-  track.events = events.map(({ tick, event }) => {
-    const deltaTime = tick - previousTick;
-    previousTick = tick;
-    return { ...event, deltaTime };
-  });
+  for (const event of events) {
+    event.deltaTime = event.tick - previousTick;
+    previousTick = event.tick;
+  }
+  track.events = events;
   midi.tracks = [track];
   return midi.toBuffer();
 }
@@ -121,7 +118,7 @@ test("highway drum batches render kick and cymbal notes", async ({ page }) => {
   ) as Record<string, number>;
   expect(renderCalls).toBeLessThan(100);
   expect(sceneObjects).toBeLessThan(500);
-  expect(instancedCounts.kick).toBeGreaterThan(0);
+  expect(instancedCounts.bar).toBeGreaterThan(0);
   expect(instancedCounts.cymbal).toBeGreaterThan(0);
 });
 

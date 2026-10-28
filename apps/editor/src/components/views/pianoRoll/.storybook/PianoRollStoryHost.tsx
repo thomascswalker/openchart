@@ -1,7 +1,7 @@
 import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
 import {
+  DefaultCompiledRuleset,
   Difficulty,
-  SongView,
   createStandaloneEditing,
   type VocalNoteKind,
 } from "@openchart/views";
@@ -95,8 +95,8 @@ function webGLAvailable(): boolean {
 /** Serializes a track's notes for the `data-note-data` test attribute. */
 function serializeNotes(notes: readonly MidiNote[]): string {
   return JSON.stringify(
-    notes.map(({ note, start, end, velocity }) => ({
-      pitch: note,
+    notes.map(({ pitch, start, end, velocity }) => ({
+      pitch,
       start,
       duration: end - start,
       velocity,
@@ -141,9 +141,9 @@ export function PianoRollStoryHost({
         `Piano Roll story track ${selectedTrackIndex} is missing`,
       );
     }
-    const descriptor = new SongView(midi)
-      .getTrackDescriptors()
-      .find((item) => item.name === track.name);
+    const descriptor = DefaultCompiledRuleset.descriptors().find(
+      (item) => item.name === track.name,
+    );
     return {
       trackKey: descriptor?.key ?? track.name,
       trackIndex: selectedTrackIndex,

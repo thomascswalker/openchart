@@ -1,16 +1,8 @@
 import { MetaType } from "@openchart/midi";
 import { z } from "zod";
 import type { ClipboardPayload } from "../clipboard.js";
-import {
-  classifyVocalPitch,
-  vocalKindNeedsLyric,
-  vocalLayoutFromConfig,
-  vocalLaneSpecsFromLayout,
-  vocalNotePitch,
-  vocalPhrasePitch,
-  type VocalLayout,
-} from "../../vocals.js";
-import { isVocalTrackConfig } from "../../config.js";
+import { VocalTrackView, type VocalLayout } from "../../views/vocal.js";
+import { phraseIcon, phraseLabel } from "../../ruleset/labels.js";
 import type { EntityId } from "../entityId.js";
 import type { EditCommand, RawCommand } from "../commands.js";
 import type {
@@ -26,7 +18,7 @@ import type { Rejection } from "../result.js";
 import {
   ownsNotes,
   rejected,
-  targetDescriptor,
+  targetRules,
   targetNotes,
   targetTrackIndex,
   validSpan,
@@ -83,7 +75,7 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
     id: "vocals",
     label: "Vocals",
     hostKinds: new Set(["piano-roll"]),
-    appliesTo: (track) => isVocalTrackConfig(track.config),
+    appliesTo: (track) => track.kind === "vocals",
     capabilities: {
       rawCommands: new Set(["DELETE_ENTITIES"]),
       domainCommands: domainCommandTypes,
@@ -91,31 +83,7 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
       canCreateTrack: true,
       requiresDifficulty: false,
     },
-    tools: [
-      ...(["pitched", "pitchless", "percussion"] as const).map((noteKind) => ({
-        id: `vocal-note-${noteKind}`,
-        label: noteKind,
-        icon: noteKind,
-        group: "placement",
-        stateKey: "noteKind",
-        value: noteKind,
-      })),
-      ...(
-        [
-          ["vocal", "Vocal phrase"],
-          ["power-window", "Power window"],
-          ["stagepower", "Stagepower phrase"],
-        ] as const
-      ).map(([phrase, label]) => ({
-        id: `vocal-phrase-${phrase}`,
-        label,
-        icon: phrase,
-        group: "vocal-tools",
-        stateKey: "phrase",
-        value: phrase,
-        toggle: { offValue: null },
-      })),
-    ],
+    createTools: (context) => createTools(context),
     toolStateSchema: ToolStateSchema,
     createDefaultToolState: () => ({ noteKind: "pitched", phrase: null }),
     createProjection: (context) => createVocalProjection(context),
@@ -124,6 +92,39 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
       expandVocalPaste(payload, anchorTick, context),
     expand: (command, context) => expandVocalCommand(command, context),
   };
+}
+
+const PHRASE_TOOLS = [
+  ["vocal", "lyricPhrase"],
+  ["power-window", "powerWindow"],
+  ["stagepower", "starPower"],
+] as const;
+
+function createTools(context: ModeContext) {
+  const layout = getLayout(context);
+  const phrasePitch = (phrase: "vocal" | "power-window" | "stagepower") =>
+    layout ? VocalTrackView.phrasePitch(layout, phrase) : -1;
+  return [
+    ...(["pitched", "pitchless", "percussion"] as const).map((noteKind) => ({
+      id: `vocal-note-${noteKind}`,
+      label: noteKind,
+      icon: noteKind,
+      group: "placement",
+      stateKey: "noteKind",
+      value: noteKind,
+    })),
+    ...PHRASE_TOOLS.filter(([phrase]) => phrasePitch(phrase) >= 0).map(
+      ([phrase, effect]) => ({
+        id: `vocal-phrase-${phrase}`,
+        label: `${phraseLabel(effect)} phrase`,
+        icon: phrase === "stagepower" ? phraseIcon(effect) : phrase,
+        group: "vocal-tools",
+        stateKey: "phrase",
+        value: phrase,
+        toggle: { offValue: null as null },
+      }),
+    ),
+  ];
 }
 
 function expandVocalPaste(
@@ -158,7 +159,7 @@ function expandVocalPaste(
     const sameMode = payload.sourceModeId === "vocals";
     const vocalClassification = sameMode
       ? null
-      : classifyVocalPitch(layout, entity.pitch);
+      : VocalTrackView.classifyPitch(layout, entity.pitch);
     if (vocalClassification?.type === "unknown") {
       rejections.push({
         code: "invalid-vocal-note",
@@ -223,7 +224,7 @@ function expandVocalPaste(
 function createVocalProjection(context: ModeContext): Projection {
   const layout = getLayout(context);
   if (!layout) return emptyProjection();
-  const lanes = vocalLaneSpecsFromLayout(layout);
+  const lanes = VocalTrackView.laneSpecs(layout);
   const rows: ProjectionRow[] = [
     ...Array.from(
       { length: layout.range.high - layout.range.low + 1 },
@@ -244,7 +245,7 @@ function createVocalProjection(context: ModeContext): Projection {
   return {
     getRows: () => rows,
     rowForNote: (note) => {
-      const classification = classifyVocalPitch(layout, note.pitch);
+      const classification = VocalTrackView.classifyPitch(layout, note.pitch);
       if (classification.type === "note" && classification.kind === "pitched") {
         return rows[note.pitch - layout.range.low] ?? null;
       }
@@ -268,7 +269,8 @@ function createVocalProjection(context: ModeContext): Projection {
 
 function classifyVocalNote(note: NoteSnapshot, context: ModeContext) {
   const layout = getLayout(context);
-  const classification = layout && classifyVocalPitch(layout, note.pitch);
+  const classification =
+    layout && VocalTrackView.classifyPitch(layout, note.pitch);
   if (!classification || classification.type === "unknown") {
     return {
       kind: "note" as const,
@@ -302,10 +304,10 @@ function expandVocalCommand(
     const deleteIds = new Set(command.targetIds);
     const lyricMap = pairedLyrics(context, layout);
     for (const note of owned.notes) {
-      const classification = classifyVocalPitch(layout, note.pitch);
+      const classification = VocalTrackView.classifyPitch(layout, note.pitch);
       if (
         classification.type !== "note" ||
-        !vocalKindNeedsLyric(classification.kind)
+        !VocalTrackView.kindNeedsLyric(classification.kind)
       ) {
         continue;
       }
@@ -331,7 +333,11 @@ function expandVocalCommand(
       ) {
         return rejected(command, "invalid-span", "Vocal note span is invalid");
       }
-      const pitch = vocalNotePitch(layout, parsed.data.kind, parsed.data.pitch);
+      const pitch = VocalTrackView.notePitch(
+        layout,
+        parsed.data.kind,
+        parsed.data.pitch,
+      );
       if (pitch === null) {
         return rejected(
           command,
@@ -352,7 +358,10 @@ function expandVocalCommand(
           ],
         },
       ];
-      if (vocalKindNeedsLyric(parsed.data.kind) && parsed.data.lyric?.trim()) {
+      if (
+        VocalTrackView.kindNeedsLyric(parsed.data.kind) &&
+        parsed.data.lyric?.trim()
+      ) {
         commands.push({
           type: "ADD_TEXT",
           trackIndex,
@@ -376,10 +385,10 @@ function expandVocalCommand(
       if (owned.rejection)
         return { commands: [], rejections: [owned.rejection] };
       const note = owned.notes[0]!;
-      const classification = classifyVocalPitch(layout, note.pitch);
+      const classification = VocalTrackView.classifyPitch(layout, note.pitch);
       if (
         classification.type !== "note" ||
-        !vocalKindNeedsLyric(classification.kind)
+        !VocalTrackView.kindNeedsLyric(classification.kind)
       ) {
         return rejected(
           command,
@@ -413,7 +422,8 @@ function expandVocalCommand(
         return { commands: [], rejections: [owned.rejection] };
       if (
         owned.notes.some(
-          (note) => classifyVocalPitch(layout, note.pitch).type === "unknown",
+          (note) =>
+            VocalTrackView.classifyPitch(layout, note.pitch).type === "unknown",
         )
       ) {
         return rejected(
@@ -422,89 +432,76 @@ function expandVocalCommand(
           "Unknown vocal entities cannot be moved",
         );
       }
-      const movingIds = new Set(owned.notes.map((note) => note.id));
-      const requestedDelta = parsed.data.tickDelta;
-      const phraseTargets = owned.notes.filter(
-        (note) => classifyVocalPitch(layout, note.pitch).type === "phrase",
-      );
-      const requestedFits = phraseTargets.every((note) =>
-        phraseMoveFits(note, requestedDelta, movingIds, context, layout),
-      );
-      const appliedDelta = requestedFits
-        ? requestedDelta
-        : parsed.data.previousValidTickDelta;
-      if (
-        !requestedFits &&
-        !phraseTargets.every((note) =>
-          phraseMoveFits(note, appliedDelta, movingIds, context, layout),
-        )
-      ) {
-        return rejected(
-          command,
-          "phrase-overlap",
-          "No valid previous phrase offset is available",
-        );
-      }
       const lyricMap = pairedLyrics(context, layout);
-      const patches = owned.notes.map((note) => {
-        const classification = classifyVocalPitch(layout, note.pitch);
-        const tick = Math.max(0, note.tick + appliedDelta);
-        if (!Number.isSafeInteger(tick)) {
-          return { notePatch: null, lyricPatch: null };
-        }
-        const patch: {
-          id: EntityId;
-          tick: number;
-          pitch?: number;
-        } = { id: note.id, tick };
-        if (
-          classification.type === "note" &&
-          classification.kind === "pitched"
-        ) {
-          patch.pitch = Math.max(
-            layout.range.low,
-            Math.min(layout.range.high, note.pitch + parsed.data.pitchDelta),
+      const build = (delta: number): RawCommand[] | null => {
+        const patches: {
+          note: { id: EntityId; tick: number; pitch?: number };
+          lyric: { id: EntityId; tick: number } | null;
+        }[] = [];
+        for (const note of owned.notes) {
+          const classification = VocalTrackView.classifyPitch(
+            layout,
+            note.pitch,
           );
+          const tick = Math.max(0, note.tick + delta);
+          if (!Number.isSafeInteger(tick)) return null;
+          const patch: { id: EntityId; tick: number; pitch?: number } = {
+            id: note.id,
+            tick,
+          };
+          if (
+            classification.type === "note" &&
+            classification.kind === "pitched"
+          ) {
+            patch.pitch = Math.max(
+              layout.range.low,
+              Math.min(layout.range.high, note.pitch + parsed.data.pitchDelta),
+            );
+          }
+          const lyric = lyricMap.get(note.id);
+          patches.push({
+            note: patch,
+            lyric: lyric ? { id: lyric.id, tick } : null,
+          });
         }
-        const lyric = lyricMap.get(note.id);
-        if (lyric) {
-          return { notePatch: patch, lyricPatch: { id: lyric.id, tick } };
+        const commands: RawCommand[] = [
+          { type: "UPDATE_NOTES", patches: patches.map((entry) => entry.note) },
+        ];
+        for (const entry of patches) {
+          if (entry.lyric) {
+            commands.push({
+              type: "UPDATE_TEXT",
+              id: entry.lyric.id,
+              tick: entry.lyric.tick,
+            });
+          }
         }
-        return { notePatch: patch, lyricPatch: null };
-      });
-      if (patches.some((entry) => entry.notePatch === null)) {
+        return commands;
+      };
+      const hasErrors = (commands: RawCommand[]) =>
+        context.validate(commands).some((v) => v.severity === "error");
+
+      const requested = build(parsed.data.tickDelta);
+      if (requested === null) {
         return rejected(
           command,
           "invalid-tick",
           "Moved vocal tick is outside the safe integer range",
         );
       }
-      const commands: RawCommand[] = [
-        {
-          type: "UPDATE_NOTES",
-          patches: patches.flatMap((entry) =>
-            entry.notePatch ? [entry.notePatch] : [],
-          ),
-        },
-      ];
-      const lyricPatches = patches.flatMap((entry) =>
-        entry.lyricPatch ? [entry.lyricPatch] : [],
-      );
-      if (lyricPatches.length > 0) {
-        commands.push({
-          type: "UPDATE_TEXT",
-          id: lyricPatches[0]!.id,
-          tick: lyricPatches[0]!.tick,
-        });
-        for (const lyric of lyricPatches.slice(1)) {
-          commands.push({
-            type: "UPDATE_TEXT",
-            id: lyric.id,
-            tick: lyric.tick,
-          });
+      // When the requested offset breaks a rule (e.g. a phrase would overlap
+      // another), fall back to the last offset the drag found valid. If that
+      // is invalid too, return the request and let the session report why.
+      if (
+        hasErrors(requested) &&
+        parsed.data.previousValidTickDelta !== parsed.data.tickDelta
+      ) {
+        const previous = build(parsed.data.previousValidTickDelta);
+        if (previous !== null && !hasErrors(previous)) {
+          return { commands: previous, rejections: [] };
         }
       }
-      return { commands, rejections: [] };
+      return { commands: requested, rejections: [] };
     }
     case "RESIZE_VOCAL_ENTITIES": {
       const parsed = ResizeSchema.safeParse(command);
@@ -514,7 +511,6 @@ function expandVocalCommand(
       const owned = ownsNotes(parsed.data.targetIds, context, command);
       if (owned.rejection)
         return { commands: [], rejections: [owned.rejection] };
-      const movingIds = new Set(owned.notes.map((note) => note.id));
       const patches = owned.notes.map((note) => ({
         id: note.id,
         duration: Math.max(1, note.duration + parsed.data.durationDelta),
@@ -529,15 +525,6 @@ function expandVocalCommand(
             command,
             "invalid-range",
             `Resized vocal entity '${note.id}' is outside the safe tick range`,
-          );
-        }
-        if (classifyVocalPitch(layout, note.pitch).type !== "phrase") continue;
-        const end = note.tick + duration;
-        if (phraseOverlaps(note, note.tick, end, movingIds, context, layout)) {
-          return rejected(
-            command,
-            "phrase-overlap",
-            "Vocal phrase resize would overlap another phrase",
           );
         }
       }
@@ -558,18 +545,12 @@ function expandVocalCommand(
           "Vocal phrase span is invalid",
         );
       }
-      const pitch = vocalPhrasePitch(layout, parsed.data.phraseKind);
-      const overlaps = targetNotes(context).some(
-        (note) =>
-          note.pitch === pitch &&
-          note.tick < parsed.data.endTick &&
-          parsed.data.startTick < note.tick + note.duration,
-      );
-      if (overlaps) {
+      const pitch = VocalTrackView.phrasePitch(layout, parsed.data.phraseKind);
+      if (pitch < 0) {
         return rejected(
           command,
-          "phrase-overlap",
-          "Vocal phrase overlaps an existing phrase",
+          "missing-config-note",
+          "This phrase kind is not defined by the ruleset",
         );
       }
       return {
@@ -598,43 +579,6 @@ function expandVocalCommand(
   }
 }
 
-function phraseMoveFits(
-  note: NoteSnapshot,
-  tickDelta: number,
-  movingIds: ReadonlySet<EntityId>,
-  context: ModeContext,
-  layout: VocalLayout,
-): boolean {
-  const start = Math.max(0, note.tick + tickDelta);
-  return !phraseOverlaps(
-    note,
-    start,
-    start + note.duration,
-    movingIds,
-    context,
-    layout,
-  );
-}
-
-function phraseOverlaps(
-  note: NoteSnapshot,
-  start: number,
-  end: number,
-  ignoredIds: ReadonlySet<EntityId>,
-  context: ModeContext,
-  layout: VocalLayout,
-): boolean {
-  return context.reader
-    .getNotes(note.trackIndex, { low: note.pitch, high: note.pitch + 1 })
-    .some(
-      (other) =>
-        !ignoredIds.has(other.id) &&
-        classifyVocalPitch(layout, other.pitch).type === "phrase" &&
-        other.tick < end &&
-        start < other.tick + other.duration,
-    );
-}
-
 function pairedLyrics(
   context: ModeContext,
   layout: VocalLayout,
@@ -653,10 +597,10 @@ function pairedLyrics(
   }
   const result = new Map<EntityId, { id: EntityId; text: string }>();
   for (const note of targetNotes(context)) {
-    const classification = classifyVocalPitch(layout, note.pitch);
+    const classification = VocalTrackView.classifyPitch(layout, note.pitch);
     if (
       classification.type !== "note" ||
-      !vocalKindNeedsLyric(classification.kind)
+      !VocalTrackView.kindNeedsLyric(classification.kind)
     ) {
       continue;
     }
@@ -667,9 +611,9 @@ function pairedLyrics(
 }
 
 function getLayout(context: ModeContext): VocalLayout | null {
-  const descriptor = targetDescriptor(context);
-  return descriptor && isVocalTrackConfig(descriptor.config)
-    ? vocalLayoutFromConfig(descriptor.config)
+  const rules = targetRules(context);
+  return rules && rules.kind === "vocals"
+    ? VocalTrackView.layoutFromRules(rules)
     : null;
 }
 

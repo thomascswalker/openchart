@@ -1,16 +1,21 @@
-import { EditingModeRegistry, createRawMidiMode } from "@openchart/views";
+import {
+  ChartDocument,
+  DefaultCompiledRuleset,
+  createEditingSession,
+  createRawMidiMode,
+} from "@openchart/views";
+import { Midi } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createModeToolbarGroups } from "./definitions";
 
 describe("mode-driven toolbar definitions", () => {
   it("keeps built-in mode groups and generates controls for an extension mode", () => {
-    const registry = new EditingModeRegistry();
     const extension = {
       ...createRawMidiMode(),
       id: "test.extension",
       label: "Extension",
-      tools: [
+      createTools: () => [
         {
           id: "paint",
           label: "Paint",
@@ -24,11 +29,23 @@ describe("mode-driven toolbar definitions", () => {
       toolStateSchema: z.object({ enabled: z.boolean() }),
       createDefaultToolState: () => ({ enabled: false }),
     };
-    registry.register(extension);
-
-    const mode = registry.getById("test.extension");
-    expect(mode).not.toBeNull();
-    const groups = createModeToolbarGroups(mode!);
+    const midi = new Midi();
+    const track = midi.tracks[midi.addTrack()]!;
+    track.name = "LEAD GUITAR";
+    const session = createEditingSession({
+      document: new ChartDocument(midi),
+      mode: extension,
+      target: { trackKey: "lead-guitar", trackIndex: 0, difficulty: null },
+      hostKind: "test-view",
+      rules: DefaultCompiledRuleset,
+      transaction: {
+        begin() {},
+        record() {},
+        end() {},
+        rollback: () => false,
+      },
+    });
+    const groups = createModeToolbarGroups(session);
     expect(groups.map((group) => group.id)).toEqual(["extension-tools"]);
     const tool = groups[0]!.items[0]!;
     expect(tool.id).toBe("paint");
@@ -52,7 +69,7 @@ describe("mode-driven toolbar definitions", () => {
             camera: { tick: 0 },
             tools: {},
           },
-          mode: mode!,
+          mode: session.mode,
           toolState: { enabled: false },
           snapEnabled: true,
           snapDenominator: 4,

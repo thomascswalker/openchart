@@ -4,7 +4,7 @@ import { EditorStateService } from "../../services/editor/state";
 import { DocumentService } from "../../services/document";
 import { MixerService } from "../../services/mixer";
 import {
-  MetadataSchema,
+  normalizeLegacyMetadata,
   type MetadataValidationError,
 } from "../../services/document/schema";
 
@@ -18,7 +18,9 @@ export class ApplyProjectMetadataAction extends Action<
     forceReload = false,
   ): Promise<readonly MetadataValidationError[]> {
     const document = accessor.get<DocumentService>("document");
-    const result = MetadataSchema.safeParse(metadata);
+    const result = document.metadataSchema.safeParse(
+      normalizeLegacyMetadata(metadata),
+    );
     if (result.success) {
       const mixer = accessor.get<MixerService>("mixer");
       const projectRoot = document.snapshot.directoryHandle;

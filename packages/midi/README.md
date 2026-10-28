@@ -71,6 +71,24 @@ if (note) {
 }
 ```
 
+## Event timing
+
+Every event has an absolute `tick` and an `order` (its index in
+`track.events`). `MidiTrack` keeps both current, so read them straight off the
+event — there is no need to sum `deltaTime` values yourself:
+
+```ts
+for (const event of track.getTempoEvents()) {
+  console.log(event.tick, event.microsecondsPerQuarterNote);
+}
+```
+
+Treat `tick` and `order` as read-only. Change an event's timing through
+`MidiTrack` methods (`moveEvent`, `updateNote`, `insertEventsAt`, ...). To
+replace a track's events, assign a new array (`track.events = [...]`); `tick`
+and `order` are then recomputed from each event's `deltaTime`. Pushing to or
+splicing `track.events` directly leaves timing stale.
+
 ## Set tempo and time signature
 
 Tempo is stored as microseconds per quarter note. The MIDI time-signature

@@ -5,7 +5,7 @@ import { createHighwayTestSetup } from "./testUtils";
 describe("Highway session selection", () => {
   it("keeps entity selection stable across undo and redo", () => {
     const setup = createHighwayTestSetup();
-    const note = setup.midiTrack.addNoteAt({
+    const note = setup.midiTrack.insertNote({
       pitch: setup.chart.getOffset(),
       tick: 480,
       duration: 120,

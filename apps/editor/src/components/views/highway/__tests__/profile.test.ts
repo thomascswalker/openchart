@@ -1,46 +1,34 @@
+import { Midi } from "@openchart/midi";
+import {
+  DefaultCompiledRuleset,
+  Difficulty,
+  SongView,
+  classifyPitch,
+} from "@openchart/views";
 import { describe, expect, it } from "vitest";
-import { getDrumNoteProfile, getDrumPitchForPlacement } from "../profile";
 
-describe("drum note profile", () => {
-  it.each([60, 72, 84, 96])("maps all slots at offset %i", (offset) => {
-    expect(
-      Array.from({ length: 9 }, (_, slot) =>
-        getDrumNoteProfile(offset + slot, offset),
-      ),
-    ).toEqual([
-      { kind: "kick", lane: null, slot: 0 },
-      { kind: "pad", lane: 0, slot: 1 },
-      { kind: "pad", lane: 1, slot: 2 },
-      { kind: "pad", lane: 2, slot: 3 },
-      { kind: "pad", lane: 3, slot: 4 },
-      { kind: "cymbal", lane: 1, slot: 5 },
-      { kind: "cymbal", lane: 2, slot: 6 },
-      { kind: "cymbal", lane: 3, slot: 7 },
-      { kind: "marker", lane: null, slot: 8 },
-    ]);
-  });
+describe("ruleset-driven drum lanes", () => {
+  it("classifies configured drum pitches using lane and pad rules", () => {
+    const track = DefaultCompiledRuleset.byKey.get("drums");
+    expect(track?.kind).toBe("drums");
+    if (!track) throw new Error("Default ruleset is missing drums");
 
-  it("includes Expert Kick2 without changing its source pitch", () => {
-    expect(getDrumNoteProfile(95, 96)).toEqual({
-      kind: "kick",
-      lane: null,
-      slot: -1,
-    });
-    expect(getDrumNoteProfile(95, 84)).toBeNull();
-  });
+    const song = new SongView(new Midi());
+    const chart = song
+      .getInstrumentTrackView("drums")
+      ?.getChart(Difficulty.Expert);
+    if (!chart) throw new Error("Default ruleset is missing Expert drums");
 
-  it("rejects unsupported slots and invalid placement lanes", () => {
-    expect(getDrumNoteProfile(59, 60)).toBeNull();
-    expect(getDrumNoteProfile(69, 60)).toBeNull();
-    expect(getDrumPitchForPlacement("kick", 4, 96)).toBeNull();
-    expect(getDrumPitchForPlacement("pad", 4, 96)).toBeNull();
-    expect(getDrumPitchForPlacement("cymbal", 0, 96)).toBeNull();
-  });
-
-  it("writes the selected drum kind at its valid physical lane", () => {
-    expect(getDrumPitchForPlacement("kick", 3, 96)).toBe(96);
-    expect(getDrumPitchForPlacement("pad", 3, 96)).toBe(100);
-    expect(getDrumPitchForPlacement("cymbal", 1, 96)).toBe(101);
-    expect(getDrumPitchForPlacement("cymbal", 3, 96)).toBe(103);
+    expect(track.bars.map(({ id }) => id)).toContain("kick");
+    expect(track.columns).toHaveLength(4);
+    for (const note of chart.getChartRules().notes.values()) {
+      if (!note.laneAvailable) continue;
+      expect(classifyPitch(track, note.pitch, Difficulty.Expert)).toMatchObject(
+        {
+          kind: "laneNote",
+          laneId: note.laneId,
+        },
+      );
+    }
   });
 });

@@ -1,10 +1,9 @@
-import { SongView } from "@openchart/views";
 import { useDocument } from "../../../hooks/useDocument";
+import { useRuleset } from "../../../hooks/useRuleset";
 import { runActionAsync } from "../../../actions/execute";
 import type { ViewportSession } from "../../../services/editor/viewports";
 import { Box, Button, Text } from "../../shared";
 import styles from "./TrackList.module.css";
-import { useMemo } from "react";
 import type { MidiTrack } from "@openchart/midi";
 
 interface TrackListProps {
@@ -13,14 +12,15 @@ interface TrackListProps {
 
 export function TrackList({ session }: TrackListProps) {
   const { midi } = useDocument();
-  const view = useMemo(() => (midi ? new SongView(midi) : null), [midi]);
-  if (!midi || !view) {
+  const { compiled } = useRuleset();
+  if (!midi) {
     return <Text>No MIDI data</Text>;
   }
 
+  // Only tracks the active ruleset describes (and shows) are listed.
   const getTrackKey = (track: MidiTrack) => {
-    const desc = view.getTrackDescriptors();
-    return desc.find((d) => d.name === track.name)?.key;
+    const rules = compiled.byName.get(track.name);
+    return rules?.visible ? rules.key : undefined;
   };
 
   return (

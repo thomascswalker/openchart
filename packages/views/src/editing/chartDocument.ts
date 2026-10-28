@@ -6,12 +6,12 @@ import {
   type MidiNote,
   type MidiTrack,
 } from "@openchart/midi";
-import { SongView } from "../chartView.js";
+import { SongView } from "../views/song.js";
 import {
-  defaultConfig,
-  type SongViewConfig,
+  DefaultCompiledRuleset,
+  type CompiledRuleset,
   type TrackDescriptor,
-} from "../config.js";
+} from "../ruleset/compile.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 import {
   formatNoteId,
@@ -34,13 +34,21 @@ export type { NoteSnapshot } from "./reader.js";
 export class ChartDocument implements ChartDocumentReader {
   private readonly midi: Midi;
   private readonly trackDescriptors: readonly TrackDescriptor[];
-  private readonly config: SongViewConfig;
+  private readonly rules: CompiledRuleset;
 
   /** Creates a reader and command executor for a mutable MIDI document. */
-  public constructor(midi: Midi, config: SongViewConfig = defaultConfig) {
+  public constructor(
+    midi: Midi,
+    rules: CompiledRuleset = DefaultCompiledRuleset,
+  ) {
     this.midi = midi;
-    this.config = config;
-    this.trackDescriptors = new SongView(midi, config).getTrackDescriptors();
+    this.rules = rules;
+    this.trackDescriptors = rules.descriptors();
+  }
+
+  /** The compiled ruleset this document was built with. */
+  public getRules(): CompiledRuleset {
+    return this.rules;
   }
 
   /** Returns the stable ID for a note on the given track. */
@@ -79,9 +87,7 @@ export class ChartDocument implements ChartDocumentReader {
 
   /** Materializes a configured target track and returns its current index. */
   public ensureTrack(trackKey: string): number | null {
-    const track = new SongView(this.midi, this.config).ensureMidiTrack(
-      trackKey,
-    );
+    const track = new SongView(this.midi, this.rules).ensureMidiTrack(trackKey);
     if (!track) return null;
     const index = this.midi.tracks.indexOf(track);
     return index >= 0 ? index : null;
@@ -119,11 +125,8 @@ export class ChartDocument implements ChartDocumentReader {
   ): readonly { id: EntityId; tick: number; text: string; metaType: number }[] {
     const track = this.midi.tracks[trackIndex];
     if (!track) return [];
-    return track.getTimedEvents().flatMap((timed) => {
-      const source =
-        timed.order === undefined ? undefined : track.events[timed.order];
+    return track.events.flatMap((source) => {
       if (
-        !source ||
         source.status !== 0xff ||
         !("type" in source) ||
         !("text" in source) ||
@@ -134,7 +137,7 @@ export class ChartDocument implements ChartDocumentReader {
       return [
         {
           id: formatTextId(trackIndex, track.getEventId(source)),
-          tick: timed.tick,
+          tick: source.tick,
           text: source.text,
           metaType: source.type,
         },
@@ -188,6 +191,7 @@ export class ChartDocument implements ChartDocumentReader {
       updatedIds: [...updatedIds],
       removedIds: [...removedIds],
       rejections: [],
+      diagnostics: [],
     };
   }
 
@@ -391,7 +395,7 @@ export class ChartDocument implements ChartDocumentReader {
     switch (command.type) {
       case "ADD_NOTES": {
         const createdIds = command.notes.map((spec) => {
-          const note = this.getTrack(spec.trackIndex).addNoteAt(spec);
+          const note = this.getTrack(spec.trackIndex).insertNote(spec);
           return formatNoteId(
             spec.trackIndex,
             this.getTrack(spec.trackIndex).getEventId(note.noteOn),
@@ -410,11 +414,11 @@ export class ChartDocument implements ChartDocumentReader {
           const duration =
             patch.duration ?? target.note.end - target.note.start;
           const start = patch.tick ?? target.note.start;
-          const pitch = patch.pitch ?? target.note.note;
+          const pitch = patch.pitch ?? target.note.pitch;
           const velocity = patch.velocity ?? target.note.velocity;
           if (
             start === target.note.start &&
-            pitch === target.note.note &&
+            pitch === target.note.pitch &&
             duration === target.note.end - target.note.start &&
             velocity === target.note.velocity
           ) {
@@ -441,9 +445,9 @@ export class ChartDocument implements ChartDocumentReader {
           const start = Math.max(0, target.note.start + command.tickDelta);
           const pitch = Math.max(
             0,
-            Math.min(127, target.note.note + command.pitchDelta),
+            Math.min(127, target.note.pitch + command.pitchDelta),
           );
-          if (start === target.note.start && pitch === target.note.note)
+          if (start === target.note.start && pitch === target.note.pitch)
             continue;
           target.track.updateNote(target.note, {
             start,
@@ -515,11 +519,7 @@ export class ChartDocument implements ChartDocumentReader {
           command.tick,
           command.text,
         );
-        const source =
-          text.order === undefined ? undefined : track.events[text.order];
-        if (!source)
-          throw new Error("Inserted text event is missing from its track");
-        const id = formatTextId(command.trackIndex, track.getEventId(source));
+        const id = formatTextId(command.trackIndex, track.getEventId(text));
         return { ...emptyEditResult(), changed: true, createdIds: [id] };
       }
       case "UPDATE_TEXT": {
@@ -529,10 +529,7 @@ export class ChartDocument implements ChartDocumentReader {
         if (event.status !== 0xff || !("text" in event)) {
           throw new Error("Validated text event changed before execution");
         }
-        const index = track.events.indexOf(event);
-        const currentTick = track
-          .getTimedEvents()
-          .find((timed) => timed.order === index)?.tick;
+        const currentTick = event.tick;
         const textChanged =
           command.text !== undefined && command.text !== event.text;
         const tickChanged =
@@ -583,6 +580,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds: [],
           removedIds: removedId ? [removedId] : [],
           rejections: [],
+          diagnostics: [],
         };
       }
       case "REMOVE_TEMPO":
@@ -623,6 +621,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds: [],
           removedIds: removedId ? [removedId] : [],
           rejections: [],
+          diagnostics: [],
         };
       }
       case "REMOVE_TIME_SIGNATURE":
@@ -643,7 +642,7 @@ export class ChartDocument implements ChartDocumentReader {
       id: formatNoteId(trackIndex, eventId),
       trackIndex,
       tick: note.start,
-      pitch: note.note,
+      pitch: note.pitch,
       duration: note.end - note.start,
       velocity: note.velocity,
     };
@@ -786,13 +785,13 @@ export class ChartDocument implements ChartDocumentReader {
   ): MidiEvent | undefined {
     const track = this.midi.tracks[0];
     if (!track) return undefined;
-    const matching = track.getTimedEvents().flatMap((timed) => {
-      if (timed.tick !== tick || timed.order === undefined) return [];
-      const event = track.events[timed.order];
-      return event?.status === 0xff && "type" in event && event.type === type
-        ? [event]
-        : [];
-    });
+    const matching = track.events.filter(
+      (event) =>
+        event.tick === tick &&
+        event.status === 0xff &&
+        "type" in event &&
+        event.type === type,
+    );
     return position === "first" ? matching[0] : matching[matching.length - 1];
   }
 
@@ -820,6 +819,7 @@ export class ChartDocument implements ChartDocumentReader {
       updatedIds: [],
       removedIds: removed ? [id] : [],
       rejections: [],
+      diagnostics: [],
     };
   }
 

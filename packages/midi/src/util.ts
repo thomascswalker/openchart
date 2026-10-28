@@ -1,6 +1,9 @@
 import { TempoEvent } from "./types.js";
 import { startCase } from "es-toolkit";
 
+/** The fields of a tempo change that time conversion needs. */
+type TempoChange = Pick<TempoEvent, "tick" | "microsecondsPerQuarterNote">;
+
 /**
  * Determines the length of a MIDI message based on its status byte.
  * @param status The status byte of the MIDI message
@@ -68,13 +71,13 @@ export function getStatusString(status: number): string {
  *
  * @param tick The absolute MIDI tick to convert
  * @param ppqn Pulses (ticks) per quarter note
- * @param tempoEvents Array of tempo events affecting the timing
+ * @param tempoEvents Tempo events affecting the timing, sorted by tick
  * @returns The corresponding time in milliseconds
  */
 export function ticksToMs(
   tick: number,
   ppqn: number,
-  tempoEvents: TempoEvent[],
+  tempoEvents: readonly TempoChange[],
 ): number {
   let ms = 0;
   let previousTick = 0;
@@ -109,13 +112,13 @@ export function ticksToMs(
  *
  * @param ms The time in milliseconds to convert
  * @param ppqn Pulses (ticks) per quarter note
- * @param tempoEvents Array of tempo events affecting the timing
+ * @param tempoEvents Tempo events affecting the timing, sorted by tick
  * @returns The corresponding absolute MIDI tick
  */
 export function msToTicks(
   ms: number,
   ppqn: number,
-  tempoEvents: TempoEvent[],
+  tempoEvents: readonly TempoChange[],
 ): number {
   let remainingMs = ms;
   let previousTick = 0;
