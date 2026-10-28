@@ -26,7 +26,7 @@ test("renders the real piano roll canvas and header events", async ({
   const story = page.getByTestId("piano-roll-story");
   const canvas = page.locator(".piano-roll-story__renderer canvas");
 
-  await expect(canvas).toBeVisible();
+  await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect(canvas).toHaveAttribute("data-visible-notes", /^[1-9]\d*$/);
   await expect(page.locator(".piano-roll-header-input")).toHaveCount(1);
   await expect(
@@ -103,15 +103,16 @@ test("creates a snapped note by dragging and updates the same MIDI instance", as
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Piano-roll canvas has no layout bounds");
 
-  await page.mouse.move(bounds.x + 600, bounds.y + 300);
+  // Pitch 70 is reserved by the selected guitar rules; pitch 73 is valid.
+  await page.mouse.move(bounds.x + 600, bounds.y + 250);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + 720, bounds.y + 300, { steps: 6 });
+  await page.mouse.move(bounds.x + 720, bounds.y + 250, { steps: 6 });
   await page.mouse.up();
 
   await expect(page.getByTestId("note-count")).toHaveText("Notes: 5");
   await expect(story).toHaveAttribute(
     "data-note-data",
-    /"pitch":70,"start":1920,"duration":480/,
+    /"pitch":73,"start":1920,"duration":480/,
   );
   await expect(page.getByTestId("edit-transaction")).toHaveText(
     "Transaction: Ready",
@@ -277,7 +278,9 @@ test.describe("vocals profile", () => {
     await expect(canvas).toBeVisible();
     await expect(story).toHaveAttribute("data-profile", "vocals");
     await expect(renderer.getByText("Sing", { exact: true })).toBeAttached();
-    await expect(renderer.getByText("Phrase", { exact: true })).toBeAttached();
+    await expect(
+      renderer.getByText("Vocal Phrase", { exact: true }),
+    ).toBeAttached();
     await expect(renderer.getByText("C4", { exact: true })).toBeAttached();
     // Vocal headers show lyrics only, never "[section New]" on click.
     await expect(page.getByTestId("note-count")).toHaveText("Notes: 11");

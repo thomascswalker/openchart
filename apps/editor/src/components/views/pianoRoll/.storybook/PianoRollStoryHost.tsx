@@ -95,8 +95,8 @@ function webGLAvailable(): boolean {
 /** Serializes a track's notes for the `data-note-data` test attribute. */
 function serializeNotes(notes: readonly MidiNote[]): string {
   return JSON.stringify(
-    notes.map(({ note, start, end, velocity }) => ({
-      pitch: note,
+    notes.map(({ pitch, start, end, velocity }) => ({
+      pitch,
       start,
       duration: end - start,
       velocity,
