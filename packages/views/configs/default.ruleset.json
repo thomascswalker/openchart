@@ -1,0 +1,1415 @@
+{
+  "$schema": "./schema.json",
+  "schemaVersion": "2.0.0",
+  "profile": {
+    "id": "default",
+    "name": "Default",
+    "targetGame": "Any",
+    "specVersion": "25_11_06_01",
+    "description": "Default chart format."
+  },
+  "detection": {
+    "requiredTracks": ["CHART HEADER"]
+  },
+  "midi": {
+    "fileFormat": 1,
+    "timeDivision": "ticksPerQuarter",
+    "recommendedResolution": 480,
+    "trackNameEvent": {
+      "mustBeFirstEvent": true,
+      "mustBeAtTickZero": true
+    },
+    "noteDefaults": {
+      "endTickInclusive": false,
+      "allowZeroLength": false,
+      "zeroLengthSeverity": "error"
+    },
+    "conventions": {
+      "channel": 0,
+      "nominalVelocity": 100,
+      "severity": "info"
+    },
+    "tempoMap": {
+      "timeSignatureMustAlignToMeasure": true,
+      "severity": "error"
+    }
+  },
+  "textEventGrammar": {
+    "metaEventTypes": [1],
+    "encoding": "utf-8",
+    "brackets": "required",
+    "componentSyntax": "structured",
+    "allowUnderscoreAsSpace": false,
+    "caseSensitive": true,
+    "stringEscapes": ["\\\"", "\\\\"]
+  },
+  "policies": {
+    "unknownTrack": "warning",
+    "unknownPitch": "error",
+    "reservedPitch": "error",
+    "unknownTextEvent": "error",
+    "vocabularyMismatch": "error"
+  },
+  "settingsSources": [
+    {
+      "id": "infoJson",
+      "file": "info.json",
+      "keys": [
+        {
+          "name": "HopoThreshold",
+          "type": "integer",
+          "unit": "ticks",
+          "default": 160
+        },
+        {
+          "name": "SustainCutoff",
+          "type": "integer",
+          "unit": "ticks",
+          "default": 160
+        },
+        {
+          "name": "PositionSnap",
+          "type": "integer",
+          "unit": "ticks",
+          "default": 16
+        },
+        {
+          "name": "SustainGap",
+          "type": "number",
+          "unit": "seconds",
+          "default": 0.07
+        }
+      ]
+    }
+  ],
+  "playerOptions": [
+    {
+      "id": "expertPlus",
+      "description": "Player selected Expert+."
+    }
+  ],
+  "vocabularies": {
+    "practiceSectionIds": {
+      "values": [],
+      "enforce": false,
+      "source": "Translatable section list linked from the spec (not included in the PDF)."
+    },
+    "directedCutIds": {
+      "values": [],
+      "enforce": false,
+      "source": "Cut ID list linked from the spec."
+    },
+    "lightingPresetIds": {
+      "values": [],
+      "enforce": false,
+      "source": "Lighting preset list linked from the spec."
+    },
+    "drumAnimationIds": {
+      "values": [],
+      "enforce": false,
+      "source": "Drummer animation ID list linked from the spec."
+    }
+  },
+  "tracks": [
+    {
+      "id": "chartHeader",
+      "kind": "header",
+      "trackNames": ["CHART HEADER"],
+      "required": true,
+      "position": 1,
+      "description": "MUST be the first track after the sync track; distinguishes this format from custom-song .mid.",
+      "textEvents": [
+        {
+          "id": "version",
+          "identifier": "version",
+          "arguments": [
+            {
+              "name": "value",
+              "type": "identifier",
+              "description": "YY_MM_DD_RR, compared as text, not parsed as a number."
+            }
+          ],
+          "maxOccurrences": 1
+        }
+      ],
+      "versionCheck": {
+        "textEvent": "version",
+        "argument": "value",
+        "accepted": ["25_11_06_01"],
+        "compareAs": "string",
+        "onMissing": "error",
+        "onMismatch": "warning"
+      },
+      "unknownPitchPolicy": "error"
+    },
+    {
+      "id": "global",
+      "kind": "global",
+      "trackNames": ["GLOBAL"],
+      "eventNotes": [
+        {
+          "id": "beatlines",
+          "category": "beatline",
+          "pitches": {
+            "from": 12,
+            "to": 14
+          },
+          "valueLabels": ["Measure", "Strong", "Weak (subdivision)"]
+        },
+        {
+          "id": "singalong",
+          "category": "singalong",
+          "pitches": {
+            "from": 49,
+            "to": 51
+          },
+          "valueLabels": ["Stage left", "Stage right", "Stage rear"],
+          "status": "provisional",
+          "description": "Pending change to per-instrument performers."
+        },
+        {
+          "id": "spotlight",
+          "category": "spotlight",
+          "pitches": {
+            "from": 60,
+            "to": 63
+          },
+          "valueLabels": [
+            "Stage front",
+            "Stage left",
+            "Stage right",
+            "Stage rear"
+          ],
+          "status": "provisional",
+          "description": "Pending change to per-instrument performers."
+        },
+        {
+          "id": "cameraCut",
+          "category": "cameraCut",
+          "pitches": [83],
+          "description": "Honours avoid/prioritize focuses active at its tick."
+        },
+        {
+          "id": "avoidPerformer",
+          "category": "performerFocus",
+          "pitches": {
+            "from": 84,
+            "to": 87
+          },
+          "valueLabels": ["Guitarists", "Bassists", "Drummers", "Vocalists"]
+        },
+        {
+          "id": "prioritizePerformer",
+          "category": "performerFocus",
+          "pitches": {
+            "from": 88,
+            "to": 91
+          },
+          "valueLabels": ["Guitarists", "Bassists", "Drummers", "Vocalists"]
+        }
+      ],
+      "reserved": [
+        {
+          "from": 72,
+          "to": 82
+        },
+        {
+          "from": 92,
+          "to": 95
+        }
+      ],
+      "textEvents": [
+        {
+          "id": "end",
+          "identifier": "end",
+          "arguments": [],
+          "maxOccurrences": 1,
+          "description": "Optional; otherwise the end is the audio length."
+        },
+        {
+          "id": "section",
+          "identifier": "section",
+          "arguments": [
+            {
+              "name": "sectionId",
+              "type": ["identifier", "string"],
+              "vocabulary": "practiceSectionIds"
+            },
+            {
+              "name": "suffix",
+              "type": ["identifier", "string"],
+              "optional": true
+            }
+          ],
+          "description": "Section id must come from the translatable list."
+        },
+        {
+          "id": "directedCut",
+          "identifier": "directed_cut",
+          "arguments": [
+            {
+              "name": "cut",
+              "type": "identifier",
+              "variadic": true,
+              "vocabulary": "directedCutIds"
+            }
+          ]
+        },
+        {
+          "id": "mood",
+          "identifier": "mood",
+          "arguments": [
+            {
+              "name": "mood",
+              "type": "identifier",
+              "enum": [
+                "light",
+                "excited",
+                "neutral",
+                "powerful",
+                "serious",
+                "heavy"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "light",
+          "identifier": "light",
+          "arguments": [
+            {
+              "name": "preset",
+              "type": "identifier",
+              "variadic": true,
+              "vocabulary": "lightingPresetIds"
+            }
+          ]
+        },
+        {
+          "id": "playSpecialEffect",
+          "identifier": "play_special_effect",
+          "arguments": []
+        },
+        {
+          "id": "endSpecialEffect",
+          "identifier": "end_special_effect",
+          "arguments": [],
+          "status": "provisional"
+        }
+      ],
+      "unknownPitchPolicy": "error"
+    },
+    {
+      "id": "guitar",
+      "kind": "guitar",
+      "trackNames": ["LEAD GUITAR", "RHYTHM GUITAR"],
+      "lanes": [
+        {
+          "id": "green",
+          "index": 1,
+          "displayName": "Green",
+          "color": "#22C55E",
+          "shape": "gem"
+        },
+        {
+          "id": "red",
+          "index": 2,
+          "displayName": "Red",
+          "color": "#EF4444",
+          "shape": "gem"
+        },
+        {
+          "id": "yellow",
+          "index": 3,
+          "displayName": "Yellow",
+          "color": "#EAB308",
+          "shape": "gem"
+        },
+        {
+          "id": "blue",
+          "index": 4,
+          "displayName": "Blue",
+          "color": "#3B82F6",
+          "shape": "gem"
+        },
+        {
+          "id": "orange",
+          "index": 5,
+          "displayName": "Orange",
+          "color": "#F97316",
+          "shape": "gem"
+        }
+      ],
+      "difficulties": {
+        "expert": {
+          "notes": [
+            {
+              "pitch": 96,
+              "lane": "green"
+            },
+            {
+              "pitch": 97,
+              "lane": "red"
+            },
+            {
+              "pitch": 98,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 99,
+              "lane": "blue"
+            },
+            {
+              "pitch": 100,
+              "lane": "orange"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 101,
+              "effect": "forceHopo",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 102,
+              "effect": "forceStrum",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 103,
+              "effect": "forceTap",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 104,
+              "to": 107
+            }
+          ]
+        },
+        "hard": {
+          "notes": [
+            {
+              "pitch": 84,
+              "lane": "green"
+            },
+            {
+              "pitch": 85,
+              "lane": "red"
+            },
+            {
+              "pitch": 86,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 87,
+              "lane": "blue"
+            },
+            {
+              "pitch": 88,
+              "lane": "orange"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 89,
+              "effect": "forceHopo",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 90,
+              "effect": "forceStrum",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 91,
+              "effect": "forceTap",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 92,
+              "to": 95
+            }
+          ]
+        },
+        "medium": {
+          "notes": [
+            {
+              "pitch": 72,
+              "lane": "green"
+            },
+            {
+              "pitch": 73,
+              "lane": "red"
+            },
+            {
+              "pitch": 74,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 75,
+              "lane": "blue"
+            },
+            {
+              "pitch": 76,
+              "lane": "orange"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 77,
+              "effect": "forceHopo",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 78,
+              "effect": "forceStrum",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 79,
+              "effect": "forceTap",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 80,
+              "to": 83
+            }
+          ]
+        },
+        "easy": {
+          "notes": [
+            {
+              "pitch": 60,
+              "lane": "green"
+            },
+            {
+              "pitch": 61,
+              "lane": "red"
+            },
+            {
+              "pitch": 62,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 63,
+              "lane": "blue"
+            },
+            {
+              "pitch": 64,
+              "lane": "orange"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 65,
+              "effect": "forceHopo",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 66,
+              "effect": "forceStrum",
+              "scope": "span",
+              "includesEndTick": false
+            },
+            {
+              "pitch": 67,
+              "effect": "forceTap",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 68,
+              "to": 71
+            }
+          ]
+        }
+      },
+      "phrases": [
+        {
+          "id": "solo",
+          "effect": "solo",
+          "pitches": [118],
+          "appliesTo": "all"
+        },
+        {
+          "id": "stagePower",
+          "effect": "starPower",
+          "pitches": [116],
+          "appliesTo": "all",
+          "description": "Stage Power."
+        }
+      ],
+      "eventNotes": [
+        {
+          "id": "handPosition",
+          "category": "handPosition",
+          "pitches": {
+            "from": 36,
+            "to": 47
+          },
+          "description": "Fretting-hand position, 12 frets; lower = towards headstock."
+        }
+      ],
+      "textEvents": [
+        {
+          "id": "instrument",
+          "identifier": "instrument",
+          "arguments": [
+            {
+              "name": "stem",
+              "type": "identifier",
+              "enum": ["guitar", "bass", "rhythm", "keys", "drums"]
+            }
+          ],
+          "honoredOnTracks": ["RHYTHM GUITAR"],
+          "description": "Parsed on all guitar tracks, honoured only on RHYTHM GUITAR."
+        }
+      ],
+      "mechanics": {
+        "hopoThreshold": {
+          "value": {
+            "unit": "step",
+            "denominator": 12
+          },
+          "inclusive": true,
+          "overrides": [
+            {
+              "source": "infoJson",
+              "key": "HopoThreshold"
+            }
+          ]
+        },
+        "autoHopoExclusions": [],
+        "sustainCutoff": {
+          "value": {
+            "unit": "step",
+            "denominator": 12
+          },
+          "inclusive": true,
+          "overrides": [
+            {
+              "source": "infoJson",
+              "key": "SustainCutoff"
+            }
+          ],
+          "description": "Length <= 1/12 step is truncated to no sustain."
+        },
+        "sustainGap": {
+          "value": {
+            "unit": "seconds",
+            "seconds": 0.07
+          },
+          "overrides": [
+            {
+              "source": "infoJson",
+              "key": "SustainGap"
+            }
+          ],
+          "description": "Sustains auto-shortened to leave this gap before the next note."
+        },
+        "positionSnap": {
+          "enabled": true,
+          "threshold": {
+            "value": {
+              "unit": "step",
+              "denominator": 120
+            },
+            "inclusive": true,
+            "maxTicks": 16,
+            "overrides": [
+              {
+                "source": "infoJson",
+                "key": "PositionSnap"
+              }
+            ]
+          },
+          "appliesToSustainEnds": true,
+          "description": "Snaps backwards to the previous note to form a chord; also aligns chord sustain ends."
+        }
+      },
+      "constraints": [
+        {
+          "id": "noSameFretSustainOverlap",
+          "rule": "noOverlappingSameLane",
+          "severity": "error",
+          "description": "Sustains MAY NOT overlap other notes of the same fret."
+        },
+        {
+          "id": "forceConflict",
+          "rule": "mutuallyExclusiveAtTick",
+          "severity": "warning",
+          "members": ["forceHopo", "forceStrum", "forceTap"],
+          "description": "Profile choice: the spec does not define overlapping force markers."
+        }
+      ],
+      "unknownPitchPolicy": "error"
+    },
+    {
+      "id": "drums",
+      "kind": "drums",
+      "trackNames": ["DRUMS"],
+      "description": "Only Pro is authored; standard is derived by converting cymbals to toms. Format may still change.",
+      "lanes": [
+        {
+          "id": "kick",
+          "index": 0,
+          "displayName": "Kick",
+          "color": "#F97316",
+          "shape": "kickBar"
+        },
+        {
+          "id": "red",
+          "index": 1,
+          "displayName": "Red",
+          "color": "#EF4444",
+          "shape": "pad",
+          "padTypes": ["tom"]
+        },
+        {
+          "id": "yellow",
+          "index": 2,
+          "displayName": "Yellow",
+          "color": "#EAB308",
+          "shape": "pad",
+          "padTypes": ["tom", "cymbal"]
+        },
+        {
+          "id": "blue",
+          "index": 3,
+          "displayName": "Blue",
+          "color": "#3B82F6",
+          "shape": "pad",
+          "padTypes": ["tom", "cymbal"]
+        },
+        {
+          "id": "green",
+          "index": 4,
+          "displayName": "Green",
+          "color": "#22C55E",
+          "shape": "pad",
+          "padTypes": ["tom", "cymbal"]
+        }
+      ],
+      "difficulties": {
+        "expert": {
+          "notes": [
+            {
+              "pitch": 96,
+              "lane": "kick"
+            },
+            {
+              "pitch": 97,
+              "lane": "red",
+              "padType": "tom"
+            },
+            {
+              "pitch": 98,
+              "lane": "yellow",
+              "padType": "tom"
+            },
+            {
+              "pitch": 99,
+              "lane": "blue",
+              "padType": "tom"
+            },
+            {
+              "pitch": 100,
+              "lane": "green",
+              "padType": "tom"
+            },
+            {
+              "pitch": 101,
+              "lane": "yellow",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 102,
+              "lane": "blue",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 103,
+              "lane": "green",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 95,
+              "lane": "kick",
+              "enabledWhen": {
+                "playerOption": "expertPlus"
+              },
+              "whenDisabled": "ignore",
+              "description": "Charted in addition to the regular Expert kicks."
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 104,
+              "effect": "flam",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 105,
+              "to": 107
+            }
+          ]
+        },
+        "hard": {
+          "notes": [
+            {
+              "pitch": 84,
+              "lane": "kick"
+            },
+            {
+              "pitch": 85,
+              "lane": "red",
+              "padType": "tom"
+            },
+            {
+              "pitch": 86,
+              "lane": "yellow",
+              "padType": "tom"
+            },
+            {
+              "pitch": 87,
+              "lane": "blue",
+              "padType": "tom"
+            },
+            {
+              "pitch": 88,
+              "lane": "green",
+              "padType": "tom"
+            },
+            {
+              "pitch": 89,
+              "lane": "yellow",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 90,
+              "lane": "blue",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 91,
+              "lane": "green",
+              "padType": "cymbal"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 92,
+              "effect": "flam",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 93,
+              "to": 94
+            }
+          ]
+        },
+        "medium": {
+          "notes": [
+            {
+              "pitch": 72,
+              "lane": "kick"
+            },
+            {
+              "pitch": 73,
+              "lane": "red",
+              "padType": "tom"
+            },
+            {
+              "pitch": 74,
+              "lane": "yellow",
+              "padType": "tom"
+            },
+            {
+              "pitch": 75,
+              "lane": "blue",
+              "padType": "tom"
+            },
+            {
+              "pitch": 76,
+              "lane": "green",
+              "padType": "tom"
+            },
+            {
+              "pitch": 77,
+              "lane": "yellow",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 78,
+              "lane": "blue",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 79,
+              "lane": "green",
+              "padType": "cymbal"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 80,
+              "effect": "flam",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 81,
+              "to": 83
+            }
+          ]
+        },
+        "easy": {
+          "notes": [
+            {
+              "pitch": 60,
+              "lane": "kick"
+            },
+            {
+              "pitch": 61,
+              "lane": "red",
+              "padType": "tom"
+            },
+            {
+              "pitch": 62,
+              "lane": "yellow",
+              "padType": "tom"
+            },
+            {
+              "pitch": 63,
+              "lane": "blue",
+              "padType": "tom"
+            },
+            {
+              "pitch": 64,
+              "lane": "green",
+              "padType": "tom"
+            },
+            {
+              "pitch": 65,
+              "lane": "yellow",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 66,
+              "lane": "blue",
+              "padType": "cymbal"
+            },
+            {
+              "pitch": 67,
+              "lane": "green",
+              "padType": "cymbal"
+            }
+          ],
+          "markers": [
+            {
+              "pitch": 68,
+              "effect": "flam",
+              "scope": "span",
+              "includesEndTick": false
+            }
+          ],
+          "reserved": [
+            {
+              "from": 69,
+              "to": 71
+            }
+          ]
+        }
+      },
+      "modifiers": [
+        {
+          "id": "accent",
+          "effect": "accent",
+          "source": {
+            "kind": "velocity",
+            "velocity": 127
+          },
+          "scope": "sameTick",
+          "appliesTo": "all",
+          "excludeLanes": ["kick"]
+        },
+        {
+          "id": "ghost",
+          "effect": "ghost",
+          "source": {
+            "kind": "velocity",
+            "velocity": 1
+          },
+          "scope": "sameTick",
+          "appliesTo": "all",
+          "excludeLanes": ["kick"]
+        }
+      ],
+      "phrases": [
+        {
+          "id": "solo",
+          "effect": "solo",
+          "pitches": [118],
+          "appliesTo": "all"
+        },
+        {
+          "id": "stagePowerActivation",
+          "effect": "starPowerActivation",
+          "pitches": [117],
+          "appliesTo": "all",
+          "activation": {
+            "target": "nearestNoteToEnd",
+            "window": {
+              "value": {
+                "unit": "step",
+                "denominator": 16
+              },
+              "inclusive": true,
+              "description": "Spec text says '1/4th step (120 ticks at 480)'; those disagree. Encoded as 120 ticks @480 (1/16 step) pending confirmation."
+            },
+            "includeNotesOutsidePhrase": true,
+            "lengthMeaning": "indicatorLength"
+          }
+        },
+        {
+          "id": "stagePower",
+          "effect": "starPower",
+          "pitches": [116],
+          "appliesTo": "all"
+        },
+        {
+          "id": "doubleRoll",
+          "effect": "doubleLaneRoll",
+          "pitches": [110],
+          "appliesTo": "all",
+          "status": "todo"
+        },
+        {
+          "id": "singleRoll",
+          "effect": "singleLaneRoll",
+          "pitches": [109],
+          "appliesTo": "all",
+          "status": "todo"
+        },
+        {
+          "id": "discoFlip",
+          "effect": "discoFlip",
+          "pitches": [108],
+          "appliesTo": "all",
+          "status": "todo"
+        }
+      ],
+      "variants": {
+        "supported": ["standard", "pro"],
+        "authored": ["pro"],
+        "detection": [
+          {
+            "default": "pro"
+          }
+        ],
+        "derivations": [
+          {
+            "variant": "standard",
+            "from": "pro",
+            "rule": "cymbalsToToms"
+          }
+        ]
+      },
+      "textEvents": [
+        {
+          "id": "bodyDrumAnim",
+          "identifier": "body_drum_anim",
+          "arguments": [
+            {
+              "name": "animation",
+              "type": "identifier",
+              "vocabulary": "drumAnimationIds"
+            },
+            {
+              "name": "speed",
+              "type": "number",
+              "optional": true,
+              "default": 1,
+              "description": "Multiplier on BPM."
+            }
+          ]
+        },
+        {
+          "id": "legDrumAnim",
+          "identifier": "leg_drum_anim",
+          "arguments": [
+            {
+              "name": "mode",
+              "type": "identifier",
+              "enum": [
+                "off",
+                "auto",
+                "force_left",
+                "force_right",
+                "play_left",
+                "play_right",
+                "close_left",
+                "open_left"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hihatDrumAnim",
+          "identifier": "hihat_drum_anim",
+          "arguments": [
+            {
+              "name": "mode",
+              "type": "identifier",
+              "enum": ["close", "open", "chick", "splash"]
+            }
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "id": "powerVsActivation",
+          "rule": "phrasesMayNotOverlap",
+          "severity": "error",
+          "phrases": ["stagePower", "stagePowerActivation"]
+        },
+        {
+          "id": "noOverlap",
+          "rule": "noOverlappingSamePitch",
+          "severity": "error"
+        }
+      ],
+      "unknownPitchPolicy": "error"
+    },
+    {
+      "id": "vocals",
+      "kind": "vocals",
+      "trackNames": ["VOCALS"],
+      "description": "Format may still change.",
+      "difficultyModel": "shared",
+      "noteClasses": [
+        {
+          "id": "pitched",
+          "class": "pitched",
+          "pitches": {
+            "from": 36,
+            "to": 84
+          },
+          "displayed": true,
+          "noteNaming": {
+            "scheme": "scientific",
+            "c4Pitch": 60
+          }
+        },
+        {
+          "id": "pitchless",
+          "class": "pitchless",
+          "pitches": [35, 85],
+          "displayed": true,
+          "description": "'Talkie' notes; 35 and 85 are equivalent."
+        },
+        {
+          "id": "percussion",
+          "class": "percussion",
+          "pitches": [90],
+          "displayed": true
+        }
+      ],
+      "eventNotes": [
+        {
+          "id": "pitchKey",
+          "category": "vocalKey",
+          "pitches": {
+            "from": 0,
+            "to": 23
+          },
+          "valueLabels": [
+            "C Major",
+            "Db Major",
+            "D Major",
+            "Eb Major",
+            "E Major",
+            "F Major",
+            "Gb Major",
+            "G Major",
+            "Ab Major",
+            "A Major",
+            "Bb Major",
+            "B Major",
+            "C Minor",
+            "Db Minor",
+            "D Minor",
+            "Eb Minor",
+            "E Minor",
+            "F Minor",
+            "F# Minor",
+            "G Minor",
+            "G# Minor",
+            "A Minor",
+            "Bb Minor",
+            "B Minor"
+          ],
+          "description": "Sets the key; may change during the song."
+        }
+      ],
+      "phrases": [
+        {
+          "id": "stagePower",
+          "effect": "starPower",
+          "pitches": [116],
+          "appliesTo": "all"
+        },
+        {
+          "id": "powerWindow",
+          "effect": "powerWindow",
+          "pitches": [111],
+          "appliesTo": "all",
+          "description": "Region where Stage Power can be activated; consecutive windows are separate opportunities."
+        },
+        {
+          "id": "vocalPhrase",
+          "effect": "lyricPhrase",
+          "pitches": [96],
+          "appliesTo": "all"
+        }
+      ],
+      "lyrics": {
+        "metaEventTypes": [5],
+        "encoding": "utf-8",
+        "alignment": "mustMatchNoteStart",
+        "alignmentSeverity": "error",
+        "allowLyricsOnlyChart": false,
+        "duplicateAtTick": "error"
+      },
+      "constraints": [
+        {
+          "id": "windowVsVocalPhrase",
+          "rule": "phrasesMayNotOverlap",
+          "severity": "error",
+          "phrases": ["powerWindow", "vocalPhrase"]
+        },
+        {
+          "id": "windowVsStagePower",
+          "rule": "phrasesMayNotOverlap",
+          "severity": "error",
+          "phrases": ["powerWindow", "stagePower"]
+        },
+        {
+          "id": "windowBetweenPhrases",
+          "rule": "phraseMustBeBetween",
+          "severity": "error",
+          "phrase": "powerWindow",
+          "between": "vocalPhrase"
+        }
+      ],
+      "unknownPitchPolicy": "error"
+    },
+    {
+      "id": "gamepad",
+      "kind": "gamepad",
+      "trackNames": ["FOUR PAD", "FIVE PAD"],
+      "lanes": [
+        {
+          "id": "green",
+          "index": 1,
+          "displayName": "Green",
+          "color": "#22C55E",
+          "shape": "gem"
+        },
+        {
+          "id": "red",
+          "index": 2,
+          "displayName": "Red",
+          "color": "#EF4444",
+          "shape": "gem"
+        },
+        {
+          "id": "yellow",
+          "index": 3,
+          "displayName": "Yellow",
+          "color": "#EAB308",
+          "shape": "gem"
+        },
+        {
+          "id": "blue",
+          "index": 4,
+          "displayName": "Blue",
+          "color": "#3B82F6",
+          "shape": "gem"
+        },
+        {
+          "id": "orange",
+          "index": 5,
+          "displayName": "Orange",
+          "color": "#F97316",
+          "shape": "gem",
+          "onlyOnTracks": ["FIVE PAD"],
+          "whenDisabled": "error"
+        }
+      ],
+      "difficulties": {
+        "expert": {
+          "notes": [
+            {
+              "pitch": 96,
+              "lane": "green"
+            },
+            {
+              "pitch": 97,
+              "lane": "red"
+            },
+            {
+              "pitch": 98,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 99,
+              "lane": "blue"
+            },
+            {
+              "pitch": 100,
+              "lane": "orange"
+            }
+          ],
+          "reserved": [
+            {
+              "from": 101,
+              "to": 107
+            }
+          ]
+        },
+        "hard": {
+          "notes": [
+            {
+              "pitch": 84,
+              "lane": "green"
+            },
+            {
+              "pitch": 85,
+              "lane": "red"
+            },
+            {
+              "pitch": 86,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 87,
+              "lane": "blue"
+            },
+            {
+              "pitch": 88,
+              "lane": "orange"
+            }
+          ],
+          "reserved": [
+            {
+              "from": 89,
+              "to": 95
+            }
+          ]
+        },
+        "medium": {
+          "notes": [
+            {
+              "pitch": 72,
+              "lane": "green"
+            },
+            {
+              "pitch": 73,
+              "lane": "red"
+            },
+            {
+              "pitch": 74,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 75,
+              "lane": "blue"
+            },
+            {
+              "pitch": 76,
+              "lane": "orange"
+            }
+          ],
+          "reserved": [
+            {
+              "from": 77,
+              "to": 83
+            }
+          ]
+        },
+        "easy": {
+          "notes": [
+            {
+              "pitch": 60,
+              "lane": "green"
+            },
+            {
+              "pitch": 61,
+              "lane": "red"
+            },
+            {
+              "pitch": 62,
+              "lane": "yellow"
+            },
+            {
+              "pitch": 63,
+              "lane": "blue"
+            },
+            {
+              "pitch": 64,
+              "lane": "orange"
+            }
+          ],
+          "reserved": [
+            {
+              "from": 65,
+              "to": 71
+            }
+          ]
+        }
+      },
+      "phrases": [
+        {
+          "id": "solo",
+          "effect": "solo",
+          "pitches": [118],
+          "appliesTo": "all"
+        },
+        {
+          "id": "stagePower",
+          "effect": "starPower",
+          "pitches": [116],
+          "appliesTo": "all"
+        }
+      ],
+      "unknownPitchPolicy": "error"
+    }
+  ]
+}

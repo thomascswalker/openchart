@@ -1,12 +1,5 @@
 import type { Difficulty as DifficultyType } from "../types.js";
-import {
-  defaultConfig,
-  describeTrack,
-  getDifficultyNotePitch,
-  getTrackRole,
-  hasDifficulties,
-  type TrackDescriptor,
-} from "../config.js";
+import { DefaultConfig } from "../config.js";
 
 export type DrumPlacementKind = "pad" | "cymbal" | "kick";
 export type DrumNoteKind = DrumPlacementKind | "marker";
@@ -119,7 +112,7 @@ export function getDrumPitchForPlacement(
 }
 
 function defaultDrumLayout(offset: number): DrumLayout | null {
-  const descriptor = defaultConfig.tracks
+  const descriptor = DefaultConfig.tracks
     .map(describeTrack)
     .find((track) => getTrackRole(track) === "drums");
   if (!descriptor || descriptor.config.type !== "instrument") return null;

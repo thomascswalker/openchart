@@ -1,7 +1,7 @@
 import { MidiTrack, MidiNote, type TextMidiEvent } from "@openchart/midi";
 import type { MidiNotePhrase } from "../editing/phrase.js";
 import { SongView } from "../views/song.js";
-import { InstrumentTrackViewConfig } from "../config.js";
+import { InstrumentViewConfig } from "../config.js";
 import {
   type VocalLayout,
   vocalLayoutFromConfig,
@@ -44,7 +44,7 @@ export class VocalTrackView extends InstrumentTrackView {
   constructor(
     song: SongView,
     midiTrack: MidiTrack | undefined,
-    config: InstrumentTrackViewConfig,
+    config: InstrumentViewConfig,
   ) {
     super(song, midiTrack, config);
     this.layout = vocalLayoutFromConfig(config);
@@ -86,7 +86,9 @@ export class VocalTrackView extends InstrumentTrackView {
   /** Materializes the VOCALS MIDI track for an intentional edit. */
   public ensureTrack(): MidiTrack | undefined {
     this.track ??= this.song.ensureMidiTrack(this.getKey());
-    if (this.track) this.song.attachTrack(this.track);
+    if (this.track) {
+      this.song.attachTrack(this.track);
+    }
     return this.track;
   }
 

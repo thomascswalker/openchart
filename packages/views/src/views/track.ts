@@ -1,21 +1,24 @@
 import { MidiTrack } from "@openchart/midi";
 import { SongView } from "../views/song.js";
-import { describeTrack } from "../config.js";
+import { TrackViewConfig } from "../config.js";
 
-export class TrackView {
-  protected song: SongView;
+export class TrackView<TConfig extends TrackViewConfig> {
+  protected readonly song: SongView;
   protected track: MidiTrack | undefined;
-  protected validator: (track: MidiTrack) => boolean;
+  protected readonly config: TConfig;
+  protected readonly validator: (track: MidiTrack) => boolean;
 
   constructor(
     song: SongView,
     midiTrack: MidiTrack | undefined,
+    config: TConfig,
     validator: (midiTrack: MidiTrack) => boolean = () => {
       return true;
     },
   ) {
     this.song = song;
     this.track = midiTrack;
+    this.config = config;
     this.validator = validator;
   }
 
@@ -28,14 +31,14 @@ export class TrackView {
   }
 
   public getKey(): string {
-    return describeTrack({
-      name: this.track?.name || "",
-      type: "global",
-      notes: {},
-    }).key;
+    return this.config.key;
   }
 
   public getMidiTrack(): MidiTrack | undefined {
     return this.track;
+  }
+
+  public getConfig(): TConfig {
+    return this.config;
   }
 }

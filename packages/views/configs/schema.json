@@ -1,0 +1,1409 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/guitargame-ruleset.schema.json",
+  "title": "GuitarGame notes.mid Ruleset",
+  "description": "A ruleset/profile that a validator applies to any notes.mid. It declares, per track, which MIDI pitches are valid, what each maps to on screen (lane, pad type, marker, phrase, event), and which rules apply. One profile per game (e.g. Clone Hero, Stage Tour). Cross-reference checks that JSON Schema cannot express (pitch collisions, id references, lane references) are listed in $comment and must be enforced by the validator.",
+  "$comment": "Semantic checks required beyond this schema: (1) no MIDI pitch is claimed twice within a track unless both owners are phrases listing each other in sharesPitchesWith; (2) reserved ranges do not overlap claimed pitches; (3) every lane/padType/phrase/modifier/textEvent/noteClass/vocabulary/setting/playerOption/variant id referenced anywhere resolves; (4) ids are unique within their track; (5) track names are unique across tracks; (6) all regex patterns compile; (7) pitchRange.from <= pitchRange.to; (8) honoredOnTracks is a subset of the track's trackNames.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "midi",
+    "textEventGrammar",
+    "policies",
+    "tracks"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "2.0.0" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "detection": { "$ref": "#/$defs/detection" },
+    "midi": { "$ref": "#/$defs/midiConfig" },
+    "textEventGrammar": { "$ref": "#/$defs/textEventGrammar" },
+    "policies": { "$ref": "#/$defs/policies" },
+    "settingsSources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/settingsSource" }
+    },
+    "playerOptions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/playerOption" }
+    },
+    "vocabularies": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "$ref": "#/$defs/vocabulary" }
+    },
+    "tracks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/trackDefinition" }
+    }
+  },
+
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*$",
+      "description": "camelCase id used for cross-references inside the ruleset."
+    },
+    "pitch": { "type": "integer", "minimum": 0, "maximum": 127 },
+    "velocity": { "type": "integer", "minimum": 1, "maximum": 127 },
+    "pitchRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "$ref": "#/$defs/pitch" },
+        "to": { "$ref": "#/$defs/pitch" }
+      }
+    },
+    "pitchSet": {
+      "description": "Either an explicit list of pitches or an inclusive range.",
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/pitch" }
+        },
+        { "$ref": "#/$defs/pitchRange" }
+      ]
+    },
+    "velocityRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "$ref": "#/$defs/velocity" },
+        "max": { "$ref": "#/$defs/velocity" }
+      }
+    },
+    "severity": { "enum": ["error", "warning", "info", "ignore"] },
+    "status": {
+      "enum": ["stable", "provisional", "todo"],
+      "description": "Maturity of the rule in the source spec. 'todo' = pitch is reserved/known but behaviour is not yet defined."
+    },
+    "difficulty": { "enum": ["easy", "medium", "hard", "expert"] },
+    "difficultySet": {
+      "oneOf": [
+        { "const": "all" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/difficulty" }
+        }
+      ]
+    },
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "trackName": { "type": "string", "minLength": 1 },
+    "trackNames": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/trackName" }
+    },
+    "description": { "type": "string" },
+
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "targetGame"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string" },
+        "targetGame": { "type": "string" },
+        "specVersion": { "type": "string" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How a validator decides this profile applies to a given file.",
+      "properties": {
+        "requiredTracks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/trackName" }
+        },
+        "forbiddenTracks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/trackName" }
+        },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "midiConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileFormat", "timeDivision", "noteDefaults"],
+      "properties": {
+        "fileFormat": { "const": 1 },
+        "timeDivision": { "const": "ticksPerQuarter" },
+        "recommendedResolution": { "type": "integer", "minimum": 1 },
+        "trackNameEvent": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mustBeFirstEvent": { "type": "boolean" },
+            "mustBeAtTickZero": { "type": "boolean" }
+          }
+        },
+        "noteDefaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endTickInclusive", "allowZeroLength"],
+          "properties": {
+            "endTickInclusive": {
+              "type": "boolean",
+              "description": "Default for phrases/markers; individual definitions may override with includesEndTick."
+            },
+            "allowZeroLength": {
+              "type": "boolean",
+              "description": "Whether a MIDI note may start and end on the same tick."
+            },
+            "zeroLengthSeverity": { "$ref": "#/$defs/severity" }
+          }
+        },
+        "conventions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "channel": { "type": "integer", "minimum": 0, "maximum": 15 },
+            "nominalVelocity": { "$ref": "#/$defs/velocity" },
+            "severity": { "$ref": "#/$defs/severity" }
+          }
+        },
+        "tempoMap": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "timeSignatureMustAlignToMeasure": { "type": "boolean" },
+            "severity": { "$ref": "#/$defs/severity" }
+          }
+        }
+      }
+    },
+
+    "textEventGrammar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metaEventTypes", "brackets", "componentSyntax"],
+      "properties": {
+        "metaEventTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1, "maximum": 15 },
+          "description": "Meta event types accepted as text events (0x01 = text, 0x05 = lyric, ...)."
+        },
+        "encoding": { "enum": ["utf-8", "any"] },
+        "brackets": { "enum": ["required", "optional"] },
+        "componentSyntax": {
+          "enum": ["freeform", "structured"],
+          "description": "'structured' = [identifier component component ...] with typed identifier/string/number components separated by single spaces; 'freeform' = matched by per-event regex."
+        },
+        "allowUnderscoreAsSpace": { "type": "boolean" },
+        "caseSensitive": { "type": "boolean" },
+        "stringEscapes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Escape sequences valid inside quoted string components."
+        }
+      }
+    },
+
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unknownTrack", "unknownPitch", "unknownTextEvent"],
+      "properties": {
+        "unknownTrack": { "$ref": "#/$defs/severity" },
+        "unknownPitch": { "$ref": "#/$defs/severity" },
+        "reservedPitch": { "$ref": "#/$defs/severity" },
+        "unknownTextEvent": { "$ref": "#/$defs/severity" },
+        "unknownSysex": { "$ref": "#/$defs/severity" },
+        "vocabularyMismatch": { "$ref": "#/$defs/severity" }
+      }
+    },
+
+    "settingsSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "file", "keys"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "file": {
+          "type": "string",
+          "description": "e.g. song.ini or info.json"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "enum": ["boolean", "integer", "number", "string"] },
+              "unit": { "enum": ["ticks", "seconds", "none"] },
+              "allowedValues": {
+                "type": "array",
+                "items": { "type": ["boolean", "integer", "number", "string"] }
+              },
+              "default": { "type": ["boolean", "integer", "number", "string"] },
+              "description": { "$ref": "#/$defs/description" }
+            }
+          }
+        }
+      }
+    },
+
+    "playerOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "vocabulary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["values", "enforce"],
+      "properties": {
+        "values": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "enforce": {
+          "type": "boolean",
+          "description": "If false, the list is advisory (e.g. not yet populated)."
+        },
+        "source": { "type": "string" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["unit", "denominator"],
+              "properties": {
+                "unit": { "const": "step" },
+                "denominator": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "1/N of a 4-beat step: ticks = resolution * 4 / N."
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["unit", "ticks"],
+              "properties": {
+                "unit": { "const": "ticks" },
+                "ticks": { "type": "integer", "minimum": 0 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["unit", "divisor", "addTicks", "rounding"],
+              "properties": {
+                "unit": { "const": "resolutionFormula" },
+                "divisor": { "type": "number", "exclusiveMinimum": 0 },
+                "addTicks": { "type": "integer" },
+                "rounding": { "enum": ["floor", "round", "ceil"] }
+              },
+              "description": "ticks = rounding(resolution / divisor) + addTicks"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["unit", "seconds"],
+              "properties": {
+                "unit": { "const": "seconds" },
+                "seconds": { "type": "number", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "inclusive": { "type": "boolean" },
+        "maxTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cap applied after conversion to ticks."
+        },
+        "overrides": {
+          "type": "array",
+          "description": "Settings that override the default, in priority order.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "key"],
+            "properties": {
+              "source": { "$ref": "#/$defs/identifier" },
+              "key": { "type": "string" },
+              "description": { "$ref": "#/$defs/description" }
+            }
+          }
+        },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "condition": {
+      "description": "Boolean condition used by enabledWhen / requires / alsoActsAs.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["textEvent"],
+          "properties": {
+            "textEvent": { "$ref": "#/$defs/identifier" },
+            "track": {
+              "type": "string",
+              "description": "'self' (default) or another track name."
+            },
+            "relation": {
+              "enum": ["present", "before", "after"],
+              "description": "before/after = relative to the position of the thing being evaluated."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["setting"],
+          "properties": {
+            "setting": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["source", "key"],
+              "properties": {
+                "source": { "$ref": "#/$defs/identifier" },
+                "key": { "type": "string" },
+                "equals": {
+                  "type": ["boolean", "integer", "number", "string"]
+                },
+                "present": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["playerOption"],
+          "properties": { "playerOption": { "$ref": "#/$defs/identifier" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["variant"],
+          "properties": { "variant": { "$ref": "#/$defs/identifier" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["phraseAbsent"],
+          "properties": { "phraseAbsent": { "$ref": "#/$defs/identifier" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allOf"],
+          "properties": {
+            "allOf": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["anyOf"],
+          "properties": {
+            "anyOf": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["not"],
+          "properties": { "not": { "$ref": "#/$defs/condition" } }
+        }
+      ]
+    },
+
+    "sysexMatcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "modifierCode", "difficultyBytes"],
+      "properties": {
+        "format": {
+          "const": "phaseShift",
+          "description": "'P' 'S' 0x00 <type=0x00> <difficulty> <modifier> <value: 1=start, 0=end>"
+        },
+        "modifierCode": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "difficultyBytes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": [0, 1, 2, 3, 255] },
+          "description": "0=Easy, 1=Medium, 2=Hard, 3=Expert, 255=All."
+        }
+      }
+    },
+
+    "modifierSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "pitch"],
+          "properties": {
+            "kind": { "const": "note" },
+            "pitch": { "$ref": "#/$defs/pitch" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "sysex"],
+          "properties": {
+            "kind": { "const": "sysex" },
+            "sysex": { "$ref": "#/$defs/sysexMatcher" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "velocity"],
+          "properties": {
+            "kind": { "const": "velocity" },
+            "velocity": { "$ref": "#/$defs/velocity" }
+          }
+        }
+      ]
+    },
+
+    "padType": { "enum": ["tom", "cymbal"] },
+
+    "laneDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "index", "displayName"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Visual lane position (0 = leftmost / open / kick)."
+        },
+        "displayName": { "type": "string" },
+        "color": { "$ref": "#/$defs/color" },
+        "shape": { "enum": ["gem", "openBar", "pad", "kickBar"] },
+        "padTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/padType" },
+          "description": "Drums: pad types this lane can show."
+        },
+        "defaultPadType": {
+          "$ref": "#/$defs/padType",
+          "description": "Drums: pad type when nothing else sets it (marker-based formats)."
+        },
+        "onlyOnTracks": {
+          "$ref": "#/$defs/trackNames",
+          "description": "Lane only exists on these track names (e.g. 5-lane only)."
+        },
+        "whenDisabled": {
+          "$ref": "#/$defs/severity",
+          "description": "Severity for notes on this lane when the lane does not exist on the track."
+        },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "difficultyNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pitch", "lane"],
+      "properties": {
+        "pitch": { "$ref": "#/$defs/pitch" },
+        "lane": { "$ref": "#/$defs/identifier" },
+        "padType": {
+          "$ref": "#/$defs/padType",
+          "description": "Explicit pad type for this pitch (formats with separate cymbal/tom pitches)."
+        },
+        "enabledWhen": { "$ref": "#/$defs/condition" },
+        "whenDisabled": {
+          "$ref": "#/$defs/severity",
+          "description": "Severity when this pitch appears but enabledWhen is false."
+        },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "markerEffect": { "enum": ["forceHopo", "forceStrum", "forceTap", "flam"] },
+
+    "difficultyMarker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pitch", "effect"],
+      "properties": {
+        "pitch": { "$ref": "#/$defs/pitch" },
+        "effect": { "$ref": "#/$defs/markerEffect" },
+        "scope": {
+          "enum": ["sameTick", "span"],
+          "description": "span = affects every note that starts within the marker's duration."
+        },
+        "includesEndTick": { "type": "boolean" },
+        "status": { "$ref": "#/$defs/status" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "difficultyBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notes"],
+      "properties": {
+        "notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/difficultyNote" }
+        },
+        "markers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/difficultyMarker" }
+        },
+        "reserved": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/pitchRange" }
+        },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "difficulties": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/difficulty" },
+      "additionalProperties": { "$ref": "#/$defs/difficultyBlock" }
+    },
+
+    "modifierDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "effect", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "effect": {
+          "enum": [
+            "forceHopo",
+            "forceStrum",
+            "forceTap",
+            "open",
+            "setPadType",
+            "flam",
+            "accent",
+            "ghost"
+          ]
+        },
+        "padType": {
+          "$ref": "#/$defs/padType",
+          "description": "Required when effect = setPadType."
+        },
+        "source": { "$ref": "#/$defs/modifierSource" },
+        "scope": { "enum": ["sameTick", "span"] },
+        "includesEndTick": { "type": "boolean" },
+        "appliesTo": { "$ref": "#/$defs/difficultySet" },
+        "appliesToLanes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "excludeLanes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "enabledWhen": { "$ref": "#/$defs/condition" },
+        "status": { "$ref": "#/$defs/status" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "phraseDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "effect", "pitches"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "effect": {
+          "enum": [
+            "starPower",
+            "starPowerActivation",
+            "solo",
+            "trill",
+            "tremolo",
+            "singleLaneRoll",
+            "doubleLaneRoll",
+            "drumFill",
+            "bigRockEnding",
+            "versusPlayer1",
+            "versusPlayer2",
+            "lyricPhrase",
+            "lyricPhraseSecondary",
+            "powerWindow",
+            "discoFlip"
+          ]
+        },
+        "pitches": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/pitch" }
+        },
+        "pitchRequirement": {
+          "enum": ["any", "all"],
+          "description": "For multi-pitch phrases: whether all pitches must be present with matching span."
+        },
+        "appliesTo": { "$ref": "#/$defs/difficultySet" },
+        "velocityRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["velocity", "appliesTo"],
+            "properties": {
+              "velocity": { "$ref": "#/$defs/velocityRange" },
+              "appliesTo": { "$ref": "#/$defs/difficultySet" }
+            }
+          }
+        },
+        "includesEndTick": { "type": "boolean" },
+        "enabledWhen": { "$ref": "#/$defs/condition" },
+        "requires": {
+          "$ref": "#/$defs/condition",
+          "description": "Condition that must hold or the phrase is an error."
+        },
+        "alsoActsAs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["effect", "when"],
+          "properties": {
+            "effect": { "enum": ["starPower"] },
+            "when": { "$ref": "#/$defs/condition" }
+          }
+        },
+        "sharesPitchesWith": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "mustContainNotes": { "type": "boolean" },
+        "requiresNoteAfter": { "type": "boolean" },
+        "maxDistinctLanes": { "type": "integer", "minimum": 1 },
+        "activation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "window"],
+          "properties": {
+            "target": { "const": "nearestNoteToEnd" },
+            "window": { "$ref": "#/$defs/threshold" },
+            "includeNotesOutsidePhrase": { "type": "boolean" },
+            "lengthMeaning": { "enum": ["indicatorLength", "none"] }
+          }
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "eventNoteDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "pitches"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "category": {
+          "enum": [
+            "handPosition",
+            "animation",
+            "performerFocus",
+            "cameraCut",
+            "spotlight",
+            "singalong",
+            "beatline",
+            "vocalKey",
+            "vocalRangeShift",
+            "vocalLyricShift",
+            "practiceAssist",
+            "other"
+          ]
+        },
+        "pitches": { "$ref": "#/$defs/pitchSet" },
+        "valueLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Labels for each pitch in ascending order (e.g. key names)."
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "textEventArgType": {
+      "enum": ["identifier", "string", "number", "integer"]
+    },
+
+    "textEventArgument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "$ref": "#/$defs/identifier" },
+        "type": {
+          "oneOf": [
+            { "$ref": "#/$defs/textEventArgType" },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/textEventArgType" }
+            }
+          ]
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": ["string", "number"] }
+        },
+        "vocabulary": { "$ref": "#/$defs/identifier" },
+        "optional": { "type": "boolean" },
+        "variadic": {
+          "type": "boolean",
+          "description": "Argument repeats one or more times; must be last."
+        },
+        "default": { "type": ["string", "number"] },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "textEventDef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "pattern"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "pattern": {
+              "type": "string",
+              "description": "Regex matched against the text with brackets stripped."
+            },
+            "captures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name"],
+                "properties": {
+                  "name": { "$ref": "#/$defs/identifier" },
+                  "enum": { "type": "array", "items": { "type": "string" } },
+                  "description": { "$ref": "#/$defs/description" }
+                }
+              }
+            },
+            "placement": { "enum": ["trackStart", "anywhere"] },
+            "honoredOnTracks": { "$ref": "#/$defs/trackNames" },
+            "maxOccurrences": { "type": "integer", "minimum": 1 },
+            "status": { "$ref": "#/$defs/status" },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "identifier"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "identifier": {
+              "type": "string",
+              "pattern": "^[^ \\]]+$",
+              "description": "Leading identifier component (no spaces or ']')."
+            },
+            "arguments": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/textEventArgument" }
+            },
+            "placement": { "enum": ["trackStart", "anywhere"] },
+            "honoredOnTracks": { "$ref": "#/$defs/trackNames" },
+            "maxOccurrences": { "type": "integer", "minimum": 1 },
+            "status": { "$ref": "#/$defs/status" },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        }
+      ]
+    },
+
+    "constraint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "pitches"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "forbiddenPitches" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "pitches": { "$ref": "#/$defs/pitchSet" },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "members"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "mutuallyExclusiveAtTick" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "members": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identifier" },
+              "description": "Marker effects (per difficulty) or modifier ids."
+            },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "phrases", "noteClasses"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "notesWithinPhrase" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "phrases": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/identifier" },
+              "description": "Note must fall in at least one of these."
+            },
+            "noteClasses": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "threshold"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "noSustains" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "threshold": { "$ref": "#/$defs/threshold" },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": {
+              "enum": ["noOverlappingSamePitch", "noOverlappingSameLane"]
+            },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "noteClasses"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "monophonic" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "noteClasses": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "phrases"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "phrasesMayNotOverlap" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "phrases": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "rule", "severity", "phrase", "between"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "rule": { "const": "phraseMustBeBetween" },
+            "severity": { "$ref": "#/$defs/severity" },
+            "status": { "$ref": "#/$defs/status" },
+            "phrase": { "$ref": "#/$defs/identifier" },
+            "between": {
+              "$ref": "#/$defs/identifier",
+              "description": "Phrase must sit after one instance and before the next instance of this phrase."
+            },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        }
+      ]
+    },
+
+    "trackCommonProperties": {
+      "$comment": "Not referenced directly; documents the fields every track kind repeats: id, kind, trackNames, required, position, description, textEvents, eventNotes, reserved, constraints, unknownPitchPolicy, ignoredPitches."
+    },
+
+    "textEventList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/textEventDef" }
+    },
+    "eventNoteList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/eventNoteDef" }
+    },
+    "reservedList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pitchRange" }
+    },
+    "constraintList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/constraint" }
+    },
+    "pitchList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/pitch" }
+    },
+
+    "trackDefinition": {
+      "oneOf": [
+        { "$ref": "#/$defs/headerTrack" },
+        { "$ref": "#/$defs/globalTrack" },
+        { "$ref": "#/$defs/guitarTrack" },
+        { "$ref": "#/$defs/drumsTrack" },
+        { "$ref": "#/$defs/vocalsTrack" },
+        { "$ref": "#/$defs/gamepadTrack" }
+      ]
+    },
+
+    "headerTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "trackNames"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "header" },
+        "trackNames": { "$ref": "#/$defs/trackNames" },
+        "required": { "type": "boolean" },
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Required track index (0 = sync/tempo track)."
+        },
+        "description": { "$ref": "#/$defs/description" },
+        "textEvents": { "$ref": "#/$defs/textEventList" },
+        "eventNotes": { "$ref": "#/$defs/eventNoteList" },
+        "reserved": { "$ref": "#/$defs/reservedList" },
+        "constraints": { "$ref": "#/$defs/constraintList" },
+        "unknownPitchPolicy": { "$ref": "#/$defs/severity" },
+        "ignoredPitches": { "$ref": "#/$defs/pitchList" },
+        "versionCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "textEvent",
+            "argument",
+            "accepted",
+            "compareAs",
+            "onMismatch"
+          ],
+          "properties": {
+            "textEvent": { "$ref": "#/$defs/identifier" },
+            "argument": { "$ref": "#/$defs/identifier" },
+            "accepted": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string" }
+            },
+            "compareAs": { "const": "string" },
+            "onMissing": { "$ref": "#/$defs/severity" },
+            "onMismatch": { "$ref": "#/$defs/severity" }
+          }
+        }
+      }
+    },
+
+    "globalTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "trackNames"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "global" },
+        "trackNames": { "$ref": "#/$defs/trackNames" },
+        "required": { "type": "boolean" },
+        "position": { "type": "integer", "minimum": 1 },
+        "description": { "$ref": "#/$defs/description" },
+        "textEvents": { "$ref": "#/$defs/textEventList" },
+        "eventNotes": { "$ref": "#/$defs/eventNoteList" },
+        "reserved": { "$ref": "#/$defs/reservedList" },
+        "constraints": { "$ref": "#/$defs/constraintList" },
+        "unknownPitchPolicy": { "$ref": "#/$defs/severity" },
+        "ignoredPitches": { "$ref": "#/$defs/pitchList" }
+      }
+    },
+
+    "guitarMechanics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hopoThreshold": { "$ref": "#/$defs/threshold" },
+        "autoHopoExclusions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["sameLaneAsPrevious", "chord"] },
+          "description": "Cases where a note within the HOPO threshold still defaults to strum."
+        },
+        "sustainCutoff": { "$ref": "#/$defs/threshold" },
+        "sustainGap": { "$ref": "#/$defs/threshold" },
+        "positionSnap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "threshold": { "$ref": "#/$defs/threshold" },
+            "appliesToSustainEnds": { "type": "boolean" },
+            "description": { "$ref": "#/$defs/description" }
+          }
+        }
+      }
+    },
+
+    "guitarTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "trackNames", "lanes", "difficulties"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "guitar" },
+        "trackNames": { "$ref": "#/$defs/trackNames" },
+        "required": { "type": "boolean" },
+        "position": { "type": "integer", "minimum": 1 },
+        "description": { "$ref": "#/$defs/description" },
+        "textEvents": { "$ref": "#/$defs/textEventList" },
+        "eventNotes": { "$ref": "#/$defs/eventNoteList" },
+        "reserved": { "$ref": "#/$defs/reservedList" },
+        "constraints": { "$ref": "#/$defs/constraintList" },
+        "unknownPitchPolicy": { "$ref": "#/$defs/severity" },
+        "ignoredPitches": { "$ref": "#/$defs/pitchList" },
+        "lanes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/laneDef" }
+        },
+        "difficulties": { "$ref": "#/$defs/difficulties" },
+        "modifiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/modifierDef" }
+        },
+        "phrases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/phraseDef" }
+        },
+        "mechanics": { "$ref": "#/$defs/guitarMechanics" }
+      }
+    },
+
+    "drumVariants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported", "authored", "detection"],
+      "properties": {
+        "supported": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "authored": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" },
+          "description": "Variants that can be authored directly in the file."
+        },
+        "detection": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Evaluated in order; first match wins.",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["when", "result"],
+                "properties": {
+                  "when": { "$ref": "#/$defs/condition" },
+                  "result": { "$ref": "#/$defs/identifier" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["heuristic", "result"],
+                "properties": {
+                  "heuristic": {
+                    "enum": ["tomMarkersPresent", "cymbalPitchesPresent"]
+                  },
+                  "result": { "$ref": "#/$defs/identifier" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["default"],
+                "properties": { "default": { "$ref": "#/$defs/identifier" } }
+              }
+            ]
+          }
+        },
+        "derivations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["variant", "from", "rule"],
+            "properties": {
+              "variant": { "$ref": "#/$defs/identifier" },
+              "from": { "$ref": "#/$defs/identifier" },
+              "rule": { "enum": ["cymbalsToToms"] },
+              "description": { "$ref": "#/$defs/description" }
+            }
+          }
+        },
+        "rejectWhen": { "$ref": "#/$defs/condition" }
+      }
+    },
+
+    "drumsTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "trackNames",
+        "lanes",
+        "difficulties",
+        "variants"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "drums" },
+        "trackNames": { "$ref": "#/$defs/trackNames" },
+        "required": { "type": "boolean" },
+        "position": { "type": "integer", "minimum": 1 },
+        "description": { "$ref": "#/$defs/description" },
+        "textEvents": { "$ref": "#/$defs/textEventList" },
+        "eventNotes": { "$ref": "#/$defs/eventNoteList" },
+        "reserved": { "$ref": "#/$defs/reservedList" },
+        "constraints": { "$ref": "#/$defs/constraintList" },
+        "unknownPitchPolicy": { "$ref": "#/$defs/severity" },
+        "ignoredPitches": { "$ref": "#/$defs/pitchList" },
+        "lanes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/laneDef" }
+        },
+        "difficulties": { "$ref": "#/$defs/difficulties" },
+        "modifiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/modifierDef" }
+        },
+        "phrases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/phraseDef" }
+        },
+        "variants": { "$ref": "#/$defs/drumVariants" }
+      }
+    },
+
+    "vocalNoteClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "class", "pitches"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "class": { "enum": ["pitched", "pitchless", "percussion"] },
+        "pitches": { "$ref": "#/$defs/pitchSet" },
+        "displayed": { "type": "boolean" },
+        "noteNaming": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scheme", "c4Pitch"],
+          "properties": {
+            "scheme": { "const": "scientific" },
+            "c4Pitch": { "$ref": "#/$defs/pitch" }
+          }
+        },
+        "description": { "$ref": "#/$defs/description" }
+      }
+    },
+
+    "vocalsTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "trackNames",
+        "difficultyModel",
+        "noteClasses",
+        "lyrics"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "vocals" },
+        "trackNames": { "$ref": "#/$defs/trackNames" },
+        "required": { "type": "boolean" },
+        "position": { "type": "integer", "minimum": 1 },
+        "description": { "$ref": "#/$defs/description" },
+        "textEvents": { "$ref": "#/$defs/textEventList" },
+        "eventNotes": { "$ref": "#/$defs/eventNoteList" },
+        "reserved": { "$ref": "#/$defs/reservedList" },
+        "constraints": { "$ref": "#/$defs/constraintList" },
+        "unknownPitchPolicy": { "$ref": "#/$defs/severity" },
+        "ignoredPitches": { "$ref": "#/$defs/pitchList" },
+        "difficultyModel": {
+          "const": "shared",
+          "description": "All difficulties read the same notes."
+        },
+        "noteClasses": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocalNoteClass" }
+        },
+        "phrases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/phraseDef" }
+        },
+        "lyrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["metaEventTypes", "alignment"],
+          "properties": {
+            "metaEventTypes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "integer", "minimum": 1, "maximum": 15 }
+            },
+            "encoding": { "enum": ["utf-8", "any"] },
+            "alignment": {
+              "enum": ["mustMatchNoteStart", "pairedIfAligned"],
+              "description": "mustMatchNoteStart: every lyric must start on a vocal note's tick (error otherwise)."
+            },
+            "alignmentSeverity": { "$ref": "#/$defs/severity" },
+            "allowLyricsOnlyChart": { "type": "boolean" },
+            "duplicateAtTick": { "enum": ["ignoreIfIdentical", "error"] }
+          }
+        }
+      }
+    },
+
+    "gamepadTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "trackNames", "lanes", "difficulties"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "gamepad" },
+        "trackNames": { "$ref": "#/$defs/trackNames" },
+        "required": { "type": "boolean" },
+        "position": { "type": "integer", "minimum": 1 },
+        "description": { "$ref": "#/$defs/description" },
+        "textEvents": { "$ref": "#/$defs/textEventList" },
+        "eventNotes": { "$ref": "#/$defs/eventNoteList" },
+        "reserved": { "$ref": "#/$defs/reservedList" },
+        "constraints": { "$ref": "#/$defs/constraintList" },
+        "unknownPitchPolicy": { "$ref": "#/$defs/severity" },
+        "ignoredPitches": { "$ref": "#/$defs/pitchList" },
+        "lanes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/laneDef" }
+        },
+        "difficulties": { "$ref": "#/$defs/difficulties" },
+        "phrases": { "type": "array", "items": { "$ref": "#/$defs/phraseDef" } }
+      }
+    }
+  }
+}

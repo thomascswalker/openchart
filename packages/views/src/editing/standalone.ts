@@ -1,6 +1,6 @@
 import { Midi } from "@openchart/midi";
 import {
-  defaultConfig,
+  DefaultConfig,
   type SongViewConfig,
   type TrackDescriptor,
 } from "../config.js";
@@ -37,7 +37,7 @@ export interface StandaloneEditing {
 /** Creates a registry, raw editing sessions, and in-memory snapshot history. */
 export function createStandaloneEditing(
   midi: Midi,
-  config: SongViewConfig = defaultConfig,
+  config: SongViewConfig = DefaultConfig,
 ): StandaloneEditing {
   const document = createDocument(midi, config);
   const history = new StandaloneHistoryImpl(midi);
@@ -100,7 +100,7 @@ function descriptorForTarget(
 ): TrackDescriptor {
   const song = new SongView(midi, config);
   const descriptor = song
-    .getTrackDescriptors()
+    .getTrackConfigs()
     .find((item) => item.key === trackKey);
   if (descriptor) return descriptor;
 

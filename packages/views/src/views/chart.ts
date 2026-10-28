@@ -1,6 +1,5 @@
 import { MidiTrack, MidiNote } from "@openchart/midi";
 import { Difficulty } from "../types.js";
-import { NoteCache } from "./cache.js";
 import { ChartViewConfig } from "../config.js";
 import { InstrumentTrackView, SongView } from "../index.js";
 
@@ -9,11 +8,8 @@ export class ChartView {
   #track: InstrumentTrackView | undefined;
   #midiTrack: MidiTrack | undefined;
   #config: ChartViewConfig;
-  #cache: NoteCache;
   #specialPitches: readonly number[];
   #ensureTrack: (() => MidiTrack | undefined) | undefined;
-  #notesRevision = -1;
-  #notes: MidiNote[] = [];
 
   constructor(
     song: SongView | undefined,
@@ -29,7 +25,6 @@ export class ChartView {
     this.#config = config;
     this.#specialPitches = specialPitches;
     this.#ensureTrack = ensureTrack;
-    this.#cache = new NoteCache(midiTrack);
   }
 
   public getDifficulty(): Difficulty {
@@ -49,16 +44,7 @@ export class ChartView {
   }
 
   public getNotes(): MidiNote[] {
-    this.#cache.update();
-    if (!this.#midiTrack) return this.#notes;
-    const revision = this.#midiTrack.getNoteRevision();
-    if (revision !== this.#notesRevision) {
-      this.#notes = this.#cache
-        .getNotes()
-        .filter((note) => this.isValidPitch(note.pitch));
-      this.#notesRevision = revision;
-    }
-    return this.#notes;
+    return this.#midiTrack?.getNotes({ pitch: this.#config.range }) ?? [];
   }
 
   public addNote(
@@ -84,13 +70,16 @@ export class ChartView {
     end: number = 0,
     velocity: number = 100,
   ): boolean {
-    if (!this.isValidPitch(pitch) || start < 0 || (end !== 0 && end < start)) {
+    if (
+      !this.#midiTrack ||
+      !this.isValidPitch(pitch) ||
+      start < 0 ||
+      (end !== 0 && end < start)
+    ) {
       return false;
     }
 
-    const midiTrack = this.ensureTrack();
-    if (!midiTrack) return false;
-    midiTrack.insertNote({
+    this.#midiTrack.insertNote({
       tick: start,
       pitch,
       velocity,
@@ -148,8 +137,6 @@ export class ChartView {
   private ensureTrack(): MidiTrack | undefined {
     if (!this.#midiTrack && this.#ensureTrack) {
       this.#midiTrack = this.#ensureTrack();
-      this.#cache = new NoteCache(this.#midiTrack);
-      this.#notesRevision = -1;
     }
     return this.#midiTrack;
   }

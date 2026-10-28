@@ -8,7 +8,7 @@ import {
 } from "@openchart/midi";
 import { SongView } from "../views/song.js";
 import {
-  defaultConfig,
+  DefaultConfig,
   type SongViewConfig,
   type TrackDescriptor,
 } from "../config.js";
@@ -37,10 +37,10 @@ export class ChartDocument implements ChartDocumentReader {
   private readonly config: SongViewConfig;
 
   /** Creates a reader and command executor for a mutable MIDI document. */
-  public constructor(midi: Midi, config: SongViewConfig = defaultConfig) {
+  public constructor(midi: Midi, config: SongViewConfig = DefaultConfig) {
     this.midi = midi;
     this.config = config;
-    this.trackDescriptors = new SongView(midi, config).getTrackDescriptors();
+    this.trackDescriptors = new SongView(midi, config).getTrackConfigs();
   }
 
   /** Returns the stable ID for a note on the given track. */

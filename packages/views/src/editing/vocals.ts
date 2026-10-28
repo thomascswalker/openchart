@@ -5,10 +5,7 @@ import {
   type TextMidiEvent,
 } from "@openchart/midi";
 import type { MidiNotePhrase } from "./phrase.js";
-import {
-  getVocalTrackConfig,
-  type InstrumentTrackViewConfig,
-} from "../config.js";
+import { getVocalTrackConfig, type InstrumentViewConfig } from "../config.js";
 
 /** Note kinds that live on the VOCALS track. */
 export type VocalNoteKind = "pitched" | "pitchless" | "percussion";
@@ -115,7 +112,7 @@ function pitchOr(value: number | undefined, fallback: number): number {
 }
 
 export function vocalLayoutFromConfig(
-  config: InstrumentTrackViewConfig,
+  config: InstrumentViewConfig,
 ): VocalLayout {
   const notes = config.notes;
   const defaults = DEFAULT_VOCAL_LAYOUT;
