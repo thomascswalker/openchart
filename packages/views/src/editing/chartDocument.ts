@@ -49,9 +49,9 @@ export class ChartDocument implements ChartDocumentReader {
   }
 
   /** Returns the stable ID for a note on the given track. */
-  public getNoteId(trackIndex: number, note: MidiNote): EntityId {
+  public getNoteId(trackIndex: number, note: Partial<MidiNote>): EntityId {
     const track = this.getTrack(trackIndex);
-    return formatNoteId(trackIndex, track.getEventId(note.noteOn));
+    return formatNoteId(trackIndex, track.getEventId(note.noteOn!));
   }
 
   /** Returns the document's ticks-per-quarter-note resolution. */

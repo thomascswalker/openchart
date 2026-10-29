@@ -1,5 +1,5 @@
-import { Midi } from "../../src/midi.js";
-import { MidiTrack } from "../../src/track.js";
+import { Midi } from "../midi.js";
+import { MidiTrack } from "../track.js";
 import { expect, test } from "vitest";
 import * as fs from "fs";
 import {
@@ -7,8 +7,8 @@ import {
   MetaType,
   MidiChannelEvent,
   TempoEvent,
-} from "../../src/types.js";
-import { msToTicks, ticksToMs } from "../../src/util.js";
+} from "../types.js";
+import { msToTicks, ticksToMs } from "../util.js";
 
 test("is constructed", () => {
   const midi = new Midi();
@@ -104,7 +104,7 @@ test("clone preserves an empty MIDI document", () => {
 });
 
 test("read file", async () => {
-  const { default: testData } = await import("../data.json");
+  const { default: testData } = await import("./assets/data.json");
 
   const midiPath = new URL(`../${testData.filename}`, import.meta.url);
   const content = fs.readFileSync(midiPath);
@@ -556,7 +556,7 @@ test("getAbsoluteTickAt and getInsertionIndexAt read cached ticks", () => {
 });
 
 test("parsed MIDI events carry ticks matching their deltas", async () => {
-  const { default: testData } = await import("../data.json");
+  const { default: testData } = await import("./assets/data.json");
   const midiPath = new URL(`../${testData.filename}`, import.meta.url);
   const midi = new Midi(fs.readFileSync(midiPath));
 

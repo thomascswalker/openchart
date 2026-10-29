@@ -30,10 +30,10 @@ describe("data.json", () => {
   let song: SongView;
 
   beforeAll(async () => {
-    const { default: testData } = await import("../data.json");
+    const { default: testData } = await import("./assets/data.json");
     const currentDir = path.dirname(fileURLToPath(import.meta.url));
     midi = new Midi(
-      fs.readFileSync(path.join(currentDir, "..", testData.filename)),
+      fs.readFileSync(path.join(currentDir, "assets", testData.filename)),
     );
     song = new SongView(midi);
   });

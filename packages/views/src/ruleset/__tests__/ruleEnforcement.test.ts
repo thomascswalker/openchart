@@ -1,18 +1,19 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
+import { DomainCommandType, EditCommandType } from "../../editing/commands.js";
+import { formatNoteId } from "../../editing/entity.js";
+import { EditRejectedError, type Rejection } from "../../editing/result.js";
+import { createStandaloneEditing } from "../../editing/standalone.js";
+import { VocalPhraseKind } from "../../views/vocal.js";
 import {
-  DomainCommandType,
-  EditCommandType,
+  CompiledRuleset,
   DefaultCompiledRuleset,
-  DefaultRuleset,
-  Difficulty,
-  EditRejectedError,
-  VocalPhraseKind,
   compileRuleset,
-  createStandaloneEditing,
-  formatNoteId,
-  type CompiledRuleset,
-} from "../../src/index.js";
+} from "../compile.js";
+import { DefaultRuleset } from "../config.js";
+import { Difficulty } from "../difficulty.js";
+import { EditingSession } from "../../editing/session.js";
+import { RuleViolation } from "../context.js";
 
 function setup(
   trackName: string,
@@ -30,7 +31,7 @@ function session(
   s: ReturnType<typeof setup>,
   hostKind: string,
   difficulty: Difficulty | null = Difficulty.Expert,
-) {
+): EditingSession {
   return createStandaloneEditing(s.midi, s.rules).createSession(
     { trackKey: s.key, trackIndex: 1, difficulty },
     hostKind,
@@ -50,7 +51,7 @@ describe("edit enforcement through the session", () => {
       cutPolicy: "none",
     });
     expect(result.changed).toBe(false);
-    expect(result.rejections.map((r) => r.code)).toEqual([
+    expect(result.rejections.map((r: Rejection) => r.code)).toEqual([
       "rule:noSameFretSustainOverlap",
     ]);
     expect(s.midi.toBuffer()).toEqual(before);
@@ -84,9 +85,9 @@ describe("edit enforcement through the session", () => {
     });
     expect(result.changed).toBe(true);
     expect(result.rejections).toEqual([]);
-    expect(result.diagnostics.map((d) => `${d.ruleId}:${d.severity}`)).toEqual([
-      "forceConflict:warning",
-    ]);
+    expect(
+      result.diagnostics.map((d: RuleViolation) => `${d.ruleId}:${d.severity}`),
+    ).toEqual(["forceConflict:warning"]);
     expect(s.track.getNotes()).toHaveLength(2);
   });
 
@@ -99,7 +100,7 @@ describe("edit enforcement through the session", () => {
     expect(
       session(configured, "piano-roll")
         .execute(add)
-        .rejections.map((r) => r.code),
+        .rejections.map((r: Rejection) => r.code),
     ).toEqual(["rule:policy.unknownPitch"]);
 
     const unmapped = setup("LEAD GUITAR");
@@ -124,7 +125,7 @@ describe("edit enforcement through the session", () => {
       placement: "normal",
       cutPolicy: "none",
     });
-    expect(preview.rejections.map((r) => r.code)).toContain(
+    expect(preview.rejections.map((r: Rejection) => r.code)).toContain(
       "rule:noSameFretSustainOverlap",
     );
     gesture.cancel();
@@ -165,7 +166,7 @@ describe("edit enforcement through the session", () => {
         endTick: tick + 50,
       });
     expect(add(150).rejections).toEqual([]);
-    expect(add(500).rejections.map((r) => r.code)).toEqual([
+    expect(add(500).rejections.map((r: Rejection) => r.code)).toEqual([
       "rule:windowBetweenPhrases",
     ]);
   });
@@ -185,10 +186,10 @@ describe("edit enforcement through the session", () => {
         text: t,
       } as never);
     expect(text("[section Verse]").changed).toBe(true);
-    expect(text("hello").rejections.map((r) => r.code)).toEqual([
+    expect(text("hello").rejections.map((r: Rejection) => r.code)).toEqual([
       "rule:policy.unknownTextEvent",
     ]);
-    expect(text("[bogus]").rejections.map((r) => r.code)).toEqual([
+    expect(text("[bogus]").rejections.map((r: Rejection) => r.code)).toEqual([
       "rule:policy.unknownTextEvent",
     ]);
     // Meta types outside the grammar's metaEventTypes are not text events.

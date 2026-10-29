@@ -8,7 +8,7 @@ import {
   getSustainCutTargets,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
-import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
+import characterization from "../../../../../../../packages/views/src/editing/modes/__tests__/fixtures/characterization/editing.json" with { type: "json" };
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayPhrase } from "../hitTesting";

@@ -1,21 +1,19 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
-import { ChartDocument } from "../../../src/editing/chartDocument.js";
-import { EditingModeRegistry } from "../../../src/editing/modes/registry.js";
-import { createRawMidiMode } from "../../../src/editing/modes/midi/rawMidi.js";
-import {
-  EditCommandType,
-  computePreview,
-  createStandaloneEditing,
-  createEditingSession,
-  DefaultCompiledRuleset,
-  createRulesetContext,
-  Difficulty,
-  EditRejectedError,
-  formatNoteId,
-  type ModeContext,
-} from "../../../src/index.js";
-import { SongView } from "../../../src/views/song.js";
+import { ChartDocument } from "../chartDocument.js";
+import { EditingModeRegistry } from "../modes/registry.js";
+import { createRawMidiMode } from "../modes/midi/rawMidi.js";
+import { SongView } from "../../views/song.js";
+import { DefaultCompiledRuleset } from "../../ruleset/compile.js";
+import { Difficulty } from "../../ruleset/difficulty.js";
+import { createRulesetContext } from "../../ruleset/enforce.js";
+import { EditCommandType } from "../commands.js";
+import { formatNoteId } from "../entity.js";
+import { ModeContext } from "../modes/mode.js";
+import { computePreview } from "../preview.js";
+import { EditRejectedError } from "../result.js";
+import { createEditingSession } from "../session.js";
+import { createStandaloneEditing } from "../standalone.js";
 
 function createMidi(withTrack = true): Midi {
   const midi = new Midi();

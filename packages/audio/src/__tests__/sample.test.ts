@@ -3,16 +3,18 @@ import { fileURLToPath } from "node:url";
 import AudioSample from "../sample.js";
 import { AudioEngine } from "../engine.js";
 
+const SampleFileName = "./assets/sample.wav";
+
 test("AudioSample loads the sample file", async () => {
   expect(AudioSample).toBeDefined();
 
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   expect(source.isValid).toBe(true);
 });
 
 test("AudioSample play, pause, and stop methods work", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   expect(source.play()).toBe(true);
   expect(source.play()).toBe(false);
@@ -21,7 +23,7 @@ test("AudioSample play, pause, and stop methods work", async () => {
 });
 
 test("AudioSample seeking updates position and restarts a playing source", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   const seekTime = source.duration / 2;
   const context = source.context;
@@ -56,7 +58,7 @@ test("AudioSample seeking updates position and restarts a playing source", async
 });
 
 test("AudioSample rejects seek positions outside the buffer", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
 
   expect(source.seek(-1)).toBe(false);
@@ -65,7 +67,7 @@ test("AudioSample rejects seek positions outside the buffer", async () => {
 });
 
 test("AudioSample can be disposed while loading", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = AudioSample.load(filename);
 
   source.dispose();
@@ -76,7 +78,7 @@ test("AudioSample can be disposed while loading", async () => {
 });
 
 test("AudioSample onLoaded callback is called", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   let loadedCalled = false;
   await AudioSample.loadAsync(filename, {
     onLoaded: () => {
@@ -87,7 +89,7 @@ test("AudioSample onLoaded callback is called", async () => {
 });
 
 test("AudioSample reload and reloadAsync methods work", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   source.reload();
   await source.reloadAsync();
@@ -95,7 +97,7 @@ test("AudioSample reload and reloadAsync methods work", async () => {
 });
 
 test("AudioSample.play schedules at the requested context time and fades in", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const sample = await AudioSample.loadAsync(filename);
   const context = sample.context;
   if (!context) {
@@ -117,7 +119,7 @@ test("AudioSample.play schedules at the requested context time and fades in", as
 });
 
 test("AudioSamples sharing an engine share one AudioContext", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const engine = new AudioEngine();
   const first = await AudioSample.loadAsync(filename, { engine });
   const second = await AudioSample.loadAsync(filename, { engine });
@@ -133,7 +135,7 @@ test("AudioSamples sharing an engine share one AudioContext", async () => {
 });
 
 test("AudioSample volume changes are smoothed instead of stepped", async () => {
-  const filename = fileURLToPath(new URL("./sample.wav", import.meta.url));
+  const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const sample = await AudioSample.loadAsync(filename);
   expect(sample.play()).toBe(true);
   const context = sample.context;

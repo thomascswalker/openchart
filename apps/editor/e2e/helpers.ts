@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 export const SONG_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../packages/views/tests/song.mid",
+  "../../../packages/views/src/views/__tests__/assets/song.mid",
 );
 
 const fixture = new Midi(new Uint8Array(readFileSync(SONG_PATH)));

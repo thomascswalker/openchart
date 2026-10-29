@@ -3,17 +3,12 @@ import * as fs from "fs";
 import { fileURLToPath } from "url";
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import {
-  DefaultCompiledRuleset,
-  EditingModeId,
-  RuleEnforcer,
-  createRulesetContext,
-  createDefaultModeRegistry,
-  VocalNoteKind,
-  VocalPhraseKind,
-} from "../../src/index.js";
-import { SongView } from "../../src/views/song.js";
-import { VocalTrackView } from "../../src/views/vocal.js";
+import { SongView } from "../song.js";
+import { VocalNoteKind, VocalPhraseKind, VocalTrackView } from "../vocal.js";
+import { createDefaultModeRegistry } from "../../editing/modes/index.js";
+import { EditingModeId } from "../../editing/modes/mode.js";
+import { DefaultCompiledRuleset } from "../../ruleset/compile.js";
+import { RuleEnforcer, createRulesetContext } from "../../ruleset/enforce.js";
 
 const layout = VocalTrackView.layoutFromRules(
   DefaultCompiledRuleset.byKey.get("vocals")!,
@@ -285,7 +280,9 @@ describe("VocalTrackView reading and validation", () => {
 describe("fixture VOCALS track", () => {
   it("classifies the shipped chart and pairs every lyric", () => {
     const dir = path.dirname(fileURLToPath(import.meta.url));
-    const midi = new Midi(fs.readFileSync(path.join(dir, "..", "song.mid")));
+    const midi = new Midi(
+      fs.readFileSync(path.join(dir, "assets", "song.mid")),
+    );
     const { view } = vocals(midi);
     expect(view.getNotes(VocalNoteKind.Pitched)).toHaveLength(492);
     expect(view.getNotes(VocalNoteKind.Pitchless)).toHaveLength(1);

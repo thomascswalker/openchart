@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { Midi } from "../../src/midi.js";
-import { MetaType, type TextMidiEvent } from "../../src/types.js";
+import { Midi } from "../midi.js";
+import { MetaType, type TextMidiEvent } from "../types.js";
 import {
   decodeMetaPayload,
   decodeText,
   encodeMetaPayload,
   encodeText,
   textByteLength,
-} from "../../src/codec.js";
-import { MidiTrack } from "../../src/track.js";
+} from "../codec.js";
+import { MidiTrack } from "../track.js";
 
 const SAMPLES = ["plain", "café", "é", "日本語の歌", "🎤 sing", "naïve+"];
 

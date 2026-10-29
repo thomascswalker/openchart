@@ -1,8 +1,8 @@
 import { MetaType, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import { getNotePhrases } from "../../src/editing/phrase.js";
-import { extractSections, findSection } from "../../src/editing/section.js";
-import { DefaultCompiledRuleset } from "../../src/ruleset/index.js";
+import { getNotePhrases } from "../phrase.js";
+import { extractSections, findSection } from "../section.js";
+import { DefaultCompiledRuleset } from "../../ruleset/index.js";
 
 const lead = DefaultCompiledRuleset.byKey.get("lead-guitar")!;
 

@@ -1,24 +1,27 @@
 import { describe, expect, it } from "vitest";
+import { classifyPitch } from "../classify.js";
 import {
-  Difficulty,
-  DefaultRuleset,
-  DefaultCompiledRuleset as C,
-  RuleEnforcer,
-  classifyPitch,
-  compileRuleset,
-  createRulesetContext,
-  createUnmappedTrackRules,
-  difficultyFromName,
-  difficultyName,
-  evaluateCondition,
-  isWithinThreshold,
-  resolveThresholdTicks,
+  TrackRules,
   toTrackKey,
-  type EnforcerNote,
-  type TrackRules,
-} from "@openchart/views";
+  difficultyName,
+  difficultyFromName,
+  compileRuleset,
+  createUnmappedTrackRules,
+} from "../compile.js";
+import { evaluateCondition } from "../conditions.js";
+import { DefaultRuleset } from "../config.js";
+import { Difficulty } from "../difficulty.js";
+import {
+  EnforcerNote,
+  RuleEnforcer,
+  createRulesetContext,
+} from "../enforce.js";
+import { resolveThresholdTicks, isWithinThreshold } from "../thresholds.js";
 
-const rules = (key: string): TrackRules => C.byKey.get(key)!;
+const CompiledDefaultRuleset = compileRuleset(DefaultRuleset);
+
+const rules = (key: string): TrackRules =>
+  CompiledDefaultRuleset.byKey.get(key)!;
 const note = (
   id: string,
   tick: number,
@@ -31,7 +34,7 @@ const note = (
   duration,
   velocity: 100,
 });
-const enforcer = new RuleEnforcer(C);
+const enforcer = new RuleEnforcer(CompiledDefaultRuleset);
 const ctx = createRulesetContext({ ppqn: 480 });
 const check = (
   r: TrackRules | null,
@@ -47,7 +50,7 @@ const check = (
 
 describe("compileRuleset", () => {
   it("emits one TrackRules per track name with kebab-case keys", () => {
-    expect(C.tracks.map((t) => t.key)).toEqual([
+    expect(CompiledDefaultRuleset.tracks.map((t) => t.key)).toEqual([
       "chart-header",
       "global",
       "lead-guitar",

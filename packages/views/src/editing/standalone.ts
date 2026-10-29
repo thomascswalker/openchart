@@ -11,10 +11,14 @@ import { ClipboardService } from "./clipboard";
 import type { EditingTarget, ModeRegistry } from "./modes/mode";
 import { createDefaultModeRegistry } from "./modes/index";
 import { SelectionModel } from "./selectionModel";
-import { createEditingSession, type EditingSession } from "./session";
+import {
+  createEditingSession,
+  EditTransactionPort,
+  type EditingSession,
+} from "./session";
 
 /** In-memory snapshot history returned by standalone editing instances. */
-export interface StandaloneHistory {
+export interface StandaloneHistory extends EditTransactionPort {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly isDirty: boolean;

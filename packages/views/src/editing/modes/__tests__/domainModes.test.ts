@@ -1,22 +1,22 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import characterization from "../fixtures/characterization/editing.json" with { type: "json" };
+import characterization from "./fixtures/characterization/editing.json" with { type: "json" };
 import {
-  DomainCommandType,
-  EditCommandType,
-  EditingModeId,
+  CompiledRuleset,
   DefaultCompiledRuleset,
-  DefaultRuleset,
   compileRuleset,
-  createDefaultModeRegistry,
-  createStandaloneEditing,
-  Difficulty,
-  VocalNoteKind,
-  VocalPhraseKind,
-  formatNoteId,
-  type CompiledRuleset,
-  type EditingSession,
-} from "../../src/index.js";
+} from "../../../ruleset/compile.js";
+import { DefaultRuleset } from "../../../ruleset/config.js";
+import { Difficulty } from "../../../ruleset/difficulty.js";
+import { VocalNoteKind, VocalPhraseKind } from "../../../views/vocal.js";
+import { DomainCommandType, EditCommandType } from "../../commands.js";
+import { formatNoteId } from "../../entity.js";
+import { EditingSession } from "../../session.js";
+import { createStandaloneEditing } from "../../standalone.js";
+import { createDefaultModeRegistry } from "../index.js";
+import { EditingModeId } from "../mode.js";
+
+type FretPlacement = "normal" | "force-hopo" | "force-strum" | "tap";
 
 const difficultyValues = [
   Difficulty.Easy,
@@ -65,7 +65,7 @@ const PLACEMENT_TOKEN: Record<string, string> = {
 };
 
 function placeFretsMarker(
-  placement: "normal" | "force-hopo" | "force-strum" | "tap",
+  placement: FretPlacement,
   difficulty: Difficulty,
   existingMarkers: readonly number[] = [],
 ) {
@@ -78,7 +78,7 @@ function placeFretsMarker(
     type: DomainCommandType.PlaceChartNote,
     lane: 0,
     tick: 480,
-    placement: PLACEMENT_TOKEN[placement],
+    placement: PLACEMENT_TOKEN[placement as FretPlacement],
     cutPolicy: "none",
   });
   return { track, result };
@@ -339,7 +339,7 @@ describe("default editing modes", () => {
   it("replays forced-marker replacement and duplicate suppression through chart.lanes", () => {
     const { difficulties, placementOrder, expectedByPlacement } =
       characterization.forcedMarkers;
-    const placements = placementOrder;
+    const placements = placementOrder as FretPlacement[];
     for (const [index, item] of difficulties.entries()) {
       const difficulty = difficultyValues[index]!;
       const markers = item.markers;

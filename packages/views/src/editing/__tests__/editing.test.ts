@@ -14,7 +14,7 @@ import {
   formatTimeSignatureId,
   parseEntityId,
   SelectionModel,
-} from "../../src/index.js";
+} from "../../index.js";
 
 function createDocument() {
   const midi = new Midi();
