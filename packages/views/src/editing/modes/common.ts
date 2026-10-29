@@ -1,9 +1,9 @@
-import type { TrackDescriptor, TrackRules } from "../../ruleset/compile.js";
-import type { EntityId } from "../entity.js";
-import type { EditCommand, GeneralCommand } from "../commands.js";
-import type { ModeContext } from "../modes/mode.js";
-import type { NoteSnapshot } from "../reader.js";
-import type { Rejection } from "../result.js";
+import type { TrackDescriptor, TrackRules } from "../../ruleset/compile";
+import type { EntityId } from "../entity";
+import type { EditCommand, GeneralCommand } from "../commands";
+import type { ModeContext } from "../modes/mode";
+import type { NoteSnapshot } from "../reader";
+import type { Rejection } from "../result";
 
 export function rejection(
   command: EditCommand,

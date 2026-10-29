@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DefaultRuleset } from "../../src/config.js";
 import {
+  Difficulty,
+  DefaultRuleset,
   DefaultCompiledRuleset as C,
   RuleEnforcer,
   classifyPitch,
@@ -15,8 +16,7 @@ import {
   toTrackKey,
   type EnforcerNote,
   type TrackRules,
-} from "../../src/ruleset/index.js";
-import { Difficulty } from "../../src/types.js";
+} from "@openchart/views";
 
 const rules = (key: string): TrackRules => C.byKey.get(key)!;
 const note = (

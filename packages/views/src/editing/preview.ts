@@ -1,8 +1,8 @@
-import { EditCommandType, type GeneralCommand } from "./commands.js";
-import type { EntityId } from "./entity.js";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
-import type { RuleViolation } from "../ruleset/index.js";
-import type { Rejection } from "./result.js";
+import { EditCommandType, type GeneralCommand } from "./commands";
+import type { EntityId } from "./entity";
+import type { ChartDocumentReader, NoteSnapshot } from "./reader";
+import type { RuleViolation } from "../ruleset/index";
+import type { Rejection } from "./result";
 
 /** Volatile note projection produced without changing MIDI or history. */
 export interface PreviewState {

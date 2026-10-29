@@ -5,27 +5,27 @@
  * nothing here knows what a "fret" or a "drum" is.
  */
 import { z } from "zod";
-import { getSustainCutTargets } from "../../sustains.js";
-import type { MarkerEffect, PadType, PhraseDef } from "../../../config.js";
-import { classifyPitch, type PitchRole } from "../../../ruleset/classify.js";
+import { getSustainCutTargets } from "../../sustains";
+import type { MarkerEffect, PadType, PhraseDef } from "../../../ruleset/config";
+import { classifyPitch, type PitchRole } from "../../../ruleset/classify";
 import {
   difficultyName,
   type ChartRules,
   type CompiledLane,
   type TrackRules,
-} from "../../../ruleset/compile.js";
-import { thresholdContext } from "../../../ruleset/enforce.js";
-import { phraseIcon, phraseLabel } from "../../../ruleset/labels.js";
-import { resolveThreshold } from "../../../ruleset/thresholds.js";
-import type { ClipboardPayload } from "../../clipboard.js";
+} from "../../../ruleset/compile";
+import { thresholdContext } from "../../../ruleset/enforce";
+import { phraseIcon, phraseLabel } from "../../../ruleset/labels";
+import { resolveThreshold } from "../../../ruleset/thresholds";
+import type { ClipboardPayload } from "../../clipboard";
 import {
   DomainCommandType,
   EditCommandType,
   type EditCommand,
   type GeneralCommand,
-} from "../../commands.js";
-import { EntityType, type EntityId } from "../../entity.js";
-import { isRawCommand } from "../../modes/mode.js";
+} from "../../commands";
+import { EntityType, type EntityId } from "../../entity";
+import { isRawCommand } from "../../modes/mode";
 import type {
   EditingMode,
   EntityClassification,
@@ -34,9 +34,9 @@ import type {
   Projection,
   ProjectionRow,
   ToolDescriptor,
-} from "../../modes/mode.js";
-import type { NoteSnapshot } from "../../reader.js";
-import type { Rejection } from "../../result.js";
+} from "../../modes/mode";
+import type { NoteSnapshot } from "../../reader";
+import type { Rejection } from "../../result";
 import {
   ownsNotes,
   rejected,
@@ -45,7 +45,7 @@ import {
   targetTrackIndex,
   validSpan,
   validTick,
-} from "../common.js";
+} from "../common";
 
 const CutPolicy = z.enum([
   "all",

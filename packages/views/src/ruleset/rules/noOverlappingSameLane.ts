@@ -1,11 +1,11 @@
-import { resolveThreshold } from "../thresholds.js";
+import { resolveThreshold } from "../thresholds";
 import {
   compact,
   violation,
   type ClassifiedNote,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
+} from "../context";
 
 /**
  * A sustain may not overlap another note on the same lane. Notes at or below

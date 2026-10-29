@@ -1,9 +1,9 @@
 import type { MidiTrack } from "@openchart/midi";
-import type { TrackRules } from "../ruleset/compile.js";
-import type { Difficulty } from "../types.js";
-import { ChartView } from "./chart.js";
-import type { SongView } from "./song.js";
-import { TrackView } from "./track.js";
+import type { TrackRules } from "../ruleset/compile";
+import type { Difficulty } from "../ruleset/difficulty";
+import { ChartView } from "./chart";
+import type { SongView } from "./song";
+import { TrackView } from "./track";
 
 /** Chart-bearing track (guitar, drums, gamepad): one ChartView per difficulty. */
 export class InstrumentTrackView extends TrackView {

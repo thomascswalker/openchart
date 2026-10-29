@@ -3,34 +3,34 @@ import {
   type RuleViolation,
   type RulesetContext,
   type CompiledRuleset,
-} from "../ruleset/index.js";
-import { validateRawCommands } from "./validation.js";
-import type { ChartDocument } from "./chartDocument.js";
+} from "../ruleset/index";
+import { validateRawCommands } from "./validation";
+import type { ChartDocument } from "./chartDocument";
 import {
   DomainCommandType,
   EditCommandType,
   ICommand,
   type EditCommand,
   type GeneralCommand,
-} from "./commands.js";
-import { computePreview, type PreviewState } from "./preview.js";
+} from "./commands";
+import { computePreview, type PreviewState } from "./preview";
 import {
   EditRejectedError,
   emptyEditResult,
   type EditResult,
   type Rejection,
-} from "./result.js";
-import { ClipboardService } from "./clipboard.js";
-import type { SelectionModel } from "./selectionModel.js";
-import { SelectionModel as SelectionModelImpl } from "./selectionModel.js";
+} from "./result";
+import { ClipboardService } from "./clipboard";
+import type { SelectionModel } from "./selectionModel";
+import { SelectionModel as SelectionModelImpl } from "./selectionModel";
 import type {
   EditingMode,
   EditingTarget,
   ModeContext,
   Projection,
   ToolDescriptor,
-} from "./modes/mode.js";
-import type { NoteSnapshot } from "./reader.js";
+} from "./modes/mode";
+import type { NoteSnapshot } from "./reader";
 
 /** Transaction operations supplied by the document/history owner. */
 export interface EditTransactionPort {

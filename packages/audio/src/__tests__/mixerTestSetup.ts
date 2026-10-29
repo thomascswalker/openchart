@@ -1,17 +1,7 @@
 import { vi } from "vitest";
 
-vi.mock("@openchart/audio", async () => {
+vi.mock("../sample.js", async () => {
   const { createMockAudio } = await import("./audioMock.js");
-  // A stand-in engine whose clock the tests can set directly.
-  class MockAudioEngine {
-    now = 0;
-    state = "running";
-    outputLatency = 0;
-    disposed = false;
-    dispose() {
-      this.disposed = true;
-    }
-  }
   return {
     default: {
       load: (
@@ -22,6 +12,21 @@ vi.mock("@openchart/audio", async () => {
         return createMockAudio(options);
       },
     },
+  };
+});
+
+vi.mock("../engine.js", () => {
+  class MockAudioEngine {
+    now = 0;
+    state = "running";
+    outputLatency = 0;
+    disposed = false;
+    dispose() {
+      this.disposed = true;
+    }
+  }
+
+  return {
     AudioEngine: MockAudioEngine,
     START_LEAD_SECONDS: 0.03,
   };

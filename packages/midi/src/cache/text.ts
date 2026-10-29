@@ -1,5 +1,5 @@
-import { isTextEvent, MidiEvent, TextMidiEvent } from "../types.js";
-import { IEventCacheList } from "./cache.js";
+import { isTextEvent, MidiEvent, TextMidiEvent } from "../types";
+import { IEventCacheList } from "./cache";
 
 export class TextEventCache extends IEventCacheList<TextMidiEvent, MidiEvent> {
   public override build(events: MidiEvent[]): void {

@@ -1,22 +1,22 @@
 import { MetaType } from "@openchart/midi";
-import { EntityType } from "../../entity.js";
+import { EntityType } from "../../entity";
 import { z } from "zod";
-import type { ClipboardPayload } from "../../clipboard.js";
+import type { ClipboardPayload } from "../../clipboard";
 import {
   DomainCommandType,
   EditCommandType,
   type EditCommand,
   type GeneralCommand,
-} from "../../commands.js";
-import { parseEntityFromId, type EntityId } from "../../entity.js";
+} from "../../commands";
+import { parseEntityFromId, type EntityId } from "../../entity";
 import type {
   EditingMode,
   ExpansionResult,
   ModeContext,
   Projection,
-} from "../mode.js";
-import { isRawCommand } from "../mode.js";
-import type { NoteSnapshot } from "../../reader.js";
+} from "../mode";
+import { isRawCommand } from "../mode";
+import type { NoteSnapshot } from "../../reader";
 
 const EmptyToolStateSchema = z.object({});
 const AddSectionSchema = z.object({

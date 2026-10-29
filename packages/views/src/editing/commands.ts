@@ -1,5 +1,5 @@
 import type { TextMetaType } from "@openchart/midi";
-import type { EntityId } from "./entity.js";
+import type { EntityId } from "./entity";
 
 /** Values needed to insert a note at an absolute tick. */
 export interface InsertNoteOptions {

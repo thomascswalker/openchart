@@ -14,7 +14,7 @@ import { TransposeSelectionAction } from "../piano-roll/transpose-selection";
 import { ToggleLaneNoteAction } from "../highway/toggle-lane-note";
 import { ReleaseLaneNoteAction } from "../highway/release-lane-note";
 import { createTestRulesetService } from "../../services/__tests__/testUtils";
-import type { EditingModeId } from "../../../../../packages/views/dist/src/editing/mode";
+import type { EditingModeId } from "@openchart/views";
 
 function accessor(services: Record<string, unknown>): ServicesAccessor {
   return { get: <T>(id: string) => services[id] as T };

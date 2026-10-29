@@ -6,13 +6,13 @@ import {
   type MidiNote,
   type MidiTrack,
 } from "@openchart/midi";
-import { SongView } from "../views/song.js";
+import { SongView } from "../views/song";
 import {
   DefaultCompiledRuleset,
   type CompiledRuleset,
   type TrackDescriptor,
-} from "../ruleset/compile.js";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
+} from "../ruleset/compile";
+import type { ChartDocumentReader, NoteSnapshot } from "./reader";
 import {
   EntityType,
   formatNoteId,
@@ -21,15 +21,11 @@ import {
   formatTimeSignatureId,
   parseEntityFromId,
   type EntityId,
-} from "./entity.js";
-import {
-  emptyEditResult,
-  EditRejectedError,
-  type EditResult,
-} from "./result.js";
-import { EditCommandType, type GeneralCommand } from "./commands.js";
+} from "./entity";
+import { emptyEditResult, EditRejectedError, type EditResult } from "./result";
+import { EditCommandType, type GeneralCommand } from "./commands";
 
-export type { NoteSnapshot } from "./reader.js";
+export type { NoteSnapshot } from "./reader";
 
 /** Headless raw-command executor and read-only projection of a MIDI document. */
 export class ChartDocument implements ChartDocumentReader {

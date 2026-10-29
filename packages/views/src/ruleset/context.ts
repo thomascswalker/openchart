@@ -1,9 +1,9 @@
-import type { Constraint, Severity } from "../config.js";
-import type { Difficulty } from "../types.js";
-import { classifyPitch, type PitchRole } from "./classify.js";
-import type { TrackRules } from "./compile.js";
-import { EnforcerNote } from "./enforce.js";
-import type { ThresholdContext } from "./thresholds.js";
+import type { Constraint, Severity } from "./config";
+import type { Difficulty } from "./difficulty";
+import { classifyPitch, type PitchRole } from "./classify";
+import type { TrackRules } from "./compile";
+import { EnforcerNote } from "./enforce";
+import type { ThresholdContext } from "./thresholds";
 
 export interface RuleViolation {
   /** Constraint id, `policy.*` for pitch policies or `implicit.*`. */

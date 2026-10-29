@@ -1,10 +1,5 @@
-import {
-  compact,
-  spansOverlap,
-  violation,
-  type RuleCheck,
-} from "../context.js";
-import { phraseId, phraseSpans } from "../phrases.js";
+import { compact, spansOverlap, violation, type RuleCheck } from "../context";
+import { phraseId, phraseSpans } from "../phrases";
 
 export const IMPLICIT_PHRASE_SELF_OVERLAP = "implicit.phraseSelfOverlap";
 

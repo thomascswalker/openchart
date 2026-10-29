@@ -1,4 +1,4 @@
-import type { AudioSampleOptions } from "@openchart/audio";
+import type { AudioSampleOptions } from "../sample.js";
 
 export type MockAudioEvent = { data: unknown };
 

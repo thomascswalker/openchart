@@ -1,6 +1,6 @@
-import type { CompiledRuleset, TrackRules } from "./compile.js";
-import { isUnmappedTrackRules } from "./compile.js";
-import type { RuleViolation } from "./context.js";
+import type { CompiledRuleset, TrackRules } from "./compile";
+import { isUnmappedTrackRules } from "./compile";
+import type { RuleViolation } from "./context";
 
 /**
  * Check a text event against the ruleset's text-event grammar and the track's

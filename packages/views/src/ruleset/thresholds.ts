@@ -1,4 +1,4 @@
-import type { Threshold } from "../config.js";
+import type { Threshold } from "./config";
 
 export type SettingValue = boolean | number | string;
 

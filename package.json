@@ -27,7 +27,7 @@
     "check:editing:strict": "node scripts/check-editing-boundaries.mjs --strict",
     "test:core": "turbo run test --filter=@openchart/midi",
     "test:views": "turbo run test --filter=@openchart/views",
-    "test:mixer": "turbo run test --filter=@openchart/mixer",
+    "test:audio": "turbo run test --filter=@openchart/audio",
     "test:storybook": "npm run test:storybook --workspace=@openchart/editor",
     "deploy:editor": "turbo run build --filter=@openchart/editor^... && npm run deploy --workspace=@openchart/editor"
   },

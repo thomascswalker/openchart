@@ -3,8 +3,8 @@ import {
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
-import { phraseSpans } from "../phrases.js";
+} from "../context";
+import { phraseSpans } from "../phrases";
 
 /** A note of the listed classes must start inside one of the listed phrases. */
 export const checkNotesWithinPhrase: RuleCheck<

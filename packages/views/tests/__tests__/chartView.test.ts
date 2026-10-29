@@ -7,8 +7,8 @@ import {
   DomainCommandType,
   SongView,
   createStandaloneEditing,
-} from "../../src/index.js";
-import { Difficulty } from "../../src/types.js";
+  Difficulty,
+} from "@openchart/views";
 
 function placeSession(midi: Midi, trackKey: string) {
   const editing = createStandaloneEditing(midi);

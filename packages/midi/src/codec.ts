@@ -1,4 +1,4 @@
-import { MAX_VARIABLE_LENGTH_VALUE } from "./constants.js";
+import { MAX_VARIABLE_LENGTH_VALUE } from "./constants";
 import {
   MidiMetaPayload,
   DefaultMetaPayload,
@@ -6,8 +6,8 @@ import {
   MidiEvent,
   MidiSysExEvent,
   extractMetaPayload,
-} from "./types.js";
-import { isTwoByteMessage } from "./util.js";
+} from "./types";
+import { isTwoByteMessage } from "./util";
 
 /** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
  * these deliberately do not depend on Node's Buffer global. */

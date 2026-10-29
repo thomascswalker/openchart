@@ -1,10 +1,7 @@
-import TrackClass, { type TrackId } from "./track";
-import { AudioEngine, START_LEAD_SECONDS } from "@openchart/audio";
-import type {
-  AudioEngineOptions,
-  AudioEvent,
-  AudioEventCallback,
-} from "@openchart/audio";
+import { type TrackId, MixerTrack } from "./track";
+import { AudioEngine, START_LEAD_SECONDS } from "./engine";
+import type { AudioEngineOptions } from "./engine";
+import type { AudioEvent, AudioEventCallback } from "./events";
 
 export interface MixerOptions {
   /** Share an existing engine; otherwise the mixer creates (and owns) one. */
@@ -21,7 +18,7 @@ export interface MixerOptions {
 class Mixer {
   readonly #engine: AudioEngine;
   readonly #ownsEngine: boolean;
-  #tracks: Record<TrackId, TrackClass> = {};
+  #tracks: Record<TrackId, MixerTrack> = {};
   /* Transport state: `#offset` is the position (seconds) at context time `#startedAt` */
   #playing: boolean = false;
   #offset: number = 0;
@@ -49,7 +46,7 @@ class Mixer {
       ([key, track]) => key !== id && track.soloed,
     )?.[0];
     replacedTrack?.[Symbol.dispose]();
-    const track = new TrackClass(id, filename, this.#engine);
+    const track = new MixerTrack(id, filename, this.#engine);
     track.volumeScale = this.#effectiveMasterVolume;
     this.#tracks[id] = track;
     this.#applySoloState(wasSoloed ? id : otherSoloedId);
@@ -82,11 +79,11 @@ class Mixer {
     }
   }
 
-  public getTrack(id: TrackId): TrackClass | undefined {
+  public getTrack(id: TrackId): MixerTrack | undefined {
     return this.#tracks[id];
   }
 
-  public get tracks(): Record<TrackId, TrackClass> {
+  public get tracks(): Record<TrackId, MixerTrack> {
     return this.#tracks;
   }
 
@@ -113,7 +110,7 @@ class Mixer {
     this.#notifyChange();
   }
 
-  public setTrackVolume(track: TrackClass, value: number): void {
+  public setTrackVolume(track: MixerTrack, value: number): void {
     if (this.#findTrackId(track) === undefined) {
       return;
     }
@@ -121,7 +118,7 @@ class Mixer {
     this.#notifyChange();
   }
 
-  public toggleSolo(track: TrackClass) {
+  public toggleSolo(track: MixerTrack) {
     const id = this.#findTrackId(track);
     if (id === undefined) {
       return;
@@ -130,7 +127,7 @@ class Mixer {
     this.#notifyChange();
   }
 
-  public toggleMute(track: TrackClass) {
+  public toggleMute(track: MixerTrack) {
     const id = this.#findTrackId(track);
     if (id === undefined) {
       return;
@@ -207,7 +204,7 @@ class Mixer {
     this.#eventListeners.set(eventType, listeners);
   }
 
-  #attachTrackEvents(track: TrackClass): void {
+  #attachTrackEvents(track: MixerTrack): void {
     const onLoaded = this.#getTrackEventHandler("loaded");
     track.onLoaded = (event) => {
       this.#joinTransport(track);
@@ -296,7 +293,7 @@ class Mixer {
     return duration > 0 ? Math.min(lower, duration) : lower;
   }
 
-  #findTrackId(track: TrackClass): TrackId | undefined {
+  #findTrackId(track: MixerTrack): TrackId | undefined {
     return Object.entries(this.#tracks).find(
       ([, candidate]) => candidate === track,
     )?.[0];
@@ -322,7 +319,7 @@ class Mixer {
   }
 
   /** A stem that finishes loading mid-playback joins at the current position. */
-  #joinTransport(track: TrackClass): void {
+  #joinTransport(track: MixerTrack): void {
     if (!this.#playing) {
       return;
     }
@@ -371,5 +368,4 @@ class Mixer {
   }
 }
 
-export { TrackClass as Track };
-export default Mixer;
+export { Mixer };

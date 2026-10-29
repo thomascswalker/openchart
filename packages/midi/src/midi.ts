@@ -13,8 +13,8 @@ import {
   TextMidiEvent,
   TextMetaType,
   extractMetaPayload,
-} from "./types.js";
-import { isTwoByteMessage } from "./util.js";
+} from "./types";
+import { isTwoByteMessage } from "./util";
 import {
   concatBytes,
   decodeMetaPayload,
@@ -25,10 +25,10 @@ import {
   encodeBase64,
   decodeBase64,
   parseInteger,
-} from "./codec.js";
-import { trackParser } from "./parsers.js";
+} from "./codec";
+import { trackParser } from "./parsers";
 import * as ini from "ini";
-import { MidiTrack } from "./track.js";
+import { MidiTrack } from "./track";
 
 class MidiHeader {
   format: MidiFormat = 1;

@@ -1,6 +1,6 @@
-import type { EditCommand } from "./commands.js";
-import type { RuleViolation } from "../ruleset/index.js";
-import type { EntityId } from "./entity.js";
+import type { EditCommand } from "./commands";
+import type { RuleViolation } from "../ruleset/index";
+import type { EntityId } from "./entity";
 
 /** A command-specific explanation for an edit that could not be expanded. */
 export interface Rejection {

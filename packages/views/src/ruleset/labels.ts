@@ -1,4 +1,4 @@
-import type { PhraseEffect } from "../config.js";
+import type { PhraseEffect } from "./config";
 
 const PHRASE_LABELS: Record<PhraseEffect, string> = {
   starPower: "Stage Power",

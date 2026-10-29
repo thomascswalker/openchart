@@ -4,14 +4,14 @@ import {
   type MidiTrack,
   type TextMidiEvent,
 } from "@openchart/midi";
-import type { MidiNotePhrase } from "../editing/phrase.js";
-import type { PhraseEffect } from "../config.js";
-import type { TrackRules } from "../ruleset/compile.js";
-import { expandPitchSet } from "../ruleset/semantics.js";
-import { phraseLabel } from "../ruleset/labels.js";
-import type { SongView } from "./song.js";
-import { TrackView } from "./track.js";
-import { EntityType } from "../editing/entity.js";
+import type { MidiNotePhrase } from "../editing/phrase";
+import type { PhraseEffect } from "../ruleset/config";
+import type { TrackRules } from "../ruleset/compile";
+import { expandPitchSet } from "../ruleset/semantics";
+import { phraseLabel } from "../ruleset/labels";
+import type { SongView } from "./song";
+import { TrackView } from "./track";
+import { EntityType } from "../editing/entity";
 
 /** Note kinds that live on the VOCALS track. */
 export enum VocalNoteKind {

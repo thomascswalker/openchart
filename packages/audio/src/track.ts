@@ -1,14 +1,14 @@
-import AudioSample from "@openchart/audio";
+import AudioSample from "./sample.js";
+import type { AudioEngine } from "./engine.js";
 import type {
-  AudioEngine,
   AudioEvent,
   AudioEventCallback,
   AudioEventData,
-} from "@openchart/audio";
+} from "./events.js";
 
-type TrackId = string;
+type MixerTrackId = string;
 
-class Track implements Disposable {
+class MixerTrack implements Disposable {
   #id: string;
   #audio: AudioSample;
   #filename: string;
@@ -160,5 +160,5 @@ class Track implements Disposable {
     return this.#soloSuppressed || (this.#muted && !this.#soloed);
   }
 }
-export default Track;
-export type { TrackId };
+export { MixerTrack };
+export type { MixerTrackId as TrackId };

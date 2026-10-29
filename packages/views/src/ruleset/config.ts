@@ -9,14 +9,11 @@
  * the two cannot drift apart.
  */
 import { z } from "zod";
-import defaultRulesetData from "../configs/default.ruleset.json" with { type: "json" };
-import {
-  type RulesetIssue,
-  validateRulesetSemantics,
-} from "./ruleset/semantics.js";
+import defaultRulesetData from "../../configs/default.ruleset.json" with { type: "json" };
+import { type RulesetIssue, validateRulesetSemantics } from "./semantics";
 
-export type { RulesetIssue } from "./ruleset/semantics.js";
-export { validateRulesetSemantics } from "./ruleset/semantics.js";
+export type { RulesetIssue } from "./semantics";
+export { validateRulesetSemantics } from "./semantics";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */

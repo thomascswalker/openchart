@@ -1,6 +1,6 @@
-import type { MarkerEffect, PadType, PhraseDef } from "../config.js";
-import type { Difficulty } from "../types.js";
-import { difficultyName, expandPitchSet, type TrackRules } from "./compile.js";
+import type { MarkerEffect, PadType, PhraseDef } from "./config";
+import type { Difficulty } from "./difficulty";
+import { difficultyName, expandPitchSet, type TrackRules } from "./compile";
 
 export type PitchRole =
   | {

@@ -3,8 +3,8 @@ import {
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
-import { phraseId, phraseSpans, spansOverlap } from "../phrases.js";
+} from "../context";
+import { phraseId, phraseSpans, spansOverlap } from "../phrases";
 
 /** Spans of the listed phrases (of different ids) may not overlap. Same-id overlap is the implicit rule. */
 export const checkPhrasesMayNotOverlap: RuleCheck<

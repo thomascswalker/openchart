@@ -1,5 +1,5 @@
-import type { Condition } from "../config.js";
-import type { SettingValue } from "./thresholds.js";
+import type { Condition } from "./config";
+import type { SettingValue } from "./thresholds";
 
 export interface ConditionContext {
   /** Player options currently enabled. Empty by default. */

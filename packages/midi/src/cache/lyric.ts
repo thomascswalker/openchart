@@ -1,5 +1,5 @@
-import { isTextEvent, MidiNote, TextMidiEvent } from "../types.js";
-import { IEventCacheList } from "./cache.js";
+import { isTextEvent, MidiNote, TextMidiEvent } from "../types";
+import { IEventCacheList } from "./cache";
 
 export interface LyricNote {
   event: TextMidiEvent;

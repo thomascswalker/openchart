@@ -1,6 +1,7 @@
 import { expect, test, vi } from "vitest";
-import Mixer from "../mixer";
-import { audioInstances } from "./audioMock";
+import "./mixerTestSetup.js";
+import { Mixer } from "../mixer.js";
+import { audioInstances } from "./audioMock.js";
 
 test("Mixer can instantiate", () => {
   const mixer = new Mixer();

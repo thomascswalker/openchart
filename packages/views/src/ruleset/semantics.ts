@@ -23,7 +23,7 @@ import {
   TrackDefinition,
   Threshold,
   Condition,
-} from "../config.js";
+} from "./config";
 
 export interface RulesetIssue {
   path: (string | number)[];

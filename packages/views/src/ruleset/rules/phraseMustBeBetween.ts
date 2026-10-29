@@ -3,8 +3,8 @@ import {
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
-import { phraseSpans } from "../phrases.js";
+} from "../context";
+import { phraseSpans } from "../phrases";
 
 /** A phrase must sit after one instance of `between` and before the next. */
 export const checkPhraseMustBeBetween: RuleCheck<

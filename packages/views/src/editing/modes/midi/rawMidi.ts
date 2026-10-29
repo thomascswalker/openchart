@@ -1,22 +1,22 @@
 import { z } from "zod";
-import { EntityType } from "../../entity.js";
-import { isUnmappedTrackRules } from "../../../ruleset/compile.js";
-import type { ClipboardPayload } from "../../clipboard.js";
+import { EntityType } from "../../entity";
+import { isUnmappedTrackRules } from "../../../ruleset/compile";
+import type { ClipboardPayload } from "../../clipboard";
 import {
   EditCommandType,
   type EditCommand,
   type GeneralCommand,
-} from "../../commands.js";
-import type { EntityId } from "../../entity.js";
+} from "../../commands";
+import type { EntityId } from "../../entity";
 import {
   isRawCommand,
   type EditingMode,
   type ExpansionResult,
   type ModeContext,
   type Projection,
-} from "../../modes/mode.js";
-import type { NoteSnapshot } from "../../reader.js";
-import type { Rejection } from "../../result.js";
+} from "../../modes/mode";
+import type { NoteSnapshot } from "../../reader";
+import type { Rejection } from "../../result";
 
 const noteCommandTypes: ReadonlySet<EditCommandType> = new Set([
   EditCommandType.AddNotes,
