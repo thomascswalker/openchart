@@ -1,0 +1,20 @@
+{
+  "filename": "./__tests__/assets/song.mid",
+  "header": {
+    "format": 1,
+    "trackCount": 9,
+    "division": 480
+  },
+  "trackLengths": [213, 4, 12147, 8719, 16028, 1680, 10279, 10697, 2116],
+  "trackNames": [
+    "notes",
+    "CHART HEADER",
+    "LEAD GUITAR",
+    "RHYTHM GUITAR",
+    "DRUMS",
+    "VOCALS",
+    "FOUR PAD",
+    "FIVE PAD",
+    "GLOBAL"
+  ]
+}

@@ -1,4 +1,5 @@
 import {
+  DomainCommandType,
   DefaultCompiledRuleset,
   Difficulty,
   formatNoteId,
@@ -7,7 +8,7 @@ import {
   getSustainCutTargets,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
-import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
+import characterization from "../../../../../../../packages/views/src/editing/modes/__tests__/fixtures/characterization/editing.json" with { type: "json" };
 import { HighwayPhraseEditingController } from "../editing/phraseEditing";
 import type { HighwayCoordinateSystem } from "../coordinates";
 import type { HighwayPhrase } from "../hitTesting";
@@ -82,7 +83,7 @@ describe("editing characterization: Highway", () => {
         setup.setNotePlacementType(placement);
 
         setup.session.execute({
-          type: "PLACE_CHART_NOTE",
+          type: DomainCommandType.PlaceChartNote,
           lane: 0,
           tick,
           placement:
@@ -96,7 +97,7 @@ describe("editing characterization: Highway", () => {
           cutPolicy: "all",
         });
         setup.session.execute({
-          type: "PLACE_CHART_NOTE",
+          type: DomainCommandType.PlaceChartNote,
           lane: 0,
           tick,
           placement:
@@ -196,7 +197,7 @@ describe("editing characterization: Highway", () => {
     });
     expect(
       setup.session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [entityId(kick2Pitch)],
         tickDelta: 240,
         laneDelta: 3,
@@ -204,7 +205,7 @@ describe("editing characterization: Highway", () => {
     ).toBe(true);
     expect(
       setup.session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [entityId(cymbalPitch)],
         tickDelta: 240,
         laneDelta: drums.move.cymbalTargetLane - drums.move.cymbalLane,
@@ -212,7 +213,7 @@ describe("editing characterization: Highway", () => {
     ).toBe(true);
     expect(
       setup.session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [entityId(markerPitch)],
         tickDelta: 240,
         laneDelta: 0,

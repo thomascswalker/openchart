@@ -5,11 +5,14 @@ import {
   type TimeSignatureEvent,
 } from "@openchart/midi";
 import { Vector2 } from "three";
-import type {
-  EditCommand,
-  EditingSession,
-  EntityId,
-  GestureHandle,
+import {
+  DomainCommandType,
+  EditCommandType,
+  EditingModeId,
+  type EditCommand,
+  type EditingSession,
+  type EntityId,
+  type GestureHandle,
 } from "@openchart/views";
 import { formatTextId } from "@openchart/views";
 import {
@@ -388,7 +391,7 @@ export class HeaderController extends IController {
     if (laneType === "tempo") {
       const current = this.effectiveTempoAt(snappedTick);
       changed = this.executeGlobal({
-        type: "SET_TEMPO",
+        type: EditCommandType.SetTempo,
         tick: snappedTick,
         microsecondsPerQuarterNote: current,
       });
@@ -397,7 +400,7 @@ export class HeaderController extends IController {
     else if (laneType === "timeSignature") {
       const current = this.effectiveTimeSignatureAt(snappedTick);
       changed = this.executeGlobal({
-        type: "SET_TIME_SIGNATURE",
+        type: EditCommandType.SetTimeSignature,
         tick: snappedTick,
         numerator: current.numerator,
         denominator: current.denominator,
@@ -406,7 +409,7 @@ export class HeaderController extends IController {
     // Create a text event if we're NOT in a vocal track
     else if (this.options.createOnClick) {
       changed = this.executeGlobal({
-        type: "ADD_SECTION",
+        type: DomainCommandType.AddSection,
         tick: snappedTick,
         name: "New",
       });
@@ -443,19 +446,19 @@ export class HeaderController extends IController {
       // Text markers follow the profile's separate text-deletion option.
       if (lane === "tempo") {
         changed = this.executeGlobal({
-          type: "REMOVE_TEMPO",
+          type: EditCommandType.RemoveTempo,
           tick: marker.tick,
         });
       } else if (lane === "timeSignature") {
         changed = this.executeGlobal({
-          type: "REMOVE_TIME_SIGNATURE",
+          type: EditCommandType.RemoveTimeSignature,
           tick: marker.tick,
         });
       } else if (this.options.deleteText) {
         const text = this.findTextEventNear(x);
         if (text)
           changed = this.executeGlobal({
-            type: "DELETE_ENTITIES",
+            type: EditCommandType.DeleteEntities,
             targetIds: [this.textEntityId(text)],
           });
       }
@@ -492,7 +495,7 @@ export class HeaderController extends IController {
     );
     this.#draggingTextTick = tick;
     this.#dragGesture?.preview({
-      type: "UPDATE_TEXT",
+      type: EditCommandType.UpdateText,
       id: this.textEntityId(this.#draggingText),
       tick,
     });
@@ -692,7 +695,7 @@ export class HeaderController extends IController {
       }
       if (
         event.key === "Tab" &&
-        this.context.getProfile().id === "vocals" &&
+        this.context.getProfile().id === EditingModeId.MidiVocals &&
         this.#editingMarker?.lane === "text"
       ) {
         event.preventDefault();
@@ -751,12 +754,12 @@ export class HeaderController extends IController {
     let changed = false;
     if (marker.lane === "tempo") {
       changed = this.executeGlobal({
-        type: "REMOVE_TEMPO",
+        type: EditCommandType.RemoveTempo,
         tick: marker.tick,
       });
     } else if (marker.lane === "timeSignature") {
       changed = this.executeGlobal({
-        type: "REMOVE_TIME_SIGNATURE",
+        type: EditCommandType.RemoveTimeSignature,
         tick: marker.tick,
       });
     } else {
@@ -765,7 +768,7 @@ export class HeaderController extends IController {
       );
       if (text)
         changed = this.executeGlobal({
-          type: "DELETE_ENTITIES",
+          type: EditCommandType.DeleteEntities,
           targetIds: [this.textEntityId(text)],
         });
     }
@@ -792,7 +795,7 @@ export class HeaderController extends IController {
       if (parsed === null) return;
 
       changed = this.executeGlobal({
-        type: "SET_TEMPO",
+        type: EditCommandType.SetTempo,
         tick: marker.tick,
         microsecondsPerQuarterNote: Math.round(60_000_000 / parsed),
       });
@@ -801,7 +804,7 @@ export class HeaderController extends IController {
       if (parsed === null) return;
 
       changed = this.executeGlobal({
-        type: "SET_TIME_SIGNATURE",
+        type: EditCommandType.SetTimeSignature,
         tick: marker.tick,
         numerator: parsed.numerator,
         denominator: parsed.denominator,
@@ -816,7 +819,7 @@ export class HeaderController extends IController {
           text.type === MetaType.Lyric
             ? (this.#editTextHandler?.(raw) ?? false)
             : this.executeGlobal({
-                type: "UPDATE_TEXT",
+                type: EditCommandType.UpdateText,
                 id: this.textEntityId(text),
                 text: raw,
               });

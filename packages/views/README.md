@@ -59,7 +59,8 @@ are the bundled defaults.
 ## Phrases and sections
 
 Phrases are notes on the pitches the ruleset assigns to them; create and move
-them with `CREATE_PHRASE` / `UPDATE_PHRASE` through an editing session (below).
+them with `DomainCommandType.CreatePhrase` / `DomainCommandType.UpdatePhrase`
+through an editing session (below).
 `getNotePhrases(track, pitch, kind)` reads them back, and `findSection` looks
 for `[section name]` text events (MIDI meta type Text, as the ruleset defines).
 
@@ -75,7 +76,11 @@ clipboard.
 
 ```ts
 import { Midi } from "@openchart/midi";
-import { createStandaloneEditing, Difficulty } from "@openchart/views";
+import {
+  createStandaloneEditing,
+  Difficulty,
+  DomainCommandType,
+} from "@openchart/views";
 
 const midi = new Midi();
 const leadTrackIndex = midi.addTrack();
@@ -93,7 +98,7 @@ const session = editing.createSession(
 
 const gesture = session.beginGesture();
 gesture.preview({
-  type: "PLACE_CHART_NOTE",
+  type: DomainCommandType.PlaceChartNote,
   lane: 0,
   tick: 480,
   placement: "normal",

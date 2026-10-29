@@ -4,19 +4,28 @@ import {
   type MidiTrack,
   type TextMidiEvent,
 } from "@openchart/midi";
-import type { MidiNotePhrase } from "../editing/phrase.js";
-import type { PhraseEffect } from "../config.js";
-import type { TrackRules } from "../ruleset/compile.js";
-import { expandPitchSet } from "../ruleset/semantics.js";
-import { phraseLabel } from "../ruleset/labels.js";
-import type { SongView } from "./song.js";
-import { TrackView } from "./track.js";
+import type { MidiNotePhrase } from "../editing/phrase";
+import type { PhraseEffect } from "../ruleset/config";
+import type { TrackRules } from "../ruleset/compile";
+import { expandPitchSet } from "../ruleset/semantics";
+import { phraseLabel } from "../ruleset/labels";
+import type { SongView } from "./song";
+import { TrackView } from "./track";
+import { EntityType } from "../editing/entity";
 
 /** Note kinds that live on the VOCALS track. */
-export type VocalNoteKind = "pitched" | "pitchless" | "percussion";
+export enum VocalNoteKind {
+  Pitched = "pitched",
+  Pitchless = "pitchless",
+  Percussion = "percussion",
+}
 
 /** Phrase kinds that live on the VOCALS track. */
-export type VocalPhraseKind = "vocal" | "power-window" | "stagepower";
+export enum VocalPhraseKind {
+  Vocal = "vocal",
+  PowerWindow = "power-window",
+  StagePower = "stagepower",
+}
 
 export interface VocalLaneSpec {
   /** Lane id derived from the ruleset (`vocal-phrase`, `power-window`, ...). */
@@ -29,9 +38,9 @@ export interface VocalLaneSpec {
 }
 
 export type VocalClassification =
-  | { type: "note"; kind: VocalNoteKind }
-  | { type: "phrase"; kind: VocalPhraseKind }
-  | { type: "unknown" };
+  | { type: EntityType.Note; kind: VocalNoteKind }
+  | { type: EntityType.Phrase; kind: VocalPhraseKind }
+  | { type: EntityType.Unknown };
 
 /**
  * Resolved MIDI pitches for every vocal note and phrase kind. A kind the
@@ -51,9 +60,15 @@ export interface VocalLayout {
 }
 
 export const VOCAL_PHRASE_KINDS: readonly VocalPhraseKind[] = [
-  "vocal",
-  "power-window",
-  "stagepower",
+  VocalPhraseKind.Vocal,
+  VocalPhraseKind.PowerWindow,
+  VocalPhraseKind.StagePower,
+];
+
+export const VOCAL_NOTE_KINDS: readonly VocalNoteKind[] = [
+  VocalNoteKind.Pitched,
+  VocalNoteKind.Pitchless,
+  VocalNoteKind.Percussion,
 ];
 
 export type TimedLyric = TextMidiEvent;
@@ -113,9 +128,9 @@ interface LyricPairing {
 }
 
 const PHRASE_KIND_EFFECT: Record<VocalPhraseKind, PhraseEffect> = {
-  vocal: "lyricPhrase",
-  "power-window": "powerWindow",
-  stagepower: "starPower",
+  [VocalPhraseKind.Vocal]: "lyricPhrase",
+  [VocalPhraseKind.PowerWindow]: "powerWindow",
+  [VocalPhraseKind.StagePower]: "starPower",
 };
 
 /**
@@ -138,16 +153,16 @@ export class VocalTrackView extends TrackView {
 
   /** Builds the vocal layout from a vocals track's compiled rules. */
   public static layoutFromRules(rules: TrackRules): VocalLayout {
-    const pitchesOf = (kind: "pitched" | "pitchless" | "percussion") =>
+    const pitchesOf = (kind: VocalNoteKind) =>
       rules.noteClasses
         .filter((c) => c.class === kind)
         .flatMap((c) => expandPitchSet(c.pitches));
     const phrasePitch = (effect: PhraseEffect): number =>
       rules.phrases.find((p) => p.effect === effect)?.pitches[0] ?? -1;
 
-    const pitched = pitchesOf("pitched");
-    const pitchless = pitchesOf("pitchless");
-    const percussion = pitchesOf("percussion");
+    const pitched = pitchesOf(VocalNoteKind.Pitched);
+    const pitchless = pitchesOf(VocalNoteKind.Pitchless);
+    const percussion = pitchesOf(VocalNoteKind.Percussion);
     const pitchlessHigh = pitchless.length > 0 ? Math.max(...pitchless) : -1;
     return {
       range:
@@ -179,15 +194,15 @@ export class VocalTrackView extends TrackView {
       phrase: kind,
     });
     const specs: VocalLaneSpec[] = [
-      phrase("vocal-phrase", "vocal", layout.vocalPhrase),
-      phrase("power-window", "power-window", layout.powerWindow),
-      phrase("stagepower", "stagepower", layout.power),
+      phrase("vocal-phrase", VocalPhraseKind.Vocal, layout.vocalPhrase),
+      phrase("power-window", VocalPhraseKind.PowerWindow, layout.powerWindow),
+      phrase("stagepower", VocalPhraseKind.StagePower, layout.power),
       {
         id: "percussion",
         label: "Perc",
         pitches: [layout.percussion],
         createPitch: layout.percussion,
-        kind: "percussion",
+        kind: VocalNoteKind.Percussion,
         phrase: null,
       },
       {
@@ -195,7 +210,7 @@ export class VocalTrackView extends TrackView {
         label: "Spoken",
         pitches: [layout.pitchlessHigh, layout.pitchlessLow],
         createPitch: layout.pitchlessPlacement,
-        kind: "pitchless",
+        kind: VocalNoteKind.Pitchless,
         phrase: null,
       },
     ];
@@ -208,26 +223,27 @@ export class VocalTrackView extends TrackView {
     pitch: number,
   ): VocalClassification {
     if (pitch >= layout.range.low && pitch <= layout.range.high) {
-      return { type: "note", kind: "pitched" };
+      return { type: EntityType.Note, kind: VocalNoteKind.Pitched };
     }
     if (pitch === layout.pitchlessHigh || pitch === layout.pitchlessLow) {
-      return { type: "note", kind: "pitchless" };
+      return { type: EntityType.Note, kind: VocalNoteKind.Pitchless };
     }
     if (pitch === layout.percussion) {
-      return { type: "note", kind: "percussion" };
+      return { type: EntityType.Note, kind: VocalNoteKind.Percussion };
     }
     if (pitch === layout.vocalPhrase) {
-      return { type: "phrase", kind: "vocal" };
+      return { type: EntityType.Phrase, kind: VocalPhraseKind.Vocal };
     }
     if (pitch === layout.powerWindow) {
-      return { type: "phrase", kind: "power-window" };
+      return { type: EntityType.Phrase, kind: VocalPhraseKind.PowerWindow };
     }
-    if (pitch === layout.power) return { type: "phrase", kind: "stagepower" };
-    return { type: "unknown" };
+    if (pitch === layout.power)
+      return { type: EntityType.Phrase, kind: VocalPhraseKind.StagePower };
+    return { type: EntityType.Unknown };
   }
 
   public static kindNeedsLyric(kind: VocalNoteKind): boolean {
-    return kind !== "percussion";
+    return kind !== VocalNoteKind.Percussion;
   }
 
   public static phrasePitch(
@@ -235,11 +251,11 @@ export class VocalTrackView extends TrackView {
     kind: VocalPhraseKind,
   ): number {
     switch (kind) {
-      case "vocal":
+      case VocalPhraseKind.Vocal:
         return layout.vocalPhrase;
-      case "power-window":
+      case VocalPhraseKind.PowerWindow:
         return layout.powerWindow;
-      case "stagepower":
+      case VocalPhraseKind.StagePower:
         return layout.power;
     }
   }
@@ -251,18 +267,18 @@ export class VocalTrackView extends TrackView {
     pitch?: number,
   ): number | null {
     switch (kind) {
-      case "pitched":
+      case VocalNoteKind.Pitched:
         return pitch !== undefined &&
           Number.isInteger(pitch) &&
           pitch >= layout.range.low &&
           pitch <= layout.range.high
           ? pitch
           : null;
-      case "pitchless":
+      case VocalNoteKind.Pitchless:
         return pitch === layout.pitchlessHigh || pitch === layout.pitchlessLow
           ? pitch
           : layout.pitchlessPlacement;
-      case "percussion":
+      case VocalNoteKind.Percussion:
         return layout.percussion;
     }
   }
@@ -503,7 +519,7 @@ export class VocalTrackView extends TrackView {
       if (
         move.pitch !== undefined &&
         classification.type === "note" &&
-        classification.kind === "pitched"
+        classification.kind === VocalNoteKind.Pitched
       ) {
         pitch = Math.max(
           this.layout.range.low,
@@ -541,7 +557,7 @@ export class VocalTrackView extends TrackView {
       );
     let changed = false;
     for (const note of notes) {
-      changed = track.removeNote(note.noteOn, note.noteOff) || changed;
+      changed = track.removeNote(note) || changed;
     }
     for (const lyric of lyrics) changed = track.removeEvent(lyric) || changed;
     return changed;

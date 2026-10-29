@@ -4,11 +4,11 @@ import {
   type CompiledRuleset,
   type TrackDescriptor,
   type TrackRules,
-} from "../ruleset/compile.js";
-import { GlobalTrackView } from "./global.js";
-import { InstrumentTrackView } from "./instrument.js";
-import type { TrackView } from "./track.js";
-import { VocalTrackView } from "./vocal.js";
+} from "../ruleset/compile";
+import { GlobalTrackView } from "./global";
+import { InstrumentTrackView } from "./instrument";
+import type { TrackView } from "./track";
+import { VocalTrackView } from "./vocal";
 
 class SongView {
   private midi: Midi;

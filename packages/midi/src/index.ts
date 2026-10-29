@@ -1,7 +1,7 @@
-export { decodeText, encodeText, textByteLength } from "./codec.js";
-export { Midi, MidiHeader } from "./midi.js";
-export { addRandomChannelEvents, addRandomMetaEvents } from "./random.js";
-export { MidiTrack } from "./track.js";
+export { decodeText, encodeText, textByteLength } from "./codec";
+export { Midi, MidiHeader } from "./midi";
+export { addRandomChannelEvents, addRandomMetaEvents } from "./random";
+export { MidiTrack } from "./track";
 export {
   BaseEventSchema,
   InsertNoteOptions as AddNoteSpec,
@@ -37,5 +37,5 @@ export {
   type MidiMetaEvent,
   type MidiSysExEvent,
   type TextMidiEvent,
-} from "./types.js";
-export { getStatusString, msToTicks, ticksToMs } from "./util.js";
+} from "./types";
+export { getStatusString, msToTicks, ticksToMs } from "./util";

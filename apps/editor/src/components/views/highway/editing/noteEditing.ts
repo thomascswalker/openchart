@@ -1,12 +1,15 @@
 import type { MidiNote } from "@openchart/midi";
-import type {
-  ChartView,
-  EditingSession,
-  EntityId,
-  GestureHandle,
-  NoteSnapshot,
+import {
+  DomainCommandType,
+  EditCommandType,
+  EntityType,
+  type ChartView,
+  type EditingSession,
+  type EntityId,
+  type GestureHandle,
+  type NoteSnapshot,
 } from "@openchart/views";
-import { formatNoteId, parseEntityId } from "@openchart/views";
+import { formatNoteId, parseEntityFromId } from "@openchart/views";
 import type { HighwayContext } from "../context";
 import { chartHasSustains } from "../hitTesting";
 import { laneVisualFor, type IndexedNote } from "../noteIndex";
@@ -34,7 +37,7 @@ export class HighwayNoteEditingController {
       ? (this.getEntityId(chart, preferredNote) ?? undefined)
       : undefined;
     const command = {
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane,
       tick,
       placement: this.context.getNotePlacementType?.() ?? "normal",
@@ -59,7 +62,7 @@ export class HighwayNoteEditingController {
     if (!session) return false;
     this.gesture ??= session.beginGesture();
     const command = {
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane,
       tick: startTick,
       endTick: Math.max(startTick + 1, endTick),
@@ -88,7 +91,7 @@ export class HighwayNoteEditingController {
         ? (this.getEntityId(chart, source) ?? undefined)
         : undefined;
     return session.execute({
-      type: "CUT_SUSTAINS",
+      type: DomainCommandType.CutSustains,
       tick,
       cutPolicy: getCutPolicy(
         shiftKey,
@@ -109,7 +112,7 @@ export class HighwayNoteEditingController {
     const id = source ? this.getEntityId(chart, source) : null;
     if (!session || !id) return false;
     const changed = session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds: [id],
     }).changed;
     if (changed && removeFromSelection) session.selection.delete(id);
@@ -132,7 +135,7 @@ export class HighwayNoteEditingController {
     this.gesture ??= session.beginGesture();
     this.context.setPreviewState(
       this.gesture.preview({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [id],
         tickDelta: tick - source.start,
         laneDelta: lane - currentLane,
@@ -154,7 +157,7 @@ export class HighwayNoteEditingController {
     this.gesture ??= session.beginGesture();
     this.context.setPreviewState(
       this.gesture.preview({
-        type: "SET_SUSTAIN_END",
+        type: DomainCommandType.SetSustainEnd,
         targetIds: [id],
         endTick,
         extendPastNext: "allow",
@@ -176,7 +179,7 @@ export class HighwayNoteEditingController {
     if (!session || targetIds.length === 0) return false;
     this.gesture ??= session.beginGesture();
     const preview = this.gesture.preview({
-      type: "MOVE_CHART_NOTES",
+      type: DomainCommandType.MoveChartNotes,
       targetIds,
       tickDelta,
       laneDelta,
@@ -200,7 +203,7 @@ export class HighwayNoteEditingController {
     }
     this.gesture ??= session.beginGesture();
     const preview = this.gesture.preview({
-      type: "SET_SUSTAIN_END",
+      type: DomainCommandType.SetSustainEnd,
       targetIds,
       endTick,
       extendPastNext,
@@ -231,7 +234,7 @@ export class HighwayNoteEditingController {
     const targetIds = this.getTargetSelection(session);
     if (targetIds.length === 0) return false;
     const result = session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds,
     });
     if (result.changed) session.selection.setSelectedIds([]);
@@ -247,9 +250,9 @@ export class HighwayNoteEditingController {
 
   private belongsToTarget(id: string): boolean {
     const session = this.context.getEditingSession();
-    const parsed = parseEntityId(id);
+    const parsed = parseEntityFromId(id);
     return (
-      parsed?.kind === "note" &&
+      parsed?.type === EntityType.Note &&
       parsed.trackIndex === session?.target.trackIndex
     );
   }
@@ -281,7 +284,7 @@ export class HighwayNoteEditingController {
   ): number | null {
     if (!session) return null;
     const classification = session.classifyNote(snapshot);
-    if (classification.kind !== "note" || !classification.movable) return null;
+    if (classification.type !== "note" || !classification.movable) return null;
     // Bar lanes (kick, open) span the highway and sit on lane 0.
     const chart = this.context.getCurrentChart();
     if (chart) {

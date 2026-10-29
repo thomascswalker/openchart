@@ -5,8 +5,8 @@ import {
   TextMidiEvent,
   isNoteEvent,
   ChannelMessage,
-} from "../types.js";
-import { IEventCacheList } from "./cache.js";
+} from "../types";
+import { IEventCacheList } from "./cache";
 
 interface PendingNote {
   pitch: number;

@@ -1,5 +1,8 @@
 import {
-  parseEntityId,
+  EditCommandType,
+  EditingModeId,
+  EntityType,
+  parseEntityFromId,
   type ClipboardEntity,
   type ClipboardPayload,
   type EditingSession,
@@ -53,7 +56,7 @@ export class EditorClipboardService extends Service {
     const session = this.editingService.getActiveSession();
     return (
       session !== null &&
-      session.can("DELETE_ENTITIES") &&
+      session.can(EditCommandType.DeleteEntities) &&
       !this.playback.getSnapshot().isPlaying &&
       this.getCopySelection(session) !== null
     );
@@ -79,7 +82,7 @@ export class EditorClipboardService extends Service {
     if (
       !session ||
       !selection ||
-      !session.can("DELETE_ENTITIES") ||
+      !session.can(EditCommandType.DeleteEntities) ||
       this.playback.getSnapshot().isPlaying
     ) {
       return;
@@ -87,7 +90,7 @@ export class EditorClipboardService extends Service {
 
     this.editingService.clipboard.setData(selection.payload);
     const result = session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds: selection.targetIds,
     });
     if (result.changed) session.selection.setSelectedIds([]);
@@ -133,8 +136,11 @@ export class EditorClipboardService extends Service {
 
     const document = this.editingService.getDocument();
     const selected = session.selection.getSelectedIds().flatMap((id) => {
-      const parsed = parseEntityId(id);
-      if (parsed?.kind !== "note" || parsed.trackIndex !== trackIndex) {
+      const parsed = parseEntityFromId(id);
+      if (
+        parsed?.type !== EntityType.Note ||
+        parsed.trackIndex !== trackIndex
+      ) {
         return [];
       }
       const note = document.getNote(id);
@@ -165,7 +171,8 @@ export class EditorClipboardService extends Service {
   ): ClipboardEntity {
     const row = session.getProjection().rowForNote(note);
     const lyric =
-      session.mode.id === "vocals" && classification.kind === "note"
+      session.mode.id === EditingModeId.MidiVocals &&
+      classification.type === "note"
         ? this.editingService
             .getDocument()
             .getLyricAt(note.trackIndex, note.tick)?.text

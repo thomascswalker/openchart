@@ -1,5 +1,5 @@
-import type { ClassifiedNote, RuleCtx } from "./context.js";
-import { spansOverlap } from "./context.js";
+import type { ClassifiedNote, RuleCtx } from "./context";
+import { spansOverlap } from "./context";
 
 export function phraseSpans(
   ctx: RuleCtx,

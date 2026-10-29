@@ -1,5 +1,5 @@
-import { MetaType } from "./types.js";
-import type { MidiTrack } from "./track.js";
+import { MetaType } from "./types";
+import type { MidiTrack } from "./track";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;

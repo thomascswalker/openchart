@@ -1,5 +1,5 @@
-import { MetaType, MidiEvent, TimeSignatureEvent } from "../types.js";
-import { IEventCacheList } from "./cache.js";
+import { MetaType, MidiEvent, TimeSignatureEvent } from "../types";
+import { IEventCacheList } from "./cache";
 
 export class TimeSignatureEventCache extends IEventCacheList<
   TimeSignatureEvent,

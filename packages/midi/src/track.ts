@@ -1,15 +1,15 @@
-import { NoteByEventIdCache } from "./cache/eventId.js";
-import { PitchCache } from "./cache/pitch.js";
-import { NoteCache } from "./cache/note.js";
-import { EventIdCache } from "./cache/eventId.js";
-import { TextEventCache } from "./cache/text.js";
+import { NoteByEventIdCache } from "./cache/eventId";
+import { PitchCache } from "./cache/pitch";
+import { NoteCache } from "./cache/note";
+import { EventIdCache } from "./cache/eventId";
+import { TextEventCache } from "./cache/text";
 import {
   textByteLength,
   encodeMidiEvent,
   concatBytes,
   writeAscii,
   writeUInt32BE,
-} from "./codec.js";
+} from "./codec";
 import {
   MidiFormat,
   MidiEvent,
@@ -30,11 +30,11 @@ import {
   AddNoteResult,
   isTextEvent,
   isEndOfTrack,
-} from "./types.js";
+} from "./types";
 import { inRange } from "es-toolkit";
-import { LyricEntry, LyricNoteCache } from "./cache/lyric.js";
-import { TimeSignatureEventCache } from "./cache/timeSignature.js";
-import { TempoEventCache } from "./cache/tempo.js";
+import { LyricEntry, LyricNoteCache } from "./cache/lyric";
+import { TimeSignatureEventCache } from "./cache/timeSignature";
+import { TempoEventCache } from "./cache/tempo";
 
 /** `order` for EndOfTrack so it always sorts last on its tick. */
 const END_OF_TRACK_ORDER = Number.MAX_SAFE_INTEGER;
@@ -525,10 +525,21 @@ export class MidiTrack {
     return note;
   }
 
+  public removeNote(note: MidiNote): boolean;
   public removeNote(
     noteOn: MidiChannelEvent,
     noteOff: MidiChannelEvent,
+  ): boolean;
+  public removeNote(
+    note: MidiNote | MidiChannelEvent,
+    pairedNoteOff?: MidiChannelEvent,
   ): boolean {
+    const noteOn = "noteOn" in note ? note.noteOn : note;
+    const noteOff =
+      pairedNoteOff ?? ("noteOff" in note ? note.noteOff : undefined);
+    if (!noteOn || !noteOff) {
+      return false;
+    }
     if (noteOn === noteOff || noteOn.data1 !== noteOff.data1) {
       return false;
     }

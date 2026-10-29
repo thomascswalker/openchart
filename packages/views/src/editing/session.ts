@@ -3,28 +3,34 @@ import {
   type RuleViolation,
   type RulesetContext,
   type CompiledRuleset,
-} from "../ruleset/index.js";
-import { validateRawCommands } from "./ruleValidation.js";
-import type { ChartDocument } from "./chartDocument.js";
-import type { EditCommand, RawCommand, RawCommandType } from "./commands.js";
-import { computePreview, type PreviewState } from "./preview.js";
+} from "../ruleset/index";
+import { validateRawCommands } from "./validation";
+import type { ChartDocument } from "./chartDocument";
+import {
+  DomainCommandType,
+  EditCommandType,
+  ICommand,
+  type EditCommand,
+  type GeneralCommand,
+} from "./commands";
+import { computePreview, type PreviewState } from "./preview";
 import {
   EditRejectedError,
   emptyEditResult,
   type EditResult,
   type Rejection,
-} from "./result.js";
-import { ClipboardService } from "./clipboard.js";
-import type { SelectionModel } from "./selectionModel.js";
-import { SelectionModel as SelectionModelImpl } from "./selectionModel.js";
+} from "./result";
+import { ClipboardService } from "./clipboard";
+import type { SelectionModel } from "./selectionModel";
+import { SelectionModel as SelectionModelImpl } from "./selectionModel";
 import type {
   EditingMode,
   EditingTarget,
   ModeContext,
   Projection,
   ToolDescriptor,
-} from "./mode.js";
-import type { NoteSnapshot } from "./reader.js";
+} from "./modes/mode";
+import type { NoteSnapshot } from "./reader";
 
 /** Transaction operations supplied by the document/history owner. */
 export interface EditTransactionPort {
@@ -68,7 +74,7 @@ export interface EditingSession {
 
 /** Preview/commit/cancel handle for one continuous editing gesture. */
 export interface GestureHandle {
-  preview(command: EditCommand): PreviewState;
+  preview(command: ICommand): PreviewState;
   commit(): EditResult;
   cancel(): void;
   readonly isOpen: boolean;
@@ -149,8 +155,10 @@ class EditingSessionImpl implements EditingSession {
 
   public can(commandType: string): boolean {
     return (
-      this.mode.capabilities.rawCommands.has(commandType as RawCommandType) ||
-      this.mode.capabilities.domainCommands.has(commandType)
+      this.mode.capabilities.rawCommands.has(commandType as EditCommandType) ||
+      this.mode.capabilities.domainCommands.has(
+        commandType as DomainCommandType,
+      )
     );
   }
 
@@ -214,7 +222,9 @@ class EditingSessionImpl implements EditingSession {
       return { ...emptyEditResult(), rejections: [...expansion.rejections] };
     }
 
-    const pasteCommand: EditCommand = { type: "PASTE_CLIPBOARD" };
+    const pasteCommand: EditCommand = {
+      type: DomainCommandType.PasteClipboard,
+    };
     const enforced = this.enforce(expansion.commands);
     if (enforced.errors.length > 0) {
       return {
@@ -239,7 +249,7 @@ class EditingSessionImpl implements EditingSession {
   }
 
   private commitExpanded(
-    rawCommands: readonly RawCommand[],
+    rawCommands: readonly GeneralCommand[],
     rejections: readonly Rejection[],
     triggerCommand: EditCommand,
     diagnostics: readonly RuleViolation[] = [],
@@ -294,7 +304,7 @@ class EditingSessionImpl implements EditingSession {
     return new EditingGesture(this);
   }
 
-  public previewCommand(command: EditCommand): PreviewState {
+  public previewCommand(command: GeneralCommand): PreviewState {
     const expansion = this.expand(command);
     const preview = computePreview(expansion.commands, this.document);
     const enforced = this.enforce(expansion.commands);
@@ -346,7 +356,7 @@ class EditingSessionImpl implements EditingSession {
    * Runs the rule enforcer on expanded commands. `error` violations block the
    * edit; the rest are surfaced as diagnostics.
    */
-  private enforce(commands: readonly RawCommand[]): {
+  private enforce(commands: readonly GeneralCommand[]): {
     errors: RuleViolation[];
     diagnostics: RuleViolation[];
   } {
@@ -384,9 +394,12 @@ class EditingSessionImpl implements EditingSession {
     return this.mode.expand(command, this.createModeContext(), this.toolState);
   }
 
-  private bindTargetTrack(commands: readonly RawCommand[]): RawCommand[] {
+  private bindTargetTrack(
+    commands: readonly GeneralCommand[],
+  ): GeneralCommand[] {
     const createsNotes = commands.some(
-      (command) => command.type === "ADD_NOTES" && command.notes.length > 0,
+      (command) =>
+        command.type === EditCommandType.AddNotes && command.notes.length > 0,
     );
     const materializesTarget =
       this.targetValue.trackIndex === null && createsNotes;
@@ -395,7 +408,9 @@ class EditingSessionImpl implements EditingSession {
         throw new EditRejectedError(
           "missing-track",
           "This mode cannot create its target track",
-          commands.find((command) => command.type === "ADD_NOTES")!,
+          commands.find(
+            (command) => command.type === EditCommandType.AddNotes,
+          )!,
         );
       }
       const trackIndex = this.document.ensureTrack(this.targetValue.trackKey);
@@ -403,7 +418,9 @@ class EditingSessionImpl implements EditingSession {
         throw new EditRejectedError(
           "missing-track",
           `Configured track '${this.targetValue.trackKey}' could not be created`,
-          commands.find((command) => command.type === "ADD_NOTES")!,
+          commands.find(
+            (command) => command.type === EditCommandType.AddNotes,
+          )!,
         );
       }
       this.targetValue = { ...this.targetValue, trackIndex };
@@ -411,7 +428,7 @@ class EditingSessionImpl implements EditingSession {
 
     if (this.targetValue.trackIndex === null) return [...commands];
     return commands.map((command) => {
-      if (command.type === "ADD_NOTES") {
+      if (command.type === EditCommandType.AddNotes) {
         return {
           ...command,
           notes: command.notes.map((note) => ({
@@ -420,7 +437,7 @@ class EditingSessionImpl implements EditingSession {
           })),
         };
       }
-      if (materializesTarget && command.type === "ADD_TEXT") {
+      if (materializesTarget && command.type === EditCommandType.AddText) {
         return { ...command, trackIndex: this.targetValue.trackIndex! };
       }
       return command;
@@ -430,7 +447,7 @@ class EditingSessionImpl implements EditingSession {
   private throwIfAllRejected(
     commands: readonly EditCommand[],
     expanded: readonly {
-      commands: readonly RawCommand[];
+      commands: readonly GeneralCommand[];
       rejections: readonly Rejection[];
     }[],
     options: ExecuteOptions,
@@ -454,7 +471,7 @@ class EditingSessionImpl implements EditingSession {
 
 class EditingGesture implements GestureHandle {
   private readonly session: EditingSessionImpl;
-  private command: EditCommand | null = null;
+  private command: GeneralCommand | null = null;
   private open = true;
 
   public constructor(session: EditingSessionImpl) {
@@ -465,7 +482,7 @@ class EditingGesture implements GestureHandle {
     return this.open;
   }
 
-  public preview(command: EditCommand): PreviewState {
+  public preview(command: GeneralCommand): PreviewState {
     this.ensureOpen();
     this.command = command;
     return this.session.previewCommand(command);

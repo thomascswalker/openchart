@@ -26,9 +26,9 @@ import {
   type VocalNoteClass,
   type Condition,
   type SettingsSource,
-} from "../config.js";
-import { expandPitchSet } from "./semantics.js";
-import { Difficulty } from "../types.js";
+} from "./config";
+import { expandPitchSet } from "./semantics";
+import { Difficulty } from "./difficulty";
 
 const DIFFICULTY_NAMES: Record<Difficulty, DifficultyName> = {
   [Difficulty.Easy]: "easy",

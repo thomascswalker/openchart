@@ -1,8 +1,8 @@
 import type { TextMetaType } from "@openchart/midi";
-import type { EntityId } from "./entityId.js";
+import type { EntityId } from "./entity";
 
 /** Values needed to insert a note at an absolute tick. */
-export interface NoteSpec {
+export interface InsertNoteOptions {
   trackIndex: number;
   tick: number;
   pitch: number;
@@ -11,7 +11,7 @@ export interface NoteSpec {
 }
 
 /** Absolute note-field changes addressed by a stable entity ID. */
-export interface NotePatch {
+export interface UpdateNoteOptions {
   id: EntityId;
   tick?: number;
   pitch?: number;
@@ -19,52 +19,123 @@ export interface NotePatch {
   velocity?: number;
 }
 
-/** MIDI-level commands that can be applied directly by ChartDocument. */
-export type RawCommand =
-  | { type: "ADD_NOTES"; notes: readonly NoteSpec[] }
-  | { type: "UPDATE_NOTES"; patches: readonly NotePatch[] }
-  | {
-      type: "MOVE_NOTES";
-      targetIds: readonly EntityId[];
-      tickDelta: number;
-      pitchDelta: number;
-    }
-  | {
-      type: "RESIZE_NOTES";
-      targetIds: readonly EntityId[];
-      durationDelta: number;
-    }
-  | { type: "DELETE_ENTITIES"; targetIds: readonly EntityId[] }
-  | {
-      type: "ADD_TEXT";
-      trackIndex: number;
-      metaType: TextMetaType;
-      tick: number;
-      text: string;
-    }
-  | { type: "UPDATE_TEXT"; id: EntityId; text?: string; tick?: number }
-  | {
-      type: "SET_TEMPO";
-      tick: number;
-      microsecondsPerQuarterNote: number;
-    }
-  | { type: "REMOVE_TEMPO"; tick: number }
-  | {
-      type: "SET_TIME_SIGNATURE";
-      tick: number;
-      numerator: number;
-      denominator: number;
-    }
-  | { type: "REMOVE_TIME_SIGNATURE"; tick: number };
+export enum EditCommandType {
+  AddNotes = "ADD_NOTES",
+  UpdateNotes = "UPDATE_NOTES",
+  MoveNotes = "MOVE_NOTES",
+  ResizeNotes = "RESIZE_NOTES",
+  DeleteEntities = "DELETE_ENTITIES",
+  AddText = "ADD_TEXT",
+  UpdateText = "UPDATE_TEXT",
+  SetTempo = "SET_TEMPO",
+  RemoveTempo = "REMOVE_TEMPO",
+  SetTimeSignature = "SET_TIME_SIGNATURE",
+  RemoveTimeSignature = "REMOVE_TIME_SIGNATURE",
+}
 
-/** Discriminant of a raw MIDI-level command. */
-export type RawCommandType = RawCommand["type"];
+export enum DomainCommandType {
+  PlaceChartNote = "PLACE_CHART_NOTE",
+  MoveChartNotes = "MOVE_CHART_NOTES",
+  SetSustainEnd = "SET_SUSTAIN_END",
+  CutSustains = "CUT_SUSTAINS",
+  CreatePhrase = "CREATE_PHRASE",
+  UpdatePhrase = "UPDATE_PHRASE",
+  PasteChartNotes = "PASTE_CHART_NOTES",
+  AddVocalNote = "ADD_VOCAL_NOTE",
+  SetLyric = "SET_LYRIC",
+  MoveVocalEntities = "MOVE_VOCAL_ENTITIES",
+  ResizeVocalEntities = "RESIZE_VOCAL_ENTITIES",
+  CreateVocalPhrase = "CREATE_VOCAL_PHRASE",
+  AddSection = "ADD_SECTION",
+  PasteClipboard = "PASTE_CLIPBOARD",
+}
 
-/** Opaque mode-specific command expanded into raw commands by a mode. */
-export interface DomainCommand {
+export interface ICommand {
   readonly type: string;
   readonly [key: string]: unknown;
 }
 
-/** Command accepted by an editing session. */
-export type EditCommand = RawCommand | DomainCommand;
+export interface DomainCommand extends ICommand {
+  type: DomainCommandType;
+}
+
+export interface AddNotesCommand extends ICommand {
+  type: EditCommandType.AddNotes;
+  notes: readonly InsertNoteOptions[];
+}
+
+export interface UpdateNotesCommand extends ICommand {
+  type: EditCommandType.UpdateNotes;
+  patches: readonly UpdateNoteOptions[];
+}
+
+export interface MoveNotesCommand extends ICommand {
+  type: EditCommandType.MoveNotes;
+  targetIds: readonly EntityId[];
+  tickDelta: number;
+  pitchDelta: number;
+}
+
+export interface ResizeNotesCommand extends ICommand {
+  type: EditCommandType.ResizeNotes;
+  targetIds: readonly EntityId[];
+  durationDelta: number;
+}
+
+export interface DeleteEntitiesCommand extends ICommand {
+  type: EditCommandType.DeleteEntities;
+  targetIds: readonly EntityId[];
+}
+
+export interface AddTextCommand extends ICommand {
+  type: EditCommandType.AddText;
+  trackIndex: number;
+  metaType: TextMetaType;
+  tick: number;
+  text: string;
+}
+
+export interface UpdateTextCommand extends ICommand {
+  type: EditCommandType.UpdateText;
+  id: EntityId;
+  text?: string;
+  tick?: number;
+}
+
+export interface SetTempoCommand extends ICommand {
+  type: EditCommandType.SetTempo;
+  tick: number;
+  microsecondsPerQuarterNote: number;
+}
+
+export interface RemoveTempoCommand extends ICommand {
+  type: EditCommandType.RemoveTempo;
+  tick: number;
+}
+
+export interface SetTimeSignatureCommand extends ICommand {
+  type: EditCommandType.SetTimeSignature;
+  tick: number;
+  numerator: number;
+  denominator: number;
+}
+
+export interface RemoveTimeSignatureCommand extends ICommand {
+  type: EditCommandType.RemoveTimeSignature;
+  tick: number;
+}
+export type GeneralCommand =
+  | AddNotesCommand
+  | UpdateNotesCommand
+  | MoveNotesCommand
+  | ResizeNotesCommand
+  | DeleteEntitiesCommand
+  | AddTextCommand
+  | UpdateTextCommand
+  | SetTempoCommand
+  | RemoveTempoCommand
+  | SetTimeSignatureCommand
+  | RemoveTimeSignatureCommand;
+
+/** Any command accepted by an editing mode before it is expanded to raw edits. */
+export type EditCommand = GeneralCommand | DomainCommand;

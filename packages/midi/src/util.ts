@@ -1,4 +1,4 @@
-import { TempoEvent } from "./types.js";
+import { TempoEvent } from "./types";
 import { startCase } from "es-toolkit";
 
 /** The fields of a tempo change that time conversion needs. */

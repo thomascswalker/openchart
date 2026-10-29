@@ -276,7 +276,7 @@ test.describe("vocals profile", () => {
     const renderer = page.locator(".piano-roll-story__renderer");
     const canvas = renderer.locator("canvas");
     await expect(canvas).toBeVisible();
-    await expect(story).toHaveAttribute("data-profile", "vocals");
+    await expect(story).toHaveAttribute("data-profile", "midi.vocals");
     await expect(renderer.getByText("Sing", { exact: true })).toBeAttached();
     await expect(
       renderer.getByText("Vocal Phrase", { exact: true }),

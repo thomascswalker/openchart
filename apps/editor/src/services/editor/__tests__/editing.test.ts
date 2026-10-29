@@ -7,6 +7,13 @@ import type { PlaybackService } from "../../playback";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
 import { createTestRulesetService } from "../../__tests__/testUtils";
+import {
+  DomainCommandType,
+  EditCommandType,
+  EditingModeId,
+  EntityType,
+  VocalNoteKind,
+} from "@openchart/views";
 
 function createDocumentService(
   ruleset: ReturnType<typeof createTestRulesetService>,
@@ -49,7 +56,7 @@ describe("EditingService", () => {
     expect(session).not.toBeNull();
     expect(
       session!.execute({
-        type: "ADD_NOTES",
+        type: EditCommandType.AddNotes,
         notes: [{ trackIndex: 0, tick: 240, pitch: 64, duration: 120 }],
       }).changed,
     ).toBe(true);
@@ -85,7 +92,7 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     editing.selection.add(noteId);
     editing.clipboard.setData({
-      sourceModeId: "midi.raw",
+      sourceModeId: EditingModeId.MidiRaw,
       entities: [
         {
           relativeTick: 0,
@@ -93,7 +100,7 @@ describe("EditingService", () => {
           velocity: 120,
           pitch: 60,
           classification: {
-            kind: "note",
+            type: EntityType.Note,
             subtype: "note",
             movable: true,
             resizable: true,
@@ -132,7 +139,7 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     const gesture = session.beginGesture();
     gesture.preview({
-      type: "MOVE_NOTES",
+      type: EditCommandType.MoveNotes,
       targetIds: [id],
       tickDelta: 240,
       pitchDelta: 2,
@@ -174,18 +181,18 @@ describe("EditingService", () => {
     );
 
     const global = editing.getSession("viewport-1", "global");
-    expect(global?.mode.id).toBe("midi.global");
+    expect(global?.mode.id).toBe(EditingModeId.MidiGlobal);
     expect(global?.hostKind).toBe("global");
     expect(
       global?.execute({
-        type: "SET_TEMPO",
+        type: EditCommandType.SetTempo,
         tick: 480,
         microsecondsPerQuarterNote: 400_000,
       }).changed,
     ).toBe(true);
     expect(
       global?.execute({
-        type: "ADD_SECTION",
+        type: DomainCommandType.AddSection,
         tick: 960,
         name: "Verse",
       }).changed,
@@ -229,7 +236,7 @@ describe("EditingService", () => {
 
     expect(
       global.execute({
-        type: "DELETE_ENTITIES",
+        type: EditCommandType.DeleteEntities,
         targetIds: [lyricId],
       }).changed,
     ).toBe(false);
@@ -257,18 +264,24 @@ describe("EditingService", () => {
     const active = viewports.getSnapshot().activeViewportId;
     const other = viewports.addViewport("piano-roll")!;
 
-    editing.updateToolState(active, "vocals", {
-      noteKind: "percussion",
+    editing.updateToolState(active, EditingModeId.MidiVocals, {
+      noteKind: VocalNoteKind.Percussion,
     });
-    expect(viewports.getViewport(active)?.tools.vocals).toEqual({
-      noteKind: "percussion",
+    expect(
+      viewports.getViewport(active)?.tools[EditingModeId.MidiVocals],
+    ).toEqual({
+      noteKind: VocalNoteKind.Percussion,
       phrase: null,
     });
     expect(() =>
-      editing.updateToolState(active, "vocals", { noteKind: "invalid" }),
+      editing.updateToolState(active, EditingModeId.MidiVocals, {
+        noteKind: "invalid",
+      }),
     ).toThrow();
-    expect(viewports.getViewport(other)?.tools.vocals).toEqual({
-      noteKind: "pitched",
+    expect(
+      viewports.getViewport(other)?.tools[EditingModeId.MidiVocals],
+    ).toEqual({
+      noteKind: VocalNoteKind.Pitched,
       phrase: null,
     });
   });

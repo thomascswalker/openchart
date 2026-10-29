@@ -4,17 +4,21 @@ import {
   createUnmappedTrackRules,
   type CompiledRuleset,
   type TrackDescriptor,
-} from "../ruleset/compile.js";
-import type { RulesetContext } from "../ruleset/enforce.js";
-import { ChartDocument } from "./chartDocument.js";
-import { ClipboardService } from "./clipboard.js";
-import type { EditingTarget, ModeRegistry } from "./mode.js";
-import { createDefaultModeRegistry } from "./modes/index.js";
-import { SelectionModel } from "./selectionModel.js";
-import { createEditingSession, type EditingSession } from "./session.js";
+} from "../ruleset/compile";
+import type { RulesetContext } from "../ruleset/enforce";
+import { ChartDocument } from "./chartDocument";
+import { ClipboardService } from "./clipboard";
+import type { EditingTarget, ModeRegistry } from "./modes/mode";
+import { createDefaultModeRegistry } from "./modes/index";
+import { SelectionModel } from "./selectionModel";
+import {
+  createEditingSession,
+  EditTransactionPort,
+  type EditingSession,
+} from "./session";
 
 /** In-memory snapshot history returned by standalone editing instances. */
-export interface StandaloneHistory {
+export interface StandaloneHistory extends EditTransactionPort {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly isDirty: boolean;

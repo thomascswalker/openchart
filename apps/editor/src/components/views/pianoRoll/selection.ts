@@ -5,7 +5,7 @@ import { BaseSelection } from "../shared/selection";
 
 export class SelectionContext extends BaseSelection<PianoRollNote> {
   #bounds: Box2 | null = null;
-  #sharedSelection: SelectionModel | null = null;
+  #model: SelectionModel | null = null;
   #sharedUnsubscribe: (() => void) | null = null;
   #resolveId: ((id: string) => PianoRollNote | null) | null = null;
   #resolvedById = new Map<string, PianoRollNote | null>();
@@ -17,18 +17,18 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
   }
 
   public bindSharedSelection(
-    selection: SelectionModel,
+    model: SelectionModel,
     resolveId: (id: string) => PianoRollNote | null,
   ): void {
-    if (this.#sharedSelection === selection && this.#resolveId === resolveId) {
+    if (this.#model === model && this.#resolveId === resolveId) {
       this.refreshSharedSelection();
       return;
     }
     this.#sharedUnsubscribe?.();
-    this.#sharedSelection = selection;
+    this.#model = model;
     this.#resolveId = resolveId;
     this.#resolvedById.clear();
-    this.#sharedUnsubscribe = selection.subscribe((ids) => {
+    this.#sharedUnsubscribe = model.subscribe((ids) => {
       this.syncSharedSelection(ids);
     });
     this.refreshSharedSelection();
@@ -37,7 +37,7 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
   public unbindSharedSelection(): void {
     this.#sharedUnsubscribe?.();
     this.#sharedUnsubscribe = null;
-    this.#sharedSelection = null;
+    this.#model = null;
     this.#resolveId = null;
     this.#resolvedById.clear();
     this.#syncingShared = true;
@@ -49,9 +49,9 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
   }
 
   public refreshSharedSelection(): void {
-    if (!this.#sharedSelection) return;
+    if (!this.#model) return;
     this.#resolvedById.clear();
-    this.syncSharedSelection(this.#sharedSelection.getSelectedIds());
+    this.syncSharedSelection(this.#model.getSelectedIds());
   }
 
   private syncSharedSelection(ids: readonly string[]): void {
@@ -86,7 +86,7 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
   }
 
   public override isSelected(note: PianoRollNote): boolean {
-    return this.#sharedSelection?.isSelected(note.id) ?? super.isSelected(note);
+    return this.#model?.isSelected(note.id) ?? super.isSelected(note);
   }
 
   public set notes(value: PianoRollNote[]) {
@@ -108,7 +108,7 @@ export class SelectionContext extends BaseSelection<PianoRollNote> {
 
   protected override onChanged(): void {
     this.revision += 1;
-    if (this.#syncingShared || !this.#sharedSelection) return;
-    this.#sharedSelection.setSelectedIds(this.notes.map((note) => note.id));
+    if (this.#syncingShared || !this.#model) return;
+    this.#model.setSelectedIds(this.notes.map((note) => note.id));
   }
 }

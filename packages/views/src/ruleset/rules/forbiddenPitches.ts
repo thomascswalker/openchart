@@ -1,10 +1,10 @@
-import { expandPitchSet } from "../semantics.js";
+import { expandPitchSet } from "../semantics";
 import {
   compact,
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
+} from "../context";
 
 export const checkForbiddenPitches: RuleCheck<
   ConstraintOf<"forbiddenPitches">

@@ -1,7 +1,7 @@
 import { Parser } from "binary-parser/dist/binary_parser.js";
-import { TrackEventType } from "./types.js";
-import { isTwoByteMessage } from "./util.js";
-import { decodeText, formatTrackEvents } from "./codec.js";
+import { TrackEventType } from "./types";
+import { isTwoByteMessage } from "./util";
+import { decodeText, formatTrackEvents } from "./codec";
 
 let currentRunningStatus = 0;
 

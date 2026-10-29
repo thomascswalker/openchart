@@ -4,7 +4,7 @@ import {
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
+} from "../context";
 
 /** Notes of the listed classes may not overlap one another. */
 export const checkMonophonic: RuleCheck<ConstraintOf<"monophonic">> = (

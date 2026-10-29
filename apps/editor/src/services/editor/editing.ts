@@ -4,11 +4,11 @@ import {
   ClipboardService,
   createRulesetContext,
   createUnmappedTrackRules,
+  EditingModeId,
   EditingModeRegistry,
   SelectionModel,
   SongView,
   createEditingSession,
-  type EditingModeId,
   type EditingSession,
   type EditingTarget,
   type EditResult,
@@ -115,7 +115,7 @@ export class EditingService extends Service {
     const viewport = this.viewportService.getViewport(viewportId);
     if (!viewport || !this.chartDocument || !this.midi) return null;
     const modeId =
-      requestedModeId === "global" ? "midi.global" : requestedModeId;
+      requestedModeId === "global" ? EditingModeId.MidiGlobal : requestedModeId;
     const cacheKey = modeId ? `${viewportId}::${modeId}` : viewportId;
     const signature = this.sessionSignature(viewport, modeId);
     if (this.sessionSignatures.get(cacheKey) === signature) {
@@ -244,13 +244,16 @@ export class EditingService extends Service {
     if (!mode) return null;
 
     const targetTrack =
-      mode.id === "midi.global" ? this.resolveGlobalTrack() : viewportTarget;
+      mode.id === EditingModeId.MidiGlobal
+        ? this.resolveGlobalTrack()
+        : viewportTarget;
     if (!targetTrack) return null;
     const { descriptor, trackIndex } = targetTrack;
     const target: EditingTarget = {
       trackKey: descriptor.key,
       trackIndex,
-      difficulty: mode.id === "midi.global" ? null : viewport.difficulty,
+      difficulty:
+        mode.id === EditingModeId.MidiGlobal ? null : viewport.difficulty,
     };
     return createEditingSession({
       document: this.chartDocument,

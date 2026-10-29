@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import {
+  EditingModeId,
+  VocalNoteKind,
+  VocalPhraseKind,
+} from "@openchart/views";
 import { enforceAvailableView, ViewportService } from "../viewports";
 import { createTestRulesetService } from "../../__tests__/testUtils";
 
@@ -96,9 +101,9 @@ describe("ViewportService", () => {
     const second = service.addViewport("highway")!;
 
     service.setModeToolState(second, "test.custom", { active: "place" });
-    service.setModeToolState(first, "vocals", {
-      noteKind: "percussion",
-      phrase: "vocal",
+    service.setModeToolState(first, EditingModeId.MidiVocals, {
+      noteKind: VocalNoteKind.Percussion,
+      phrase: VocalPhraseKind.Vocal,
     });
 
     const sessions = service.getSnapshot().viewportSessions;
@@ -107,12 +112,16 @@ describe("ViewportService", () => {
         active: "place",
       },
     );
-    expect(sessions.find((s) => s.id === first)?.tools.vocals).toEqual({
-      noteKind: "percussion",
-      phrase: "vocal",
+    expect(
+      sessions.find((s) => s.id === first)?.tools[EditingModeId.MidiVocals],
+    ).toEqual({
+      noteKind: VocalNoteKind.Percussion,
+      phrase: VocalPhraseKind.Vocal,
     });
-    expect(sessions.find((s) => s.id === second)?.tools.vocals).toEqual({
-      noteKind: "pitched",
+    expect(
+      sessions.find((s) => s.id === second)?.tools[EditingModeId.MidiVocals],
+    ).toEqual({
+      noteKind: VocalNoteKind.Pitched,
       phrase: null,
     });
   });
@@ -120,14 +129,18 @@ describe("ViewportService", () => {
   it("preserves tools when other session fields update", () => {
     const service = new ViewportService(createTestRulesetService());
     const id = service.getSnapshot().activeViewportId;
-    service.setModeToolState(id, "chart.frets", {
+    service.setModeToolState(id, EditingModeId.ChartLanes, {
       tool: "solo",
       phrase: null,
       placement: "normal",
     });
     service.updateViewport(id, { camera: { tick: 960 } });
     expect(
-      (service.getViewport(id)?.tools["chart.frets"] as { tool: string }).tool,
+      (
+        service.getViewport(id)?.tools[EditingModeId.ChartLanes] as {
+          tool: string;
+        }
+      ).tool,
     ).toBe("solo");
   });
 });

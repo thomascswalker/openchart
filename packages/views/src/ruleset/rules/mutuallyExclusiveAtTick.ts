@@ -4,7 +4,7 @@ import {
   type ClassifiedNote,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
+} from "../context";
 
 /** Marker effects / note-source modifier ids listed as members may not share a tick. */
 export const checkMutuallyExclusiveAtTick: RuleCheck<

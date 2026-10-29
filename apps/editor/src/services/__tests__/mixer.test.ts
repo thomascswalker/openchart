@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { LoggerService } from "../logger";
 import { MixerService } from "../mixer";
 
-vi.mock("@openchart/mixer", () => ({
-  default: class MockMixer {
+vi.mock("@openchart/audio", () => ({
+  Mixer: class MockMixer {
     tracks: Record<string, { filename: string }> = {};
     onChange?: () => void;
     onPlay?: (event: unknown) => void;

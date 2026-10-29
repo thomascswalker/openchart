@@ -1,5 +1,5 @@
 import { StatefulService } from "../platform/services";
-import Mixer, { type Track } from "@openchart/mixer";
+import { Mixer, MixerTrack } from "@openchart/audio";
 import type { LoggerService } from "./logger";
 import type { MixerSnapshot } from "./mixer/types";
 
@@ -113,9 +113,9 @@ export class MixerService extends StatefulService<MixerSnapshot> {
 
   public pause = (): void => this.mixer.pause();
 
-  public toggleSolo = (track: Track) => this.mixer.toggleSolo(track);
+  public toggleSolo = (track: MixerTrack) => this.mixer.toggleSolo(track);
 
-  public toggleMute = (track: Track) => this.mixer.toggleMute(track);
+  public toggleMute = (track: MixerTrack) => this.mixer.toggleMute(track);
 
   public seek = (time: number) => this.mixer.seek(time);
 

@@ -1,5 +1,5 @@
-import { MidiNote } from "../types.js";
-import { IEventCacheMap } from "./cache.js";
+import { MidiNote } from "../types";
+import { IEventCacheMap } from "./cache";
 
 export class PitchCache extends IEventCacheMap<number, MidiNote[], MidiNote> {
   public override build(notes: MidiNote[]): void {

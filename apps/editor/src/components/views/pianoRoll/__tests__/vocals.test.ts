@@ -1,10 +1,16 @@
 import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
 import {
+  DomainCommandType,
+  EditCommandType,
+  EntityType,
   createStandaloneEditing,
   Difficulty,
-  parseEntityId,
+  parseEntityFromId,
   SongView,
+  VocalNoteKind,
+  VocalPhraseKind,
   VocalTrackView,
+  EditingModeId,
 } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
@@ -123,7 +129,7 @@ function harness(
   const selection = new SelectionContext();
   const noteData = new NoteDataStore();
   const placement: PianoRollVocalPlacement = {
-    noteKind: "pitched",
+    noteKind: VocalNoteKind.Pitched,
     phrase: null,
   };
   const calls = {
@@ -208,8 +214,12 @@ function harness(
     previewNotes: () => calls.previews++,
   } as unknown as PianoRollContext;
   selection.bindSharedSelection(standalone.selection, (id) => {
-    const parsed = parseEntityId(id);
-    if (!parsed || parsed.kind !== "note" || parsed.trackIndex === null) {
+    const parsed = parseEntityFromId(id);
+    if (
+      !parsed ||
+      parsed.type !== EntityType.Note ||
+      parsed.trackIndex === undefined
+    ) {
       return null;
     }
     const track = midi.tracks[parsed.trackIndex];
@@ -255,9 +265,12 @@ function seeded() {
   const song = new SongView(midi);
   song.ensureMidiTrack("vocals");
   const vocals = song.getVocalTrackView("VOCALS")!;
-  vocals.addNote("pitched", 0, 240, { pitch: 60, lyric: "one" });
-  vocals.addNote("pitched", 480, 720, { pitch: 62, lyric: "two" });
-  vocals.addNote("percussion", 960, 1080);
+  vocals.addNote(VocalNoteKind.Pitched, 0, 240, { pitch: 60, lyric: "one" });
+  vocals.addNote(VocalNoteKind.Pitched, 480, 720, {
+    pitch: 62,
+    lyric: "two",
+  });
+  vocals.addNote(VocalNoteKind.Percussion, 960, 1080);
   return harness(midi);
 }
 
@@ -299,7 +312,8 @@ function copySelectionToClipboard(h: ReturnType<typeof harness>) {
         pitch: note.pitch,
         ...(row ? { row: row.id } : {}),
         classification,
-        ...(h.session.mode.id === "vocals" && lyric !== undefined
+        ...(h.session.mode.id === EditingModeId.MidiVocals &&
+        lyric !== undefined
           ? { lyric }
           : {}),
       };
@@ -353,7 +367,7 @@ describe("piano-roll profiles", () => {
     expect(h.session.clipboard.canPaste()).toBe(true);
 
     h.session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds: h.selection.notes.map((note) => note.id),
     });
     expect(track.getNotes()).toHaveLength(0);
@@ -366,7 +380,7 @@ describe("piano-roll profiles", () => {
   });
 
   it("derives the vocals profile from the editing session projection", () => {
-    expect(VOCALS.id).toBe("vocals");
+    expect(VOCALS.id).toBe(EditingModeId.MidiVocals);
     expect(VOCALS.pitchRange).toEqual({ low: 36, high: 84 });
     expect(VOCALS.pinnedLanes.map((lane) => lane.id)).toEqual([
       "vocal-phrase",
@@ -377,9 +391,9 @@ describe("piano-roll profiles", () => {
     ]);
     const generic = harness(new Midi(), GENERIC_PROFILE, "LEAD GUITAR").session;
     expect(profileFromSession(generic)).toBe(GENERIC_PROFILE);
-    expect(VOCALS.classify(85)).toBe("pitchless");
-    expect(VOCALS.classify(35)).toBe("pitchless");
-    expect(VOCALS.classify(111)).toBe("phrase:power-window");
+    expect(VOCALS.classify(85)).toBe(VocalNoteKind.Pitchless);
+    expect(VOCALS.classify(35)).toBe(VocalNoteKind.Pitchless);
+    expect(VOCALS.classify(111)).toBe(`phrase:${VocalPhraseKind.PowerWindow}`);
     expect(VOCALS.laneForPitch(35)?.id).toBe("pitchless");
     expect(VOCALS.laneForPitch(60)).toBeNull();
     expect([36, 60, 84].map(pitchName)).toEqual(["C2", "C4", "C6"]);
@@ -522,7 +536,8 @@ describe("piano-roll profiles", () => {
               tick?: number;
               name?: string;
             }) => {
-              if (command.type !== "ADD_SECTION") return { changed: false };
+              if (command.type !== DomainCommandType.AddSection)
+                return { changed: false };
               track.addTextEvent(
                 MetaType.Text,
                 command.tick!,
@@ -701,9 +716,9 @@ describe("vocal note editing", () => {
 
   it("uses the toolbar kind and phrase mode in the grid", () => {
     const h = harness();
-    h.placement.noteKind = "percussion";
+    h.placement.noteKind = VocalNoteKind.Percussion;
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
-    h.placement.phrase = "vocal";
+    h.placement.phrase = VocalPhraseKind.Vocal;
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(960));
     // An overlapping phrase of the same kind is rejected.
     h.drag(new Vector2(xAt(480), yAt(60)), xAt(1440));

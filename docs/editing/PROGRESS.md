@@ -8,7 +8,7 @@
 
 - Root: `package.json` (editing-check scripts)
 - Guardrails: `scripts/check-editing-boundaries.mjs`, `scripts/editing-boundaries.allowlist.json`
-- Fixtures: `packages/views/tests/fixtures/characterization/editing.json`
+- Fixtures: `packages/views/src/editing/modes/__tests__/fixtures/characterization/editing.json`
 - Editor tests: `apps/editor/src/components/views/highway/__tests__/characterization.test.ts`, `apps/editor/src/components/views/pianoRoll/__tests__/characterization.test.ts`
 - Docs: `docs/editing/ARCHITECTURE.md`, `docs/editing/PROGRESS.md`
   **Tests:** added 7 characterization tests across 2 files · ported none · removed none
@@ -56,7 +56,7 @@
 **Files changed:**
 
 - MIDI: `packages/midi/src/track.ts`, `packages/midi/tests/__tests__/midi.test.ts`
-- Views: `packages/views/src/{chartEditing.ts,chartView.ts,vocals.ts}`, `packages/views/src/editing/chartDocument.ts`, `packages/views/tests/__tests__/chartEditing.test.ts`
+- Views: `packages/views/src/{chartEditing.ts,chartView.ts,vocals.ts}`, `packages/views/src/editing/chartDocument.ts`, `packages/views/src/editing/__tests__/chartEditing.test.ts`
 - Editor: `apps/editor/src/components/views/{highway/editing/noteEditing.ts,highway/__tests__/noteEditing.test.ts,pianoRoll/editingStrategy.ts,pianoRoll/.storybook/createPianoRollFixture.ts}`
 - Guardrails: `scripts/editing-boundaries.allowlist.json`
 - Docs: `docs/editing/PROGRESS.md`
@@ -88,7 +88,7 @@
 **Files changed:**
 
 - Views: `packages/views/src/editing/{action.ts,chartDocument.ts,clipboardService.ts,commands.ts,entityId.ts,preview.ts,reader.ts,result.ts,scratchpad.ts,selectionModel.ts,transactionManager.ts}`, `packages/views/src/index.ts`
-- Views tests: `packages/views/tests/__tests__/editing.test.ts`
+- Views tests: `packages/views/src/editing/__tests__/editing.test.ts`
 - Editor: `apps/editor/src/components/views/pianoRoll/controllers/noteEditing.ts`
 - Editor test adaptation: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`
 - Docs: `docs/editing/PROGRESS.md`
@@ -107,7 +107,7 @@
 **Files changed:**
 
 - Views: `packages/views/src/editing/{chartDocument.ts,mode.ts,modeRegistry.ts,session.ts,standalone.ts,modes/{index.ts,rawMidi.ts}}`, `packages/views/src/index.ts`
-- Views tests: `packages/views/tests/__tests__/editing/session.test.ts`
+- Views tests: `packages/views/src/editing/__tests__/session.test.ts`
 - Editor: `apps/editor/src/{bootstrap.ts,components/editor/Viewport/index.tsx,components/views/pianoRoll/{index.ts,types.ts,controllers/noteEditing.ts},services/editor/editing.ts}`
 - Editor tests: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`, `apps/editor/src/services/editor/__tests__/editing.test.ts`
 - Docs: `docs/editing/PROGRESS.md`
@@ -127,7 +127,7 @@
 
 - Views config/chart semantics: `packages/views/src/{config.ts,chartView.ts,vocals.ts,chart/{constants,drums,forcedNotes,sustains}.ts}`
 - Views modes: `packages/views/src/editing/{modes/{common,chartFrets,chartDrums,vocals,index}.ts,session.ts,standalone.ts}`, `packages/views/src/index.ts`
-- Views tests: `packages/views/tests/__tests__/{config,chartView,domainModes}.test.ts`
+- Views tests: `packages/views/src/views/__tests__/chartView.test.ts`, `packages/views/src/editing/modes/__tests__/domainModes.test.ts`
 - Editor compatibility: `apps/editor/src/components/views/highway/{profile.ts,interaction.ts}`, `apps/editor/src/components/views/pianoRoll/profile.ts`
 - Docs: `docs/editing/PROGRESS.md`
   **Tests:** all 14 Phase 0 characterization/domain-mode tests pass; full views suite 64 passed; focused editor characterization tests 28 passed · ported none · removed none
@@ -162,7 +162,7 @@
   **Files changed:**
 
   - Editor: `apps/editor/src/components/views/highway/**`; removed `highway/selection.ts`
-  - Views kernel: `packages/views/src/editing/{session.ts,modes/{chartDrums,chartFrets}.ts}` and `packages/views/tests/__tests__/editing/session.test.ts`
+  - Views kernel: `packages/views/src/editing/{session.ts,modes/{chartDrums,chartFrets}.ts}` and `packages/views/src/editing/__tests__/session.test.ts`
   - Docs: `docs/editing/PROGRESS.md`
     **Tests:** Highway unit suite 79 passed; Highway input TSX suite 14 passed; views package 64 passed; focused Highway instancing E2E 4 passed. Updated Highway tests to assert centralized ID selection and the current note argument shape; added a playback-start cancellation test and completed the missing physical-lane test setup. No tests were removed or weakened.
     **Gate results:** MIDI/views builds ✓ · check-types ✓ (9 tasks) · repository lint ✓ · targeted Prettier ✓ · full format:check reports 131 pre-existing repository files with formatting differences (Phase 0 baseline: 153; all Phase 7 files pass targeted Prettier) · `npm test`: 240 passed / 1 pre-existing Piano Roll time-signature fixture failure; full run stops before the subsequent TSX suite, which was run separately and passed · check:editing:strict ✓ (15 violations, all in the approved Piano Roll header allowance; zero Highway violations) · editor E2E 15 passed / 3 same baseline `playhead-sync` failures · Storybook remains blocked by the installed Node.js requirement (20.19+ or 22.12+; environment 20.18.1).
@@ -252,7 +252,7 @@
 ## Ruleset views, Phase 3: migrate `packages/views`
 
 **Status:** done (verified only with substitute tooling; see gates).
-**Summary:** `config.ts` moved to `oldConfig.ts` (contents unchanged). `SongView`, `TrackView`, `InstrumentTrackView`, `ChartView`, `GlobalTrackView` and `VocalTrackView` are built from a `CompiledRuleset`; `ChartView`/`VocalTrackView` are read-only. `TrackDescriptor` is `{key,name,kind,visible,editable,rules}`. `ModeContext` carries `rules`, `rulesContext` and `validate()`; `EditingSession` runs `RuleEnforcer` after expansion (error → rejection `rule:<ruleId>`, warning/info → `diagnostics`), exposes `rules`, `getRulesContext()` and `getTools()`. `chart.lanes` replaces `chart.frets`/`chart.drums`; `EditingMode.createTools(context)` replaces `tools`. Text-event grammar is checked for ADD_TEXT/UPDATE_TEXT. Sections are written/read as `MetaType.Text` (ruleset meta type 1).
+**Summary:** `config.ts` moved to `oldConfig.ts` (contents unchanged). `SongView`, `TrackView`, `InstrumentTrackView`, `ChartView`, `GlobalTrackView` and `VocalTrackView` are built from a `CompiledRuleset`; `ChartView`/`VocalTrackView` are read-only. `TrackDescriptor` is `{key,name,kind,visible,editable,rules}`. `ModeContext` carries `rules`, `rulesContext` and `validate()`; `EditingSession` runs `RuleEnforcer` after expansion (error → rejection `rule:<ruleId>`, warning/info → `diagnostics`), exposes `rules`, `getRulesContext()` and `getTools()`. `chart.lanes` replaces `chart.lanes`/`chart.drums`; `EditingMode.createTools(context)` replaces `tools`. Text-event grammar is checked for ADD_TEXT/UPDATE_TEXT. Sections are written/read as `MetaType.Text` (ruleset meta type 1).
 **Files changed:** `packages/views/src/{views/*,editing/{mode,session,result,preview,reader,modeRegistry,chartDocument,standalone,phrase,ruleValidation}.ts,editing/modes/{chartLanes,vocals,rawMidi,globalTrack,common,index}.ts,ruleset/{textEvents,labels}.ts,vocals.ts,types.ts,chart/constants.ts,index.ts}`; deleted `editing/vocals.ts`, `chart/drums.ts`, `chart/forcedNotes.ts`, `editing/modes/{chartFrets,chartDrums}.ts`.
 **Tests:** ported `chartEditing`, `chartView`, `domainModes`, `vocals`, `editing`, `editing/session`; `config.test` split into `oldConfig.test`; added `ruleEnforcement.test` (error rejects with no MIDI change, throwOnReject, warnings commit with diagnostics, unmapped tracks unconstrained, preview rejections, vocal fallback offset, power window between phrases, text grammar, alternate-ruleset hierarchy).
 **Gate results:** _not run_ (no network/`node_modules`). Substitutes: new files type-check with `tsc` 6.0.3 against Zod 3 (Zod 4-only constructs swapped); ported views tests pass under a throwaway Vitest shim, except the cases that need the real `binary-parser`/Ajv.

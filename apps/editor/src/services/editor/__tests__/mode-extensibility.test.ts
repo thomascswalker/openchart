@@ -1,5 +1,7 @@
 import { Midi } from "@openchart/midi";
 import {
+  EditCommandType,
+  EntityType,
   SongView,
   type ClipboardPayload,
   type EditingMode,
@@ -7,7 +9,7 @@ import {
   type ModeContext,
   type NoteSnapshot,
   type Projection,
-  type RawCommand,
+  type GeneralCommand,
 } from "@openchart/views";
 import { describe, expect, it, vi } from "vitest";
 import { ContextStore } from "../../../platform/context";
@@ -43,9 +45,13 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
     hostKinds: new Set(["test-view"]),
     appliesTo: () => true,
     capabilities: {
-      rawCommands: new Set(["ADD_NOTES", "MOVE_NOTES", "DELETE_ENTITIES"]),
+      rawCommands: new Set([
+        EditCommandType.AddNotes,
+        EditCommandType.MoveNotes,
+        EditCommandType.DeleteEntities,
+      ]),
       domainCommands: new Set(),
-      entityKinds: new Set(["note"]),
+      entityKinds: new Set([EntityType.Note]),
       canCreateTrack: false,
       requiresDifficulty: false,
     },
@@ -79,7 +85,7 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
         60 + Math.max(0, lanes.indexOf(row.id as (typeof lanes)[number])),
     }),
     classify: () => ({
-      kind: "note",
+      type: EntityType.Note,
       subtype: "four-lane",
       movable: true,
       resizable: true,
@@ -91,7 +97,7 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
     ): ExpansionResult => ({
       commands: [
         {
-          type: "ADD_NOTES",
+          type: EditCommandType.AddNotes,
           notes: payload.entities.map((entity) => ({
             trackIndex: context.target.trackIndex!,
             tick: anchorTick + entity.relativeTick,
@@ -105,11 +111,11 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
     }),
     expand: (command) => {
       if (
-        command.type === "ADD_NOTES" ||
-        command.type === "MOVE_NOTES" ||
-        command.type === "DELETE_ENTITIES"
+        command.type === EditCommandType.AddNotes ||
+        command.type === EditCommandType.MoveNotes ||
+        command.type === EditCommandType.DeleteEntities
       ) {
-        return { commands: [command as RawCommand], rejections: [] };
+        return { commands: [command as GeneralCommand], rejections: [] };
       }
       return rejected(command);
     },
@@ -187,15 +193,15 @@ describe("editing mode extensibility acceptance", () => {
     const editingContext = createEditingContextSnapshot(session);
     context.update(editingContext.values);
     expect(context.get("editing.mode")).toBe("test.fourLane");
-    expect(context.get("editing.can.ADD_NOTES")).toBe(true);
-    expect(context.get("editing.can.MOVE_NOTES")).toBe(true);
+    expect(context.get(`editing.can.${EditCommandType.AddNotes}`)).toBe(true);
+    expect(context.get(`editing.can.${EditCommandType.MoveNotes}`)).toBe(true);
     context.update(
       createEditingContextSnapshot(session, ["REMOVED_COMMAND"]).values,
     );
     expect(context.get("editing.can.REMOVED_COMMAND")).toBe(false);
     expect(
       session.execute({
-        type: "ADD_NOTES",
+        type: EditCommandType.AddNotes,
         notes: [
           {
             trackIndex: 0,
@@ -212,7 +218,7 @@ describe("editing mode extensibility acceptance", () => {
       .getNoteId(0, documentService.data.tracks[0]!.getNotes()[0]!);
     const cancelled = session.beginGesture();
     cancelled.preview({
-      type: "MOVE_NOTES",
+      type: EditCommandType.MoveNotes,
       targetIds: [noteId],
       tickDelta: 120,
       pitchDelta: 0,
@@ -223,7 +229,7 @@ describe("editing mode extensibility acceptance", () => {
 
     const committed = session.beginGesture();
     committed.preview({
-      type: "MOVE_NOTES",
+      type: EditCommandType.MoveNotes,
       targetIds: [noteId],
       tickDelta: 120,
       pitchDelta: 0,

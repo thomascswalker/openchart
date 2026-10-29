@@ -1,5 +1,5 @@
-import { MetaType, MidiEvent, TempoEvent } from "../types.js";
-import { IEventCacheList } from "./cache.js";
+import { MetaType, MidiEvent, TempoEvent } from "../types";
+import { IEventCacheList } from "./cache";
 
 export class TempoEventCache extends IEventCacheList<TempoEvent, MidiEvent> {
   public override build(events: MidiEvent[]): void {

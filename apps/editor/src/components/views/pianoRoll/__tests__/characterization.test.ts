@@ -1,13 +1,18 @@
 import { MetaType, Midi, type MidiNote } from "@openchart/midi";
 import {
+  DomainCommandType,
+  EditCommandType,
+  EntityType,
   createStandaloneEditing,
   Difficulty,
   formatNoteId,
-  parseEntityId,
+  parseEntityFromId,
   SongView,
+  VocalNoteKind,
+  VocalPhraseKind,
 } from "@openchart/views";
 import { describe, expect, it } from "vitest";
-import characterization from "../../../../../../../packages/views/tests/fixtures/characterization/editing.json" with { type: "json" };
+import characterization from "../../../../../../../packages/views/src/editing/modes/__tests__/fixtures/characterization/editing.json" with { type: "json" };
 
 describe("editing characterization: Piano Roll vocals", () => {
   it("preserves vocal move, lane, phrase, delete, and paste behavior through a session", () => {
@@ -28,24 +33,28 @@ describe("editing characterization: Piano Roll vocals", () => {
       },
       "piano-roll",
     );
-    const pitched = vocalView.addNote("pitched", 0, 120, {
+    const pitched = vocalView.addNote(VocalNoteKind.Pitched, 0, 120, {
       pitch: characterization.vocal.pitchedMove.fromPitch,
       lyric: characterization.vocal.pasteRestoresLyric,
     })!.note;
-    const laneNote = vocalView.addNote("percussion", 240, 360)!.note;
+    const laneNote = vocalView.addNote(
+      VocalNoteKind.Percussion,
+      240,
+      360,
+    )!.note;
     const trackIndex = midi.tracks.indexOf(track);
     const idOf = (note: MidiNote) =>
       formatNoteId(trackIndex, track.getEventId(note.noteOn));
     const pitchedId = idOf(pitched);
     const laneNoteId = idOf(laneNote);
     const resolveNote = (id: string) => {
-      const parsed = parseEntityId(id);
-      if (!parsed || parsed.kind !== "note") return null;
+      const parsed = parseEntityFromId(id);
+      if (!parsed || parsed.type !== EntityType.Note) return null;
       return track.getNoteByEventId(parsed.eventId) ?? null;
     };
 
     const moved = session.execute({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [pitchedId],
       tickDelta: characterization.vocal.pitchedMove.toTick,
       pitchDelta:
@@ -66,7 +75,7 @@ describe("editing characterization: Piano Roll vocals", () => {
     );
 
     session.execute({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [laneNoteId],
       tickDelta: 0,
       pitchDelta:
@@ -77,19 +86,23 @@ describe("editing characterization: Piano Roll vocals", () => {
       characterization.vocal.nonPitchedMove.resultPitch,
     );
 
-    const firstPhrase = vocalView.addPhrase("stagepower", 0, 100)!;
-    vocalView.addPhrase("stagepower", 200, 300);
+    const firstPhrase = vocalView.addPhrase(
+      VocalPhraseKind.StagePower,
+      0,
+      100,
+    )!;
+    vocalView.addPhrase(VocalPhraseKind.StagePower, 200, 300);
     const phraseId = idOf(firstPhrase.note);
     const gesture = session.beginGesture();
     gesture.preview({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [phraseId],
       tickDelta: characterization.vocal.phraseMove.firstStart,
       pitchDelta: 0,
       previousValidTickDelta: 0,
     });
     gesture.preview({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [phraseId],
       tickDelta:
         characterization.vocal.phraseMove.firstStart +
@@ -102,7 +115,7 @@ describe("editing characterization: Piano Roll vocals", () => {
       characterization.vocal.phraseMove.resultStart,
     );
     const rejectedResize = session.execute({
-      type: "RESIZE_VOCAL_ENTITIES",
+      type: DomainCommandType.ResizeVocalEntities,
       targetIds: [phraseId],
       durationDelta: 150,
     });
@@ -138,7 +151,7 @@ describe("editing characterization: Piano Roll vocals", () => {
     });
     const copiedNote = session.clipboard.getData()!.entities[0]!;
     session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds: [pitchedId],
     });
     expect(
@@ -147,8 +160,8 @@ describe("editing characterization: Piano Roll vocals", () => {
         .some((lyric) => lyric.tick === currentPitched.start),
     ).toBe(false);
     session.execute({
-      type: "ADD_VOCAL_NOTE",
-      kind: "pitched",
+      type: DomainCommandType.AddVocalNote,
+      kind: VocalNoteKind.Pitched,
       tick: 960,
       endTick: 960 + copiedNote.duration,
       pitch: copiedNote.pitch,

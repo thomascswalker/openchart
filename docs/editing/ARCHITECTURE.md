@@ -161,7 +161,7 @@ first mode that applies to both. `canHost` is the single availability check.
 
 | Mode          | Applies to                                           | Host kinds   |
 | ------------- | ---------------------------------------------------- | ------------ |
-| `vocals`      | Track kind `vocals`                                  | `piano-roll` |
+| `midi.vocals` | Track kind `vocals`                                  | `piano-roll` |
 | `chart.lanes` | Kinds `guitar`, `gamepad`, `drums` with difficulties | `highway`    |
 | `midi.global` | Global header entities                               | `global`     |
 | `midi.raw`    | Any non-header, non-global or unmapped track         | `piano-roll` |

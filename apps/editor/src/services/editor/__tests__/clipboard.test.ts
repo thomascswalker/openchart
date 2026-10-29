@@ -1,5 +1,10 @@
 import { MetaType, Midi } from "@openchart/midi";
-import { Difficulty, formatNoteId, SongView } from "@openchart/views";
+import {
+  Difficulty,
+  formatNoteId,
+  SongView,
+  VocalNoteKind,
+} from "@openchart/views";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnyChartView } from "../../../components/views/ChartViews";
 import { ActiveChartViewService } from "../activeChartView";
@@ -197,7 +202,10 @@ describe("EditorClipboardService", () => {
     const song = new SongView(midi);
     song.ensureMidiTrack("vocals");
     const vocals = song.getVocalTrackView("VOCALS")!;
-    vocals.addNote("pitched", 0, 240, { pitch: 60, lyric: "hello" });
+    vocals.addNote(VocalNoteKind.Pitched, 0, 240, {
+      pitch: 60,
+      lyric: "hello",
+    });
     const track = midi.getTrack("VOCALS")!;
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;

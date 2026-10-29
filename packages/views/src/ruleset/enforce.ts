@@ -7,23 +7,23 @@
  * its preview overlay (command → mode expansion → preview → `checkEdits`).
  * Tracks without rules (unmapped tracks) get no ruleset validation.
  */
-import type { Constraint, Severity } from "../config.js";
+import type { Constraint, Severity } from "./config";
 import {
   isUnmappedTrackRules,
   type CompiledRuleset,
   type TrackRules,
-} from "./compile.js";
-import { evaluateCondition, type ConditionContext } from "./conditions.js";
-import type { ThresholdContext } from "./thresholds.js";
-import Rules from "./rules/index.js";
+} from "./compile";
+import { evaluateCondition, type ConditionContext } from "./conditions";
+import type { ThresholdContext } from "./thresholds";
+import Rules from "./rules/index";
 import {
   classifyNotes,
   indexByPitch,
   violation,
   type RuleCtx,
   type RuleViolation,
-} from "./context.js";
-export { IMPLICIT_PHRASE_SELF_OVERLAP } from "./rules/implicit.js";
+} from "./context";
+export { IMPLICIT_PHRASE_SELF_OVERLAP } from "./rules/implicit";
 
 /** Minimal note shape the enforcer needs; independent of the editing kernel. */
 export interface EnforcerNote {

@@ -10,6 +10,7 @@ import {
   DefaultCompiledRuleset,
   Difficulty,
   SongView,
+  VocalNoteKind,
   type CompiledRuleset,
 } from "@openchart/views";
 import {
@@ -111,7 +112,7 @@ export function notesForVocalFeedback(
   if (!midi) return [];
   const song = new SongView(midi, rules);
   const view = song.getVocalTrackView(instrument) ?? song.getVocalTrackView();
-  return view?.getNotes("pitched").map((item) => item.note) ?? [];
+  return view?.getNotes(VocalNoteKind.Pitched).map((item) => item.note) ?? [];
 }
 
 export class PlaybackService extends StatefulService<PlaybackSnapshot> {

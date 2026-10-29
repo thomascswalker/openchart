@@ -1,10 +1,10 @@
-import { resolveThreshold } from "../thresholds.js";
+import { resolveThreshold } from "../thresholds";
 import {
   compact,
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
+} from "../context";
 
 /** Lane notes longer than the threshold are sustains, which this track forbids. */
 export const checkNoSustains: RuleCheck<ConstraintOf<"noSustains">> = (

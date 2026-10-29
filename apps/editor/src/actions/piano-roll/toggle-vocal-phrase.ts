@@ -1,4 +1,8 @@
-import type { VocalPhraseKind } from "@openchart/views";
+import {
+  DomainCommandType,
+  EditingModeId,
+  type VocalPhraseKind,
+} from "@openchart/views";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import type { EditingService } from "../../services/editor/editing";
@@ -10,8 +14,8 @@ export class ToggleVocalPhraseAction extends Action<[VocalPhraseKind]> {
     super({
       condition: {
         "viewport.active-view": "piano-roll",
-        "editing.mode": "vocals",
-        "editing.can.CREATE_VOCAL_PHRASE": true,
+        "editing.mode": EditingModeId.MidiVocals,
+        [`editing.can.${DomainCommandType.CreateVocalPhrase}`]: true,
       },
     });
   }

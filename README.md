@@ -10,7 +10,7 @@ TypeScript application (web/desktop) and libraries for editing and reviewing MID
 | ------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Package | `@openchart/midi`    | Core MIDI parsing (read/write) library.                                                                                                                                         |
 | Package | `@openchart/views`   | MIDI view library providing non-owning "views" of MIDI data. These views provide an abstraction of the MIDI data in order to more easily interface with a specific MIDI schema. |
-| Package | `@openchart/mixer`   | Provides a simple audio mixing class for managing multitrack audio in a DAW-like environment.                                                                                   |
+| Package | `@openchart/audio`   | Audio playback, shared-clock mixing, and multitrack controls.                                                                                                                   |
 | App     | `@openchart/editor`  | React + Three.js web-based MIDI editor app.                                                                                                                                     |
 | App     | `@openchart/desktop` | Tauri v2 desktop container for `@openchart/editor` across Windows, macOS, and Linux.                                                                                            |
 
@@ -169,4 +169,4 @@ Package-specific API documentation and examples:
 
 - [`@openchart/midi`](packages/core/README.md) — read, edit, and write Standard MIDI Files.
 - [`@openchart/views`](packages/views/README.md) — create chart-oriented views and edit instrument charts.
-- [`@openchart/mixer`](packages/mixer/README.md) — mix and control multitrack audio.
+- [`@openchart/audio`](packages/audio/README.md) — audio playback and multitrack mixing.

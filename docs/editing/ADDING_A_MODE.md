@@ -57,14 +57,16 @@ The mode must satisfy the complete interface; this sketch shows the central
 declarations rather than a substitute implementation:
 
 ```ts
+import { DomainCommandType, EditCommandType } from "@openchart/views";
+
 const mode: EditingMode<ToolState> = {
   id: "chart.example",
   label: "Example",
   hostKinds: new Set(["example-view"]),
   appliesTo: (track) => track.kind === "guitar",
   capabilities: {
-    rawCommands: new Set(["DELETE_ENTITIES"]),
-    domainCommands: new Set(["PLACE_EXAMPLE_NOTE"]),
+    rawCommands: new Set([EditCommandType.DeleteEntities]),
+    domainCommands: new Set([DomainCommandType.PlaceChartNote]),
     entityKinds: new Set(["note"]),
     canCreateTrack: false,
     requiresDifficulty: true,

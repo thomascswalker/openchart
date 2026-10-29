@@ -1,4 +1,4 @@
-import type { VocalNoteKind } from "@openchart/views";
+import { VocalNoteKind } from "@openchart/views";
 import { SnapDenominators } from "../../views/pianoRoll/constants";
 
 export const SnapOptions = SnapDenominators.map((denominator) => ({
@@ -7,7 +7,7 @@ export const SnapOptions = SnapDenominators.map((denominator) => ({
 }));
 
 export const VocalNoteOptions: { value: VocalNoteKind; label: string }[] = [
-  { value: "pitched", label: "Pitched" },
-  { value: "percussion", label: "Percussion" },
-  { value: "pitchless", label: "Pitchless" },
+  { value: VocalNoteKind.Pitched, label: "Pitched" },
+  { value: VocalNoteKind.Percussion, label: "Percussion" },
+  { value: VocalNoteKind.Pitchless, label: "Pitchless" },
 ];

@@ -4,7 +4,7 @@ import {
   violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context.js";
+} from "../context";
 
 /** Notes and markers of the same pitch may not overlap. Phrase pitches are covered by the implicit phrase rule. */
 export const checkNoOverlappingSamePitch: RuleCheck<

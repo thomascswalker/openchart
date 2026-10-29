@@ -1,5 +1,5 @@
 import { H6, ResetIcon, Section, Text } from "../../shared";
-import type { Track as MixerTrack } from "@openchart/mixer";
+import type { MixerTrack } from "@openchart/audio";
 import styles from "./AudioMixer.module.css";
 import { startCase } from "es-toolkit";
 import { VolumeSlider } from "./VolumeSlider";

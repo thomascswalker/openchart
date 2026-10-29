@@ -1,5 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
+import { DomainCommandType } from "@openchart/views";
 import type { EditingService } from "../../services/editor/editing";
 import { ViewportService } from "../../services/editor/viewports";
 import { ActiveHighway } from "../conditions";
@@ -13,7 +14,7 @@ export class ToggleHighwayPhraseToolAction extends Action<[string]> {
     super({
       condition: {
         ...ActiveHighway,
-        "editing.can.CREATE_PHRASE": true,
+        [`editing.can.${DomainCommandType.CreatePhrase}`]: true,
       },
     });
   }

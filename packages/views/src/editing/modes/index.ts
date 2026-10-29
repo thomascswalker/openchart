@@ -1,9 +1,9 @@
-import type { EditingMode } from "../mode.js";
-import { EditingModeRegistry } from "../modeRegistry.js";
-import { createChartLanesMode } from "./chartLanes.js";
-import { createGlobalTrackMode } from "./globalTrack.js";
-import { createRawMidiMode } from "./rawMidi.js";
-import { createVocalsMode } from "./vocals.js";
+import type { EditingMode } from "./mode";
+import { EditingModeRegistry } from "./registry";
+import { createChartLanesMode } from "./lanes/chartLanes";
+import { createGlobalTrackMode } from "./global/globalTrack";
+import { createRawMidiMode } from "./midi/rawMidi";
+import { createVocalsMode } from "./vocals/vocals";
 
 /** Creates the modes implemented so far in the plan's priority order. */
 export function createDefaultModes(): readonly EditingMode[] {
@@ -24,3 +24,11 @@ export function createDefaultModeRegistry(): EditingModeRegistry {
   createDefaultModes().forEach((mode) => registry.register(mode));
   return registry;
 }
+
+export * from "./mode";
+export * from "./registry";
+export * from "./lanes/chartLanes";
+export * from "./global/globalTrack";
+export * from "./index";
+export * from "./midi/rawMidi";
+export * from "./vocals/vocals";

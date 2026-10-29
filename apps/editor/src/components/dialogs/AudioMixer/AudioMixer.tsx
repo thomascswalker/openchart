@@ -1,6 +1,6 @@
 import { useSnapshot } from "../../../platform";
 import { HorizontalSeparator, ResetIcon, Section, Text } from "../../shared";
-import type { Track as MixerTrack } from "@openchart/mixer";
+import type { MixerTrack } from "@openchart/audio";
 import type { MixerSnapshot } from "../../../services/mixer/types";
 import styles from "./AudioMixer.module.css";
 import { VolumeSlider } from "./VolumeSlider";

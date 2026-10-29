@@ -288,7 +288,7 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
   /** Stores a mode's tool state; EditingService validates updates by schema. */
   public readonly setModeToolState = (
     id: string,
-    modeId: EditingModeId,
+    modeId: EditingModeId | string,
     state: unknown,
   ): void => {
     const current = this.getViewport(id);
