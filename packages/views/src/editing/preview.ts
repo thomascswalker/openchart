@@ -1,5 +1,5 @@
-import type { EditCommand, RawCommand } from "./commands.js";
-import type { EntityId } from "./entityId.js";
+import { EditCommandType, type GeneralCommand } from "./commands.js";
+import type { EntityId } from "./entity.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 import type { RuleViolation } from "../ruleset/index.js";
 import type { Rejection } from "./result.js";
@@ -16,7 +16,7 @@ export interface PreviewState {
 
 /** Computes the visible note overlay for raw commands without mutating reader. */
 export function computePreview(
-  commands: readonly RawCommand[],
+  commands: readonly GeneralCommand[],
   reader: ChartDocumentReader,
 ): PreviewState {
   const updated = new Map<EntityId, NoteSnapshot>();
@@ -29,7 +29,7 @@ export function computePreview(
     if (removed.has(id)) return null;
     return added.get(id) ?? updated.get(id) ?? reader.getNote(id);
   };
-  const reject = (command: EditCommand, code: string, message: string) => {
+  const reject = (command: GeneralCommand, code: string, message: string) => {
     rejections.push({ code, message, command });
   };
   const update = (id: EntityId, snapshot: NoteSnapshot) => {
@@ -56,7 +56,7 @@ export function computePreview(
 
   for (const command of commands) {
     switch (command.type) {
-      case "ADD_NOTES":
+      case EditCommandType.AddNotes:
         for (const spec of command.notes) {
           if (
             !Number.isSafeInteger(spec.trackIndex) ||
@@ -81,7 +81,7 @@ export function computePreview(
           });
         }
         break;
-      case "UPDATE_NOTES":
+      case EditCommandType.UpdateNotes:
         for (const patch of command.patches) {
           const note = current(patch.id);
           if (!note) {
@@ -116,7 +116,7 @@ export function computePreview(
           update(patch.id, next);
         }
         break;
-      case "MOVE_NOTES":
+      case EditCommandType.MoveNotes:
         for (const id of command.targetIds) {
           const note = current(id);
           if (!note) {
@@ -146,7 +146,7 @@ export function computePreview(
           update(id, next);
         }
         break;
-      case "RESIZE_NOTES":
+      case EditCommandType.ResizeNotes:
         for (const id of command.targetIds) {
           const note = current(id);
           if (!note) {
@@ -179,7 +179,7 @@ export function computePreview(
           });
         }
         break;
-      case "DELETE_ENTITIES":
+      case EditCommandType.DeleteEntities:
         for (const id of command.targetIds) {
           if (added.delete(id)) continue;
           if (reader.getNote(id) || updated.has(id)) {
@@ -188,12 +188,12 @@ export function computePreview(
           }
         }
         break;
-      case "ADD_TEXT":
-      case "UPDATE_TEXT":
-      case "SET_TEMPO":
-      case "REMOVE_TEMPO":
-      case "SET_TIME_SIGNATURE":
-      case "REMOVE_TIME_SIGNATURE":
+      case EditCommandType.AddText:
+      case EditCommandType.UpdateText:
+      case EditCommandType.SetTempo:
+      case EditCommandType.RemoveTempo:
+      case EditCommandType.SetTimeSignature:
+      case EditCommandType.RemoveTimeSignature:
         break;
     }
   }

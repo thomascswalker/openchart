@@ -525,10 +525,21 @@ export class MidiTrack {
     return note;
   }
 
+  public removeNote(note: MidiNote): boolean;
   public removeNote(
     noteOn: MidiChannelEvent,
     noteOff: MidiChannelEvent,
+  ): boolean;
+  public removeNote(
+    note: MidiNote | MidiChannelEvent,
+    pairedNoteOff?: MidiChannelEvent,
   ): boolean {
+    const noteOn = "noteOn" in note ? note.noteOn : note;
+    const noteOff =
+      pairedNoteOff ?? ("noteOff" in note ? note.noteOff : undefined);
+    if (!noteOn || !noteOff) {
+      return false;
+    }
     if (noteOn === noteOff || noteOn.data1 !== noteOff.data1) {
       return false;
     }

@@ -1,4 +1,9 @@
-import type { EntityId, GestureHandle } from "@openchart/views";
+import {
+  DomainCommandType,
+  EditCommandType,
+  type EntityId,
+  type GestureHandle,
+} from "@openchart/views";
 import { formatNoteId } from "@openchart/views";
 import type { HighwayContext } from "../context";
 import { HighwayCoordinateSystem } from "../coordinates";
@@ -43,7 +48,7 @@ export class HighwayPhraseEditingController {
         duration: note.end - note.start,
         velocity: note.velocity,
       });
-      return classification.kind === "phrase" ? [id] : [];
+      return classification.type === "phrase" ? [id] : [];
     });
   }
 
@@ -151,7 +156,7 @@ export class HighwayPhraseEditingController {
     const targetIds = this.getSelectedPhraseIds();
     if (targetIds.length === 0) return false;
     const changed = session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds,
     }).changed;
     if (changed) session.selection.setSelectedIds([]);
@@ -166,13 +171,13 @@ export class HighwayPhraseEditingController {
     const endTick = Math.max(startTick + 1, drag.endTick);
     const command = drag.id
       ? {
-          type: "UPDATE_PHRASE",
+          type: DomainCommandType.UpdatePhrase,
           id: drag.id,
           startTick,
           endTick,
         }
       : {
-          type: "CREATE_PHRASE",
+          type: DomainCommandType.CreatePhrase,
           phraseId: drag.kind,
           startTick,
           endTick,

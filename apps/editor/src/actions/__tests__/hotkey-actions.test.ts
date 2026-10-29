@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 import type { ServicesAccessor } from "../../platform/services";
 import { ViewportService } from "../../services/editor/viewports";
 import { EditorStateService } from "../../services/editor/state";
@@ -13,6 +14,7 @@ import { TransposeSelectionAction } from "../piano-roll/transpose-selection";
 import { ToggleLaneNoteAction } from "../highway/toggle-lane-note";
 import { ReleaseLaneNoteAction } from "../highway/release-lane-note";
 import { createTestRulesetService } from "../../services/__tests__/testUtils";
+import type { EditingModeId } from "../../../../../packages/views/dist/src/editing/mode";
 
 function accessor(services: Record<string, unknown>): ServicesAccessor {
   return { get: <T>(id: string) => services[id] as T };
@@ -31,7 +33,7 @@ describe("viewport tool actions", () => {
       }),
       updateToolState: (
         viewportId: string,
-        id: string,
+        id: EditingModeId,
         update: Record<string, unknown>,
       ) => {
         const current = viewports.getViewport(viewportId)?.tools[id] ?? {};
@@ -50,65 +52,65 @@ describe("viewport tool actions", () => {
   it("sets the highway tool on the active viewport only", () => {
     const viewports = new ViewportService(createTestRulesetService());
     const other = viewports.getSnapshot().activeViewportId;
-    viewports.setModeToolState(other, "chart.frets", {
+    viewports.setModeToolState(other, "chart.lanes", {
       tool: "select",
       phrase: null,
       placement: "normal",
     });
     const active = viewports.addViewport("highway")!;
-    viewports.setModeToolState(active, "chart.frets", {
+    viewports.setModeToolState(active, "chart.lanes", {
       tool: "select",
       phrase: "solo",
       placement: "normal",
     });
     new SetHighwayToolAction().run(
-      toolServices(viewports, "chart.frets"),
+      toolServices(viewports, "chart.lanes"),
       "place",
     );
     expect(
-      (viewports.getViewport(active)?.tools["chart.frets"] as { tool: string })
+      (viewports.getViewport(active)?.tools["chart.lanes"] as { tool: string })
         .tool,
     ).toBe("place");
     expect(
       (
-        viewports.getViewport(active)?.tools["chart.frets"] as {
+        viewports.getViewport(active)?.tools["chart.lanes"] as {
           phrase: null;
         }
       ).phrase,
     ).toBeNull();
     expect(
-      (viewports.getViewport(other)?.tools["chart.frets"] as { tool: string })
+      (viewports.getViewport(other)?.tools["chart.lanes"] as { tool: string })
         .tool,
     ).toBe("select");
   });
 
   it("toggles phrase tools back to select", () => {
     const viewports = new ViewportService(createTestRulesetService());
-    const services = toolServices(viewports, "chart.frets");
+    const services = toolServices(viewports, "chart.lanes");
     const action = new ToggleHighwayPhraseToolAction();
     action.run(services, "solo");
     expect(
       (
-        viewports.getActiveViewport()?.tools["chart.frets"] as {
+        viewports.getActiveViewport()?.tools["chart.lanes"] as {
           phrase: string;
         }
       ).phrase,
     ).toBe("solo");
     expect(
-      (viewports.getActiveViewport()?.tools["chart.frets"] as { tool: string })
+      (viewports.getActiveViewport()?.tools["chart.lanes"] as { tool: string })
         .tool,
     ).toBe("select");
     action.run(services, "stagepower");
     expect(
       (
-        viewports.getActiveViewport()?.tools["chart.frets"] as {
+        viewports.getActiveViewport()?.tools["chart.lanes"] as {
           phrase: string;
         }
       ).phrase,
     ).toBe("stagepower");
     action.run(services, "stagepower");
     expect(
-      (viewports.getActiveViewport()?.tools["chart.frets"] as { phrase: null })
+      (viewports.getActiveViewport()?.tools["chart.lanes"] as { phrase: null })
         .phrase,
     ).toBeNull();
   });
@@ -116,21 +118,21 @@ describe("viewport tool actions", () => {
   it("toggles vocal phrases and keeps the note kind", () => {
     const viewports = new ViewportService(createTestRulesetService());
     const id = viewports.getSnapshot().activeViewportId;
-    viewports.setModeToolState(id, "vocals", {
-      noteKind: "percussion",
+    viewports.setModeToolState(id, "midi.vocals", {
+      noteKind: VocalNoteKind.Percussion,
       phrase: null,
     });
-    const services = toolServices(viewports, "vocals");
+    const services = toolServices(viewports, "midi.vocals");
     const action = new ToggleVocalPhraseAction();
-    action.run(services, "vocal");
-    expect(viewports.getActiveViewport()?.tools.vocals).toEqual({
-      noteKind: "percussion",
-      phrase: "vocal",
+    action.run(services, VocalPhraseKind.Vocal);
+    expect(viewports.getActiveViewport()?.tools["midi.vocals"]).toEqual({
+      noteKind: VocalNoteKind.Percussion,
+      phrase: VocalPhraseKind.Vocal,
     });
-    action.run(services, "vocal");
+    action.run(services, VocalPhraseKind.Vocal);
     expect(
       (
-        viewports.getActiveViewport()?.tools.vocals as {
+        viewports.getActiveViewport()?.tools["midi.vocals"] as {
           phrase: string | null;
         }
       ).phrase,

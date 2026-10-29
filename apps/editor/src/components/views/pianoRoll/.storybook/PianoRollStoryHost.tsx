@@ -2,8 +2,8 @@ import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
 import {
   DefaultCompiledRuleset,
   Difficulty,
+  VocalNoteKind,
   createStandaloneEditing,
-  type VocalNoteKind,
 } from "@openchart/views";
 import {
   useCallback,
@@ -41,9 +41,9 @@ const DEFAULT_INSTRUMENT = "LEAD GUITAR";
 
 /** Note types offered by the vocal toolbar dropdown. */
 const VOCAL_KIND_OPTIONS: DropdownOption[] = [
-  { value: "pitched", label: "Pitched" },
-  { value: "percussion", label: "Percussion" },
-  { value: "pitchless", label: "Pitchless" },
+  { value: VocalNoteKind.Pitched, label: "Pitched" },
+  { value: VocalNoteKind.Percussion, label: "Percussion" },
+  { value: VocalNoteKind.Pitchless, label: "Pitchless" },
 ];
 /** Difficulty reported to the view; the piano roll ignores it. */
 const SELECTED_DIFFICULTY = Difficulty.Expert;
@@ -118,7 +118,9 @@ export function PianoRollStoryHost({
   initialTrackIndex = 1,
   instrument = DEFAULT_INSTRUMENT,
 }: PianoRollStoryHostProps) {
-  const [vocalKind, setVocalKind] = useState<VocalNoteKind>("pitched");
+  const [vocalKind, setVocalKind] = useState<VocalNoteKind>(
+    VocalNoteKind.Pitched,
+  );
   const [midi] = useState<Midi>(() => createPianoRollFixture(variant));
   const editing = useMemo(() => createStandaloneEditing(midi), [midi]);
   const [playback] = useState(() => new PlaybackService());
@@ -338,7 +340,7 @@ export function PianoRollStoryHost({
             onChange={(value) => setSnapDenominator(Number(value))}
           />
         </div>
-        {profile.id === "vocals" ? (
+        {profile.id === "midi.vocals" ? (
           <div className="piano-roll-story__field">
             <Label htmlFor="piano-roll-vocal-kind">Vocal note type</Label>
             <Dropdown

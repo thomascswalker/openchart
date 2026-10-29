@@ -1,8 +1,13 @@
 import { z } from "zod";
+import { EntityType } from "../entity.js";
 import { isUnmappedTrackRules } from "../../ruleset/compile.js";
 import type { ClipboardPayload } from "../clipboard.js";
-import type { EditCommand, RawCommand, RawCommandType } from "../commands.js";
-import type { EntityId } from "../entityId.js";
+import {
+  EditCommandType,
+  type EditCommand,
+  type GeneralCommand,
+} from "../commands.js";
+import type { EntityId } from "../entity.js";
 import {
   isRawCommand,
   type EditingMode,
@@ -13,12 +18,12 @@ import {
 import type { NoteSnapshot } from "../reader.js";
 import type { Rejection } from "../result.js";
 
-const noteCommandTypes: ReadonlySet<RawCommandType> = new Set([
-  "ADD_NOTES",
-  "UPDATE_NOTES",
-  "MOVE_NOTES",
-  "RESIZE_NOTES",
-  "DELETE_ENTITIES",
+const noteCommandTypes: ReadonlySet<EditCommandType> = new Set([
+  EditCommandType.AddNotes,
+  EditCommandType.UpdateNotes,
+  EditCommandType.MoveNotes,
+  EditCommandType.ResizeNotes,
+  EditCommandType.DeleteEntities,
 ]);
 
 const rows = Array.from({ length: 128 }, (_, pitch) => ({
@@ -40,7 +45,7 @@ export function createRawMidiMode(): EditingMode<Record<string, never>> {
     capabilities: {
       rawCommands: noteCommandTypes,
       domainCommands: new Set(),
-      entityKinds: new Set(["note"]),
+      entityKinds: new Set([EntityType.Note]),
       canCreateTrack: true,
       requiresDifficulty: false,
     },
@@ -56,7 +61,8 @@ export function createRawMidiMode(): EditingMode<Record<string, never>> {
           : null,
     }),
     classify: () => ({
-      kind: "note",
+      type: EntityType.Note,
+      kind: EntityType.Note,
       subtype: "raw",
       movable: true,
       resizable: true,
@@ -72,11 +78,11 @@ function expandRawPaste(
   anchorTick: number,
   context: ModeContext,
 ): ExpansionResult {
-  const commands: RawCommand[] = [];
+  const commands: GeneralCommand[] = [];
   const rejections: Rejection[] = [];
   for (const entity of payload.entities) {
-    const command: EditCommand = {
-      type: "ADD_NOTES",
+    const command: GeneralCommand = {
+      type: EditCommandType.AddNotes,
       notes: [
         {
           trackIndex: context.target.trackIndex ?? 0,
@@ -135,7 +141,7 @@ function expandRawCommand(
   };
 
   switch (command.type) {
-    case "ADD_NOTES":
+    case EditCommandType.AddNotes:
       for (const note of command.notes) {
         if (
           !Number.isSafeInteger(note.trackIndex) ||
@@ -160,7 +166,7 @@ function expandRawCommand(
         }
       }
       break;
-    case "UPDATE_NOTES":
+    case EditCommandType.UpdateNotes:
       for (const patch of command.patches) {
         const note = ownsNote(patch.id);
         if (!note) continue;
@@ -182,7 +188,7 @@ function expandRawCommand(
         }
       }
       break;
-    case "MOVE_NOTES":
+    case EditCommandType.MoveNotes:
       if (
         !Number.isSafeInteger(command.tickDelta) ||
         !Number.isSafeInteger(command.pitchDelta)
@@ -204,7 +210,7 @@ function expandRawCommand(
         }
       }
       break;
-    case "RESIZE_NOTES":
+    case EditCommandType.ResizeNotes:
       if (!Number.isSafeInteger(command.durationDelta)) {
         rejectCommand("invalid-delta", "Duration delta must be an integer");
       }
@@ -223,7 +229,7 @@ function expandRawCommand(
         }
       }
       break;
-    case "DELETE_ENTITIES":
+    case EditCommandType.DeleteEntities:
       for (const id of command.targetIds) ownsNote(id);
       break;
   }

@@ -2,12 +2,16 @@ import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import characterization from "../fixtures/characterization/editing.json" with { type: "json" };
 import {
+  DomainCommandType,
+  EditCommandType,
   DefaultCompiledRuleset,
   DefaultRuleset,
   compileRuleset,
   createDefaultModeRegistry,
   createStandaloneEditing,
   Difficulty,
+  VocalNoteKind,
+  VocalPhraseKind,
   formatNoteId,
   type CompiledRuleset,
   type EditingSession,
@@ -70,7 +74,7 @@ function placeFretsMarker(
   }
   const session = makeSession(midi, "LEAD GUITAR", difficulty, "highway");
   const result = session.execute({
-    type: "PLACE_CHART_NOTE",
+    type: DomainCommandType.PlaceChartNote,
     lane: 0,
     tick: 480,
     placement: PLACEMENT_TOKEN[placement],
@@ -83,7 +87,8 @@ describe("default editing modes", () => {
   it("resolves every configured track against both editing hosts", () => {
     const registry = createDefaultModeRegistry();
     const expected = (kind: string, host: string) => {
-      if (kind === "vocals") return host === "piano-roll" ? "vocals" : null;
+      if (kind === "vocals")
+        return host === "piano-roll" ? "midi.vocals" : null;
       if (kind === "guitar" || kind === "drums" || kind === "gamepad") {
         return host === "highway" ? "chart.lanes" : "midi.raw";
       }
@@ -138,7 +143,7 @@ describe("default editing modes", () => {
           const session = makeSession(midi, "DRUMS", difficulty, "highway");
           const expected = expectedPlacements[kind][difficultyIndex]![lane];
           const result = session.execute({
-            type: "PLACE_CHART_NOTE",
+            type: DomainCommandType.PlaceChartNote,
             lane,
             tick: 480,
             placement: {
@@ -191,7 +196,7 @@ describe("default editing modes", () => {
     ).toBe("0");
 
     const created = session.execute({
-      type: "CREATE_PHRASE",
+      type: DomainCommandType.CreatePhrase,
       phraseId: "stagePower",
       startTick: 960,
       endTick: 1200,
@@ -202,7 +207,7 @@ describe("default editing modes", () => {
       .find((candidate) => candidate.pitch === 116)!;
     const phraseId = formatNoteId(0, track.getEventId(phrase.noteOn));
     const updated = session.execute({
-      type: "UPDATE_PHRASE",
+      type: DomainCommandType.UpdatePhrase,
       id: phraseId,
       startTick: 720,
       endTick: 1440,
@@ -229,7 +234,7 @@ describe("default editing modes", () => {
         .get("LEAD GUITAR")!
         .phrases.find((p) => p.id === phraseId)!.pitches[0]!;
       const created = session.execute({
-        type: "CREATE_PHRASE",
+        type: DomainCommandType.CreatePhrase,
         phraseId,
         startTick: phraseFixture.create.expected[0],
         endTick: phraseFixture.create.expected[1],
@@ -269,7 +274,7 @@ describe("default editing modes", () => {
             ];
       for (const update of updates) {
         const result = session.execute({
-          type: "UPDATE_PHRASE",
+          type: DomainCommandType.UpdatePhrase,
           id,
           startTick: update.start,
           endTick: update.end,
@@ -298,7 +303,7 @@ describe("default editing modes", () => {
     );
     const before = midi.toBuffer();
     const result = session.execute({
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane: 0,
       tick: 480,
       placement: "marker:forceHopo",
@@ -319,7 +324,7 @@ describe("default editing modes", () => {
       "highway",
     );
     const result = session.execute({
-      type: "MOVE_CHART_NOTES",
+      type: DomainCommandType.MoveChartNotes,
       targetIds: [formatNoteId(0, track.getEventId(note.noteOn))],
       tickDelta: -960,
       laneDelta: 99,
@@ -388,7 +393,7 @@ describe("default editing modes", () => {
       const ids = track.getNotes().map((_, index) => noteId(track, 0, index));
       const preferredSustainId = testCase.preferredPresent ? ids[0] : undefined;
       const result = session.execute({
-        type: "CUT_SUSTAINS",
+        type: DomainCommandType.CutSustains,
         tick: fixture.tick,
         cutPolicy: cutPolicy(
           testCase.shiftKey,
@@ -422,7 +427,7 @@ describe("default editing modes", () => {
         ),
       );
       const result = session.execute({
-        type: "SET_SUSTAIN_END",
+        type: DomainCommandType.SetSustainEnd,
         targetIds: [target],
         endTick: fixture.end.pointerTick,
         extendPastNext,
@@ -447,7 +452,7 @@ describe("default editing modes", () => {
 
     expect(
       session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [ids[0]!],
         tickDelta: 240,
         laneDelta: 3,
@@ -458,7 +463,7 @@ describe("default editing modes", () => {
     ).toMatchObject({ pitch: 95, start: 720 });
     expect(
       session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [ids[1]!],
         tickDelta: 240,
         laneDelta: 1,
@@ -469,7 +474,7 @@ describe("default editing modes", () => {
     ).toBe(102);
     expect(
       session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [ids[2]!],
         tickDelta: 240,
         laneDelta: 1,
@@ -491,7 +496,7 @@ describe("default editing modes", () => {
     );
     const paste = characterization.drums.paste;
     const result = pasteSession.execute({
-      type: "PASTE_CHART_NOTES",
+      type: DomainCommandType.PasteChartNotes,
       anchorTick: paste.anchorTick,
       notes: [
         {
@@ -570,7 +575,7 @@ describe("default editing modes", () => {
     expect(phraseId).toBeDefined();
 
     const move = session.execute({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [pitchedId!, percussionId!],
       tickDelta: characterization.vocal.pitchedMove.toTick,
       pitchDelta:
@@ -592,7 +597,7 @@ describe("default editing modes", () => {
     ).toBe(characterization.vocal.lyricTicksAfterMove[0]);
 
     const phraseMove = session.execute({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [phraseId!],
       tickDelta: characterization.vocal.phraseMove.blockedDelta,
       pitchDelta: 0,
@@ -604,14 +609,14 @@ describe("default editing modes", () => {
         ?.start,
     ).toBe(characterization.vocal.phraseMove.resultStart);
     const resize = session.execute({
-      type: "RESIZE_VOCAL_ENTITIES",
+      type: DomainCommandType.ResizeVocalEntities,
       targetIds: [phraseId!],
       durationDelta: 250,
     });
     expect(resize.rejections[0]?.code).toBe("rule:implicit.phraseSelfOverlap");
 
     const deleteResult = session.execute({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds: [pitchedId!],
     });
     expect(deleteResult.rejections).toEqual([]);
@@ -628,8 +633,8 @@ describe("default editing modes", () => {
     track.insertNote({ tick: 200, pitch: 116, duration: 100 });
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const note = session.execute({
-      type: "ADD_VOCAL_NOTE",
-      kind: "pitched",
+      type: DomainCommandType.AddVocalNote,
+      kind: VocalNoteKind.Pitched,
       tick: 480,
       endTick: 600,
       pitch: 60,
@@ -639,8 +644,8 @@ describe("default editing modes", () => {
     expect(track.getTextEvents().map((event) => event.text)).toEqual(["la"]);
     expect(
       session.execute({
-        type: "CREATE_VOCAL_PHRASE",
-        phraseKind: "stagepower",
+        type: DomainCommandType.CreateVocalPhrase,
+        phraseKind: VocalPhraseKind.StagePower,
         startTick: 250,
         endTick: 400,
       }).rejections[0]?.code,
@@ -654,8 +659,8 @@ describe("default editing modes", () => {
     midi.tracks = [global];
     const session = makeSession(midi, "VOCALS", null, "piano-roll");
     const result = session.execute({
-      type: "ADD_VOCAL_NOTE",
-      kind: "pitched",
+      type: DomainCommandType.AddVocalNote,
+      kind: VocalNoteKind.Pitched,
       tick: 480,
       endTick: 600,
       pitch: 60,

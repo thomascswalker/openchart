@@ -1,5 +1,5 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
-import { SongView } from "@openchart/views";
+import { SongView, VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 
 /** Which sample document a story loads. */
 export type PianoRollFixtureVariant =
@@ -38,9 +38,9 @@ function createVocalsFixture(withNotes: boolean): Midi {
   const view = song.getVocalTrackView("vocals")!;
   if (!withNotes) return midi;
 
-  view.addPhrase("vocal", 0, 3_840);
-  view.addPhrase("power-window", 1_920, 3_840);
-  view.addPhrase("stagepower", 2_880, 3_840);
+  view.addPhrase(VocalPhraseKind.Vocal, 0, 3_840);
+  view.addPhrase(VocalPhraseKind.PowerWindow, 1_920, 3_840);
+  view.addPhrase(VocalPhraseKind.StagePower, 2_880, 3_840);
   // Sung line as [pitch, start tick, duration ticks, lyric].
   const line: Array<[number, number, number, string | undefined]> = [
     [60, 0, 360, "Sing"],
@@ -51,13 +51,13 @@ function createVocalsFixture(withNotes: boolean): Midi {
     [65, 2_880, 480, undefined],
   ];
   for (const [pitch, start, duration, lyric] of line) {
-    view.addNote("pitched", start, start + duration, {
+    view.addNote(VocalNoteKind.Pitched, start, start + duration, {
       pitch,
       ...(lyric === undefined ? {} : { lyric }),
     });
   }
-  view.addNote("pitchless", 3_360, 3_600, { lyric: "hey!" });
-  view.addNote("percussion", 3_600, 3_720);
+  view.addNote(VocalNoteKind.Pitchless, 3_360, 3_600, { lyric: "hey!" });
+  view.addNote(VocalNoteKind.Percussion, 3_600, 3_720);
   return midi;
 }
 

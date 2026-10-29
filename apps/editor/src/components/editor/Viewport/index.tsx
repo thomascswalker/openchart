@@ -1,7 +1,10 @@
 import type { Midi } from "@openchart/midi";
 import {
   Difficulty,
+  VocalNoteKind,
+  VocalPhraseKind,
   type CompiledRuleset,
+  type EditingModeId,
   type ToolDescriptor,
 } from "@openchart/views";
 import { startCase } from "es-toolkit";
@@ -315,20 +318,22 @@ function ViewportPanel({
   }
 
   function getVocalPlacement(
-    modeId: string | null,
+    modeId: EditingModeId | null,
     state: Record<string, unknown>,
   ): PianoRollVocalPlacement | null {
-    if (modeId !== "vocals") return null;
+    if (modeId !== "midi.vocals") {
+      return null;
+    }
     const noteKind = state.noteKind;
     const phrase = state.phrase;
     if (
-      (noteKind !== "pitched" &&
-        noteKind !== "pitchless" &&
-        noteKind !== "percussion") ||
+      (noteKind !== VocalNoteKind.Pitched &&
+        noteKind !== VocalNoteKind.Pitchless &&
+        noteKind !== VocalNoteKind.Percussion) ||
       (phrase !== null &&
-        phrase !== "vocal" &&
-        phrase !== "power-window" &&
-        phrase !== "stagepower")
+        phrase !== VocalPhraseKind.Vocal &&
+        phrase !== VocalPhraseKind.PowerWindow &&
+        phrase !== VocalPhraseKind.StagePower)
     ) {
       return null;
     }

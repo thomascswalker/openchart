@@ -173,7 +173,7 @@ export class HighwayNoteIndex {
     let phraseKind: string | null = null;
     let laneId: string | null = null;
     let lane = 0;
-    if (classification.kind === "phrase") {
+    if (classification.type === "phrase") {
       kind = "phrase";
       phraseKind = classification.subtype;
     } else {

@@ -8,14 +8,18 @@ import type {
 } from "../ruleset/index.js";
 import type { ClipboardPayload } from "./clipboard.js";
 import type { NoteSnapshot } from "./reader.js";
-import type { EntityKind } from "./entityId.js";
-import type { EditCommand, RawCommand, RawCommandType } from "./commands.js";
+import type { EntityType } from "./entity.js";
+import {
+  DomainCommandType,
+  EditCommandType,
+  type EditCommand,
+  type GeneralCommand,
+} from "./commands.js";
 import type { ChartDocumentReader } from "./reader.js";
 import type { Rejection } from "./result.js";
 
-/** Stable identifier for a registered editing mode. */
 export type EditingModeId =
-  "midi.raw" | "midi.global" | "chart.lanes" | "vocals" | (string & {});
+  "midi.raw" | "midi.global" | "midi.vocals" | "chart.lanes" | (string & {});
 
 /** Document, target, and configuration visible to a pure editing mode. */
 export interface ModeContext {
@@ -29,7 +33,7 @@ export interface ModeContext {
    * Dry-run enforcement of raw commands against the ruleset. Lets a mode ask
    * "would this be accepted?" (e.g. to fall back to a previous valid offset).
    */
-  validate(commands: readonly RawCommand[]): RuleViolation[];
+  validate(commands: readonly GeneralCommand[]): RuleViolation[];
 }
 
 /** Track and difficulty selected by one viewport. */
@@ -41,9 +45,9 @@ export interface EditingTarget {
 
 /** Commands and entities a mode allows its host view to edit. */
 export interface ModeCapabilities {
-  rawCommands: ReadonlySet<RawCommandType>;
-  domainCommands: ReadonlySet<string>;
-  entityKinds: ReadonlySet<EntityKind>;
+  rawCommands: ReadonlySet<EditCommandType>;
+  domainCommands: ReadonlySet<DomainCommandType>;
+  entityKinds: ReadonlySet<EntityType>;
   canCreateTrack: boolean;
   requiresDifficulty: boolean;
 }
@@ -78,7 +82,7 @@ export interface ProjectionRow {
 
 /** Raw commands and validation rejections produced by mode expansion. */
 export interface ExpansionResult {
-  commands: readonly RawCommand[];
+  commands: readonly GeneralCommand[];
   rejections: readonly Rejection[];
 }
 
@@ -110,7 +114,9 @@ export interface EditingMode<TToolState = unknown> {
 
 /** Editing semantics assigned to a projected entity. */
 export interface EntityClassification {
-  kind: EntityKind;
+  type: EntityType;
+  /** Compatibility alias for `type` used by older editing clients. */
+  kind?: EntityType;
   subtype: string;
   movable: boolean;
   resizable: boolean;
@@ -126,18 +132,10 @@ export interface ModeRegistry {
 }
 
 /** Type guard for the raw command variants supported by the kernel. */
-export function isRawCommand(command: EditCommand): command is RawCommand {
-  return (
-    command.type === "ADD_NOTES" ||
-    command.type === "UPDATE_NOTES" ||
-    command.type === "MOVE_NOTES" ||
-    command.type === "RESIZE_NOTES" ||
-    command.type === "DELETE_ENTITIES" ||
-    command.type === "ADD_TEXT" ||
-    command.type === "UPDATE_TEXT" ||
-    command.type === "SET_TEMPO" ||
-    command.type === "REMOVE_TEMPO" ||
-    command.type === "SET_TIME_SIGNATURE" ||
-    command.type === "REMOVE_TIME_SIGNATURE"
-  );
+const rawCommandTypes: ReadonlySet<string> = new Set(
+  Object.values(EditCommandType),
+);
+
+export function isRawCommand(command: EditCommand): command is GeneralCommand {
+  return rawCommandTypes.has(command.type);
 }

@@ -1,5 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
+import { DomainCommandType } from "@openchart/views";
 import type { EditingService } from "../../services/editor/editing";
 import { ViewportService } from "../../services/editor/viewports";
 import { ActiveHighway } from "../conditions";
@@ -12,7 +13,7 @@ export class SetHighwayToolAction extends Action<
     super({
       condition: {
         ...ActiveHighway,
-        "editing.can.PLACE_CHART_NOTE": true,
+        [`editing.can.${DomainCommandType.PlaceChartNote}`]: true,
       },
     });
   }

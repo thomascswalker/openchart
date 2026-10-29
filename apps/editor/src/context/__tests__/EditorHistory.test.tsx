@@ -7,6 +7,7 @@ import Platform from "../../platform";
 import { EditingService } from "../../services/editor/editing";
 import { DocumentService } from "../../services/document";
 import { useDocument } from "../../hooks/useDocument";
+import { EditCommandType } from "@openchart/views";
 
 function HistoryHarness() {
   const { midi, canUndo, canRedo, isDirty } = useDocument();
@@ -27,7 +28,7 @@ function HistoryHarness() {
       .getSession("viewport-1");
     if (!session) throw new Error("Expected a Piano Roll editing session");
     session.execute({
-      type: "ADD_NOTES",
+      type: EditCommandType.AddNotes,
       notes: [
         {
           trackIndex: midi.tracks.indexOf(track),

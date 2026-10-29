@@ -7,8 +7,11 @@ import {
   type TimeSignatureEvent,
 } from "@openchart/midi";
 import {
+  DomainCommandType,
+  EntityType,
   formatNoteId,
-  parseEntityId,
+  parseEntityFromId,
+  VocalNoteKind,
   VocalTrackView,
   type EditingSession,
   type PreviewState,
@@ -72,7 +75,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   >();
   private pendingRangeFit = false;
   private vocalPlacement: PianoRollVocalPlacement = {
-    noteKind: "pitched",
+    noteKind: VocalNoteKind.Pitched,
     phrase: null,
   };
   private vocalMarksKey: { track: MidiTrack; revision: number } | null = null;
@@ -218,7 +221,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.camera.y = saved.y;
       this.camera.v = saved.v;
       this.camera.y = this.coordinates.clampCameraY(this.camera.y);
-    } else if (profile.id === "vocals") {
+    } else if (profile.id === "midi.vocals") {
       this.fitPitchRange();
     } else {
       this.camera.y = DefaultCamera.y;
@@ -432,11 +435,11 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   private readonly resolveSelectionId = (id: string): PianoRollNote | null => {
     const midi = this.state.midi;
     const trackIndex = this.getSelectedTrackIndex();
-    const parsed = parseEntityId(id);
+    const parsed = parseEntityFromId(id);
     if (
       !midi ||
       trackIndex === null ||
-      parsed?.kind !== "note" ||
+      parsed?.type !== EntityType.Note ||
       parsed.trackIndex !== trackIndex
     ) {
       return null;
@@ -628,7 +631,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       const trackIndex = this.getSelectedTrackIndex();
       if (!session || trackIndex === null) return false;
       return session.execute({
-        type: "SET_LYRIC",
+        type: DomainCommandType.SetLyric,
         id: formatNoteId(trackIndex, track.getEventId(next.note.noteOn)),
         text,
       }).changed;
@@ -681,7 +684,7 @@ function isPianoRollCameraState(value: unknown): value is PianoRollCameraState {
   return (
     (state.profile === "midi.raw" ||
       state.profile === "generic" ||
-      state.profile === "vocals") &&
+      state.profile === "midi.vocals") &&
     [state.y, state.v, state.h].every(
       (item) => typeof item === "number" && Number.isFinite(item),
     )

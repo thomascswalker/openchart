@@ -5,7 +5,7 @@
  * nothing here knows what a "fret" or a "drum" is.
  */
 import { z } from "zod";
-import { getSustainCutTargets } from "../../chart/sustains.js";
+import { getSustainCutTargets } from "../sustains.js";
 import type { MarkerEffect, PadType, PhraseDef } from "../../config.js";
 import { classifyPitch, type PitchRole } from "../../ruleset/classify.js";
 import {
@@ -18,8 +18,13 @@ import { thresholdContext } from "../../ruleset/enforce.js";
 import { phraseIcon, phraseLabel } from "../../ruleset/labels.js";
 import { resolveThreshold } from "../../ruleset/thresholds.js";
 import type { ClipboardPayload } from "../clipboard.js";
-import type { EditCommand, RawCommand } from "../commands.js";
-import type { EntityId } from "../entityId.js";
+import {
+  DomainCommandType,
+  EditCommandType,
+  type EditCommand,
+  type GeneralCommand,
+} from "../commands.js";
+import { EntityType, type EntityId } from "../entity.js";
 import { isRawCommand } from "../mode.js";
 import type {
   EditingMode,
@@ -59,7 +64,7 @@ const ToolStateSchema = z.object({
 export type ChartLanesToolState = z.infer<typeof ToolStateSchema>;
 
 const PlaceSchema = z.object({
-  type: z.literal("PLACE_CHART_NOTE"),
+  type: z.literal(DomainCommandType.PlaceChartNote),
   lane: z.number().int(),
   tick: z.number().int(),
   endTick: z.number().int().optional(),
@@ -69,37 +74,37 @@ const PlaceSchema = z.object({
   preferredSustainId: z.string().optional(),
 });
 const MoveSchema = z.object({
-  type: z.literal("MOVE_CHART_NOTES"),
+  type: z.literal(DomainCommandType.MoveChartNotes),
   targetIds: z.array(z.string()),
   tickDelta: z.number().int(),
   laneDelta: z.number().int(),
 });
 const SustainEndSchema = z.object({
-  type: z.literal("SET_SUSTAIN_END"),
+  type: z.literal(DomainCommandType.SetSustainEnd),
   targetIds: z.array(z.string()),
   endTick: z.number().int(),
   extendPastNext: z.enum(["allow", "stop-at-next"]),
 });
 const CutSchema = z.object({
-  type: z.literal("CUT_SUSTAINS"),
+  type: z.literal(DomainCommandType.CutSustains),
   tick: z.number().int(),
   cutPolicy: CutPolicy,
   preferredSustainId: z.string().optional(),
 });
 const CreatePhraseSchema = z.object({
-  type: z.literal("CREATE_PHRASE"),
+  type: z.literal(DomainCommandType.CreatePhrase),
   phraseId: z.string(),
   startTick: z.number().int(),
   endTick: z.number().int(),
 });
 const UpdatePhraseSchema = z.object({
-  type: z.literal("UPDATE_PHRASE"),
+  type: z.literal(DomainCommandType.UpdatePhrase),
   id: z.string(),
   startTick: z.number().int(),
   endTick: z.number().int(),
 });
 const PasteSchema = z.object({
-  type: z.literal("PASTE_CHART_NOTES"),
+  type: z.literal(DomainCommandType.PasteChartNotes),
   anchorTick: z.number().int(),
   notes: z.array(
     z.object({
@@ -116,13 +121,13 @@ const PasteSchema = z.object({
 });
 
 const domainCommandTypes = new Set([
-  "PLACE_CHART_NOTE",
-  "MOVE_CHART_NOTES",
-  "SET_SUSTAIN_END",
-  "CUT_SUSTAINS",
-  "CREATE_PHRASE",
-  "UPDATE_PHRASE",
-  "PASTE_CHART_NOTES",
+  DomainCommandType.PlaceChartNote,
+  DomainCommandType.MoveChartNotes,
+  DomainCommandType.SetSustainEnd,
+  DomainCommandType.CutSustains,
+  DomainCommandType.CreatePhrase,
+  DomainCommandType.UpdatePhrase,
+  DomainCommandType.PasteChartNotes,
 ]);
 
 const MARKER_LABELS: Record<MarkerEffect, string> = {
@@ -280,9 +285,9 @@ export function createChartLanesMode(): EditingMode<ChartLanesToolState> {
         track.kind === "drums") &&
       track.rules.difficulties.size > 0,
     capabilities: {
-      rawCommands: new Set(["DELETE_ENTITIES"]),
+      rawCommands: new Set([EditCommandType.DeleteEntities]),
       domainCommands: domainCommandTypes,
-      entityKinds: new Set(["note", "phrase"]),
+      entityKinds: new Set([EntityType.Note, EntityType.Phrase]),
       canCreateTrack: true,
       requiresDifficulty: true,
     },
@@ -427,7 +432,7 @@ function classifyNote(
   context: ModeContext,
 ): EntityClassification {
   const fallback: EntityClassification = {
-    kind: "note",
+    type: EntityType.Note,
     subtype: "unmapped",
     movable: false,
     resizable: false,
@@ -438,14 +443,14 @@ function classifyNote(
   switch (role.kind) {
     case "phrase":
       return {
-        kind: "phrase",
+        type: EntityType.Phrase,
         subtype: role.id,
         movable: true,
         resizable: true,
       };
     case "marker":
       return {
-        kind: "note",
+        type: EntityType.Note,
         subtype: "marker",
         movable: false,
         resizable: false,
@@ -454,7 +459,7 @@ function classifyNote(
       if (!role.available) return fallback;
       const sustain = isSustain(note.duration, sustainRule(context, cc.rules));
       return {
-        kind: "note",
+        type: EntityType.Note,
         subtype: sustain ? "sustain" : "chart-note",
         movable: true,
         resizable: sustain,
@@ -475,7 +480,7 @@ function expandPaste(
   context: ModeContext,
 ): ExpansionResult {
   const pasteCommand: EditCommand = {
-    type: "PASTE_CHART_NOTES",
+    type: DomainCommandType.PasteChartNotes,
     anchorTick,
     notes: [],
   };
@@ -490,7 +495,7 @@ function expandPaste(
   const rows = rowsFor(cc.rules);
   const sameMode = payload.sourceModeId === "chart.lanes";
   const notes: z.infer<typeof PasteSchema>["notes"] = [];
-  const commands: RawCommand[] = [];
+  const commands: GeneralCommand[] = [];
   const rejections: Rejection[] = [];
 
   for (const entity of payload.entities) {
@@ -509,7 +514,7 @@ function expandPaste(
 
     // Phrases: same mode carries the phrase id; other modes carry a pitch.
     const phraseId = sameMode
-      ? entity.classification.kind === "phrase"
+      ? entity.classification.type === "phrase"
         ? entity.classification.subtype
         : null
       : (() => {
@@ -519,7 +524,7 @@ function expandPaste(
     if (phraseId !== null) {
       const expansion = expandCommand(
         {
-          type: "CREATE_PHRASE",
+          type: DomainCommandType.CreatePhrase,
           phraseId,
           startTick: tick,
           endTick: tick + entity.duration,
@@ -597,26 +602,29 @@ function expandCommand(
       "Chart track configuration is unavailable",
     );
   }
-  if (isRawCommand(command) && command.type === "DELETE_ENTITIES") {
+  if (
+    isRawCommand(command) &&
+    command.type === EditCommandType.DeleteEntities
+  ) {
     const owned = ownsNotes(command.targetIds, context, command);
     return owned.rejection
       ? { commands: [], rejections: [owned.rejection] }
       : { commands: [command], rejections: [] };
   }
   switch (command.type) {
-    case "PLACE_CHART_NOTE":
+    case DomainCommandType.PlaceChartNote:
       return expandPlace(command, context, cc);
-    case "MOVE_CHART_NOTES":
+    case DomainCommandType.MoveChartNotes:
       return expandMove(command, context, cc);
-    case "SET_SUSTAIN_END":
+    case DomainCommandType.SetSustainEnd:
       return expandSustainEnd(command, context, cc);
-    case "CUT_SUSTAINS":
+    case DomainCommandType.CutSustains:
       return expandCut(command, context, cc);
-    case "CREATE_PHRASE":
+    case DomainCommandType.CreatePhrase:
       return expandCreatePhrase(command, context, cc);
-    case "UPDATE_PHRASE":
+    case DomainCommandType.UpdatePhrase:
       return expandUpdatePhrase(command, context, cc);
-    case "PASTE_CHART_NOTES":
+    case DomainCommandType.PasteChartNotes:
       return expandPasteNotes(command, context, cc);
     default:
       return rejected(
@@ -713,7 +721,7 @@ function expandPlace(
       return { commands: [], rejections: [preferred.rejection] };
   }
 
-  const commands: RawCommand[] = [];
+  const commands: GeneralCommand[] = [];
   const cutNotes = getSustainCutTargets(
     sustainCandidates(context, cc),
     parsed.data.tick,
@@ -724,7 +732,7 @@ function expandPlace(
   );
   if (cutNotes.length > 0) {
     commands.push({
-      type: "UPDATE_NOTES",
+      type: EditCommandType.UpdateNotes,
       patches: cutNotes.map((note) => ({
         id: note.id,
         duration: parsed.data.tick - note.tick,
@@ -747,13 +755,13 @@ function expandPlace(
   );
   if (conflicts.length > 0) {
     commands.push({
-      type: "DELETE_ENTITIES",
+      type: EditCommandType.DeleteEntities,
       targetIds: conflicts.map((note) => note.id),
     });
   }
 
   commands.push({
-    type: "ADD_NOTES",
+    type: EditCommandType.AddNotes,
     notes: [
       {
         trackIndex,
@@ -774,7 +782,7 @@ function expandPlace(
     )
   ) {
     commands.push({
-      type: "ADD_NOTES",
+      type: EditCommandType.AddNotes,
       notes: [
         {
           trackIndex,
@@ -855,7 +863,10 @@ function expandMove(
     patches.push({ id: note.id, tick, pitch });
   }
   return {
-    commands: patches.length > 0 ? [{ type: "UPDATE_NOTES", patches }] : [],
+    commands:
+      patches.length > 0
+        ? [{ type: EditCommandType.UpdateNotes, patches }]
+        : [],
     rejections: [],
   };
 }
@@ -902,7 +913,10 @@ function expandSustainEnd(
     }
     patches.push({ id: note.id, duration: endTick - note.tick });
   }
-  return { commands: [{ type: "UPDATE_NOTES", patches }], rejections: [] };
+  return {
+    commands: [{ type: EditCommandType.UpdateNotes, patches }],
+    rejections: [],
+  };
 }
 
 function expandCut(
@@ -938,7 +952,7 @@ function expandCut(
         ? []
         : [
             {
-              type: "UPDATE_NOTES",
+              type: EditCommandType.UpdateNotes,
               patches: targets.map((note) => ({
                 id: note.id,
                 duration: parsed.data.tick - note.tick,
@@ -974,7 +988,7 @@ function expandCreatePhrase(
   return {
     commands: [
       {
-        type: "ADD_NOTES",
+        type: EditCommandType.AddNotes,
         notes: [
           {
             trackIndex: targetTrackIndex(context),
@@ -1009,7 +1023,7 @@ function expandUpdatePhrase(
   return {
     commands: [
       {
-        type: "UPDATE_NOTES",
+        type: EditCommandType.UpdateNotes,
         patches: [
           {
             id: owned.notes[0]!.id,
@@ -1035,8 +1049,10 @@ function expandPasteNotes(
   const occupied = new Set(
     targetNotes(context).map((n) => `${n.pitch}:${n.tick}`),
   );
-  const notes: Extract<RawCommand, { type: "ADD_NOTES" }>["notes"][number][] =
-    [];
+  const notes: Extract<
+    GeneralCommand,
+    { type: EditCommandType.AddNotes }
+  >["notes"][number][] = [];
   for (const entry of parsed.data.notes) {
     const lane = cc.rules.lanes.find((l) =>
       entry.laneId !== undefined
@@ -1075,7 +1091,8 @@ function expandPasteNotes(
     });
   }
   return {
-    commands: notes.length > 0 ? [{ type: "ADD_NOTES", notes }] : [],
+    commands:
+      notes.length > 0 ? [{ type: EditCommandType.AddNotes, notes }] : [],
     rejections: [],
   };
 }

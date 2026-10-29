@@ -1,10 +1,14 @@
 import {
+  DomainCommandType,
+  EditCommandType,
   type EditCommand,
+  type EntityId,
+  type EditingModeId,
   type EditingSession,
   type EditResult,
   type GestureHandle,
   type PreviewState,
-  type VocalNoteKind,
+  VocalNoteKind,
   type VocalPhraseKind,
 } from "@openchart/views";
 import { Vector2 } from "three";
@@ -21,84 +25,91 @@ interface CreateSpec {
 
 interface ModeCommandBuilder {
   move(
-    targetIds: readonly string[],
+    targetIds: readonly EntityId[],
     tickDelta: number,
     pitchDelta: number,
     previousValidTickDelta: number,
   ): EditCommand;
-  resize(targetIds: readonly string[], durationDelta: number): EditCommand;
+  resize(targetIds: readonly EntityId[], durationDelta: number): EditCommand;
   create(
     spec: CreateSpec,
     session: EditingSession,
     lyric?: string,
   ): EditCommand;
-  delete(targetIds: readonly string[]): EditCommand;
+  delete(targetIds: readonly EntityId[]): EditCommand;
 }
 
-const COMMAND_BUILDERS: ReadonlyMap<string, ModeCommandBuilder> = new Map([
-  [
-    "midi.raw",
-    {
-      move: (targetIds, tickDelta, pitchDelta) => ({
-        type: "MOVE_NOTES",
-        targetIds,
-        tickDelta,
-        pitchDelta,
-      }),
-      resize: (targetIds, durationDelta) => ({
-        type: "RESIZE_NOTES",
-        targetIds,
-        durationDelta,
-      }),
-      create: (spec, session) => ({
-        type: "ADD_NOTES",
-        notes: [
-          {
-            trackIndex: session.target.trackIndex ?? 0,
-            tick: spec.tick,
-            pitch: spec.pitch ?? 0,
-            duration: Math.max(1, spec.endTick - spec.tick),
-          },
-        ],
-      }),
-      delete: (targetIds) => ({ type: "DELETE_ENTITIES", targetIds }),
-    },
-  ],
-  [
-    "vocals",
-    {
-      move: (targetIds, tickDelta, pitchDelta, previousValidTickDelta) => ({
-        type: "MOVE_VOCAL_ENTITIES",
-        targetIds,
-        tickDelta,
-        pitchDelta,
-        previousValidTickDelta,
-      }),
-      resize: (targetIds, durationDelta) => ({
-        type: "RESIZE_VOCAL_ENTITIES",
-        targetIds,
-        durationDelta,
-      }),
-      create: (spec, _session, lyric) =>
-        spec.phraseKind
-          ? {
-              type: "CREATE_VOCAL_PHRASE",
-              phraseKind: spec.phraseKind,
-              startTick: spec.tick,
-              endTick: spec.endTick,
-            }
-          : {
-              type: "ADD_VOCAL_NOTE",
-              kind: spec.kind ?? "pitched",
+const COMMAND_BUILDERS: ReadonlyMap<EditingModeId, ModeCommandBuilder> =
+  new Map([
+    [
+      "midi.raw",
+      {
+        move: (targetIds, tickDelta, pitchDelta) => ({
+          type: EditCommandType.MoveNotes,
+          targetIds,
+          tickDelta,
+          pitchDelta,
+        }),
+        resize: (targetIds, durationDelta) => ({
+          type: EditCommandType.ResizeNotes,
+          targetIds,
+          durationDelta,
+        }),
+        create: (spec, session) => ({
+          type: EditCommandType.AddNotes,
+          notes: [
+            {
+              trackIndex: session.target.trackIndex ?? 0,
               tick: spec.tick,
-              endTick: spec.endTick,
-              ...(spec.pitch === undefined ? {} : { pitch: spec.pitch }),
-              ...(lyric === undefined ? {} : { lyric }),
+              pitch: spec.pitch ?? 0,
+              duration: Math.max(1, spec.endTick - spec.tick),
             },
-      delete: (targetIds) => ({ type: "DELETE_ENTITIES", targetIds }),
-    },
-  ],
-]);
+          ],
+        }),
+        delete: (targetIds) => ({
+          type: EditCommandType.DeleteEntities,
+          targetIds,
+        }),
+      },
+    ],
+    [
+      "midi.vocals",
+      {
+        move: (targetIds, tickDelta, pitchDelta, previousValidTickDelta) => ({
+          type: DomainCommandType.MoveVocalEntities,
+          targetIds,
+          tickDelta,
+          pitchDelta,
+          previousValidTickDelta,
+        }),
+        resize: (targetIds, durationDelta) => ({
+          type: DomainCommandType.ResizeVocalEntities,
+          targetIds,
+          durationDelta,
+        }),
+        create: (spec, _session, lyric) =>
+          spec.phraseKind
+            ? {
+                type: DomainCommandType.CreateVocalPhrase,
+                phraseKind: spec.phraseKind,
+                startTick: spec.tick,
+                endTick: spec.endTick,
+              }
+            : {
+                type: DomainCommandType.AddVocalNote,
+                kind: spec.kind ?? VocalNoteKind.Pitched,
+                tick: spec.tick,
+                endTick: spec.endTick,
+                ...(spec.pitch === undefined ? {} : { pitch: spec.pitch }),
+                ...(lyric === undefined ? {} : { lyric }),
+              },
+        delete: (targetIds) => ({
+          type: EditCommandType.DeleteEntities,
+          targetIds,
+        }),
+      },
+    ],
+  ]);
 
 function commandBuilderFor(session: EditingSession): ModeCommandBuilder {
   const builder = COMMAND_BUILDERS.get(session.mode.id);
@@ -138,7 +149,7 @@ export class NoteEditingController {
   private createSpec: CreateSpec | null = null;
   private lastValidTickDelta = 0;
   private lastPreviewPitch: number | null = null;
-  private readonly erasingIds = new Set<string>();
+  private readonly erasingIds = new Set<EntityId>();
 
   public constructor(context: PianoRollContext, coordinates: CoordinateSystem) {
     this.context = context;
@@ -258,7 +269,7 @@ export class NoteEditingController {
       this.lastValidTickDelta = updated.tick - firstTarget.initialTick;
       if (
         this.moveTargets.length === 1 &&
-        session.mode.id === "vocals" &&
+        session.mode.id === "midi.vocals" &&
         updated.pitch !== this.lastPreviewPitch
       ) {
         this.lastPreviewPitch = updated.pitch;
@@ -283,8 +294,8 @@ export class NoteEditingController {
     }
     if (this.creating && this.createSpec?.kind !== undefined) {
       this.awaitingLyric =
-        this.createSpec.kind === "pitched" ||
-        this.createSpec.kind === "pitchless";
+        this.createSpec.kind === VocalNoteKind.Pitched ||
+        this.createSpec.kind === VocalNoteKind.Pitchless;
       if (this.awaitingLyric) {
         this.context.promptLyric(this.createSpec.tick, {
           onCommit: (text) => this.commitPendingLyric(text),
@@ -396,12 +407,13 @@ export class NoteEditingController {
         kind: undefined,
         phraseKind: undefined,
       };
-    } else if (session.mode.id === "vocals") {
+    } else if (session.mode.id === "midi.vocals") {
       const placement = this.context.getVocalPlacement();
       const phraseKind = lane?.phrase ?? placement.phrase ?? undefined;
       const kind =
         phraseKind === undefined
-          ? lane?.kind === "percussion" || lane?.kind === "pitchless"
+          ? lane?.kind === VocalNoteKind.Percussion ||
+            lane?.kind === VocalNoteKind.Pitchless
             ? lane.kind
             : placement.noteKind
           : undefined;
@@ -409,7 +421,7 @@ export class NoteEditingController {
         tick,
         endTick: tick + 1,
         pitch:
-          kind === "pitched"
+          kind === VocalNoteKind.Pitched
             ? this.coordinates.pitchAtScreenY(
                 Math.max(local.y, this.coordinates.getGridTop()),
               )
@@ -438,8 +450,8 @@ export class NoteEditingController {
     const command = commandBuilderFor(session).create(spec, session);
     const preview = this.preview(command);
     if (
-      session.mode.id === "vocals" &&
-      spec.kind === "pitched" &&
+      session.mode.id === "midi.vocals" &&
+      spec.kind === VocalNoteKind.Pitched &&
       spec.pitch !== undefined &&
       spec.pitch !== this.lastPreviewPitch &&
       preview.rejections.length === 0
@@ -545,7 +557,7 @@ export class NoteEditingController {
     this.context.requestRender();
   }
 
-  private executeSelectionCommand(targetIds: readonly string[]): void {
+  private executeSelectionCommand(targetIds: readonly EntityId[]): void {
     const session = this.getSession();
     if (!session || targetIds.length === 0) return;
     const result = session.execute(

@@ -1,12 +1,24 @@
 import { MetaType } from "@openchart/midi";
 import { z } from "zod";
-import type { ClipboardPayload } from "../clipboard.js";
-import { VocalTrackView, type VocalLayout } from "../../views/vocal.js";
+import { EntityType } from "../entity.js";
+import {
+  VocalNoteKind,
+  VocalPhraseKind,
+  VOCAL_NOTE_KINDS,
+  VocalTrackView,
+  type VocalLayout,
+} from "../../views/vocal.js";
 import { phraseIcon, phraseLabel } from "../../ruleset/labels.js";
-import type { EntityId } from "../entityId.js";
-import type { EditCommand, RawCommand } from "../commands.js";
+import type { EntityId } from "../entity.js";
+import {
+  DomainCommandType,
+  EditCommandType,
+  type EditCommand,
+  type GeneralCommand,
+} from "../commands.js";
 import type {
   EditingMode,
+  EntityClassification,
   ExpansionResult,
   ModeContext,
   Projection,
@@ -23,69 +35,79 @@ import {
   targetTrackIndex,
   validSpan,
 } from "./common.js";
+import { ClipboardPayload } from "../clipboard.js";
 
+const VocalNoteKindSchema = z.nativeEnum(VocalNoteKind);
+const VocalPhraseKindSchema = z.nativeEnum(VocalPhraseKind);
 const ToolStateSchema = z.object({
-  noteKind: z.enum(["pitched", "pitchless", "percussion"]),
-  phrase: z.enum(["vocal", "power-window", "stagepower"]).nullable(),
+  noteKind: VocalNoteKindSchema,
+  phrase: VocalPhraseKindSchema.nullable(),
 });
 type VocalsToolState = z.infer<typeof ToolStateSchema>;
 
 const AddNoteSchema = z.object({
-  type: z.literal("ADD_VOCAL_NOTE"),
-  kind: z.enum(["pitched", "pitchless", "percussion"]),
+  type: z.literal(DomainCommandType.AddVocalNote),
+  kind: VocalNoteKindSchema,
   tick: z.number().int(),
   endTick: z.number().int(),
   pitch: z.number().int().optional(),
   lyric: z.string().optional(),
 });
 const SetLyricSchema = z.object({
-  type: z.literal("SET_LYRIC"),
+  type: z.literal(DomainCommandType.SetLyric),
   id: z.string(),
   text: z.string(),
 });
 const MoveSchema = z.object({
-  type: z.literal("MOVE_VOCAL_ENTITIES"),
+  type: z.literal(DomainCommandType.MoveVocalEntities),
   targetIds: z.array(z.string()),
   tickDelta: z.number().int(),
   pitchDelta: z.number().int(),
   previousValidTickDelta: z.number().int().default(0),
 });
 const ResizeSchema = z.object({
-  type: z.literal("RESIZE_VOCAL_ENTITIES"),
+  type: z.literal(DomainCommandType.ResizeVocalEntities),
   targetIds: z.array(z.string()),
   durationDelta: z.number().int(),
 });
 const CreatePhraseSchema = z.object({
-  type: z.literal("CREATE_VOCAL_PHRASE"),
-  phraseKind: z.enum(["vocal", "power-window", "stagepower"]),
+  type: z.literal(DomainCommandType.CreateVocalPhrase),
+  phraseKind: VocalPhraseKindSchema,
   startTick: z.number().int(),
   endTick: z.number().int(),
 });
 
 const domainCommandTypes = new Set([
-  "ADD_VOCAL_NOTE",
-  "SET_LYRIC",
-  "MOVE_VOCAL_ENTITIES",
-  "RESIZE_VOCAL_ENTITIES",
-  "CREATE_VOCAL_PHRASE",
+  DomainCommandType.AddVocalNote,
+  DomainCommandType.SetLyric,
+  DomainCommandType.MoveVocalEntities,
+  DomainCommandType.ResizeVocalEntities,
+  DomainCommandType.CreateVocalPhrase,
 ]);
 
 export function createVocalsMode(): EditingMode<VocalsToolState> {
   return {
-    id: "vocals",
+    id: "midi.vocals",
     label: "Vocals",
     hostKinds: new Set(["piano-roll"]),
     appliesTo: (track) => track.kind === "vocals",
     capabilities: {
-      rawCommands: new Set(["DELETE_ENTITIES"]),
+      rawCommands: new Set([EditCommandType.DeleteEntities]),
       domainCommands: domainCommandTypes,
-      entityKinds: new Set(["note", "phrase", "lyric"]),
+      entityKinds: new Set([
+        EntityType.Note,
+        EntityType.Phrase,
+        EntityType.Lyric,
+      ]),
       canCreateTrack: true,
       requiresDifficulty: false,
     },
     createTools: (context) => createTools(context),
     toolStateSchema: ToolStateSchema,
-    createDefaultToolState: () => ({ noteKind: "pitched", phrase: null }),
+    createDefaultToolState: () => ({
+      noteKind: VocalNoteKind.Pitched,
+      phrase: null,
+    }),
     createProjection: (context) => createVocalProjection(context),
     classify: (note, context) => classifyVocalNote(note, context),
     expandPaste: (payload, anchorTick, context) =>
@@ -95,17 +117,17 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
 }
 
 const PHRASE_TOOLS = [
-  ["vocal", "lyricPhrase"],
-  ["power-window", "powerWindow"],
-  ["stagepower", "starPower"],
+  [VocalPhraseKind.Vocal, "lyricPhrase"],
+  [VocalPhraseKind.PowerWindow, "powerWindow"],
+  [VocalPhraseKind.StagePower, "starPower"],
 ] as const;
 
 function createTools(context: ModeContext) {
   const layout = getLayout(context);
-  const phrasePitch = (phrase: "vocal" | "power-window" | "stagepower") =>
+  const phrasePitch = (phrase: VocalPhraseKind) =>
     layout ? VocalTrackView.phrasePitch(layout, phrase) : -1;
   return [
-    ...(["pitched", "pitchless", "percussion"] as const).map((noteKind) => ({
+    ...VOCAL_NOTE_KINDS.map((noteKind) => ({
       id: `vocal-note-${noteKind}`,
       label: noteKind,
       icon: noteKind,
@@ -117,7 +139,8 @@ function createTools(context: ModeContext) {
       ([phrase, effect]) => ({
         id: `vocal-phrase-${phrase}`,
         label: `${phraseLabel(effect)} phrase`,
-        icon: phrase === "stagepower" ? phraseIcon(effect) : phrase,
+        icon:
+          phrase === VocalPhraseKind.StagePower ? phraseIcon(effect) : phrase,
         group: "vocal-tools",
         stateKey: "phrase",
         value: phrase,
@@ -132,10 +155,12 @@ function expandVocalPaste(
   anchorTick: number,
   context: ModeContext,
 ): ExpansionResult {
-  const commands: RawCommand[] = [];
+  const commands: GeneralCommand[] = [];
   const rejections: Rejection[] = [];
   const layout = getLayout(context);
-  const pasteCommand: EditCommand = { type: "PASTE_CLIPBOARD" };
+  const pasteCommand: EditCommand = {
+    type: DomainCommandType.PasteClipboard,
+  };
   if (!layout) {
     return rejected(
       pasteCommand,
@@ -156,7 +181,7 @@ function expandVocalPaste(
       continue;
     }
 
-    const sameMode = payload.sourceModeId === "vocals";
+    const sameMode = payload.sourceModeId === "midi.vocals";
     const vocalClassification = sameMode
       ? null
       : VocalTrackView.classifyPitch(layout, entity.pitch);
@@ -169,7 +194,7 @@ function expandVocalPaste(
       continue;
     }
     const entityKind = sameMode
-      ? entity.classification.kind
+      ? entity.classification.type
       : vocalClassification?.type === "phrase"
         ? "phrase"
         : "note";
@@ -178,7 +203,8 @@ function expandVocalPaste(
       : (vocalClassification?.kind ?? "unknown");
     let command: EditCommand;
     if (entityKind === "phrase") {
-      if (!["vocal", "power-window", "stagepower"].includes(subtype)) {
+      const phraseKind = VocalPhraseKindSchema.safeParse(subtype);
+      if (!phraseKind.success) {
         rejections.push({
           code: "invalid-vocal-phrase",
           message: "This phrase kind is not supported by the vocal chart",
@@ -187,14 +213,14 @@ function expandVocalPaste(
         continue;
       }
       command = {
-        type: "CREATE_VOCAL_PHRASE",
-        phraseKind: subtype as "vocal" | "power-window" | "stagepower",
+        type: DomainCommandType.CreateVocalPhrase,
+        phraseKind: phraseKind.data,
         startTick: tick,
         endTick,
       };
     } else {
-      const kind = subtype;
-      if (kind !== "pitched" && kind !== "pitchless" && kind !== "percussion") {
+      const kind = VocalNoteKindSchema.safeParse(subtype);
+      if (!kind.success) {
         rejections.push({
           code: "invalid-vocal-note",
           message: "This note is not valid for the vocal chart",
@@ -203,8 +229,8 @@ function expandVocalPaste(
         continue;
       }
       command = {
-        type: "ADD_VOCAL_NOTE",
-        kind,
+        type: DomainCommandType.AddVocalNote,
+        kind: kind.data,
         tick,
         endTick,
         pitch: entity.pitch,
@@ -232,7 +258,7 @@ function createVocalProjection(context: ModeContext): Projection {
         id: String(layout.range.low + index),
         label: String(layout.range.low + index),
         index,
-        kind: "pitched",
+        kind: VocalNoteKind.Pitched,
       }),
     ),
     ...lanes.map((lane, index) => ({
@@ -246,7 +272,10 @@ function createVocalProjection(context: ModeContext): Projection {
     getRows: () => rows,
     rowForNote: (note) => {
       const classification = VocalTrackView.classifyPitch(layout, note.pitch);
-      if (classification.type === "note" && classification.kind === "pitched") {
+      if (
+        classification.type === "note" &&
+        classification.kind === VocalNoteKind.Pitched
+      ) {
         return rows[note.pitch - layout.range.low] ?? null;
       }
       const laneIndex = lanes.findIndex((lane) =>
@@ -257,7 +286,7 @@ function createVocalProjection(context: ModeContext): Projection {
         : (rows[layout.range.high - layout.range.low + 1 + laneIndex] ?? null);
     },
     pitchForRow: (row) => {
-      if (row.kind === "pitched") {
+      if (row.kind === VocalNoteKind.Pitched) {
         const pitch = layout.range.low + row.index;
         return pitch <= layout.range.high ? pitch : null;
       }
@@ -267,23 +296,23 @@ function createVocalProjection(context: ModeContext): Projection {
   };
 }
 
-function classifyVocalNote(note: NoteSnapshot, context: ModeContext) {
+function classifyVocalNote(
+  note: NoteSnapshot,
+  context: ModeContext,
+): EntityClassification {
   const layout = getLayout(context);
   const classification =
     layout && VocalTrackView.classifyPitch(layout, note.pitch);
   if (!classification || classification.type === "unknown") {
     return {
-      kind: "note" as const,
-      subtype: "unknown",
+      type: EntityType.Note,
+      subtype: EntityType.Unknown,
       movable: false,
       resizable: false,
     };
   }
   return {
-    kind:
-      classification.type === "phrase"
-        ? ("phrase" as const)
-        : ("note" as const),
+    type: classification.type,
     subtype: classification.kind,
     movable: true,
     resizable: true,
@@ -298,7 +327,10 @@ function expandVocalCommand(
   const trackIndex = targetTrackIndex(context);
   if (!layout)
     return rejected(command, "missing-config", "Vocal layout is unavailable");
-  if (isRawCommand(command) && command.type === "DELETE_ENTITIES") {
+  if (
+    isRawCommand(command) &&
+    command.type === EditCommandType.DeleteEntities
+  ) {
     const owned = ownsNotes(command.targetIds, context, command);
     if (owned.rejection) return { commands: [], rejections: [owned.rejection] };
     const deleteIds = new Set(command.targetIds);
@@ -317,7 +349,7 @@ function expandVocalCommand(
     return {
       commands: [
         {
-          type: "DELETE_ENTITIES",
+          type: EditCommandType.DeleteEntities,
           targetIds: [...deleteIds] as EntityId[],
         },
       ],
@@ -325,7 +357,7 @@ function expandVocalCommand(
     };
   }
   switch (command.type) {
-    case "ADD_VOCAL_NOTE": {
+    case DomainCommandType.AddVocalNote: {
       const parsed = AddNoteSchema.safeParse(command);
       if (
         !parsed.success ||
@@ -345,9 +377,9 @@ function expandVocalCommand(
           "Vocal note pitch is outside its configured range",
         );
       }
-      const commands: RawCommand[] = [
+      const commands: GeneralCommand[] = [
         {
-          type: "ADD_NOTES",
+          type: EditCommandType.AddNotes,
           notes: [
             {
               trackIndex,
@@ -363,7 +395,7 @@ function expandVocalCommand(
         parsed.data.lyric?.trim()
       ) {
         commands.push({
-          type: "ADD_TEXT",
+          type: EditCommandType.AddText,
           trackIndex,
           metaType: MetaType.Lyric,
           tick: parsed.data.tick,
@@ -372,7 +404,7 @@ function expandVocalCommand(
       }
       return { commands, rejections: [] };
     }
-    case "SET_LYRIC": {
+    case DomainCommandType.SetLyric: {
       const parsed = SetLyricSchema.safeParse(command);
       if (!parsed.success || !parsed.data.text.trim()) {
         return rejected(
@@ -399,10 +431,16 @@ function expandVocalCommand(
       const existing = pairedLyrics(context, layout).get(note.id);
       return {
         commands: existing
-          ? [{ type: "UPDATE_TEXT", id: existing.id, text: parsed.data.text }]
+          ? [
+              {
+                type: EditCommandType.UpdateText,
+                id: existing.id,
+                text: parsed.data.text,
+              },
+            ]
           : [
               {
-                type: "ADD_TEXT",
+                type: EditCommandType.AddText,
                 trackIndex: note.trackIndex,
                 metaType: MetaType.Lyric,
                 tick: note.tick,
@@ -412,7 +450,7 @@ function expandVocalCommand(
         rejections: [],
       };
     }
-    case "MOVE_VOCAL_ENTITIES": {
+    case DomainCommandType.MoveVocalEntities: {
       const parsed = MoveSchema.safeParse(command);
       if (!parsed.success) {
         return rejected(command, "invalid-command", "Vocal move is invalid");
@@ -433,7 +471,7 @@ function expandVocalCommand(
         );
       }
       const lyricMap = pairedLyrics(context, layout);
-      const build = (delta: number): RawCommand[] | null => {
+      const build = (delta: number): GeneralCommand[] | null => {
         const patches: {
           note: { id: EntityId; tick: number; pitch?: number };
           lyric: { id: EntityId; tick: number } | null;
@@ -451,7 +489,7 @@ function expandVocalCommand(
           };
           if (
             classification.type === "note" &&
-            classification.kind === "pitched"
+            classification.kind === VocalNoteKind.Pitched
           ) {
             patch.pitch = Math.max(
               layout.range.low,
@@ -464,13 +502,16 @@ function expandVocalCommand(
             lyric: lyric ? { id: lyric.id, tick } : null,
           });
         }
-        const commands: RawCommand[] = [
-          { type: "UPDATE_NOTES", patches: patches.map((entry) => entry.note) },
+        const commands: GeneralCommand[] = [
+          {
+            type: EditCommandType.UpdateNotes,
+            patches: patches.map((entry) => entry.note),
+          },
         ];
         for (const entry of patches) {
           if (entry.lyric) {
             commands.push({
-              type: "UPDATE_TEXT",
+              type: EditCommandType.UpdateText,
               id: entry.lyric.id,
               tick: entry.lyric.tick,
             });
@@ -478,7 +519,7 @@ function expandVocalCommand(
         }
         return commands;
       };
-      const hasErrors = (commands: RawCommand[]) =>
+      const hasErrors = (commands: GeneralCommand[]) =>
         context.validate(commands).some((v) => v.severity === "error");
 
       const requested = build(parsed.data.tickDelta);
@@ -503,7 +544,7 @@ function expandVocalCommand(
       }
       return { commands: requested, rejections: [] };
     }
-    case "RESIZE_VOCAL_ENTITIES": {
+    case DomainCommandType.ResizeVocalEntities: {
       const parsed = ResizeSchema.safeParse(command);
       if (!parsed.success) {
         return rejected(command, "invalid-command", "Vocal resize is invalid");
@@ -529,11 +570,11 @@ function expandVocalCommand(
         }
       }
       return {
-        commands: [{ type: "UPDATE_NOTES", patches }],
+        commands: [{ type: EditCommandType.UpdateNotes, patches }],
         rejections: [],
       };
     }
-    case "CREATE_VOCAL_PHRASE": {
+    case DomainCommandType.CreateVocalPhrase: {
       const parsed = CreatePhraseSchema.safeParse(command);
       if (
         !parsed.success ||
@@ -556,7 +597,7 @@ function expandVocalCommand(
       return {
         commands: [
           {
-            type: "ADD_NOTES",
+            type: EditCommandType.AddNotes,
             notes: [
               {
                 trackIndex,

@@ -1,4 +1,5 @@
 import { defineBindings } from "./define.ts";
+import { VocalPhraseKind } from "@openchart/views";
 
 /** Hotkeys active while the active viewport shows the Piano Roll. */
 export const pianoRollBindings = defineBindings("pianoroll", {
@@ -70,19 +71,19 @@ export const pianoRollBindings = defineBindings("pianoroll", {
   },
   "piano-roll.toggle-vocal-phrase#stagepower": {
     hotkey: "R",
-    args: ["stagepower"],
+    args: [VocalPhraseKind.StagePower],
     name: "Stagepower phrase tool",
     group: "Vocals",
   },
   "piano-roll.toggle-vocal-phrase#vocal": {
     hotkey: "T",
-    args: ["vocal"],
+    args: [VocalPhraseKind.Vocal],
     name: "Vocal phrase tool",
     group: "Vocals",
   },
   "piano-roll.toggle-vocal-phrase#power-window": {
     hotkey: "Y",
-    args: ["power-window"],
+    args: [VocalPhraseKind.PowerWindow],
     name: "Power window tool",
     group: "Vocals",
   },

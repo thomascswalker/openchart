@@ -1,3 +1,17 @@
+/**
+ * Utilities for handling sustain notes in a chart.
+ */
+
+/**
+ * Policy for cutting sustain notes.
+ *
+ * - `all`: Cut all sustain notes.
+ * - `none`: Cut no sustain notes.
+ * - `preferred-only`: Cut only the preferred sustain note. (Example: when a
+ * specific note is preferred, cut only the preferred one)
+ * - `all-but-preferred`: Cut all sustain notes except the preferred one.
+ * (Example: when a specific note is preferred, cut all other sustains)
+ */
 export type SustainCutPolicy =
   "all" | "none" | "preferred-only" | "all-but-preferred";
 

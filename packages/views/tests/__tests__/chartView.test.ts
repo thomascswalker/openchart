@@ -3,7 +3,11 @@ import { fileURLToPath } from "url";
 import { Midi, MidiTrack } from "@openchart/midi";
 import { expect, describe, beforeAll, it } from "vitest";
 import * as fs from "fs";
-import { SongView, createStandaloneEditing } from "../../src/index.js";
+import {
+  DomainCommandType,
+  SongView,
+  createStandaloneEditing,
+} from "../../src/index.js";
 import { Difficulty } from "../../src/types.js";
 
 function placeSession(midi: Midi, trackKey: string) {
@@ -194,7 +198,7 @@ describe("editing through a session", () => {
     midi.tracks = [new MidiTrack("")]; // sync track; a MIDI file needs a track
     const session = placeSession(midi, "lead-guitar");
     const result = session.execute({
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane: 0,
       tick: 480,
       endTick: 720,

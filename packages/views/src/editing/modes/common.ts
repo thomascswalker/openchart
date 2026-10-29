@@ -1,6 +1,6 @@
 import type { TrackDescriptor, TrackRules } from "../../ruleset/compile.js";
-import type { EntityId } from "../entityId.js";
-import type { EditCommand, RawCommand } from "../commands.js";
+import type { EntityId } from "../entity.js";
+import type { EditCommand, GeneralCommand } from "../commands.js";
 import type { ModeContext } from "../mode.js";
 import type { NoteSnapshot } from "../reader.js";
 import type { Rejection } from "../result.js";
@@ -15,7 +15,7 @@ export function rejection(
 
 export function rejected(command: EditCommand, code: string, message: string) {
   return {
-    commands: [] as readonly RawCommand[],
+    commands: [] as readonly GeneralCommand[],
     rejections: [rejection(command, code, message)],
   };
 }

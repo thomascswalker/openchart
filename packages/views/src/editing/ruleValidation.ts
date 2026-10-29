@@ -15,8 +15,9 @@ import {
   type TrackEdit,
 } from "../ruleset/index.js";
 import { checkTextEvent } from "../ruleset/textEvents.js";
-import type { RawCommand } from "./commands.js";
-import { parseEntityId, type EntityId } from "./entityId.js";
+import type { GeneralCommand } from "./commands.js";
+import { EditCommandType } from "./commands.js";
+import { parseEntityFromId, type EntityId } from "./entity.js";
 import type { EditingTarget } from "./mode.js";
 import { computePreview } from "./preview.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
@@ -25,7 +26,7 @@ import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 const PENDING_TRACK = -1;
 
 export function validateRawCommands(
-  commands: readonly RawCommand[],
+  commands: readonly GeneralCommand[],
   reader: ChartDocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
@@ -54,7 +55,7 @@ function rulesForTrack(
 }
 
 export function buildTrackEdits(
-  commands: readonly RawCommand[],
+  commands: readonly GeneralCommand[],
   reader: ChartDocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
@@ -133,14 +134,14 @@ function windowNotes(
 
 /** Grammar check for ADD_TEXT / UPDATE_TEXT on configured tracks. */
 function validateTextCommands(
-  commands: readonly RawCommand[],
+  commands: readonly GeneralCommand[],
   reader: ChartDocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
 ): RuleViolation[] {
   const out: RuleViolation[] = [];
   for (const command of commands) {
-    if (command.type === "ADD_TEXT") {
+    if (command.type === EditCommandType.AddText) {
       const rules = rulesForTrack(
         target.trackIndex === null ? PENDING_TRACK : command.trackIndex,
         reader,
@@ -157,7 +158,10 @@ function validateTextCommands(
           )
         : null;
       if (v) out.push(v);
-    } else if (command.type === "UPDATE_TEXT" && command.text !== undefined) {
+    } else if (
+      command.type === EditCommandType.UpdateText &&
+      command.text !== undefined
+    ) {
       const parsed = parseTextId(command.id, reader);
       if (!parsed) continue;
       const rules = reader.getTrackDescriptor(parsed.trackIndex)?.rules ?? null;
@@ -180,8 +184,8 @@ function parseTextId(
   id: EntityId,
   reader: ChartDocumentReader,
 ): { trackIndex: number; metaType: number; tick: number } | null {
-  const parsed = parseEntityId(id);
-  if (!parsed || parsed.kind !== "text" || parsed.trackIndex === null) {
+  const parsed = parseEntityFromId(id);
+  if (!parsed || parsed.type !== "text" || parsed.trackIndex === undefined) {
     return null;
   }
   const event = reader

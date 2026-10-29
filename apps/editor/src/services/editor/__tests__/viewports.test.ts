@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
 import { enforceAvailableView, ViewportService } from "../viewports";
 import { createTestRulesetService } from "../../__tests__/testUtils";
 
@@ -96,9 +97,9 @@ describe("ViewportService", () => {
     const second = service.addViewport("highway")!;
 
     service.setModeToolState(second, "test.custom", { active: "place" });
-    service.setModeToolState(first, "vocals", {
-      noteKind: "percussion",
-      phrase: "vocal",
+    service.setModeToolState(first, "midi.vocals", {
+      noteKind: VocalNoteKind.Percussion,
+      phrase: VocalPhraseKind.Vocal,
     });
 
     const sessions = service.getSnapshot().viewportSessions;
@@ -107,27 +108,29 @@ describe("ViewportService", () => {
         active: "place",
       },
     );
-    expect(sessions.find((s) => s.id === first)?.tools.vocals).toEqual({
-      noteKind: "percussion",
-      phrase: "vocal",
+    expect(sessions.find((s) => s.id === first)?.tools["midi.vocals"]).toEqual({
+      noteKind: VocalNoteKind.Percussion,
+      phrase: VocalPhraseKind.Vocal,
     });
-    expect(sessions.find((s) => s.id === second)?.tools.vocals).toEqual({
-      noteKind: "pitched",
-      phrase: null,
-    });
+    expect(sessions.find((s) => s.id === second)?.tools["midi.vocals"]).toEqual(
+      {
+        noteKind: VocalNoteKind.Pitched,
+        phrase: null,
+      },
+    );
   });
 
   it("preserves tools when other session fields update", () => {
     const service = new ViewportService(createTestRulesetService());
     const id = service.getSnapshot().activeViewportId;
-    service.setModeToolState(id, "chart.frets", {
+    service.setModeToolState(id, "chart.lanes", {
       tool: "solo",
       phrase: null,
       placement: "normal",
     });
     service.updateViewport(id, { camera: { tick: 960 } });
     expect(
-      (service.getViewport(id)?.tools["chart.frets"] as { tool: string }).tool,
+      (service.getViewport(id)?.tools["chart.lanes"] as { tool: string }).tool,
     ).toBe("solo");
   });
 });

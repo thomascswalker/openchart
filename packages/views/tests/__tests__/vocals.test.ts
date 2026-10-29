@@ -8,7 +8,8 @@ import {
   RuleEnforcer,
   createRulesetContext,
   createDefaultModeRegistry,
-  type VocalPhraseKind,
+  VocalNoteKind,
+  VocalPhraseKind,
 } from "../../src/index.js";
 import { SongView } from "../../src/views/song.js";
 import { VocalTrackView } from "../../src/views/vocal.js";
@@ -39,7 +40,10 @@ function vocals(midi = new Midi()) {
     track,
     addPitched: (pitch: number, start: number, end: number, lyric?: string) => {
       track();
-      return view().addNote("pitched", start, end, { pitch, lyric });
+      return view().addNote(VocalNoteKind.Pitched, start, end, {
+        pitch,
+        lyric,
+      });
     },
     addPitchless: (
       start: number,
@@ -48,11 +52,14 @@ function vocals(midi = new Midi()) {
       pitch?: number,
     ) => {
       track();
-      return view().addNote("pitchless", start, end, { lyric, pitch });
+      return view().addNote(VocalNoteKind.Pitchless, start, end, {
+        lyric,
+        pitch,
+      });
     },
     addPercussion: (start: number, end: number) => {
       track();
-      return view().addNote("percussion", start, end);
+      return view().addNote(VocalNoteKind.Percussion, start, end);
     },
     addPhrase: (kind: VocalPhraseKind, start: number, end: number) => {
       track();
@@ -77,7 +84,9 @@ describe("vocal rules", () => {
     const lead = DefaultCompiledRuleset.byName.get("LEAD GUITAR")!;
     const descriptors = DefaultCompiledRuleset.descriptors();
     const d = (name: string) => descriptors.find((x) => x.name === name)!;
-    expect(registry.resolve(d(vocal.name), "piano-roll")?.id).toBe("vocals");
+    expect(registry.resolve(d(vocal.name), "piano-roll")?.id).toBe(
+      "midi.vocals",
+    );
     expect(registry.resolve(d(vocal.name), "highway")).toBeNull();
     expect(registry.resolve(d(lead.name), "highway")?.id).toBe("chart.lanes");
 
@@ -97,33 +106,33 @@ describe("vocal rules", () => {
   it("classifies pitched, pitchless, percussion and phrase pitches", () => {
     expect(VocalTrackView.classifyPitch(layout, 36)).toEqual({
       type: "note",
-      kind: "pitched",
+      kind: VocalNoteKind.Pitched,
     });
     expect(VocalTrackView.classifyPitch(layout, 84)).toEqual({
       type: "note",
-      kind: "pitched",
+      kind: VocalNoteKind.Pitched,
     });
     for (const pitch of [85, 35]) {
       expect(VocalTrackView.classifyPitch(layout, pitch)).toEqual({
         type: "note",
-        kind: "pitchless",
+        kind: VocalNoteKind.Pitchless,
       });
     }
     expect(VocalTrackView.classifyPitch(layout, 90)).toEqual({
       type: "note",
-      kind: "percussion",
+      kind: VocalNoteKind.Percussion,
     });
     expect(VocalTrackView.classifyPitch(layout, 96)).toEqual({
       type: "phrase",
-      kind: "vocal",
+      kind: VocalPhraseKind.Vocal,
     });
     expect(VocalTrackView.classifyPitch(layout, 111)).toEqual({
       type: "phrase",
-      kind: "power-window",
+      kind: VocalPhraseKind.PowerWindow,
     });
     expect(VocalTrackView.classifyPitch(layout, 116)).toEqual({
       type: "phrase",
-      kind: "stagepower",
+      kind: VocalPhraseKind.StagePower,
     });
     expect(VocalTrackView.classifyPitch(layout, 23)).toEqual({
       type: "unknown",
@@ -149,12 +158,12 @@ describe("VocalTrackView reading and validation", () => {
       [960, "lo"],
       [1440, "oh"],
     ]);
-    expect(v.view.getNotes("pitched")).toHaveLength(1);
+    expect(v.view.getNotes(VocalNoteKind.Pitched)).toHaveLength(1);
     expect(v.view.getNotes().map((n) => n.kind)).toEqual([
-      "pitched",
-      "pitchless",
-      "pitchless",
-      "percussion",
+      VocalNoteKind.Pitched,
+      VocalNoteKind.Pitchless,
+      VocalNoteKind.Pitchless,
+      VocalNoteKind.Percussion,
     ]);
   });
 
@@ -183,7 +192,7 @@ describe("VocalTrackView reading and validation", () => {
     );
     expect(byText.get("one")!.note).toMatchObject({ start: 480, pitch: 84 });
     expect(byText.get("two")!.note).toMatchObject({ start: 0, pitch: 36 });
-    expect(byText.get("percussion")!.note).toMatchObject({
+    expect(byText.get(VocalNoteKind.Percussion)!.note).toMatchObject({
       start: 1200,
       pitch: 90,
     });
@@ -227,12 +236,18 @@ describe("VocalTrackView reading and validation", () => {
 
   it("reads phrases by kind", () => {
     const v = vocals();
-    const phrase = v.addPhrase("vocal", 0, 960)!;
-    expect(phrase).toMatchObject({ kind: "vocal", start: 0, end: 960 });
-    expect(v.addPhrase("vocal", 960, 1440)).not.toBeNull();
-    expect(v.addPhrase("stagepower", 0, 1440)).not.toBeNull();
+    const phrase = v.addPhrase(VocalPhraseKind.Vocal, 0, 960)!;
+    expect(phrase).toMatchObject({
+      kind: VocalPhraseKind.Vocal,
+      start: 0,
+      end: 960,
+    });
+    expect(v.addPhrase(VocalPhraseKind.Vocal, 960, 1440)).not.toBeNull();
+    expect(v.addPhrase(VocalPhraseKind.StagePower, 0, 1440)).not.toBeNull();
     expect(v.view.updatePhrase(phrase.note, 120, 900)).toBe(true);
-    expect(v.view.getPhrases("vocal").map((p) => [p.start, p.end])).toEqual([
+    expect(
+      v.view.getPhrases(VocalPhraseKind.Vocal).map((p) => [p.start, p.end]),
+    ).toEqual([
       [120, 900],
       [960, 1440],
     ]);
@@ -269,11 +284,11 @@ describe("fixture VOCALS track", () => {
     const dir = path.dirname(fileURLToPath(import.meta.url));
     const midi = new Midi(fs.readFileSync(path.join(dir, "..", "song.mid")));
     const { view } = vocals(midi);
-    expect(view.getNotes("pitched")).toHaveLength(492);
-    expect(view.getNotes("pitchless")).toHaveLength(1);
-    expect(view.getPhrases("vocal")).toHaveLength(48);
-    expect(view.getPhrases("power-window")).toHaveLength(39);
-    expect(view.getPhrases("stagepower")).toHaveLength(11);
+    expect(view.getNotes(VocalNoteKind.Pitched)).toHaveLength(492);
+    expect(view.getNotes(VocalNoteKind.Pitchless)).toHaveLength(1);
+    expect(view.getPhrases(VocalPhraseKind.Vocal)).toHaveLength(48);
+    expect(view.getPhrases(VocalPhraseKind.PowerWindow)).toHaveLength(39);
+    expect(view.getPhrases(VocalPhraseKind.StagePower)).toHaveLength(11);
     const issues = view.validate();
     // Every lyric in the shipped chart sits on a note tick.
     expect(

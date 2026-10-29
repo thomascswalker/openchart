@@ -14,19 +14,20 @@ import {
 } from "../ruleset/compile.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 import {
+  EntityType,
   formatNoteId,
   formatTempoId,
   formatTextId,
   formatTimeSignatureId,
-  parseEntityId,
+  parseEntityFromId,
   type EntityId,
-} from "./entityId.js";
+} from "./entity.js";
 import {
   emptyEditResult,
   EditRejectedError,
   type EditResult,
 } from "./result.js";
-import type { RawCommand } from "./commands.js";
+import { EditCommandType, type GeneralCommand } from "./commands.js";
 
 export type { NoteSnapshot } from "./reader.js";
 
@@ -161,7 +162,7 @@ export class ChartDocument implements ChartDocumentReader {
    * Applies one raw command through the same preflight and execution path as a
    * batch. Invalid commands throw before any MIDI event is changed.
    */
-  public apply(command: RawCommand): EditResult {
+  public apply(command: GeneralCommand): EditResult {
     return this.applyBatch([command]);
   }
 
@@ -170,7 +171,7 @@ export class ChartDocument implements ChartDocumentReader {
    * EditRejectedError without changing MIDI. Unexpected failures after the
    * first mutation are rethrown; the caller must restore its transaction.
    */
-  public applyBatch(commands: readonly RawCommand[]): EditResult {
+  public applyBatch(commands: readonly GeneralCommand[]): EditResult {
     if (commands.length === 0) return emptyEditResult();
     for (const command of commands) this.validateCommand(command);
 
@@ -195,9 +196,9 @@ export class ChartDocument implements ChartDocumentReader {
     };
   }
 
-  private validateCommand(command: RawCommand): void {
+  private validateCommand(command: GeneralCommand): void {
     switch (command.type) {
-      case "ADD_NOTES":
+      case EditCommandType.AddNotes:
         for (const spec of command.notes) {
           this.validateTrackIndex(command, spec.trackIndex);
           this.validateNoteFields(
@@ -223,7 +224,7 @@ export class ChartDocument implements ChartDocumentReader {
           }
         }
         break;
-      case "UPDATE_NOTES":
+      case EditCommandType.UpdateNotes:
         for (const patch of command.patches) {
           const { note } = this.requireCommandNote(command, patch.id);
           if (patch.tick !== undefined) {
@@ -266,7 +267,7 @@ export class ChartDocument implements ChartDocumentReader {
           }
         }
         break;
-      case "MOVE_NOTES":
+      case EditCommandType.MoveNotes:
         this.validateInteger(command, command.tickDelta, "tickDelta");
         this.validateInteger(command, command.pitchDelta, "pitchDelta");
         command.targetIds.forEach((id) => {
@@ -284,7 +285,7 @@ export class ChartDocument implements ChartDocumentReader {
           }
         });
         break;
-      case "RESIZE_NOTES":
+      case EditCommandType.ResizeNotes:
         this.validateInteger(command, command.durationDelta, "durationDelta");
         command.targetIds.forEach((id) => {
           const { note } = this.requireCommandNote(command, id);
@@ -301,7 +302,7 @@ export class ChartDocument implements ChartDocumentReader {
           }
         });
         break;
-      case "DELETE_ENTITIES":
+      case EditCommandType.DeleteEntities:
         command.targetIds.forEach((id) => {
           if (!this.entityExists(id)) {
             this.reject(
@@ -312,7 +313,7 @@ export class ChartDocument implements ChartDocumentReader {
           }
         });
         break;
-      case "ADD_TEXT":
+      case EditCommandType.AddText:
         this.validateTrackIndex(command, command.trackIndex);
         this.validateTick(command, command.tick);
         if (!this.isTextMetaType(command.metaType)) {
@@ -326,7 +327,7 @@ export class ChartDocument implements ChartDocumentReader {
           this.reject(command, "invalid-text", "Text must not be empty");
         }
         break;
-      case "UPDATE_TEXT": {
+      case EditCommandType.UpdateText: {
         this.requireTextEvent(command, command.id);
         if (
           command.text !== undefined &&
@@ -345,7 +346,7 @@ export class ChartDocument implements ChartDocumentReader {
         }
         break;
       }
-      case "SET_TEMPO":
+      case EditCommandType.SetTempo:
         this.validateGlobalTick(command, command.tick);
         if (
           !Number.isInteger(command.microsecondsPerQuarterNote) ||
@@ -359,11 +360,11 @@ export class ChartDocument implements ChartDocumentReader {
           );
         }
         break;
-      case "REMOVE_TEMPO":
-      case "REMOVE_TIME_SIGNATURE":
+      case EditCommandType.RemoveTempo:
+      case EditCommandType.RemoveTimeSignature:
         this.validateGlobalTick(command, command.tick);
         break;
-      case "SET_TIME_SIGNATURE":
+      case EditCommandType.SetTimeSignature:
         this.validateGlobalTick(command, command.tick);
         if (
           !Number.isInteger(command.numerator) ||
@@ -391,9 +392,9 @@ export class ChartDocument implements ChartDocumentReader {
     }
   }
 
-  private applyValidated(command: RawCommand): EditResult {
+  private applyValidated(command: GeneralCommand): EditResult {
     switch (command.type) {
-      case "ADD_NOTES": {
+      case EditCommandType.AddNotes: {
         const createdIds = command.notes.map((spec) => {
           const note = this.getTrack(spec.trackIndex).insertNote(spec);
           return formatNoteId(
@@ -407,7 +408,7 @@ export class ChartDocument implements ChartDocumentReader {
           createdIds,
         };
       }
-      case "UPDATE_NOTES": {
+      case EditCommandType.UpdateNotes: {
         const updatedIds: EntityId[] = [];
         for (const patch of command.patches) {
           const target = this.resolveNote(patch.id)!;
@@ -438,7 +439,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds,
         };
       }
-      case "MOVE_NOTES": {
+      case EditCommandType.MoveNotes: {
         const updatedIds: EntityId[] = [];
         for (const id of command.targetIds) {
           const target = this.resolveNote(id)!;
@@ -462,7 +463,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds,
         };
       }
-      case "RESIZE_NOTES": {
+      case EditCommandType.ResizeNotes: {
         const updatedIds: EntityId[] = [];
         for (const id of command.targetIds) {
           const target = this.resolveNote(id)!;
@@ -480,39 +481,45 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds,
         };
       }
-      case "DELETE_ENTITIES": {
+      case EditCommandType.DeleteEntities: {
         const removedIds: EntityId[] = [];
-        for (const id of command.targetIds) {
-          const parsed = parseEntityId(id)!;
-          let removed: boolean;
-          switch (parsed.kind) {
-            case "note": {
-              const target = this.resolveNote(id)!;
-              removed = target.track.removeNote(
-                target.note.noteOn,
-                target.note.noteOff,
-              );
+        command.targetIds.forEach((targetId) => {
+          const entity = parseEntityFromId(targetId)!;
+
+          switch (entity.type) {
+            case EntityType.Note: {
+              const target = this.resolveNote(targetId)!;
+
+              if (target.track.removeNote(target.note)) {
+                removedIds.push(targetId);
+              }
               break;
             }
-            case "text":
-              removed = this.getTrack(parsed.trackIndex!).removeEventById(
-                parsed.eventId,
-              );
+            case EntityType.Text: {
+              const track = this.getTrack(entity.trackIndex!);
+              if (track.removeEventById(entity.eventId)) {
+                removedIds.push(targetId);
+              }
               break;
-            case "tempo":
-            case "time-signature":
-              removed = this.getTrack(0).removeEventById(parsed.eventId);
+            }
+            case EntityType.Tempo:
+            case EntityType.TimeSignature: {
+              if (this.getTrack(0).removeEventById(entity.eventId)) {
+                removedIds.push(targetId);
+                break;
+              }
               break;
+            }
           }
-          if (removed) removedIds.push(id);
-        }
+        });
+
         return {
           ...emptyEditResult(),
           changed: removedIds.length > 0,
           removedIds,
         };
       }
-      case "ADD_TEXT": {
+      case EditCommandType.AddText: {
         const track = this.getTrack(command.trackIndex);
         const text = track.addTextEvent(
           command.metaType,
@@ -522,10 +529,10 @@ export class ChartDocument implements ChartDocumentReader {
         const id = formatTextId(command.trackIndex, track.getEventId(text));
         return { ...emptyEditResult(), changed: true, createdIds: [id] };
       }
-      case "UPDATE_TEXT": {
-        const parsed = parseEntityId(command.id)!;
-        const track = this.getTrack(parsed.trackIndex!);
-        const event = track.getEventById(parsed.eventId)!;
+      case EditCommandType.UpdateText: {
+        const entity = parseEntityFromId(command.id)!;
+        const track = this.getTrack(entity.trackIndex!);
+        const event = track.getEventById(entity.eventId)!;
         if (event.status !== 0xff || !("text" in event)) {
           throw new Error("Validated text event changed before execution");
         }
@@ -553,7 +560,7 @@ export class ChartDocument implements ChartDocumentReader {
           updatedIds: [command.id],
         };
       }
-      case "SET_TEMPO": {
+      case EditCommandType.SetTempo: {
         const existing = this.globalEventAt(MetaType.Tempo, command.tick);
         if (
           existing &&
@@ -583,9 +590,9 @@ export class ChartDocument implements ChartDocumentReader {
           diagnostics: [],
         };
       }
-      case "REMOVE_TEMPO":
+      case EditCommandType.RemoveTempo:
         return this.removeGlobalEventAt(command, MetaType.Tempo, "tempo");
-      case "SET_TIME_SIGNATURE": {
+      case EditCommandType.SetTimeSignature: {
         const existing = this.globalEventAt(
           MetaType.TimeSignature,
           command.tick,
@@ -624,7 +631,7 @@ export class ChartDocument implements ChartDocumentReader {
           diagnostics: [],
         };
       }
-      case "REMOVE_TIME_SIGNATURE":
+      case EditCommandType.RemoveTimeSignature:
         return this.removeGlobalEventAt(
           command,
           MetaType.TimeSignature,
@@ -651,17 +658,18 @@ export class ChartDocument implements ChartDocumentReader {
   private resolveNote(
     id: string,
   ): { trackIndex: number; track: MidiTrack; note: MidiNote } | null {
-    const parsed = parseEntityId(id);
-    if (parsed?.kind !== "note" || parsed.trackIndex === null) return null;
-    const trackIndex = parsed.trackIndex;
-    const track = this.midi.tracks[trackIndex];
+    const parsed = parseEntityFromId(id);
+    if (parsed?.type !== "note" || parsed.trackIndex === undefined) {
+      return null;
+    }
+    const track = this.midi.tracks[parsed.trackIndex];
     if (!track) return null;
     const note = track.getNoteByEventId(parsed.eventId);
-    return note ? { trackIndex, track, note } : null;
+    return note ? { trackIndex: parsed.trackIndex, track, note } : null;
   }
 
   private requireCommandNote(
-    command: RawCommand,
+    command: GeneralCommand,
     id: EntityId,
   ): { trackIndex: number; track: MidiTrack; note: MidiNote } {
     const target = this.resolveNote(id);
@@ -671,9 +679,9 @@ export class ChartDocument implements ChartDocumentReader {
     return target;
   }
 
-  private requireTextEvent(command: RawCommand, id: EntityId): MidiEvent {
-    const parsed = parseEntityId(id);
-    if (parsed?.kind !== "text" || parsed.trackIndex === null) {
+  private requireTextEvent(command: GeneralCommand, id: EntityId): MidiEvent {
+    const parsed = parseEntityFromId(id);
+    if (parsed?.type !== "text" || parsed.trackIndex === undefined) {
       this.reject(command, "invalid-entity-id", `Text ID '${id}' is invalid`);
     }
     const event = this.midi.tracks[parsed.trackIndex]?.getEventById(
@@ -686,17 +694,17 @@ export class ChartDocument implements ChartDocumentReader {
   }
 
   private entityExists(id: EntityId): boolean {
-    const parsed = parseEntityId(id);
+    const parsed = parseEntityFromId(id);
     if (!parsed) return false;
-    if (parsed.kind === "note") return this.resolveNote(id) !== null;
-    if (parsed.trackIndex !== null) {
+    if (parsed.type === "note") return this.resolveNote(id) !== null;
+    if (parsed.trackIndex !== undefined) {
       const event = this.midi.tracks[parsed.trackIndex]?.getEventById(
         parsed.eventId,
       );
       return Boolean(
         event &&
         event.status === 0xff &&
-        (parsed.kind !== "text" || "text" in event),
+        (parsed.type !== "text" || "text" in event),
       );
     }
     const event = this.midi.tracks[0]?.getEventById(parsed.eventId);
@@ -704,13 +712,16 @@ export class ChartDocument implements ChartDocumentReader {
       event &&
       event.status === 0xff &&
       "type" in event &&
-      (parsed.kind === "tempo"
+      (parsed.type === "tempo"
         ? event.type === MetaType.Tempo
         : event.type === MetaType.TimeSignature),
     );
   }
 
-  private validateTrackIndex(command: RawCommand, trackIndex: number): void {
+  private validateTrackIndex(
+    command: GeneralCommand,
+    trackIndex: number,
+  ): void {
     if (
       !Number.isSafeInteger(trackIndex) ||
       trackIndex < 0 ||
@@ -724,7 +735,7 @@ export class ChartDocument implements ChartDocumentReader {
     }
   }
 
-  private validateGlobalTick(command: RawCommand, tick: number): void {
+  private validateGlobalTick(command: GeneralCommand, tick: number): void {
     this.validateTick(command, tick);
     if (!this.midi.tracks[0]) {
       this.reject(
@@ -735,7 +746,7 @@ export class ChartDocument implements ChartDocumentReader {
     }
   }
 
-  private validateTick(command: RawCommand, tick: number): void {
+  private validateTick(command: GeneralCommand, tick: number): void {
     if (!Number.isSafeInteger(tick) || tick < 0) {
       this.reject(
         command,
@@ -746,7 +757,7 @@ export class ChartDocument implements ChartDocumentReader {
   }
 
   private validateInteger(
-    command: RawCommand,
+    command: GeneralCommand,
     value: number,
     name: string,
   ): void {
@@ -756,7 +767,7 @@ export class ChartDocument implements ChartDocumentReader {
   }
 
   private validateNoteFields(
-    command: RawCommand,
+    command: GeneralCommand,
     tick: number,
     pitch: number,
     duration: number,
@@ -797,8 +808,10 @@ export class ChartDocument implements ChartDocumentReader {
 
   private removeGlobalEventAt(
     command: Extract<
-      RawCommand,
-      { type: "REMOVE_TEMPO" | "REMOVE_TIME_SIGNATURE" }
+      GeneralCommand,
+      {
+        type: EditCommandType.RemoveTempo | EditCommandType.RemoveTimeSignature;
+      }
     >,
     type: MetaType.Tempo | MetaType.TimeSignature,
     kind: "tempo" | "time-signature",
@@ -823,7 +836,11 @@ export class ChartDocument implements ChartDocumentReader {
     };
   }
 
-  private reject(command: RawCommand, code: string, message: string): never {
+  private reject(
+    command: GeneralCommand,
+    code: string,
+    message: string,
+  ): never {
     throw new EditRejectedError(code, message, command);
   }
 

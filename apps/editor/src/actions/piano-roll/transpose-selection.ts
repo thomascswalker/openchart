@@ -1,6 +1,9 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { parseEntityId } from "@openchart/views";
+import { DomainCommandType, EditCommandType } from "@openchart/views";
+
+import { parseSelectedNoteEntityIds } from "./util";
+
 import type { EditingService } from "../../services/editor/editing";
 
 /** Transposes selected notes through the active editing session. */
@@ -18,28 +21,33 @@ export class TransposeSelectionAction extends Action<[number]> {
     const session = accessor
       .get<EditingService>("editor.editing")
       .getActiveSession();
-    if (!session) return;
-    const targetIds = selectedNoteIds(session.selection.getSelectedIds());
-    if (targetIds.length === 0) return;
-    const command =
-      session.mode.id === "vocals"
-        ? {
-            type: "MOVE_VOCAL_ENTITIES",
-            targetIds,
-            tickDelta: 0,
-            pitchDelta: semitones,
-            previousValidTickDelta: 0,
-          }
-        : {
-            type: "MOVE_NOTES",
-            targetIds,
-            tickDelta: 0,
-            pitchDelta: semitones,
-          };
-    session.execute(command);
+    if (!session) {
+      return;
+    }
+    const targetIds = parseSelectedNoteEntityIds(
+      session.selection.getSelectedIds(),
+    );
+    if (targetIds.length === 0) {
+      return;
+    }
+    switch (session.mode.id) {
+      case "midi.vocals":
+        session.execute({
+          type: DomainCommandType.MoveVocalEntities,
+          targetIds,
+          tickDelta: 0,
+          pitchDelta: semitones,
+          previousValidTickDelta: 0,
+        });
+        break;
+      default:
+        session.execute({
+          type: EditCommandType.MoveNotes,
+          targetIds,
+          tickDelta: 0,
+          pitchDelta: semitones,
+        });
+        break;
+    }
   }
-}
-
-function selectedNoteIds(ids: readonly string[]): string[] {
-  return ids.filter((id) => parseEntityId(id)?.kind === "note");
 }

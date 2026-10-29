@@ -1,10 +1,13 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import {
+  DomainCommandType,
+  EditCommandType,
   DefaultCompiledRuleset,
   DefaultRuleset,
   Difficulty,
   EditRejectedError,
+  VocalPhraseKind,
   compileRuleset,
   createStandaloneEditing,
   formatNoteId,
@@ -40,7 +43,7 @@ describe("edit enforcement through the session", () => {
     s.track.insertNote({ tick: 0, pitch: 96, duration: 960 });
     const before = s.midi.toBuffer();
     const result = session(s, "highway").execute({
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane: 0,
       tick: 480,
       placement: "normal",
@@ -59,7 +62,7 @@ describe("edit enforcement through the session", () => {
     expect(() =>
       session(s, "highway").execute(
         {
-          type: "PLACE_CHART_NOTE",
+          type: DomainCommandType.PlaceChartNote,
           lane: 0,
           tick: 480,
           placement: "normal",
@@ -73,7 +76,7 @@ describe("edit enforcement through the session", () => {
   it("commits warnings and reports them as diagnostics", () => {
     const s = setup("LEAD GUITAR");
     const result = session(s, "piano-roll").execute({
-      type: "ADD_NOTES",
+      type: EditCommandType.AddNotes,
       notes: [
         { trackIndex: 1, tick: 480, pitch: 101, duration: 1 }, // forceHopo
         { trackIndex: 1, tick: 480, pitch: 102, duration: 1 }, // forceStrum
@@ -90,7 +93,7 @@ describe("edit enforcement through the session", () => {
   it("applies unknown-pitch policy to raw edits on configured tracks only", () => {
     const configured = setup("LEAD GUITAR");
     const add = {
-      type: "ADD_NOTES" as const,
+      type: EditCommandType.AddNotes as const,
       notes: [{ trackIndex: 1, tick: 0, pitch: 20, duration: 10 }],
     };
     expect(
@@ -115,7 +118,7 @@ describe("edit enforcement through the session", () => {
     s.track.insertNote({ tick: 0, pitch: 96, duration: 960 });
     const gesture = session(s, "highway").beginGesture();
     const preview = gesture.preview({
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane: 0,
       tick: 480,
       placement: "normal",
@@ -137,7 +140,7 @@ describe("edit enforcement through the session", () => {
       s.track.getEventId(s.track.getNotes()[0]!.noteOn),
     );
     const result = session(s, "piano-roll", null).execute({
-      type: "MOVE_VOCAL_ENTITIES",
+      type: DomainCommandType.MoveVocalEntities,
       targetIds: [id],
       tickDelta: 150,
       pitchDelta: 0,
@@ -156,8 +159,8 @@ describe("edit enforcement through the session", () => {
     const vocals = session(s, "piano-roll", null);
     const add = (tick: number) =>
       vocals.execute({
-        type: "CREATE_VOCAL_PHRASE",
-        phraseKind: "power-window",
+        type: DomainCommandType.CreateVocalPhrase,
+        phraseKind: VocalPhraseKind.PowerWindow,
         startTick: tick,
         endTick: tick + 50,
       });
@@ -175,7 +178,7 @@ describe("edit enforcement through the session", () => {
     );
     const text = (t: string, metaType: number = MetaType.Text) =>
       global.execute({
-        type: "ADD_TEXT",
+        type: EditCommandType.AddText,
         trackIndex: 1,
         metaType,
         tick: 0,
@@ -191,8 +194,11 @@ describe("edit enforcement through the session", () => {
     // Meta types outside the grammar's metaEventTypes are not text events.
     expect(text("anything", MetaType.Marker).changed).toBe(true);
     expect(
-      global.execute({ type: "ADD_SECTION", tick: 960, name: "Chorus" })
-        .changed,
+      global.execute({
+        type: DomainCommandType.AddSection,
+        tick: 960,
+        name: "Chorus",
+      }).changed,
     ).toBe(true);
     expect(
       s.midi.tracks[1]!.getTextEvents().map((e) => [e.type, e.text]),
@@ -219,7 +225,7 @@ describe("the hierarchy is dynamic", () => {
 
     const s = setup("FOUR PAD", rules);
     const result = session(s, "highway").execute({
-      type: "PLACE_CHART_NOTE",
+      type: DomainCommandType.PlaceChartNote,
       lane: 4,
       tick: 0,
       placement: "normal",

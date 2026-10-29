@@ -127,7 +127,7 @@ export function createModeToolbarGroups(
       (id === "vocal-tools" && groupContext.activeView === "piano-roll") ||
       !["highway-tools", "vocal-tools"].includes(id),
   }));
-  if (mode.id === "vocals") {
+  if (mode.id === "midi.vocals") {
     const vocalGroup = modeGroups.find((group) => group.id === "vocal-tools");
     if (vocalGroup) {
       vocalGroup.items.push({

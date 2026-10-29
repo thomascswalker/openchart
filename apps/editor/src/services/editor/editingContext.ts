@@ -1,4 +1,8 @@
-import type { EditingSession } from "@openchart/views";
+import {
+  DomainCommandType,
+  EditCommandType,
+  type EditingSession,
+} from "@openchart/views";
 
 export interface EditingContextSnapshot {
   values: Record<string, string | boolean | null>;
@@ -26,9 +30,9 @@ export function createEditingContextSnapshot(
     values[`editing.can.${commandType}`] = Boolean(session?.can(commandType));
   }
   values["editing.can.MOVE_SELECTION"] = Boolean(
-    session?.can("MOVE_NOTES") ||
-    session?.can("MOVE_CHART_NOTES") ||
-    session?.can("MOVE_VOCAL_ENTITIES"),
+    session?.can(EditCommandType.MoveNotes) ||
+    session?.can(DomainCommandType.MoveChartNotes) ||
+    session?.can(DomainCommandType.MoveVocalEntities),
   );
   return { values, commandTypes };
 }

@@ -46,7 +46,7 @@ function physicalLaneForNote(
   const classification = getClassification(context, chart, note);
   const session = context.getEditingSession();
   if (!classification || !session) return -1;
-  if (classification.kind !== "note" || !classification.movable) return -1;
+  if (classification.type !== "note" || !classification.movable) return -1;
   // Bar lanes (kick, open) span the whole highway and sit on lane 0.
   const role = chart.classify(note.pitch);
   if (role.kind === "laneNote" && role.bar) return 0;
@@ -601,7 +601,7 @@ export class HighwayInputController {
                 chart,
                 note,
               );
-              if (classification?.kind !== "note" || !classification.movable) {
+              if (classification?.type !== "note" || !classification.movable) {
                 return false;
               }
               const visual = laneVisualFor(chart, note.pitch);

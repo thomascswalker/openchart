@@ -66,6 +66,42 @@ export default function Toolbar({ session }: ToolbarProps) {
       label: placementLabel(tool.value as string, tool.label),
     }));
 
+  const getPlacementDropdown = () => {
+    if (placementTools.length === 0 || !placementStateKey || !mode) {
+      return null;
+    }
+    const isVocalMode =
+      mode.id === "midi.vocals" && session.view === "piano-roll";
+    const isHighway = session.view === "highway";
+
+    if (!isVocalMode && !isHighway) {
+      return null;
+    }
+
+    const ariaLabel = isVocalMode ? "Vocal note type" : "Note type";
+    const disabled = isVocalMode && placementState.phrase !== null;
+    return (
+      <Dropdown
+        aria-label={ariaLabel}
+        disabled={disabled}
+        value={placementValue}
+        onChange={(value) => {
+          const selected = placementTools.find(
+            (tool) => String(tool.value) === value,
+          );
+          if (selected) {
+            runAction("editor.set-viewport-tools", session.id, mode.id, {
+              [placementStateKey]: selected.value,
+            });
+          }
+        }}
+        options={placementOptions}
+        minWidth={100}
+        maxWidth={120}
+      />
+    );
+  };
+
   return (
     <Section
       className={styles.toolbar}
@@ -98,39 +134,7 @@ export default function Toolbar({ session }: ToolbarProps) {
                 maxWidth="70px"
                 options={SnapOptions}
               />
-              {placementTools.length > 0 &&
-                placementStateKey &&
-                mode &&
-                ((mode.id === "vocals" && session.view === "piano-roll") ||
-                  (mode.id !== "vocals" && session.view === "highway")) && (
-                  <Dropdown
-                    aria-label={
-                      mode.id === "vocals" ? "Vocal note type" : "Note type"
-                    }
-                    disabled={
-                      mode.id === "vocals" && placementState.phrase !== null
-                    }
-                    value={placementValue}
-                    onChange={(value) => {
-                      const selected = placementTools.find(
-                        (tool) => String(tool.value) === value,
-                      );
-                      if (selected) {
-                        runAction(
-                          "editor.set-viewport-tools",
-                          session.id,
-                          mode.id,
-                          {
-                            [placementStateKey]: selected.value,
-                          },
-                        );
-                      }
-                    }}
-                    options={placementOptions}
-                    minWidth={100}
-                    maxWidth={120}
-                  />
-                )}
+              {getPlacementDropdown()}
               {modeGroups.map((modeGroup) => (
                 <ToolGroup
                   key={modeGroup.id}

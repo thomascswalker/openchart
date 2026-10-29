@@ -1,4 +1,4 @@
-import { formatNoteId } from "@openchart/views";
+import { DomainCommandType, formatNoteId } from "@openchart/views";
 import { describe, expect, it } from "vitest";
 import { createHighwayTestSetup } from "./testUtils";
 
@@ -18,7 +18,7 @@ describe("Highway session selection", () => {
 
     expect(
       setup.session.execute({
-        type: "MOVE_CHART_NOTES",
+        type: DomainCommandType.MoveChartNotes,
         targetIds: [id],
         tickDelta: 240,
         laneDelta: 1,

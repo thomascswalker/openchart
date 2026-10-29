@@ -4,10 +4,9 @@ import type {
   ProjectionRow,
   VocalLaneSpec,
   VocalLayout,
-  VocalNoteKind,
   VocalPhraseKind,
 } from "@openchart/views";
-import { formatNoteId, VocalTrackView } from "@openchart/views";
+import { formatNoteId, VocalNoteKind, VocalTrackView } from "@openchart/views";
 import type { PitchRange } from "../../../audio/soundboard";
 
 /** How a note is drawn and edited. Generic notes are plain pitched notes. */
@@ -17,7 +16,7 @@ export type PianoRollNoteKind =
 /** Pinned lane ids come from the vocal projection (derived from the ruleset). */
 export type PinnedLaneId = string;
 export type LaneDef = VocalLaneSpec;
-export type PianoRollProfileId = "midi.raw" | "vocals";
+export type PianoRollProfileId = "midi.raw" | "midi.vocals";
 
 export interface PianoRollHeaderOptions {
   textLane: "all" | "lyrics";
@@ -70,14 +69,14 @@ export const GENERIC_PROFILE: PianoRollProfile = Object.freeze({
 export function profileFromSession(session: EditingSession): PianoRollProfile {
   const projection = session.getProjection();
   if (session.mode.id === "midi.raw") return GENERIC_PROFILE;
-  if (session.mode.id !== "vocals") {
+  if (session.mode.id !== "midi.vocals") {
     throw new Error(
       `Piano Roll does not support editing mode '${session.mode.id}'`,
     );
   }
 
   const rows = projection.getRows();
-  const pitchRows = rows.filter((row) => row.kind === "pitched");
+  const pitchRows = rows.filter((row) => row.kind === VocalNoteKind.Pitched);
   if (pitchRows.length === 0) {
     throw new Error("Vocal Piano Roll projection has no pitched rows");
   }
@@ -86,7 +85,7 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
     low: Math.min(...pitchValues),
     high: Math.max(...pitchValues),
   };
-  const laneRows = rows.filter((row) => row.kind !== "pitched");
+  const laneRows = rows.filter((row) => row.kind !== VocalNoteKind.Pitched);
   const lanes = laneRows.map((row) =>
     laneFromProjection(row, projection, session),
   );
@@ -103,7 +102,7 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
   }
 
   return {
-    id: "vocals",
+    id: "midi.vocals",
     pitchRange: { low: range.low, high: range.high },
     pinnedLanes: lanes,
     keyboardLabels: true,
@@ -112,8 +111,8 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
     classify: (pitch) => {
       const row = rowForPitch(projection, pitch);
       if (!row) return "unknown";
-      return row.kind === "pitched"
-        ? "pitched"
+      return row.kind === VocalNoteKind.Pitched
+        ? VocalNoteKind.Pitched
         : (row.kind as PianoRollNoteKind);
     },
     laneForPitch: (pitch) => laneByPitch.get(pitch) ?? null,
