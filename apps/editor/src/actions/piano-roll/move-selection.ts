@@ -1,6 +1,10 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { DomainCommandType, EditCommandType } from "@openchart/views";
+import {
+  DomainCommandType,
+  EditCommandType,
+  EditingModeId,
+} from "@openchart/views";
 import { parseSelectedNoteEntityIds } from "./util";
 import type { EditingService } from "../../services/editor/editing";
 import { ViewportService } from "../../services/editor/viewports";
@@ -39,7 +43,7 @@ export class MoveSelectionAction extends Action<[-1 | 1]> {
       : 8;
 
     switch (session.mode.id) {
-      case "midi.vocals":
+      case EditingModeId.MidiVocals:
         session.execute({
           type: DomainCommandType.MoveVocalEntities,
           targetIds,

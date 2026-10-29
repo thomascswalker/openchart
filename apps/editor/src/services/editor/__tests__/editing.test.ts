@@ -10,6 +10,7 @@ import { createTestRulesetService } from "../../__tests__/testUtils";
 import {
   DomainCommandType,
   EditCommandType,
+  EditingModeId,
   EntityType,
   VocalNoteKind,
 } from "@openchart/views";
@@ -91,7 +92,7 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     editing.selection.add(noteId);
     editing.clipboard.setData({
-      sourceModeId: "midi.raw",
+      sourceModeId: EditingModeId.MidiRaw,
       entities: [
         {
           relativeTick: 0,
@@ -180,7 +181,7 @@ describe("EditingService", () => {
     );
 
     const global = editing.getSession("viewport-1", "global");
-    expect(global?.mode.id).toBe("midi.global");
+    expect(global?.mode.id).toBe(EditingModeId.MidiGlobal);
     expect(global?.hostKind).toBe("global");
     expect(
       global?.execute({
@@ -263,17 +264,23 @@ describe("EditingService", () => {
     const active = viewports.getSnapshot().activeViewportId;
     const other = viewports.addViewport("piano-roll")!;
 
-    editing.updateToolState(active, "midi.vocals", {
+    editing.updateToolState(active, EditingModeId.MidiVocals, {
       noteKind: VocalNoteKind.Percussion,
     });
-    expect(viewports.getViewport(active)?.tools["midi.vocals"]).toEqual({
+    expect(
+      viewports.getViewport(active)?.tools[EditingModeId.MidiVocals],
+    ).toEqual({
       noteKind: VocalNoteKind.Percussion,
       phrase: null,
     });
     expect(() =>
-      editing.updateToolState(active, "midi.vocals", { noteKind: "invalid" }),
+      editing.updateToolState(active, EditingModeId.MidiVocals, {
+        noteKind: "invalid",
+      }),
     ).toThrow();
-    expect(viewports.getViewport(other)?.tools["midi.vocals"]).toEqual({
+    expect(
+      viewports.getViewport(other)?.tools[EditingModeId.MidiVocals],
+    ).toEqual({
       noteKind: VocalNoteKind.Pitched,
       phrase: null,
     });

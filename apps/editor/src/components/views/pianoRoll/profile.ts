@@ -1,10 +1,11 @@
-import type {
-  EditingSession,
-  Projection,
-  ProjectionRow,
-  VocalLaneSpec,
-  VocalLayout,
-  VocalPhraseKind,
+import {
+  EditingModeId,
+  type EditingSession,
+  type Projection,
+  type ProjectionRow,
+  type VocalLaneSpec,
+  type VocalLayout,
+  type VocalPhraseKind,
 } from "@openchart/views";
 import { formatNoteId, VocalNoteKind, VocalTrackView } from "@openchart/views";
 import type { PitchRange } from "../../../audio/soundboard";
@@ -16,7 +17,8 @@ export type PianoRollNoteKind =
 /** Pinned lane ids come from the vocal projection (derived from the ruleset). */
 export type PinnedLaneId = string;
 export type LaneDef = VocalLaneSpec;
-export type PianoRollProfileId = "midi.raw" | "midi.vocals";
+export type PianoRollProfileId =
+  typeof EditingModeId.MidiRaw | typeof EditingModeId.MidiVocals;
 
 export interface PianoRollHeaderOptions {
   textLane: "all" | "lyrics";
@@ -55,7 +57,7 @@ const VocalHeader: PianoRollHeaderOptions = Object.freeze({
 
 /** Raw MIDI mode: any pitch from 0 through 127 and no pinned lanes. */
 export const GENERIC_PROFILE: PianoRollProfile = Object.freeze({
-  id: "midi.raw",
+  id: EditingModeId.MidiRaw,
   pitchRange: Object.freeze({ low: 0, high: 127 }),
   pinnedLanes: Object.freeze([]),
   keyboardLabels: false,
@@ -68,8 +70,8 @@ export const GENERIC_PROFILE: PianoRollProfile = Object.freeze({
 /** Builds the Piano Roll projection directly from its active editing session. */
 export function profileFromSession(session: EditingSession): PianoRollProfile {
   const projection = session.getProjection();
-  if (session.mode.id === "midi.raw") return GENERIC_PROFILE;
-  if (session.mode.id !== "midi.vocals") {
+  if (session.mode.id === EditingModeId.MidiRaw) return GENERIC_PROFILE;
+  if (session.mode.id !== EditingModeId.MidiVocals) {
     throw new Error(
       `Piano Roll does not support editing mode '${session.mode.id}'`,
     );
@@ -102,7 +104,7 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
   }
 
   return {
-    id: "midi.vocals",
+    id: EditingModeId.MidiVocals,
     pitchRange: { low: range.low, high: range.high },
     pinnedLanes: lanes,
     keyboardLabels: true,

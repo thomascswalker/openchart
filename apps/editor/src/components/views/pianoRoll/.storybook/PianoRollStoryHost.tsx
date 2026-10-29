@@ -340,7 +340,7 @@ export function PianoRollStoryHost({
             onChange={(value) => setSnapDenominator(Number(value))}
           />
         </div>
-        {profile.id === "midi.vocals" ? (
+        {profile.id === EditingModeId.MidiVocals ? (
           <div className="piano-roll-story__field">
             <Label htmlFor="piano-roll-vocal-kind">Vocal note type</Label>
             <Dropdown

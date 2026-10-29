@@ -18,8 +18,15 @@ import {
 import type { ChartDocumentReader } from "../reader";
 import type { Rejection } from "../result";
 
+export const EditingModeId = {
+  MidiRaw: "midi.raw",
+  MidiGlobal: "midi.global",
+  MidiVocals: "midi.vocals",
+  ChartLanes: "chart.lanes",
+} as const;
+
 export type EditingModeId =
-  "midi.raw" | "midi.global" | "midi.vocals" | "chart.lanes" | (string & {});
+  (typeof EditingModeId)[keyof typeof EditingModeId] | (string & {});
 
 /** Document, target, and configuration visible to a pure editing mode. */
 export interface ModeContext {

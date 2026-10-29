@@ -5,6 +5,7 @@ import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import {
   DefaultCompiledRuleset,
+  EditingModeId,
   RuleEnforcer,
   createRulesetContext,
   createDefaultModeRegistry,
@@ -85,10 +86,12 @@ describe("vocal rules", () => {
     const descriptors = DefaultCompiledRuleset.descriptors();
     const d = (name: string) => descriptors.find((x) => x.name === name)!;
     expect(registry.resolve(d(vocal.name), "piano-roll")?.id).toBe(
-      "midi.vocals",
+      EditingModeId.MidiVocals,
     );
     expect(registry.resolve(d(vocal.name), "highway")).toBeNull();
-    expect(registry.resolve(d(lead.name), "highway")?.id).toBe("chart.lanes");
+    expect(registry.resolve(d(lead.name), "highway")?.id).toBe(
+      EditingModeId.ChartLanes,
+    );
 
     const l = view.getLayout();
     expect(l.range).toEqual({ low: 36, high: 84 });

@@ -8,6 +8,7 @@ import { Vector2 } from "three";
 import {
   DomainCommandType,
   EditCommandType,
+  EditingModeId,
   type EditCommand,
   type EditingSession,
   type EntityId,
@@ -694,7 +695,7 @@ export class HeaderController extends IController {
       }
       if (
         event.key === "Tab" &&
-        this.context.getProfile().id === "midi.vocals" &&
+        this.context.getProfile().id === EditingModeId.MidiVocals &&
         this.#editingMarker?.lane === "text"
       ) {
         event.preventDefault();

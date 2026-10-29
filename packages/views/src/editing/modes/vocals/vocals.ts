@@ -24,7 +24,7 @@ import type {
   Projection,
   ProjectionRow,
 } from "../../modes/mode";
-import { isRawCommand } from "../../modes/mode";
+import { EditingModeId, isRawCommand } from "../../modes/mode";
 import type { NoteSnapshot } from "../../reader";
 import type { Rejection } from "../../result";
 import {
@@ -87,7 +87,7 @@ const domainCommandTypes = new Set([
 
 export function createVocalsMode(): EditingMode<VocalsToolState> {
   return {
-    id: "midi.vocals",
+    id: EditingModeId.MidiVocals,
     label: "Vocals",
     hostKinds: new Set(["piano-roll"]),
     appliesTo: (track) => track.kind === "vocals",
@@ -181,7 +181,7 @@ function expandVocalPaste(
       continue;
     }
 
-    const sameMode = payload.sourceModeId === "midi.vocals";
+    const sameMode = payload.sourceModeId === EditingModeId.MidiVocals;
     const vocalClassification = sameMode
       ? null
       : VocalTrackView.classifyPitch(layout, entity.pitch);

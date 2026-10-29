@@ -4,6 +4,7 @@ import characterization from "../fixtures/characterization/editing.json" with { 
 import {
   DomainCommandType,
   EditCommandType,
+  EditingModeId,
   DefaultCompiledRuleset,
   DefaultRuleset,
   compileRuleset,
@@ -88,9 +89,11 @@ describe("default editing modes", () => {
     const registry = createDefaultModeRegistry();
     const expected = (kind: string, host: string) => {
       if (kind === "vocals")
-        return host === "piano-roll" ? "midi.vocals" : null;
+        return host === "piano-roll" ? EditingModeId.MidiVocals : null;
       if (kind === "guitar" || kind === "drums" || kind === "gamepad") {
-        return host === "highway" ? "chart.lanes" : "midi.raw";
+        return host === "highway"
+          ? EditingModeId.ChartLanes
+          : EditingModeId.MidiRaw;
       }
       return null;
     };
@@ -106,7 +109,7 @@ describe("default editing modes", () => {
       }
     }
     expect(registry.listForHost("highway").map((mode) => mode.id)).toEqual([
-      "chart.lanes",
+      EditingModeId.ChartLanes,
     ]);
   });
 

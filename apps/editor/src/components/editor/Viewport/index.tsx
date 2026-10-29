@@ -1,10 +1,10 @@
 import type { Midi } from "@openchart/midi";
 import {
   Difficulty,
+  EditingModeId,
   VocalNoteKind,
   VocalPhraseKind,
   type CompiledRuleset,
-  type EditingModeId,
   type ToolDescriptor,
 } from "@openchart/views";
 import { startCase } from "es-toolkit";
@@ -321,7 +321,7 @@ function ViewportPanel({
     modeId: EditingModeId | null,
     state: Record<string, unknown>,
   ): PianoRollVocalPlacement | null {
-    if (modeId !== "midi.vocals") {
+    if (modeId !== EditingModeId.MidiVocals) {
       return null;
     }
     const noteKind = state.noteKind;

@@ -25,7 +25,7 @@ import {
   type GeneralCommand,
 } from "../../commands";
 import { EntityType, type EntityId } from "../../entity";
-import { isRawCommand } from "../../modes/mode";
+import { EditingModeId, isRawCommand } from "../../modes/mode";
 import type {
   EditingMode,
   EntityClassification,
@@ -276,7 +276,7 @@ function roleOf(note: { pitch: number }, cc: ChartContext): PitchRole {
 
 export function createChartLanesMode(): EditingMode<ChartLanesToolState> {
   return {
-    id: "chart.lanes",
+    id: EditingModeId.ChartLanes,
     label: "Chart Lanes",
     hostKinds: new Set(["highway"]),
     appliesTo: (track) =>
@@ -493,7 +493,7 @@ function expandPaste(
     );
   }
   const rows = rowsFor(cc.rules);
-  const sameMode = payload.sourceModeId === "chart.lanes";
+  const sameMode = payload.sourceModeId === EditingModeId.ChartLanes;
   const notes: z.infer<typeof PasteSchema>["notes"] = [];
   const commands: GeneralCommand[] = [];
   const rejections: Rejection[] = [];

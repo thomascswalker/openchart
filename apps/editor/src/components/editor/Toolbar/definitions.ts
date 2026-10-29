@@ -1,5 +1,5 @@
 import type { EditingSession } from "@openchart/views";
-import { Difficulty } from "@openchart/views";
+import { Difficulty, EditingModeId } from "@openchart/views";
 import {
   EasyIcon,
   ExpertIcon,
@@ -127,7 +127,7 @@ export function createModeToolbarGroups(
       (id === "vocal-tools" && groupContext.activeView === "piano-roll") ||
       !["highway-tools", "vocal-tools"].includes(id),
   }));
-  if (mode.id === "midi.vocals") {
+  if (mode.id === EditingModeId.MidiVocals) {
     const vocalGroup = modeGroups.find((group) => group.id === "vocal-tools");
     if (vocalGroup) {
       vocalGroup.items.push({

@@ -8,6 +8,7 @@ import { NoteGeometryCache, screenRectOf } from "./geometry";
 import type { PianoRollNoteKind } from "../profile";
 import type { PianoRollContext } from "../types";
 import type { TimeSignatureEvent } from "@openchart/midi";
+import { EditingModeId } from "@openchart/views";
 
 const RenderOrder = {
   CanvasBackground: 0,
@@ -324,7 +325,7 @@ export class PianoRollRenderer {
     const noneSelected = selection.size === 0;
     const profile = this.#context.getProfile();
     const missingLyric =
-      profile.id === "midi.vocals"
+      profile.id === EditingModeId.MidiVocals
         ? this.#context.getVocalMarks().missingLyric
         : null;
     const gridTop = this.#coordinates.getGridTop();
@@ -423,7 +424,7 @@ export class PianoRollRenderer {
 
   /** Validation colour in the header text lane for notes with no lyric. */
   private drawLyricMarkers(width: number): void {
-    if (this.#context.getProfile().id !== "midi.vocals") return;
+    if (this.#context.getProfile().id !== EditingModeId.MidiVocals) return;
     const keyboardWidth = KeyboardWidth;
     for (const tick of this.#context.getVocalMarks().missingTicks) {
       const x = this.#coordinates.screenXForTick(tick);

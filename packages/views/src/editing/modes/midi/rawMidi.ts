@@ -9,6 +9,7 @@ import {
 } from "../../commands";
 import type { EntityId } from "../../entity";
 import {
+  EditingModeId,
   isRawCommand,
   type EditingMode,
   type ExpansionResult,
@@ -36,7 +37,7 @@ const rows = Array.from({ length: 128 }, (_, pitch) => ({
 /** Creates the unrestricted pitch-grid mode used by the Piano Roll. */
 export function createRawMidiMode(): EditingMode<Record<string, never>> {
   return {
-    id: "midi.raw",
+    id: EditingModeId.MidiRaw,
     label: "Raw MIDI",
     hostKinds: new Set(["piano-roll"]),
     appliesTo: (track) =>

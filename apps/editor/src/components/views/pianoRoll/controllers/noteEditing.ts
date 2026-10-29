@@ -1,9 +1,9 @@
 import {
   DomainCommandType,
   EditCommandType,
+  EditingModeId,
   type EditCommand,
   type EntityId,
-  type EditingModeId,
   type EditingSession,
   type EditResult,
   type GestureHandle,
@@ -42,7 +42,7 @@ interface ModeCommandBuilder {
 const COMMAND_BUILDERS: ReadonlyMap<EditingModeId, ModeCommandBuilder> =
   new Map([
     [
-      "midi.raw",
+      EditingModeId.MidiRaw,
       {
         move: (targetIds, tickDelta, pitchDelta) => ({
           type: EditCommandType.MoveNotes,
@@ -73,7 +73,7 @@ const COMMAND_BUILDERS: ReadonlyMap<EditingModeId, ModeCommandBuilder> =
       },
     ],
     [
-      "midi.vocals",
+      EditingModeId.MidiVocals,
       {
         move: (targetIds, tickDelta, pitchDelta, previousValidTickDelta) => ({
           type: DomainCommandType.MoveVocalEntities,
@@ -269,7 +269,7 @@ export class NoteEditingController {
       this.lastValidTickDelta = updated.tick - firstTarget.initialTick;
       if (
         this.moveTargets.length === 1 &&
-        session.mode.id === "midi.vocals" &&
+        session.mode.id === EditingModeId.MidiVocals &&
         updated.pitch !== this.lastPreviewPitch
       ) {
         this.lastPreviewPitch = updated.pitch;
@@ -399,7 +399,7 @@ export class NoteEditingController {
       this.coordinates.tickAtScreenX(local.x),
     );
     const lane = this.coordinates.laneAtScreenY(local.y);
-    if (session.mode.id === "midi.raw") {
+    if (session.mode.id === EditingModeId.MidiRaw) {
       this.createSpec = {
         tick,
         endTick: tick + 1,
@@ -407,7 +407,7 @@ export class NoteEditingController {
         kind: undefined,
         phraseKind: undefined,
       };
-    } else if (session.mode.id === "midi.vocals") {
+    } else if (session.mode.id === EditingModeId.MidiVocals) {
       const placement = this.context.getVocalPlacement();
       const phraseKind = lane?.phrase ?? placement.phrase ?? undefined;
       const kind =
@@ -450,7 +450,7 @@ export class NoteEditingController {
     const command = commandBuilderFor(session).create(spec, session);
     const preview = this.preview(command);
     if (
-      session.mode.id === "midi.vocals" &&
+      session.mode.id === EditingModeId.MidiVocals &&
       spec.kind === VocalNoteKind.Pitched &&
       spec.pitch !== undefined &&
       spec.pitch !== this.lastPreviewPitch &&

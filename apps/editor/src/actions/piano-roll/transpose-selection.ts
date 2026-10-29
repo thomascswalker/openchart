@@ -1,6 +1,10 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { DomainCommandType, EditCommandType } from "@openchart/views";
+import {
+  DomainCommandType,
+  EditCommandType,
+  EditingModeId,
+} from "@openchart/views";
 
 import { parseSelectedNoteEntityIds } from "./util";
 
@@ -31,7 +35,7 @@ export class TransposeSelectionAction extends Action<[number]> {
       return;
     }
     switch (session.mode.id) {
-      case "midi.vocals":
+      case EditingModeId.MidiVocals:
         session.execute({
           type: DomainCommandType.MoveVocalEntities,
           targetIds,

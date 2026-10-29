@@ -1,5 +1,6 @@
 import {
   EditCommandType,
+  EditingModeId,
   EntityType,
   parseEntityFromId,
   type ClipboardEntity,
@@ -170,7 +171,8 @@ export class EditorClipboardService extends Service {
   ): ClipboardEntity {
     const row = session.getProjection().rowForNote(note);
     const lyric =
-      session.mode.id === "midi.vocals" && classification.type === "note"
+      session.mode.id === EditingModeId.MidiVocals &&
+      classification.type === "note"
         ? this.editingService
             .getDocument()
             .getLyricAt(note.trackIndex, note.tick)?.text

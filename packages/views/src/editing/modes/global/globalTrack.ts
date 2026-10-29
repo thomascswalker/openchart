@@ -15,7 +15,7 @@ import type {
   ModeContext,
   Projection,
 } from "../mode";
-import { isRawCommand } from "../mode";
+import { EditingModeId, isRawCommand } from "../mode";
 import type { NoteSnapshot } from "../../reader";
 
 const EmptyToolStateSchema = z.object({});
@@ -38,7 +38,7 @@ const rawCommandTypes = new Set([
 /** Creates the document-wide mode used by Piano Roll header controls. */
 export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
   return {
-    id: "midi.global",
+    id: EditingModeId.MidiGlobal,
     label: "Global MIDI",
     hostKinds: new Set(["global"]),
     appliesTo: () => true,

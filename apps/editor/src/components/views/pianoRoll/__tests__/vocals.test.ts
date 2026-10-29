@@ -10,6 +10,7 @@ import {
   VocalNoteKind,
   VocalPhraseKind,
   VocalTrackView,
+  EditingModeId,
 } from "@openchart/views";
 import { Vector2 } from "three";
 import { describe, expect, it } from "vitest";
@@ -311,7 +312,8 @@ function copySelectionToClipboard(h: ReturnType<typeof harness>) {
         pitch: note.pitch,
         ...(row ? { row: row.id } : {}),
         classification,
-        ...(h.session.mode.id === "midi.vocals" && lyric !== undefined
+        ...(h.session.mode.id === EditingModeId.MidiVocals &&
+        lyric !== undefined
           ? { lyric }
           : {}),
       };
@@ -378,7 +380,7 @@ describe("piano-roll profiles", () => {
   });
 
   it("derives the vocals profile from the editing session projection", () => {
-    expect(VOCALS.id).toBe("midi.vocals");
+    expect(VOCALS.id).toBe(EditingModeId.MidiVocals);
     expect(VOCALS.pitchRange).toEqual({ low: 36, high: 84 });
     expect(VOCALS.pinnedLanes.map((lane) => lane.id)).toEqual([
       "vocal-phrase",

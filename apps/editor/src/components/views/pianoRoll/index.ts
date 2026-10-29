@@ -8,6 +8,7 @@ import {
 } from "@openchart/midi";
 import {
   DomainCommandType,
+  EditingModeId,
   EntityType,
   formatNoteId,
   parseEntityFromId,
@@ -52,7 +53,7 @@ import {
 } from "./constants";
 import { cloneDeep } from "es-toolkit";
 
-export class PianoRollView extends AbstractChartView<PianoRollNote> {
+class PianoRollView extends AbstractChartView<PianoRollNote> {
   public constructor(engineOptions?: EngineOptions) {
     super(engineOptions);
   }
@@ -221,7 +222,7 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
       this.camera.y = saved.y;
       this.camera.v = saved.v;
       this.camera.y = this.coordinates.clampCameraY(this.camera.y);
-    } else if (profile.id === "midi.vocals") {
+    } else if (profile.id === EditingModeId.MidiVocals) {
       this.fitPitchRange();
     } else {
       this.camera.y = DefaultCamera.y;
@@ -265,7 +266,10 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
     if (
       !isPianoRollCameraState(state) ||
       (state.profile !== this.profile.id &&
-        !(state.profile === "generic" && this.profile.id === "midi.raw"))
+        !(
+          state.profile === "generic" &&
+          this.profile.id === EditingModeId.MidiRaw
+        ))
     ) {
       return false;
     }
@@ -676,21 +680,21 @@ export class PianoRollView extends AbstractChartView<PianoRollNote> {
   };
 }
 
-export type { PianoRollNote } from "./types";
-
 function isPianoRollCameraState(value: unknown): value is PianoRollCameraState {
   if (typeof value !== "object" || value === null) return false;
   const state = value as Record<string, unknown>;
   return (
-    (state.profile === "midi.raw" ||
+    (state.profile === EditingModeId.MidiRaw ||
       state.profile === "generic" ||
-      state.profile === "midi.vocals") &&
+      state.profile === EditingModeId.MidiVocals) &&
     [state.y, state.v, state.h].every(
       (item) => typeof item === "number" && Number.isFinite(item),
     )
   );
 }
 
+export { PianoRollView };
+export type { PianoRollNote } from "./types";
 export { GENERIC_PROFILE } from "./profile";
 export type { PianoRollProfile } from "./profile";
 export type { PianoRollVocalPlacement } from "./types";

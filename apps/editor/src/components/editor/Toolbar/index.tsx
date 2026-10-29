@@ -15,6 +15,7 @@ import {
 import type { ToolbarContextState, ToolbarEditorState } from "./types";
 import { SnapOptions } from "./constants";
 import styles from "./toolbar.module.css";
+import { EditingModeId } from "@openchart/views";
 
 interface ToolbarProps {
   session: ViewportSession;
@@ -71,7 +72,7 @@ export default function Toolbar({ session }: ToolbarProps) {
       return null;
     }
     const isVocalMode =
-      mode.id === "midi.vocals" && session.view === "piano-roll";
+      mode.id === EditingModeId.MidiVocals && session.view === "piano-roll";
     const isHighway = session.view === "highway";
 
     if (!isVocalMode && !isHighway) {
