@@ -3,12 +3,10 @@ import { fileURLToPath } from "url";
 import { Midi, MidiTrack } from "@openchart/midi";
 import { expect, describe, beforeAll, it } from "vitest";
 import * as fs from "fs";
-import {
-  DomainCommandType,
-  SongView,
-  createStandaloneEditing,
-  Difficulty,
-} from "@openchart/views";
+import { DomainCommandType } from "../../editing/commands.js";
+import { createStandaloneEditing } from "../../editing/standalone.js";
+import { Difficulty } from "../../ruleset/difficulty.js";
+import { SongView } from "../song.js";
 
 function placeSession(midi: Midi, trackKey: string) {
   const editing = createStandaloneEditing(midi);
