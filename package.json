@@ -16,7 +16,7 @@
     "dev:desktop": "npm run dev --workspace=@openchart/desktop",
     "storybook": "npm run storybook --workspace=@openchart/editor",
     "build-storybook": "npm run build-storybook --workspace=@openchart/editor",
-    "ci": "npm run format && npm run lint && npm run check-types && npm run test",
+    "ci": "npm run format && npm run lint && npm run check-types && npm run test && npm run test:e2e --workspace=@openchart/editor && npm run test:storybook --workspace=@openchart/editor",
     "lint": "eslint --config eslint.config.js .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

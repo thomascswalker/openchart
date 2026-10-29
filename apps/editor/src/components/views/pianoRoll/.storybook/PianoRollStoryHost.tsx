@@ -2,6 +2,7 @@ import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
 import {
   DefaultCompiledRuleset,
   Difficulty,
+  EditingModeId,
   VocalNoteKind,
   createStandaloneEditing,
 } from "@openchart/views";
