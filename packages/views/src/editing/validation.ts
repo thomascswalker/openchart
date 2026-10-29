@@ -18,7 +18,7 @@ import { checkTextEvent } from "../ruleset/textEvents.js";
 import type { GeneralCommand } from "./commands.js";
 import { EditCommandType } from "./commands.js";
 import { parseEntityFromId, type EntityId } from "./entity.js";
-import type { EditingTarget } from "./mode.js";
+import type { EditingTarget } from "./modes/mode.js";
 import { computePreview } from "./preview.js";
 import type { ChartDocumentReader, NoteSnapshot } from "./reader.js";
 

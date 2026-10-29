@@ -8,7 +8,7 @@ import {
 import type { RulesetContext } from "../ruleset/enforce.js";
 import { ChartDocument } from "./chartDocument.js";
 import { ClipboardService } from "./clipboard.js";
-import type { EditingTarget, ModeRegistry } from "./mode.js";
+import type { EditingTarget, ModeRegistry } from "./modes/mode.js";
 import { createDefaultModeRegistry } from "./modes/index.js";
 import { SelectionModel } from "./selectionModel.js";
 import { createEditingSession, type EditingSession } from "./session.js";

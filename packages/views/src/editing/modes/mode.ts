@@ -1,22 +1,22 @@
 import type { ZodType } from "zod";
-import type { Difficulty } from "../types.js";
-import { RuleViolation } from "../ruleset/context.js";
+import type { Difficulty } from "../../types.js";
+import { RuleViolation } from "../../ruleset/context.js";
 import type {
   CompiledRuleset,
   TrackDescriptor,
   RulesetContext,
-} from "../ruleset/index.js";
-import type { ClipboardPayload } from "./clipboard.js";
-import type { NoteSnapshot } from "./reader.js";
-import type { EntityType } from "./entity.js";
+} from "../../ruleset/index.js";
+import type { ClipboardPayload } from "../clipboard.js";
+import type { NoteSnapshot } from "../reader.js";
+import type { EntityType } from "../entity.js";
 import {
   DomainCommandType,
   EditCommandType,
   type EditCommand,
   type GeneralCommand,
-} from "./commands.js";
-import type { ChartDocumentReader } from "./reader.js";
-import type { Rejection } from "./result.js";
+} from "../commands.js";
+import type { ChartDocumentReader } from "../reader.js";
+import type { Rejection } from "../result.js";
 
 export type EditingModeId =
   "midi.raw" | "midi.global" | "midi.vocals" | "chart.lanes" | (string & {});

@@ -1,8 +1,8 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
 import { ChartDocument } from "../../../src/editing/chartDocument.js";
-import { EditingModeRegistry } from "../../../src/editing/modeRegistry.js";
-import { createRawMidiMode } from "../../../src/editing/modes/rawMidi.js";
+import { EditingModeRegistry } from "../../../src/editing/modes/registry.js";
+import { createRawMidiMode } from "../../../src/editing/modes/midi/rawMidi.js";
 import {
   EditCommandType,
   computePreview,

@@ -1,21 +1,21 @@
 import { MetaType } from "@openchart/midi";
 import { z } from "zod";
-import { EntityType } from "../entity.js";
+import { EntityType } from "../../entity.js";
 import {
   VocalNoteKind,
   VocalPhraseKind,
   VOCAL_NOTE_KINDS,
   VocalTrackView,
   type VocalLayout,
-} from "../../views/vocal.js";
-import { phraseIcon, phraseLabel } from "../../ruleset/labels.js";
-import type { EntityId } from "../entity.js";
+} from "../../../views/vocal.js";
+import { phraseIcon, phraseLabel } from "../../../ruleset/labels.js";
+import type { EntityId } from "../../entity.js";
 import {
   DomainCommandType,
   EditCommandType,
   type EditCommand,
   type GeneralCommand,
-} from "../commands.js";
+} from "../../commands.js";
 import type {
   EditingMode,
   EntityClassification,
@@ -23,10 +23,10 @@ import type {
   ModeContext,
   Projection,
   ProjectionRow,
-} from "../mode.js";
-import { isRawCommand } from "../mode.js";
-import type { NoteSnapshot } from "../reader.js";
-import type { Rejection } from "../result.js";
+} from "../../modes/mode.js";
+import { isRawCommand } from "../../modes/mode.js";
+import type { NoteSnapshot } from "../../reader.js";
+import type { Rejection } from "../../result.js";
 import {
   ownsNotes,
   rejected,
@@ -34,8 +34,8 @@ import {
   targetNotes,
   targetTrackIndex,
   validSpan,
-} from "./common.js";
-import { ClipboardPayload } from "../clipboard.js";
+} from "../common.js";
+import { ClipboardPayload } from "../../clipboard.js";
 
 const VocalNoteKindSchema = z.nativeEnum(VocalNoteKind);
 const VocalPhraseKindSchema = z.nativeEnum(VocalPhraseKind);

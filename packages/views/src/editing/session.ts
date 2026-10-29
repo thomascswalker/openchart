@@ -4,7 +4,7 @@ import {
   type RulesetContext,
   type CompiledRuleset,
 } from "../ruleset/index.js";
-import { validateRawCommands } from "./ruleValidation.js";
+import { validateRawCommands } from "./validation.js";
 import type { ChartDocument } from "./chartDocument.js";
 import {
   DomainCommandType,
@@ -29,7 +29,7 @@ import type {
   ModeContext,
   Projection,
   ToolDescriptor,
-} from "./mode.js";
+} from "./modes/mode.js";
 import type { NoteSnapshot } from "./reader.js";
 
 /** Transaction operations supplied by the document/history owner. */

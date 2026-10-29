@@ -1,9 +1,9 @@
-import type { EditingMode } from "../mode.js";
-import { EditingModeRegistry } from "../modeRegistry.js";
-import { createChartLanesMode } from "./chartLanes.js";
-import { createGlobalTrackMode } from "./globalTrack.js";
-import { createRawMidiMode } from "./rawMidi.js";
-import { createVocalsMode } from "./vocals.js";
+import type { EditingMode } from "./mode.js";
+import { EditingModeRegistry } from "./registry.js";
+import { createChartLanesMode } from "./lanes/chartLanes.js";
+import { createGlobalTrackMode } from "./global/globalTrack.js";
+import { createRawMidiMode } from "./midi/rawMidi.js";
+import { createVocalsMode } from "./vocals/vocals.js";
 
 /** Creates the modes implemented so far in the plan's priority order. */
 export function createDefaultModes(): readonly EditingMode[] {

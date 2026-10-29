@@ -1,7 +1,7 @@
 import type { TrackDescriptor, TrackRules } from "../../ruleset/compile.js";
 import type { EntityId } from "../entity.js";
 import type { EditCommand, GeneralCommand } from "../commands.js";
-import type { ModeContext } from "../mode.js";
+import type { ModeContext } from "../modes/mode.js";
 import type { NoteSnapshot } from "../reader.js";
 import type { Rejection } from "../result.js";
 
