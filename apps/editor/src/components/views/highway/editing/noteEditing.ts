@@ -1,7 +1,7 @@
 import type { MidiNote } from "@openchart/midi";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EntityType,
   type ChartView,
   type EditingSession,
@@ -112,7 +112,7 @@ export class HighwayNoteEditingController {
     const id = source ? this.getEntityId(chart, source) : null;
     if (!session || !id) return false;
     const changed = session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds: [id],
     }).changed;
     if (changed && removeFromSelection) session.selection.delete(id);
@@ -130,7 +130,7 @@ export class HighwayNoteEditingController {
     if (!source) return false;
     const id = this.getEntityId(chart, source);
     const snapshot = id ? this.getSnapshot(source, id) : null;
-    const currentLane = snapshot ? this.getLane(session, snapshot) : null;
+    const currentLane = snapshot ? this.getLane(snapshot, session) : null;
     if (!session || !id || currentLane === null) return false;
     this.gesture ??= session.beginGesture();
     this.context.setPreviewState(
@@ -234,7 +234,7 @@ export class HighwayNoteEditingController {
     const targetIds = this.getTargetSelection(session);
     if (targetIds.length === 0) return false;
     const result = session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds,
     });
     if (result.changed) session.selection.setSelectedIds([]);
@@ -279,8 +279,8 @@ export class HighwayNoteEditingController {
   }
 
   private getLane(
-    session: EditingSession | null,
     snapshot: NoteHandle,
+    session?: EditingSession,
   ): number | null {
     if (!session) return null;
     const classification = session.classifyNote(snapshot);

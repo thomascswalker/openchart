@@ -1,7 +1,7 @@
 import { MetaType, Midi, type MidiNote } from "@openchart/midi";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EntityType,
   createStandaloneEditing,
   Difficulty,
@@ -151,7 +151,7 @@ describe("editing characterization: Piano Roll vocals", () => {
     });
     const copiedNote = session.clipboard.getData()!.entities[0]!;
     session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds: [pitchedId],
     });
     expect(

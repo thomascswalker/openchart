@@ -1,5 +1,5 @@
 import {
-  EditCommandType,
+  GeneralCommandType,
   EditingModeId,
   EntityType,
   parseEntityFromId,
@@ -42,7 +42,7 @@ export class EditorClipboardService extends Service {
     this.playback = playback;
     this.activeChartView.subscribe(() => this.sync());
     this.editingService.subscribe(() => this.sync());
-    this.editingService.selection.subscribe(() => this.sync());
+    this.editingService.getActiveSelectionModel()?.subscribe(() => this.sync());
     this.playback.subscribe(() => this.sync());
   }
 
@@ -54,9 +54,11 @@ export class EditorClipboardService extends Service {
 
   public canCut(): boolean {
     const session = this.editingService.getActiveSession();
+    if (!session) {
+      return false;
+    }
     return (
-      session !== null &&
-      session.can(EditCommandType.DeleteEntities) &&
+      session.can(GeneralCommandType.DeleteEntities) &&
       !this.playback.getSnapshot().isPlaying &&
       this.getCopySelection(session) !== null
     );
@@ -82,7 +84,7 @@ export class EditorClipboardService extends Service {
     if (
       !session ||
       !selection ||
-      !session.can(EditCommandType.DeleteEntities) ||
+      !session.can(GeneralCommandType.DeleteEntities) ||
       this.playback.getSnapshot().isPlaying
     ) {
       return;
@@ -90,7 +92,7 @@ export class EditorClipboardService extends Service {
 
     this.editingService.clipboard.setData(selection.payload);
     const result = session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds: selection.targetIds,
     });
     if (result.changed) session.selection.setSelectedIds([]);
@@ -134,7 +136,6 @@ export class EditorClipboardService extends Service {
       return null;
     }
 
-    const document = this.editingService.getDocument();
     const selected = session.selection.getSelectedIds().flatMap((id) => {
       const parsed = parseEntityFromId(id);
       if (
@@ -143,7 +144,9 @@ export class EditorClipboardService extends Service {
       ) {
         return [];
       }
-      const note = document.getNote(id);
+      const note = this.editingService
+        .getCommandExecutor()
+        ?.getHandleFromId(id);
       return note
         ? [{ id, note, classification: session.classifyNote(note) }]
         : [];
@@ -174,8 +177,8 @@ export class EditorClipboardService extends Service {
       session.mode.id === EditingModeId.MidiVocals &&
       classification.type === "note"
         ? this.editingService
-            .getDocument()
-            .getLyricAt(note.trackIndex, note.tick)?.text
+            .getCommandExecutor()
+            ?.getLyricAt(note.trackIndex, note.tick)?.text
         : undefined;
     return {
       relativeTick: note.tick - firstTick,

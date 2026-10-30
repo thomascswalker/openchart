@@ -7,7 +7,7 @@ import Platform from "../../platform";
 import { EditingService } from "../../services/editor/editing";
 import { DocumentService } from "../../services/document";
 import { useDocument } from "../../hooks/useDocument";
-import { EditCommandType } from "@openchart/views";
+import { GeneralCommandType } from "@openchart/views";
 
 function HistoryHarness() {
   const { midi, canUndo, canRedo, isDirty } = useDocument();
@@ -25,10 +25,10 @@ function HistoryHarness() {
     track.name = "LEAD GUITAR";
     const session = Platform.services
       .get<EditingService>("editor.editing")
-      .getSession("viewport-1");
+      .getEditingSession("viewport-1");
     if (!session) throw new Error("Expected a Piano Roll editing session");
     session.execute({
-      type: EditCommandType.AddNotes,
+      type: GeneralCommandType.AddNotes,
       notes: [
         {
           trackIndex: midi.tracks.indexOf(track),

@@ -1,10 +1,14 @@
 import { Midi } from "@openchart/midi";
 import {
-  EditCommandType,
+  GeneralCommandType,
   EntityType,
   SongView,
   type ClipboardPayload,
-  type EditingMode,
+  AbstractEditingMode,
+  type EditCommand,
+  type EditingModeId,
+  type EntityClassification,
+  type ModeCapabilities,
   type ExpansionResult,
   type ModeContext,
   type NoteHandle,
@@ -26,47 +30,45 @@ import { createTestRulesetService } from "../../__tests__/testUtils";
 const lanes = ["green", "red", "yellow", "blue"] as const;
 type FourLaneToolState = { lane: (typeof lanes)[number] };
 
-function fourLaneMode(): EditingMode<FourLaneToolState> {
-  const rejected = (
-    command: Parameters<EditingMode["expand"]>[0],
-  ): ExpansionResult => ({
-    commands: [],
-    rejections: [
-      {
-        code: "unsupported-command",
-        message: "Unsupported by test.fourLane",
-        command,
-      },
-    ],
-  });
-  return {
-    id: "test.fourLane",
-    label: "Four Lane Test",
-    hostKinds: new Set(["test-view"]),
-    appliesTo: () => true,
-    capabilities: {
-      rawCommands: new Set([
-        EditCommandType.AddNotes,
-        EditCommandType.MoveNotes,
-        EditCommandType.DeleteEntities,
-      ]),
-      domainCommands: new Set(),
-      entityKinds: new Set([EntityType.Note]),
-      canCreateTrack: false,
-      requiresDifficulty: false,
-    },
-    toolStateSchema: z.object({ lane: z.enum(lanes) }),
-    createDefaultToolState: () => ({ lane: "green" }),
-    createTools: () =>
-      lanes.map((lane) => ({
-        id: `lane-${lane}`,
-        label: `${lane[0]!.toUpperCase()}${lane.slice(1)} lane`,
-        icon: "note",
-        group: "four-lane-tools",
-        stateKey: "lane",
-        value: lane,
-      })),
-    createProjection: (): Projection => ({
+class FourLaneMode extends AbstractEditingMode<FourLaneToolState> {
+  public readonly id: EditingModeId = "test.fourLane";
+  public readonly label = "Four Lane Test";
+  public readonly hostKinds: ReadonlySet<string> = new Set(["test-view"]);
+  public readonly capabilities: ModeCapabilities = {
+    generalCommands: new Set([
+      GeneralCommandType.AddNotes,
+      GeneralCommandType.MoveNotes,
+      GeneralCommandType.DeleteEntities,
+    ]),
+    domainCommands: new Set(),
+    entityKinds: new Set([EntityType.Note]),
+    canCreateTrack: false,
+    requiresDifficulty: false,
+    trackKinds: new Set(),
+  };
+  public readonly toolStateSchema = z.object({ lane: z.enum(lanes) });
+
+  public appliesTo(): boolean {
+    return true;
+  }
+
+  public createDefaultToolState(): FourLaneToolState {
+    return { lane: "green" };
+  }
+
+  public createTools() {
+    return lanes.map((lane) => ({
+      id: `lane-${lane}`,
+      label: `${lane[0]!.toUpperCase()}${lane.slice(1)} lane`,
+      icon: "note",
+      group: "four-lane-tools",
+      stateKey: "lane",
+      value: lane,
+    }));
+  }
+
+  public createProjection(): Projection {
+    return {
       getRows: () =>
         lanes.map((id, index) => ({
           id,
@@ -83,21 +85,27 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
         }))[note.pitch % lanes.length] ?? null,
       pitchForRow: (row) =>
         60 + Math.max(0, lanes.indexOf(row.id as (typeof lanes)[number])),
-    }),
-    classify: () => ({
+    };
+  }
+
+  public classify(): EntityClassification {
+    return {
       type: EntityType.Note,
       subtype: "four-lane",
       movable: true,
       resizable: true,
-    }),
-    expandPaste: (
-      payload: ClipboardPayload,
-      anchorTick: number,
-      context: ModeContext,
-    ): ExpansionResult => ({
+    };
+  }
+
+  public expandPaste(
+    payload: ClipboardPayload,
+    anchorTick: number,
+    context: ModeContext,
+  ): ExpansionResult {
+    return {
       commands: [
         {
-          type: EditCommandType.AddNotes,
+          type: GeneralCommandType.AddNotes,
           notes: payload.entities.map((entity) => ({
             trackIndex: context.target.trackIndex!,
             tick: anchorTick + entity.relativeTick,
@@ -108,20 +116,32 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
         },
       ],
       rejections: [],
-    }),
-    expand: (command) => {
-      if (
-        command.type === EditCommandType.AddNotes ||
-        command.type === EditCommandType.MoveNotes ||
-        command.type === EditCommandType.DeleteEntities
-      ) {
-        return { commands: [command as GeneralCommand], rejections: [] };
-      }
-      return rejected(command);
-    },
-  };
-}
+    };
+  }
 
+  public expand(command: EditCommand): ExpansionResult {
+    if (
+      command.type === GeneralCommandType.AddNotes ||
+      command.type === GeneralCommandType.MoveNotes ||
+      command.type === GeneralCommandType.DeleteEntities
+    ) {
+      return { commands: [command as GeneralCommand], rejections: [] };
+    }
+    return this.rejected(
+      command,
+      "unsupported-command",
+      "Unsupported by test.fourLane",
+    );
+  }
+
+  public rejected(
+    command: EditCommand,
+    code: string,
+    message: string,
+  ): ExpansionResult {
+    return { commands: [], rejections: [{ code, message, command }] };
+  }
+}
 function createDocumentService(
   ruleset: ReturnType<typeof createTestRulesetService>,
 ): DocumentService {
@@ -152,7 +172,7 @@ describe("editing mode extensibility acceptance", () => {
       viewports,
       ruleset,
     );
-    const mode = fourLaneMode();
+    const mode = new FourLaneMode();
     editing.registry.register(mode);
 
     const descriptor = new SongView(documentService.data)
@@ -161,7 +181,7 @@ describe("editing mode extensibility acceptance", () => {
     expect(editing.registry.resolve(descriptor, "test-view")?.id).toBe(
       "test.fourLane",
     );
-    const toolbarSession = editing.getSession("viewport-1", mode.id)!;
+    const toolbarSession = editing.getEditingSession("viewport-1", mode.id)!;
     const groups = createModeToolbarGroups(toolbarSession);
     expect(groups[0]?.items.map((tool) => tool.id)).toEqual(
       lanes.map((lane) => `lane-${lane}`),
@@ -188,20 +208,24 @@ describe("editing mode extensibility acceptance", () => {
       ),
     ).toEqual(["viewport-1", "test.fourLane", { lane: "green" }]);
 
-    const session = editing.getSession("viewport-1", "test.fourLane")!;
+    const session = editing.getEditingSession("viewport-1", "test.fourLane")!;
     const context = new ContextStore();
     const editingContext = createEditingContextSnapshot(session);
     context.update(editingContext.values);
     expect(context.get("editing.mode")).toBe("test.fourLane");
-    expect(context.get(`editing.can.${EditCommandType.AddNotes}`)).toBe(true);
-    expect(context.get(`editing.can.${EditCommandType.MoveNotes}`)).toBe(true);
+    expect(context.get(`editing.can.${GeneralCommandType.AddNotes}`)).toBe(
+      true,
+    );
+    expect(context.get(`editing.can.${GeneralCommandType.MoveNotes}`)).toBe(
+      true,
+    );
     context.update(
       createEditingContextSnapshot(session, ["REMOVED_COMMAND"]).values,
     );
     expect(context.get("editing.can.REMOVED_COMMAND")).toBe(false);
     expect(
       session.execute({
-        type: EditCommandType.AddNotes,
+        type: GeneralCommandType.AddNotes,
         notes: [
           {
             trackIndex: 0,
@@ -214,11 +238,11 @@ describe("editing mode extensibility acceptance", () => {
     ).toBe(true);
 
     const noteId = editing
-      .getDocument()
-      .getNoteId(0, documentService.data.tracks[0]!.getNotes()[0]!);
+      .getCommandExecutor()
+      ?.getNoteId(0, documentService.data.tracks[0]!.getNotes()[0]!)!;
     const cancelled = session.beginGesture();
     cancelled.preview({
-      type: EditCommandType.MoveNotes,
+      type: GeneralCommandType.MoveNotes,
       targetIds: [noteId],
       tickDelta: 120,
       pitchDelta: 0,
@@ -229,7 +253,7 @@ describe("editing mode extensibility acceptance", () => {
 
     const committed = session.beginGesture();
     committed.preview({
-      type: EditCommandType.MoveNotes,
+      type: GeneralCommandType.MoveNotes,
       targetIds: [noteId],
       tickDelta: 120,
       pitchDelta: 0,
@@ -239,7 +263,7 @@ describe("editing mode extensibility acceptance", () => {
     documentService.undoEdit();
     expect(documentService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
 
-    const copiedNote = editing.getDocument().getNote(noteId)!;
+    const copiedNote = editing.getCommandExecutor()?.getHandleFromId(noteId)!;
     session.clipboard.setData({
       sourceModeId: "test.fourLane",
       entities: [
@@ -259,8 +283,9 @@ describe("editing mode extensibility acceptance", () => {
       classification: session.classifyNote(copiedNote),
     });
     expect(
-      editing.getSession("viewport-1", "test.fourLane")!.pasteClipboard(960)
-        .createdIds,
+      editing
+        .getEditingSession("viewport-1", "test.fourLane")!
+        .pasteClipboard(960).createdIds,
     ).toHaveLength(1);
     expect(documentService.data.tracks[0]!.getNotes()).toContainEqual(
       expect.objectContaining({ start: 960, pitch: copiedNote.pitch }),

@@ -1,30 +1,34 @@
 import { z } from "zod";
 import { EntityType } from "../../entity";
-import { isUnmappedTrackRules } from "../../../ruleset/compile";
+import {
+  isUnmappedTrackRules,
+  type TrackDescriptor,
+} from "../../../ruleset/compile";
 import type { ClipboardPayload } from "../../clipboard";
 import {
-  EditCommandType,
+  GeneralCommandType,
   type EditCommand,
   type GeneralCommand,
 } from "../../commands";
-import type { EntityId } from "../../entity";
 import {
+  AbstractEditingMode,
   EditingModeId,
-  isRawCommand,
-  type EditingMode,
+  type EntityClassification,
   type ExpansionResult,
+  type ModeCapabilities,
   type ModeContext,
   type Projection,
+  type ToolDescriptor,
 } from "../../modes/mode";
-import type { NoteHandle } from "../../entity";
 import type { Rejection } from "../../result";
+import { getExpander } from "./expansion";
 
-const noteCommandTypes: ReadonlySet<EditCommandType> = new Set([
-  EditCommandType.AddNotes,
-  EditCommandType.UpdateNotes,
-  EditCommandType.MoveNotes,
-  EditCommandType.ResizeNotes,
-  EditCommandType.DeleteEntities,
+const noteCommandTypes: ReadonlySet<GeneralCommandType> = new Set([
+  GeneralCommandType.AddNotes,
+  GeneralCommandType.UpdateNotes,
+  GeneralCommandType.MoveNotes,
+  GeneralCommandType.ResizeNotes,
+  GeneralCommandType.DeleteEntities,
 ]);
 
 const rows = Array.from({ length: 128 }, (_, pitch) => ({
@@ -34,233 +38,103 @@ const rows = Array.from({ length: 128 }, (_, pitch) => ({
   kind: "pitch",
 }));
 
-/** Creates the unrestricted pitch-grid mode used by the Piano Roll. */
-export function createRawMidiMode(): EditingMode<Record<string, never>> {
-  return {
-    id: EditingModeId.MidiRaw,
-    label: "Raw MIDI",
-    hostKinds: new Set(["piano-roll"]),
-    appliesTo: (track) =>
+/** Unrestricted pitch-grid mode used by the Piano Roll. */
+export class RawMidiMode extends AbstractEditingMode<Record<string, never>> {
+  public readonly id: EditingModeId = EditingModeId.MidiRaw;
+  public readonly label: string = "Raw MIDI";
+  public readonly hostKinds: ReadonlySet<string> = new Set(["piano-roll"]);
+  public readonly capabilities: ModeCapabilities = {
+    generalCommands: noteCommandTypes,
+    domainCommands: new Set(),
+    entityKinds: new Set([EntityType.Note]),
+    canCreateTrack: true,
+    requiresDifficulty: false,
+    trackKinds: new Set(["guitar", "gamepad", "drums", "vocals"]),
+  };
+  public readonly toolStateSchema = z.object({});
+
+  public appliesTo(track: TrackDescriptor): boolean {
+    return (
       isUnmappedTrackRules(track.rules) ||
-      (track.kind !== "header" && track.kind !== "global"),
-    capabilities: {
-      rawCommands: noteCommandTypes,
-      domainCommands: new Set(),
-      entityKinds: new Set([EntityType.Note]),
-      canCreateTrack: true,
-      requiresDifficulty: false,
-    },
-    createTools: () => [],
-    toolStateSchema: z.object({}),
-    createDefaultToolState: () => ({}),
-    createProjection: (): Projection => ({
+      this.capabilities.trackKinds.has(track.kind)
+    );
+  }
+
+  public createTools(): readonly ToolDescriptor[] {
+    return [];
+  }
+
+  public createDefaultToolState(): Record<string, never> {
+    return {};
+  }
+
+  public createProjection(): Projection {
+    return {
       getRows: () => rows,
       rowForNote: (note) => rows[note.pitch] ?? null,
       pitchForRow: (row) =>
         Number.isInteger(row.index) && row.index >= 0 && row.index <= 127
           ? row.index
           : null,
-    }),
-    classify: () => ({
+    };
+  }
+
+  public classify(): EntityClassification {
+    return {
       type: EntityType.Note,
       kind: EntityType.Note,
       subtype: "raw",
       movable: true,
       resizable: true,
-    }),
-    expandPaste: (payload, anchorTick, context) =>
-      expandRawPaste(payload, anchorTick, context),
-    expand: (command, context) => expandRawCommand(command, context),
-  };
-}
-
-function expandRawPaste(
-  payload: ClipboardPayload,
-  anchorTick: number,
-  context: ModeContext,
-): ExpansionResult {
-  const commands: GeneralCommand[] = [];
-  const rejections: Rejection[] = [];
-  for (const entity of payload.entities) {
-    const command: GeneralCommand = {
-      type: EditCommandType.AddNotes,
-      notes: [
-        {
-          trackIndex: context.target.trackIndex ?? 0,
-          tick: anchorTick + entity.relativeTick,
-          pitch: entity.pitch,
-          duration: entity.duration,
-          velocity: entity.velocity,
-        },
-      ],
     };
-    const expansion = expandRawCommand(command, context);
-    commands.push(...expansion.commands);
-    rejections.push(...expansion.rejections);
   }
-  return { commands, rejections };
-}
 
-function expandRawCommand(
-  command: EditCommand,
-  context: ModeContext,
-): ExpansionResult {
-  if (!isRawCommand(command) || !noteCommandTypes.has(command.type)) {
+  public expandPaste(
+    payload: ClipboardPayload,
+    anchorTick: number,
+    context: ModeContext,
+  ): ExpansionResult {
+    const commands: GeneralCommand[] = [];
+    const rejections: Rejection[] = [];
+    for (const entity of payload.entities) {
+      const command: GeneralCommand = {
+        type: GeneralCommandType.AddNotes,
+        notes: [
+          {
+            trackIndex: context.target.trackIndex ?? 0,
+            tick: anchorTick + entity.relativeTick,
+            pitch: entity.pitch,
+            duration: entity.duration,
+            velocity: entity.velocity,
+          },
+        ],
+      };
+      const expansion = this.expand(command, context);
+      commands.push(...expansion.commands);
+      rejections.push(...expansion.rejections);
+    }
+    return { commands, rejections };
+  }
+
+  public override rejected(
+    command: EditCommand,
+    code: string,
+    message: string,
+  ): ExpansionResult {
     return {
       commands: [],
-      rejections: [
-        reject(
-          command,
-          "unsupported-command",
-          "Command is not supported by midi.raw",
-        ),
-      ],
+      rejections: [{ command, code, message }],
     };
   }
-
-  const rejections: Rejection[] = [];
-  const rejectCommand = (code: string, message: string) => {
-    rejections.push({ code, message, command });
-  };
-  const ownsNote = (id: EntityId): NoteHandle | null => {
-    const note = context.executor.getNote(id);
-    if (!note) {
-      rejectCommand("missing-note", `Note '${id}' does not exist`);
-      return null;
-    }
-    if (
-      context.target.trackIndex !== null &&
-      note.trackIndex !== context.target.trackIndex
-    ) {
-      rejectCommand(
-        "wrong-track",
-        `Note '${id}' does not belong to the session target`,
+  public expand(command: EditCommand, context: ModeContext): ExpansionResult {
+    const expander = getExpander(command.type);
+    if (!expander) {
+      return this.rejected(
+        command,
+        "unsupported-command",
+        "Command is not supported by midi.raw",
       );
-      return null;
     }
-    return note;
-  };
-
-  switch (command.type) {
-    case EditCommandType.AddNotes:
-      for (const note of command.notes) {
-        if (
-          !Number.isSafeInteger(note.trackIndex) ||
-          note.trackIndex < 0 ||
-          !validNoteFields(note.tick, note.pitch, note.duration) ||
-          (note.velocity !== undefined &&
-            (!Number.isInteger(note.velocity) ||
-              note.velocity < 1 ||
-              note.velocity > 127))
-        ) {
-          rejectCommand("invalid-note", "Added note fields are invalid");
-          continue;
-        }
-        if (
-          context.target.trackIndex !== null &&
-          note.trackIndex !== context.target.trackIndex
-        ) {
-          rejectCommand(
-            "wrong-track",
-            "Added notes must belong to the session target",
-          );
-        }
-      }
-      break;
-    case EditCommandType.UpdateNotes:
-      for (const patch of command.patches) {
-        const note = ownsNote(patch.id);
-        if (!note) continue;
-        const tick = patch.tick ?? note.tick;
-        const pitch = patch.pitch ?? note.pitch;
-        const duration = patch.duration ?? note.duration;
-        const velocity = patch.velocity ?? note.velocity;
-        if (
-          !validNoteFields(tick, pitch, duration) ||
-          !Number.isInteger(velocity) ||
-          velocity < 1 ||
-          velocity > 127 ||
-          !Number.isSafeInteger(tick + duration)
-        ) {
-          rejectCommand(
-            "invalid-note",
-            `Note '${patch.id}' fields are invalid`,
-          );
-        }
-      }
-      break;
-    case EditCommandType.MoveNotes:
-      if (
-        !Number.isSafeInteger(command.tickDelta) ||
-        !Number.isSafeInteger(command.pitchDelta)
-      ) {
-        rejectCommand("invalid-delta", "Move deltas must be integers");
-      }
-      for (const id of command.targetIds) {
-        const note = ownsNote(id);
-        if (!note) continue;
-        const tick = Math.max(0, note.tick + command.tickDelta);
-        if (
-          !Number.isSafeInteger(tick) ||
-          !Number.isSafeInteger(tick + note.duration)
-        ) {
-          rejectCommand(
-            "invalid-note-range",
-            `Note '${id}' end tick is too large`,
-          );
-        }
-      }
-      break;
-    case EditCommandType.ResizeNotes:
-      if (!Number.isSafeInteger(command.durationDelta)) {
-        rejectCommand("invalid-delta", "Duration delta must be an integer");
-      }
-      for (const id of command.targetIds) {
-        const note = ownsNote(id);
-        if (!note) continue;
-        const duration = Math.max(1, note.duration + command.durationDelta);
-        if (
-          !Number.isSafeInteger(duration) ||
-          !Number.isSafeInteger(note.tick + duration)
-        ) {
-          rejectCommand(
-            "invalid-note-range",
-            `Note '${id}' end tick is too large`,
-          );
-        }
-      }
-      break;
-    case EditCommandType.DeleteEntities:
-      for (const id of command.targetIds) ownsNote(id);
-      break;
+    return expander(this, command, context);
   }
-
-  return {
-    commands: rejections.length === 0 ? [command] : [],
-    rejections,
-  };
-}
-
-function validNoteFields(
-  tick: number,
-  pitch: number,
-  duration: number,
-): boolean {
-  return (
-    Number.isSafeInteger(tick) &&
-    tick >= 0 &&
-    Number.isInteger(pitch) &&
-    pitch >= 0 &&
-    pitch <= 127 &&
-    Number.isSafeInteger(duration) &&
-    duration >= 1
-  );
-}
-
-function reject(
-  command: EditCommand,
-  code: string,
-  message: string,
-): Rejection {
-  return { code, message, command };
 }

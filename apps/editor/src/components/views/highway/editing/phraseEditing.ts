@@ -1,6 +1,6 @@
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   type EntityId,
   type GestureHandle,
 } from "@openchart/views";
@@ -156,7 +156,7 @@ export class HighwayPhraseEditingController {
     const targetIds = this.getSelectedPhraseIds();
     if (targetIds.length === 0) return false;
     const changed = session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds,
     }).changed;
     if (changed) session.selection.setSelectedIds([]);

@@ -86,7 +86,7 @@ export abstract class AbstractChartView<T> {
   }
 
   /** Binds the editing session supplied by the active viewport. */
-  public setEditingSession(_session: EditingSession | null): void {
+  public setEditingSession(_session?: EditingSession): void {
     void _session;
   }
 

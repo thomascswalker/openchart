@@ -289,8 +289,8 @@ describe("EditorClipboardService", () => {
 
     selectOnlyNote(h.editing, track);
 
-    const firstSession = h.editing.getSession(firstViewportId)!;
-    const secondSession = h.editing.getSession(secondViewportId)!;
+    const firstSession = h.editing.getEditingSession(firstViewportId)!;
+    const secondSession = h.editing.getEditingSession(secondViewportId)!;
     const secondNote = track.getNotes()[1]!;
     const secondNoteId = formatNoteId(0, track.getEventId(secondNote.noteOn));
     expect(secondSession.selection.getSelectedIds()).toEqual(

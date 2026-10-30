@@ -12,7 +12,7 @@ import {
   type CompiledRuleset,
   type TrackDescriptor,
 } from "../ruleset/compile";
-import type { NoteHandle } from "./entity";
+import { NoteHandle } from "./entity";
 import {
   EntityType,
   formatNoteId,
@@ -23,15 +23,20 @@ import {
   type EntityId,
 } from "./entity";
 import { emptyEditResult, EditRejectedError, type EditResult } from "./result";
-import { EditCommandType, type GeneralCommand } from "./commands";
+import { GeneralCommandType, type GeneralCommand } from "./commands";
 
-/** Headless raw-command executor and read-only projection of a MIDI document. */
+/**
+ * Executes commands (which pass validation) against a MIDI document and
+ * provides read-only access to its state.
+ */
 export class CommandExecutor {
+  /** The underlying MIDI document. */
   private readonly midi: Midi;
+  /** The track descriptors derived from the compiled ruleset. */
   private readonly trackDescriptors: readonly TrackDescriptor[];
+  /** The compiled ruleset used for this document. */
   private readonly rules: CompiledRuleset;
 
-  /** Creates a reader and command executor for a mutable MIDI document. */
   public constructor(
     midi: Midi,
     rules: CompiledRuleset = DefaultCompiledRuleset,
@@ -58,21 +63,22 @@ export class CommandExecutor {
   }
 
   /** Returns the configured descriptor for a MIDI track, if one exists. */
-  public getTrackDescriptor(trackIndex: number): TrackDescriptor | null {
+  public getTrackDescriptorByTrackIndex(
+    trackIndex: number,
+  ): TrackDescriptor | null {
     const track = this.midi.tracks[trackIndex];
-    if (!track) return null;
-    return (
-      this.trackDescriptors.find(
+    if (track) {
+      const desc = this.trackDescriptors.find(
         (descriptor) => descriptor.name === track.name,
-      ) ?? null
-    );
+      );
+      return desc ?? null;
+    }
+    return null;
   }
 
   /** Resolves a configured track key to its MIDI index. */
-  public findTrackIndex(trackKey: string): number | null {
-    const descriptor = this.trackDescriptors.find(
-      (item) => item.key === trackKey,
-    );
+  public findTrackIndex(key: string): number | null {
+    const descriptor = this.trackDescriptors.find((item) => item.key === key);
     if (!descriptor) return null;
     const index = this.midi.tracks.findIndex(
       (track) => track.name === descriptor.name,
@@ -81,25 +87,27 @@ export class CommandExecutor {
   }
 
   /** Materializes a configured target track and returns its current index. */
-  public ensureTrack(trackKey: string): number | null {
-    const track = new SongView(this.midi, this.rules).ensureMidiTrack(trackKey);
+  public ensureTrack(key: string): number | null {
+    const track = new SongView(this.midi, this.rules).ensureMidiTrack(key);
     if (!track) return null;
     const index = this.midi.tracks.indexOf(track);
     return index >= 0 ? index : null;
   }
 
-  /** Reads note snapshots from a track, optionally restricting the pitch range. */
-  public getNotes(
+  /** Reads note handles from a track, optionally restricting the pitch range. */
+  public getNoteHandles(
     trackIndex: number,
     pitchRange?: { low: number; high: number },
   ): readonly NoteHandle[] {
     const track = this.midi.tracks[trackIndex];
-    if (!track) return [];
+    if (!track) {
+      return [];
+    }
     const notes = track.getNotes(
       pitchRange ? { pitch: pitchRange } : undefined,
     );
-    return notes.map((note) =>
-      this.toNoteSnapshot(trackIndex, track.getEventId(note.noteOn), note),
+    return notes.map(
+      (note) => new NoteHandle(trackIndex, track.getEventId(note.noteOn), note),
     );
   }
 
@@ -141,11 +149,13 @@ export class CommandExecutor {
   }
 
   /** Resolves a stable note ID to a read-only snapshot. */
-  public getNote(id: EntityId | string): NoteHandle | null {
+  public getHandleFromId(id: EntityId | string): NoteHandle | null {
     const target = this.resolveNote(id);
-    if (!target) return null;
+    if (!target) {
+      return null;
+    }
     const { trackIndex, note } = target;
-    return this.toNoteSnapshot(
+    return new NoteHandle(
       trackIndex,
       target.track.getEventId(note.noteOn),
       note,
@@ -192,7 +202,7 @@ export class CommandExecutor {
 
   private validateCommand(command: GeneralCommand): void {
     switch (command.type) {
-      case EditCommandType.AddNotes:
+      case GeneralCommandType.AddNotes:
         for (const spec of command.notes) {
           this.validateTrackIndex(command, spec.trackIndex);
           this.validateNoteFields(
@@ -214,11 +224,11 @@ export class CommandExecutor {
               spec.velocity < 1 ||
               spec.velocity > 127)
           ) {
-            this.reject(command, "invalid-velocity", "Velocity must be 1–127");
+            this.reject(command, "invalid-velocity", "Velocity must be 1-127");
           }
         }
         break;
-      case EditCommandType.UpdateNotes:
+      case GeneralCommandType.UpdateNotes:
         for (const patch of command.patches) {
           const { note } = this.requireCommandNote(command, patch.id);
           if (patch.tick !== undefined) {
@@ -230,7 +240,7 @@ export class CommandExecutor {
               patch.pitch < 0 ||
               patch.pitch > 127)
           ) {
-            this.reject(command, "invalid-pitch", "Pitch must be 0–127");
+            this.reject(command, "invalid-pitch", "Pitch must be 0-127");
           }
           if (
             patch.duration !== undefined &&
@@ -248,7 +258,7 @@ export class CommandExecutor {
               patch.velocity < 1 ||
               patch.velocity > 127)
           ) {
-            this.reject(command, "invalid-velocity", "Velocity must be 1–127");
+            this.reject(command, "invalid-velocity", "Velocity must be 1-127");
           }
           const nextStart = patch.tick ?? note.start;
           const nextDuration = patch.duration ?? note.end - note.start;
@@ -261,7 +271,7 @@ export class CommandExecutor {
           }
         }
         break;
-      case EditCommandType.MoveNotes:
+      case GeneralCommandType.MoveNotes:
         this.validateInteger(command, command.tickDelta, "tickDelta");
         this.validateInteger(command, command.pitchDelta, "pitchDelta");
         command.targetIds.forEach((id) => {
@@ -279,7 +289,7 @@ export class CommandExecutor {
           }
         });
         break;
-      case EditCommandType.ResizeNotes:
+      case GeneralCommandType.ResizeNotes:
         this.validateInteger(command, command.durationDelta, "durationDelta");
         command.targetIds.forEach((id) => {
           const { note } = this.requireCommandNote(command, id);
@@ -296,7 +306,7 @@ export class CommandExecutor {
           }
         });
         break;
-      case EditCommandType.DeleteEntities:
+      case GeneralCommandType.DeleteEntities:
         command.targetIds.forEach((id) => {
           if (!this.entityExists(id)) {
             this.reject(
@@ -307,7 +317,7 @@ export class CommandExecutor {
           }
         });
         break;
-      case EditCommandType.AddText:
+      case GeneralCommandType.AddText:
         this.validateTrackIndex(command, command.trackIndex);
         this.validateTick(command, command.tick);
         if (!this.isTextMetaType(command.metaType)) {
@@ -321,7 +331,7 @@ export class CommandExecutor {
           this.reject(command, "invalid-text", "Text must not be empty");
         }
         break;
-      case EditCommandType.UpdateText: {
+      case GeneralCommandType.UpdateText: {
         this.requireTextEvent(command, command.id);
         if (
           command.text !== undefined &&
@@ -340,7 +350,7 @@ export class CommandExecutor {
         }
         break;
       }
-      case EditCommandType.SetTempo:
+      case GeneralCommandType.SetTempo:
         this.validateGlobalTick(command, command.tick);
         if (
           !Number.isInteger(command.microsecondsPerQuarterNote) ||
@@ -354,11 +364,11 @@ export class CommandExecutor {
           );
         }
         break;
-      case EditCommandType.RemoveTempo:
-      case EditCommandType.RemoveTimeSignature:
+      case GeneralCommandType.RemoveTempo:
+      case GeneralCommandType.RemoveTimeSignature:
         this.validateGlobalTick(command, command.tick);
         break;
-      case EditCommandType.SetTimeSignature:
+      case GeneralCommandType.SetTimeSignature:
         this.validateGlobalTick(command, command.tick);
         if (
           !Number.isInteger(command.numerator) ||
@@ -368,7 +378,7 @@ export class CommandExecutor {
           this.reject(
             command,
             "invalid-time-signature",
-            "Numerator must be 1–255",
+            "Numerator must be 1-255",
           );
         }
         if (
@@ -379,7 +389,7 @@ export class CommandExecutor {
           this.reject(
             command,
             "invalid-time-signature",
-            "Denominator exponent must be 0–7",
+            "Denominator exponent must be 0-7",
           );
         }
         break;
@@ -388,7 +398,7 @@ export class CommandExecutor {
 
   private applyValidated(command: GeneralCommand): EditResult {
     switch (command.type) {
-      case EditCommandType.AddNotes: {
+      case GeneralCommandType.AddNotes: {
         const createdIds = command.notes.map((spec) => {
           const note = this.getTrack(spec.trackIndex).insertNote(spec);
           return formatNoteId(
@@ -402,7 +412,7 @@ export class CommandExecutor {
           createdIds,
         };
       }
-      case EditCommandType.UpdateNotes: {
+      case GeneralCommandType.UpdateNotes: {
         const updatedIds: EntityId[] = [];
         for (const patch of command.patches) {
           const target = this.resolveNote(patch.id)!;
@@ -433,7 +443,7 @@ export class CommandExecutor {
           updatedIds,
         };
       }
-      case EditCommandType.MoveNotes: {
+      case GeneralCommandType.MoveNotes: {
         const updatedIds: EntityId[] = [];
         for (const id of command.targetIds) {
           const target = this.resolveNote(id)!;
@@ -457,7 +467,7 @@ export class CommandExecutor {
           updatedIds,
         };
       }
-      case EditCommandType.ResizeNotes: {
+      case GeneralCommandType.ResizeNotes: {
         const updatedIds: EntityId[] = [];
         for (const id of command.targetIds) {
           const target = this.resolveNote(id)!;
@@ -475,7 +485,7 @@ export class CommandExecutor {
           updatedIds,
         };
       }
-      case EditCommandType.DeleteEntities: {
+      case GeneralCommandType.DeleteEntities: {
         const removedIds: EntityId[] = [];
         command.targetIds.forEach((targetId) => {
           const entity = parseEntityFromId(targetId)!;
@@ -513,7 +523,7 @@ export class CommandExecutor {
           removedIds,
         };
       }
-      case EditCommandType.AddText: {
+      case GeneralCommandType.AddText: {
         const track = this.getTrack(command.trackIndex);
         const text = track.addTextEvent(
           command.metaType,
@@ -523,7 +533,7 @@ export class CommandExecutor {
         const id = formatTextId(command.trackIndex, track.getEventId(text));
         return { ...emptyEditResult(), changed: true, createdIds: [id] };
       }
-      case EditCommandType.UpdateText: {
+      case GeneralCommandType.UpdateText: {
         const entity = parseEntityFromId(command.id)!;
         const track = this.getTrack(entity.trackIndex!);
         const event = track.getEventById(entity.eventId)!;
@@ -554,7 +564,7 @@ export class CommandExecutor {
           updatedIds: [command.id],
         };
       }
-      case EditCommandType.SetTempo: {
+      case GeneralCommandType.SetTempo: {
         const existing = this.globalEventAt(MetaType.Tempo, command.tick);
         if (
           existing &&
@@ -584,9 +594,9 @@ export class CommandExecutor {
           diagnostics: [],
         };
       }
-      case EditCommandType.RemoveTempo:
+      case GeneralCommandType.RemoveTempo:
         return this.removeGlobalEventAt(command, MetaType.Tempo, "tempo");
-      case EditCommandType.SetTimeSignature: {
+      case GeneralCommandType.SetTimeSignature: {
         const existing = this.globalEventAt(
           MetaType.TimeSignature,
           command.tick,
@@ -625,28 +635,13 @@ export class CommandExecutor {
           diagnostics: [],
         };
       }
-      case EditCommandType.RemoveTimeSignature:
+      case GeneralCommandType.RemoveTimeSignature:
         return this.removeGlobalEventAt(
           command,
           MetaType.TimeSignature,
           "time-signature",
         );
     }
-  }
-
-  private toNoteSnapshot(
-    trackIndex: number,
-    eventId: string,
-    note: MidiNote,
-  ): NoteHandle {
-    return {
-      id: formatNoteId(trackIndex, eventId),
-      trackIndex,
-      tick: note.start,
-      pitch: note.pitch,
-      duration: note.end - note.start,
-      velocity: note.velocity,
-    };
   }
 
   private resolveNote(
@@ -768,7 +763,7 @@ export class CommandExecutor {
   ): void {
     this.validateTick(command, tick);
     if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
-      this.reject(command, "invalid-pitch", "Pitch must be 0–127");
+      this.reject(command, "invalid-pitch", "Pitch must be 0-127");
     }
     if (!Number.isSafeInteger(duration) || duration < 1) {
       this.reject(
@@ -789,7 +784,9 @@ export class CommandExecutor {
     position: "first" | "last" = "first",
   ): MidiEvent | undefined {
     const track = this.midi.tracks[0];
-    if (!track) return undefined;
+    if (!track) {
+      return undefined;
+    }
     const matching = track.events.filter(
       (event) =>
         event.tick === tick &&
@@ -804,14 +801,18 @@ export class CommandExecutor {
     command: Extract<
       GeneralCommand,
       {
-        type: EditCommandType.RemoveTempo | EditCommandType.RemoveTimeSignature;
+        type:
+          | GeneralCommandType.RemoveTempo
+          | GeneralCommandType.RemoveTimeSignature;
       }
     >,
     type: MetaType.Tempo | MetaType.TimeSignature,
     kind: "tempo" | "time-signature",
   ): EditResult {
     const event = this.globalEventAt(type, command.tick);
-    if (!event) return emptyEditResult();
+    if (!event) {
+      return emptyEditResult();
+    }
     const id =
       kind === "tempo"
         ? formatTempoId(this.getTrack(0).getEventId(event))
@@ -843,23 +844,9 @@ export class CommandExecutor {
       throw new RangeError("trackIndex must be a non-negative integer");
     }
     const track = this.midi.tracks[trackIndex];
-    if (!track) throw new RangeError(`MIDI track ${trackIndex} does not exist`);
-    return track;
-  }
-
-  private validateNote(tick: number, pitch: number, duration: number): void {
-    this.requireInteger(tick, "tick");
-    this.requireInteger(pitch, "pitch");
-    this.requireInteger(duration, "duration");
-    if (tick < 0 || pitch < 0 || pitch > 127 || duration < 1) {
-      throw new RangeError(
-        "Note tick, pitch, or duration is outside its valid range",
-      );
+    if (!track) {
+      throw new RangeError(`MIDI track ${trackIndex} does not exist`);
     }
-  }
-
-  private requireInteger(value: number, name: string): void {
-    if (!Number.isInteger(value))
-      throw new RangeError(`${name} must be an integer`);
+    return track;
   }
 }

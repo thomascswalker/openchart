@@ -1,7 +1,7 @@
 import { MetaType, Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
 import { Difficulty } from "../../ruleset/difficulty.js";
-import { EditCommandType, DomainCommandType } from "../commands.js";
+import { GeneralCommandType, DomainCommandType } from "../commands.js";
 import {
   formatNoteId,
   formatTextId,
@@ -56,11 +56,11 @@ describe("shared chart editing primitives", () => {
     const firstId = executor.getNoteId(0, first!);
 
     const clonedExecutor = new CommandExecutor(midi.clone());
-    expect(clonedExecutor.getNote(firstId)).toMatchObject({
+    expect(clonedExecutor.getHandleFromId(firstId)).toMatchObject({
       tick: 0,
       pitch: 60,
     });
-    expect(executor.getNote(firstId)).toMatchObject({
+    expect(executor.getHandleFromId(firstId)).toMatchObject({
       trackIndex: 0,
       tick: 0,
       pitch: 60,
@@ -69,29 +69,29 @@ describe("shared chart editing primitives", () => {
     });
     expect(
       executor.apply({
-        type: EditCommandType.MoveNotes,
+        type: GeneralCommandType.MoveNotes,
         targetIds: [firstId],
         tickDelta: 120,
         pitchDelta: 2,
       }),
     ).toMatchObject({ changed: true, updatedIds: [firstId] });
-    expect(executor.getNote(firstId)).toMatchObject({
+    expect(executor.getHandleFromId(firstId)).toMatchObject({
       tick: 120,
       pitch: 62,
     });
     expect(
       executor.apply({
-        type: EditCommandType.ResizeNotes,
+        type: GeneralCommandType.ResizeNotes,
         targetIds: [firstId],
         durationDelta: 60,
       }),
     ).toMatchObject({ changed: true, updatedIds: [firstId] });
-    expect(executor.getNote(firstId)?.duration).toBe(180);
+    expect(executor.getHandleFromId(firstId)?.duration).toBe(180);
 
     const secondId = executor.getNoteId(0, second!);
     expect(
       executor.apply({
-        type: EditCommandType.DeleteEntities,
+        type: GeneralCommandType.DeleteEntities,
         targetIds: [secondId],
       }),
     ).toMatchObject({ changed: true, removedIds: [secondId] });
@@ -101,7 +101,7 @@ describe("shared chart editing primitives", () => {
   it("applies raw note creation and absolute updates with stable results", () => {
     const { executor } = createDocument();
     const added = executor.apply({
-      type: EditCommandType.AddNotes,
+      type: GeneralCommandType.AddNotes,
       notes: [
         { trackIndex: 0, tick: 480, pitch: 72, duration: 240, velocity: 88 },
       ],
@@ -121,11 +121,11 @@ describe("shared chart editing primitives", () => {
 
     expect(
       executor.apply({
-        type: EditCommandType.UpdateNotes,
+        type: GeneralCommandType.UpdateNotes,
         patches: [{ id, tick: 600, pitch: 73, duration: 120, velocity: 99 }],
       }),
     ).toMatchObject({ changed: true, updatedIds: [id] });
-    expect(executor.getNote(id)).toMatchObject({
+    expect(executor.getHandleFromId(id)).toMatchObject({
       tick: 600,
       pitch: 73,
       duration: 120,
@@ -140,11 +140,11 @@ describe("shared chart editing primitives", () => {
     expect(() =>
       executor.applyBatch([
         {
-          type: EditCommandType.AddNotes,
+          type: GeneralCommandType.AddNotes,
           notes: [{ trackIndex: 0, tick: 480, pitch: 72, duration: 120 }],
         },
         {
-          type: EditCommandType.AddNotes,
+          type: GeneralCommandType.AddNotes,
           notes: [{ trackIndex: 99, tick: 720, pitch: 76, duration: 120 }],
         },
       ]),
@@ -155,7 +155,7 @@ describe("shared chart editing primitives", () => {
   it("applies text, tempo, and time-signature raw commands", () => {
     const { midi, executor } = createDocument();
     const text = executor.apply({
-      type: EditCommandType.AddText,
+      type: GeneralCommandType.AddText,
       trackIndex: 0,
       metaType: MetaType.Marker,
       tick: 120,
@@ -170,7 +170,7 @@ describe("shared chart editing primitives", () => {
     });
     expect(
       executor.apply({
-        type: EditCommandType.UpdateText,
+        type: GeneralCommandType.UpdateText,
         id: textId,
         tick: 240,
         text: "Chorus",
@@ -184,13 +184,13 @@ describe("shared chart editing primitives", () => {
     });
     expect(
       executor.apply({
-        type: EditCommandType.DeleteEntities,
+        type: GeneralCommandType.DeleteEntities,
         targetIds: [textId],
       }),
     ).toMatchObject({ changed: true, removedIds: [textId] });
 
     const tempo = executor.apply({
-      type: EditCommandType.SetTempo,
+      type: GeneralCommandType.SetTempo,
       tick: 480,
       microsecondsPerQuarterNote: 500_000,
     });
@@ -210,7 +210,7 @@ describe("shared chart editing primitives", () => {
     });
     expect(
       executor.apply({
-        type: EditCommandType.SetTempo,
+        type: GeneralCommandType.SetTempo,
         tick: 480,
         microsecondsPerQuarterNote: 400_000,
       }),
@@ -228,13 +228,13 @@ describe("shared chart editing primitives", () => {
         ),
     ).toBe(true);
     expect(
-      executor.apply({ type: EditCommandType.RemoveTempo, tick: 480 }),
+      executor.apply({ type: GeneralCommandType.RemoveTempo, tick: 480 }),
     ).toMatchObject({
       changed: true,
     });
     expect(
       executor.apply({
-        type: EditCommandType.SetTimeSignature,
+        type: GeneralCommandType.SetTimeSignature,
         tick: 960,
         numerator: 3,
         denominator: 2,
@@ -251,7 +251,10 @@ describe("shared chart editing primitives", () => {
         ),
     ).toBe(true);
     expect(
-      executor.apply({ type: EditCommandType.RemoveTimeSignature, tick: 960 }),
+      executor.apply({
+        type: GeneralCommandType.RemoveTimeSignature,
+        tick: 960,
+      }),
     ).toMatchObject({ changed: true });
   });
 
@@ -264,20 +267,23 @@ describe("shared chart editing primitives", () => {
     const thirdId = executor.getNoteId(0, third!);
     const commands = [
       {
-        type: EditCommandType.UpdateNotes as const,
+        type: GeneralCommandType.UpdateNotes as const,
         patches: [{ id: firstId, tick: 120, pitch: 61 }],
       },
       {
-        type: EditCommandType.AddNotes as const,
+        type: GeneralCommandType.AddNotes as const,
         notes: [{ trackIndex: 0, tick: 720, pitch: 72, duration: 120 }],
       },
       {
-        type: EditCommandType.MoveNotes as const,
+        type: GeneralCommandType.MoveNotes as const,
         targetIds: [secondId],
         tickDelta: 120,
         pitchDelta: -2,
       },
-      { type: EditCommandType.DeleteEntities as const, targetIds: [thirdId] },
+      {
+        type: GeneralCommandType.DeleteEntities as const,
+        targetIds: [thirdId],
+      },
     ];
     const preview = computePreview(commands, executor);
     const before = midi.toBuffer();
@@ -291,11 +297,13 @@ describe("shared chart editing primitives", () => {
       expect.arrayContaining([firstId, secondId]),
     );
     for (const id of [firstId, secondId]) {
-      expect(preview.updated.get(id)).toEqual(appliedExecutor.getNote(id));
+      expect(preview.updated.get(id)).toEqual(
+        appliedExecutor.getHandleFromId(id),
+      );
     }
     expect(preview.added).toHaveLength(1);
     expect(preview.added[0]).toMatchObject({
-      ...appliedExecutor.getNote(result.createdIds[0]!),
+      ...appliedExecutor.getHandleFromId(result.createdIds[0]!),
       id: "pending:0",
     });
   });
@@ -310,13 +318,13 @@ describe("shared chart editing primitives", () => {
 
     expect(
       executor.apply({
-        type: EditCommandType.MoveNotes,
+        type: GeneralCommandType.MoveNotes,
         targetIds: [noteId],
         tickDelta: -120,
         pitchDelta: 0,
       }),
     ).toMatchObject({ changed: true, updatedIds: [noteId] });
-    expect(executor.getNote(noteId)).toMatchObject({
+    expect(executor.getHandleFromId(noteId)).toMatchObject({
       tick: 0,
       duration: 120,
     });
@@ -334,7 +342,7 @@ describe("shared chart editing primitives", () => {
 
     expect(
       executor.apply({
-        type: EditCommandType.MoveNotes,
+        type: GeneralCommandType.MoveNotes,
         targetIds,
         tickDelta: 480,
         pitchDelta: 2,
@@ -369,7 +377,7 @@ describe("shared chart editing primitives", () => {
     ).toBe(true);
     const phrase = track.getNotes().find((note) => note.pitch === 116)!;
     const phraseId = executor.getNoteId(0, phrase);
-    expect(executor.getNote(phraseId)).toMatchObject({
+    expect(executor.getHandleFromId(phraseId)).toMatchObject({
       tick: 480,
       pitch: 116,
       duration: 240,
@@ -382,7 +390,7 @@ describe("shared chart editing primitives", () => {
         endTick: 960,
       }).changed,
     ).toBe(true);
-    expect(executor.getNote(phraseId)).toMatchObject({
+    expect(executor.getHandleFromId(phraseId)).toMatchObject({
       tick: 600,
       duration: 360,
     });
@@ -422,7 +430,7 @@ describe("shared chart editing primitives", () => {
     const preview = computePreview(
       [
         {
-          type: EditCommandType.MoveNotes,
+          type: GeneralCommandType.MoveNotes,
           targetIds: [noteId],
           tickDelta: 120,
           pitchDelta: 1,
@@ -450,7 +458,7 @@ describe("shared chart editing primitives", () => {
       "piano-roll",
     );
     const ids = track.getNotes().map((note) => executor.getNoteId(0, note));
-    const selected = ids.map((id) => executor.getNote(id)!);
+    const selected = ids.map((id) => executor.getHandleFromId(id)!);
     const firstTick = Math.min(...selected.map((note) => note.tick));
     standalone.clipboard.setData({
       sourceModeId: session.mode.id,
@@ -499,7 +507,7 @@ describe("shared chart editing primitives", () => {
       "piano-roll",
     );
     const add = (tick: number) => ({
-      type: EditCommandType.AddNotes as const,
+      type: GeneralCommandType.AddNotes as const,
       notes: [{ trackIndex: 0, tick, pitch: 72, duration: 120 }],
     });
 

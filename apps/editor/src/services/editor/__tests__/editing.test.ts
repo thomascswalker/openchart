@@ -9,7 +9,7 @@ import { ViewportService } from "../viewports";
 import { createTestRulesetService } from "../../__tests__/testUtils";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EditingModeId,
   EntityType,
   VocalNoteKind,
@@ -48,15 +48,15 @@ describe("EditingService", () => {
       ruleset,
     );
     const noteId = editing
-      .getDocument()
-      .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
+      .getCommandExecutor()
+      ?.getNoteId(0, midi.tracks[0]!.getNotes()[0]!)!;
 
-    editing.selection.add(noteId);
-    const session = editing.getSession("viewport-1");
+    const session = editing.getEditingSession("viewport-1");
+    session?.selection.add(noteId);
     expect(session).not.toBeNull();
     expect(
       session!.execute({
-        type: EditCommandType.AddNotes,
+        type: GeneralCommandType.AddNotes,
         notes: [{ trackIndex: 0, tick: 240, pitch: 64, duration: 120 }],
       }).changed,
     ).toBe(true);
@@ -67,11 +67,13 @@ describe("EditingService", () => {
     documentService.undoEdit();
 
     expect(documentService.data.tracks[0]?.getNotes()).toHaveLength(1);
-    expect(editing.selection.isSelected(noteId)).toBe(true);
-    expect(editing.getDocument().getNote(noteId)).toMatchObject({
-      tick: 0,
-      pitch: 60,
-    });
+    expect(session?.selection.isSelected(noteId)).toBe(true);
+    expect(editing.getCommandExecutor()?.getHandleFromId(noteId)).toMatchObject(
+      {
+        tick: 0,
+        pitch: 60,
+      },
+    );
   });
 
   it("clears selection and clipboard when a new project is loaded", () => {
@@ -87,10 +89,11 @@ describe("EditingService", () => {
       new ViewportService(ruleset),
       ruleset,
     );
+    const session = editing.getEditingSession("viewport-1");
     const noteId = editing
-      .getDocument()
-      .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
-    editing.selection.add(noteId);
+      .getCommandExecutor()
+      ?.getNoteId(0, midi.tracks[0]!.getNotes()[0]!)!;
+    session?.selection.add(noteId);
     editing.clipboard.setData({
       sourceModeId: EditingModeId.MidiRaw,
       entities: [
@@ -114,7 +117,7 @@ describe("EditingService", () => {
     nextMidi.addTrack();
     documentService.data = nextMidi;
 
-    expect(editing.selection.getSelectedIds()).toEqual([]);
+    expect(session?.selection.getSelectedIds()).toEqual([]);
     expect(editing.clipboard.canPaste()).toBe(false);
   });
 
@@ -133,13 +136,13 @@ describe("EditingService", () => {
       new ViewportService(ruleset),
       ruleset,
     );
-    const session = editing.getSession("viewport-1")!;
+    const session = editing.getEditingSession("viewport-1")!;
     const id = editing
-      .getDocument()
-      .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
+      .getCommandExecutor()
+      ?.getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
     const gesture = session.beginGesture();
     gesture.preview({
-      type: EditCommandType.MoveNotes,
+      type: GeneralCommandType.MoveNotes,
       targetIds: [id],
       tickDelta: 240,
       pitchDelta: 2,
@@ -180,12 +183,12 @@ describe("EditingService", () => {
       ruleset,
     );
 
-    const global = editing.getSession("viewport-1", "global");
+    const global = editing.getEditingSession("viewport-1", "midi.global");
     expect(global?.mode.id).toBe(EditingModeId.MidiGlobal);
-    expect(global?.hostKind).toBe("global");
+    expect(global?.hostKind).toBe("midi.global");
     expect(
       global?.execute({
-        type: EditCommandType.SetTempo,
+        type: GeneralCommandType.SetTempo,
         tick: 480,
         microsecondsPerQuarterNote: 400_000,
       }).changed,
@@ -231,12 +234,12 @@ describe("EditingService", () => {
       new ViewportService(ruleset),
       ruleset,
     );
-    const global = editing.getSession("viewport-1", "global")!;
-    const lyricId = editing.getDocument().getTextEvents(0)[0]!.id;
+    const global = editing.getEditingSession("viewport-1", "midi.global")!;
+    const lyricId = editing.getCommandExecutor()!.getTextEvents(0)[0]!.id!;
 
     expect(
       global.execute({
-        type: EditCommandType.DeleteEntities,
+        type: GeneralCommandType.DeleteEntities,
         targetIds: [lyricId],
       }).changed,
     ).toBe(false);

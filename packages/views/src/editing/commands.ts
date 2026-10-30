@@ -19,7 +19,7 @@ export interface UpdateNoteOptions {
   velocity?: number;
 }
 
-export enum EditCommandType {
+export enum GeneralCommandType {
   AddNotes = "ADD_NOTES",
   UpdateNotes = "UPDATE_NOTES",
   MoveNotes = "MOVE_NOTES",
@@ -60,35 +60,35 @@ export interface DomainCommand extends ICommand {
 }
 
 export interface AddNotesCommand extends ICommand {
-  type: EditCommandType.AddNotes;
+  type: GeneralCommandType.AddNotes;
   notes: readonly InsertNoteOptions[];
 }
 
 export interface UpdateNotesCommand extends ICommand {
-  type: EditCommandType.UpdateNotes;
+  type: GeneralCommandType.UpdateNotes;
   patches: readonly UpdateNoteOptions[];
 }
 
 export interface MoveNotesCommand extends ICommand {
-  type: EditCommandType.MoveNotes;
+  type: GeneralCommandType.MoveNotes;
   targetIds: readonly EntityId[];
   tickDelta: number;
   pitchDelta: number;
 }
 
 export interface ResizeNotesCommand extends ICommand {
-  type: EditCommandType.ResizeNotes;
+  type: GeneralCommandType.ResizeNotes;
   targetIds: readonly EntityId[];
   durationDelta: number;
 }
 
 export interface DeleteEntitiesCommand extends ICommand {
-  type: EditCommandType.DeleteEntities;
+  type: GeneralCommandType.DeleteEntities;
   targetIds: readonly EntityId[];
 }
 
 export interface AddTextCommand extends ICommand {
-  type: EditCommandType.AddText;
+  type: GeneralCommandType.AddText;
   trackIndex: number;
   metaType: TextMetaType;
   tick: number;
@@ -96,32 +96,32 @@ export interface AddTextCommand extends ICommand {
 }
 
 export interface UpdateTextCommand extends ICommand {
-  type: EditCommandType.UpdateText;
+  type: GeneralCommandType.UpdateText;
   id: EntityId;
   text?: string;
   tick?: number;
 }
 
 export interface SetTempoCommand extends ICommand {
-  type: EditCommandType.SetTempo;
+  type: GeneralCommandType.SetTempo;
   tick: number;
   microsecondsPerQuarterNote: number;
 }
 
 export interface RemoveTempoCommand extends ICommand {
-  type: EditCommandType.RemoveTempo;
+  type: GeneralCommandType.RemoveTempo;
   tick: number;
 }
 
 export interface SetTimeSignatureCommand extends ICommand {
-  type: EditCommandType.SetTimeSignature;
+  type: GeneralCommandType.SetTimeSignature;
   tick: number;
   numerator: number;
   denominator: number;
 }
 
 export interface RemoveTimeSignatureCommand extends ICommand {
-  type: EditCommandType.RemoveTimeSignature;
+  type: GeneralCommandType.RemoveTimeSignature;
   tick: number;
 }
 export type GeneralCommand =
@@ -137,5 +137,34 @@ export type GeneralCommand =
   | SetTimeSignatureCommand
   | RemoveTimeSignatureCommand;
 
-/** Any command accepted by an editing mode before it is expanded to raw edits. */
 export type EditCommand = GeneralCommand | DomainCommand;
+
+export type GeneralOf<T extends GeneralCommandType> = Extract<
+  EditCommand,
+  { type: T }
+>;
+
+export type DomainOf<T extends DomainCommandType> = Extract<
+  EditCommand,
+  { type: T }
+>;
+
+const GeneralCommandTypes: ReadonlySet<string> = new Set(
+  Object.values(GeneralCommandType),
+);
+
+const DomainCommandTypes: ReadonlySet<string> = new Set(
+  Object.values(DomainCommandType),
+);
+
+export function isGeneralCommand(
+  command: EditCommand,
+): command is GeneralCommand {
+  return GeneralCommandTypes.has(command.type);
+}
+
+export function isDomainCommand(
+  command: EditCommand,
+): command is DomainCommand {
+  return DomainCommandTypes.has(command.type);
+}

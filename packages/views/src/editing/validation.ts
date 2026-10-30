@@ -16,7 +16,7 @@ import {
 } from "../ruleset/index";
 import { checkTextEvent } from "../ruleset/textEvents";
 import type { GeneralCommand } from "./commands";
-import { EditCommandType } from "./commands";
+import { GeneralCommandType } from "./commands";
 import { NoteHandle, parseEntityFromId, type EntityId } from "./entity";
 import { CommandExecutor } from "./executor";
 import type { EditingTarget } from "./modes/mode";
@@ -32,7 +32,9 @@ export function validateRawCommands(
   compiled: CompiledRuleset,
   rulesContext: RulesetContext,
 ): RuleViolation[] {
-  if (commands.length === 0) return [];
+  if (commands.length === 0) {
+    return [];
+  }
   const enforcer = new RuleEnforcer(compiled);
   const violations = enforcer.checkEdits(
     buildTrackEdits(commands, executor, target, compiled),
@@ -53,7 +55,7 @@ function rulesForTrack(
   if (trackIndex === PENDING_TRACK) {
     return compiled.byKey.get(target.trackKey) ?? null;
   }
-  return executor.getTrackDescriptor(trackIndex)?.rules ?? null;
+  return executor.getTrackDescriptorByTrackIndex(trackIndex)?.rules ?? null;
 }
 
 export function buildTrackEdits(
@@ -87,7 +89,7 @@ export function buildTrackEdits(
     }
 
     const existing: readonly NoteHandle[] =
-      trackIndex === PENDING_TRACK ? [] : executor.getNotes(trackIndex);
+      trackIndex === PENDING_TRACK ? [] : executor.getNoteHandles(trackIndex);
     const overlay: NoteHandle[] = [];
     for (const note of existing) {
       if (preview.removed.has(note.id as EntityId)) continue;
@@ -143,7 +145,7 @@ function validateTextCommands(
 ): RuleViolation[] {
   const out: RuleViolation[] = [];
   for (const command of commands) {
-    if (command.type === EditCommandType.AddText) {
+    if (command.type === GeneralCommandType.AddText) {
       const rules = rulesForTrack(
         target.trackIndex === null ? PENDING_TRACK : command.trackIndex,
         executor,
@@ -161,13 +163,14 @@ function validateTextCommands(
         : null;
       if (v) out.push(v);
     } else if (
-      command.type === EditCommandType.UpdateText &&
+      command.type === GeneralCommandType.UpdateText &&
       command.text !== undefined
     ) {
       const parsed = parseTextId(command.id, executor);
       if (!parsed) continue;
       const rules =
-        executor.getTrackDescriptor(parsed.trackIndex)?.rules ?? null;
+        executor.getTrackDescriptorByTrackIndex(parsed.trackIndex)?.rules ??
+        null;
       const v = rules
         ? checkTextEvent(
             compiled,

@@ -8,7 +8,7 @@ import { validateRawCommands } from "./validation";
 import type { CommandExecutor } from "./executor";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   ICommand,
   type EditCommand,
   type GeneralCommand,
@@ -21,12 +21,12 @@ import {
   type Rejection,
 } from "./result";
 import { ClipboardService } from "./clipboard";
-import type { SelectionModel } from "./selection";
-import { SelectionModel as SelectionModelImpl } from "./selection";
-import type {
-  EditingMode,
+import { SelectionModel } from "./selection";
+import {
   EditingTarget,
-  ModeContext,
+  type AbstractEditingMode,
+  type IEditingTarget,
+  type ModeContext,
   Projection,
   ToolDescriptor,
 } from "./modes/mode";
@@ -83,8 +83,8 @@ export interface GestureHandle {
 /** Inputs required to bind a mode to one mutable chart document. */
 export interface CreateEditingSessionOptions {
   document: CommandExecutor;
-  mode: EditingMode;
-  target: EditingTarget;
+  mode: AbstractEditingMode;
+  target: IEditingTarget;
   hostKind: string;
   /** Compiled ruleset; drives mode behaviour and edit enforcement. */
   rules: CompiledRuleset;
@@ -100,15 +100,8 @@ export interface CreateEditingSessionOptions {
   onCommit?: (result: EditResult) => void;
 }
 
-/** Creates an editing session backed by the supplied transaction port. */
-// export function createEditingSession(
-//   options: CreateEditingSessionOptions,
-// ): EditingSession {
-//   return new EditingSession(options);
-// }
-
 export class EditingSession {
-  public readonly mode: EditingMode;
+  public readonly mode: AbstractEditingMode;
   public readonly hostKind: string;
   public readonly selection: SelectionModel;
   public readonly clipboard: ClipboardService;
@@ -124,12 +117,16 @@ export class EditingSession {
   public constructor(options: CreateEditingSessionOptions) {
     this.document = options.document;
     this.mode = options.mode;
-    this.targetValue = { ...options.target };
+    this.targetValue = new EditingTarget(
+      options.target,
+      options.document,
+      options.rules,
+    );
     this.hostKind = options.hostKind;
     this.rules = options.rules;
     this.rulesContextSource = options.rulesContext;
     this.transaction = options.transaction;
-    this.selection = options.selection ?? new SelectionModelImpl();
+    this.selection = options.selection ?? new SelectionModel();
     this.clipboard = options.clipboard ?? new ClipboardService();
     this.onCommit = options.onCommit;
     this.toolState = this.mode.toolStateSchema.parse(
@@ -149,13 +146,17 @@ export class EditingSession {
     return this.mode.createProjection(this.createModeContext());
   }
 
-  public classifyNote(note: NoteHandle): ReturnType<EditingMode["classify"]> {
+  public classifyNote(
+    note: NoteHandle,
+  ): ReturnType<AbstractEditingMode["classify"]> {
     return this.mode.classify(note, this.createModeContext());
   }
 
   public can(commandType: string): boolean {
     return (
-      this.mode.capabilities.rawCommands.has(commandType as EditCommandType) ||
+      this.mode.capabilities.generalCommands.has(
+        commandType as GeneralCommandType,
+      ) ||
       this.mode.capabilities.domainCommands.has(
         commandType as DomainCommandType,
       )
@@ -334,8 +335,8 @@ export class EditingSession {
   }
 
   private createModeContext(): ModeContext {
-    const target = this.targetValue;
     const rulesContext = this.getRulesContext();
+    const target = this.targetValue;
     return {
       executor: this.document,
       target,
@@ -399,7 +400,8 @@ export class EditingSession {
   ): GeneralCommand[] {
     const createsNotes = commands.some(
       (command) =>
-        command.type === EditCommandType.AddNotes && command.notes.length > 0,
+        command.type === GeneralCommandType.AddNotes &&
+        command.notes.length > 0,
     );
     const materializesTarget =
       this.targetValue.trackIndex === null && createsNotes;
@@ -409,7 +411,7 @@ export class EditingSession {
           "missing-track",
           "This mode cannot create its target track",
           commands.find(
-            (command) => command.type === EditCommandType.AddNotes,
+            (command) => command.type === GeneralCommandType.AddNotes,
           )!,
         );
       }
@@ -419,16 +421,16 @@ export class EditingSession {
           "missing-track",
           `Configured track '${this.targetValue.trackKey}' could not be created`,
           commands.find(
-            (command) => command.type === EditCommandType.AddNotes,
+            (command) => command.type === GeneralCommandType.AddNotes,
           )!,
         );
       }
-      this.targetValue = { ...this.targetValue, trackIndex };
+      this.targetValue = this.targetValue.with({ trackIndex });
     }
 
     if (this.targetValue.trackIndex === null) return [...commands];
     return commands.map((command) => {
-      if (command.type === EditCommandType.AddNotes) {
+      if (command.type === GeneralCommandType.AddNotes) {
         return {
           ...command,
           notes: command.notes.map((note) => ({
@@ -437,7 +439,7 @@ export class EditingSession {
           })),
         };
       }
-      if (materializesTarget && command.type === EditCommandType.AddText) {
+      if (materializesTarget && command.type === GeneralCommandType.AddText) {
         return { ...command, trackIndex: this.targetValue.trackIndex! };
       }
       return command;

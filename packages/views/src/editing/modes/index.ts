@@ -1,22 +1,23 @@
-import type { EditingMode } from "./mode";
+import type { AbstractEditingMode } from "./mode";
 import { EditingModeRegistry } from "./registry";
-import { createChartLanesMode } from "./lanes/chartLanes";
-import { createGlobalTrackMode } from "./global/globalTrack";
-import { createRawMidiMode } from "./midi/rawMidi";
-import { createVocalsMode } from "./vocals/vocals";
+import { ChartLanesMode } from "./lanes/chartLanes";
+import { GlobalTrackMode } from "./global/globalTrack";
+import { RawMidiMode } from "./midi/rawMidi";
+import { VocalsMode } from "./vocals/vocals";
 
 /** Creates the modes implemented so far in the plan's priority order. */
-export function createDefaultModes(): readonly EditingMode[] {
+export function createDefaultModes(): readonly AbstractEditingMode[] {
   return [
-    createGlobalTrackMode(),
-    createVocalsMode(),
-    createChartLanesMode(),
-    createRawMidiMode(),
+    new GlobalTrackMode(),
+    new VocalsMode(),
+    new ChartLanesMode(),
+    new RawMidiMode(),
   ];
 }
 
 /** Default editing modes in their resolution priority order. */
-export const defaultModes: readonly EditingMode[] = createDefaultModes();
+export const defaultModes: readonly AbstractEditingMode[] =
+  createDefaultModes();
 
 /** Creates a fresh registry with every mode currently implemented. */
 export function createDefaultModeRegistry(): EditingModeRegistry {

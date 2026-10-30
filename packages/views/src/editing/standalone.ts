@@ -8,7 +8,7 @@ import {
 import type { RulesetContext } from "../ruleset/enforce";
 import { CommandExecutor } from "./executor";
 import { ClipboardService } from "./clipboard";
-import type { EditingTarget, ModeRegistry } from "./modes/mode";
+import type { IEditingTarget, ModeRegistry } from "./modes/mode";
 import { createDefaultModeRegistry } from "./modes/index";
 import { SelectionModel } from "./selection";
 import { EditingSession, EditTransactionPort } from "./session";
@@ -31,7 +31,7 @@ export interface StandaloneEditing {
   registry: ModeRegistry;
   selection: SelectionModel;
   clipboard: ClipboardService;
-  createSession(target: EditingTarget, hostKind: string): EditingSession;
+  createSession(target: IEditingTarget, hostKind: string): EditingSession;
   history: IStandaloneHistory;
 }
 
@@ -82,11 +82,12 @@ export function createStandaloneEditing(
 }
 
 function resolveTarget(
-  target: EditingTarget,
+  target: IEditingTarget,
   document: CommandExecutor,
-): EditingTarget {
+): IEditingTarget {
   return {
-    ...target,
+    trackKey: target.trackKey,
+    difficulty: target.difficulty,
     trackIndex: target.trackIndex ?? document.findTrackIndex(target.trackKey),
   };
 }

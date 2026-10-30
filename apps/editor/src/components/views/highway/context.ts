@@ -19,7 +19,7 @@ export interface HighwayContext {
   getMidi(): Midi | null;
   getPpqn(): number;
   getCurrentChart(): ChartView | null;
-  getEditingSession(): EditingSession | null;
+  getEditingSession(): EditingSession | undefined;
   getPreviewState(): PreviewState | null;
   setPreviewState(preview: PreviewState | null): void;
   getViewport(): { width: number; height: number };

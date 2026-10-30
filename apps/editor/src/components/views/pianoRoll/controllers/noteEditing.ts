@@ -1,6 +1,6 @@
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EditingModeId,
   type EditCommand,
   type EntityId,
@@ -45,18 +45,18 @@ const COMMAND_BUILDERS: ReadonlyMap<EditingModeId, ModeCommandBuilder> =
       EditingModeId.MidiRaw,
       {
         move: (targetIds, tickDelta, pitchDelta) => ({
-          type: EditCommandType.MoveNotes,
+          type: GeneralCommandType.MoveNotes,
           targetIds,
           tickDelta,
           pitchDelta,
         }),
         resize: (targetIds, durationDelta) => ({
-          type: EditCommandType.ResizeNotes,
+          type: GeneralCommandType.ResizeNotes,
           targetIds,
           durationDelta,
         }),
         create: (spec, session) => ({
-          type: EditCommandType.AddNotes,
+          type: GeneralCommandType.AddNotes,
           notes: [
             {
               trackIndex: session.target.trackIndex ?? 0,
@@ -67,7 +67,7 @@ const COMMAND_BUILDERS: ReadonlyMap<EditingModeId, ModeCommandBuilder> =
           ],
         }),
         delete: (targetIds) => ({
-          type: EditCommandType.DeleteEntities,
+          type: GeneralCommandType.DeleteEntities,
           targetIds,
         }),
       },
@@ -104,7 +104,7 @@ const COMMAND_BUILDERS: ReadonlyMap<EditingModeId, ModeCommandBuilder> =
                 ...(lyric === undefined ? {} : { lyric }),
               },
         delete: (targetIds) => ({
-          type: EditCommandType.DeleteEntities,
+          type: GeneralCommandType.DeleteEntities,
           targetIds,
         }),
       },

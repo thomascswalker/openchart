@@ -28,7 +28,7 @@ export default function Toolbar({ session }: ToolbarProps) {
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
   const editing = Platform.services.get<EditingService>("editor.editing");
-  const editingSession = editing.getSession(session.id);
+  const editingSession = editing.getEditingSession(session.id);
   const mode = editingSession?.mode;
   const toolState = editingSession?.getToolState();
 

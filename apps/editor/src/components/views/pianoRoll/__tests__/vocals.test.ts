@@ -1,7 +1,7 @@
 import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EntityType,
   createStandaloneEditing,
   Difficulty,
@@ -367,7 +367,7 @@ describe("piano-roll profiles", () => {
     expect(h.session.clipboard.canPaste()).toBe(true);
 
     h.session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds: h.selection.notes.map((note) => note.id),
     });
     expect(track.getNotes()).toHaveLength(0);

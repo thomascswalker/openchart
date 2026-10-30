@@ -2,7 +2,7 @@ import {
   CommandExecutor,
   DefaultCompiledRuleset,
   EditingSession,
-  createRawMidiMode,
+  RawMidiMode,
 } from "@openchart/views";
 import { Midi } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
@@ -11,24 +11,30 @@ import { createModeToolbarGroups } from "./definitions";
 
 describe("mode-driven toolbar definitions", () => {
   it("keeps built-in mode groups and generates controls for an extension mode", () => {
-    const extension = {
-      ...createRawMidiMode(),
-      id: "test.extension",
-      label: "Extension",
-      createTools: () => [
-        {
-          id: "paint",
-          label: "Paint",
-          icon: "pencil",
-          group: "extension-tools",
-          stateKey: "enabled",
-          value: true,
-          toggle: { offValue: false },
-        },
-      ],
-      toolStateSchema: z.object({ enabled: z.boolean() }),
-      createDefaultToolState: () => ({ enabled: false }),
-    };
+    class ExtensionMode extends RawMidiMode {
+      public override readonly id = "test.extension";
+      public override readonly label = "Extension";
+      public override readonly toolStateSchema = z.object({
+        enabled: z.boolean(),
+      }) as never;
+      public override createTools() {
+        return [
+          {
+            id: "paint",
+            label: "Paint",
+            icon: "pencil",
+            group: "extension-tools",
+            stateKey: "enabled",
+            value: true,
+            toggle: { offValue: false },
+          },
+        ];
+      }
+      public override createDefaultToolState() {
+        return { enabled: false } as never;
+      }
+    }
+    const extension = new ExtensionMode();
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
     track.name = "LEAD GUITAR";

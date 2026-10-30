@@ -2,7 +2,7 @@ import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EditingModeId,
 } from "@openchart/views";
 
@@ -46,7 +46,7 @@ export class TransposeSelectionAction extends Action<[number]> {
         break;
       default:
         session.execute({
-          type: EditCommandType.MoveNotes,
+          type: GeneralCommandType.MoveNotes,
           targetIds,
           tickDelta: 0,
           pitchDelta: semitones,

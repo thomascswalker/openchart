@@ -97,8 +97,8 @@ export interface PianoRollContext {
   getViewport(): { width: number; height: number };
   getPointerContext(): PointerContext;
   getSelectionContext(): SelectionContext;
-  getEditingSession?(): EditingSession | null;
-  getGlobalEditingSession?(): EditingSession | null;
+  getEditingSession?(): EditingSession | undefined;
+  getGlobalEditingSession?(): EditingSession | undefined;
   setPreviewState?(preview: PreviewState | null): void;
   getPreviewState?(): PreviewState | null;
   getDisplayNotes?(notes: PianoRollNote[]): PianoRollNote[];

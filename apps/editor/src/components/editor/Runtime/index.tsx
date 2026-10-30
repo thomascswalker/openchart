@@ -44,9 +44,7 @@ export function Runtime({ children }: RuntimeProps) {
     (session) => session.id === activeViewportId,
   );
   const activeView = activeSession?.view ?? null;
-  const editingSession = activeSession
-    ? editing.getSession(activeSession.id)
-    : null;
+  const editingSession = editing.getEditingSession(activeSession?.id);
   const previousCapabilityKeys = useRef<string[]>([]);
   const isAnyDialogOpen =
     editorStore.projectVisible ||

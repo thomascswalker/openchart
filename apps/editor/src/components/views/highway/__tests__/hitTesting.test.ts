@@ -74,7 +74,7 @@ describe("phrase screen hit bounds", () => {
     camera,
   );
   const hitTesting = new HighwayHitTester(coordinates, {
-    getEditingSession: () => null,
+    getEditingSession: () => undefined,
     getPreviewState: () => null,
   });
 
@@ -103,7 +103,7 @@ describe("drum note hit testing", () => {
         new Vector2(point.x * 100, point.y * 100),
     } as unknown as HighwayCoordinateSystem;
     const hitTesting = new HighwayHitTester(coordinates, {
-      getEditingSession: () => null,
+      getEditingSession: () => undefined,
       getPreviewState: () => null,
     });
     const note = { pitch: 100, start: 480 } as MidiNote;

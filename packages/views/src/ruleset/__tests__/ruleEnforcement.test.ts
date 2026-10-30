@@ -1,6 +1,9 @@
 import { MetaType, Midi, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import { DomainCommandType, EditCommandType } from "../../editing/commands.js";
+import {
+  DomainCommandType,
+  GeneralCommandType,
+} from "../../editing/commands.js";
 import { formatNoteId } from "../../editing/entity.js";
 import { EditRejectedError, type Rejection } from "../../editing/result.js";
 import { createStandaloneEditing } from "../../editing/standalone.js";
@@ -77,7 +80,7 @@ describe("edit enforcement through the session", () => {
   it("commits warnings and reports them as diagnostics", () => {
     const s = setup("LEAD GUITAR");
     const result = session(s, "piano-roll").execute({
-      type: EditCommandType.AddNotes,
+      type: GeneralCommandType.AddNotes,
       notes: [
         { trackIndex: 1, tick: 480, pitch: 101, duration: 1 }, // forceHopo
         { trackIndex: 1, tick: 480, pitch: 102, duration: 1 }, // forceStrum
@@ -94,7 +97,7 @@ describe("edit enforcement through the session", () => {
   it("applies unknown-pitch policy to raw edits on configured tracks only", () => {
     const configured = setup("LEAD GUITAR");
     const add = {
-      type: EditCommandType.AddNotes as const,
+      type: GeneralCommandType.AddNotes as const,
       notes: [{ trackIndex: 1, tick: 0, pitch: 20, duration: 10 }],
     };
     expect(
@@ -179,7 +182,7 @@ describe("edit enforcement through the session", () => {
     );
     const text = (t: string, metaType: number = MetaType.Text) =>
       global.execute({
-        type: EditCommandType.AddText,
+        type: GeneralCommandType.AddText,
         trackIndex: 1,
         metaType,
         tick: 0,

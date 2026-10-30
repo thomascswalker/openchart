@@ -6,13 +6,13 @@ import {
   createUnmappedTrackRules,
   EditingModeId,
   EditingModeRegistry,
-  SelectionModel,
   SongView,
   EditingSession,
-  type EditingTarget,
+  SelectionModel,
   type EditResult,
   type ModeRegistry,
   type TrackDescriptor,
+  type IEditingTarget,
 } from "@openchart/views";
 import { Service } from "../../platform/services";
 import { DocumentService } from "../document";
@@ -32,8 +32,6 @@ export class EditingService extends Service {
     "ruleset",
   ];
 
-  /** @deprecated Removed after the Piano Roll migration in Phase 6. */
-  public readonly selection = new SelectionModel();
   /** Shared payload used by every editing session. */
   public readonly clipboard: ClipboardService;
 
@@ -46,7 +44,7 @@ export class EditingService extends Service {
   private readonly resultListeners = new Set<ResultListener>();
   private readonly sessions = new Map<string, EditingSession>();
   private readonly sessionSignatures = new Map<string, string>();
-  private chartDocument: CommandExecutor | null = null;
+  private commandExecutor: CommandExecutor | null = null;
   private midi: Midi | null = null;
   private documentId = -1;
   private lastResultValue: EditResult = emptyResult();
@@ -62,6 +60,7 @@ export class EditingService extends Service {
     this.documentService = documentService;
     this.playbackService = playbackService;
     this.viewportService = viewportService;
+
     this.registry = new EditingModeRegistry();
     defaultModes.forEach((mode) => this.registry.register(mode));
     this.viewportService.setModeRegistry(this.registry);
@@ -70,8 +69,8 @@ export class EditingService extends Service {
     );
     this.midi = documentService.data;
     this.documentId = documentService.getSnapshot().documentId;
-    const chartDocument = this.createChartDocument(documentService.data);
-    this.chartDocument = chartDocument;
+    this.commandExecutor = this.createCommandExecutor(documentService.data);
+
     this.clipboard = new ClipboardService();
     this.documentService.subscribe(this.syncDocument);
     this.viewportService.subscribe(this.syncViewports);
@@ -90,7 +89,7 @@ export class EditingService extends Service {
   }
 
   public readonly reset = (): void => {
-    this.selection.clear();
+    this.getActiveSelectionModel()?.clear();
     this.clipboard.clear();
     this.sessions.clear();
     this.sessionSignatures.clear();
@@ -98,39 +97,66 @@ export class EditingService extends Service {
     this.notify();
   };
 
-  /** @deprecated Use the active EditingSession. */
-  public getDocument(): CommandExecutor {
-    if (!this.chartDocument) {
-      throw new Error("There is no MIDI document to edit.");
-    }
-    return this.chartDocument;
+  public getCommandExecutor(): CommandExecutor | null {
+    return this.commandExecutor;
   }
 
   /** Returns the cached session for the specified viewport, if supported. */
-  public getSession(
-    viewportId: string,
-    requestedModeId?: EditingModeId | "global",
-  ): EditingSession | null {
+  public getEditingSession(
+    viewportId?: string,
+    modeId?: EditingModeId,
+  ): EditingSession | undefined {
+    if (!viewportId) {
+      return;
+    }
     const viewport = this.viewportService.getViewport(viewportId);
-    if (!viewport || !this.chartDocument || !this.midi) return null;
-    const modeId =
-      requestedModeId === "global" ? EditingModeId.MidiGlobal : requestedModeId;
+    if (!viewport || !this.commandExecutor || !this.midi) {
+      return;
+    }
     const cacheKey = modeId ? `${viewportId}::${modeId}` : viewportId;
     const signature = this.sessionSignature(viewport, modeId);
     if (this.sessionSignatures.get(cacheKey) === signature) {
-      const session = this.sessions.get(cacheKey) ?? null;
-      if (session) this.syncToolState(viewport, session);
+      const session = this.sessions.get(cacheKey);
+      if (session) {
+        this.syncToolState(viewport, session);
+      }
       return session;
     }
 
-    this.sessions.delete(cacheKey);
-    this.sessionSignatures.delete(cacheKey);
     const session = this.createSession(viewport, modeId);
-    if (!session) return null;
+    if (!session) {
+      this.sessions.delete(cacheKey);
+      this.sessionSignatures.delete(cacheKey);
+      return;
+    }
     this.sessions.set(cacheKey, session);
     this.sessionSignatures.set(cacheKey, signature);
     this.syncToolState(viewport, session);
     return session;
+  }
+
+  public getActiveEditingSession(
+    modeId?: EditingModeId,
+  ): EditingSession | undefined {
+    const id = this.viewportService.getActiveViewport()?.id;
+    if (!id) {
+      return;
+    }
+    return this.getEditingSession(id, modeId);
+  }
+
+  public getSelectionModel(
+    viewportId?: string,
+    modeId?: EditingModeId,
+  ): SelectionModel | undefined {
+    return this.getEditingSession(viewportId, modeId)?.selection;
+  }
+
+  /** The selection of the active viewport's editing session. */
+  public getActiveSelectionModel(
+    modeId?: EditingModeId,
+  ): SelectionModel | undefined {
+    return this.getActiveEditingSession(modeId)?.selection;
   }
 
   /** Applies a partial tool-state update after validating the mode schema. */
@@ -171,9 +197,9 @@ export class EditingService extends Service {
   }
 
   /** Returns the active viewport's session, if its view is supported. */
-  public getActiveSession(): EditingSession | null {
+  public getActiveSession(): EditingSession | undefined {
     const viewport = this.viewportService.getActiveViewport();
-    return viewport ? this.getSession(viewport.id) : null;
+    return viewport ? this.getEditingSession(viewport.id) : undefined;
   }
 
   private readonly syncDocument = (): void => {
@@ -181,24 +207,22 @@ export class EditingService extends Service {
     const midi = snapshot.midi;
     if (midi === this.midi && snapshot.documentId === this.documentId) return;
 
-    const projectChanged = snapshot.documentId !== this.documentId;
-    this.midi = midi;
-    this.documentId = snapshot.documentId;
-    this.chartDocument = midi ? this.createChartDocument(midi) : null;
-    this.sessions.clear();
-    this.sessionSignatures.clear();
-    if (projectChanged) {
-      this.selection.clear();
+    if (snapshot.documentId !== this.documentId) {
+      // Clear before the sessions are dropped; they own the selection.
+      this.getActiveSelectionModel()?.clear();
       this.clipboard.clear();
     }
+    this.midi = midi;
+    this.documentId = snapshot.documentId;
+    this.commandExecutor = midi ? this.createCommandExecutor(midi) : null;
+    this.sessionSignatures.clear();
     this.notify();
   };
 
   /** A new ruleset invalidates the document's track rules and every session. */
   private readonly syncRuleset = (): void => {
     const midi = this.midi;
-    this.chartDocument = midi ? this.createChartDocument(midi) : null;
-    this.sessions.clear();
+    this.commandExecutor = midi ? this.createCommandExecutor(midi) : null;
     this.sessionSignatures.clear();
     this.notify();
   };
@@ -213,17 +237,8 @@ export class EditingService extends Service {
       const separator = cacheKey.indexOf("::");
       const viewportId =
         separator < 0 ? cacheKey : cacheKey.slice(0, separator);
-      const modeId =
-        separator < 0
-          ? undefined
-          : (cacheKey.slice(separator + 2) as EditingModeId);
-      const viewport = this.viewportService.getViewport(viewportId);
-      if (
-        !activeIds.has(viewportId) ||
-        !viewport ||
-        this.sessionSignatures.get(cacheKey) !==
-          this.sessionSignature(viewport, modeId)
-      ) {
+      // Stale sessions are kept until replaced so the selection carries over.
+      if (!activeIds.has(viewportId)) {
         this.sessions.delete(cacheKey);
         this.sessionSignatures.delete(cacheKey);
       }
@@ -235,10 +250,12 @@ export class EditingService extends Service {
     viewport: ViewportSession,
     modeId?: EditingModeId,
   ): EditingSession | null {
-    if (!this.midi || !this.chartDocument) return null;
+    if (!this.midi || !this.commandExecutor) return null;
     const viewportTarget = this.resolveTrack(viewport);
     const mode = modeId
-      ? this.registry.getById(modeId)
+      ? this.registry.getById(
+          modeId === "global" ? EditingModeId.MidiGlobal : modeId,
+        )
       : this.registry.resolve(viewportTarget.descriptor, viewport.view);
     if (!mode) return null;
 
@@ -248,17 +265,20 @@ export class EditingService extends Service {
         : viewportTarget;
     if (!targetTrack) return null;
     const { descriptor, trackIndex } = targetTrack;
-    const target: EditingTarget = {
+    const target: IEditingTarget = {
       trackKey: descriptor.key,
       trackIndex,
       difficulty:
         mode.id === EditingModeId.MidiGlobal ? null : viewport.difficulty,
     };
     return new EditingSession({
-      document: this.chartDocument,
+      document: this.commandExecutor,
       mode,
       target,
-      hostKind: mode.hostKinds.values().next().value ?? viewport.view,
+      hostKind:
+        mode.id === EditingModeId.MidiGlobal
+          ? mode.id
+          : (mode.hostKinds.values().next().value ?? viewport.view),
       rules: this.rulesetService.compiled,
       rulesContext: () => this.createRulesContext(),
       transaction: {
@@ -267,7 +287,8 @@ export class EditingService extends Service {
         end: this.documentService.endEdit,
         rollback: this.documentService.rollbackEdit,
       },
-      selection: this.selection,
+      // Sessions share one selection; the first session creates it.
+      selection: this.sessions.values().next().value?.selection,
       clipboard: this.clipboard,
       onCommit: (result) => this.publishResult(result),
     });
@@ -380,7 +401,7 @@ export class EditingService extends Service {
     ].join(":");
   }
 
-  private createChartDocument(midi: Midi): CommandExecutor {
+  private createCommandExecutor(midi: Midi): CommandExecutor {
     return new CommandExecutor(midi, this.rulesetService.compiled);
   }
 
@@ -406,6 +427,3 @@ function emptyResult(): EditResult {
     diagnostics: [],
   };
 }
-
-/** @deprecated Use EditingService. */
-export type EditorEditingService = EditingService;

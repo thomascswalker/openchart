@@ -1,4 +1,4 @@
-import { EditCommandType, type GeneralCommand } from "./commands";
+import { GeneralCommandType, type GeneralCommand } from "./commands";
 import type { EntityId, NoteHandle } from "./entity";
 import type { RuleViolation } from "../ruleset/index";
 import type { Rejection } from "./result";
@@ -27,7 +27,7 @@ export function computePreview(
 
   const current = (id: EntityId): NoteHandle | null => {
     if (removed.has(id)) return null;
-    return added.get(id) ?? updated.get(id) ?? executor.getNote(id);
+    return added.get(id) ?? updated.get(id) ?? executor.getHandleFromId(id);
   };
   const reject = (command: GeneralCommand, code: string, message: string) => {
     rejections.push({ code, message, command });
@@ -37,7 +37,7 @@ export function computePreview(
       added.set(id, snapshot);
       return;
     }
-    const original = executor.getNote(id);
+    const original = executor.getHandleFromId(id);
     if (original && sameNote(original, snapshot)) updated.delete(id);
     else updated.set(id, snapshot);
   };
@@ -56,7 +56,7 @@ export function computePreview(
 
   for (const command of commands) {
     switch (command.type) {
-      case EditCommandType.AddNotes:
+      case GeneralCommandType.AddNotes:
         for (const spec of command.notes) {
           if (
             !Number.isSafeInteger(spec.trackIndex) ||
@@ -81,7 +81,7 @@ export function computePreview(
           });
         }
         break;
-      case EditCommandType.UpdateNotes:
+      case GeneralCommandType.UpdateNotes:
         for (const patch of command.patches) {
           const note = current(patch.id);
           if (!note) {
@@ -116,7 +116,7 @@ export function computePreview(
           update(patch.id, next);
         }
         break;
-      case EditCommandType.MoveNotes:
+      case GeneralCommandType.MoveNotes:
         for (const id of command.targetIds) {
           const note = current(id);
           if (!note) {
@@ -146,7 +146,7 @@ export function computePreview(
           update(id, next);
         }
         break;
-      case EditCommandType.ResizeNotes:
+      case GeneralCommandType.ResizeNotes:
         for (const id of command.targetIds) {
           const note = current(id);
           if (!note) {
@@ -179,21 +179,21 @@ export function computePreview(
           });
         }
         break;
-      case EditCommandType.DeleteEntities:
+      case GeneralCommandType.DeleteEntities:
         for (const id of command.targetIds) {
           if (added.delete(id)) continue;
-          if (executor.getNote(id) || updated.has(id)) {
+          if (executor.getHandleFromId(id) || updated.has(id)) {
             updated.delete(id);
             removed.add(id);
           }
         }
         break;
-      case EditCommandType.AddText:
-      case EditCommandType.UpdateText:
-      case EditCommandType.SetTempo:
-      case EditCommandType.RemoveTempo:
-      case EditCommandType.SetTimeSignature:
-      case EditCommandType.RemoveTimeSignature:
+      case GeneralCommandType.AddText:
+      case GeneralCommandType.UpdateText:
+      case GeneralCommandType.SetTempo:
+      case GeneralCommandType.RemoveTempo:
+      case GeneralCommandType.SetTimeSignature:
+      case GeneralCommandType.RemoveTimeSignature:
         break;
     }
   }

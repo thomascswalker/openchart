@@ -1,84 +1,89 @@
-import { MetaType } from "@openchart/midi";
 import { EntityType } from "../../entity";
 import { z } from "zod";
 import type { ClipboardPayload } from "../../clipboard";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   type EditCommand,
   type GeneralCommand,
 } from "../../commands";
-import { parseEntityFromId, type EntityId } from "../../entity";
-import type {
-  EditingMode,
-  ExpansionResult,
-  ModeContext,
-  Projection,
+import {
+  AbstractEditingMode,
+  type EntityClassification,
+  type ExpansionResult,
+  type ModeCapabilities,
+  type ModeContext,
+  type Projection,
+  type ToolDescriptor,
 } from "../mode";
-import { EditingModeId, isRawCommand } from "../mode";
+import { EditingModeId } from "../mode";
 import type { NoteHandle } from "../../entity";
+import { getExpander } from "./expansion";
 
 const EmptyToolStateSchema = z.object({});
-const AddSectionSchema = z.object({
-  type: z.literal(DomainCommandType.AddSection),
-  tick: z.number().int().nonnegative(),
-  name: z.string(),
-});
+/** Document-wide mode used by Piano Roll header controls. */
+export class GlobalTrackMode extends AbstractEditingMode<
+  Record<string, never>
+> {
+  public readonly id = EditingModeId.MidiGlobal;
+  public readonly label = "Global MIDI";
+  public readonly hostKinds: ReadonlySet<string> = new Set(["global"]);
+  public readonly capabilities: ModeCapabilities = {
+    generalCommands: new Set([
+      GeneralCommandType.AddText,
+      GeneralCommandType.UpdateText,
+      GeneralCommandType.DeleteEntities,
+      GeneralCommandType.SetTempo,
+      GeneralCommandType.RemoveTempo,
+      GeneralCommandType.SetTimeSignature,
+      GeneralCommandType.RemoveTimeSignature,
+    ]),
+    domainCommands: new Set([DomainCommandType.AddSection]),
+    entityKinds: new Set([
+      EntityType.Text,
+      EntityType.Tempo,
+      EntityType.TimeSignature,
+    ]),
+    canCreateTrack: false,
+    requiresDifficulty: false,
+    trackKinds: new Set(["global"]),
+  };
+  public readonly toolStateSchema = EmptyToolStateSchema;
 
-const rawCommandTypes = new Set([
-  EditCommandType.AddText,
-  EditCommandType.UpdateText,
-  EditCommandType.DeleteEntities,
-  EditCommandType.SetTempo,
-  EditCommandType.RemoveTempo,
-  EditCommandType.SetTimeSignature,
-  EditCommandType.RemoveTimeSignature,
-]);
+  public appliesTo(): boolean {
+    return true;
+  }
 
-/** Creates the document-wide mode used by Piano Roll header controls. */
-export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
-  return {
-    id: EditingModeId.MidiGlobal,
-    label: "Global MIDI",
-    hostKinds: new Set(["global"]),
-    appliesTo: () => true,
-    capabilities: {
-      rawCommands: new Set([
-        EditCommandType.AddText,
-        EditCommandType.UpdateText,
-        EditCommandType.DeleteEntities,
-        EditCommandType.SetTempo,
-        EditCommandType.RemoveTempo,
-        EditCommandType.SetTimeSignature,
-        EditCommandType.RemoveTimeSignature,
-      ]),
-      domainCommands: new Set([DomainCommandType.AddSection]),
-      entityKinds: new Set([
-        EntityType.Text,
-        EntityType.Tempo,
-        EntityType.TimeSignature,
-      ]),
-      canCreateTrack: false,
-      requiresDifficulty: false,
-    },
-    createTools: () => [],
-    toolStateSchema: EmptyToolStateSchema,
-    createDefaultToolState: () => ({}),
-    createProjection: (): Projection => ({
+  public createTools(): readonly ToolDescriptor[] {
+    return [];
+  }
+
+  public createDefaultToolState(): Record<string, never> {
+    return {};
+  }
+
+  public createProjection(): Projection {
+    return {
       getRows: () => [],
       rowForNote: () => null,
       pitchForRow: () => null,
-    }),
-    classify: (_note: NoteHandle) => ({
+    };
+  }
+
+  public classify(_note: NoteHandle): EntityClassification {
+    return {
       type: EntityType.Text,
       subtype: "global",
       movable: false,
       resizable: false,
-    }),
-    expandPaste: (
-      _payload: ClipboardPayload,
-      _anchorTick: number,
-    ): ExpansionResult => ({
+    };
+  }
+
+  public expandPaste(
+    _payload: ClipboardPayload,
+    _anchorTick: number,
+  ): ExpansionResult {
+    return {
       commands: [],
       rejections: [
         {
@@ -87,82 +92,31 @@ export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
           command: { type: DomainCommandType.PasteClipboard },
         },
       ],
-    }),
-    expand: (command, context) => expandGlobalCommand(command, context),
-  };
-}
-
-function expandGlobalCommand(
-  command: EditCommand,
-  context: ModeContext,
-): ExpansionResult {
-  if (AddSectionSchema.safeParse(command).success) {
-    const section = AddSectionSchema.parse(command);
-    if (context.target.trackIndex === null) {
-      return rejected(command, "missing-track");
-    }
-    const raw: GeneralCommand = {
-      type: EditCommandType.AddText,
-      trackIndex: context.target.trackIndex,
-      metaType: MetaType.Text,
-      tick: section.tick,
-      text: `[section ${section.name}]`,
     };
-    return { commands: [raw], rejections: [] };
   }
 
-  if (!isRawCommand(command) || !rawCommandTypes.has(command.type)) {
-    return rejected(command, "unsupported-command");
-  }
-  if (command.type === EditCommandType.DeleteEntities) {
-    const targetIds = command.targetIds.filter((id) =>
-      isTargetText(id, context),
-    );
-    if (targetIds.length !== command.targetIds.length) {
-      return rejected(command, "wrong-entity");
-    }
+  public override rejected(
+    command: EditCommand,
+    code: string,
+    message: string,
+  ): ExpansionResult {
     return {
-      commands: [{ type: EditCommandType.DeleteEntities, targetIds }],
-      rejections: [],
+      commands: [],
+      rejections: [{ command, code, message }],
     };
   }
-  if (command.type === EditCommandType.UpdateText) {
-    return isTargetText(command.id, context)
-      ? { commands: [command], rejections: [] }
-      : rejected(command, "wrong-track");
+  public expand(command: EditCommand, context: ModeContext): ExpansionResult {
+    const expander = getExpander(command.type);
+    if (expander) return expander(this, command, context);
+    // Tempo and time-signature commands are not track-scoped.
+    return this.capabilities.generalCommands.has(
+      command.type as GeneralCommandType,
+    )
+      ? { commands: [command as GeneralCommand], rejections: [] }
+      : this.rejected(
+          command,
+          "unsupported-command",
+          "Command is not supported by midi.global",
+        );
   }
-  if (command.type === EditCommandType.AddText) {
-    return command.trackIndex === context.target.trackIndex &&
-      command.metaType !== MetaType.Lyric
-      ? { commands: [command], rejections: [] }
-      : rejected(command, "wrong-track");
-  }
-  return { commands: [command], rejections: [] };
-}
-
-function isTargetText(id: EntityId, context: ModeContext): boolean {
-  const parsed = parseEntityFromId(id);
-  if (
-    context.target.trackIndex === null ||
-    parsed?.type !== "text" ||
-    parsed.trackIndex !== context.target.trackIndex
-  ) {
-    return false;
-  }
-  return context.executor
-    .getTextEvents(parsed.trackIndex)
-    .some((event) => event.id === id && event.metaType !== MetaType.Lyric);
-}
-
-function rejected(command: EditCommand, code: string): ExpansionResult {
-  return {
-    commands: [],
-    rejections: [
-      {
-        code,
-        message: `Command is not supported by midi.global`,
-        command,
-      },
-    ],
-  };
 }

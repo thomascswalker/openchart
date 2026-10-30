@@ -210,11 +210,11 @@ function ViewportPanel({
   );
   const editingService =
     Platform.services.get<EditingService>("editor.editing");
-  const editingSession = editingService.getSession(session.id);
+  const editingSession = editingService.getEditingSession(session.id);
   const globalEditingSession =
     session.view === "piano-roll"
-      ? editingService.getSession(session.id, "global")
-      : null;
+      ? editingService.getEditingSession(session.id, "midi.global")
+      : undefined;
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
   const modeState = getStateValues(editingSession?.getToolState());
   // Tools depend on the track's rules (phrases, placements), so ask the session.
@@ -240,6 +240,9 @@ function ViewportPanel({
 
   const handleReady = (view: AnyChartView | null): void => {
     if (view && !chartViewMatchesSession(view, session.view)) {
+      return;
+    }
+    if (!editingSession) {
       return;
     }
     view?.setEditingSession(editingSession);
@@ -416,7 +419,13 @@ function ViewportPanel({
   }, [chartView, notePlacementType]);
 
   useLayoutEffect(() => {
-    if (!chartView || !chartViewMatchesSession(chartView, session.view)) return;
+    if (
+      !chartView ||
+      !chartViewMatchesSession(chartView, session.view) ||
+      !editingSession
+    ) {
+      return;
+    }
     chartView.setEditingSession(editingSession);
     if (chartView instanceof PianoRollView) {
       chartView.setGlobalEditingSession(globalEditingSession);

@@ -2,12 +2,12 @@ import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
 import { CommandExecutor } from "../executor.js";
 import { EditingModeRegistry } from "../modes/registry.js";
-import { createRawMidiMode } from "../modes/midi/rawMidi.js";
+import { RawMidiMode } from "../modes/midi/rawMidi.js";
 import { SongView } from "../../views/song.js";
 import { DefaultCompiledRuleset } from "../../ruleset/compile.js";
 import { Difficulty } from "../../ruleset/difficulty.js";
 import { createRulesetContext } from "../../ruleset/enforce.js";
-import { EditCommandType } from "../commands.js";
+import { GeneralCommandType } from "../commands.js";
 import { formatNoteId } from "../entity.js";
 import { ModeContext } from "../modes/mode.js";
 import { computePreview } from "../preview.js";
@@ -42,8 +42,12 @@ describe("standalone editing sessions", () => {
     const descriptor = new SongView(midi)
       .getTrackDescriptors()
       .find((track) => track.key === "lead-guitar")!;
-    const raw = createRawMidiMode();
-    const preferred = { ...raw, id: "test.preferred", label: "Preferred" };
+    const raw = new RawMidiMode();
+    class PreferredMode extends RawMidiMode {
+      public override readonly id = "test.preferred";
+      public override readonly label = "Preferred";
+    }
+    const preferred = new PreferredMode();
     const registry = new EditingModeRegistry();
     registry.register(preferred);
     registry.register(raw);
@@ -86,7 +90,7 @@ describe("standalone editing sessions", () => {
       validate: () => [],
     };
     const command = {
-      type: EditCommandType.MoveNotes as const,
+      type: GeneralCommandType.MoveNotes as const,
       targetIds: [noteId],
       tickDelta: 120,
       pitchDelta: 2,
@@ -101,13 +105,15 @@ describe("standalone editing sessions", () => {
     expect(projection.getRows()).toHaveLength(128);
     expect(projection.pitchForRow(projection.getRows()[60]!, {})).toBe(60);
     expect(
-      session.mode.classify(executor.getNote(noteId)!, context),
+      session.mode.classify(executor.getHandleFromId(noteId)!, context),
     ).toMatchObject({
       kind: "note",
       movable: true,
       resizable: true,
     });
-    expect(session.classifyNote(executor.getNote(noteId)!)).toMatchObject({
+    expect(
+      session.classifyNote(executor.getHandleFromId(noteId)!),
+    ).toMatchObject({
       kind: "note",
       movable: true,
       resizable: true,
@@ -131,7 +137,7 @@ describe("standalone editing sessions", () => {
       midi.tracks[0]!.getEventId(midi.tracks[0]!.getNotes()[0]!.noteOn),
     );
     session.execute({
-      type: EditCommandType.MoveNotes,
+      type: GeneralCommandType.MoveNotes,
       targetIds: [id],
       tickDelta: 120,
       pitchDelta: 1,
@@ -143,7 +149,7 @@ describe("standalone editing sessions", () => {
     expect(
       gesture
         .preview({
-          type: EditCommandType.MoveNotes,
+          type: GeneralCommandType.MoveNotes,
           targetIds: [id],
           tickDelta: 120,
           pitchDelta: 2,
@@ -174,7 +180,7 @@ describe("standalone editing sessions", () => {
     );
     const gesture = session.beginGesture();
     gesture.preview({
-      type: EditCommandType.MoveNotes,
+      type: GeneralCommandType.MoveNotes,
       targetIds: [id],
       tickDelta: 120,
       pitchDelta: 2,
@@ -196,7 +202,7 @@ describe("standalone editing sessions", () => {
 
     const noOp = session.beginGesture();
     noOp.preview({
-      type: EditCommandType.MoveNotes,
+      type: GeneralCommandType.MoveNotes,
       targetIds: [id],
       tickDelta: 0,
       pitchDelta: 0,
@@ -233,7 +239,7 @@ describe("standalone editing sessions", () => {
 
     expect(() =>
       session.execute({
-        type: EditCommandType.MoveNotes,
+        type: GeneralCommandType.MoveNotes,
         targetIds: [id],
         tickDelta: 120,
         pitchDelta: 1,
@@ -263,7 +269,7 @@ describe("standalone editing sessions", () => {
     expect(() =>
       session.executeBatch([
         {
-          type: EditCommandType.AddNotes,
+          type: GeneralCommandType.AddNotes,
           notes: [
             { trackIndex: 0, tick: 240, pitch: 64, duration: 120 },
             { trackIndex: 0, tick: 480, pitch: 67, duration: 120 },
@@ -282,7 +288,7 @@ describe("standalone editing sessions", () => {
     const standalone = createStandaloneEditing(midi);
     const session = standalone.createSession(createTarget(midi), "piano-roll");
     const result = session.execute({
-      type: EditCommandType.AddNotes,
+      type: GeneralCommandType.AddNotes,
       notes: [{ trackIndex: 0, tick: 120, pitch: 65, duration: 120 }],
     });
 
@@ -301,7 +307,7 @@ describe("standalone editing sessions", () => {
     const session = standalone.createSession(createTarget(midi), "piano-roll");
     const before = midi.toBuffer();
     const result = session.execute({
-      type: EditCommandType.SetTempo,
+      type: GeneralCommandType.SetTempo,
       tick: 0,
       microsecondsPerQuarterNote: 500_000,
     });
@@ -314,7 +320,7 @@ describe("standalone editing sessions", () => {
     expect(() =>
       session.execute(
         {
-          type: EditCommandType.SetTempo,
+          type: GeneralCommandType.SetTempo,
           tick: 0,
           microsecondsPerQuarterNote: 500_000,
         },

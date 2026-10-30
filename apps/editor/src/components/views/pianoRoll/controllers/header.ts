@@ -7,7 +7,7 @@ import {
 import { Vector2 } from "three";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EditingModeId,
   type EditCommand,
   type EditingSession,
@@ -391,7 +391,7 @@ export class HeaderController extends IController {
     if (laneType === "tempo") {
       const current = this.effectiveTempoAt(snappedTick);
       changed = this.executeGlobal({
-        type: EditCommandType.SetTempo,
+        type: GeneralCommandType.SetTempo,
         tick: snappedTick,
         microsecondsPerQuarterNote: current,
       });
@@ -400,7 +400,7 @@ export class HeaderController extends IController {
     else if (laneType === "timeSignature") {
       const current = this.effectiveTimeSignatureAt(snappedTick);
       changed = this.executeGlobal({
-        type: EditCommandType.SetTimeSignature,
+        type: GeneralCommandType.SetTimeSignature,
         tick: snappedTick,
         numerator: current.numerator,
         denominator: current.denominator,
@@ -446,19 +446,19 @@ export class HeaderController extends IController {
       // Text markers follow the profile's separate text-deletion option.
       if (lane === "tempo") {
         changed = this.executeGlobal({
-          type: EditCommandType.RemoveTempo,
+          type: GeneralCommandType.RemoveTempo,
           tick: marker.tick,
         });
       } else if (lane === "timeSignature") {
         changed = this.executeGlobal({
-          type: EditCommandType.RemoveTimeSignature,
+          type: GeneralCommandType.RemoveTimeSignature,
           tick: marker.tick,
         });
       } else if (this.options.deleteText) {
         const text = this.findTextEventNear(x);
         if (text)
           changed = this.executeGlobal({
-            type: EditCommandType.DeleteEntities,
+            type: GeneralCommandType.DeleteEntities,
             targetIds: [this.textEntityId(text)],
           });
       }
@@ -495,7 +495,7 @@ export class HeaderController extends IController {
     );
     this.#draggingTextTick = tick;
     this.#dragGesture?.preview({
-      type: EditCommandType.UpdateText,
+      type: GeneralCommandType.UpdateText,
       id: this.textEntityId(this.#draggingText),
       tick,
     });
@@ -754,12 +754,12 @@ export class HeaderController extends IController {
     let changed = false;
     if (marker.lane === "tempo") {
       changed = this.executeGlobal({
-        type: EditCommandType.RemoveTempo,
+        type: GeneralCommandType.RemoveTempo,
         tick: marker.tick,
       });
     } else if (marker.lane === "timeSignature") {
       changed = this.executeGlobal({
-        type: EditCommandType.RemoveTimeSignature,
+        type: GeneralCommandType.RemoveTimeSignature,
         tick: marker.tick,
       });
     } else {
@@ -768,7 +768,7 @@ export class HeaderController extends IController {
       );
       if (text)
         changed = this.executeGlobal({
-          type: EditCommandType.DeleteEntities,
+          type: GeneralCommandType.DeleteEntities,
           targetIds: [this.textEntityId(text)],
         });
     }
@@ -795,7 +795,7 @@ export class HeaderController extends IController {
       if (parsed === null) return;
 
       changed = this.executeGlobal({
-        type: EditCommandType.SetTempo,
+        type: GeneralCommandType.SetTempo,
         tick: marker.tick,
         microsecondsPerQuarterNote: Math.round(60_000_000 / parsed),
       });
@@ -804,7 +804,7 @@ export class HeaderController extends IController {
       if (parsed === null) return;
 
       changed = this.executeGlobal({
-        type: EditCommandType.SetTimeSignature,
+        type: GeneralCommandType.SetTimeSignature,
         tick: marker.tick,
         numerator: parsed.numerator,
         denominator: parsed.denominator,
@@ -819,7 +819,7 @@ export class HeaderController extends IController {
           text.type === MetaType.Lyric
             ? (this.#editTextHandler?.(raw) ?? false)
             : this.executeGlobal({
-                type: EditCommandType.UpdateText,
+                type: GeneralCommandType.UpdateText,
                 id: this.textEntityId(text),
                 text: raw,
               });

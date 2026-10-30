@@ -2,7 +2,7 @@ import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   EditingModeId,
 } from "@openchart/views";
 import { parseSelectedNoteEntityIds } from "./util";
@@ -54,7 +54,7 @@ export class MoveSelectionAction extends Action<[-1 | 1]> {
         break;
       default:
         session.execute({
-          type: EditCommandType.MoveNotes,
+          type: GeneralCommandType.MoveNotes,
           targetIds,
           tickDelta: direction * delta,
           pitchDelta: 0,

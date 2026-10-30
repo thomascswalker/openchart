@@ -1,6 +1,10 @@
+import { MidiNote } from "@openchart/midi";
+import z from "zod";
+
 /** Branded stable identifier for an editable MIDI entity. */
 declare const entityIdBrand: unique symbol;
 export type EntityId = string & { readonly [entityIdBrand]: true };
+export const EntityIdSchema: z.ZodType<EntityId> = z.string() as any;
 
 /** Entity categories exposed by editing modes. */
 export enum EntityType {
@@ -29,13 +33,22 @@ export interface ParsedEntityId {
 }
 
 /** Read-only handle of a MIDI note exposed to modes and projections. */
-export interface NoteHandle {
+export class NoteHandle {
   readonly id: EntityId;
   readonly trackIndex: number;
   readonly tick: number;
   readonly pitch: number;
   readonly duration: number;
   readonly velocity: number;
+
+  constructor(trackIndex: number, eventId: string, note: MidiNote) {
+    this.id = formatNoteId(trackIndex, eventId);
+    this.trackIndex = trackIndex;
+    this.tick = note.start;
+    this.pitch = note.pitch;
+    this.duration = note.end - note.start;
+    this.velocity = note.velocity;
+  }
 }
 
 function formatTrackEntityId(

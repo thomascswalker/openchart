@@ -88,8 +88,8 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private readonly pointer = new PointerContext();
   private readonly selection = new SelectionContext();
-  private editingSession: EditingSession | null = null;
-  private globalEditingSession: EditingSession | null = null;
+  private editingSession?: EditingSession;
+  private globalEditingSession?: EditingSession;
   private editingUnsubscribers: Array<() => void> = [];
   private previewState: PreviewState | null = null;
   private previewTrack: MidiTrack | null = null;
@@ -362,7 +362,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
     super.destroy();
   }
 
-  public override setEditingSession(session: EditingSession | null): void {
+  public override setEditingSession(session?: EditingSession): void {
     if (this.editingSession === session) return;
     this.input.cancelNoteEditing();
     for (const unsubscribe of this.editingUnsubscribers) unsubscribe();
@@ -387,7 +387,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.render();
   }
 
-  public setGlobalEditingSession(session: EditingSession | null): void {
+  public setGlobalEditingSession(session?: EditingSession): void {
     this.globalEditingSession = session;
   }
 

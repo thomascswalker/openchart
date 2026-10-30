@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { EditCommandType, type EntityId } from "@openchart/views";
+import { GeneralCommandType, type EntityId } from "@openchart/views";
 import type { EditingService } from "../../services/editor/editing";
 
 /** Deletes the active editing session's selected entities. */
@@ -8,7 +8,7 @@ export class DeleteSelectionAction extends Action {
   constructor() {
     super({
       condition: {
-        [`editing.can.${EditCommandType.DeleteEntities}`]: true,
+        [`editing.can.${GeneralCommandType.DeleteEntities}`]: true,
       },
     });
   }
@@ -21,7 +21,7 @@ export class DeleteSelectionAction extends Action {
     const targetIds = session.selection.getSelectedIds() as EntityId[];
     if (targetIds.length === 0) return;
     const result = session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds,
     });
     if (result.changed) {

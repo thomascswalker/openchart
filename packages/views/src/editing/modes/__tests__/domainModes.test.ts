@@ -9,7 +9,7 @@ import {
 import { DefaultRuleset } from "../../../ruleset/config.js";
 import { Difficulty } from "../../../ruleset/difficulty.js";
 import { VocalNoteKind, VocalPhraseKind } from "../../../views/vocal.js";
-import { DomainCommandType, EditCommandType } from "../../commands.js";
+import { DomainCommandType, GeneralCommandType } from "../../commands.js";
 import { formatNoteId } from "../../entity.js";
 import { EditingSession } from "../../session.js";
 import { createStandaloneEditing } from "../../standalone.js";
@@ -619,7 +619,7 @@ describe("default editing modes", () => {
     expect(resize.rejections[0]?.code).toBe("rule:implicit.phraseSelfOverlap");
 
     const deleteResult = session.execute({
-      type: EditCommandType.DeleteEntities,
+      type: GeneralCommandType.DeleteEntities,
       targetIds: [pitchedId!],
     });
     expect(deleteResult.rejections).toEqual([]);

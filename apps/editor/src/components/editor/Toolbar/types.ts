@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { EditingMode } from "@openchart/views";
+import type { AbstractEditingMode } from "@openchart/views";
 import type { ViewportSession } from "../../../services/editor/viewports";
 
 export interface ToolbarContextState {
@@ -12,7 +12,7 @@ export interface ToolbarContextState {
 
 export interface ToolbarEditorState {
   session: ViewportSession;
-  mode?: EditingMode;
+  mode?: AbstractEditingMode;
   toolState: unknown;
   snapEnabled: boolean;
   snapDenominator: number;

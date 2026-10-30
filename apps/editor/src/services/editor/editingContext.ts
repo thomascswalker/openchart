@@ -1,6 +1,6 @@
 import {
   DomainCommandType,
-  EditCommandType,
+  GeneralCommandType,
   type EditingSession,
 } from "@openchart/views";
 
@@ -11,12 +11,12 @@ export interface EditingContextSnapshot {
 
 /** Creates active-mode and capability context keys for action conditions. */
 export function createEditingContextSnapshot(
-  session: EditingSession | null,
+  session?: EditingSession,
   previousCommandTypes: readonly string[] = [],
 ): EditingContextSnapshot {
   const commandTypes = session
     ? [
-        ...session.mode.capabilities.rawCommands,
+        ...session.mode.capabilities.generalCommands,
         ...session.mode.capabilities.domainCommands,
       ]
     : [];
@@ -30,7 +30,7 @@ export function createEditingContextSnapshot(
     values[`editing.can.${commandType}`] = Boolean(session?.can(commandType));
   }
   values["editing.can.MOVE_SELECTION"] = Boolean(
-    session?.can(EditCommandType.MoveNotes) ||
+    session?.can(GeneralCommandType.MoveNotes) ||
     session?.can(DomainCommandType.MoveChartNotes) ||
     session?.can(DomainCommandType.MoveVocalEntities),
   );

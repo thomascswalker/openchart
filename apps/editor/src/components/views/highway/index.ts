@@ -123,7 +123,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   private playheadTick = 0;
   private cameraTick = 0;
   private scrollSpeedMultiplier = 1;
-  private editingSession: EditingSession | null = null;
+  private editingSession?: EditingSession;
   private previewState: PreviewState | null = null;
   private unsubscribeSelection: (() => void) | null = null;
   private selectionRange: HighwaySelectionRange | null = null;
@@ -149,7 +149,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     return this.renderer.getPerformanceDiagnostics();
   }
 
-  public override setEditingSession(session: EditingSession | null): void {
+  public override setEditingSession(session?: EditingSession): void {
     if (this.editingSession === session) return;
     this.input.cancelActiveGestures();
     this.unsubscribeSelection?.();
