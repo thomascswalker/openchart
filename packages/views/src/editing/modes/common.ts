@@ -2,7 +2,7 @@ import type { TrackDescriptor, TrackRules } from "../../ruleset/compile";
 import type { EntityId } from "../entity";
 import type { EditCommand, GeneralCommand } from "../commands";
 import type { ModeContext } from "../modes/mode";
-import type { NoteSnapshot } from "../reader";
+import type { NoteHandle } from "../entity";
 import type { Rejection } from "../result";
 
 export function rejection(
@@ -28,7 +28,7 @@ export function targetDescriptor(context: ModeContext): TrackDescriptor | null {
   const byIndex =
     context.target.trackIndex === null
       ? null
-      : context.reader.getTrackDescriptor(context.target.trackIndex);
+      : context.executor.getTrackDescriptor(context.target.trackIndex);
   if (byIndex) return byIndex;
   return (
     context.rules
@@ -42,20 +42,20 @@ export function targetRules(context: ModeContext): TrackRules | null {
   return targetDescriptor(context)?.rules ?? null;
 }
 
-export function targetNotes(context: ModeContext): readonly NoteSnapshot[] {
+export function targetNotes(context: ModeContext): readonly NoteHandle[] {
   return context.target.trackIndex === null
     ? []
-    : context.reader.getNotes(context.target.trackIndex);
+    : context.executor.getNotes(context.target.trackIndex);
 }
 
 export function ownsNotes(
   ids: readonly string[],
   context: ModeContext,
   command: EditCommand,
-): { notes: NoteSnapshot[]; rejection: Rejection | null } {
-  const notes: NoteSnapshot[] = [];
+): { notes: NoteHandle[]; rejection: Rejection | null } {
+  const notes: NoteHandle[] = [];
   for (const id of ids) {
-    const note = context.reader.getNote(id as EntityId);
+    const note = context.executor.getNote(id as EntityId);
     if (!note) {
       return {
         notes: [],

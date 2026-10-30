@@ -35,7 +35,7 @@ import type {
   ProjectionRow,
   ToolDescriptor,
 } from "../../modes/mode";
-import type { NoteSnapshot } from "../../reader";
+import type { NoteHandle } from "../../entity";
 import type { Rejection } from "../../result";
 import {
   ownsNotes,
@@ -251,7 +251,7 @@ function sustainRule(context: ModeContext, rules: TrackRules) {
     cutoff,
     thresholdContext(context.rules, {
       ...context.rulesContext,
-      ppqn: context.reader.getPpqn(),
+      ppqn: context.executor.getPpqn(),
     }),
   );
 }
@@ -428,7 +428,7 @@ function pitchForRowAndPlacement(
 }
 
 function classifyNote(
-  note: NoteSnapshot,
+  note: NoteHandle,
   context: ModeContext,
 ): EntityClassification {
   const fallback: EntityClassification = {

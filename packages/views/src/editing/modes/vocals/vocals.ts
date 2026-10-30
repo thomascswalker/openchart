@@ -25,7 +25,7 @@ import type {
   ProjectionRow,
 } from "../../modes/mode";
 import { EditingModeId, isRawCommand } from "../../modes/mode";
-import type { NoteSnapshot } from "../../reader";
+import type { NoteHandle } from "../../entity";
 import type { Rejection } from "../../result";
 import {
   ownsNotes,
@@ -297,7 +297,7 @@ function createVocalProjection(context: ModeContext): Projection {
 }
 
 function classifyVocalNote(
-  note: NoteSnapshot,
+  note: NoteHandle,
   context: ModeContext,
 ): EntityClassification {
   const layout = getLayout(context);
@@ -626,7 +626,7 @@ function pairedLyrics(
 ): Map<EntityId, { id: EntityId; text: string }> {
   const trackIndex = context.target.trackIndex;
   if (trackIndex === null) return new Map();
-  const lyrics = context.reader
+  const lyrics = context.executor
     .getTextEvents(trackIndex)
     .filter((event) => event.metaType === MetaType.Lyric)
     .sort((left, right) => left.tick - right.tick);

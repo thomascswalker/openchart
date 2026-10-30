@@ -28,6 +28,16 @@ export interface ParsedEntityId {
   trackIndex: number | null;
 }
 
+/** Read-only handle of a MIDI note exposed to modes and projections. */
+export interface NoteHandle {
+  readonly id: EntityId;
+  readonly trackIndex: number;
+  readonly tick: number;
+  readonly pitch: number;
+  readonly duration: number;
+  readonly velocity: number;
+}
+
 function formatTrackEntityId(
   type: TrackEntityType,
   trackIndex: number,

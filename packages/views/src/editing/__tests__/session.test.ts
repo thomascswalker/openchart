@@ -1,6 +1,6 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
-import { ChartDocument } from "../chartDocument.js";
+import { CommandExecutor } from "../executor.js";
 import { EditingModeRegistry } from "../modes/registry.js";
 import { createRawMidiMode } from "../modes/midi/rawMidi.js";
 import { SongView } from "../../views/song.js";
@@ -12,7 +12,7 @@ import { formatNoteId } from "../entity.js";
 import { ModeContext } from "../modes/mode.js";
 import { computePreview } from "../preview.js";
 import { EditRejectedError } from "../result.js";
-import { createEditingSession } from "../session.js";
+import { EditingSession } from "../session.js";
 import { createStandaloneEditing } from "../standalone.js";
 
 function createMidi(withTrack = true): Midi {
@@ -77,12 +77,12 @@ describe("standalone editing sessions", () => {
       }),
     ).not.toBeNull();
     const documentBytes = midi.toBuffer();
-    const document = new ChartDocument(midi);
+    const executor = new CommandExecutor(midi);
     const context: ModeContext = {
-      reader: document,
+      executor,
       target: session.target,
       rules: DefaultCompiledRuleset,
-      rulesContext: createRulesetContext({ ppqn: document.getPpqn() }),
+      rulesContext: createRulesetContext({ ppqn: executor.getPpqn() }),
       validate: () => [],
     };
     const command = {
@@ -101,19 +101,19 @@ describe("standalone editing sessions", () => {
     expect(projection.getRows()).toHaveLength(128);
     expect(projection.pitchForRow(projection.getRows()[60]!, {})).toBe(60);
     expect(
-      session.mode.classify(document.getNote(noteId)!, context),
+      session.mode.classify(executor.getNote(noteId)!, context),
     ).toMatchObject({
       kind: "note",
       movable: true,
       resizable: true,
     });
-    expect(session.classifyNote(document.getNote(noteId)!)).toMatchObject({
+    expect(session.classifyNote(executor.getNote(noteId)!)).toMatchObject({
       kind: "note",
       movable: true,
       resizable: true,
     });
     expect(
-      computePreview([command], document).updated.get(noteId),
+      computePreview([command], executor).updated.get(noteId),
     ).toMatchObject({
       tick: 120,
       pitch: 62,
@@ -213,8 +213,9 @@ describe("standalone editing sessions", () => {
       .getTrackDescriptors()
       .find((track) => track.key === target.trackKey)!;
     const mode = standalone.registry.resolve(descriptor, "piano-roll")!;
-    const session = createEditingSession({
-      document: new ChartDocument(midi),
+
+    const session = new EditingSession({
+      document: new CommandExecutor(midi),
       mode,
       target,
       hostKind: "piano-roll",
@@ -224,6 +225,7 @@ describe("standalone editing sessions", () => {
         throw new Error("notification failed");
       },
     });
+
     const id = formatNoteId(
       0,
       midi.tracks[0]!.getEventId(midi.tracks[0]!.getNotes()[0]!.noteOn),

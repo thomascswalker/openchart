@@ -1,6 +1,6 @@
 import type { Midi } from "@openchart/midi";
 import {
-  ChartDocument,
+  CommandExecutor,
   ClipboardService,
   createRulesetContext,
   createUnmappedTrackRules,
@@ -8,8 +8,7 @@ import {
   EditingModeRegistry,
   SelectionModel,
   SongView,
-  createEditingSession,
-  type EditingSession,
+  EditingSession,
   type EditingTarget,
   type EditResult,
   type ModeRegistry,
@@ -47,7 +46,7 @@ export class EditingService extends Service {
   private readonly resultListeners = new Set<ResultListener>();
   private readonly sessions = new Map<string, EditingSession>();
   private readonly sessionSignatures = new Map<string, string>();
-  private chartDocument: ChartDocument | null = null;
+  private chartDocument: CommandExecutor | null = null;
   private midi: Midi | null = null;
   private documentId = -1;
   private lastResultValue: EditResult = emptyResult();
@@ -100,7 +99,7 @@ export class EditingService extends Service {
   };
 
   /** @deprecated Use the active EditingSession. */
-  public getDocument(): ChartDocument {
+  public getDocument(): CommandExecutor {
     if (!this.chartDocument) {
       throw new Error("There is no MIDI document to edit.");
     }
@@ -255,7 +254,7 @@ export class EditingService extends Service {
       difficulty:
         mode.id === EditingModeId.MidiGlobal ? null : viewport.difficulty,
     };
-    return createEditingSession({
+    return new EditingSession({
       document: this.chartDocument,
       mode,
       target,
@@ -381,8 +380,8 @@ export class EditingService extends Service {
     ].join(":");
   }
 
-  private createChartDocument(midi: Midi): ChartDocument {
-    return new ChartDocument(midi, this.rulesetService.compiled);
+  private createChartDocument(midi: Midi): CommandExecutor {
+    return new CommandExecutor(midi, this.rulesetService.compiled);
   }
 
   private publishResult(result: EditResult): void {

@@ -5,7 +5,7 @@ import {
   type CompiledRuleset,
 } from "../ruleset/index";
 import { validateRawCommands } from "./validation";
-import type { ChartDocument } from "./chartDocument";
+import type { CommandExecutor } from "./executor";
 import {
   DomainCommandType,
   EditCommandType,
@@ -21,8 +21,8 @@ import {
   type Rejection,
 } from "./result";
 import { ClipboardService } from "./clipboard";
-import type { SelectionModel } from "./selectionModel";
-import { SelectionModel as SelectionModelImpl } from "./selectionModel";
+import type { SelectionModel } from "./selection";
+import { SelectionModel as SelectionModelImpl } from "./selection";
 import type {
   EditingMode,
   EditingTarget,
@@ -30,7 +30,7 @@ import type {
   Projection,
   ToolDescriptor,
 } from "./modes/mode";
-import type { NoteSnapshot } from "./reader";
+import { NoteHandle } from "./entity";
 
 /** Transaction operations supplied by the document/history owner. */
 export interface EditTransactionPort {
@@ -45,32 +45,32 @@ export interface ExecuteOptions {
   throwOnReject?: boolean;
 }
 
-/** Editing commands and projection bound to one mode, target, and viewport. */
-export interface EditingSession {
-  readonly mode: EditingMode;
-  readonly target: EditingTarget;
-  readonly hostKind: string;
-  /** The compiled ruleset this session edits under. */
-  readonly rules: CompiledRuleset;
-  readonly selection: SelectionModel;
-  readonly clipboard: ClipboardService;
-  getProjection(): Projection;
-  /** Current inputs for rule evaluation (ppqn, project settings, player options). */
-  getRulesContext(): RulesetContext;
-  /** Toolbar tools for the current target; they depend on the track's rules. */
-  getTools(): readonly ToolDescriptor[];
-  classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]>;
-  can(commandType: string): boolean;
-  execute(command: EditCommand, options?: ExecuteOptions): EditResult;
-  executeBatch(
-    commands: readonly EditCommand[],
-    options?: ExecuteOptions,
-  ): EditResult;
-  pasteClipboard(anchorTick: number): EditResult;
-  beginGesture(): GestureHandle;
-  getToolState(): unknown;
-  setToolState(state: unknown): void;
-}
+// /** Editing commands and projection bound to one mode, target, and viewport. */
+// export interface EditingSession {
+//   readonly mode: EditingMode;
+//   readonly target: EditingTarget;
+//   readonly hostKind: string;
+//   /** The compiled ruleset this session edits under. */
+//   readonly rules: CompiledRuleset;
+//   readonly selection: SelectionModel;
+//   readonly clipboard: ClipboardService;
+//   getProjection(): Projection;
+//   /** Current inputs for rule evaluation (ppqn, project settings, player options). */
+//   getRulesContext(): RulesetContext;
+//   /** Toolbar tools for the current target; they depend on the track's rules. */
+//   getTools(): readonly ToolDescriptor[];
+//   classifyNote(note: NoteHandle): ReturnType<EditingMode["classify"]>;
+//   can(commandType: string): boolean;
+//   execute(command: EditCommand, options?: ExecuteOptions): EditResult;
+//   executeBatch(
+//     commands: readonly EditCommand[],
+//     options?: ExecuteOptions,
+//   ): EditResult;
+//   pasteClipboard(anchorTick: number): EditResult;
+//   beginGesture(): GestureHandle;
+//   getToolState(): unknown;
+//   setToolState(state: unknown): void;
+// }
 
 /** Preview/commit/cancel handle for one continuous editing gesture. */
 export interface GestureHandle {
@@ -82,7 +82,7 @@ export interface GestureHandle {
 
 /** Inputs required to bind a mode to one mutable chart document. */
 export interface CreateEditingSessionOptions {
-  document: ChartDocument;
+  document: CommandExecutor;
   mode: EditingMode;
   target: EditingTarget;
   hostKind: string;
@@ -101,19 +101,19 @@ export interface CreateEditingSessionOptions {
 }
 
 /** Creates an editing session backed by the supplied transaction port. */
-export function createEditingSession(
-  options: CreateEditingSessionOptions,
-): EditingSession {
-  return new EditingSessionImpl(options);
-}
+// export function createEditingSession(
+//   options: CreateEditingSessionOptions,
+// ): EditingSession {
+//   return new EditingSession(options);
+// }
 
-class EditingSessionImpl implements EditingSession {
+export class EditingSession {
   public readonly mode: EditingMode;
   public readonly hostKind: string;
   public readonly selection: SelectionModel;
   public readonly clipboard: ClipboardService;
   public readonly rules: CompiledRuleset;
-  private readonly document: ChartDocument;
+  private readonly document: CommandExecutor;
   private readonly rulesContextSource:
     RulesetContext | (() => RulesetContext) | undefined;
   private readonly transaction: EditTransactionPort;
@@ -149,7 +149,7 @@ class EditingSessionImpl implements EditingSession {
     return this.mode.createProjection(this.createModeContext());
   }
 
-  public classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]> {
+  public classifyNote(note: NoteHandle): ReturnType<EditingMode["classify"]> {
     return this.mode.classify(note, this.createModeContext());
   }
 
@@ -337,7 +337,7 @@ class EditingSessionImpl implements EditingSession {
     const target = this.targetValue;
     const rulesContext = this.getRulesContext();
     return {
-      reader: this.document,
+      executor: this.document,
       target,
       rules: this.rules,
       rulesContext,
@@ -470,11 +470,11 @@ class EditingSessionImpl implements EditingSession {
 }
 
 class EditingGesture implements GestureHandle {
-  private readonly session: EditingSessionImpl;
+  private readonly session: EditingSession;
   private command: GeneralCommand | null = null;
   private open = true;
 
-  public constructor(session: EditingSessionImpl) {
+  public constructor(session: EditingSession) {
     this.session = session;
   }
 

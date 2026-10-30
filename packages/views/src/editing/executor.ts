@@ -12,7 +12,7 @@ import {
   type CompiledRuleset,
   type TrackDescriptor,
 } from "../ruleset/compile";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader";
+import type { NoteHandle } from "./entity";
 import {
   EntityType,
   formatNoteId,
@@ -25,10 +25,8 @@ import {
 import { emptyEditResult, EditRejectedError, type EditResult } from "./result";
 import { EditCommandType, type GeneralCommand } from "./commands";
 
-export type { NoteSnapshot } from "./reader";
-
 /** Headless raw-command executor and read-only projection of a MIDI document. */
-export class ChartDocument implements ChartDocumentReader {
+export class CommandExecutor {
   private readonly midi: Midi;
   private readonly trackDescriptors: readonly TrackDescriptor[];
   private readonly rules: CompiledRuleset;
@@ -94,7 +92,7 @@ export class ChartDocument implements ChartDocumentReader {
   public getNotes(
     trackIndex: number,
     pitchRange?: { low: number; high: number },
-  ): readonly NoteSnapshot[] {
+  ): readonly NoteHandle[] {
     const track = this.midi.tracks[trackIndex];
     if (!track) return [];
     const notes = track.getNotes(
@@ -143,7 +141,7 @@ export class ChartDocument implements ChartDocumentReader {
   }
 
   /** Resolves a stable note ID to a read-only snapshot. */
-  public getNote(id: EntityId | string): NoteSnapshot | null {
+  public getNote(id: EntityId | string): NoteHandle | null {
     const target = this.resolveNote(id);
     if (!target) return null;
     const { trackIndex, note } = target;
@@ -640,7 +638,7 @@ export class ChartDocument implements ChartDocumentReader {
     trackIndex: number,
     eventId: string,
     note: MidiNote,
-  ): NoteSnapshot {
+  ): NoteHandle {
     return {
       id: formatNoteId(trackIndex, eventId),
       trackIndex,

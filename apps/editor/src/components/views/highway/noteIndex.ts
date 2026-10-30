@@ -3,7 +3,7 @@ import type {
   ChartView,
   EditingSession,
   EntityId,
-  NoteSnapshot,
+  NoteHandle,
   PreviewState,
 } from "@openchart/views";
 import { formatNoteId } from "@openchart/views";
@@ -132,7 +132,7 @@ export class HighwayNoteIndex {
     if (trackIndex !== null && track) {
       for (const note of track.getNotes()) {
         const id = formatNoteId(trackIndex, track.getEventId(note.noteOn));
-        const snapshot: NoteSnapshot = {
+        const snapshot: NoteHandle = {
           id,
           trackIndex,
           tick: note.start,
@@ -162,7 +162,7 @@ export class HighwayNoteIndex {
   }
 
   private project(
-    snapshot: NoteSnapshot,
+    snapshot: NoteHandle,
     source: MidiNote | null,
     session: EditingSession,
     projection: ReturnType<EditingSession["getProjection"]>,

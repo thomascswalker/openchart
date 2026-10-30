@@ -16,7 +16,7 @@ import type {
   Projection,
 } from "../mode";
 import { EditingModeId, isRawCommand } from "../mode";
-import type { NoteSnapshot } from "../../reader";
+import type { NoteHandle } from "../../entity";
 
 const EmptyToolStateSchema = z.object({});
 const AddSectionSchema = z.object({
@@ -69,7 +69,7 @@ export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
       rowForNote: () => null,
       pitchForRow: () => null,
     }),
-    classify: (_note: NoteSnapshot) => ({
+    classify: (_note: NoteHandle) => ({
       type: EntityType.Text,
       subtype: "global",
       movable: false,
@@ -149,7 +149,7 @@ function isTargetText(id: EntityId, context: ModeContext): boolean {
   ) {
     return false;
   }
-  return context.reader
+  return context.executor
     .getTextEvents(parsed.trackIndex)
     .some((event) => event.id === id && event.metaType !== MetaType.Lyric);
 }

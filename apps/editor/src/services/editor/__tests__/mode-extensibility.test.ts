@@ -7,7 +7,7 @@ import {
   type EditingMode,
   type ExpansionResult,
   type ModeContext,
-  type NoteSnapshot,
+  type NoteHandle,
   type Projection,
   type GeneralCommand,
 } from "@openchart/views";
@@ -74,7 +74,7 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
           index,
           kind: "lane",
         })),
-      rowForNote: (note: NoteSnapshot) =>
+      rowForNote: (note: NoteHandle) =>
         lanes.map((id, index) => ({
           id,
           label: id,

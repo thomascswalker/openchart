@@ -7,7 +7,7 @@ import {
   type EditingSession,
   type EntityId,
   type GestureHandle,
-  type NoteSnapshot,
+  type NoteHandle,
 } from "@openchart/views";
 import { formatNoteId, parseEntityFromId } from "@openchart/views";
 import type { HighwayContext } from "../context";
@@ -266,7 +266,7 @@ export class HighwayNoteEditingController {
       : null;
   }
 
-  private getSnapshot(note: MidiNote, id: EntityId): NoteSnapshot {
+  private getSnapshot(note: MidiNote, id: EntityId): NoteHandle {
     const trackIndex = this.context.getEditingSession()?.target.trackIndex ?? 0;
     return {
       id,
@@ -280,7 +280,7 @@ export class HighwayNoteEditingController {
 
   private getLane(
     session: EditingSession | null,
-    snapshot: NoteSnapshot,
+    snapshot: NoteHandle,
   ): number | null {
     if (!session) return null;
     const classification = session.classifyNote(snapshot);

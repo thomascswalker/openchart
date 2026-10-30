@@ -6,19 +6,15 @@ import {
   type TrackDescriptor,
 } from "../ruleset/compile";
 import type { RulesetContext } from "../ruleset/enforce";
-import { ChartDocument } from "./chartDocument";
+import { CommandExecutor } from "./executor";
 import { ClipboardService } from "./clipboard";
 import type { EditingTarget, ModeRegistry } from "./modes/mode";
 import { createDefaultModeRegistry } from "./modes/index";
-import { SelectionModel } from "./selectionModel";
-import {
-  createEditingSession,
-  EditTransactionPort,
-  type EditingSession,
-} from "./session";
+import { SelectionModel } from "./selection";
+import { EditingSession, EditTransactionPort } from "./session";
 
 /** In-memory snapshot history returned by standalone editing instances. */
-export interface StandaloneHistory extends EditTransactionPort {
+export interface IStandaloneHistory extends EditTransactionPort {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly isDirty: boolean;
@@ -36,7 +32,7 @@ export interface StandaloneEditing {
   selection: SelectionModel;
   clipboard: ClipboardService;
   createSession(target: EditingTarget, hostKind: string): EditingSession;
-  history: StandaloneHistory;
+  history: IStandaloneHistory;
 }
 
 /** Creates a registry, raw editing sessions, and in-memory snapshot history. */
@@ -45,8 +41,8 @@ export function createStandaloneEditing(
   rules: CompiledRuleset = DefaultCompiledRuleset,
   rulesContext?: RulesetContext | (() => RulesetContext),
 ): StandaloneEditing {
-  const document = new ChartDocument(midi, rules);
-  const history = new StandaloneHistoryImpl(midi);
+  const document = new CommandExecutor(midi, rules);
+  const history = new StandaloneHistory(midi);
   const registry = createDefaultModeRegistry();
   const selection = new SelectionModel();
   const clipboard = new ClipboardService();
@@ -70,7 +66,7 @@ export function createStandaloneEditing(
           `No editing mode supports '${normalizedTarget.trackKey}' in '${hostKind}'`,
         );
       }
-      return createEditingSession({
+      return new EditingSession({
         document,
         mode,
         target: normalizedTarget,
@@ -87,7 +83,7 @@ export function createStandaloneEditing(
 
 function resolveTarget(
   target: EditingTarget,
-  document: ChartDocument,
+  document: CommandExecutor,
 ): EditingTarget {
   return {
     ...target,
@@ -117,7 +113,7 @@ function descriptorForTarget(
   };
 }
 
-class StandaloneHistoryImpl implements StandaloneHistory {
+class StandaloneHistory implements IStandaloneHistory {
   private readonly midi: Midi;
   private readonly initial: Uint8Array;
   private current: Midi;

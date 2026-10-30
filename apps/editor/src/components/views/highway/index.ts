@@ -293,8 +293,8 @@ export class HighwayView extends AbstractChartView<MidiNote> {
     this.setSelectionRange(null);
   }
 
-  public seekSection(direction: -1 | 1): void {
-    this.input.seekSection(direction);
+  public seekSection(forward: boolean): void {
+    this.input.seekSection(forward);
   }
 
   public deleteSelection(): void {

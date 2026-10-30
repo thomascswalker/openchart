@@ -1,13 +1,13 @@
 import { EditCommandType, type GeneralCommand } from "./commands";
-import type { EntityId } from "./entity";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader";
+import type { EntityId, NoteHandle } from "./entity";
 import type { RuleViolation } from "../ruleset/index";
 import type { Rejection } from "./result";
+import { CommandExecutor } from "./executor";
 
 /** Volatile note projection produced without changing MIDI or history. */
 export interface PreviewState {
-  updated: ReadonlyMap<EntityId, NoteSnapshot>;
-  added: readonly NoteSnapshot[];
+  updated: ReadonlyMap<EntityId, NoteHandle>;
+  added: readonly NoteHandle[];
   removed: ReadonlySet<EntityId>;
   rejections: readonly Rejection[];
   /** Rule violations the edit would cause (errors become rejections on commit). */
@@ -17,27 +17,27 @@ export interface PreviewState {
 /** Computes the visible note overlay for raw commands without mutating reader. */
 export function computePreview(
   commands: readonly GeneralCommand[],
-  reader: ChartDocumentReader,
+  executor: CommandExecutor,
 ): PreviewState {
-  const updated = new Map<EntityId, NoteSnapshot>();
-  const added = new Map<EntityId, NoteSnapshot>();
+  const updated = new Map<EntityId, NoteHandle>();
+  const added = new Map<EntityId, NoteHandle>();
   const removed = new Set<EntityId>();
   const rejections: Rejection[] = [];
   let nextPendingId = 0;
 
-  const current = (id: EntityId): NoteSnapshot | null => {
+  const current = (id: EntityId): NoteHandle | null => {
     if (removed.has(id)) return null;
-    return added.get(id) ?? updated.get(id) ?? reader.getNote(id);
+    return added.get(id) ?? updated.get(id) ?? executor.getNote(id);
   };
   const reject = (command: GeneralCommand, code: string, message: string) => {
     rejections.push({ code, message, command });
   };
-  const update = (id: EntityId, snapshot: NoteSnapshot) => {
+  const update = (id: EntityId, snapshot: NoteHandle) => {
     if (added.has(id)) {
       added.set(id, snapshot);
       return;
     }
-    const original = reader.getNote(id);
+    const original = executor.getNote(id);
     if (original && sameNote(original, snapshot)) updated.delete(id);
     else updated.set(id, snapshot);
   };
@@ -182,7 +182,7 @@ export function computePreview(
       case EditCommandType.DeleteEntities:
         for (const id of command.targetIds) {
           if (added.delete(id)) continue;
-          if (reader.getNote(id) || updated.has(id)) {
+          if (executor.getNote(id) || updated.has(id)) {
             updated.delete(id);
             removed.add(id);
           }
@@ -207,7 +207,7 @@ export function computePreview(
   };
 }
 
-function sameNote(left: NoteSnapshot, right: NoteSnapshot): boolean {
+function sameNote(left: NoteHandle, right: NoteHandle): boolean {
   return (
     left.trackIndex === right.trackIndex &&
     left.tick === right.tick &&

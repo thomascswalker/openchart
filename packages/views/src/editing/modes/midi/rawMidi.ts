@@ -16,7 +16,7 @@ import {
   type ModeContext,
   type Projection,
 } from "../../modes/mode";
-import type { NoteSnapshot } from "../../reader";
+import type { NoteHandle } from "../../entity";
 import type { Rejection } from "../../result";
 
 const noteCommandTypes: ReadonlySet<EditCommandType> = new Set([
@@ -122,8 +122,8 @@ function expandRawCommand(
   const rejectCommand = (code: string, message: string) => {
     rejections.push({ code, message, command });
   };
-  const ownsNote = (id: EntityId): NoteSnapshot | null => {
-    const note = context.reader.getNote(id);
+  const ownsNote = (id: EntityId): NoteHandle | null => {
+    const note = context.executor.getNote(id);
     if (!note) {
       rejectCommand("missing-note", `Note '${id}' does not exist`);
       return null;

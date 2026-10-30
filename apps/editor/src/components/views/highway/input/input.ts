@@ -850,12 +850,12 @@ export class HighwayInputController {
   }
 
   /** Seeks to the next (1) or previous (-1) section marker. */
-  public seekSection(direction: -1 | 1): void {
+  public seekSection(forward: boolean): void {
     if (!this.canEditNotes) return;
     const chart = this.getCurrentChart();
     const track = chart?.getMidiTrack();
     const section = track
-      ? findSection(track, this.context.getPlayheadTick(), direction)
+      ? findSection(track, this.context.getPlayheadTick(), forward)
       : null;
     if (section) this.context.requestSeek(section.tick);
   }

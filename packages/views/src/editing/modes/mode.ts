@@ -7,7 +7,7 @@ import type {
   RulesetContext,
 } from "../../ruleset/index";
 import type { ClipboardPayload } from "../clipboard";
-import type { NoteSnapshot } from "../reader";
+import type { NoteHandle } from "../entity";
 import type { EntityType } from "../entity";
 import {
   DomainCommandType,
@@ -15,8 +15,8 @@ import {
   type EditCommand,
   type GeneralCommand,
 } from "../commands";
-import type { ChartDocumentReader } from "../reader";
 import type { Rejection } from "../result";
+import { CommandExecutor } from "../executor";
 
 export const EditingModeId = {
   MidiRaw: "midi.raw",
@@ -30,7 +30,7 @@ export type EditingModeId =
 
 /** Document, target, and configuration visible to a pure editing mode. */
 export interface ModeContext {
-  reader: ChartDocumentReader;
+  executor: CommandExecutor;
   target: EditingTarget;
   /** Compiled ruleset describing every track's lanes, phrases and rules. */
   rules: CompiledRuleset;
@@ -75,7 +75,7 @@ export interface ToolDescriptor {
 /** Mapping between a mode's visible rows and MIDI note pitches. */
 export interface Projection {
   getRows(): readonly ProjectionRow[];
-  rowForNote(note: NoteSnapshot): ProjectionRow | null;
+  rowForNote(note: NoteHandle): ProjectionRow | null;
   pitchForRow(row: ProjectionRow, toolState: unknown): number | null;
 }
 
@@ -105,7 +105,7 @@ export interface EditingMode<TToolState = unknown> {
   readonly toolStateSchema: ZodType<TToolState>;
   createDefaultToolState(): TToolState;
   createProjection(context: ModeContext): Projection;
-  classify(note: NoteSnapshot, context: ModeContext): EntityClassification;
+  classify(note: NoteHandle, context: ModeContext): EntityClassification;
   expandPaste(
     payload: ClipboardPayload,
     anchorTick: number,

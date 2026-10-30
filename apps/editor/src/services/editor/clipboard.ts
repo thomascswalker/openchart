@@ -7,7 +7,7 @@ import {
   type ClipboardPayload,
   type EditingSession,
   type EntityId,
-  type NoteSnapshot,
+  type NoteHandle,
 } from "@openchart/views";
 import Platform from "../../platform";
 import { Service } from "../../platform/services";
@@ -165,7 +165,7 @@ export class EditorClipboardService extends Service {
 
   private createClipboardEntity(
     session: EditingSession,
-    note: NoteSnapshot,
+    note: NoteHandle,
     classification: ClipboardEntity["classification"],
     firstTick: number,
   ): ClipboardEntity {

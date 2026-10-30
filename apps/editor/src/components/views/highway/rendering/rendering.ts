@@ -1,12 +1,13 @@
 import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
 import {
-  extractSections,
+  getSections,
   getSustainCutOptions,
   getSustainCutTargets,
   resolveThreshold,
   thresholdContext,
   type ChartView,
   type EditingSession,
+  type EntityId,
 } from "@openchart/views";
 import * as THREE from "three";
 import { ResourceRegistry } from "./assets";
@@ -871,7 +872,7 @@ export class HighwayRenderer {
       visibleEntries,
     );
     const phrases: Array<{
-      id: string | null;
+      id: EntityId | null;
       start: number;
       end: number;
       kind: string;
@@ -1049,7 +1050,7 @@ export class HighwayRenderer {
       this.hideSectionMarkers();
       return;
     }
-    const sections = extractSections(track);
+    const sections = getSections(track);
     const markersChanged =
       sections.length !== this.sectionMarkers.length ||
       sections.some(

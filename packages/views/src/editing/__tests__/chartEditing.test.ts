@@ -1,8 +1,8 @@
 import { MetaType, MidiTrack } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
 import { getNotePhrases } from "../phrase.js";
-import { extractSections, findSection } from "../section.js";
-import { DefaultCompiledRuleset } from "../../ruleset/index.js";
+import { getSections, findSection } from "../section.js";
+import { DefaultCompiledRuleset } from "../../ruleset/compile.js";
 
 const lead = DefaultCompiledRuleset.byKey.get("lead-guitar")!;
 
@@ -33,15 +33,15 @@ describe("chart phrases and sections", () => {
     // Markers are not sections: sections are Text events (ruleset meta type 1).
     track.addTextEvent(MetaType.Marker, 1_920, "[section Outro]");
 
-    expect(extractSections(track)).toEqual([
+    expect(getSections(track)).toEqual([
       { name: "[section Verse]", tick: 480 },
       { name: "[section Chorus]", tick: 960 },
     ]);
-    expect(findSection(track, 500, 1)).toEqual({
+    expect(findSection(track, 500, true)).toEqual({
       name: "[section Chorus]",
       tick: 960,
     });
-    expect(findSection(track, 500, -1)).toEqual({
+    expect(findSection(track, 500, false)).toEqual({
       name: "[section Verse]",
       tick: 480,
     });
