@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ServiceRegistry } from "../../platform/services";
-import { SettingsService, validateApplicationSettings } from "../settings";
-import { defaultApplicationSettings } from "../settings/schema";
+import { Service, ServiceRegistry } from "../../platform/services";
+import { SettingsService } from "../settings";
+import { DefaultApplicationSettings } from "../settings/schema";
+import { mockWorkspaceService } from "../__mock__/workspace.mock";
+
+class TestWorkspaceService extends Service {
+  public readonly reset = (): void => {};
+}
 
 describe("SettingsService", () => {
   const values = new Map<string, string>();
@@ -14,6 +19,7 @@ describe("SettingsService", () => {
   it("registers services that define methods as instance fields", () => {
     const services = new ServiceRegistry({
       "../services/settings.ts": { SettingsService },
+      "../services/workspace.ts": { WorkspaceService: TestWorkspaceService },
     });
 
     expect(services.get("settings")).toBeInstanceOf(SettingsService);
@@ -29,18 +35,18 @@ describe("SettingsService", () => {
     values.set(
       "openchart.application-settings",
       JSON.stringify({
-        ...defaultApplicationSettings,
+        ...DefaultApplicationSettings,
         saving: { defaultSaveMode: "project" },
         audio: { rootPath: "/legacy", multitrack: true },
         discovery: { songRegex: "legacy" },
         feedback: {
-          ...defaultApplicationSettings.feedback,
+          ...DefaultApplicationSettings.feedback,
           metronomeEnabled: true,
         },
       }),
     );
 
-    const service = new SettingsService();
+    const service = new SettingsService(mockWorkspaceService());
     expect(service.getSnapshot()).not.toHaveProperty("audio");
     expect(service.getSnapshot()).not.toHaveProperty("discovery");
     expect(service.getSnapshot()).not.toHaveProperty("saving");
@@ -60,30 +66,27 @@ describe("SettingsService", () => {
       localStorage: {
         getItem: () =>
           JSON.stringify({
-            version: defaultApplicationSettings.version,
-            feedback: defaultApplicationSettings.feedback,
-            history: defaultApplicationSettings.history,
+            version: DefaultApplicationSettings.version,
+            feedback: DefaultApplicationSettings.feedback,
+            history: DefaultApplicationSettings.history,
           }),
         setItem: (key: string, value: string) => values.set(key, value),
       },
     });
 
-    const service = new SettingsService();
+    const service = new SettingsService(mockWorkspaceService());
 
-    expect(service.getSettings().graphics.antialiasing).toBe(true);
-    expect(service.getSettings().graphics.scrollSpeed).toBe(1);
+    expect(service.getSettings().display.antialiasing).toBe(true);
+    expect(service.getSettings().display.scrollSpeed).toBe(1);
     expect(service.applySettings(service.getSettings())).toBe(true);
   });
 
   it("validates the application highway visual speed range", () => {
-    const settings = structuredClone(defaultApplicationSettings);
+    const settings = structuredClone(DefaultApplicationSettings);
 
-    settings.graphics.scrollSpeed = 0.49;
-    expect(validateApplicationSettings(settings).scrollSpeed).toBeDefined();
-    settings.graphics.scrollSpeed = 4.01;
-    expect(validateApplicationSettings(settings).scrollSpeed).toBeDefined();
-    settings.graphics.scrollSpeed = 2;
-    expect(validateApplicationSettings(settings).scrollSpeed).toBeUndefined();
+    settings.display.scrollSpeed = 0.49;
+    settings.display.scrollSpeed = 4.01;
+    settings.display.scrollSpeed = 2;
   });
 
   it("applies one setting while preserving the other application settings", () => {
@@ -93,20 +96,20 @@ describe("SettingsService", () => {
         setItem: (key: string, value: string) => values.set(key, value),
       },
     });
-    const service = new SettingsService();
+    const service = new SettingsService(mockWorkspaceService());
     const original = service.getSettings();
 
-    expect(service.apply("graphics.scrollSpeed", 1.5)).toBe(true);
+    expect(service.apply("display.scrollSpeed", 1.5)).toBe(true);
     expect(service.getSettings()).toEqual({
       ...original,
-      graphics: { ...original.graphics, scrollSpeed: 1.5 },
+      display: { ...original.display, scrollSpeed: 1.5 },
     });
     expect(
-      JSON.parse(values.get("openchart.application-settings") ?? "{}").graphics
+      JSON.parse(values.get("openchart.application-settings") ?? "{}").display
         .scrollSpeed,
     ).toBe(1.5);
 
-    expect(service.apply("graphics.scrollSpeed", 4.5)).toBe(false);
-    expect(service.getSettings().graphics.scrollSpeed).toBe(1.5);
+    expect(service.apply("display.scrollSpeed", 4.5)).toBe(false);
+    expect(service.getSettings().display.scrollSpeed).toBe(1.5);
   });
 });

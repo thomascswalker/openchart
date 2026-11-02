@@ -1,5 +1,5 @@
 import { useSettings } from "../../../hooks/useApplication";
-import { HIGHWAY_SCROLL_SPEED_RANGE } from "../../../services/settings/schema";
+import { HighwayScrollSpeedRange } from "../../../services/settings/schema";
 import { Checkbox, Slider, Text } from "../../shared";
 
 export const ViewportSettings = () => {
@@ -16,24 +16,21 @@ export const ViewportSettings = () => {
       <Text>Antialiasing</Text>
       <Checkbox
         label=""
-        checked={settings.graphics.antialiasing}
+        checked={settings.display.antialiasing}
         onChange={(event) =>
-          applySetting("graphics.antialiasing", Boolean(event.target.checked))
+          applySetting("display.antialiasing", Boolean(event.target.checked))
         }
       />
       <Text>Scroll Speed</Text>
       <Slider
         aria-label="Scroll speed"
-        value={String(settings.graphics.scrollSpeed)}
+        value={String(settings.display.scrollSpeed)}
         onInput={(event) =>
-          applySetting(
-            "graphics.scrollSpeed",
-            Number(event.currentTarget.value),
-          )
+          applySetting("display.scrollSpeed", Number(event.currentTarget.value))
         }
-        step={HIGHWAY_SCROLL_SPEED_RANGE.step}
-        min={HIGHWAY_SCROLL_SPEED_RANGE.min}
-        max={HIGHWAY_SCROLL_SPEED_RANGE.max}
+        step={HighwayScrollSpeedRange.step}
+        min={HighwayScrollSpeedRange.min}
+        max={HighwayScrollSpeedRange.max}
         width="100%"
       />
     </div>

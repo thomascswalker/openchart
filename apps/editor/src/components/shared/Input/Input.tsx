@@ -83,7 +83,7 @@ const FileInput = ({
       if (directory) {
         const loadedDirectory = await fs.readDirectory(rootDirectoryHandle);
         setSelectedPath(loadedDirectory.relativePath);
-        onPathChange?.(loadedDirectory.relativePath);
+        onPathChange?.(loadedDirectory.relativePath || null);
         return;
       }
       const loadedFile = await fs.read(

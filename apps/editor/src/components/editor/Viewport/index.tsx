@@ -230,10 +230,10 @@ function ViewportPanel({
   const engineOptions = useMemo<EngineOptions>(() => {
     return {
       background: 0x151515,
-      antialias: settings.graphics.antialiasing,
+      antialias: settings.display.antialiasing,
       pixelRatioCap: 2,
     };
-  }, [settings.graphics.antialiasing]);
+  }, [settings.display.antialiasing]);
   const selectedTrackIndex = midiData
     ? trackIndexForSession(midiData, session, rules)
     : null;
@@ -432,9 +432,9 @@ function ViewportPanel({
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {
-      chartView.setScrollSpeedMultiplier(settings.graphics.scrollSpeed);
+      chartView.setScrollSpeedMultiplier(settings.display.scrollSpeed);
     }
-  }, [chartView, settings.graphics.scrollSpeed]);
+  }, [chartView, settings.display.scrollSpeed]);
 
   useEffect(() => {
     if (!active) {

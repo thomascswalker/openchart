@@ -8,8 +8,8 @@ export interface LoadFile {
 
 export interface LoadDirectory {
   name: string;
-  relativePath: string;
   handle: FileSystemDirectoryHandle;
+  relativePath?: string;
 }
 
 export interface ProjectFiles {

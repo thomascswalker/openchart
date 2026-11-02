@@ -1,170 +1,95 @@
 import { StatefulService } from "../platform/services";
 import {
-  APPLICATION_SETTINGS_VERSION,
-  HIGHWAY_SCROLL_SPEED_RANGE,
-  STORAGE_KEY,
-  defaultApplicationSettings,
+  StorageKey,
+  DefaultApplicationSettings,
   type ApplicationSettingGroup,
   type ApplicationSettingPath,
   type ApplicationSettingValue,
   type ApplicationSettings,
+  ApplicationSettingsSchema,
 } from "./settings/schema";
-
-export function validateApplicationSettings(
-  settings: ApplicationSettings,
-): Record<string, string> {
-  const errors: Record<string, string> = {};
-  if (settings.version !== APPLICATION_SETTINGS_VERSION) {
-    errors.version = "Unsupported settings version.";
-  }
-  if (
-    !Number.isFinite(settings.feedback.metronomeVolume) ||
-    settings.feedback.metronomeVolume < 0 ||
-    settings.feedback.metronomeVolume > 1
-  ) {
-    errors.metronomeVolume = "Metronome volume must be between 0 and 1.";
-  }
-  if (
-    !Number.isFinite(settings.feedback.previewVolume) ||
-    settings.feedback.previewVolume < 0 ||
-    settings.feedback.previewVolume > 1
-  ) {
-    errors.previewVolume = "Preview volume must be between 0 and 1.";
-  }
-  if (
-    !["sine", "square", "sawtooth", "triangle"].includes(
-      settings.feedback.metronomeDownbeatSound,
-    ) ||
-    !["sine", "square", "sawtooth", "triangle"].includes(
-      settings.feedback.metronomeBeatSound,
-    )
-  ) {
-    errors.metronomeDownbeatSound = "Choose a supported metronome sound.";
-    errors.metronomeBeatSound = "Choose a supported metronome sound.";
-  }
-  if (
-    !Number.isInteger(settings.feedback.previewMaxVoices) ||
-    settings.feedback.previewMaxVoices < 1
-  ) {
-    errors.previewMaxVoices = "Preview voice count must be at least 1.";
-  }
-  if (
-    !Number.isInteger(settings.history.capacity) ||
-    settings.history.capacity < 1 ||
-    settings.history.capacity > 1024
-  ) {
-    errors.historyCapacity =
-      "History capacity must be an integer from 1 to 1024.";
-  }
-  if (
-    !Number.isInteger(settings.feedback.previewLowPitch) ||
-    !Number.isInteger(settings.feedback.previewHighPitch) ||
-    settings.feedback.previewLowPitch < 0 ||
-    settings.feedback.previewHighPitch > 127 ||
-    settings.feedback.previewLowPitch > settings.feedback.previewHighPitch
-  ) {
-    errors.previewLowPitch =
-      "Preview pitch range must be inclusive MIDI pitches 0-127.";
-    errors.previewHighPitch =
-      "Preview pitch range must be inclusive MIDI pitches 0-127.";
-  }
-  if (typeof settings.graphics.antialiasing !== "boolean") {
-    errors.antialiasing = "Antialiasing must be enabled or disabled.";
-  }
-  if (
-    !Number.isFinite(settings.graphics.scrollSpeed) ||
-    settings.graphics.scrollSpeed < HIGHWAY_SCROLL_SPEED_RANGE.min ||
-    settings.graphics.scrollSpeed > HIGHWAY_SCROLL_SPEED_RANGE.max
-  ) {
-    errors.scrollSpeed = `Highway visual speed must be between ${HIGHWAY_SCROLL_SPEED_RANGE.min} and ${HIGHWAY_SCROLL_SPEED_RANGE.max}.`;
-  }
-  return errors;
-}
-
-function readSettings(): ApplicationSettings {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return defaultApplicationSettings;
-    const parsed = JSON.parse(stored) as Record<string, unknown>;
-    const canonicalSettings = Object.fromEntries(
-      Object.entries(parsed).filter(
-        ([key]) => key !== "audio" && key !== "discovery" && key !== "saving",
-      ),
-    ) as Partial<ApplicationSettings>;
-    const storedFeedback = Object.fromEntries(
-      Object.entries((parsed.feedback ?? {}) as Record<string, unknown>).filter(
-        ([key]) => key !== "highwayClapEnabled" && key !== "highwayClapVolume",
-      ),
-    );
-    const parsedGraphics = (parsed.graphics ?? {}) as Record<string, unknown>;
-    const storedGraphics = Object.fromEntries(
-      Object.entries(parsedGraphics).filter(
-        ([key]) => key !== "antialiasingQuality",
-      ),
-    );
-    const savedAntialiasing = parsedGraphics.antialiasing;
-    const legacyQuality = parsedGraphics.antialiasingQuality;
-    const antialiasing =
-      typeof savedAntialiasing === "boolean"
-        ? savedAntialiasing
-        : savedAntialiasing === "on"
-          ? true
-          : savedAntialiasing === "off"
-            ? false
-            : legacyQuality === "performance"
-              ? false
-              : legacyQuality === "balanced" || legacyQuality === "high"
-                ? true
-                : defaultApplicationSettings.graphics.antialiasing;
-    const merged: ApplicationSettings = {
-      ...defaultApplicationSettings,
-      ...canonicalSettings,
-      feedback: { ...defaultApplicationSettings.feedback, ...storedFeedback },
-      history: {
-        ...defaultApplicationSettings.history,
-        ...(parsed.history as Partial<ApplicationSettings["history"]>),
-      },
-      graphics: {
-        ...defaultApplicationSettings.graphics,
-        ...storedGraphics,
-        antialiasing,
-      },
-    };
-    return Object.keys(validateApplicationSettings(merged)).length === 0
-      ? merged
-      : defaultApplicationSettings;
-  } catch {
-    return defaultApplicationSettings;
-  }
-}
+import { WorkspaceService } from "./workspace";
 
 export class SettingsService extends StatefulService<ApplicationSettings> {
-  constructor() {
+  public static dependencies = ["workspace"];
+  private readonly workspace: WorkspaceService;
+
+  constructor(workspace: WorkspaceService) {
     super();
-    this._snapshot = readSettings();
+    this.workspace = workspace;
+    this._snapshot = this.read();
   }
 
   public readonly reset = (): void => {
     window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(defaultApplicationSettings),
+      StorageKey,
+      JSON.stringify(DefaultApplicationSettings),
     );
-    this._snapshot = defaultApplicationSettings;
+    this._snapshot = DefaultApplicationSettings;
+    this.workspace.reset();
     this.notify();
   };
 
   public readonly getSettings = (): ApplicationSettings => this._snapshot;
 
+  /**
+   * Reads the application settings from local storage.
+   *
+   * If no settings are found or the stored settings are invalid,
+   * the default settings are returned.
+   */
+  private readonly read = (): ApplicationSettings => {
+    if (typeof window === "undefined") {
+      return DefaultApplicationSettings;
+    }
+
+    // Read the settings from local storage
+    const stored = window.localStorage.getItem(StorageKey);
+
+    // If there are no stored settings, return the default settings
+    if (!stored) {
+      return DefaultApplicationSettings;
+    }
+
+    // Parse and validate the stored settings against the schema
+    const parseResult = ApplicationSettingsSchema.safeParse(JSON.parse(stored));
+
+    // If the parse was successful, merge the parsed data with the default
+    // settings
+    if (parseResult.success) {
+      return {
+        ...DefaultApplicationSettings,
+        ...parseResult.data,
+      };
+    }
+
+    // Otherwise, return the default settings
+    return DefaultApplicationSettings;
+  };
+
   public readonly load = (): void => {
-    this._snapshot = readSettings();
+    this._snapshot = this.read();
     this.notify();
   };
 
+  public readonly validate = (settings: ApplicationSettings): boolean => {
+    return ApplicationSettingsSchema.safeParse(settings).success;
+  };
+
   public readonly applySettings = (settings: ApplicationSettings): boolean => {
-    if (Object.keys(validateApplicationSettings(settings)).length > 0) {
+    if (!this.validate(settings)) {
       return false;
     }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+
+    if (
+      settings.workspace.uri !== null &&
+      settings.workspace.uri !== this._snapshot.workspace.uri
+    ) {
+      // Set workspace directory handle from the updated setting
+      // this.workspace.setHandle(settings.workspace.uri);
+    }
+
+    window.localStorage.setItem(StorageKey, JSON.stringify(settings));
     this._snapshot = settings;
     this.notify();
     return true;

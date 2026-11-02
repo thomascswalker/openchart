@@ -1,6 +1,6 @@
-import z from "zod";
+import { z } from "zod";
+import { WavFilePickerTypes } from "../../util/filePicker";
 import { DefaultRuleset, type Ruleset } from "@openchart/views";
-import { WavFilePickerTypes } from "../mixer/types";
 
 const MetadataSettingsVersion = 1;
 
@@ -106,27 +106,16 @@ function buildSettingsSchema(ruleset: Ruleset) {
   return z.object(shape);
 }
 
-const wavRefiner = (val: string | null) => {
-  if (!val) {
-    return true;
-  }
-  return /\.wav$/i.test(val);
-};
-const zodFile = (types: FilePickerAcceptType[]) =>
-  z.string().nullable().refine(wavRefiner).meta({ file: true, types });
-const zodDirectory = () =>
-  z.string().nullable().default(null).meta({ directory: true, label: "Root" });
-
-const zodWavFile = () => zodFile(WavFilePickerTypes);
+const isWavFile = (value: string | null) => !value || /\.wav$/i.test(value);
 
 const audioSchema = z.object({
-  root: zodDirectory(),
-  song: zodWavFile(),
-  lead: zodWavFile(),
-  bass: zodWavFile(),
-  drums: zodWavFile(),
-  vocals: zodWavFile(),
-  harmony: zodWavFile(),
+  root: z.directoryPicker(),
+  song: z.filePicker(WavFilePickerTypes, isWavFile),
+  lead: z.filePicker(WavFilePickerTypes, isWavFile),
+  bass: z.filePicker(WavFilePickerTypes, isWavFile),
+  drums: z.filePicker(WavFilePickerTypes, isWavFile),
+  vocals: z.filePicker(WavFilePickerTypes, isWavFile),
+  harmony: z.filePicker(WavFilePickerTypes, isWavFile),
 });
 
 const creditsSchema = z.object({

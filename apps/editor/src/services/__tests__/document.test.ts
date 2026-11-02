@@ -1,9 +1,9 @@
 import { Midi } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService, type OpenedProject } from "../document";
-import type { LoggerService } from "../logger";
 import { makeDefaultMetadata } from "../document/schema";
 import { createTestRulesetService } from "./testUtils";
+import { mockLoggerService } from "../__mock__/logger.mock";
 
 const DefaultOpenedProject: OpenedProject = {
   projectBytes: new Uint8Array(),
@@ -12,16 +12,13 @@ const DefaultOpenedProject: OpenedProject = {
   midiHandle: {} as FileSystemFileHandle,
   directoryHandle: {} as FileSystemDirectoryHandle,
 };
-function createDocumentService(
+function makeDocumentService(
   openedProject: OpenedProject = { ...DefaultOpenedProject },
 ): DocumentService {
-  const logger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
-    error: vi.fn(),
-  } as unknown as LoggerService;
-  const service = new DocumentService(logger, createTestRulesetService());
+  const service = new DocumentService(
+    mockLoggerService(),
+    createTestRulesetService(),
+  );
 
   Object.assign(service, {
     readProject: vi.fn(async () => openedProject),
@@ -35,7 +32,7 @@ describe("DocumentService", () => {
   });
 
   it("owns MIDI data, project metadata, dirty state, and history", () => {
-    const service = createDocumentService();
+    const service = makeDocumentService();
     const midi = new Midi();
     midi.addTrack();
     service.data = midi;
@@ -52,7 +49,7 @@ describe("DocumentService", () => {
   });
 
   it("does not dirty an empty edit transaction", () => {
-    const service = createDocumentService();
+    const service = makeDocumentService();
     service.isDirty = false;
     service.beginEdit();
     service.endEdit();
@@ -78,7 +75,7 @@ describe("DocumentService", () => {
       directoryHandle,
     };
 
-    const service = createDocumentService(openedProject);
+    const service = makeDocumentService(openedProject);
     await expect(service.open()).resolves.toBe(true);
 
     const snapshot = service.getSnapshot();
@@ -112,7 +109,7 @@ describe("DocumentService", () => {
         };
       },
     } as unknown as FileSystemDirectoryHandle;
-    const service = createDocumentService();
+    const service = makeDocumentService();
     service.data = midi;
     service.rebind("saved.mid", null, directoryHandle);
 
@@ -163,12 +160,7 @@ describe("DocumentService", () => {
     });
 
     const service = new DocumentService(
-      {
-        debug: vi.fn(),
-        info: vi.fn(),
-        warning: vi.fn(),
-        error: vi.fn(),
-      } as unknown as LoggerService,
+      mockLoggerService(),
       createTestRulesetService(),
     );
     await expect(service.readProject()).resolves.toEqual({
@@ -211,7 +203,7 @@ describe("DocumentService", () => {
     vi.stubGlobal("window", {
       showDirectoryPicker: vi.fn(async () => directoryHandle),
     });
-    const service = createDocumentService();
+    const service = makeDocumentService();
     service.data = midi;
 
     await expect(service.saveAs()).resolves.toBe(true);

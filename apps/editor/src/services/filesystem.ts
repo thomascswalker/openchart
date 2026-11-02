@@ -130,9 +130,15 @@ export class FileSystemService extends Service {
   }
 
   public async readDirectory(
-    relativeTo: FileSystemDirectoryHandle,
+    relativeTo?: FileSystemDirectoryHandle,
   ): Promise<LoadDirectory> {
     const handle = await window.showDirectoryPicker({ mode: "read" });
+    if (!relativeTo) {
+      return {
+        name: handle.name,
+        handle,
+      };
+    }
     const relativePath = await relativeTo.resolve(handle);
     if (!relativePath) {
       throw new Error("Choose an audio root folder inside the project folder.");
