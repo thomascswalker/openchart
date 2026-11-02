@@ -29,6 +29,10 @@ export abstract class StatefulService<T> extends Service {
     return this.getSnapshot();
   }
 
+  protected set snapshot(value: T) {
+    this._snapshot = value;
+  }
+
   public readonly getSnapshot = (): T => this._snapshot;
 }
 
