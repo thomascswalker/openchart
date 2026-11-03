@@ -1,4 +1,5 @@
-import { ObjectTreeModel } from "./objectTree";
+import { ObjectTreeModel } from "../../models/tree/objectTree";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ITreeNode } from "./tree";
 import {
   FileSystemDirectoryHandle,
@@ -6,7 +7,7 @@ import {
   FileSystemHandle,
 } from "native-file-system-adapter";
 
-type FileTreeNode = ITreeNode<FileSystemHandle>;
+export type FileTreeNode = ITreeNode<FileSystemHandle>;
 
 /**
  * Represents a file tree model that manages a hierarchical structure of file
@@ -21,7 +22,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     }
     super(root, {
       onRefresh: async (): Promise<void> => {
-        await this.discover(this.root);
+        await this.discover(this._root);
         this.buildCache();
       },
     });
@@ -34,7 +35,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
    */
   private buildCache(): void {
     this.cache.clear();
-    Array.from(this.nodes.values()).forEach((node) => {
+    Array.from(this._nodes.values()).forEach((node) => {
       this.cache.set(this.resolvePath(node), node);
     });
   }
@@ -69,7 +70,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
 
       // Register the node before recursing so descendants can resolve it as a parent
       parent.children.push(child);
-      this.nodes.set(handle, child);
+      this._nodes.set(handle, child);
 
       // Discover children of this child node
       await this.discover(child);
@@ -138,3 +139,39 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     return node.element;
   }
 }
+
+type UseFileTreeModelResult = Pick<
+  FileTreeModel,
+  "filter" | "find" | "findAs" | "findFile" | "findDirectory" | "refresh"
+> & { nodes: FileTreeNode[] };
+
+export const useFileTreeModel = (
+  rootHandle: FileSystemDirectoryHandle,
+): UseFileTreeModelResult => {
+  // Only recreate the tree if the root handle changes
+  const tree = useMemo(() => new FileTreeModel(rootHandle), [rootHandle]);
+  const [, setVersion] = useState(0);
+
+  // Discovery is async and mutates the model in place, so re-render on notify
+  const refresh = useCallback(async () => {
+    await tree.refresh();
+    tree.notify();
+  }, [tree]);
+
+  useEffect(() => {
+    const listener = () => setVersion((v) => v + 1);
+    tree.subscribe(listener);
+    void refresh();
+    return () => tree.unsubscribe(listener);
+  }, [tree, refresh]);
+
+  return {
+    nodes: Array.from(tree.nodes.values()),
+    filter: tree.filter.bind(tree),
+    find: tree.find.bind(tree),
+    findAs: tree.findAs.bind(tree),
+    findFile: tree.findFile.bind(tree),
+    findDirectory: tree.findDirectory.bind(tree),
+    refresh,
+  };
+};

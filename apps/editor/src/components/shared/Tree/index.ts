@@ -1,1 +1,1 @@
-export { default } from "./Tree";
+export { FileTreeView } from "./Tree";

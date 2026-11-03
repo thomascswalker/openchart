@@ -24,10 +24,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    "src",
-    ".storybook",
-    "src/components/dialogs/AudioMixer/.storybook/AudioMixer.stories.tsx",
-    "src/components/editor/Timeline/.storybook/Timeline.stories.tsx"
-  ]
+  "include": ["src", ".storybook", "**/.storybook/*.stories.tsx"]
 }
