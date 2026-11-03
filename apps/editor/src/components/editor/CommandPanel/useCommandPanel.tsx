@@ -1,16 +1,27 @@
 import type { ReactNode } from "react";
 import { AudioMixer, EventList, ViewportSettings } from "../../dialogs";
+import { FileTreeView } from "../../shared";
 import {
   type TabOption,
   MixerIcon,
   TracksIcon,
   SettingsIcon,
+  FilesIcon,
 } from "../../shared";
+import Platform, { useSnapshot } from "../../../platform";
+import type {
+  WorkspaceService,
+  WorkspaceSnapshot,
+} from "../../../services/workspace";
 
 const DefaultTabIconSize = 24;
 
 function getTabOptions(size: number): TabOption[] {
   return [
+    {
+      title: "Files",
+      icon: <FilesIcon size={size} />,
+    },
     {
       title: "Audio Mixer",
       icon: <MixerIcon size={size} />,
@@ -39,10 +50,14 @@ const useCommandPanel = (
   options: UseCommandPanelOptions = {},
 ): UseCommandPanelResult => {
   const tabOptions = getTabOptions(options.size || DefaultTabIconSize);
+  // Subscribing re-renders the panel when the workspace directory changes.
+  useSnapshot<WorkspaceSnapshot>("workspace");
+  const workspace = Platform.services.get<WorkspaceService>("workspace");
 
   return {
     options: tabOptions,
     children: [
+      <FileTreeView key="files" rootHandle={workspace?.rootHandle} />,
       <AudioMixer key="mixer" />,
       <EventList key="event-list" />,
       <ViewportSettings key="settings" />,

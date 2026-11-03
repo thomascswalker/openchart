@@ -11,7 +11,7 @@ export interface ObjectTreeModelOptions<T> {
 
 export class ObjectTreeModel<T> extends Subscriber implements ITreeModel<T, T> {
   readonly rootRef: T;
-  protected _root: ITreeNode<T>;
+  protected _rootNode: ITreeNode<T>;
   protected _nodes = new Map<T | undefined, ITreeNode<T>>();
 
   protected _onRefresh?: () => void | Promise<void>;
@@ -24,8 +24,13 @@ export class ObjectTreeModel<T> extends Subscriber implements ITreeModel<T, T> {
   constructor(root: T, options?: ObjectTreeModelOptions<T>) {
     super();
     this.rootRef = root;
-    this._root = { element: root, parent: undefined, children: [], depth: 0 };
-    this._nodes.set(root, this._root);
+    this._rootNode = {
+      element: root,
+      parent: undefined,
+      children: [],
+      depth: 0,
+    };
+    this._nodes.set(root, this._rootNode);
     this._onRefresh = options?.onRefresh;
     this._onCollapsed = options?.onCollapsed;
     this._onExpanded = options?.onExpanded;
@@ -38,14 +43,14 @@ export class ObjectTreeModel<T> extends Subscriber implements ITreeModel<T, T> {
   }
 
   async refresh(): Promise<void> {
-    this._root = {
+    this._rootNode = {
       element: this.rootRef,
       parent: undefined,
       children: [],
       depth: 0,
     };
     this._nodes.clear();
-    this._nodes.set(this.rootRef, this._root);
+    this._nodes.set(this.rootRef, this._rootNode);
     await this._onRefresh?.();
   }
 
@@ -55,7 +60,7 @@ export class ObjectTreeModel<T> extends Subscriber implements ITreeModel<T, T> {
 
   get(element?: T): ITreeNode<T> | undefined {
     if (!element) {
-      return this._root;
+      return this._rootNode;
     }
 
     return this._nodes.get(element);

@@ -10,6 +10,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { Button } from "../Button";
 import { Section } from "../Section";
 import { Input } from "../Input";
+import { HorizontalSeparator } from "../Separator";
 
 const DefaultRowHeight = 20;
 
@@ -53,14 +54,27 @@ const FileTreeItem = ({ node, rowHeight, onClick }: FileTreeItemProps) => {
 };
 
 interface FileTreeViewProps {
-  rootHandle: FileSystemDirectoryHandle;
+  rootHandle?: FileSystemDirectoryHandle;
   rowHeight?: number;
 }
 
-const FileTreeView = ({
+const FileTreeView = ({ rootHandle, rowHeight }: FileTreeViewProps) => {
+  if (!rootHandle) {
+    return <Text>No root directory selected</Text>;
+  }
+  return (
+    <FileTreeContent
+      key={rootHandle.name}
+      rootHandle={rootHandle}
+      rowHeight={rowHeight}
+    />
+  );
+};
+
+const FileTreeContent = ({
   rootHandle,
   rowHeight = DefaultRowHeight,
-}: FileTreeViewProps) => {
+}: FileTreeViewProps & { rootHandle: FileSystemDirectoryHandle }) => {
   const { nodes, visibleNodes, refresh, toggleCollapse, select, deselect } =
     useFileTreeModel(rootHandle);
   const [query, setQuery] = useState("");
@@ -106,12 +120,13 @@ const FileTreeView = ({
 
   return (
     <div style={{ padding: 8 }}>
-      <Section flexDirection="row">
+      <Section flexDirection="row" paddingX={0} paddingTop={0}>
         <Input
           placeholder="Search..."
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+
         <Button
           onClick={refresh}
           icon={<ResetIcon size={12} />}
@@ -120,7 +135,7 @@ const FileTreeView = ({
           maxWidth={16}
         />
       </Section>
-
+      <HorizontalSeparator />
       {displayedNodes.map((node) => (
         <FileTreeItem
           key={makeKey(node)}

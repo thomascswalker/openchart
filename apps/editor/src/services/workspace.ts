@@ -24,13 +24,16 @@ export const DefaultWorkspaceSnapshot = {
  * accessed.
  */
 export class WorkspaceService extends StatefulService<WorkspaceSnapshot> {
+  #rootHandle?: FileSystemDirectoryHandle;
+
   constructor() {
     super();
-    this.snapshot = { ...DefaultWorkspaceSnapshot };
+    this.snapshot = { tree: undefined, files: new Map() };
   }
 
   public override readonly reset = (): void => {
-    this.snapshot = { ...DefaultWorkspaceSnapshot };
+    this.#rootHandle = undefined;
+    this.snapshot = { tree: undefined, files: new Map() };
     this.notify();
   };
 
@@ -38,8 +41,14 @@ export class WorkspaceService extends StatefulService<WorkspaceSnapshot> {
     return !!this.snapshot.tree;
   }
 
-  public async setRootHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-    this.snapshot.tree = new FileTreeModel(handle);
+  public get rootHandle(): FileSystemDirectoryHandle | undefined {
+    return this.#rootHandle;
+  }
+
+  public async setDirectory(handle: FileSystemDirectoryHandle): Promise<void> {
+    this.#rootHandle = handle;
+    // A new snapshot object is required so useSyncExternalStore subscribers re-render.
+    this.snapshot = { tree: new FileTreeModel(handle), files: new Map() };
     this.notify();
   }
 

@@ -18,9 +18,10 @@ export type FileTreeNode = ITreeNode<FileSystemHandle>;
  */
 export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
   private cache = new Map<string, FileTreeNode>();
+  private loaded = new Set<FileTreeNode>();
 
   constructor(
-    root: FileSystemHandle,
+    root: FileSystemDirectoryHandle,
     options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, "onRefresh">,
   ) {
     if (root.kind !== "directory") {
@@ -29,13 +30,14 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     super(root, {
       ...options,
       onRefresh: async (): Promise<void> => {
-        Object.assign(this._root, {
+        this.loaded.clear();
+        Object.assign(this._rootNode, {
           collapsible: true,
           collapsed: false,
           selectable: true,
           selected: false,
         });
-        await this.discover(this._root);
+        await this.discover(this._rootNode);
         this.buildCache();
       },
     });
@@ -48,51 +50,78 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
    */
   private buildCache(): void {
     this.cache.clear();
-    Array.from(this._nodes.values()).forEach((node) => {
+
+    const orderedNodes: FileTreeNode[] = [];
+    const visit = (node: FileTreeNode): void => {
+      orderedNodes.push(node);
+      node.children.forEach(visit);
+    };
+    visit(this._rootNode);
+
+    this._nodes.clear();
+    orderedNodes.forEach((node) => {
+      this._nodes.set(node.element, node);
       this.cache.set(this.resolvePath(node), node);
     });
   }
 
   /**
-   * Recursively discovers and adds child nodes for the given parent node.
+   * Discovers and adds the immediate children of the given directory node.
+   * Subdirectories are added collapsed and are only read when expanded.
    * @param parent The parent node to discover children for.
-   * @returns A promise that resolves when the discovery process is complete.
    */
   private async discover(parent: FileTreeNode): Promise<void> {
-    // Skip if the parent node is a file, as files cannot have children
-    if (parent.element instanceof FileSystemFileHandle) {
+    // `kind` is used because native picker handles aren't instances of the adapter classes
+    if (parent.element.kind !== "directory" || this.loaded.has(parent)) {
+      return;
+    }
+    this.loaded.add(parent);
+
+    const element = parent.element as unknown as FileSystemDirectoryHandle;
+
+    const entries: FileSystemHandle[] = [];
+    try {
+      for await (const handle of element.values()) {
+        entries.push(handle);
+      }
+    } catch (error) {
+      // Unreadable or vanished directories shouldn't break the tree
+      console.warn(`Unable to read directory "${element.name}"`, error);
+    }
+
+    // A refresh may have replaced the tree while entries were being read
+    if (this._nodes.get(parent.element) !== parent) {
       return;
     }
 
-    // Explicitly cast the parent element to a directory handle
-    const element = parent.element as unknown as FileSystemDirectoryHandle;
-
-    // Iterate over the entries of the directory handle
-    for await (const [_, handle] of element.entries() ?? []) {
+    for (const handle of entries) {
       if (this.has(handle)) {
         continue;
       }
-
-      // Construct the new child node
+      const isDirectory = handle.kind === "directory";
       const child: FileTreeNode = {
         element: handle,
-        parent: this.get(parent.element),
+        parent,
         children: [],
         depth: (parent.depth ?? -1) + 1,
-        collapsible: handle.kind === "directory",
-        collapsed: false,
+        collapsible: isDirectory,
+        collapsed: isDirectory,
         selectable: true,
         selected: false,
         visible: true,
       };
-
-      // Register the node before recursing so descendants can resolve it as a parent
       parent.children.push(child);
       this._nodes.set(handle, child);
-
-      // Discover children of this child node
-      await this.discover(child);
     }
+    this.buildCache();
+  }
+
+  override expand(node: FileTreeNode): void {
+    super.expand(node);
+    if (node.collapsed || this.loaded.has(node)) {
+      return;
+    }
+    void this.discover(node).then(() => this.notify());
   }
 
   /**
@@ -140,7 +169,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     if (!node) {
       return undefined;
     }
-    if (!(node.element instanceof FileSystemFileHandle)) {
+    if (node.element.kind !== "file") {
       return undefined;
     }
     return node.element;
@@ -151,7 +180,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     if (!node) {
       return undefined;
     }
-    if (!(node.element instanceof FileSystemDirectoryHandle)) {
+    if (node.element.kind !== "directory") {
       return undefined;
     }
     return node.element;

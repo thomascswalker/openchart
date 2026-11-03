@@ -45,6 +45,8 @@ const MENUS: MenuDefinition[] = [
         label: "Save As...",
       },
       { type: "separator" },
+      { id: "workspace.open", label: "Open Workspace..." },
+      { type: "separator" },
       { id: "document.import-midi", label: "Import" },
       { id: "document.export-midi", label: "Export" },
       { type: "separator" },
