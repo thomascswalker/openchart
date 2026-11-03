@@ -5,6 +5,11 @@ export interface ITreeNode<T> {
   readonly parent?: ITreeNode<T>;
   readonly children: ITreeNode<T>[];
   readonly depth: number;
+  visible?: boolean;
+  collapsed?: boolean;
+  collapsible?: boolean;
+  selected?: boolean;
+  selectable?: boolean;
 }
 
 export interface ITreeModel<T, TRef> extends Subscriber {

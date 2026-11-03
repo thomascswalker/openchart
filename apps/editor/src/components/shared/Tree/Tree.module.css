@@ -6,6 +6,10 @@
   padding: 12px 8px 12px
     calc(8px + var(--item-depth) * (var(--item-height) / 2));
   border-radius: var(--radius-small);
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .tree-item:hover {
@@ -13,6 +17,7 @@
   cursor: pointer;
 }
 
-.tree-item:active {
+.tree-item:active,
+.tree-item.selected {
   background-color: var(--primary-hover);
 }

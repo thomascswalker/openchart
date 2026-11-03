@@ -142,6 +142,6 @@ export const {
   MixerIcon,
   ResetIcon,
   TracksIcon,
-  PlaceIcon,
+  FileIcon,
 } = icons;
 export { Icon };

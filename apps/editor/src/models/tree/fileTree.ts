@@ -1,5 +1,8 @@
-import { ObjectTreeModel } from "../../models/tree/objectTree";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ObjectTreeModel,
+  type ObjectTreeModelOptions,
+} from "../../models/tree/objectTree";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ITreeNode } from "./tree";
 import {
   FileSystemDirectoryHandle,
@@ -16,12 +19,22 @@ export type FileTreeNode = ITreeNode<FileSystemHandle>;
 export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
   private cache = new Map<string, FileTreeNode>();
 
-  constructor(root: FileSystemHandle) {
+  constructor(
+    root: FileSystemHandle,
+    options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, "onRefresh">,
+  ) {
     if (root.kind !== "directory") {
       throw new Error("Root must be a directory handle");
     }
     super(root, {
+      ...options,
       onRefresh: async (): Promise<void> => {
+        Object.assign(this._root, {
+          collapsible: true,
+          collapsed: false,
+          selectable: true,
+          selected: false,
+        });
         await this.discover(this._root);
         this.buildCache();
       },
@@ -61,11 +74,16 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
       }
 
       // Construct the new child node
-      const child = {
+      const child: FileTreeNode = {
         element: handle,
         parent: this.get(parent.element),
         children: [],
         depth: (parent.depth ?? -1) + 1,
+        collapsible: handle.kind === "directory",
+        collapsed: false,
+        selectable: true,
+        selected: false,
+        visible: true,
       };
 
       // Register the node before recursing so descendants can resolve it as a parent
@@ -142,14 +160,38 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
 
 type UseFileTreeModelResult = Pick<
   FileTreeModel,
-  "filter" | "find" | "findAs" | "findFile" | "findDirectory" | "refresh"
-> & { nodes: FileTreeNode[] };
+  | "filter"
+  | "find"
+  | "findAs"
+  | "findFile"
+  | "findDirectory"
+  | "refresh"
+  | "toggleCollapse"
+  | "collapse"
+  | "expand"
+  | "select"
+  | "deselect"
+  | "toggleSelect"
+> & { nodes: FileTreeNode[]; visibleNodes: FileTreeNode[] };
 
 export const useFileTreeModel = (
   rootHandle: FileSystemDirectoryHandle,
+  options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, "onRefresh">,
 ): UseFileTreeModelResult => {
-  // Only recreate the tree if the root handle changes
-  const tree = useMemo(() => new FileTreeModel(rootHandle), [rootHandle]);
+  // Only recreate the tree if the root handle changes; callbacks are read
+  // through a ref so inline handlers don't trigger a rebuild.
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const tree = useMemo(
+    () =>
+      new FileTreeModel(rootHandle, {
+        onCollapsed: (n) => optionsRef.current?.onCollapsed?.(n),
+        onExpanded: (n) => optionsRef.current?.onExpanded?.(n),
+        onSelected: (n) => optionsRef.current?.onSelected?.(n),
+        onDeselected: (n) => optionsRef.current?.onDeselected?.(n),
+      }),
+    [rootHandle],
+  );
   const [, setVersion] = useState(0);
 
   // Discovery is async and mutates the model in place, so re-render on notify
@@ -165,13 +207,43 @@ export const useFileTreeModel = (
     return () => tree.unsubscribe(listener);
   }, [tree, refresh]);
 
+  const nodes = Array.from(tree.nodes.values());
+  const visibleNodes = nodes.filter((node) => {
+    // Always show the root node
+    if (node.depth === 0) {
+      return true;
+    }
+
+    // If the node is not visible, don't show it
+    if (!node.visible) {
+      return false;
+    }
+
+    // If any ancestor is collapsed, don't show the node
+    let current: FileTreeNode | undefined = node.parent;
+    while (current) {
+      if (current.collapsed) {
+        return false;
+      }
+      current = current.parent;
+    }
+    return true;
+  });
+
   return {
-    nodes: Array.from(tree.nodes.values()),
+    nodes,
+    visibleNodes,
     filter: tree.filter.bind(tree),
     find: tree.find.bind(tree),
     findAs: tree.findAs.bind(tree),
     findFile: tree.findFile.bind(tree),
     findDirectory: tree.findDirectory.bind(tree),
     refresh,
+    toggleCollapse: tree.toggleCollapse.bind(tree),
+    collapse: tree.collapse.bind(tree),
+    expand: tree.expand.bind(tree),
+    select: tree.select.bind(tree),
+    deselect: tree.deselect.bind(tree),
+    toggleSelect: tree.toggleSelect.bind(tree),
   };
 };
