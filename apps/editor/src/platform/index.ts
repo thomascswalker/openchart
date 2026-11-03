@@ -8,11 +8,19 @@ import {
 import { createContext, useContext, useSyncExternalStore } from "react";
 
 const serviceModules = import.meta.glob<Record<string, unknown>>(
-  ["../services/**/*.ts", "!../services/**/__tests__/**"],
+  [
+    "../services/**/*.ts",
+    "!../services/**/__tests__/**",
+    "!../services/**/__mock__/**",
+  ],
   { eager: true },
 );
 const actionModules = import.meta.glob<Record<string, unknown>>(
-  ["../actions/**/*.ts", "!../actions/**/__tests__/**"],
+  [
+    "../actions/**/*.ts",
+    "!../actions/**/__tests__/**",
+    "!../actions/**/__mocks__/**",
+  ],
   { eager: true },
 );
 

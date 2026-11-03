@@ -19,7 +19,7 @@ import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
 import { PianoRollView } from "../index";
 import { profileFromSession } from "../profile";
 import { PlaybackService } from "../../../../services/playback";
-import { defaultApplicationSettings } from "../../../../services/settings/schema";
+import { DefaultApplicationSettings } from "../../../../services/settings/schema";
 import {
   Button,
   Checkbox,
@@ -59,9 +59,9 @@ const createPianoRollRenderer = (): PianoRollView => new PianoRollView();
 
 /** Settings with the metronome off, so stories stay quiet. */
 const silentStorySettings = {
-  ...defaultApplicationSettings,
+  ...DefaultApplicationSettings,
   feedback: {
-    ...defaultApplicationSettings.feedback,
+    ...DefaultApplicationSettings.feedback,
     metronomeEnabled: false,
   },
 };

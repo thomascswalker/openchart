@@ -1,7 +1,10 @@
-import type { IWorkspaceService } from "../workspace";
+import { type IWorkspaceService, DefaultWorkspaceSnapshot } from "../workspace";
 
 export const mockWorkspaceService = (): IWorkspaceService => {
   return {
-    rootHandle: undefined,
-  } as IWorkspaceService;
+    snapshot: { ...DefaultWorkspaceSnapshot },
+    reset: () => {},
+    isValid: () => true,
+    discover: () => Promise.resolve(),
+  } as unknown as IWorkspaceService;
 };

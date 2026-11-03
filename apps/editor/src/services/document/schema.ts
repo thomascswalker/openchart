@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WavFilePickerTypes } from "../../util/filePicker";
+import { WavFilePickerTypes } from "../../util/fs/pickers";
 import { DefaultRuleset, type Ruleset } from "@openchart/views";
 
 const MetadataSettingsVersion = 1;
