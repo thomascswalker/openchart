@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LoggerService } from "../logger";
 import { MixerService } from "../mixer";
+import { mockLoggerService } from "../__mock__/logger.mock";
 
 vi.mock("@openchart/audio", () => ({
   Mixer: class MockMixer {
@@ -21,12 +21,13 @@ vi.mock("@openchart/audio", () => ({
   },
 }));
 
+const makeMixerService = () => {
+  return new MixerService(mockLoggerService());
+};
+
 describe("MixerService", () => {
   it("publishes a new snapshot when the mixer changes directly", () => {
-    const service = new MixerService({
-      info: vi.fn(),
-      error: vi.fn(),
-    } as unknown as LoggerService);
+    const service = makeMixerService();
     const listener = vi.fn();
     const initialSnapshot = service.getSnapshot();
     service.subscribe(listener);
@@ -39,10 +40,7 @@ describe("MixerService", () => {
   });
 
   it("adds a track from a URL and publishes the updated snapshot", () => {
-    const service = new MixerService({
-      info: vi.fn(),
-      error: vi.fn(),
-    } as unknown as LoggerService);
+    const service = makeMixerService();
     const listener = vi.fn();
     service.subscribe(listener);
 

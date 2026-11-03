@@ -15,3 +15,4 @@ export * from "./Splitter";
 export * from "./Table";
 export * from "./Tabs";
 export * from "./Text";
+export * from "./Tree";

@@ -1,7 +1,7 @@
 import { runActionAsync, runAction } from "../../../actions/execute";
 import { useSettings } from "../../../hooks/useApplication";
 import {
-  applicationSettingsSchema,
+  ApplicationSettingsSchema,
   type ApplicationSettings,
 } from "../../../services/settings/schema";
 import { Form } from "../../shared";
@@ -20,7 +20,7 @@ const SettingsDialog = () => {
   return (
     <Form
       title="Settings"
-      schema={applicationSettingsSchema}
+      schema={ApplicationSettingsSchema}
       values={settings}
       optionsLabel="Settings sections"
       onApply={apply}

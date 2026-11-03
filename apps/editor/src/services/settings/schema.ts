@@ -1,39 +1,33 @@
-import z from "zod";
+import { z } from "zod";
 
-export const APPLICATION_SETTINGS_VERSION = 1;
-export const STORAGE_KEY = "openchart.application-settings";
+export const ApplicationSettingsVersion = 1;
+export const StorageKey = "openchart.application-settings";
 
-export const HIGHWAY_SCROLL_SPEED_RANGE = {
+export const HighwayScrollSpeedRange = {
   min: 0.5,
   max: 4,
   step: 0.1,
 } as const;
 
-export const defaultApplicationSettings: ApplicationSettings = {
-  version: APPLICATION_SETTINGS_VERSION,
-  feedback: {
-    metronomeEnabled: false,
-    metronomeVolume: 0.35,
-    metronomeDownbeatSound: "square",
-    metronomeBeatSound: "sine",
-    previewVolume: 0.25,
-    previewAttackMs: 8,
-    previewReleaseMs: 80,
-    previewMaxVoices: 8,
-    previewLowPitch: 36,
-    previewHighPitch: 60,
-  },
-  history: { capacity: 256 },
-  graphics: { antialiasing: true, scrollSpeed: 1 },
-};
-const supportedOscillatorTypes = [
-  "sine",
-  "square",
-  "sawtooth",
-  "triangle",
-] as const;
+export const OscillatorType = {
+  Sine: "sine",
+  Square: "square",
+  Sawtooth: "sawtooth",
+  Triangle: "triangle",
+} as const;
 
-const feedbackSchema = z
+export const FileSystemDirectoryHandleSchema =
+  z.custom<FileSystemDirectoryHandle>(
+    (value) =>
+      typeof FileSystemDirectoryHandle !== "undefined" &&
+      value instanceof FileSystemDirectoryHandle,
+  );
+
+const WorkspaceSchema = z.object({
+  uri: z.directoryPicker().meta({ label: "Workspace Path" }),
+});
+
+const FeedbackSchema = z
   .object({
     metronomeEnabled: z.boolean().meta({ label: "Enable metronome" }),
     metronomeVolume: z
@@ -42,11 +36,9 @@ const feedbackSchema = z
       .max(1, "Metronome volume must be between 0 and 1.")
       .meta({ label: "Metronome volume", min: 0, max: 1, step: 0.01 }),
     metronomeDownbeatSound: z
-      .enum(supportedOscillatorTypes)
+      .enum(OscillatorType)
       .meta({ label: "Downbeat sound" }),
-    metronomeBeatSound: z
-      .enum(supportedOscillatorTypes)
-      .meta({ label: "Beat sound" }),
+    metronomeBeatSound: z.enum(OscillatorType).meta({ label: "Beat sound" }),
     previewVolume: z
       .number()
       .min(0, "Preview volume must be between 0 and 1.")
@@ -76,7 +68,7 @@ const feedbackSchema = z
   })
   .meta({ tab: "Feedback" });
 
-const historySchema = z
+const HistorySchema = z
   .object({
     capacity: z
       .number()
@@ -87,40 +79,42 @@ const historySchema = z
   })
   .meta({ tab: "General" });
 
-const graphicsSchema = z
+const DisplaySchema = z
   .object({
     antialiasing: z.boolean().meta({ label: "Antialiasing" }),
     scrollSpeed: z
       .number()
       .min(
-        HIGHWAY_SCROLL_SPEED_RANGE.min,
-        `Highway visual speed must be between ${HIGHWAY_SCROLL_SPEED_RANGE.min} and ${HIGHWAY_SCROLL_SPEED_RANGE.max}.`,
+        HighwayScrollSpeedRange.min,
+        `Highway visual speed must be between ${HighwayScrollSpeedRange.min} and ${HighwayScrollSpeedRange.max}.`,
       )
       .max(
-        HIGHWAY_SCROLL_SPEED_RANGE.max,
-        `Highway visual speed must be between ${HIGHWAY_SCROLL_SPEED_RANGE.min} and ${HIGHWAY_SCROLL_SPEED_RANGE.max}.`,
+        HighwayScrollSpeedRange.max,
+        `Highway visual speed must be between ${HighwayScrollSpeedRange.min} and ${HighwayScrollSpeedRange.max}.`,
       )
+      .multipleOf(HighwayScrollSpeedRange.step)
       .meta({
         label: "Highway visual speed",
-        min: HIGHWAY_SCROLL_SPEED_RANGE.min,
-        max: HIGHWAY_SCROLL_SPEED_RANGE.max,
-        step: HIGHWAY_SCROLL_SPEED_RANGE.step,
+        min: HighwayScrollSpeedRange.min,
+        max: HighwayScrollSpeedRange.max,
+        step: HighwayScrollSpeedRange.step,
       }),
   })
-  .meta({ tab: "Graphics" });
+  .meta({ tab: "Display" });
 
-export const applicationSettingsSchema = z.object({
+export const ApplicationSettingsSchema = z.object({
   version: z
-    .literal(APPLICATION_SETTINGS_VERSION, {
+    .literal(ApplicationSettingsVersion, {
       error: "Unsupported settings version.",
     })
     .meta({ hidden: true }),
-  feedback: feedbackSchema,
-  history: historySchema,
-  graphics: graphicsSchema,
+  workspace: WorkspaceSchema,
+  feedback: FeedbackSchema,
+  history: HistorySchema,
+  display: DisplaySchema,
 });
 
-export type ApplicationSettings = z.infer<typeof applicationSettingsSchema>;
+export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;
 
 export type ApplicationSettingGroup = Exclude<
   keyof ApplicationSettings,
@@ -142,3 +136,29 @@ export type ApplicationSettingValue<Path extends ApplicationSettingPath> =
         : never
       : never
     : never;
+
+export const DefaultApplicationSettings: ApplicationSettings = {
+  version: ApplicationSettingsVersion,
+  workspace: {
+    uri: null,
+  },
+  feedback: {
+    metronomeEnabled: false,
+    metronomeVolume: 0.35,
+    metronomeDownbeatSound: "square",
+    metronomeBeatSound: "sine",
+    previewVolume: 0.25,
+    previewAttackMs: 8,
+    previewReleaseMs: 80,
+    previewMaxVoices: 8,
+    previewLowPitch: 36,
+    previewHighPitch: 60,
+  },
+  history: {
+    capacity: 256,
+  },
+  display: {
+    antialiasing: true,
+    scrollSpeed: 1,
+  },
+};

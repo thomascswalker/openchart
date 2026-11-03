@@ -46,7 +46,8 @@ describe("Menubar", () => {
     );
     expect(
       container.querySelectorAll('[role="menu"] [role="separator"]'),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
+    expect(fileItems).toContain("Open Workspace...");
     expect(fileItems).toContain("Import");
     expect(
       [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
@@ -128,8 +129,13 @@ describe("Menubar", () => {
         new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
       ),
     );
+    expect(document.activeElement?.textContent).toContain("Workspace");
+    act(() =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      ),
+    );
     expect(document.activeElement?.textContent).toContain("Import");
-
     act(() =>
       document.activeElement?.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),

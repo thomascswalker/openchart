@@ -30,7 +30,7 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
   await page.addInitScript(() => {
     localStorage.setItem(
       "openchart.application-settings",
-      JSON.stringify({ graphics: { antialiasing: false } }),
+      JSON.stringify({ display: { antialiasing: true } }),
     );
   });
   await page.addInitScript(() => {
@@ -55,7 +55,7 @@ test("highway framebuffer capture exposes performance diagnostics", async ({
   const contextAttributes = JSON.parse(
     (await canvas.getAttribute("data-context-attributes")) ?? "{}",
   ) as { antialias?: boolean };
-  expect(contextAttributes.antialias).toBe(false);
+  expect(contextAttributes.antialias).toBe(true);
 });
 
 test("T1: arrow keys move the highway camera with the playhead", async ({
