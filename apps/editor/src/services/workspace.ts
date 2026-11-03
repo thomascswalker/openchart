@@ -1,5 +1,5 @@
 import { StatefulService } from "../platform/services";
-import { FileTree } from "../util/fs/tree";
+import { FileTreeModel } from "../models/tree/fileTree";
 import {
   FileSystemDirectoryHandle,
   FileSystemFileHandle,
@@ -7,14 +7,13 @@ import {
 
 export interface WorkspaceSnapshot {
   /** The file tree representing the structure of the workspace. */
-  tree: FileTree;
+  tree?: FileTreeModel;
   /** A map of file paths to their corresponding file handles within the workspace. */
   files: Map<string, FileSystemFileHandle>;
 }
 
 export const DefaultWorkspaceSnapshot = {
-  rootHandle: undefined,
-  tree: new FileTree(),
+  tree: undefined,
   files: new Map(),
 } as WorkspaceSnapshot;
 
@@ -36,11 +35,11 @@ export class WorkspaceService extends StatefulService<WorkspaceSnapshot> {
   };
 
   public isValid(): boolean {
-    return this.snapshot.tree.isValid();
+    return !!this.snapshot.tree;
   }
 
   public async setRootHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-    this.snapshot.tree.setRootHandle(handle);
+    this.snapshot.tree = new FileTreeModel(handle);
     this.notify();
   }
 
@@ -51,8 +50,11 @@ export class WorkspaceService extends StatefulService<WorkspaceSnapshot> {
     if (!reload && this.snapshot.files.has(path)) {
       return await this.snapshot.files.get(path)?.getFile();
     }
-    const fileHandle = this.snapshot.tree.get(path);
-    if (!fileHandle || !(fileHandle instanceof FileSystemFileHandle)) {
+    if (!this.snapshot.tree) {
+      return undefined;
+    }
+    const fileHandle = this.snapshot.tree.findFile(path);
+    if (!fileHandle) {
       return undefined;
     }
     try {
