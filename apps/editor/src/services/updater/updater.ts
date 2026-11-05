@@ -1,6 +1,6 @@
 import type { DownloadEvent, Update } from "@tauri-apps/plugin-updater";
-import type { LoggerService } from "./logger";
-import { StatefulService } from "../platform/services";
+import type { LoggerService } from "../logger";
+import { StatefulService } from "../../platform/services";
 
 export type UpdaterStatus =
   | "idle"
@@ -24,17 +24,6 @@ export interface UpdaterSnapshot {
 
 const CHECK_TIMEOUT_MS = 30_000;
 
-const initialSnapshot = (): UpdaterSnapshot => ({
-  status: "idle",
-  currentVersion: null,
-  availableVersion: null,
-  notes: null,
-  downloadedBytes: 0,
-  totalBytes: null,
-  errorPhase: null,
-  error: null,
-});
-
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
@@ -54,12 +43,24 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
   constructor(logger: LoggerService) {
     super();
     this._logger = logger;
-    this._snapshot = initialSnapshot();
+  }
+
+  static defaultSnapshot(): UpdaterSnapshot {
+    return {
+      status: "idle",
+      currentVersion: null,
+      availableVersion: null,
+      notes: null,
+      downloadedBytes: 0,
+      totalBytes: null,
+      errorPhase: null,
+      error: null,
+    };
   }
 
   public readonly reset = (): void => {
     this.releasePending();
-    this._snapshot = initialSnapshot();
+    this._snapshot = UpdaterService.defaultSnapshot();
     this.notify();
   };
 
@@ -83,7 +84,10 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
     if (this.isBusy()) return;
 
     this.releasePending();
-    this._snapshot = { ...initialSnapshot(), status: "checking" };
+    this._snapshot = {
+      ...UpdaterService.defaultSnapshot(),
+      status: "checking",
+    };
     this.notify();
 
     try {
@@ -163,7 +167,7 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
   public readonly dismiss = (): void => {
     if (!this.canDismiss()) return;
     this.releasePending();
-    this._snapshot = initialSnapshot();
+    this._snapshot = UpdaterService.defaultSnapshot();
     this.notify();
   };
 

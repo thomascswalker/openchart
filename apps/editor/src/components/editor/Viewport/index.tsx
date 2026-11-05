@@ -29,7 +29,7 @@ import type { EngineOptions } from "../../../rendering/engine";
 import { ActiveChartViewService } from "../../../services/editor/activeChartView";
 import type { EditingService } from "../../../services/editor/editing";
 import { type ViewportSession } from "../../../services/editor/viewports";
-import { PlaybackService } from "../../../services/playback";
+import { PlaybackService } from "../../../services/playback/playback";
 import { Button, CloseButton } from "../../shared";
 import {
   BassIcon,

@@ -1,12 +1,12 @@
 import { Midi } from "@openchart/midi";
 import { MetaType } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DocumentService } from "../../document";
+import { DocumentService } from "../../document/document";
 import type { LoggerService } from "../../logger";
-import type { PlaybackService } from "../../playback";
+import type { PlaybackService } from "../../playback/playback";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
-import { createTestRulesetService } from "../../__tests__/testUtils";
+import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
 import {
   DomainCommandType,
   EditCommandType,

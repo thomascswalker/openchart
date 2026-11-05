@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bootstrap } from "./bootstrap";
 import Platform from "./platform";
-import { DocumentService } from "./services/document";
+import { DocumentService } from "./services/document/document";
 import { EditorStateService } from "./services/editor/state";
 import { ViewportService } from "./services/editor/viewports";
 

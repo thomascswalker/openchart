@@ -5,7 +5,7 @@ import {
   VocalPhraseKind,
 } from "@openchart/views";
 import { enforceAvailableView, ViewportService } from "../viewports";
-import { createTestRulesetService } from "../../__tests__/testUtils";
+import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
 
 describe("ViewportService", () => {
   it("owns viewport sessions and publishes focus and snap changes", () => {

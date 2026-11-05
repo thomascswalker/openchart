@@ -13,7 +13,7 @@ import { StepSnapDenominatorAction } from "../editor/step-snap-denominator";
 import { TransposeSelectionAction } from "../piano-roll/transpose-selection";
 import { ToggleLaneNoteAction } from "../highway/toggle-lane-note";
 import { ReleaseLaneNoteAction } from "../highway/release-lane-note";
-import { createTestRulesetService } from "../../services/__tests__/testUtils";
+import { createTestRulesetService } from "../../services/ruleset/__tests__/testUtils";
 import { EditingModeId } from "@openchart/views";
 
 function accessor(services: Record<string, unknown>): ServicesAccessor {

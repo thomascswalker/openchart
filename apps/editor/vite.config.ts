@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), svgr()],
     resolve: {
       alias: [zodAlias],
+      "@src": path.resolve(dir, "src"),
+      "@services": path.resolve(dir, "src/services"),
     },
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),

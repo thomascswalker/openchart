@@ -14,14 +14,14 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import { ContextStore } from "../../../platform/context";
 import type { LoggerService } from "../../logger";
-import type { PlaybackService } from "../../playback";
-import { DocumentService } from "../../document";
+import type { PlaybackService } from "../../playback/playback";
+import { DocumentService } from "../../document/document";
 import { createModeToolbarGroups } from "../../../components/editor/Toolbar/definitions";
 import { createEditingContextSnapshot } from "../editingContext";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
 import { z } from "zod";
-import { createTestRulesetService } from "../../__tests__/testUtils";
+import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
 
 const lanes = ["green", "red", "yellow", "blue"] as const;
 type FourLaneToolState = { lane: (typeof lanes)[number] };

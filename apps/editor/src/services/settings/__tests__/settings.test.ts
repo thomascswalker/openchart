@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Service, ServiceRegistry } from "../../platform/services";
+import { Service, ServiceRegistry } from "../../../platform/services";
 import { SettingsService } from "../settings";
-import { DefaultApplicationSettings } from "../settings/schema";
-import { mockWorkspaceService } from "../__mock__/workspace.mock";
+import { DefaultApplicationSettings } from "../schema";
+import { mockWorkspaceService } from "../../workspace/__tests__/utils";
 
 class TestWorkspaceService extends Service {
   public readonly reset = (): void => {};

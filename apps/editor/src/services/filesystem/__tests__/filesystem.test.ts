@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MidiFilePickerTypes } from "../document/types";
-import { FileSystemService } from "../filesystem";
-import { mockLoggerService } from "../__mock__/logger.mock";
+import { MidiFilePickerTypes } from "../../document/types";
+import { FileSystemService } from "..";
+import { mockLoggerService } from "../../__mock__/logger.mock";
 
 const TEST_FILENAME = "test_read_write.mid";
 

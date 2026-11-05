@@ -18,7 +18,7 @@ import type { AnyChartView } from "../../ChartViews";
 import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
 import { PianoRollView } from "../index";
 import { profileFromSession } from "../profile";
-import { PlaybackService } from "../../../../services/playback";
+import { PlaybackService } from "../../../../services/playback/playback";
 import { DefaultApplicationSettings } from "../../../../services/settings/schema";
 import {
   Button,

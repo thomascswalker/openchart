@@ -1,11 +1,11 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it, vi } from "vitest";
 import type { ServicesAccessor } from "../../../platform/services";
-import { DocumentService } from "../../../services/document";
+import { DocumentService } from "../../../services/document/document";
 import type { LoggerService } from "../../../services/logger";
 import { makeDefaultMetadata } from "../../../services/document/schema";
 import { ImportMidiAction } from "../import-midi";
-import { createTestRulesetService } from "../../../services/__tests__/testUtils";
+import { createTestRulesetService } from "../../../services/ruleset/__tests__/testUtils";
 
 describe("ImportMidiAction", () => {
   it("replaces the current MIDI while preserving project metadata", async () => {
@@ -38,7 +38,7 @@ describe("ImportMidiAction", () => {
     await new ImportMidiAction().run(accessor);
 
     expect(read).toHaveBeenCalledOnce();
-    expect(document.snapshot.midi?.trackCount).toBe(1);
+    expect(document.getSnapshot().midi?.trackCount).toBe(1);
     expect(document.metadata).toEqual(metadata);
     expect(document.isDirty).toBe(true);
     expect(logger.info).toHaveBeenCalledWith("MIDI imported: imported.mid");

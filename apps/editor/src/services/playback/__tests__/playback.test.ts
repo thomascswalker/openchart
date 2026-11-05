@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Difficulty } from "@openchart/views";
 import { PlaybackService, snapToPreviousTimelineBoundary } from "../playback";
-import type { MixerService } from "../mixer";
-import type { ApplicationSettings } from "../settings/schema";
+import type { MixerService } from "../../mixer/mixer";
+import type { ApplicationSettings } from "../../settings/schema";
 
 const engine = vi.hoisted(() => ({
   configure: vi.fn(),
@@ -16,7 +16,7 @@ const engine = vi.hoisted(() => ({
   dispose: vi.fn(),
 }));
 
-vi.mock("../../audio/soundboard", () => ({
+vi.mock("../../../audio/soundboard", () => ({
   Soundboard: vi.fn(function () {
     return engine;
   }),

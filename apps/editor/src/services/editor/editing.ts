@@ -16,9 +16,9 @@ import {
   type TrackDescriptor,
 } from "@openchart/views";
 import { Service } from "../../platform/services";
-import { DocumentService } from "../document";
-import { PlaybackService } from "../playback";
-import type { RulesetService } from "../ruleset";
+import { DocumentService } from "../document/document";
+import { PlaybackService } from "../playback/playback";
+import { RulesetService } from "../ruleset";
 import { ViewportService, type ViewportSession } from "./viewports";
 import { defaultModes } from "@openchart/views";
 
@@ -372,7 +372,7 @@ export class EditingService extends Service {
     const { trackIndex } = this.resolveTrack(viewport);
     return [
       this.documentId,
-      this.rulesetService.snapshot.revision,
+      this.rulesetService.getSnapshot().revision,
       modeId ?? "primary",
       viewport.trackKey,
       trackIndex,

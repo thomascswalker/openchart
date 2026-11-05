@@ -1,4 +1,4 @@
-import { Service } from "../platform/services";
+import { Service } from "../../platform/services";
 
 export class LoggerService extends Service {
   static dependencies = [];

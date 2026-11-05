@@ -1,7 +1,7 @@
-import { StatefulService } from "../platform/services";
+import { StatefulService } from "../../platform/services";
 import { Mixer, MixerTrack } from "@openchart/audio";
-import type { LoggerService } from "./logger";
-import type { MixerSnapshot } from "./mixer/types";
+import type { LoggerService } from "../logger";
+import type { MixerSnapshot } from "./types";
 
 export class MixerService extends StatefulService<MixerSnapshot> {
   static dependencies = ["logger"];

@@ -18,7 +18,7 @@ describe("ApplyProjectMetadataAction", () => {
     const document = {
       metadata: previousMetadata,
       metadataSchema: MetadataSchema,
-      snapshot: { directoryHandle: root },
+      getSnapshot: () => ({ directoryHandle: root }),
     };
     const removeTrack = vi.fn();
     const addTrack = vi.fn().mockResolvedValue(undefined);
@@ -53,7 +53,7 @@ describe("ApplyProjectMetadataAction", () => {
     const document = {
       metadata: makeDefaultMetadata(),
       metadataSchema: MetadataSchema,
-      snapshot: { directoryHandle: projectRoot },
+      getSnapshot: () => ({ directoryHandle: projectRoot }),
     };
     const removeTrack = vi.fn();
     const addTrack = vi.fn().mockResolvedValue(undefined);
@@ -87,7 +87,7 @@ describe("ApplyProjectMetadataAction", () => {
     const document = {
       metadata: makeDefaultMetadata(),
       metadataSchema: MetadataSchema,
-      snapshot: { directoryHandle: projectRoot },
+      getSnapshot: () => ({ directoryHandle: projectRoot }),
     };
     const removeTrack = vi.fn();
     const addTrack = vi.fn();
@@ -129,7 +129,7 @@ describe("ApplyProjectMetadataAction", () => {
     const document = {
       metadata: previousMetadata,
       metadataSchema: MetadataSchema,
-      snapshot: { directoryHandle: projectRoot },
+      getSnapshot: () => ({ directoryHandle: projectRoot }),
     };
     const removeTrack = vi.fn();
     const addTrack = vi.fn().mockResolvedValue(undefined);
@@ -171,7 +171,7 @@ describe("ApplyProjectMetadataAction", () => {
     const document = {
       metadata,
       metadataSchema: MetadataSchema,
-      snapshot: { directoryHandle: projectRoot },
+      getSnapshot: () => ({ directoryHandle: projectRoot }),
     };
     const removeTrack = vi.fn();
     const addTrack = vi.fn().mockResolvedValue(undefined);

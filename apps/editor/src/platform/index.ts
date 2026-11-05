@@ -45,10 +45,11 @@ function useService<T extends IService>(serviceId: string): T {
 function useSnapshot<T>(serviceId: string): T {
   const platform = useContext(PlatformContext);
   const service: IStatefulService = platform.services.get(serviceId);
+  const getSnapshot = service.getSnapshot.bind(service);
   return useSyncExternalStore(
     service.subscribe,
-    service.getSnapshot,
-    service.getSnapshot,
+    getSnapshot,
+    getSnapshot,
   ) as T;
 }
 

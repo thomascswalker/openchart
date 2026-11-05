@@ -10,7 +10,7 @@ import { useDocument } from "../../../hooks/useDocument";
 import { useRuleset } from "../../../hooks/useRuleset";
 import { useViewport } from "../../../hooks/useViewport";
 import Platform from "../../../platform";
-import { PlaybackService } from "../../../services/playback";
+import { PlaybackService } from "../../../services/playback/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
   const { midi: midiData, documentId } = useDocument();

@@ -1,7 +1,7 @@
 import { Midi } from "@openchart/midi";
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document";
 import type { FileSystemService } from "../../services/filesystem";
 import { LoggerService } from "../../services/logger";
 import { MidiFilePickerTypes } from "../../services/document/types";

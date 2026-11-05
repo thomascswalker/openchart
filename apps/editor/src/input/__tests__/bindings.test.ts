@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moduleId } from "../../platform/modules";
+import { buildModuleId } from "../../platform/modules";
 import {
   allBindings,
   globalBindings,
@@ -16,7 +16,7 @@ const actionFiles = import.meta.glob([
 const actionIds = new Set(
   Object.keys(actionFiles)
     .map((path) =>
-      moduleId(path.replace("../../actions/", "../actions/"), "actions"),
+      buildModuleId(path.replace("../../actions/", "../actions/"), "actions"),
     )
     .filter((id): id is string => id !== null),
 );

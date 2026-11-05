@@ -1,30 +1,8 @@
 import { Midi } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DocumentService, type OpenedProject } from "../document";
-import { makeDefaultMetadata } from "../document/schema";
-import { createTestRulesetService } from "./testUtils";
-import { mockLoggerService } from "../__mock__/logger.mock";
-
-const DefaultOpenedProject: OpenedProject = {
-  projectBytes: new Uint8Array(),
-  projectHandle: {} as FileSystemFileHandle,
-  midiBytes: new Uint8Array(),
-  midiHandle: {} as FileSystemFileHandle,
-  directoryHandle: {} as FileSystemDirectoryHandle,
-};
-function makeDocumentService(
-  openedProject: OpenedProject = { ...DefaultOpenedProject },
-): DocumentService {
-  const service = new DocumentService(
-    mockLoggerService(),
-    createTestRulesetService(),
-  );
-
-  Object.assign(service, {
-    readProject: vi.fn(async () => openedProject),
-  });
-  return service;
-}
+import { type OpenedProject } from "../document";
+import { makeDefaultMetadata } from "../schema";
+import { makeDocumentService } from "./utils";
 
 describe("DocumentService", () => {
   afterEach(() => {
@@ -159,10 +137,7 @@ describe("DocumentService", () => {
       showDirectoryPicker,
     });
 
-    const service = new DocumentService(
-      mockLoggerService(),
-      createTestRulesetService(),
-    );
+    const service = makeDocumentService();
     await expect(service.readProject()).resolves.toEqual({
       projectBytes,
       midiBytes,

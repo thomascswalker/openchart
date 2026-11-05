@@ -1,4 +1,4 @@
-import { StatefulService } from "../platform/services";
+import { StatefulService } from "../../platform/services";
 import {
   StorageKey,
   DefaultApplicationSettings,
@@ -7,8 +7,8 @@ import {
   type ApplicationSettingValue,
   type ApplicationSettings,
   ApplicationSettingsSchema,
-} from "./settings/schema";
-import { WorkspaceService } from "./workspace";
+} from "./schema";
+import { WorkspaceService } from "../workspace";
 
 export class SettingsService extends StatefulService<ApplicationSettings> {
   public static dependencies = ["workspace"];

@@ -9,7 +9,7 @@ import { usePlatform, useService } from "../../../platform";
 import { useSettings } from "../../../hooks/useApplication";
 import { useDocument } from "../../../hooks/useDocument";
 import { useViewport } from "../../../hooks/useViewport";
-import { DocumentService } from "../../../services/document";
+import { DocumentService } from "../../../services/document/document";
 import { EditorStateService } from "../../../services/editor/state";
 import type { EditingService } from "../../../services/editor/editing";
 import { createEditingContextSnapshot } from "../../../services/editor/editingContext";

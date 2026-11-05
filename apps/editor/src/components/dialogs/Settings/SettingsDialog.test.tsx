@@ -4,12 +4,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useEditor } from "../../../hooks/useEditorState";
 import { runAction } from "../../../actions/execute";
 import Platform from "../../../platform";
-import { SettingsService } from "../../../services/settings";
+import { SettingsService } from "../../../services/settings/settings";
 import { DefaultApplicationSettings } from "../../../services/settings/schema";
 import { useSettings } from "../../../hooks/useApplication";
 import { Runtime } from "../../editor/Runtime";
 import { SettingsDialog } from "./SettingsDialog";
-import { mockWorkspaceService } from "../../../services/__mock__/workspace.mock";
+import { mockWorkspaceService } from "../../../services/workspace/__tests__/utils";
 
 function SettingsTestShell() {
   const { settingsVisible } = useEditor();

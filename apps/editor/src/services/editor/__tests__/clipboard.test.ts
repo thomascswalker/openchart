@@ -9,13 +9,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnyChartView } from "../../../components/views/ChartViews";
 import { ActiveChartViewService } from "../activeChartView";
 import { EditorClipboardService } from "../clipboard";
-import { DocumentService } from "../../document";
+import { DocumentService } from "../../document/document";
 import type { LoggerService } from "../../logger";
-import type { PlaybackService } from "../../playback";
+import type { PlaybackService } from "../../playback/playback";
 import { EditorStateService } from "../state";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
-import { createTestRulesetService } from "../../__tests__/testUtils";
+import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
 
 function createClipboardHarness(midi: Midi) {
   const ruleset = createTestRulesetService();

@@ -1,16 +1,16 @@
 import { Midi } from "@openchart/midi";
-import { DEFAULT_HISTORY_CAPACITY, History } from "../context/History";
-import type { SaveFile } from "./filesystem/types";
-import type { LoggerService } from "./logger";
-import { StatefulService } from "../platform/services";
-import type { RulesetService } from "./ruleset";
+import { DEFAULT_HISTORY_CAPACITY, History } from "../../context/History";
+import type { SaveFile } from "../filesystem/types";
+import type { LoggerService } from "../logger";
+import { StatefulService } from "../../platform/services";
+import type { RulesetService } from "../ruleset";
 import {
   buildMetadataSchema,
   makeDefaultMetadata,
   normalizeLegacyMetadata,
   type Metadata,
-} from "./document/schema";
-import { toArrayBuffer } from "../util/array";
+} from "./schema";
+import { toArrayBuffer } from "../../util/array";
 import type { CompiledRuleset } from "@openchart/views";
 
 function createDefaultMidi(rules: CompiledRuleset) {
@@ -57,11 +57,22 @@ export interface OpenedProject {
   directoryHandle: FileSystemDirectoryHandle;
 }
 
+export const DefaultOpenedProject: OpenedProject = {
+  projectBytes: new Uint8Array(),
+  projectHandle: {} as FileSystemFileHandle,
+  midiBytes: new Uint8Array(),
+  midiHandle: {} as FileSystemFileHandle,
+  directoryHandle: {} as FileSystemDirectoryHandle,
+};
+
 export class DocumentService extends StatefulService<DocumentSnapshot> {
+  static readonly id = "document";
   static dependencies = ["logger", "ruleset"];
 
+  // Services
   #logger: LoggerService;
   readonly #rulesetService: RulesetService;
+
   #metadataSchema: ReturnType<typeof buildMetadataSchema>;
   #data: Midi | null = new Midi();
   #documentId = 0;
@@ -72,13 +83,13 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   #metadata: Metadata;
   readonly #history = new History(DEFAULT_HISTORY_CAPACITY);
 
-  constructor(logger: LoggerService, rulesetService: RulesetService) {
+  constructor(logger: LoggerService, ruleset: RulesetService) {
     super();
     this.#logger = logger;
-    this.#rulesetService = rulesetService;
-    this.#metadataSchema = buildMetadataSchema(rulesetService.snapshot.ruleset);
-    this.#metadata = makeDefaultMetadata(rulesetService.snapshot.ruleset);
-    rulesetService.subscribe(this.syncRuleset);
+    this.#rulesetService = ruleset;
+    this.#metadataSchema = buildMetadataSchema(ruleset.getSnapshot().ruleset);
+    this.#metadata = makeDefaultMetadata(ruleset.getSnapshot().ruleset);
+    ruleset.subscribe(this.syncRuleset);
     this.#history.reset(this.#data!);
     this.publish();
   }
@@ -114,7 +125,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
    * are kept where the new schema accepts them; otherwise defaults apply.
    */
   private readonly syncRuleset = (): void => {
-    const { ruleset } = this.#rulesetService.snapshot;
+    const { ruleset } = this.#rulesetService.getSnapshot();
     this.#metadataSchema = buildMetadataSchema(ruleset);
     const migrated = this.#metadataSchema.safeParse(
       normalizeLegacyMetadata(this.#metadata),
@@ -149,7 +160,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
       null,
       null,
       null,
-      makeDefaultMetadata(this.#rulesetService.snapshot.ruleset),
+      makeDefaultMetadata(this.#rulesetService.getSnapshot().ruleset),
     );
   };
 

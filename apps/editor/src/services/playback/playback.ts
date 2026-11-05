@@ -18,12 +18,12 @@ import {
   type SoundboardSettings,
   type PitchRange,
   type PreviewNote,
-} from "../audio/soundboard";
-import type { DocumentService } from "./document";
-import type { MixerService } from "./mixer";
-import type { RulesetService } from "./ruleset";
-import type { ApplicationSettings } from "./settings/schema";
-import { StatefulService } from "../platform/services";
+} from "../../audio/soundboard";
+import type { DocumentService } from "../document/document";
+import type { MixerService } from "../mixer/mixer";
+import type { RulesetService } from "../ruleset";
+import type { ApplicationSettings } from "../settings/schema";
+import { StatefulService } from "../../platform/services";
 
 export interface PlaybackSnapshot {
   isPlaying: boolean;

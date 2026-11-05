@@ -1,8 +1,8 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
 import { EditorStateService } from "../../services/editor/state";
-import { DocumentService } from "../../services/document";
-import { MixerService } from "../../services/mixer";
+import { DocumentService } from "../../services/document/document";
+import { MixerService } from "../../services/mixer/mixer";
 import {
   normalizeLegacyMetadata,
   type MetadataValidationError,
@@ -23,7 +23,7 @@ export class ApplyProjectMetadataAction extends Action<
     );
     if (result.success) {
       const mixer = accessor.get<MixerService>("mixer");
-      const projectRoot = document.snapshot.directoryHandle;
+      const projectRoot = document.getSnapshot().directoryHandle;
       const tracks = (
         Object.keys(result.data.audio) as Array<keyof typeof result.data.audio>
       ).filter(

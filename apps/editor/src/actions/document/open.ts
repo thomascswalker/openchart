@@ -1,8 +1,8 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { DocumentService } from "../../services/document";
+import { DocumentService } from "../../services/document/document";
 import { LoggerService } from "../../services/logger";
-import { MixerService } from "../../services/mixer";
+import { MixerService } from "../../services/mixer/mixer";
 import { ApplyProjectMetadataAction } from "./apply-project-metadata";
 
 export class OpenDocumentAction extends Action {

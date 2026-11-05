@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { MixerService } from "../mixer";
-import { mockLoggerService } from "../__mock__/logger.mock";
+import { mockLoggerService } from "../../__mock__/logger.mock";
 
 vi.mock("@openchart/audio", () => ({
   Mixer: class MockMixer {

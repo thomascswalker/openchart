@@ -5,7 +5,7 @@ import {
   type MetadataValidationErrors,
 } from "../../../services/document/schema";
 import Platform from "../../../platform";
-import type { DocumentService } from "../../../services/document";
+import type { DocumentService } from "../../../services/document/document";
 import { Form } from "../../shared";
 
 const ProjectDialog = () => {

@@ -1,6 +1,6 @@
 import { Action } from "../../platform/actions";
 import type { ServicesAccessor } from "../../platform/services";
-import { UpdaterService } from "../../services/updater";
+import { UpdaterService } from "../../services/updater/updater";
 
 export class CheckForUpdatesAction extends Action {
   constructor() {

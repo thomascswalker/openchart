@@ -1,5 +1,5 @@
 {
-  "filename": "./__tests__/assets/song.mid",
+  "filename": "./src/__tests__/assets/song.mid",
   "header": {
     "format": 1,
     "trackCount": 9,

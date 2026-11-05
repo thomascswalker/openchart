@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Runtime } from "../../Runtime";
 import { Timeline } from "../Timeline";
 import Platform from "../../../../platform";
-import { PlaybackService } from "../../../../services/playback";
+import { PlaybackService } from "../../../../services/playback/playback";
 
 describe("timeline resize observer", () => {
   it("keeps one ResizeObserver across playback ticks", async () => {

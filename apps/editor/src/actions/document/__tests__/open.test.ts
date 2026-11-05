@@ -17,7 +17,7 @@ describe("OpenDocumentAction", () => {
       open: vi.fn(async () => true),
       metadata,
       metadataSchema: MetadataSchema,
-      snapshot: { directoryHandle: root },
+      getSnapshot: () => ({ directoryHandle: root }),
     };
     const removeTrack = vi.fn();
     const addTrack = vi.fn().mockResolvedValue(undefined);

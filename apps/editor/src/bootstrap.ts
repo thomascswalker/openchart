@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import Platform from "./platform";
-import { DocumentService } from "./services/document";
+import { DocumentService } from "./services/document/document";
 import type { EditingService } from "./services/editor/editing";
 import { EditorStateService } from "./services/editor/state";
 import { ViewportService } from "./services/editor/viewports";

@@ -1,18 +1,22 @@
-import { moduleId, type ModuleCollection } from "./modules";
+import { buildModuleId, type ModuleCollection } from "./modules";
 
 export type Listener = () => void;
 export type Subscription = (listener: () => void) => () => void;
 
 export abstract class Service {
+  /** Set of listeners subscribed to this service. */
   protected readonly listeners = new Set<Listener>();
 
-  public abstract readonly reset: () => void;
+  /** Reset the service to its initial state. */
+  public abstract reset(): void;
 
+  /** Subscribe a listener to this service. Returns an unsubscribe function. */
   public readonly subscribe: Subscription = (listener) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
 
+  /** Notify all subscribed listeners of a change in the service. */
   protected notify(): void {
     for (const listener of this.listeners) {
       listener();
@@ -23,17 +27,26 @@ export abstract class Service {
 export type IService = InstanceType<typeof Service>;
 
 export abstract class StatefulService<T> extends Service {
+  /** Internal snapshot of the service's state. */
   protected _snapshot!: T;
 
-  public get snapshot(): T {
-    return this.getSnapshot();
+  constructor() {
+    super();
+    this._snapshot = (this.constructor as typeof StatefulService)
+      .defaultSnapshot() as T;
   }
 
-  protected set snapshot(value: T) {
+  /** Set the current snapshot of the service's state. */
+  protected setSnapshot(value: T) {
     this._snapshot = value;
   }
 
+  /** Retrieve the current snapshot of the service's state. */
   public readonly getSnapshot = (): T => this._snapshot;
+
+  public static defaultSnapshot(): unknown {
+    return {};
+  }
 }
 
 export type IStatefulService = InstanceType<typeof StatefulService>;
@@ -50,8 +63,8 @@ export class ServiceRegistry {
 
   constructor(modules: ModuleCollection) {
     for (const filepath of Object.keys(modules).sort()) {
-      const id = moduleId(filepath, "services");
-      if (!id) {
+      const generatedId = buildModuleId(filepath, "services");
+      if (!generatedId || generatedId.split(".").at(-1) === "index") {
         continue;
       }
 
@@ -69,6 +82,16 @@ export class ServiceRegistry {
 
       const ServiceClass = serviceClasses[0];
       if (ServiceClass) {
+        const segments = generatedId.split(".");
+        if (
+          segments.length > 1 &&
+          segments.at(-1) === segments.at(-2)
+        ) {
+          segments.pop();
+        }
+        const id =
+          (ServiceClass as ServiceConstructor & { id?: string }).id ??
+          segments.join(".");
         this.register(id, ServiceClass);
       }
     }

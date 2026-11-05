@@ -14,7 +14,7 @@ import { Service } from "../../platform/services";
 import { EditorStateService } from "./state";
 import { ActiveChartViewService } from "./activeChartView";
 import { EditingService } from "./editing";
-import { PlaybackService } from "../playback";
+import { PlaybackService } from "../playback/playback";
 
 export class EditorClipboardService extends Service {
   static dependencies = [
