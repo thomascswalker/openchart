@@ -32,7 +32,7 @@ cancel/commit/undo without changing an existing production mode or view.
    `context.validate(commands)` if you need a dry run).
    Validate domain intent in `expand`, return
    errors as rejections, and translate accepted operations into raw commands.
-   `ChartDocument` validates the raw commands before mutation. Keep this logic
+   `Document` validates the raw commands before mutation. Keep this logic
    pure: do not mutate a `MidiTrack`, read editor services, or import app code.
 5. **Implement clipboard expansion.** `expandPaste` receives a defensive,
    mode-tagged payload. Map source entities to the destination's rows and
@@ -57,17 +57,17 @@ The mode must satisfy the complete interface; this sketch shows the central
 declarations rather than a substitute implementation:
 
 ```ts
-import { DomainCommandType, EditCommandType } from "@openchart/views";
+import { DomainCommandType, EditCommandType } from '@openchart/views';
 
 const mode: EditingMode<ToolState> = {
-  id: "chart.example",
-  label: "Example",
-  hostKinds: new Set(["example-view"]),
-  appliesTo: (track) => track.kind === "guitar",
+  id: 'chart.example',
+  label: 'Example',
+  hostKinds: new Set(['example-view']),
+  appliesTo: (track) => track.kind === 'guitar',
   capabilities: {
     rawCommands: new Set([EditCommandType.DeleteEntities]),
     domainCommands: new Set([DomainCommandType.PlaceChartNote]),
-    entityKinds: new Set(["note"]),
+    entityKinds: new Set(['note']),
     canCreateTrack: false,
     requiresDifficulty: true,
   },

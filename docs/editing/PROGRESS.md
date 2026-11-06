@@ -38,7 +38,7 @@
 **Files changed:**
 
 - Editor: `apps/editor/src/components/dialogs/TrackList/{TrackList.tsx,TrackList.test.tsx}`, `apps/editor/src/components/views/pianoRoll/{controllers/noteEditing.ts,editingStrategy.ts,vocalEditing.ts}`; removed `pianoRoll/editing/{context,controller,generic,types,vocal}.ts`
-- Views: `packages/views/src/{index.ts,chartEditing.ts}`, `packages/views/src/editing/{mode.ts,chartDocument.ts,clipboardService.ts}`
+- Views: `packages/views/src/{index.ts,chartEditing.ts}`, `packages/views/src/editing/{mode.ts,document.ts,clipboardService.ts}`
 - Guardrails: `scripts/editing-boundaries.allowlist.json`
 - Docs: `docs/editing/PROGRESS.md`
   **Tests:** added `TrackList.test.tsx` for hook-order and document-change regression · ported none · removed none
@@ -56,7 +56,7 @@
 **Files changed:**
 
 - MIDI: `packages/midi/src/track.ts`, `packages/midi/tests/__tests__/midi.test.ts`
-- Views: `packages/views/src/{chartEditing.ts,chartView.ts,vocals.ts}`, `packages/views/src/editing/chartDocument.ts`, `packages/views/src/editing/__tests__/chartEditing.test.ts`
+- Views: `packages/views/src/{chartEditing.ts,chartView.ts,vocals.ts}`, `packages/views/src/editing/document.ts`, `packages/views/src/editing/__tests__/chartEditing.test.ts`
 - Editor: `apps/editor/src/components/views/{highway/editing/noteEditing.ts,highway/__tests__/noteEditing.test.ts,pianoRoll/editingStrategy.ts,pianoRoll/.storybook/createPianoRollFixture.ts}`
 - Guardrails: `scripts/editing-boundaries.allowlist.json`
 - Docs: `docs/editing/PROGRESS.md`
@@ -84,10 +84,10 @@
 ## Phase 3: Kernel v2 (branch: editing/phase-3-kernel-v2)
 
 **Status:** done
-**Summary:** Added stable entity ID formatting/parsing, the raw command v2 vocabulary, structured results and rejection errors, a read-only document reader, and pure note-preview computation. `ChartDocument` now applies and preflights batches of note, text, tempo, and time-signature commands, returns affected IDs, and resolves notes through the MIDI event-ID index. The deprecated action path remains available through `applyLegacy` for `TransactionManager`; the Piano Roll move caller now supplies `pitchDelta`.
+**Summary:** Added stable entity ID formatting/parsing, the raw command v2 vocabulary, structured results and rejection errors, a read-only document reader, and pure note-preview computation. `Document` now applies and preflights batches of note, text, tempo, and time-signature commands, returns affected IDs, and resolves notes through the MIDI event-ID index. The deprecated action path remains available through `applyLegacy` for `TransactionManager`; the Piano Roll move caller now supplies `pitchDelta`.
 **Files changed:**
 
-- Views: `packages/views/src/editing/{action.ts,chartDocument.ts,clipboardService.ts,commands.ts,entityId.ts,preview.ts,reader.ts,result.ts,scratchpad.ts,selectionModel.ts,transactionManager.ts}`, `packages/views/src/index.ts`
+- Views: `packages/views/src/editing/{action.ts,document.ts,clipboardService.ts,commands.ts,entityId.ts,preview.ts,reader.ts,result.ts,scratchpad.ts,selectionModel.ts,transactionManager.ts}`, `packages/views/src/index.ts`
 - Views tests: `packages/views/src/editing/__tests__/editing.test.ts`
 - Editor: `apps/editor/src/components/views/pianoRoll/controllers/noteEditing.ts`
 - Editor test adaptation: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`
@@ -106,7 +106,7 @@
 **Summary:** Added the mode contracts and registration-order registry, shipped the `midi.raw` Piano Roll mode, and introduced editing sessions with preview/commit/cancel gestures. Added standalone editing with snapshot history and configured-track materialization. Reworked the editor bridge as `EditingService`; sessions are cached per viewport and invalidated when the document or viewport target changes, successful commits refresh playback and publish edit results. Routed the generic Piano Roll command and gesture commits through sessions while keeping its existing scratchpad preview and one-undo-step gesture behavior.
 **Files changed:**
 
-- Views: `packages/views/src/editing/{chartDocument.ts,mode.ts,modeRegistry.ts,session.ts,standalone.ts,modes/{index.ts,rawMidi.ts}}`, `packages/views/src/index.ts`
+- Views: `packages/views/src/editing/{document.ts,mode.ts,modeRegistry.ts,session.ts,standalone.ts,modes/{index.ts,rawMidi.ts}}`, `packages/views/src/index.ts`
 - Views tests: `packages/views/src/editing/__tests__/session.test.ts`
 - Editor: `apps/editor/src/{bootstrap.ts,components/editor/Viewport/index.tsx,components/views/pianoRoll/{index.ts,types.ts,controllers/noteEditing.ts},services/editor/editing.ts}`
 - Editor tests: `apps/editor/src/components/views/pianoRoll/__tests__/vocals.test.ts`, `apps/editor/src/services/editor/__tests__/editing.test.ts`
@@ -253,7 +253,7 @@
 
 **Status:** done (verified only with substitute tooling; see gates).
 **Summary:** `config.ts` moved to `oldConfig.ts` (contents unchanged). `SongView`, `TrackView`, `InstrumentTrackView`, `ChartView`, `GlobalTrackView` and `VocalTrackView` are built from a `CompiledRuleset`; `ChartView`/`VocalTrackView` are read-only. `TrackDescriptor` is `{key,name,kind,visible,editable,rules}`. `ModeContext` carries `rules`, `rulesContext` and `validate()`; `EditingSession` runs `RuleEnforcer` after expansion (error → rejection `rule:<ruleId>`, warning/info → `diagnostics`), exposes `rules`, `getRulesContext()` and `getTools()`. `chart.lanes` replaces `chart.lanes`/`chart.drums`; `EditingMode.createTools(context)` replaces `tools`. Text-event grammar is checked for ADD_TEXT/UPDATE_TEXT. Sections are written/read as `MetaType.Text` (ruleset meta type 1).
-**Files changed:** `packages/views/src/{views/*,editing/{mode,session,result,preview,reader,modeRegistry,chartDocument,standalone,phrase,ruleValidation}.ts,editing/modes/{chartLanes,vocals,rawMidi,globalTrack,common,index}.ts,ruleset/{textEvents,labels}.ts,vocals.ts,types.ts,chart/constants.ts,index.ts}`; deleted `editing/vocals.ts`, `chart/drums.ts`, `chart/forcedNotes.ts`, `editing/modes/{chartFrets,chartDrums}.ts`.
+**Files changed:** `packages/views/src/{views/*,editing/{mode,session,result,preview,reader,modeRegistry,document,standalone,phrase,ruleValidation}.ts,editing/modes/{chartLanes,vocals,rawMidi,globalTrack,common,index}.ts,ruleset/{textEvents,labels}.ts,vocals.ts,types.ts,chart/constants.ts,index.ts}`; deleted `editing/vocals.ts`, `chart/drums.ts`, `chart/forcedNotes.ts`, `editing/modes/{chartFrets,chartDrums}.ts`.
 **Tests:** ported `chartEditing`, `chartView`, `domainModes`, `vocals`, `editing`, `editing/session`; `config.test` split into `oldConfig.test`; added `ruleEnforcement.test` (error rejects with no MIDI change, throwOnReject, warnings commit with diagnostics, unmapped tracks unconstrained, preview rejections, vocal fallback offset, power window between phrases, text grammar, alternate-ruleset hierarchy).
 **Gate results:** _not run_ (no network/`node_modules`). Substitutes: new files type-check with `tsc` 6.0.3 against Zod 3 (Zod 4-only constructs swapped); ported views tests pass under a throwaway Vitest shim, except the cases that need the real `binary-parser`/Ajv.
 **Intentional behaviour changes:** items 1–7 of the plan's §9 (mode ids `chart.lanes`; sustain/HOPO threshold 160 inclusive; no same-lane/chord HOPO exclusion because `autoHopoExclusions: []`; drums kick bar `#F97316`, Kick2 ignored without `expertPlus`, new drum phrase and flam tools; no sustains on FOUR/FIVE PAD; raw Piano Roll subject to unknown/reserved pitch policies). Also: `CREATE_PHRASE` takes `phraseId`; `PLACE_CHART_NOTE.placement` is a ruleset token (`normal`, `padType:cymbal`, `bar:kick`, `marker:forceHopo`, `marker:flam`); vocal phrase overlap rejects as `rule:implicit.phraseSelfOverlap`; projection bar rows have kind `bar`; vocal phrase lane labels come from `phraseLabel`; free-text Text events on configured tracks are rejected unless declared; sections use meta type Text (was Marker).

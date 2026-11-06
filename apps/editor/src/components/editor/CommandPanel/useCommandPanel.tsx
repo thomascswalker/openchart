@@ -1,37 +1,38 @@
-import type { ReactNode } from "react";
-import { AudioMixer, EventList, ViewportSettings } from "../../dialogs";
-import { FileTreeView } from "../../shared";
-import {
-  type TabOption,
-  MixerIcon,
-  TracksIcon,
-  SettingsIcon,
-  FilesIcon,
-} from "../../shared";
-import Platform, { useSnapshot } from "../../../platform";
+import type { ReactNode } from 'react';
+
+import Platform, { useSnapshot } from '../../../platform';
 import type {
-  WorkspaceSnapshot,
   WorkspaceService,
-} from "../../../platform/services/workspace";
+  WorkspaceSnapshot,
+} from '../../../platform/services/workspace';
+import { AudioMixer, EventList, ViewportSettings } from '../../dialogs';
+import { FileTreeView } from '../../shared';
+import {
+  FilesIcon,
+  MixerIcon,
+  SettingsIcon,
+  type TabOption,
+  TracksIcon,
+} from '../../shared';
 
 const DefaultTabIconSize = 24;
 
 function getTabOptions(size: number): TabOption[] {
   return [
     {
-      title: "Files",
+      title: 'Files',
       icon: <FilesIcon size={size} />,
     },
     {
-      title: "Audio Mixer",
+      title: 'Audio Mixer',
       icon: <MixerIcon size={size} />,
     },
     {
-      title: "Event List",
+      title: 'Event List',
       icon: <TracksIcon size={size} />,
     },
     {
-      title: "Viewport Settings",
+      title: 'Viewport Settings',
       icon: <SettingsIcon size={size} />,
     },
   ];
@@ -51,8 +52,8 @@ const useCommandPanel = (
 ): UseCommandPanelResult => {
   const tabOptions = getTabOptions(options.size || DefaultTabIconSize);
   // Subscribing re-renders the panel when the workspace directory changes.
-  useSnapshot<WorkspaceSnapshot>("workspace");
-  const workspace = Platform.services.get<WorkspaceService>("workspace");
+  useSnapshot<WorkspaceSnapshot>('workspace');
+  const workspace = Platform.services.get<WorkspaceService>('workspace');
 
   return {
     options: tabOptions,

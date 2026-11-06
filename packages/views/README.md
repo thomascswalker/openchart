@@ -11,15 +11,15 @@ underlying `MidiTrack`.
 one). Track names in the MIDI file are matched to the ruleset's track names.
 
 ```ts
-import { readFile } from "node:fs/promises";
-import { Midi } from "@openchart/midi";
-import { Difficulty, SongView } from "@openchart/views";
+import { Midi } from '@openchart/midi';
+import { Difficulty, SongView } from '@openchart/views';
+import { readFile } from 'node:fs/promises';
 
-const midi = new Midi(new Uint8Array(await readFile("song.mid")));
+const midi = new Midi(new Uint8Array(await readFile('song.mid')));
 const song = new SongView(midi);
 
-const lead = song.getInstrumentTrackView("LEAD GUITAR");
-if (!lead) throw new Error("The ruleset has no lead guitar");
+const lead = song.getInstrumentTrackView('LEAD GUITAR');
+if (!lead) throw new Error('The ruleset has no lead guitar');
 
 const expert = lead.getChart(Difficulty.Expert)!;
 console.log(expert.getNotes());
@@ -36,7 +36,7 @@ phrase, reserved, unknown, ...). Edits go through an editing session
 ## Inspect tracks and load a ruleset
 
 ```ts
-import { compileRuleset, loadRuleset, SongView } from "@openchart/views";
+import { SongView, compileRuleset, loadRuleset } from '@openchart/views';
 
 console.log(
   song
@@ -44,7 +44,7 @@ console.log(
     .map(({ key, name, kind }) => ({ key, name, kind })),
 );
 
-const loaded = loadRuleset(await readFile("ruleset.json", "utf8"));
+const loaded = loadRuleset(await readFile('ruleset.json', 'utf8'));
 if (loaded.ok) {
   const customSong = new SongView(midi, compileRuleset(loaded.ruleset));
 } else {
@@ -75,25 +75,25 @@ Every command is checked by the rule enforcer before it is applied: an
 clipboard.
 
 ```ts
-import { Midi } from "@openchart/midi";
+import { Midi } from '@openchart/midi';
 import {
-  createStandaloneEditing,
   Difficulty,
   DomainCommandType,
-} from "@openchart/views";
+  createStandaloneEditing,
+} from '@openchart/views';
 
 const midi = new Midi();
 const leadTrackIndex = midi.addTrack();
-midi.tracks[leadTrackIndex]!.name = "LEAD GUITAR";
+midi.tracks[leadTrackIndex]!.name = 'LEAD GUITAR';
 
 const editing = createStandaloneEditing(midi);
 const session = editing.createSession(
   {
-    trackKey: "lead-guitar",
+    trackKey: 'lead-guitar',
     trackIndex: leadTrackIndex,
     difficulty: Difficulty.Expert,
   },
-  "highway",
+  'highway',
 );
 
 const gesture = session.beginGesture();
@@ -101,8 +101,8 @@ gesture.preview({
   type: DomainCommandType.PlaceChartNote,
   lane: 0,
   tick: 480,
-  placement: "normal",
-  cutPolicy: "all",
+  placement: 'normal',
+  cutPolicy: 'all',
 });
 const result = gesture.commit();
 ```

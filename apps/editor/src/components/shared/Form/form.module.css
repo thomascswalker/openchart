@@ -61,7 +61,7 @@
   font-style: italic;
 }
 
-.form .field :global([role="alert"]) {
+.form .field :global([role='alert']) {
   margin: 0;
   color: #ff9d9d;
   font-size: 12px;

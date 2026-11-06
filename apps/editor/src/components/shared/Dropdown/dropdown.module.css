@@ -13,7 +13,7 @@
   margin-bottom: 0;
 }
 
-.dropdown :global(.choices[data-type*="select-one"] .choices__inner) {
+.dropdown :global(.choices[data-type*='select-one'] .choices__inner) {
   display: flex;
   align-items: center;
   box-sizing: border-box;
@@ -40,11 +40,11 @@
   height: 100%;
 }
 
-.dropdown :global(.choices[data-type*="select-one"]::after) {
+.dropdown :global(.choices[data-type*='select-one']::after) {
   border-color: currentColor transparent transparent;
 }
 
-.dropdown :global(.choices.is-open[data-type*="select-one"]::after) {
+.dropdown :global(.choices.is-open[data-type*='select-one']::after) {
   border-color: transparent transparent currentColor;
 }
 
@@ -123,17 +123,17 @@
   flex-shrink: 1;
 }
 
-.dropdown-button > .dropdown-button__value[aria-pressed="true"] {
+.dropdown-button > .dropdown-button__value[aria-pressed='true'] {
   background: transparent;
 }
 
 .dropdown-button
-  > .dropdown-button__value:not([aria-pressed="true"]):hover:not(:disabled) {
+  > .dropdown-button__value:not([aria-pressed='true']):hover:not(:disabled) {
   background: var(--neutral-80);
 }
 
 .dropdown-button
-  > .dropdown-button__value[aria-pressed="true"]:hover:not(:disabled) {
+  > .dropdown-button__value[aria-pressed='true']:hover:not(:disabled) {
   background: var(--neutral-80);
 }
 
@@ -172,7 +172,7 @@
   display: none;
 }
 
-.dropdown-button__select :global(.choices[data-type*="select-one"]::after) {
+.dropdown-button__select :global(.choices[data-type*='select-one']::after) {
   right: 9px;
 }
 
@@ -191,7 +191,7 @@
 }
 
 .dropdown-button__select
-  :global(.choices.is-disabled[data-type*="select-one"]::after) {
+  :global(.choices.is-disabled[data-type*='select-one']::after) {
   border-color: rgb(150, 150, 150) transparent transparent;
 }
 

@@ -1,49 +1,40 @@
 import {
-  EditCommandType,
-  EditingModeId,
-  EntityType,
-  parseEntityFromId,
   type ClipboardEntity,
   type ClipboardPayload,
+  EditCommandType,
+  EditingModeId,
   type EditingSession,
   type EntityId,
+  EntityType,
   type NoteSnapshot,
-} from "@openchart/views";
-import Platform from "../..";
-import { Service } from "../../services";
-import { EditorStateService } from "./state";
-import { ActiveChartViewService } from "./activeChartView";
-import { EditingService } from "./editing";
-import { PlaybackService } from "../playback/playback";
+  parseEntityFromId,
+} from '@openchart/views';
+
+import Platform from '../..';
+import { IPlaybackService } from '../playback/playback';
+import { Service, createDecorator } from '../service';
+import { IActiveChartViewService } from './activeChartView';
+import { IEditingService } from './editing';
+import { IEditorStateService } from './state';
 
 export class EditorClipboardService extends Service {
-  static dependencies = [
-    "editor.active-chart-view",
-    "editor.editing",
-    "editor.state",
-    "playback",
-  ];
-
-  private readonly activeChartView: ActiveChartViewService;
-  private readonly editingService: EditingService;
-  private readonly editorState: EditorStateService;
-  private readonly playback: PlaybackService;
-
   constructor(
-    activeChartView: ActiveChartViewService,
-    editingService: EditingService,
-    editorState: EditorStateService,
-    playback: PlaybackService,
+    @IActiveChartViewService
+    private readonly activeChartViewService: IActiveChartViewService,
+    @IEditingService private readonly editingService: IEditingService,
+    @IEditorStateService
+    private readonly editorStateService: IEditorStateService,
+    @IPlaybackService private readonly playbackService: IPlaybackService,
   ) {
     super();
-    this.activeChartView = activeChartView;
-    this.editingService = editingService;
-    this.editorState = editorState;
-    this.playback = playback;
-    this.activeChartView.subscribe(() => this.sync());
-    this.editingService.subscribe(() => this.sync());
-    this.editingService.selection.subscribe(() => this.sync());
-    this.playback.subscribe(() => this.sync());
+  }
+
+  public init(): void {
+    const sync = () => this.sync();
+    this.activeChartViewService.subscribe(sync);
+    this.editingService.subscribe(sync);
+    this.editingService.selection.subscribe(sync);
+    this.playbackService.subscribe(sync);
   }
 
   public readonly reset = (): void => this.sync();
@@ -57,14 +48,14 @@ export class EditorClipboardService extends Service {
     return (
       session !== null &&
       session.can(EditCommandType.DeleteEntities) &&
-      !this.playback.getSnapshot().isPlaying &&
+      !this.playbackService.getSnapshot().isPlaying &&
       this.getCopySelection(session) !== null
     );
   }
 
   public canPaste(): boolean {
     return (
-      !this.playback.getSnapshot().isPlaying &&
+      !this.playbackService.getSnapshot().isPlaying &&
       this.editingService.getActiveSession() !== null &&
       this.editingService.clipboard.canPaste()
     );
@@ -83,7 +74,7 @@ export class EditorClipboardService extends Service {
       !session ||
       !selection ||
       !session.can(EditCommandType.DeleteEntities) ||
-      this.playback.getSnapshot().isPlaying
+      this.playbackService.getSnapshot().isPlaying
     ) {
       return;
     }
@@ -99,12 +90,12 @@ export class EditorClipboardService extends Service {
 
   public paste(): void {
     const session = this.editingService.getActiveSession();
-    const view = this.activeChartView.getSnapshot();
+    const view = this.activeChartViewService.getSnapshot();
     if (
       !session ||
       !view ||
       !this.editingService.clipboard.canPaste() ||
-      this.playback.getSnapshot().isPlaying
+      this.playbackService.getSnapshot().isPlaying
     ) {
       return;
     }
@@ -112,17 +103,17 @@ export class EditorClipboardService extends Service {
     const result = session.pasteClipboard(view.getPasteAnchorTick());
     if (result.rejections.length > 0) {
       const count = result.rejections.length;
-      this.editorState.setError(
-        `${count} note${count === 1 ? "" : "s"} could not be pasted into this chart.`,
+      this.editorStateService.setError(
+        `${count} note${count === 1 ? '' : 's'} could not be pasted into this chart.`,
       );
     }
     this.sync();
   }
 
   public sync(): void {
-    Platform.context.set("clipboard.can-copy", this.canCopy());
-    Platform.context.set("clipboard.can-cut", this.canCut());
-    Platform.context.set("clipboard.can-paste", this.canPaste());
+    Platform.context.set('clipboard.can-copy', this.canCopy());
+    Platform.context.set('clipboard.can-cut', this.canCut());
+    Platform.context.set('clipboard.can-paste', this.canPaste());
     this.notify();
   }
 
@@ -166,13 +157,13 @@ export class EditorClipboardService extends Service {
   private createClipboardEntity(
     session: EditingSession,
     note: NoteSnapshot,
-    classification: ClipboardEntity["classification"],
+    classification: ClipboardEntity['classification'],
     firstTick: number,
   ): ClipboardEntity {
     const row = session.getProjection().rowForNote(note);
     const lyric =
       session.mode.id === EditingModeId.MidiVocals &&
-      classification.type === "note"
+      classification.type === 'note'
         ? this.editingService
             .getDocument()
             .getLyricAt(note.trackIndex, note.tick)?.text
@@ -188,3 +179,7 @@ export class EditorClipboardService extends Service {
     };
   }
 }
+
+export type IEditorClipboardService = EditorClipboardService;
+export const IEditorClipboardService =
+  createDecorator<IEditorClipboardService>('editor.clipboard');

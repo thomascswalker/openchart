@@ -1,10 +1,10 @@
-import { runAction } from "../../../platform/actions/execute";
+import { runAction } from '../../../platform/actions/execute';
+import { Button } from '../../shared';
 import type {
+  ToolItemDef,
   ToolbarContextState,
   ToolbarEditorState,
-  ToolItemDef,
-} from "./types";
-import { Button } from "../../shared";
+} from './types';
 
 interface ToolButtonProps {
   item: ToolItemDef;

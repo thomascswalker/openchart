@@ -11,11 +11,11 @@ converted to the required byte array when reading a file. To write a file,
 pass the serialized bytes to `writeFile`.
 
 ```ts
-import { readFile, writeFile } from "node:fs/promises";
-import { Midi } from "@openchart/midi";
+import { Midi } from '@openchart/midi';
+import { readFile, writeFile } from 'node:fs/promises';
 
-const midi = new Midi(new Uint8Array(await readFile("song.mid")));
-await writeFile("copy.mid", midi.toBuffer());
+const midi = new Midi(new Uint8Array(await readFile('song.mid')));
+await writeFile('copy.mid', midi.toBuffer());
 ```
 
 ## Add notes at absolute tick positions
@@ -26,9 +26,9 @@ start position. With the default 480 ticks per quarter note, each note below
 lasts one quarter note.
 
 ```ts
-import { MidiTrack } from "@openchart/midi";
+import { MidiTrack } from '@openchart/midi';
 
-const track = new MidiTrack("Lead");
+const track = new MidiTrack('Lead');
 
 function addNoteAtTick(
   track: MidiTrack,
@@ -96,10 +96,10 @@ denominator is stored as a power-of-two exponent (`2` means quarter note).
 These events are placed on the first MIDI track.
 
 ```ts
-import { Midi, MidiTrack } from "@openchart/midi";
+import { Midi, MidiTrack } from '@openchart/midi';
 
 const midi = new Midi();
-midi.tracks.push(new MidiTrack("Conductor"));
+midi.tracks.push(new MidiTrack('Conductor'));
 
 midi.addTempoEvent(0, 500_000); // 120 BPM
 midi.addTimeSignatureEvent(0, 4, 2); // 4/4

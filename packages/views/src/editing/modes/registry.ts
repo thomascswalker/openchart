@@ -1,5 +1,5 @@
-import type { EditingMode, EditingModeId, ModeRegistry } from "./mode";
-import type { TrackDescriptor } from "../../ruleset/compile";
+import type { TrackDescriptor } from '../../ruleset/compile';
+import type { EditingMode, EditingModeId, ModeRegistry } from './mode';
 
 /** Resolves modes in registration order, which also defines their priority. */
 export class EditingModeRegistry implements ModeRegistry {

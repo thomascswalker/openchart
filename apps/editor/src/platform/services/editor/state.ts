@@ -1,5 +1,6 @@
-import type { Action } from "../../actions";
-import { StatefulService } from "../../services";
+import type { Action } from '../../actions';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
 
 export interface EditorStateSnapshot {
   error: string | null;
@@ -11,7 +12,10 @@ export interface EditorStateSnapshot {
 export class EditorStateService extends StatefulService<EditorStateSnapshot> {
   constructor() {
     super();
-    this._snapshot = {
+  }
+
+  public static defaultSnapshot(): EditorStateSnapshot {
+    return {
       error: null,
       projectVisible: false,
       settingsVisible: false,
@@ -20,12 +24,7 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
   }
 
   public readonly reset = (): void => {
-    this._snapshot = {
-      error: null,
-      projectVisible: false,
-      settingsVisible: false,
-      aboutVisible: false,
-    };
+    this._snapshot = EditorStateService.defaultSnapshot();
     this.notify();
   };
 
@@ -41,7 +40,7 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
     error: string | null,
   ) =>
     this.setError(
-      `Failed to execute action ${action.options?.id || "Unknown"}: ${error}`,
+      `Failed to execute action ${action.options?.id || 'Unknown'}: ${error}`,
     );
 
   public readonly clearError = (): void => this.setError(null);
@@ -72,3 +71,7 @@ export class EditorStateService extends StatefulService<EditorStateSnapshot> {
     this.notify();
   }
 }
+
+export type IEditorStateService = EditorStateService;
+export const IEditorStateService =
+  createDecorator<IEditorStateService>('editor.state');

@@ -1,39 +1,40 @@
-import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import rawDefinitions from "../assets/defs.json";
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 import type {
   AssetDefinition,
   ResolvedAssetDefinition,
   ResolvedMaterialDefinition,
   ResolvedMeshDefinition,
-} from "../assets";
+} from '../assets';
+import rawDefinitions from '../assets/defs.json';
 
 const gltfLoader = new GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 const assetUrls = import.meta.glob(
   [
-    "../assets/**/*",
-    "!../assets/Round/RoundNote_E2.png",
-    "!../assets/Rect/RectNote.glb",
-    "!../assets/Rect/RectNote_E.png",
+    '../assets/**/*',
+    '!../assets/Round/RoundNote_E2.png',
+    '!../assets/Rect/RectNote.glb',
+    '!../assets/Rect/RectNote_E.png',
   ],
   {
     eager: true,
-    query: "?url",
-    import: "default",
+    query: '?url',
+    import: 'default',
   },
 ) as Record<string, string>;
 const declaredUnusedAssetUrls = import.meta.glob(
   [
-    "../assets/Round/RoundNote_E2.png",
-    "../assets/Rect/RectNote.glb",
-    "../assets/Rect/RectNote_E.png",
+    '../assets/Round/RoundNote_E2.png',
+    '../assets/Rect/RectNote.glb',
+    '../assets/Rect/RectNote_E.png',
   ],
-  { query: "?url", import: "default" },
+  { query: '?url', import: 'default' },
 );
 const shaderSources = import.meta.glob(
-  "../components/views/highway/rendering/shaders/*.glsl",
-  { eager: true, query: "?raw", import: "default" },
+  '../components/views/highway/rendering/shaders/*.glsl',
+  { eager: true, query: '?raw', import: 'default' },
 ) as Record<string, string>;
 
 export const assetDefinitions = rawDefinitions as AssetDefinition & {
@@ -44,13 +45,13 @@ export type MeshKey = keyof typeof rawDefinitions.meshes;
 export type MaterialKey = keyof typeof rawDefinitions.materials;
 
 function assetPath(root: string, file: string, definition: string): string {
-  const normalizedRoot = root.replace(/^\.\//, "").replace(/\/$/, "");
+  const normalizedRoot = root.replace(/^\.\//, '').replace(/\/$/, '');
   if (
-    !root.startsWith("./") ||
-    normalizedRoot.split("/").includes("..") ||
+    !root.startsWith('./') ||
+    normalizedRoot.split('/').includes('..') ||
     !normalizedRoot ||
-    file.includes("/") ||
-    file === ".."
+    file.includes('/') ||
+    file === '..'
   ) {
     throw new AssetLoadError(
       `Definition "${definition}" has invalid root/file path "${root}/${file}".`,
@@ -69,8 +70,8 @@ export function resolveAssetDefinitions(
     !definitions ||
     !definitions.meshes ||
     !definitions.materials ||
-    typeof definitions.meshes !== "object" ||
-    typeof definitions.materials !== "object"
+    typeof definitions.meshes !== 'object' ||
+    typeof definitions.materials !== 'object'
   ) {
     throw new AssetLoadError(
       'Asset definition must contain "meshes" and "materials" objects.',
@@ -83,13 +84,13 @@ export function resolveAssetDefinitions(
       );
     }
     if (
-      typeof definition.root !== "string" ||
-      (definition.mesh !== null && typeof definition.mesh !== "string") ||
+      typeof definition.root !== 'string' ||
+      (definition.mesh !== null && typeof definition.mesh !== 'string') ||
       !Array.isArray(definition.materialIds) ||
-      definition.materialIds.some((id) => typeof id !== "string") ||
+      definition.materialIds.some((id) => typeof id !== 'string') ||
       (definition.tintedMaterialIds !== undefined &&
         (!Array.isArray(definition.tintedMaterialIds) ||
-          definition.tintedMaterialIds.some((id) => typeof id !== "string")))
+          definition.tintedMaterialIds.some((id) => typeof id !== 'string')))
     ) {
       throw new AssetLoadError(
         `Mesh definition "${key}" has an invalid schema.`,
@@ -99,12 +100,12 @@ export function resolveAssetDefinitions(
 
   const materials: Record<string, ResolvedMaterialDefinition> = {};
   for (const [key, definition] of Object.entries(definitions.materials)) {
-    if (!definition || typeof definition.vert !== "string") {
+    if (!definition || typeof definition.vert !== 'string') {
       throw new AssetLoadError(
         `Material definition "${key}" has no vertex shader.`,
       );
     }
-    if (typeof definition.pixel !== "string") {
+    if (typeof definition.pixel !== 'string') {
       throw new AssetLoadError(
         `Material definition "${key}" has no pixel shader.`,
       );
@@ -123,22 +124,22 @@ export function resolveAssetDefinitions(
     }
     if (
       !definition.properties ||
-      typeof definition.properties !== "object" ||
+      typeof definition.properties !== 'object' ||
       Array.isArray(definition.properties)
     ) {
       throw new AssetLoadError(
         `Material definition "${key}" properties must be an object.`,
       );
     }
-    const properties: ResolvedMaterialDefinition["properties"] = {};
+    const properties: ResolvedMaterialDefinition['properties'] = {};
     for (const [name, value] of Object.entries(definition.properties ?? {})) {
-      if (name.endsWith("Tex")) {
-        if (!["diffuseTex", "emissionTex", "emissionMaskTex"].includes(name)) {
+      if (name.endsWith('Tex')) {
+        if (!['diffuseTex', 'emissionTex', 'emissionMaskTex'].includes(name)) {
           throw new AssetLoadError(
             `Material definition "${key}" has unsupported texture property "${name}".`,
           );
         }
-        if (typeof value !== "string") {
+        if (typeof value !== 'string') {
           throw new AssetLoadError(
             `Material definition "${key}" property "${name}" must name a texture file.`,
           );
@@ -154,12 +155,12 @@ export function resolveAssetDefinitions(
           );
         }
       } else if (
-        (typeof value === "number" && Number.isFinite(value)) ||
+        (typeof value === 'number' && Number.isFinite(value)) ||
         (Array.isArray(value) &&
           value.length === 3 &&
           value.every(
             (component) =>
-              typeof component === "number" && Number.isFinite(component),
+              typeof component === 'number' && Number.isFinite(component),
           ))
       ) {
         properties[name] = value as number | [number, number, number];
@@ -359,7 +360,7 @@ export class TextureResource {
 export class AssetLoadError extends Error {
   public constructor(message: string, options?: ErrorOptions) {
     super(message, options);
-    this.name = "AssetLoadError";
+    this.name = 'AssetLoadError';
   }
 }
 
@@ -373,12 +374,12 @@ export class ResourceRegistry {
   public constructor() {
     const availableAssets = new Set(
       [...Object.keys(assetUrls), ...Object.keys(declaredUnusedAssetUrls)].map(
-        (path) => path.replace("../assets/", ""),
+        (path) => path.replace('../assets/', ''),
       ),
     );
     const sourcesByName = Object.fromEntries(
       Object.entries(shaderSources).map(([path, source]) => [
-        path.split("/").at(-1)!,
+        path.split('/').at(-1)!,
         source,
       ]),
     );
@@ -399,7 +400,7 @@ export class ResourceRegistry {
       for (const [property, value] of Object.entries(
         material.definition.properties,
       )) {
-        if (typeof value !== "string" || !property.endsWith("Tex")) continue;
+        if (typeof value !== 'string' || !property.endsWith('Tex')) continue;
         const mesh = Object.values(assetDefinitions.meshes).find(
           (entry) => entry.material === material.key,
         );
@@ -416,7 +417,7 @@ export class ResourceRegistry {
           resource = new TextureResource(
             path,
             url,
-            property === "emissionMaskTex"
+            property === 'emissionMaskTex'
               ? THREE.NoColorSpace
               : THREE.SRGBColorSpace,
           );
@@ -429,7 +430,7 @@ export class ResourceRegistry {
 
   public loadResources(): Promise<void> {
     if (this.isDisposed) {
-      return Promise.reject(new AssetLoadError("Resource registry disposed."));
+      return Promise.reject(new AssetLoadError('Resource registry disposed.'));
     }
     if (this.loadPromise) return this.loadPromise;
     const loads = [
@@ -440,7 +441,7 @@ export class ResourceRegistry {
       .then(() => {
         if (this.isDisposed) {
           throw new AssetLoadError(
-            "Resource registry disposed during loading.",
+            'Resource registry disposed during loading.',
           );
         }
       })
@@ -449,7 +450,7 @@ export class ResourceRegistry {
         this.releaseResources();
         this.loadPromise = null;
         if (error instanceof AssetLoadError) throw error;
-        throw new AssetLoadError("Unable to load highway assets.", {
+        throw new AssetLoadError('Unable to load highway assets.', {
           cause: error,
         });
       });

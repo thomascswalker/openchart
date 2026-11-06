@@ -1,8 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FileInput, Input } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { FileInput, Input } from '..';
 
 const meta = {
-  title: "Shared/Input",
+  title: 'Shared/Input',
   component: Input,
 } satisfies Meta<typeof Input>;
 
@@ -13,9 +14,9 @@ const InputVariantsView = () => {
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "start",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'start',
         gap: 32,
       }}
     >

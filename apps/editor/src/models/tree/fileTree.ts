@@ -1,10 +1,12 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import type { FileSystemHandle } from 'native-file-system-adapter';
+
 import {
   ObjectTreeModel,
   type ObjectTreeModelOptions,
-} from "../../models/tree/objectTree";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ITreeNode } from "./tree";
-import type { FileSystemHandle } from "native-file-system-adapter";
+} from '../../models/tree/objectTree';
+import type { ITreeNode } from './tree';
 
 export type FileTreeNode = ITreeNode<FileSystemHandle>;
 
@@ -18,10 +20,10 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
 
   constructor(
     root: FileSystemDirectoryHandle,
-    options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, "onRefresh">,
+    options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, 'onRefresh'>,
   ) {
-    if (root.kind !== "directory") {
-      throw new Error("Root must be a directory handle");
+    if (root.kind !== 'directory') {
+      throw new Error('Root must be a directory handle');
     }
     super(root, {
       ...options,
@@ -68,7 +70,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
    */
   private async discover(parent: FileTreeNode): Promise<void> {
     // `kind` is used because native picker handles aren't instances of the adapter classes
-    if (parent.element.kind !== "directory" || this.loaded.has(parent)) {
+    if (parent.element.kind !== 'directory' || this.loaded.has(parent)) {
       return;
     }
     this.loaded.add(parent);
@@ -94,7 +96,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
       if (this.has(handle)) {
         continue;
       }
-      const isDirectory = handle.kind === "directory";
+      const isDirectory = handle.kind === 'directory';
       const child: FileTreeNode = {
         element: handle,
         parent,
@@ -135,7 +137,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     // Descendants are relative to the root; the root itself uses its own name
     return current && components.length === 0
       ? current.element.name
-      : components.join("/");
+      : components.join('/');
   }
 
   /**
@@ -165,7 +167,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     if (!node) {
       return undefined;
     }
-    if (node.element.kind !== "file") {
+    if (node.element.kind !== 'file') {
       return undefined;
     }
     return node.element;
@@ -176,7 +178,7 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
     if (!node) {
       return undefined;
     }
-    if (node.element.kind !== "directory") {
+    if (node.element.kind !== 'directory') {
       return undefined;
     }
     return node.element;
@@ -185,23 +187,23 @@ export class FileTreeModel extends ObjectTreeModel<FileSystemHandle> {
 
 type UseFileTreeModelResult = Pick<
   FileTreeModel,
-  | "filter"
-  | "find"
-  | "findAs"
-  | "findFile"
-  | "findDirectory"
-  | "refresh"
-  | "toggleCollapse"
-  | "collapse"
-  | "expand"
-  | "select"
-  | "deselect"
-  | "toggleSelect"
+  | 'filter'
+  | 'find'
+  | 'findAs'
+  | 'findFile'
+  | 'findDirectory'
+  | 'refresh'
+  | 'toggleCollapse'
+  | 'collapse'
+  | 'expand'
+  | 'select'
+  | 'deselect'
+  | 'toggleSelect'
 > & { nodes: FileTreeNode[]; visibleNodes: FileTreeNode[] };
 
 export const useFileTreeModel = (
   rootHandle: FileSystemDirectoryHandle,
-  options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, "onRefresh">,
+  options?: Omit<ObjectTreeModelOptions<FileSystemHandle>, 'onRefresh'>,
 ): UseFileTreeModelResult => {
   // Only recreate the tree if the root handle changes; callbacks are read
   // through a ref so inline handlers don't trigger a rebuild.

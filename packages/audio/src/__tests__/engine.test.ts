@@ -1,13 +1,14 @@
-import { expect, test, vi } from "vitest";
-import { AudioEngine, createSoftClipCurve, softClip } from "../engine.js";
+import { expect, test, vi } from 'vitest';
 
-test("softClip is transparent below the knee", () => {
+import { AudioEngine, createSoftClipCurve, softClip } from '../engine.js';
+
+test('softClip is transparent below the knee', () => {
   for (const x of [-0.88, -0.5, -0.1, 0, 0.1, 0.5, 0.88]) {
     expect(softClip(x)).toBe(x);
   }
 });
 
-test("softClip saturates smoothly and never exceeds full scale", () => {
+test('softClip saturates smoothly and never exceeds full scale', () => {
   let previous = softClip(0);
   for (let x = 0.01; x <= 4; x += 0.01) {
     const y = softClip(x);
@@ -20,7 +21,7 @@ test("softClip saturates smoothly and never exceeds full scale", () => {
   expect(Math.abs(softClip(0.8901) - softClip(0.8899))).toBeLessThan(1e-3);
 });
 
-test("the soft-clip curve covers 2x input and has unity gain in the clean range", () => {
+test('the soft-clip curve covers 2x input and has unity gain in the clean range', () => {
   const curve = createSoftClipCurve(4096);
   const last = curve.length - 1;
   for (let i = 0; i <= last; i++) {
@@ -32,7 +33,7 @@ test("the soft-clip curve covers 2x input and has unity gain in the clean range"
   }
 });
 
-test("AudioEngine.smooth schedules a ramp instead of assigning the value", () => {
+test('AudioEngine.smooth schedules a ramp instead of assigning the value', () => {
   const engine = new AudioEngine();
   void engine.context;
   const param = {
@@ -53,9 +54,9 @@ test("AudioEngine.smooth schedules a ramp instead of assigning the value", () =>
   engine.dispose();
 });
 
-test("AudioEngine does not create a context until it is used", () => {
+test('AudioEngine does not create a context until it is used', () => {
   const engine = new AudioEngine();
-  expect(engine.state).toBe("closed");
+  expect(engine.state).toBe('closed');
   expect(engine.outputLatency).toBe(0);
   engine.dispose();
   expect(engine.disposed).toBe(true);

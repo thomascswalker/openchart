@@ -1,8 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Difficulty } from "@openchart/views";
-import { PlaybackService, snapToPreviousTimelineBoundary } from "../playback";
-import type { MixerService } from "../../mixer/mixer";
-import type { ApplicationSettings } from "../../settings/schema";
+import { Difficulty } from '@openchart/views';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { MixerService } from '../../mixer/mixer';
+import type { ApplicationSettings } from '../../settings/schema';
+import {
+  PlaybackService as BasePlaybackService,
+  snapToPreviousTimelineBoundary,
+} from '../playback';
+
+/** Test double that lets each test provide only the dependencies it needs. */
+class PlaybackService extends BasePlaybackService {
+  constructor(projectService?: unknown, mixerService?: unknown) {
+    super(projectService as never, mixerService as never, undefined as never);
+  }
+}
 
 const engine = vi.hoisted(() => ({
   configure: vi.fn(),
@@ -16,14 +27,14 @@ const engine = vi.hoisted(() => ({
   dispose: vi.fn(),
 }));
 
-vi.mock("../../../../audio/soundboard", () => ({
+vi.mock('../../../../audio/soundboard', () => ({
   Soundboard: vi.fn(function () {
     return engine;
   }),
 }));
 
-vi.mock("@openchart/views", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@openchart/views")>()),
+vi.mock('@openchart/views', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@openchart/views')>()),
   SongView: vi.fn(function () {
     return {
       getInstrumentTrackView: () => undefined,
@@ -32,7 +43,7 @@ vi.mock("@openchart/views", async (importOriginal) => ({
   }),
 }));
 
-type MidiData = import("@openchart/midi").Midi;
+type MidiData = import('@openchart/midi').Midi;
 
 function settings(metronomeEnabled = false): ApplicationSettings {
   return { feedback: { metronomeEnabled } } as unknown as ApplicationSettings;
@@ -72,37 +83,37 @@ function midi(
 
 function configure(
   service: PlaybackService,
-  overrides: Partial<Parameters<PlaybackService["configure"]>[0]> = {},
+  overrides: Partial<Parameters<PlaybackService['configure']>[0]> = {},
 ) {
   service.configure({
     midiData: midi(),
     settings: settings(),
     snapEnabled: false,
     snapDenominator: 4,
-    selectedInstrument: "LEAD GUITAR",
+    selectedInstrument: 'LEAD GUITAR',
     selectedDifficulty: Difficulty.Expert,
     selectedTrackIndex: 0,
     ...overrides,
   });
 }
 
-describe("timeline snap pause", () => {
-  it("snaps to the previous boundary when enabled", () => {
+describe('timeline snap pause', () => {
+  it('snaps to the previous boundary when enabled', () => {
     expect(snapToPreviousTimelineBoundary(950, 480, 4, true)).toBe(480);
     expect(snapToPreviousTimelineBoundary(480, 480, 4, true)).toBe(480);
   });
 
-  it("preserves the exact tick when snap is disabled", () => {
+  it('preserves the exact tick when snap is disabled', () => {
     expect(snapToPreviousTimelineBoundary(950, 480, 4, false)).toBe(950);
   });
 });
 
-describe("PlaybackService", () => {
+describe('PlaybackService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("supports MIDI-only playback and seeks the feedback engine", () => {
+  it('supports MIDI-only playback and seeks the feedback engine', () => {
     const service = new PlaybackService();
     configure(service);
 
@@ -112,7 +123,7 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("keeps mixer transport and position in sync with playback controls", () => {
+  it('keeps mixer transport and position in sync with playback controls', () => {
     const mixer = {
       play: vi.fn(),
       pause: vi.fn(),
@@ -126,10 +137,10 @@ describe("PlaybackService", () => {
     expect(mixer.seek).toHaveBeenLastCalledWith(0.25);
 
     vi.stubGlobal(
-      "requestAnimationFrame",
+      'requestAnimationFrame',
       vi.fn(() => 1),
     );
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     service.play();
     expect(mixer.play).toHaveBeenCalledOnce();
 
@@ -146,7 +157,7 @@ describe("PlaybackService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("follows the audio clock and never re-seeks the mixer while playing", () => {
+  it('follows the audio clock and never re-seeks the mixer while playing', () => {
     let clockTime: number | null = 0.25;
     const seek = vi.fn();
     const mixer = {
@@ -164,13 +175,13 @@ describe("PlaybackService", () => {
 
     let frame: FrameRequestCallback | undefined;
     vi.stubGlobal(
-      "requestAnimationFrame",
+      'requestAnimationFrame',
       vi.fn((callback: FrameRequestCallback) => {
         frame = callback;
         return 1;
       }),
     );
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     service.play();
     seek.mockClear();
 
@@ -200,7 +211,7 @@ describe("PlaybackService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("requires MIDI events and advances on the tempo-aware MIDI clock", () => {
+  it('requires MIDI events and advances on the tempo-aware MIDI clock', () => {
     const service = new PlaybackService();
     configure(service, { midiData: midi([]) });
 
@@ -216,13 +227,13 @@ describe("PlaybackService", () => {
     });
     let frame: FrameRequestCallback | undefined;
     vi.stubGlobal(
-      "requestAnimationFrame",
+      'requestAnimationFrame',
       vi.fn((callback: FrameRequestCallback) => {
         frame = callback;
         return 1;
       }),
     );
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
     service.play();
     frame?.(0);
@@ -234,13 +245,13 @@ describe("PlaybackService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("pauses with grid snapping and notifies subscribers", () => {
+  it('pauses with grid snapping and notifies subscribers', () => {
     const service = new PlaybackService();
     vi.stubGlobal(
-      "requestAnimationFrame",
+      'requestAnimationFrame',
       vi.fn(() => 1),
     );
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     const listener = vi.fn();
     service.subscribe(listener);
     configure(service, {
@@ -260,7 +271,7 @@ describe("PlaybackService", () => {
     vi.unstubAllGlobals();
   });
 
-  it("plays two measures past the last MIDI event, even past the last note", () => {
+  it('plays two measures past the last MIDI event, even past the last note', () => {
     const service = new PlaybackService();
     configure(service, {
       midiData: midi([
@@ -281,7 +292,7 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("uses the active time signature to extend MIDI playback", () => {
+  it('uses the active time signature to extend MIDI playback', () => {
     const service = new PlaybackService();
     configure(service, {
       midiData: midi(
@@ -294,7 +305,7 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("refreshes the timeline from the current document data", () => {
+  it('refreshes the timeline from the current project data', () => {
     const service = new PlaybackService();
     const currentTrack = {
       events: [{ deltaTime: 961, tick: 961 }],
@@ -312,18 +323,22 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("follows document edits without an explicit refresh", () => {
+  it('follows project edits without an explicit refresh', () => {
     let listener = () => {};
     const track = { events: [{ deltaTime: 961, tick: 961 }] };
     const currentMidi = midi([track]);
-    const documentService = {
+    const projectService = {
       subscribe: (next: () => void) => {
         listener = next;
         return () => {};
       },
-      getData: () => currentMidi,
+      data: currentMidi,
     };
-    const service = new PlaybackService(documentService as never);
+    const service = new PlaybackService(projectService, undefined);
+    Object.assign(service, {
+      rulesetService: { subscribe: () => () => {} },
+    });
+    service.init();
     configure(service, { midiData: currentMidi });
     expect(service.getSnapshot().totalTimelineTicks).toBe(4_801);
 
@@ -339,23 +354,23 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("preserves the playback tick when undo or redo provides a MIDI clone", () => {
+  it('preserves the playback tick when undo or redo provides a MIDI clone', () => {
     const service = new PlaybackService();
     const originalMidi = midi();
-    configure(service, { midiData: originalMidi, documentId: 1 });
+    configure(service, { midiData: originalMidi, projectId: 1 });
     service.setPlaybackTick(240);
 
-    configure(service, { midiData: midi(), documentId: 1 });
+    configure(service, { midiData: midi(), projectId: 1 });
     expect(service.getSnapshot().playbackTick).toBe(240);
     expect(engine.stop).not.toHaveBeenCalled();
 
-    configure(service, { midiData: midi(), documentId: 2 });
+    configure(service, { midiData: midi(), projectId: 2 });
     expect(service.getSnapshot().playbackTick).toBe(0);
     expect(engine.stop).toHaveBeenCalled();
     service.dispose();
   });
 
-  it("toggles metronome and clap, starting the engine in the gesture", () => {
+  it('toggles metronome and clap, starting the engine in the gesture', () => {
     const service = new PlaybackService();
     configure(service, { settings: settings(true) });
     expect(service.getSnapshot().isMetronomeEnabled).toBe(true);
@@ -373,7 +388,7 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("toggles vocal pitch feedback, starting the engine in the gesture", () => {
+  it('toggles vocal pitch feedback, starting the engine in the gesture', () => {
     const service = new PlaybackService();
     configure(service);
     expect(service.getSnapshot().isVocalPitchFeedbackEnabled).toBe(false);
@@ -394,14 +409,14 @@ describe("PlaybackService", () => {
     service.dispose();
   });
 
-  it("gates highway feedback on the active view and previews notes", () => {
+  it('gates highway feedback on the active view and previews notes', () => {
     const service = new PlaybackService();
     configure(service);
-    service.setActiveView("highway");
+    service.setActiveView('highway');
     expect(engine.configure).toHaveBeenLastCalledWith(
       expect.objectContaining({ highwayActive: true }),
     );
-    service.setActiveView("piano-roll");
+    service.setActiveView('piano-roll');
     expect(engine.configure).toHaveBeenLastCalledWith(
       expect.objectContaining({ highwayActive: false }),
     );

@@ -1,8 +1,6 @@
-import { Service } from "../../services";
+import { Service, createDecorator } from '../service';
 
 export class LoggerService extends Service {
-  static dependencies = [];
-
   public readonly reset = (): void => this.notify();
 
   public debug(message: string) {
@@ -22,3 +20,6 @@ export class LoggerService extends Service {
     this.notify();
   }
 }
+
+export type ILoggerService = LoggerService;
+export const ILoggerService = createDecorator<ILoggerService>('logger');

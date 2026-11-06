@@ -1,14 +1,15 @@
-import { Vector2 } from "three";
-import * as THREE from "three";
-import type { HighwayContext } from "./context";
-import { nearBoardZ } from "./constants";
-import { BaseCoordinates } from "../shared/coordinates";
+import { Vector2 } from 'three';
+import * as THREE from 'three';
+
+import { BaseCoordinates } from '../shared/coordinates';
+import { nearBoardZ } from './constants';
+import type { HighwayContext } from './context';
 
 type HighwayCoordinateContext = Pick<
   HighwayContext,
-  "getCameraTick" | "getCanvas" | "getPpqn" | "getState" | "getViewport"
+  'getCameraTick' | 'getCanvas' | 'getPpqn' | 'getState' | 'getViewport'
 > &
-  Partial<Pick<HighwayContext, "getCurrentChart" | "getScrollSpeedMultiplier">>;
+  Partial<Pick<HighwayContext, 'getCurrentChart' | 'getScrollSpeedMultiplier'>>;
 
 /** Perspective-camera lane, depth, and screen coordinate conversions. */
 export class HighwayCoordinateSystem extends BaseCoordinates {

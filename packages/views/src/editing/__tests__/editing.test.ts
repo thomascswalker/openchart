@@ -1,26 +1,27 @@
-import { MetaType, Midi } from "@openchart/midi";
-import { describe, expect, it, vi } from "vitest";
+import { MetaType, Midi } from '@openchart/midi';
+import { describe, expect, it, vi } from 'vitest';
+
 import {
+  Difficulty,
+  Document,
   DomainCommandType,
   EditCommandType,
-  ChartDocument,
+  EditRejectedError,
+  SelectionModel,
   computePreview,
   createStandaloneEditing,
-  Difficulty,
-  EditRejectedError,
   formatNoteId,
   formatTempoId,
   formatTextId,
   formatTimeSignatureId,
   parseEntityId,
-  SelectionModel,
-} from "../../index.js";
+} from '../../index.js';
 
 function createDocument() {
   const midi = new Midi();
   const trackIndex = midi.addTrack();
   const track = midi.tracks[trackIndex]!;
-  track.name = "LEAD GUITAR";
+  track.name = 'LEAD GUITAR';
   track.addNote(60, 0, 90, 120);
   const secondNoteTick = 240;
   const secondNoteInsertAt = track.getInsertionIndexAt(secondNoteTick);
@@ -31,32 +32,32 @@ function createDocument() {
     240,
     secondNoteInsertAt,
   );
-  const document = new ChartDocument(midi);
+  const document = new Document(midi);
   return { midi, track, document };
 }
 
-describe("shared chart editing primitives", () => {
-  it("formats and parses stable entity IDs", () => {
-    expect(formatNoteId(0, "event-1")).toBe("note:0:event-1");
-    expect(formatTextId(2, "event-2")).toBe("text:2:event-2");
-    expect(formatTempoId("event-3")).toBe("tempo:event-3");
-    expect(formatTimeSignatureId("event-4")).toBe("time-signature:event-4");
-    expect(parseEntityId("note:0:event-1")).toEqual({
-      kind: "note",
+describe('shared chart editing primitives', () => {
+  it('formats and parses stable entity IDs', () => {
+    expect(formatNoteId(0, 'event-1')).toBe('note:0:event-1');
+    expect(formatTextId(2, 'event-2')).toBe('text:2:event-2');
+    expect(formatTempoId('event-3')).toBe('tempo:event-3');
+    expect(formatTimeSignatureId('event-4')).toBe('time-signature:event-4');
+    expect(parseEntityId('note:0:event-1')).toEqual({
+      kind: 'note',
       trackIndex: 0,
-      eventId: "event-1",
+      eventId: 'event-1',
     });
-    expect(parseEntityId("note:01:event-1")).toBeNull();
-    expect(parseEntityId("phrase:0:event-1")).toBeNull();
-    expect(() => formatNoteId(-1, "event-1")).toThrow(RangeError);
+    expect(parseEntityId('note:01:event-1')).toBeNull();
+    expect(parseEntityId('phrase:0:event-1')).toBeNull();
+    expect(() => formatNoteId(-1, 'event-1')).toThrow(RangeError);
   });
 
-  it("applies serializable note commands and resolves note IDs", () => {
+  it('applies serializable note commands and resolves note IDs', () => {
     const { midi, track, document } = createDocument();
     const [first, second] = track.getNotes();
     const firstId = document.getNoteId(0, first!);
 
-    const clonedDocument = new ChartDocument(midi.clone());
+    const clonedDocument = new Document(midi.clone());
     expect(clonedDocument.getNote(firstId)).toMatchObject({
       tick: 0,
       pitch: 60,
@@ -99,7 +100,7 @@ describe("shared chart editing primitives", () => {
     expect(track.getNotes()).toHaveLength(1);
   });
 
-  it("applies raw note creation and absolute updates with stable results", () => {
+  it('applies raw note creation and absolute updates with stable results', () => {
     const { document } = createDocument();
     const added = document.apply({
       type: EditCommandType.AddNotes,
@@ -115,7 +116,7 @@ describe("shared chart editing primitives", () => {
     });
     const id = added.createdIds[0]!;
     expect(parseEntityId(id)).toMatchObject({
-      kind: "note",
+      kind: 'note',
       trackIndex: 0,
       eventId: expect.any(String),
     });
@@ -134,7 +135,7 @@ describe("shared chart editing primitives", () => {
     });
   });
 
-  it("preflights every batch command before changing MIDI", () => {
+  it('preflights every batch command before changing MIDI', () => {
     const { midi, document } = createDocument();
     const before = midi.toBuffer();
 
@@ -153,20 +154,20 @@ describe("shared chart editing primitives", () => {
     expect(midi.toBuffer()).toEqual(before);
   });
 
-  it("applies text, tempo, and time-signature raw commands", () => {
+  it('applies text, tempo, and time-signature raw commands', () => {
     const { midi, document } = createDocument();
     const text = document.apply({
       type: EditCommandType.AddText,
       trackIndex: 0,
       metaType: MetaType.Marker,
       tick: 120,
-      text: "Verse",
+      text: 'Verse',
     });
     const textId = text.createdIds[0]!;
     expect(document.getTextEvents(0)).toContainEqual({
       id: textId,
       tick: 120,
-      text: "Verse",
+      text: 'Verse',
       metaType: MetaType.Marker,
     });
     expect(
@@ -174,13 +175,13 @@ describe("shared chart editing primitives", () => {
         type: EditCommandType.UpdateText,
         id: textId,
         tick: 240,
-        text: "Chorus",
+        text: 'Chorus',
       }),
     ).toMatchObject({ changed: true, updatedIds: [textId] });
     expect(document.getTextEvents(0)).toContainEqual({
       id: textId,
       tick: 240,
-      text: "Chorus",
+      text: 'Chorus',
       metaType: MetaType.Marker,
     });
     expect(
@@ -205,7 +206,7 @@ describe("shared chart editing primitives", () => {
         ),
     ).toBe(true);
     expect(parseEntityId(tempoId)).toEqual({
-      kind: "tempo",
+      kind: 'tempo',
       trackIndex: null,
       eventId: expect.any(String),
     });
@@ -256,7 +257,7 @@ describe("shared chart editing primitives", () => {
     ).toMatchObject({ changed: true });
   });
 
-  it("computes previews matching note command application", () => {
+  it('computes previews matching note command application', () => {
     const { midi, track, document } = createDocument();
     track.addNote(67, 480, 70, 240);
     const [first, second, third] = track.getNotes();
@@ -282,7 +283,7 @@ describe("shared chart editing primitives", () => {
     ];
     const preview = computePreview(commands, document);
     const before = midi.toBuffer();
-    const appliedDocument = new ChartDocument(midi.clone());
+    const appliedDocument = new Document(midi.clone());
     const result = appliedDocument.applyBatch(commands);
 
     expect(preview.rejections).toEqual([]);
@@ -297,16 +298,16 @@ describe("shared chart editing primitives", () => {
     expect(preview.added).toHaveLength(1);
     expect(preview.added[0]).toMatchObject({
       ...appliedDocument.getNote(result.createdIds[0]!),
-      id: "pending:0",
+      id: 'pending:0',
     });
   });
 
-  it("preserves duration when a note move clamps at tick zero", () => {
+  it('preserves duration when a note move clamps at tick zero', () => {
     const midi = new Midi();
     const trackIndex = midi.addTrack();
     const track = midi.tracks[trackIndex]!;
     track.addNote(60, 60, 90, 120);
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const noteId = document.getNoteId(0, track.getNotes()[0]!);
 
     expect(
@@ -323,12 +324,12 @@ describe("shared chart editing primitives", () => {
     });
   });
 
-  it("moves a note group through one stable session command", () => {
+  it('moves a note group through one stable session command', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
     track.addNote(96, 0, 100, 120);
     track.addNote(97, 240, 100, 120);
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const targetIds = track
       .getNotes()
       .map((note) => document.getNoteId(0, note));
@@ -349,21 +350,21 @@ describe("shared chart editing primitives", () => {
     ]);
   });
 
-  it("creates and resizes phrases through a mode session", () => {
+  it('creates and resizes phrases through a mode session', () => {
     const { midi, track, document } = createDocument();
     const session = createStandaloneEditing(midi).createSession(
       {
-        trackKey: "lead-guitar",
+        trackKey: 'lead-guitar',
         trackIndex: 0,
         difficulty: Difficulty.Expert,
       },
-      "highway",
+      'highway',
     );
 
     expect(
       session.execute({
         type: DomainCommandType.CreatePhrase,
-        phraseId: "stagePower",
+        phraseId: 'stagePower',
         startTick: 480,
         endTick: 720,
       }).changed,
@@ -399,16 +400,16 @@ describe("shared chart editing primitives", () => {
     expect(rejected.rejections).toHaveLength(1);
   });
 
-  it("shares ID-based selection changes and keeps previews volatile", () => {
+  it('shares ID-based selection changes and keeps previews volatile', () => {
     const selection = new SelectionModel();
     const listener = vi.fn();
     const unsubscribe = selection.subscribe(listener);
 
-    selection.setSelectedIds(["note:0:event-1", "phrase:0:event-2"]);
-    selection.add("note:0:event-1");
+    selection.setSelectedIds(['note:0:event-1', 'phrase:0:event-2']);
+    selection.add('note:0:event-1');
     expect(selection.getSelectedIds()).toEqual([
-      "note:0:event-1",
-      "phrase:0:event-2",
+      'note:0:event-1',
+      'phrase:0:event-2',
     ]);
     expect(selection.getRevision()).toBe(1);
     expect(listener).toHaveBeenCalledTimes(1);
@@ -417,7 +418,7 @@ describe("shared chart editing primitives", () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
     const note = track.addNote(60, 0, 90, 120);
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const noteId = document.getNoteId(0, note);
     const before = midi.toBuffer();
     const preview = computePreview(
@@ -439,16 +440,16 @@ describe("shared chart editing primitives", () => {
     expect(midi.toBuffer()).toEqual(before);
   });
 
-  it("pastes mode-tagged clipboard notes in one session transaction", () => {
+  it('pastes mode-tagged clipboard notes in one session transaction', () => {
     const { midi, track, document } = createDocument();
     const standalone = createStandaloneEditing(midi);
     const session = standalone.createSession(
       {
-        trackKey: "lead-guitar",
+        trackKey: 'lead-guitar',
         trackIndex: 0,
         difficulty: Difficulty.Expert,
       },
-      "piano-roll",
+      'piano-roll',
     );
     const ids = track.getNotes().map((note) => document.getNoteId(0, note));
     const selected = ids.map((id) => document.getNote(id)!);
@@ -488,16 +489,16 @@ describe("shared chart editing primitives", () => {
     expect(standalone.history.undoDepth).toBe(1);
   });
 
-  it("records commands and batches as separate session history entries", () => {
+  it('records commands and batches as separate session history entries', () => {
     const { midi, track } = createDocument();
     const standalone = createStandaloneEditing(midi);
     const session = standalone.createSession(
       {
-        trackKey: "lead-guitar",
+        trackKey: 'lead-guitar',
         trackIndex: 0,
         difficulty: Difficulty.Expert,
       },
-      "piano-roll",
+      'piano-roll',
     );
     const add = (tick: number) => ({
       type: EditCommandType.AddNotes as const,

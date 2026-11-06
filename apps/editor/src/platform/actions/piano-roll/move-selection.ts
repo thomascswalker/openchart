@@ -1,28 +1,29 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
 import {
   DomainCommandType,
   EditCommandType,
   EditingModeId,
-} from "@openchart/views";
-import { parseSelectedNoteEntityIds } from "./util";
-import type { EditingService } from "../../services/editor/editing";
-import { ViewportService } from "../../services/editor/viewports";
+} from '@openchart/views';
+
+import { Action } from '../../actions';
+import type { EditingService } from '../../services/editor/editing';
+import { ViewportService } from '../../services/editor/viewports';
+import type { ServicesAccessor } from '../../services/registry';
+import { parseSelectedNoteEntityIds } from './util';
 
 export class MoveSelectionAction extends Action<[-1 | 1]> {
   constructor() {
     super({
       condition: {
-        "viewport.active-view": "piano-roll",
-        "editing.can.MOVE_SELECTION": true,
+        'viewport.active-view': 'piano-roll',
+        'editing.can.MOVE_SELECTION': true,
       },
     });
   }
 
   run(accessor: ServicesAccessor, direction: -1 | 1): void {
-    const editing = accessor.get<EditingService>("editor.editing");
+    const editing = accessor.get<EditingService>('editor.editing');
     const session = editing.getActiveSession();
-    const viewportService = accessor.get<ViewportService>("editor.viewports");
+    const viewportService = accessor.get<ViewportService>('editor.viewports');
     const viewport = viewportService.getActiveViewport();
     if (!session || !viewport) {
       return;

@@ -1,13 +1,15 @@
-import { Midi } from "@openchart/midi";
-import { Difficulty, createStandaloneEditing } from "@openchart/views";
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
-import { ToolGroup } from "./ToolGroup";
-import { createModeToolbarGroups } from "./definitions";
-import type { ToolbarContextState, ToolbarEditorState } from "./types";
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 
-describe("mode-driven toolbar rendering", () => {
+import { Midi } from '@openchart/midi';
+import { Difficulty, createStandaloneEditing } from '@openchart/views';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { ToolGroup } from './ToolGroup';
+import { createModeToolbarGroups } from './definitions';
+import type { ToolbarContextState, ToolbarEditorState } from './types';
+
+describe('mode-driven toolbar rendering', () => {
   let container: HTMLDivElement | null = null;
   let root: ReturnType<typeof createRoot> | null = null;
 
@@ -18,28 +20,28 @@ describe("mode-driven toolbar rendering", () => {
     container = null;
   });
 
-  it("preserves Highway tool labels and ordering from mode descriptors", () => {
+  it('preserves Highway tool labels and ordering from mode descriptors', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     const sessionEditing = createStandaloneEditing(midi);
     const editingSession = sessionEditing.createSession(
-      { trackKey: "lead-guitar", trackIndex: 0, difficulty: Difficulty.Expert },
-      "highway",
+      { trackKey: 'lead-guitar', trackIndex: 0, difficulty: Difficulty.Expert },
+      'highway',
     );
     const mode = editingSession.mode;
     const session = {
-      id: "viewport-1",
-      view: "highway" as const,
-      trackKey: "lead-guitar",
-      instrument: "LEAD GUITAR",
+      id: 'viewport-1',
+      view: 'highway' as const,
+      trackKey: 'lead-guitar',
+      instrument: 'LEAD GUITAR',
       difficulty: 3,
       camera: { tick: 0 },
       tools: {},
     };
     const context: ToolbarContextState = {
-      activeView: "highway",
-      trackType: "LEAD GUITAR",
+      activeView: 'highway',
+      trackType: 'LEAD GUITAR',
       sessionId: session.id,
       playbackTick: 0,
       canHostView: () => true,
@@ -53,10 +55,10 @@ describe("mode-driven toolbar rendering", () => {
       lockCursor: true,
       vocalPitchFeedbackEnabled: false,
     };
-    container = document.createElement("div");
+    container = document.createElement('div');
     root = createRoot(container);
     const highwayGroup = createModeToolbarGroups(editingSession).find(
-      (group) => group.id === "highway-tools",
+      (group) => group.id === 'highway-tools',
     )!;
 
     act(() => {
@@ -70,45 +72,45 @@ describe("mode-driven toolbar rendering", () => {
     });
 
     expect(
-      Array.from(container.querySelectorAll("button")).map((button) =>
-        button.getAttribute("aria-label"),
+      Array.from(container.querySelectorAll('button')).map((button) =>
+        button.getAttribute('aria-label'),
       ),
     ).toEqual([
-      "Select, move, and edit sustains",
-      "Place notes",
-      "Remove notes",
-      "Solo phrase",
-      "Stage Power phrase",
+      'Select, move, and edit sustains',
+      'Place notes',
+      'Remove notes',
+      'Solo phrase',
+      'Stage Power phrase',
     ]);
     expect(
       createModeToolbarGroups(editingSession)
-        .find((group) => group.id === "difficulty")
+        .find((group) => group.id === 'difficulty')
         ?.items.map((item) => item.label),
-    ).toEqual(["easy", "medium", "hard", "expert"]);
+    ).toEqual(['easy', 'medium', 'hard', 'expert']);
   });
 
-  it("preserves Piano Roll vocal tools and playback control", () => {
+  it('preserves Piano Roll vocal tools and playback control', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "VOCALS";
+    track.name = 'VOCALS';
     const sessionEditing = createStandaloneEditing(midi);
     const editingSession = sessionEditing.createSession(
-      { trackKey: "vocals", trackIndex: 0, difficulty: Difficulty.Expert },
-      "piano-roll",
+      { trackKey: 'vocals', trackIndex: 0, difficulty: Difficulty.Expert },
+      'piano-roll',
     );
     const mode = editingSession.mode;
     const session = {
-      id: "viewport-1",
-      view: "piano-roll" as const,
-      trackKey: "vocals",
-      instrument: "VOCALS",
+      id: 'viewport-1',
+      view: 'piano-roll' as const,
+      trackKey: 'vocals',
+      instrument: 'VOCALS',
       difficulty: 3,
       camera: { tick: 0 },
       tools: {},
     };
     const context: ToolbarContextState = {
-      activeView: "piano-roll",
-      trackType: "VOCALS",
+      activeView: 'piano-roll',
+      trackType: 'VOCALS',
       sessionId: session.id,
       playbackTick: 0,
       canHostView: () => true,
@@ -122,10 +124,10 @@ describe("mode-driven toolbar rendering", () => {
       lockCursor: true,
       vocalPitchFeedbackEnabled: false,
     };
-    container = document.createElement("div");
+    container = document.createElement('div');
     root = createRoot(container);
     const vocalGroup = createModeToolbarGroups(editingSession).find(
-      (group) => group.id === "vocal-tools",
+      (group) => group.id === 'vocal-tools',
     )!;
 
     act(() => {
@@ -139,14 +141,14 @@ describe("mode-driven toolbar rendering", () => {
     });
 
     expect(
-      Array.from(container.querySelectorAll("button")).map((button) =>
-        button.getAttribute("aria-label"),
+      Array.from(container.querySelectorAll('button')).map((button) =>
+        button.getAttribute('aria-label'),
       ),
     ).toEqual([
-      "Vocal Phrase phrase",
-      "Power Window phrase",
-      "Stage Power phrase",
-      "Vocal pitch feedback",
+      'Vocal Phrase phrase',
+      'Power Window phrase',
+      'Stage Power phrase',
+      'Vocal pitch feedback',
     ]);
   });
 });

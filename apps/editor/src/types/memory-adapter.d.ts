@@ -1,4 +1,4 @@
-declare module "native-file-system-adapter/src/adapters/memory.js" {
+declare module 'native-file-system-adapter/src/adapters/memory.js' {
   const adapter: (...args: unknown[]) => unknown;
   export default adapter;
 }

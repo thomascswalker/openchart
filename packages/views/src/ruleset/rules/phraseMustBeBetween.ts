@@ -1,14 +1,14 @@
 import {
-  compact,
-  violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context";
-import { phraseSpans } from "../phrases";
+  compact,
+  violation,
+} from '../context';
+import { phraseSpans } from '../phrases';
 
 /** A phrase must sit after one instance of `between` and before the next. */
 export const checkPhraseMustBeBetween: RuleCheck<
-  ConstraintOf<"phraseMustBeBetween">
+  ConstraintOf<'phraseMustBeBetween'>
 > = (ctx, c) => {
   const subjects = phraseSpans(ctx, new Set([c.phrase])).sort(
     (a, b) => a.tick - b.tick,

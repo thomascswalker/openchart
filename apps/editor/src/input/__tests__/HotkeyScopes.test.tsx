@@ -1,7 +1,9 @@
-import { act, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { HotkeysProvider, useHotkeys } from "../lib";
+import { type ReactNode, act } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { HotkeysProvider, useHotkeys } from '../lib';
 
 /**
  * Phase 0 spike: documents the library behaviour the input design relies on.
@@ -23,7 +25,7 @@ function Register({
 const roots: Array<{ root: Root; container: HTMLElement }> = [];
 
 function mount(element: ReactNode): void {
-  const container = document.createElement("div");
+  const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   act(() => root.render(element));
@@ -33,10 +35,10 @@ function mount(element: ReactNode): void {
 function press(key: string, init: KeyboardEventInit = {}): void {
   act(() => {
     document.dispatchEvent(
-      new KeyboardEvent("keydown", { key, bubbles: true, ...init }),
+      new KeyboardEvent('keydown', { key, bubbles: true, ...init }),
     );
     document.dispatchEvent(
-      new KeyboardEvent("keyup", { key, bubbles: true, ...init }),
+      new KeyboardEvent('keyup', { key, bubbles: true, ...init }),
     );
   });
 }
@@ -48,8 +50,8 @@ afterEach(() => {
   }
 });
 
-describe("hotkey scopes", () => {
-  it("lets a nested scope override global for the same key", () => {
+describe('hotkey scopes', () => {
+  it('lets a nested scope override global for the same key', () => {
     const global = vi.fn();
     const highway = vi.fn();
     mount(
@@ -60,12 +62,12 @@ describe("hotkey scopes", () => {
         </HotkeysProvider>
       </HotkeysProvider>,
     );
-    press("q");
+    press('q');
     expect(highway).toHaveBeenCalledTimes(1);
     expect(global).not.toHaveBeenCalled();
   });
 
-  it("falls through to global for keys the view scope does not bind", () => {
+  it('falls through to global for keys the view scope does not bind', () => {
     const global = vi.fn();
     const highway = vi.fn();
     mount(
@@ -76,12 +78,12 @@ describe("hotkey scopes", () => {
         </HotkeysProvider>
       </HotkeysProvider>,
     );
-    press("m");
+    press('m');
     expect(global).toHaveBeenCalledTimes(1);
     expect(highway).not.toHaveBeenCalled();
   });
 
-  it("restores global when the view scope is disabled", () => {
+  it('restores global when the view scope is disabled', () => {
     const global = vi.fn();
     const highway = vi.fn();
     mount(
@@ -92,15 +94,15 @@ describe("hotkey scopes", () => {
         </HotkeysProvider>
       </HotkeysProvider>,
     );
-    press("q");
+    press('q');
     expect(global).toHaveBeenCalledTimes(1);
     expect(highway).not.toHaveBeenCalled();
   });
 
-  it("fires once per press when requireReset is set", () => {
+  it('fires once per press when requireReset is set', () => {
     const callback = vi.fn();
     function Once() {
-      useHotkeys([{ hotkey: "M" as never, callback }], {
+      useHotkeys([{ hotkey: 'M' as never, callback }], {
         requireReset: true,
       } as never);
       return null;
@@ -109,8 +111,8 @@ describe("hotkey scopes", () => {
     act(() => {
       for (let i = 0; i < 3; i++) {
         document.dispatchEvent(
-          new KeyboardEvent("keydown", {
-            key: "m",
+          new KeyboardEvent('keydown', {
+            key: 'm',
             bubbles: true,
             repeat: i > 0,
           }),

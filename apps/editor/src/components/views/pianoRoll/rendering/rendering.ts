@@ -1,14 +1,15 @@
-import { Vector2 } from "three";
-import * as THREE from "three";
-import { BlackPitchClasses, HeaderHeight, KeyboardWidth } from "../constants";
-import type { CoordinateSystem } from "../coordinates";
-import { HeaderController } from "../controllers/header";
-import { NoteDataStore } from "../noteData";
-import { NoteGeometryCache, screenRectOf } from "./geometry";
-import type { PianoRollNoteKind } from "../profile";
-import type { PianoRollContext } from "../types";
-import type { TimeSignatureEvent } from "@openchart/midi";
-import { EditingModeId } from "@openchart/views";
+import type { TimeSignatureEvent } from '@openchart/midi';
+import { EditingModeId } from '@openchart/views';
+import { Vector2 } from 'three';
+import * as THREE from 'three';
+
+import { BlackPitchClasses, HeaderHeight, KeyboardWidth } from '../constants';
+import { HeaderController } from '../controllers/header';
+import type { CoordinateSystem } from '../coordinates';
+import { NoteDataStore } from '../noteData';
+import type { PianoRollNoteKind } from '../profile';
+import type { PianoRollContext } from '../types';
+import { NoteGeometryCache, screenRectOf } from './geometry';
 
 const RenderOrder = {
   CanvasBackground: 0,
@@ -43,9 +44,9 @@ const kindStyles: Record<
   pitched: { color: noteColor, opacity: 1 },
   pitchless: { color: 0x9b7fd4, opacity: 1 },
   percussion: { color: 0xe58e3a, opacity: 1 },
-  "phrase:vocal": { color: 0x4fc1a6, opacity: 0.55 },
-  "phrase:power-window": { color: 0xf2c94c, opacity: 0.55 },
-  "phrase:stagepower": { color: 0x7fd3ff, opacity: 0.55 },
+  'phrase:vocal': { color: 0x4fc1a6, opacity: 0.55 },
+  'phrase:power-window': { color: 0xf2c94c, opacity: 0.55 },
+  'phrase:stagepower': { color: 0x7fd3ff, opacity: 0.55 },
   unknown: { color: 0x777777, opacity: 1 },
 };
 
@@ -366,7 +367,7 @@ export class PianoRollRenderer {
         RenderOrder.Note,
         isSelected ? Math.max(style.opacity, 0.75) : style.opacity,
       );
-      if (kind === "phrase:vocal") {
+      if (kind === 'phrase:vocal') {
         // Vocal phrases also shade the grid so phrase boundaries are visible
         // while placing notes.
         const left = Math.max(keyboardWidth, screenRect.min.x);

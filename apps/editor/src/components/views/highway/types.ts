@@ -1,7 +1,7 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
-import type { EntityId } from "@openchart/views";
+import type { MidiChannelEvent, MidiNote } from '@openchart/midi';
+import type { EntityId } from '@openchart/views';
 
-export type HighwayTool = "select" | "place" | "remove";
+export type HighwayTool = 'select' | 'place' | 'remove';
 
 /** A phrase id from the track's ruleset (e.g. `stagePower`, `solo`). */
 export type HighwayPhraseKind = string;
@@ -11,7 +11,7 @@ export type HighwayMode = HighwayTool | HighwayPhraseKind;
 export type HighwayNotePlacementType = string;
 
 export function isHighwayTool(value: unknown): value is HighwayTool {
-  return value === "select" || value === "place" || value === "remove";
+  return value === 'select' || value === 'place' || value === 'remove';
 }
 
 export interface HighwaySelectionRange {
@@ -34,14 +34,14 @@ export interface HighwayPhraseDragState {
   pointerTick: number;
   initialStartTick: number;
   initialEndTick: number;
-  operation: "create" | "move" | "resize-start" | "resize-end";
+  operation: 'create' | 'move' | 'resize-start' | 'resize-end';
   id: EntityId | null;
   moved: boolean;
 }
 
 export interface HighwayPhraseHoverState {
   id: EntityId | null;
-  operation: HighwayPhraseDragState["operation"] | null;
+  operation: HighwayPhraseDragState['operation'] | null;
   placementTick: number | null;
 }
 

@@ -6,21 +6,20 @@
 //   node apps/desktop/scripts/generate-latest-json.mjs \
 //     --version 0.1.42 --tag build-<sha> --repo owner/name \
 //     --assets release-assets --out release-assets/latest.json
-
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 
 function parseArgs(argv) {
   const args = {};
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
-    if (!key?.startsWith("--") || value === undefined) {
-      throw new Error(`Invalid arguments near "${key ?? ""}".`);
+    if (!key?.startsWith('--') || value === undefined) {
+      throw new Error(`Invalid arguments near "${key ?? ''}".`);
     }
     args[key.slice(2)] = value;
   }
-  for (const required of ["version", "tag", "repo", "assets", "out"]) {
+  for (const required of ['version', 'tag', 'repo', 'assets', 'out']) {
     if (!args[required]) throw new Error(`Missing --${required}.`);
   }
   return args;
@@ -37,7 +36,7 @@ function findSingle(files, predicate, description) {
   const matches = files.filter((file) => predicate(basename(file)));
   if (matches.length !== 1) {
     throw new Error(
-      `Expected exactly one ${description}, found ${matches.length}: ${matches.join(", ") || "none"}`,
+      `Expected exactly one ${description}, found ${matches.length}: ${matches.join(', ') || 'none'}`,
     );
   }
   return matches[0];
@@ -48,7 +47,7 @@ function platformEntry(files, bundle, repo, tag) {
   if (!files.includes(signaturePath)) {
     throw new Error(`Missing signature for ${basename(bundle)}.`);
   }
-  const signature = readFileSync(signaturePath, "utf8").trim();
+  const signature = readFileSync(signaturePath, 'utf8').trim();
   if (!signature) throw new Error(`Empty signature: ${signaturePath}`);
   return {
     signature,
@@ -62,18 +61,18 @@ try {
 
   const appImage = findSingle(
     files,
-    (name) => name.endsWith(".AppImage"),
-    "AppImage bundle",
+    (name) => name.endsWith('.AppImage'),
+    'AppImage bundle',
   );
   const nsis = findSingle(
     files,
-    (name) => name.endsWith("-setup.exe"),
-    "NSIS installer",
+    (name) => name.endsWith('-setup.exe'),
+    'NSIS installer',
   );
   const msi = findSingle(
     files,
-    (name) => name.endsWith(".msi"),
-    "MSI installer",
+    (name) => name.endsWith('.msi'),
+    'MSI installer',
   );
 
   const linux = platformEntry(files, appImage, args.repo, args.tag);
@@ -85,11 +84,11 @@ try {
     notes: `OpenChart Desktop ${args.tag}`,
     pub_date: new Date().toISOString(),
     platforms: {
-      "linux-x86_64": linux,
-      "linux-x86_64-appimage": linux,
-      "windows-x86_64": windowsNsis,
-      "windows-x86_64-nsis": windowsNsis,
-      "windows-x86_64-msi": windowsMsi,
+      'linux-x86_64': linux,
+      'linux-x86_64-appimage': linux,
+      'windows-x86_64': windowsNsis,
+      'windows-x86_64-nsis': windowsNsis,
+      'windows-x86_64-msi': windowsMsi,
     },
   };
 

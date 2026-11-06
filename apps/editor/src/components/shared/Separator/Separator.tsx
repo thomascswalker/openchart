@@ -1,22 +1,23 @@
-import type { CSSProperties, HTMLAttributes } from "react";
+import type { CSSProperties, HTMLAttributes } from 'react';
+
 import {
+  type ColorProps,
+  type FlexProps,
+  type LayoutProps,
+  type SizeProps,
+  type SpaceProps,
   color,
   compose,
   flex,
-  space,
-  size,
   layout,
-  type ColorProps,
-  type FlexProps,
-  type SpaceProps,
-  type SizeProps,
-  type LayoutProps,
+  size,
+  space,
   type styleFn,
-} from "styled-system";
+} from 'styled-system';
 
 const DEFAULT_THICKNESS = 2;
 
-export type Orientation = "horizontal" | "vertical";
+export type Orientation = 'horizontal' | 'vertical';
 
 const getSystemStyles: styleFn = compose(space, color, flex, size, layout);
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);
@@ -29,22 +30,22 @@ type SystemProps = ColorProps &
 
 export interface SeparatorProps
   extends
-    Omit<HTMLAttributes<HTMLDivElement>, keyof SystemProps | "role">,
+    Omit<HTMLAttributes<HTMLDivElement>, keyof SystemProps | 'role'>,
     SystemProps {
   orientation?: Orientation;
   thickness?: number;
 }
 
 const Separator = ({
-  orientation = "horizontal",
+  orientation = 'horizontal',
   thickness = DEFAULT_THICKNESS,
   className,
   style: customStyle,
   ...props
 }: SeparatorProps) => {
-  const isVertical = orientation === "vertical";
-  const width = isVertical ? `${thickness}px` : "100%";
-  const height = isVertical ? "100%" : `${thickness}px`;
+  const isVertical = orientation === 'vertical';
+  const width = isVertical ? `${thickness}px` : '100%';
+  const height = isVertical ? '100%' : `${thickness}px`;
 
   const systemStyles = getSystemStyles(props);
   const htmlProps = Object.fromEntries(
@@ -54,14 +55,14 @@ const Separator = ({
   );
 
   const separatorStyle: CSSProperties = {
-    backgroundColor: "var(--border-color-primary)",
+    backgroundColor: 'var(--border-color-primary)',
     width,
     height,
     minWidth: width,
     minHeight: height,
     maxWidth: width,
     maxHeight: height,
-    alignSelf: "center",
+    alignSelf: 'center',
     ...systemStyles,
     ...customStyle,
   };
@@ -79,14 +80,14 @@ const Separator = ({
 export const VerticalSeparator = ({
   thickness = DEFAULT_THICKNESS,
   ...props
-}: Omit<SeparatorProps, "orientation">) => {
+}: Omit<SeparatorProps, 'orientation'>) => {
   return <Separator orientation="vertical" thickness={thickness} {...props} />;
 };
 
 export const HorizontalSeparator = ({
   thickness = DEFAULT_THICKNESS,
   ...props
-}: Omit<SeparatorProps, "orientation">) => {
+}: Omit<SeparatorProps, 'orientation'>) => {
   return (
     <Separator orientation="horizontal" thickness={thickness} {...props} />
   );

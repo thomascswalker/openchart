@@ -1,5 +1,5 @@
-import type { TrackDescriptor } from "../ruleset/compile";
-import type { EntityId } from "./entity";
+import type { TrackDescriptor } from '../ruleset/compile';
+import type { EntityId } from './entity';
 
 /** Read-only snapshot of a MIDI note exposed to modes and projections. */
 export interface NoteSnapshot {
@@ -12,7 +12,7 @@ export interface NoteSnapshot {
 }
 
 /** Read-only document surface available to pure editing modes. */
-export interface ChartDocumentReader {
+export interface DocumentReader {
   getPpqn(): number;
   getTrackDescriptor(trackIndex: number): TrackDescriptor | null;
   findTrackIndex(trackKey: string): number | null;

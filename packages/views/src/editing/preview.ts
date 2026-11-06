@@ -1,8 +1,8 @@
-import { EditCommandType, type GeneralCommand } from "./commands";
-import type { EntityId } from "./entity";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader";
-import type { RuleViolation } from "../ruleset/index";
-import type { Rejection } from "./result";
+import type { RuleViolation } from '../ruleset/index';
+import { EditCommandType, type GeneralCommand } from './commands';
+import type { EntityId } from './entity';
+import type { DocumentReader, NoteSnapshot } from './reader';
+import type { Rejection } from './result';
 
 /** Volatile note projection produced without changing MIDI or history. */
 export interface PreviewState {
@@ -17,7 +17,7 @@ export interface PreviewState {
 /** Computes the visible note overlay for raw commands without mutating reader. */
 export function computePreview(
   commands: readonly GeneralCommand[],
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
 ): PreviewState {
   const updated = new Map<EntityId, NoteSnapshot>();
   const added = new Map<EntityId, NoteSnapshot>();
@@ -67,7 +67,7 @@ export function computePreview(
                 spec.velocity < 1 ||
                 spec.velocity > 127))
           ) {
-            reject(command, "invalid-note", "Added note fields are invalid");
+            reject(command, 'invalid-note', 'Added note fields are invalid');
             continue;
           }
           const id = `pending:${nextPendingId++}` as EntityId;
@@ -87,7 +87,7 @@ export function computePreview(
           if (!note) {
             reject(
               command,
-              "missing-note",
+              'missing-note',
               `Note '${patch.id}' does not exist`,
             );
             continue;
@@ -108,7 +108,7 @@ export function computePreview(
           ) {
             reject(
               command,
-              "invalid-note",
+              'invalid-note',
               `Note '${patch.id}' fields are invalid`,
             );
             continue;
@@ -120,14 +120,14 @@ export function computePreview(
         for (const id of command.targetIds) {
           const note = current(id);
           if (!note) {
-            reject(command, "missing-note", `Note '${id}' does not exist`);
+            reject(command, 'missing-note', `Note '${id}' does not exist`);
             continue;
           }
           if (
             !Number.isSafeInteger(command.tickDelta) ||
             !Number.isSafeInteger(command.pitchDelta)
           ) {
-            reject(command, "invalid-delta", "Move deltas must be integers");
+            reject(command, 'invalid-delta', 'Move deltas must be integers');
             continue;
           }
           const next = {
@@ -138,8 +138,8 @@ export function computePreview(
           if (!Number.isSafeInteger(next.tick + next.duration)) {
             reject(
               command,
-              "invalid-note-range",
-              "Moved note end tick is too large",
+              'invalid-note-range',
+              'Moved note end tick is too large',
             );
             continue;
           }
@@ -150,14 +150,14 @@ export function computePreview(
         for (const id of command.targetIds) {
           const note = current(id);
           if (!note) {
-            reject(command, "missing-note", `Note '${id}' does not exist`);
+            reject(command, 'missing-note', `Note '${id}' does not exist`);
             continue;
           }
           if (!Number.isSafeInteger(command.durationDelta)) {
             reject(
               command,
-              "invalid-delta",
-              "Duration delta must be an integer",
+              'invalid-delta',
+              'Duration delta must be an integer',
             );
             continue;
           }
@@ -168,8 +168,8 @@ export function computePreview(
           ) {
             reject(
               command,
-              "invalid-note-range",
-              "Resized note end tick is too large",
+              'invalid-note-range',
+              'Resized note end tick is too large',
             );
             continue;
           }

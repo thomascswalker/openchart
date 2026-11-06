@@ -1,7 +1,8 @@
-import { useRef } from "react";
-import { runAction } from "../../../platform/actions/execute";
-import styles from "./Timeline.module.css";
-import { useTimelineBounds } from "./useTimelineBounds";
+import { useRef } from 'react';
+
+import { runAction } from '../../../platform/actions/execute';
+import styles from './Timeline.module.css';
+import { useTimelineBounds } from './useTimelineBounds';
 
 interface TimelineViewportProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -60,7 +61,7 @@ const TimelineViewport = ({
     draggingRef.current = true;
 
     if (isPlaying) {
-      runAction("playback.pause");
+      runAction('playback.pause');
     }
 
     queueScrubToClientX(event.clientX);
@@ -88,12 +89,12 @@ const TimelineViewport = ({
   return (
     <div
       ref={containerRef}
-      className={styles["track"]}
+      className={styles['track']}
       data-testid="viewport-timeline"
     >
       <canvas
         ref={canvasRef}
-        className={styles["canvas"]}
+        className={styles['canvas']}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

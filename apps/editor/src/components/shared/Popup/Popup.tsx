@@ -7,16 +7,17 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-} from "react";
-import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { Button, Heading, HorizontalSeparator } from "..";
-import styles from "./popup.module.css";
+} from 'react';
+import type { CSSProperties, MouseEventHandler, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+
+import { Button, Heading, HorizontalSeparator } from '..';
+import styles from './popup.module.css';
 
 interface PopupProps {
   trigger: ReactNode;
   title: string;
-  width?: CSSProperties["width"];
+  width?: CSSProperties['width'];
   onOpen?: () => void;
   onClose?: () => void;
   children: ReactNode;
@@ -24,21 +25,21 @@ interface PopupProps {
 
 interface PopupTriggerProps {
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  "aria-haspopup"?: React.AriaAttributes["aria-haspopup"];
-  "aria-expanded"?: boolean;
-  "aria-controls"?: string;
-  "data-popup-trigger"?: string;
+  'aria-haspopup'?: React.AriaAttributes['aria-haspopup'];
+  'aria-expanded'?: boolean;
+  'aria-controls'?: string;
+  'data-popup-trigger'?: string;
 }
 
 interface PopupPosition {
   top: number;
   left: number;
   arrowX: number;
-  placement: "top" | "bottom";
+  placement: 'top' | 'bottom';
   maxHeight: number;
 }
 
-type PopupCSSProperties = CSSProperties & { "--popup-arrow-x": string };
+type PopupCSSProperties = CSSProperties & { '--popup-arrow-x': string };
 
 const VIEWPORT_GUTTER = 8;
 const POPUP_GAP = 6;
@@ -86,11 +87,11 @@ const Popup = ({
       const fitsAbove = initialPopupRect.height <= spaceAbove;
       const placement =
         fitsBelow || (!fitsAbove && spaceBelow >= spaceAbove)
-          ? "bottom"
-          : "top";
+          ? 'bottom'
+          : 'top';
       const maxHeight = Math.max(
         0,
-        placement === "bottom" ? spaceBelow : spaceAbove,
+        placement === 'bottom' ? spaceBelow : spaceAbove,
       );
 
       popupElement.style.maxHeight = `${maxHeight}px`;
@@ -101,7 +102,7 @@ const Popup = ({
         window.innerWidth - popupRect.width - VIEWPORT_GUTTER,
       );
       const top = clamp(
-        placement === "bottom"
+        placement === 'bottom'
           ? triggerRect.bottom + POPUP_GAP
           : triggerRect.top - popupRect.height - POPUP_GAP,
         VIEWPORT_GUTTER,
@@ -117,22 +118,22 @@ const Popup = ({
     };
 
     updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    window.visualViewport?.addEventListener("resize", updatePosition);
-    window.visualViewport?.addEventListener("scroll", updatePosition);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    window.visualViewport?.addEventListener('resize', updatePosition);
+    window.visualViewport?.addEventListener('scroll', updatePosition);
     const resizeObserver =
-      typeof ResizeObserver === "undefined"
+      typeof ResizeObserver === 'undefined'
         ? null
         : new ResizeObserver(updatePosition);
     resizeObserver?.observe(triggerElement);
     resizeObserver?.observe(popupElement);
 
     return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-      window.visualViewport?.removeEventListener("resize", updatePosition);
-      window.visualViewport?.removeEventListener("scroll", updatePosition);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      window.visualViewport?.removeEventListener('resize', updatePosition);
+      window.visualViewport?.removeEventListener('scroll', updatePosition);
       resizeObserver?.disconnect();
     };
   }, [getTriggerElement, open]);
@@ -157,18 +158,18 @@ const Popup = ({
     };
 
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape") return;
+      if (event.key !== 'Escape') return;
       event.preventDefault();
       setOpen(false);
       onClose?.();
       getTriggerElement()?.focus();
     };
 
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [getTriggerElement, open]);
 
@@ -178,7 +179,7 @@ const Popup = ({
         left: position.left,
         maxHeight: position.maxHeight,
         width,
-        "--popup-arrow-x": `${position.arrowX}px`,
+        '--popup-arrow-x': `${position.arrowX}px`,
       }
     : undefined;
   const handleTriggerClick: MouseEventHandler<HTMLButtonElement> = (event) => {
@@ -192,10 +193,10 @@ const Popup = ({
   };
   const triggerElement = isValidElement<PopupTriggerProps>(trigger) ? (
     cloneElement(trigger, {
-      "aria-haspopup": "dialog",
-      "aria-expanded": open,
-      "aria-controls": open ? id : undefined,
-      "data-popup-trigger": id,
+      'aria-haspopup': 'dialog',
+      'aria-expanded': open,
+      'aria-controls': open ? id : undefined,
+      'data-popup-trigger': id,
       onClick: handleTriggerClick,
     })
   ) : (
@@ -220,15 +221,15 @@ const Popup = ({
             id={id}
             ref={popupRef}
             className={styles.popup}
-            data-placement={position?.placement ?? "bottom"}
+            data-placement={position?.placement ?? 'bottom'}
             role="dialog"
             style={popupStyle}
           >
             <div
               style={{
-                padding: "6px",
-                paddingLeft: "12px",
-                backgroundColor: "var(--primary)",
+                padding: '6px',
+                paddingLeft: '12px',
+                backgroundColor: 'var(--primary)',
               }}
             >
               <Heading level={5}>{title}</Heading>

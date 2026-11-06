@@ -7,11 +7,11 @@ and the associated types.
 ## Create a mixer and control playback
 
 ```ts
-import { Mixer } from "@openchart/audio";
+import { Mixer } from '@openchart/audio';
 
 const mixer = new Mixer();
-mixer.addTrack("backing", "audio/backing.ogg");
-mixer.addTrack("drums", "audio/drums.ogg");
+mixer.addTrack('backing', 'audio/backing.ogg');
+mixer.addTrack('drums', 'audio/drums.ogg');
 
 mixer.masterVolume = 0.8;
 mixer.play();
@@ -36,19 +36,19 @@ volume setting.
 `Track` is also exported as a named type and class:
 
 ```ts
-import { Mixer, type Track } from "@openchart/audio";
+import { Mixer, type Track } from '@openchart/audio';
 ```
 
 ```ts
-const backing = mixer.getTrack("backing");
+const backing = mixer.getTrack('backing');
 if (backing) {
   backing.volume = 0.6;
   backing.toggleMute();
   backing.toggleMute();
 }
 
-mixer.toggleMute(mixer.getTrack("drums")!);
-mixer.toggleSolo(mixer.getTrack("backing")!); // Mutes every other track.
+mixer.toggleMute(mixer.getTrack('drums')!);
+mixer.toggleSolo(mixer.getTrack('backing')!); // Mutes every other track.
 ```
 
 Use `listTracks()` to retrieve the track IDs. `removeTrack(id)` disposes the
@@ -62,13 +62,13 @@ mixer operations and forwarded track events, which is useful for keeping UI
 state in sync.
 
 ```ts
-mixer.onLoaded = () => console.log("Audio loaded");
-mixer.onPlay = () => console.log("Playback started");
-mixer.onPause = () => console.log("Playback paused");
-mixer.onStop = () => console.log("Playback stopped");
-mixer.onEnded = () => console.log("Playback ended");
+mixer.onLoaded = () => console.log('Audio loaded');
+mixer.onPlay = () => console.log('Playback started');
+mixer.onPause = () => console.log('Playback paused');
+mixer.onStop = () => console.log('Playback stopped');
+mixer.onEnded = () => console.log('Playback ended');
 mixer.onChange = () => {
-  console.log("Time:", mixer.currentTime);
+  console.log('Time:', mixer.currentTime);
 };
 ```
 

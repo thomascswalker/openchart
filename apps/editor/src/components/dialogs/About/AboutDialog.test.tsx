@@ -1,18 +1,20 @@
-import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
-import { runAction } from "../../../platform/actions/execute";
-import { useEditor } from "../../../hooks/useEditorState";
-import Platform from "../../../platform";
-import { EditorStateService } from "../../../platform/services/editor/state";
-import { Runtime } from "../../editor/Runtime";
-import { AboutDialog } from "./AboutDialog";
+import { act } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
+
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { useEditor } from '../../../hooks/useEditorState';
+import Platform from '../../../platform';
+import { runAction } from '../../../platform/actions/execute';
+import { EditorStateService } from '../../../platform/services/editor/state';
+import { Runtime } from '../../editor/Runtime';
+import { AboutDialog } from './AboutDialog';
 
 function AboutTestShell() {
   const { aboutVisible } = useEditor();
   return (
     <>
-      <button type="button" onClick={() => runAction("dialog.open-about")}>
+      <button type="button" onClick={() => runAction('dialog.open-about')}>
         Open about
       </button>
       {aboutVisible ? <AboutDialog /> : null}
@@ -21,7 +23,7 @@ function AboutTestShell() {
 }
 
 function renderAbout(): { container: HTMLDivElement; root: Root } {
-  const container = document.createElement("div");
+  const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   act(() =>
@@ -34,18 +36,18 @@ function renderAbout(): { container: HTMLDivElement; root: Root } {
   return { container, root };
 }
 
-describe("AboutDialog", () => {
+describe('AboutDialog', () => {
   afterEach(() => {
     act(() =>
       Platform.services
-        .get<EditorStateService>("editor.state")
+        .get<EditorStateService>('editor.state')
         .setAboutVisible(false),
     );
   });
 
-  it("shows the repository name and closes from the Close button", () => {
+  it('shows the repository name and closes from the Close button', () => {
     const { container, root } = renderAbout();
-    act(() => container.querySelector<HTMLButtonElement>("button")!.click());
+    act(() => container.querySelector<HTMLButtonElement>('button')!.click());
 
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
@@ -55,13 +57,13 @@ describe("AboutDialog", () => {
     container.remove();
   });
 
-  it("closes on Escape", () => {
+  it('closes on Escape', () => {
     const { container, root } = renderAbout();
-    act(() => container.querySelector<HTMLButtonElement>("button")!.click());
+    act(() => container.querySelector<HTMLButtonElement>('button')!.click());
     const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!;
     act(() => {
       dialog.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       );
     });
     expect(container.querySelector('[role="dialog"]')).toBeNull();

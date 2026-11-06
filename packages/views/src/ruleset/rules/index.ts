@@ -1,13 +1,13 @@
-import { checkForbiddenPitches } from "./forbiddenPitches";
-import { checkMonophonic } from "./monophonic";
-import { checkMutuallyExclusiveAtTick } from "./mutuallyExclusiveAtTick";
-import { checkNoOverlappingSameLane } from "./noOverlappingSameLane";
-import { checkNoOverlappingSamePitch } from "./noOverlappingSamePitch";
-import { checkNoSustains } from "./noSustains";
-import { checkNotesWithinPhrase } from "./notesWithinPhrase";
-import { checkPhraseMustBeBetween } from "./phraseMustBeBetween";
-import { checkPhrasesMayNotOverlap } from "./phrasesMayNotOverlap";
-import { checkPhraseSelfOverlap } from "./implicit";
+import { checkForbiddenPitches } from './forbiddenPitches';
+import { checkPhraseSelfOverlap } from './implicit';
+import { checkMonophonic } from './monophonic';
+import { checkMutuallyExclusiveAtTick } from './mutuallyExclusiveAtTick';
+import { checkNoOverlappingSameLane } from './noOverlappingSameLane';
+import { checkNoOverlappingSamePitch } from './noOverlappingSamePitch';
+import { checkNoSustains } from './noSustains';
+import { checkNotesWithinPhrase } from './notesWithinPhrase';
+import { checkPhraseMustBeBetween } from './phraseMustBeBetween';
+import { checkPhrasesMayNotOverlap } from './phrasesMayNotOverlap';
 
 const Rules = {
   forbiddenPitches: checkForbiddenPitches,

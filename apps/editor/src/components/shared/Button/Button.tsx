@@ -1,21 +1,23 @@
 import {
-  useState,
   type AriaAttributes,
   type MouseEvent,
   type ReactNode,
   type Ref,
-} from "react";
-import classNames from "classnames";
-import { space, color, layout, compose, border } from "styled-system";
+  useState,
+} from 'react';
+
+import classNames from 'classnames';
+import { border, color, compose, layout, space } from 'styled-system';
 import type {
-  SpaceProps,
+  BorderProps,
   ColorProps,
   LayoutProps,
-  BorderProps,
+  SpaceProps,
   styleFn,
-} from "styled-system";
-import styles from "./button.module.css";
-import { RemoveIcon } from "..";
+} from 'styled-system';
+
+import { RemoveIcon } from '..';
+import styles from './button.module.css';
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 
@@ -23,23 +25,23 @@ type OnClickHandler = MouseEvent<HTMLButtonElement>;
 
 type AriaProps = Pick<
   AriaAttributes,
-  | "aria-label"
-  | "aria-controls"
-  | "aria-expanded"
-  | "aria-haspopup"
-  | "aria-selected"
+  | 'aria-label'
+  | 'aria-controls'
+  | 'aria-expanded'
+  | 'aria-haspopup'
+  | 'aria-selected'
 >;
 
 type HTMLButtonProps = Pick<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
-  | "type"
-  | "disabled"
-  | "onClick"
-  | "onKeyDown"
-  | "onPointerDown"
-  | "id"
-  | "role"
-  | "className"
+  | 'type'
+  | 'disabled'
+  | 'onClick'
+  | 'onKeyDown'
+  | 'onPointerDown'
+  | 'id'
+  | 'role'
+  | 'className'
 >;
 type StyleProps = SpaceProps & ColorProps & LayoutProps & BorderProps;
 
@@ -57,8 +59,8 @@ interface ButtonProps
   title?: string;
   tabIndex?: number;
   ref?: Ref<HTMLButtonElement>;
-  "data-command"?: string;
-  "data-popup-trigger"?: string;
+  'data-command'?: string;
+  'data-popup-trigger'?: string;
   children?: ReactNode;
 }
 
@@ -78,14 +80,14 @@ const Button = ({
   onPointerDown = undefined,
   onClick = undefined,
   onChecked = undefined,
-  type = "button",
-  "aria-label": ariaLabel,
-  "aria-controls": ariaControls,
-  "aria-expanded": ariaExpanded,
-  "aria-haspopup": ariaHasPopup,
-  "aria-selected": ariaSelected,
-  "data-command": dataCommand,
-  "data-popup-trigger": dataPopupTrigger,
+  type = 'button',
+  'aria-label': ariaLabel,
+  'aria-controls': ariaControls,
+  'aria-expanded': ariaExpanded,
+  'aria-haspopup': ariaHasPopup,
+  'aria-selected': ariaSelected,
+  'data-command': dataCommand,
+  'data-popup-trigger': dataPopupTrigger,
   className,
   children,
   ...props
@@ -118,14 +120,14 @@ const Button = ({
 
   /* Joined class name */
   const buttonClassName: string = classNames(
-    styles["ui-button"],
-    isCheckable && isChecked && styles["ui-button-checked"],
+    styles['ui-button'],
+    isCheckable && isChecked && styles['ui-button-checked'],
     className,
     icon &&
       (children
-        ? styles["ui-button-icon-label"]
-        : styles["ui-button-icon-only"]),
-    flat && styles["ui-button-flat"],
+        ? styles['ui-button-icon-label']
+        : styles['ui-button-icon-only']),
+    flat && styles['ui-button-flat'],
   );
 
   return (
@@ -157,7 +159,7 @@ const Button = ({
   );
 };
 
-interface CloseButtonProps extends Omit<ButtonProps, "size"> {
+interface CloseButtonProps extends Omit<ButtonProps, 'size'> {
   size?: number;
 }
 
@@ -172,7 +174,7 @@ const CloseButton = ({
       onClick={onClick}
       flat={true}
       icon={<RemoveIcon size={size} disabled={disabled} />}
-      className={styles["ui-button-close"]}
+      className={styles['ui-button-close']}
       disabled={disabled}
       {...props}
     />

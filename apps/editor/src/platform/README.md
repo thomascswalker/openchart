@@ -26,6 +26,14 @@ a single instance of the service is constructed and stored in a mapping of the
 service ID to the instance object. The service ID is just the name of the module
 the service is defined in.
 
+Each service declares an `IFooService` interface and a matching parameter
+decorator, `const IFooService = createDecorator<IFooService>("foo")`, where the
+string is the service ID. Dependencies are requested by decorating constructor
+parameters (`@IFooService private readonly fooService: IFooService`); the
+constructor body only calls `super()`. Once a service and its dependencies are
+constructed, the registry calls its `init()` method for any remaining setup that
+requires those dependencies.
+
 ### Consuming a service
 
 Services can be consumed in a number of ways:
@@ -37,7 +45,7 @@ allows any action to use any service as necessary all within the `run` function.
 ```ts
 class MyAction extends Action {
   run(accessor: ServicesAccessor): void {
-    const service = accessor.get<TService>("service-id");
+    const service = accessor.get<TService>('service-id');
   }
 }
 ```
@@ -47,7 +55,7 @@ hook.
 
 ```tsx
 const MyComponent = () => {
-  const service = useService<TService>("service-id");
+  const service = useService<TService>('service-id');
 };
 ```
 
@@ -68,7 +76,7 @@ receives a `ServicesAccessor` and any arguments defined for the action.
 ```ts
 class MyAction extends Action {
   run(accessor: ServicesAccessor): void {
-    const service = accessor.get<TService>("service-id");
+    const service = accessor.get<TService>('service-id');
   }
 }
 ```
@@ -80,7 +88,7 @@ generic parameter to the `Action` class.
 type MyOtherActionArgs = [string, number];
 class MyOtherAction extends Action<MyOtherActionArgs> {
   run(accessor: ServicesAccessor, arg1: string, arg2: number): void {
-    const service = accessor.get<TService>("service-id");
+    const service = accessor.get<TService>('service-id');
   }
 }
 ```
@@ -91,7 +99,7 @@ Actions can be either synchronous or asynchronous. Synchronous actions return
 ```ts
 class MyAsyncAction extends Action {
   async run(accessor: ServicesAccessor): Promise<void> {
-    const service = accessor.get<TService>("service-id");
+    const service = accessor.get<TService>('service-id');
   }
 }
 ```
@@ -103,14 +111,14 @@ for asynchronous actions, it should be a `Promise` of the desired type.
 ```ts
 class MyReturningAction extends Action {
   run(accessor: ServicesAccessor): number {
-    const service = accessor.get<TService>("service-id");
+    const service = accessor.get<TService>('service-id');
     return 42;
   }
 }
 
 class MyAsyncReturningAction extends Action {
   async run(accessor: ServicesAccessor): Promise<number> {
-    const service = accessor.get<TService>("service-id");
+    const service = accessor.get<TService>('service-id');
     return 42;
   }
 }
@@ -125,7 +133,7 @@ class MyConditionalAction extends Action {
   constructor() {
     // The requisite condition for this action to execute is that the context
     // group "category" must have the "can-execute" flag set to true for this action to run.
-    super({ condition: { "category.can-execute": true } });
+    super({ condition: { 'category.can-execute': true } });
   }
 }
 ```
@@ -137,8 +145,8 @@ them to execute. Context flags are managed by the `ContextStore`, which provides
 methods to set, get, update, and evaluate context values.
 
 ```ts
-import { Platform } from "@src/platform";
+import { Platform } from '@src/platform';
 
-Platform.context.set("category.can-execute", true);
-Platform.context.get("category.can-execute");
+Platform.context.set('category.can-execute', true);
+Platform.context.get('category.can-execute');
 ```

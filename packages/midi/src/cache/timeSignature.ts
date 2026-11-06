@@ -1,5 +1,5 @@
-import { MetaType, MidiEvent, TimeSignatureEvent } from "../types";
-import { IEventCacheList } from "./cache";
+import { MetaType, MidiEvent, TimeSignatureEvent } from '../types';
+import { IEventCacheList } from './cache';
 
 export class TimeSignatureEventCache extends IEventCacheList<
   TimeSignatureEvent,
@@ -10,7 +10,7 @@ export class TimeSignatureEventCache extends IEventCacheList<
     events.forEach((event) => {
       if (
         event.status !== 0xff ||
-        !("type" in event) ||
+        !('type' in event) ||
         event.type !== MetaType.TimeSignature
       ) {
         return;

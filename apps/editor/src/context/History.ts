@@ -1,4 +1,4 @@
-import type { Midi } from "@openchart/midi";
+import type { Midi } from '@openchart/midi';
 
 export const DEFAULT_HISTORY_CAPACITY = 256;
 export const MIN_HISTORY_CAPACITY = 1;
@@ -74,7 +74,7 @@ export class History {
   }
 
   /**
-   * Abandons every open transaction and returns a copy of the document as it
+   * Abandons every open transaction and returns a copy of the project as it
    * was before the outermost one began, without adding history. Returns null
    * when no transaction is open.
    */

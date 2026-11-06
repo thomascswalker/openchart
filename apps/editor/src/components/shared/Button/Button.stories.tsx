@@ -1,12 +1,14 @@
-import { useState } from "react";
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, CloseButton, CursorIcon } from "..";
+import { useState } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Button, CloseButton, CursorIcon } from '..';
 
 const meta = {
-  title: "Shared/Buttons",
+  title: 'Shared/Buttons',
   component: Button,
   args: {
-    children: "Button",
+    children: 'Button',
   },
 } satisfies Meta<typeof Button>;
 
@@ -18,9 +20,9 @@ const ButtonVariantsView = () => {
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "start",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'start',
         gap: 32,
       }}
     >
@@ -45,11 +47,11 @@ const ButtonVariantsView = () => {
 export const Default: Story = {};
 
 export const Checked: Story = {
-  args: { checkable: true, defaultChecked: true, children: "Checked" },
+  args: { checkable: true, defaultChecked: true, children: 'Checked' },
 };
 
 export const Disabled: Story = {
-  args: { disabled: true, children: "Disabled" },
+  args: { disabled: true, children: 'Disabled' },
 };
 
 export const Variants: Story = {

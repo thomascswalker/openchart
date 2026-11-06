@@ -8,8 +8,9 @@
  * hard-coded pitch tables.
  */
 import {
-  DefaultRuleset,
+  type Condition,
   type Constraint,
+  DefaultRuleset,
   type DifficultyName,
   type EventNoteDef,
   type LaneDef,
@@ -19,22 +20,21 @@ import {
   type PhraseDef,
   type PitchRange,
   type Ruleset,
+  type SettingsSource,
   type Severity,
   type TextEventDef,
   type TrackDefinition,
   type TrackKind,
   type VocalNoteClass,
-  type Condition,
-  type SettingsSource,
-} from "./config";
-import { expandPitchSet } from "./semantics";
-import { Difficulty } from "./difficulty";
+} from './config';
+import { Difficulty } from './difficulty';
+import { expandPitchSet } from './semantics';
 
 const DIFFICULTY_NAMES: Record<Difficulty, DifficultyName> = {
-  [Difficulty.Easy]: "easy",
-  [Difficulty.Medium]: "medium",
-  [Difficulty.Hard]: "hard",
-  [Difficulty.Expert]: "expert",
+  [Difficulty.Easy]: 'easy',
+  [Difficulty.Medium]: 'medium',
+  [Difficulty.Hard]: 'hard',
+  [Difficulty.Expert]: 'expert',
 };
 const NAME_TO_DIFFICULTY: Record<DifficultyName, Difficulty> = {
   easy: Difficulty.Easy,
@@ -57,19 +57,19 @@ export function toTrackKey(name: string): string {
   return name
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /** Lane shapes that occupy a visual column (as opposed to a full-width bar). */
-const COLUMN_SHAPES = new Set(["gem", "pad"]);
-const BAR_SHAPES = new Set(["kickBar", "openBar"]);
+const COLUMN_SHAPES = new Set(['gem', 'pad']);
+const BAR_SHAPES = new Set(['kickBar', 'openBar']);
 
 export interface CompiledLane extends LaneDef {
   /** Visual column among `columns`; `-1` for bar lanes. */
   column: number;
   isBar: boolean;
-  shape: NonNullable<LaneDef["shape"]>;
+  shape: NonNullable<LaneDef['shape']>;
 }
 
 export interface NoteRule {
@@ -87,9 +87,9 @@ export interface NoteRule {
 export interface MarkerRule {
   pitch: number;
   effect: MarkerEffect;
-  scope: "sameTick" | "span";
+  scope: 'sameTick' | 'span';
   includesEndTick: boolean | undefined;
-  status: "stable" | "provisional" | "todo";
+  status: 'stable' | 'provisional' | 'todo';
 }
 
 export interface ChartRules {
@@ -130,7 +130,7 @@ export interface TrackRules {
   /** Constraints that are not `status: "todo"`. */
   constraints: readonly Constraint[];
   mechanics:
-    | NonNullable<Extract<TrackDefinition, { kind: "guitar" }>["mechanics"]>
+    | NonNullable<Extract<TrackDefinition, { kind: 'guitar' }>['mechanics']>
     | undefined;
   textEvents: readonly TextEventDef[];
   reserved: readonly PitchRange[];
@@ -157,7 +157,7 @@ export interface CompiledRuleset {
   byName: ReadonlyMap<string, TrackRules>;
   settingsSources: readonly SettingsSource[];
   /** `"source.key"` → unit of that setting. */
-  settingUnits: ReadonlyMap<string, "ticks" | "seconds" | "none">;
+  settingUnits: ReadonlyMap<string, 'ticks' | 'seconds' | 'none'>;
   /** `"source.key"` → declared default. */
   settingDefaults: ReadonlyMap<string, boolean | number | string>;
   playerOptions: ReadonlySet<string>;
@@ -176,7 +176,7 @@ function compileChartRules(
     Extract<
       TrackDefinition,
       { difficulties: unknown }
-    >["difficulties"][DifficultyName]
+    >['difficulties'][DifficultyName]
   >,
   availableLaneIds: ReadonlySet<string>,
   lanesById: ReadonlyMap<string, LaneDef>,
@@ -195,7 +195,7 @@ function compileChartRules(
       laneAvailable: available,
       laneWhenDisabled: lane?.whenDisabled,
     });
-    const key = `${n.lane}|${n.padType ?? ""}`;
+    const key = `${n.lane}|${n.padType ?? ''}`;
     // Only unconditional definitions are used when writing new notes.
     if (!n.enabledWhen && !byLane.has(key)) byLane.set(key, n.pitch);
     if (!n.enabledWhen && !n.padType && !byLane.has(`${n.lane}|`)) {
@@ -208,9 +208,9 @@ function compileChartRules(
     markers.set(m.pitch, {
       pitch: m.pitch,
       effect: m.effect,
-      scope: m.scope ?? "sameTick",
+      scope: m.scope ?? 'sameTick',
       includesEndTick: m.includesEndTick,
-      status: m.status ?? "stable",
+      status: m.status ?? 'stable',
     });
     if (!byEffect.has(m.effect)) byEffect.set(m.effect, m.pitch);
   }
@@ -222,7 +222,7 @@ function compileChartRules(
     reserved: block.reserved ?? [],
     pitchForLane(laneId, padType) {
       return (
-        byLane.get(`${laneId}|${padType ?? ""}`) ??
+        byLane.get(`${laneId}|${padType ?? ''}`) ??
         (padType === undefined ? undefined : byLane.get(`${laneId}|`))
       );
     },
@@ -231,7 +231,7 @@ function compileChartRules(
 }
 
 function compileTrack(def: TrackDefinition, name: string): TrackRules {
-  const allLanes: readonly LaneDef[] = "lanes" in def ? def.lanes : [];
+  const allLanes: readonly LaneDef[] = 'lanes' in def ? def.lanes : [];
   const lanesById = new Map(allLanes.map((l) => [l.id, l]));
   const available = allLanes.filter((l) => laneAppliesTo(l, name));
   const unavailable = allLanes.filter((l) => !laneAppliesTo(l, name));
@@ -239,7 +239,7 @@ function compileTrack(def: TrackDefinition, name: string): TrackRules {
 
   let columnRank = 0;
   const lanes: CompiledLane[] = sorted.map((l) => {
-    const shape = l.shape ?? "gem";
+    const shape = l.shape ?? 'gem';
     const isBar = BAR_SHAPES.has(shape);
     const isColumn = COLUMN_SHAPES.has(shape) || !isBar;
     return { ...l, shape, isBar, column: isColumn ? columnRank++ : -1 };
@@ -247,7 +247,7 @@ function compileTrack(def: TrackDefinition, name: string): TrackRules {
   const availableIds = new Set(lanes.map((l) => l.id));
 
   const difficulties = new Map<Difficulty, ChartRules>();
-  if ("difficulties" in def) {
+  if ('difficulties' in def) {
     for (const [dName, block] of Object.entries(def.difficulties)) {
       if (!block) continue;
       const d = difficultyFromName(dName as DifficultyName);
@@ -256,8 +256,8 @@ function compileTrack(def: TrackDefinition, name: string): TrackRules {
   }
 
   const kind = def.kind;
-  const visible = kind !== "header";
-  const editable = kind !== "header" && kind !== "global";
+  const visible = kind !== 'header';
+  const editable = kind !== 'header' && kind !== 'global';
 
   return {
     key: toTrackKey(name),
@@ -274,12 +274,12 @@ function compileTrack(def: TrackDefinition, name: string): TrackRules {
     bars: lanes.filter((l) => l.isBar),
     unavailableLanes: unavailable,
     difficulties,
-    phrases: "phrases" in def ? (def.phrases ?? []) : [],
+    phrases: 'phrases' in def ? (def.phrases ?? []) : [],
     eventNotes: def.eventNotes ?? [],
-    noteClasses: "noteClasses" in def ? def.noteClasses : [],
-    modifiers: "modifiers" in def ? (def.modifiers ?? []) : [],
-    constraints: (def.constraints ?? []).filter((c) => c.status !== "todo"),
-    mechanics: def.kind === "guitar" ? def.mechanics : undefined,
+    noteClasses: 'noteClasses' in def ? def.noteClasses : [],
+    modifiers: 'modifiers' in def ? (def.modifiers ?? []) : [],
+    constraints: (def.constraints ?? []).filter((c) => c.status !== 'todo'),
+    mechanics: def.kind === 'guitar' ? def.mechanics : undefined,
     textEvents: def.textEvents ?? [],
     reserved: def.reserved ?? [],
     unknownPitchPolicy: def.unknownPitchPolicy,
@@ -296,11 +296,11 @@ export function compileRuleset(ruleset: Ruleset): CompiledRuleset {
   const byKey = new Map(tracks.map((t) => [t.key, t]));
   const byName = new Map(tracks.map((t) => [t.name, t]));
 
-  const settingUnits = new Map<string, "ticks" | "seconds" | "none">();
+  const settingUnits = new Map<string, 'ticks' | 'seconds' | 'none'>();
   const settingDefaults = new Map<string, boolean | number | string>();
   for (const s of ruleset.settingsSources ?? []) {
     for (const k of s.keys) {
-      settingUnits.set(`${s.id}.${k.name}`, k.unit ?? "none");
+      settingUnits.set(`${s.id}.${k.name}`, k.unit ?? 'none');
       if (k.default !== undefined)
         settingDefaults.set(`${s.id}.${k.name}`, k.default);
     }
@@ -339,15 +339,15 @@ export function createUnmappedTrackRules(
   key: string,
 ): TrackRules {
   const definition: TrackDefinition = {
-    id: "unmapped",
-    kind: "global",
+    id: 'unmapped',
+    kind: 'global',
     trackNames: [name],
   };
   return {
     key,
     name,
-    kind: "global",
-    definitionId: "unmapped",
+    kind: 'global',
+    definitionId: 'unmapped',
     position: undefined,
     required: false,
     visible: true,
@@ -374,7 +374,7 @@ export function createUnmappedTrackRules(
 
 /** True for rules produced by {@link createUnmappedTrackRules}. */
 export function isUnmappedTrackRules(rules: TrackRules): boolean {
-  return rules.definitionId === "unmapped";
+  return rules.definitionId === 'unmapped';
 }
 
 export const DefaultCompiledRuleset: CompiledRuleset =

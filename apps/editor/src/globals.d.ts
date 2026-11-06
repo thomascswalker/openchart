@@ -1,7 +1,7 @@
 import type {
-  FileSystemFileHandle as AdapterFileHandle,
   FileSystemDirectoryHandle as AdapterDirectoryHandle,
-} from "native-file-system-adapter";
+  FileSystemFileHandle as AdapterFileHandle,
+} from 'native-file-system-adapter';
 
 declare global {
   // Merge the adapter's members into the DOM handle types so the global names
@@ -31,7 +31,7 @@ declare global {
 
   interface DirectoryPickerOptions {
     id?: string;
-    mode?: "read" | "readwrite";
+    mode?: 'read' | 'readwrite';
     startIn?: unknown;
   }
 

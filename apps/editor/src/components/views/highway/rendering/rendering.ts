@@ -1,19 +1,19 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
+import type { MidiChannelEvent, MidiNote } from '@openchart/midi';
 import {
+  type ChartView,
+  type EditingSession,
   extractSections,
   getSustainCutOptions,
   getSustainCutTargets,
   resolveThreshold,
   thresholdContext,
-  type ChartView,
-  type EditingSession,
-} from "@openchart/views";
-import * as THREE from "three";
-import { ResourceRegistry } from "./assets";
+} from '@openchart/views';
+import * as THREE from 'three';
+
 import {
-  farBoardZ,
   fallbackBarRgb,
   fallbackLaneRgbColors,
+  farBoardZ,
   instanceSizeBeatLines,
   instanceSizePhraseSpans,
   maxLaneColumns,
@@ -24,45 +24,46 @@ import {
   phrasePlacementIndicatorThickness,
   phraseStartBoundaryIndicatorColor,
   strikeLineZ,
-} from "../constants";
-import type { HighwayContext } from "../context";
-import { HighwayCoordinateSystem } from "../coordinates";
-import { noteWorldPosition, sustainWorldTransform } from "./geometry";
-import { chartHasSustains, HighwayHitTester } from "../hitTesting";
+} from '../constants';
+import type { HighwayContext } from '../context';
+import { HighwayCoordinateSystem } from '../coordinates';
+import type { HighwayPhraseEditingController } from '../editing/phraseEditing';
+import { HighwayHitTester, chartHasSustains } from '../hitTesting';
 import {
+  type IndexedNote,
   getHighwayNoteIndex,
   laneVisualFor,
-  type IndexedNote,
-} from "../noteIndex";
+} from '../noteIndex';
+import type { HighwayMarqueeDragState } from '../types';
+import { ResourceRegistry } from './assets';
+import { noteWorldPosition, sustainWorldTransform } from './geometry';
 import {
-  SHAPE_GHOST_GEOMETRY_IDS,
   HIGHWAY_GEOMETRY_CATALOG,
   HIGHWAY_RENDER_ORDER,
   type NoteShapeKind,
-} from "./geometryCatalog";
+  SHAPE_GHOST_GEOMETRY_IDS,
+} from './geometryCatalog';
+import { NoteInstanceBatch, type NoteInstanceData } from './instanceBatch';
 import {
-  createMaterialSet,
-  rgbFromHex,
-  setMaterialState,
-  type MaterialSet,
-  type Rgb,
-} from "./materials";
-import {
+  type InstancedNote,
+  type PrimitiveMaterialRole,
   createFretAssembly,
   createModelInstance,
   primitiveRolesForModel,
-  type InstancedNote,
-  type PrimitiveMaterialRole,
-} from "./instances";
-import { SustainTailBatch, type SustainInstanceData } from "./tailBatch";
-import { NoteInstanceBatch, type NoteInstanceData } from "./instanceBatch";
+} from './instances';
 import {
+  type MaterialSet,
+  type Rgb,
+  createMaterialSet,
+  rgbFromHex,
+  setMaterialState,
+} from './materials';
+import {
+  type GuitarNoteStyle,
   getFiveFretNoteStyles,
   getTapSysExRanges,
-  type GuitarNoteStyle,
-} from "./noteStyles";
-import type { HighwayPhraseEditingController } from "../editing/phraseEditing";
-import type { HighwayMarqueeDragState } from "../types";
+} from './noteStyles';
+import { type SustainInstanceData, SustainTailBatch } from './tailBatch';
 
 interface InstancedBeatLine {
   mesh: THREE.Mesh;
@@ -156,9 +157,9 @@ function fiveFretNoteStyles(
   if (!midiTrack) return new Map();
   const chartRules = chart.getChartRules();
   const mechanics = chart.getRules().mechanics;
-  const forceHopoPitch = chartRules.pitchForMarker("forceHopo");
-  const forceStrumPitch = chartRules.pitchForMarker("forceStrum");
-  const tapMarkerPitch = chartRules.pitchForMarker("forceTap");
+  const forceHopoPitch = chartRules.pitchForMarker('forceHopo');
+  const forceStrumPitch = chartRules.pitchForMarker('forceStrum');
+  const tapMarkerPitch = chartRules.pitchForMarker('forceTap');
   const hopo = mechanics?.hopoThreshold;
   // Style only tracks that can have HOPOs or forced notes at all.
   if (
@@ -217,7 +218,7 @@ export class HighwayRenderer {
   private instancedTailBatch: SustainTailBatch | null = null;
   private instancedPreviewTailBatch: SustainTailBatch | null = null;
   private readonly instancedGemBatches: Partial<
-    Record<"note" | NoteShapeKind, NoteInstanceBatch>
+    Record<'note' | NoteShapeKind, NoteInstanceBatch>
   > = {};
   private readonly sustainCutPreviewLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
@@ -305,7 +306,7 @@ export class HighwayRenderer {
     Record<NoteShapeKind, InstancedNote>
   > = {};
   /** Identity of the last palette applied to the board (colours + count). */
-  private fretPaletteKey = "";
+  private fretPaletteKey = '';
   private lastInstancedChart: ChartView | null = null;
   private lastInstancedChartRevision = -1;
   private lastInstancedSelectionRevision = -1;
@@ -429,7 +430,7 @@ export class HighwayRenderer {
     for (const note of hasSustains
       ? visibleNotes.filter(
           (entry) =>
-            entry.kind === "note" && isSustain(entry.end - entry.start),
+            entry.kind === 'note' && isSustain(entry.end - entry.start),
         )
       : []) {
       const tailStart = Math.max(note.start, visibleStart);
@@ -500,7 +501,7 @@ export class HighwayRenderer {
         (entry, index) => this.lastInstancedVisibleEntries[index] !== entry,
       );
     this.scene.userData.noteBatchDirty = noteBatchDirty;
-    const noteData: Record<"note" | NoteShapeKind, NoteInstanceData[]> = {
+    const noteData: Record<'note' | NoteShapeKind, NoteInstanceData[]> = {
       note: [],
       bar: [],
       cymbal: [],
@@ -513,24 +514,24 @@ export class HighwayRenderer {
         this.context.getPpqn(),
       );
       for (const note of visibleNotes) {
-        if (note.kind === "phrase") continue;
+        if (note.kind === 'phrase') continue;
         const instanceKind =
-          note.kind === "bar" || note.kind === "cymbal" || note.kind === "pad"
+          note.kind === 'bar' || note.kind === 'cymbal' || note.kind === 'pad'
             ? note.kind
             : undefined;
-        const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? "note"];
+        const placement = HIGHWAY_GEOMETRY_CATALOG[instanceKind ?? 'note'];
         const position = noteWorldPosition(
-          note.kind === "bar" ? 0 : this.coordinates.getLaneX(note.lane),
+          note.kind === 'bar' ? 0 : this.coordinates.getLaneX(note.lane),
           this.coordinates.getNoteZ(note.start),
           placement.transform,
           placement.placementOffset,
         );
-        noteData[instanceKind ?? "note"].push({
+        noteData[instanceKind ?? 'note'].push({
           x: position.x,
           y: position.y,
           z: position.z - this.coordinates.getNoteZ(note.start),
           color:
-            note.kind === "bar"
+            note.kind === 'bar'
               ? kickRgb
               : (laneColors[note.lane] ?? fallbackBarRgb),
           selected: selection.isSelected(note.id),
@@ -543,7 +544,7 @@ export class HighwayRenderer {
         });
       }
     }
-    for (const kind of ["note", "bar", "cymbal", "pad"] as const) {
+    for (const kind of ['note', 'bar', 'cymbal', 'pad'] as const) {
       const instances = noteData[kind];
       const batch = this.instancedGemBatches[kind];
       if (instances.length > 0) this.ensureInstancedGemBatch(kind);
@@ -613,7 +614,7 @@ export class HighwayRenderer {
   public dispose(): void {
     Object.values(this.instancedGemBatches).forEach((batch) => batch.dispose());
     Object.keys(this.instancedGemBatches).forEach((key) => {
-      delete this.instancedGemBatches[key as "note" | NoteShapeKind];
+      delete this.instancedGemBatches[key as 'note' | NoteShapeKind];
     });
     this.instancedTailBatch?.dispose();
     this.instancedPreviewTailBatch?.dispose();
@@ -678,9 +679,9 @@ export class HighwayRenderer {
       await this.assetRegistry.loadResources();
       if (!this.sceneReady) return;
       this.materials = createMaterialSet(this.assetRegistry);
-      const note = this.assetRegistry.getMesh("roundNote");
-      const fret = this.assetRegistry.getMesh("fret");
-      for (const meshKey of ["roundNote", "kickNote", "cymbalNote"] as const) {
+      const note = this.assetRegistry.getMesh('roundNote');
+      const fret = this.assetRegistry.getMesh('fret');
+      for (const meshKey of ['roundNote', 'kickNote', 'cymbalNote'] as const) {
         const bounds = this.assetRegistry.getMesh(meshKey).bounds;
         if (bounds) this.hitTesting.setModelBounds(meshKey, bounds);
       }
@@ -689,9 +690,9 @@ export class HighwayRenderer {
         note.definition.definition,
       );
       const drumModels = {
-        bar: this.assetRegistry.getMesh("kickNote"),
-        cymbal: this.assetRegistry.getMesh("cymbalNote"),
-        pad: this.assetRegistry.getMesh("roundNote"),
+        bar: this.assetRegistry.getMesh('kickNote'),
+        cymbal: this.assetRegistry.getMesh('cymbalNote'),
+        pad: this.assetRegistry.getMesh('roundNote'),
       };
       const drumPrimitiveRoles: Record<NoteShapeKind, PrimitiveMaterialRole[]> =
         {
@@ -708,14 +709,14 @@ export class HighwayRenderer {
             drumModels.pad.definition.definition,
           ),
         };
-      for (const kind of ["bar", "cymbal", "pad"] as const) {
+      for (const kind of ['bar', 'cymbal', 'pad'] as const) {
         const variants = this.materials.drum[kind];
         const ghostGeometry =
           HIGHWAY_GEOMETRY_CATALOG[SHAPE_GHOST_GEOMETRY_IDS[kind]];
         const ghost = createModelInstance(
           drumModels[kind].value!,
           (primitiveIndex) =>
-            (drumPrimitiveRoles[kind][primitiveIndex] === "tinted"
+            (drumPrimitiveRoles[kind][primitiveIndex] === 'tinted'
               ? variants.noteGhostTinted
               : variants.noteGhostGrayscale
             ).clone(),
@@ -725,12 +726,12 @@ export class HighwayRenderer {
           setMaterialState(mesh, {
             baseColor: fallbackBarRgb,
             emissionColor:
-              drumPrimitiveRoles[kind][primitiveIndex] === "neutral"
+              drumPrimitiveRoles[kind][primitiveIndex] === 'neutral'
                 ? [1, 1, 1]
                 : fallbackBarRgb,
             alpha: 0.35,
             ghost: true,
-            tint: drumPrimitiveRoles[kind][primitiveIndex] === "tinted",
+            tint: drumPrimitiveRoles[kind][primitiveIndex] === 'tinted',
           }),
         );
         this.drumGhostGems[kind] = ghost;
@@ -767,7 +768,7 @@ export class HighwayRenderer {
       this.ghostGem = createModelInstance(
         note.value!,
         (primitiveIndex) =>
-          (noteRoles[primitiveIndex] === "tinted"
+          (noteRoles[primitiveIndex] === 'tinted'
             ? this.materials!.noteGhostTinted
             : this.materials!.noteGhostGrayscale
           ).clone(),
@@ -777,19 +778,19 @@ export class HighwayRenderer {
         setMaterialState(mesh, {
           baseColor: fallbackLaneRgbColors[0]!,
           emissionColor:
-            noteRoles[primitiveIndex] === "neutral"
+            noteRoles[primitiveIndex] === 'neutral'
               ? [1, 1, 1]
               : fallbackLaneRgbColors[0]!,
           alpha: 0.35,
           ghost: true,
-          tint: noteRoles[primitiveIndex] === "tinted",
+          tint: noteRoles[primitiveIndex] === 'tinted',
         }),
       );
       this.scene.add(this.ghostGem.object);
       this.assetsReady = true;
       this.context.requestRender();
     } catch (error) {
-      console.error("Circular highway assets failed to load", error);
+      console.error('Circular highway assets failed to load', error);
     }
   }
 
@@ -878,7 +879,7 @@ export class HighwayRenderer {
     }> = visibleEntries
       .filter(
         (entry) =>
-          entry.kind === "phrase" &&
+          entry.kind === 'phrase' &&
           entry.phraseKind !== null &&
           entry.id !== this.phraseEditing.getDragState()?.id,
       )
@@ -916,7 +917,7 @@ export class HighwayRenderer {
           ? this.selectedPhraseMaterial
           : phrase.id !== null &&
               phrase.id === this.context.getPhraseHoverState()?.id &&
-              this.context.getPhraseHoverState()?.operation === "move"
+              this.context.getPhraseHoverState()?.operation === 'move'
             ? this.hoveredPhraseMaterial
             : this.phraseMaterialFor(chart, phrase.kind);
       mesh.visible = true;
@@ -930,7 +931,7 @@ export class HighwayRenderer {
   /** Stage-power style phrases are gold; every other phrase effect is blue. */
   private phraseMaterialFor(chart: ChartView, phraseId: string) {
     const effect = chart.getPhrases().find((p) => p.id === phraseId)?.effect;
-    return effect === "starPower" || effect === "starPowerActivation"
+    return effect === 'starPower' || effect === 'starPowerActivation'
       ? this.stagepowerMaterial
       : this.soloMaterial;
   }
@@ -942,13 +943,13 @@ export class HighwayRenderer {
       end: number;
       kind: string;
     }>,
-    phraseDrag: ReturnType<HighwayPhraseEditingController["getDragState"]>,
+    phraseDrag: ReturnType<HighwayPhraseEditingController['getDragState']>,
   ): void {
     const hover = this.context.getPhraseHoverState();
     const placementTick =
-      phraseDrag?.operation === "create"
+      phraseDrag?.operation === 'create'
         ? Math.min(phraseDrag.startTick, phraseDrag.endTick)
-        : hover?.operation === "create"
+        : hover?.operation === 'create'
           ? hover.placementTick
           : null;
     const phraseMode = this.context.getPhraseMode();
@@ -968,33 +969,33 @@ export class HighwayRenderer {
     }
 
     const activeBoundary =
-      phraseDrag?.operation === "resize-start" ||
-      phraseDrag?.operation === "resize-end"
+      phraseDrag?.operation === 'resize-start' ||
+      phraseDrag?.operation === 'resize-end'
         ? phraseDrag.operation
-        : hover?.operation === "resize-start" ||
-            hover?.operation === "resize-end"
+        : hover?.operation === 'resize-start' ||
+            hover?.operation === 'resize-end'
           ? hover.operation
           : null;
     const activePhraseId = phraseDrag?.id ?? hover?.id;
     const phrase = phrases.find((item) => item.id === activePhraseId);
     this.phraseStartBoundaryIndicator.visible =
       phraseMode !== null &&
-      activeBoundary === "resize-start" &&
+      activeBoundary === 'resize-start' &&
       phrase !== undefined;
     this.phraseEndBoundaryIndicator.visible =
       phraseMode !== null &&
-      activeBoundary === "resize-end" &&
+      activeBoundary === 'resize-end' &&
       phrase !== undefined;
     if (!phrase || !activeBoundary) return;
 
-    const boundary = activeBoundary === "resize-start" ? "start" : "end";
+    const boundary = activeBoundary === 'resize-start' ? 'start' : 'end';
     const projection = this.hitTesting.getPhraseBoundaryProjection(
       phrase,
       boundary,
     );
     if (!projection) return;
     const indicator =
-      activeBoundary === "resize-start"
+      activeBoundary === 'resize-start'
         ? this.phraseStartBoundaryIndicator
         : this.phraseEndBoundaryIndicator;
     setIndicatorSegment(
@@ -1087,16 +1088,16 @@ export class HighwayRenderer {
     );
     line.renderOrder = 5;
     this.scene.add(line);
-    const canvas = document.createElement("canvas");
+    const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 64;
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
     if (context) {
-      context.fillStyle = "rgba(15, 23, 42, 0.88)";
+      context.fillStyle = 'rgba(15, 23, 42, 0.88)';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = "#f8fafc";
-      context.font = "bold 26px sans-serif";
-      context.textBaseline = "middle";
+      context.fillStyle = '#f8fafc';
+      context.font = 'bold 26px sans-serif';
+      context.textBaseline = 'middle';
       context.fillText(section.name, 14, canvas.height / 2, canvas.width - 28);
     }
     const texture = new THREE.CanvasTexture(canvas);
@@ -1182,8 +1183,8 @@ export class HighwayRenderer {
   private updateBatchDiagnostics(): void {
     const batches = [
       ...Object.entries(this.instancedGemBatches),
-      ["sustain", this.instancedTailBatch],
-      ["sustainPreview", this.instancedPreviewTailBatch],
+      ['sustain', this.instancedTailBatch],
+      ['sustainPreview', this.instancedPreviewTailBatch],
     ] as const;
     const capacities: Record<string, number> = {};
     for (const [key, batch] of batches) {
@@ -1245,7 +1246,7 @@ export class HighwayRenderer {
     if (cutTick === undefined) return this.instancedPreviewTailBatch!.write([]);
     for (const note of cutPreview.values()) {
       const visual = laneVisualFor(chart, note.pitch);
-      if (!visual || visual.kind === "bar") continue;
+      if (!visual || visual.kind === 'bar') continue;
       const lane = visual.lane;
       const start = Math.max(note.start, visibleStart, cutTick);
       const end = Math.min(note.end, visibleEnd);
@@ -1302,17 +1303,17 @@ export class HighwayRenderer {
     );
   }
 
-  private ensureInstancedGemBatch(kind: "note" | NoteShapeKind): void {
+  private ensureInstancedGemBatch(kind: 'note' | NoteShapeKind): void {
     if (this.instancedGemBatches[kind] || !this.materials) return;
     const meshKey =
-      kind === "bar"
-        ? "kickNote"
-        : kind === "cymbal"
-          ? "cymbalNote"
-          : "roundNote";
+      kind === 'bar'
+        ? 'kickNote'
+        : kind === 'cymbal'
+          ? 'cymbalNote'
+          : 'roundNote';
     const model = this.assetRegistry.getMesh(meshKey);
     const materialSet =
-      kind === "note" ? this.materials : this.materials.drum[kind];
+      kind === 'note' ? this.materials : this.materials.drum[kind];
     const placement = HIGHWAY_GEOMETRY_CATALOG[kind];
     this.instancedGemBatches[kind] = new NoteInstanceBatch(
       this.scene,
@@ -1349,7 +1350,7 @@ export class HighwayRenderer {
       .getRows()
       .find(
         (candidate) =>
-          candidate.kind === "lane" && candidate.index === location.lane,
+          candidate.kind === 'lane' && candidate.index === location.lane,
       );
     const pitch = row
       ? projection.pitchForRow(row, session.getToolState())
@@ -1358,21 +1359,21 @@ export class HighwayRenderer {
     if (!visual) return;
 
     const shape: NoteShapeKind | null =
-      visual.kind === "note" ? null : visual.kind;
+      visual.kind === 'note' ? null : visual.kind;
     const ghostGem = shape ? this.drumGhostGems[shape] : this.ghostGem;
     if (!ghostGem) return;
     const placement =
       HIGHWAY_GEOMETRY_CATALOG[
-        shape ? SHAPE_GHOST_GEOMETRY_IDS[shape] : "ghost"
+        shape ? SHAPE_GHOST_GEOMETRY_IDS[shape] : 'ghost'
       ];
     const position = noteWorldPosition(
-      visual.kind === "bar" ? 0 : this.coordinates.getLaneX(location.lane),
+      visual.kind === 'bar' ? 0 : this.coordinates.getLaneX(location.lane),
       this.coordinates.getNoteZ(location.tick),
       placement.transform,
       placement.placementOffset,
     );
     const laneColor =
-      visual.kind === "bar"
+      visual.kind === 'bar'
         ? barColor(chart)
         : (columnColors(chart)[location.lane] ?? fallbackBarRgb);
     ghostGem.meshes.forEach((mesh) =>
@@ -1392,7 +1393,7 @@ export class HighwayRenderer {
       1,
       Math.min(colors.length, maxLaneColumns),
     );
-    const key = colors.map((color) => color.join(",")).join("|");
+    const key = colors.map((color) => color.join(',')).join('|');
     const paletteChanged = this.fretPaletteKey !== key;
     this.fretPaletteKey = key;
     this.laneDividers.forEach((divider, index) => {
@@ -1428,7 +1429,7 @@ export class HighwayRenderer {
     const visual = laneVisualFor(chart, note.pitch);
     const bounds = !visual
       ? null
-      : visual.kind === "bar"
+      : visual.kind === 'bar'
         ? this.hitTesting.getBarScreenBounds(note)
         : this.hitTesting.getGemScreenBounds(note, visual.lane, visual.kind);
     if (!bounds) {

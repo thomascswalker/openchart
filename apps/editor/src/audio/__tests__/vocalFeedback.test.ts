@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { MetaType, type MidiNote } from "@openchart/midi";
+import { MetaType, type MidiNote } from '@openchart/midi';
+import { describe, expect, it } from 'vitest';
+
 import {
-  Soundboard,
-  midiPitchToFrequency,
   type AudioContext,
+  Soundboard,
   type SoundboardConfigurationInput,
-} from "../soundboard";
+  midiPitchToFrequency,
+} from '../soundboard';
 
 class FakeParam {
   public value = 0;
@@ -22,7 +23,7 @@ class FakeParam {
 }
 
 class FakeOscillator {
-  public type: OscillatorType = "sine";
+  public type: OscillatorType = 'sine';
   public frequency = new FakeParam();
   public startTimes: number[] = [];
   /** `null` records an immediate stop() (cancellation). */
@@ -40,7 +41,7 @@ class FakeOscillator {
 function fakeContext(oscillators: FakeOscillator[]): AudioContext {
   return {
     currentTime: 0,
-    state: "running",
+    state: 'running',
     destination: {},
     resume: async () => {},
     close: async () => {},
@@ -59,8 +60,8 @@ function vocal(pitch: number, start: number, end: number): MidiNote {
     velocity: 100,
     start,
     end,
-    noteOn: { data1: pitch } as MidiNote["noteOn"],
-    noteOff: { data1: pitch } as MidiNote["noteOff"],
+    noteOn: { data1: pitch } as MidiNote['noteOn'],
+    noteOff: { data1: pitch } as MidiNote['noteOff'],
   };
 }
 
@@ -97,8 +98,8 @@ function configuration(
     settings: {
       metronomeEnabled: false,
       metronomeVolume: 0.4,
-      metronomeDownbeatSound: "square",
-      metronomeBeatSound: "sine",
+      metronomeDownbeatSound: 'square',
+      metronomeBeatSound: 'sine',
       previewVolume: 0.3,
       previewAttackMs: 5,
       previewReleaseMs: 25,
@@ -109,7 +110,7 @@ function configuration(
     clapEnabled: false,
     highwayActive: false,
     highwayNotes: [],
-    highwayKey: "piano-roll",
+    highwayKey: 'piano-roll',
     vocalFeedbackEnabled: true,
     vocalNotes: [vocal(60, 0, 480), vocal(62, 240, 720), vocal(64, 2000, 2400)],
     ...overrides,
@@ -119,7 +120,7 @@ function configuration(
 /** Lets the context resume and at least one 25 ms scheduler pass run. */
 const tick = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe("vocal pitch feedback", () => {
+describe('vocal pitch feedback', () => {
   it("schedules onsets in the look-ahead window at each note's pitch", async () => {
     const oscillators: FakeOscillator[] = [];
     const engine = new Soundboard(() => fakeContext(oscillators));
@@ -145,7 +146,7 @@ describe("vocal pitch feedback", () => {
     engine.stop();
   });
 
-  it("is monophonic and legato: a new onset ends the previous voice", async () => {
+  it('is monophonic and legato: a new onset ends the previous voice', async () => {
     const oscillators: FakeOscillator[] = [];
     const engine = new Soundboard(() => fakeContext(oscillators));
     engine.configure(configuration());
@@ -164,7 +165,7 @@ describe("vocal pitch feedback", () => {
     engine.stop();
   });
 
-  it("starts a note already sounding at the playhead and cancels on seek", async () => {
+  it('starts a note already sounding at the playhead and cancels on seek', async () => {
     const oscillators: FakeOscillator[] = [];
     const engine = new Soundboard(() => fakeContext(oscillators));
     engine.configure(configuration());
@@ -192,11 +193,11 @@ describe("vocal pitch feedback", () => {
     expect(live).toHaveLength(0);
   });
 
-  it("stays silent and lazy when the toggle is off", async () => {
+  it('stays silent and lazy when the toggle is off', async () => {
     let contexts = 0;
     const engine = new Soundboard(() => {
       contexts++;
-      throw new Error("audio should remain lazy");
+      throw new Error('audio should remain lazy');
     });
     engine.configure(configuration({ vocalFeedbackEnabled: false }));
     engine.start(0);
@@ -206,7 +207,7 @@ describe("vocal pitch feedback", () => {
     expect(contexts).toBe(0);
   });
 
-  it("starts feedback when toggled on mid-playback", async () => {
+  it('starts feedback when toggled on mid-playback', async () => {
     const oscillators: FakeOscillator[] = [];
     const engine = new Soundboard(() => fakeContext(oscillators));
     engine.configure(configuration({ vocalFeedbackEnabled: false }));

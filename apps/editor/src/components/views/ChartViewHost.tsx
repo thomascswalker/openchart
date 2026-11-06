@@ -1,8 +1,8 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from 'react';
 
-import type { ChartViewState } from "./AbstractChartView";
-import type { AnyChartView, ChartViewFactory } from "./ChartViews";
-import type { EngineOptions } from "../../rendering/engine";
+import type { EngineOptions } from '../../rendering/engine';
+import type { ChartViewState } from './AbstractChartView';
+import type { AnyChartView, ChartViewFactory } from './ChartViews';
 
 interface ChartViewHostProps {
   createRenderer: ChartViewFactory;

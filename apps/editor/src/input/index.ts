@@ -1,15 +1,15 @@
-import { defineAppHotkeys } from "./lib.ts";
-import type { Binding } from "./define.ts";
-import { globalBindings } from "./global.ts";
-import { highwayBindings } from "./highway.ts";
-import { pianoRollBindings } from "./pianoroll.ts";
+import type { Binding } from './define.ts';
+import { globalBindings } from './global.ts';
+import { highwayBindings } from './highway.ts';
+import { defineAppHotkeys } from './lib.ts';
+import { pianoRollBindings } from './pianoroll.ts';
 
 export type {
   Binding,
   BindingSpec,
   BindingTarget,
   InputScope,
-} from "./define.ts";
+} from './define.ts';
 export { globalBindings, highwayBindings, pianoRollBindings };
 
 /** Every binding, global first. Order matters for label lookups. */
@@ -50,7 +50,7 @@ export const appHotkeys = defineAppHotkeys(
   >[0],
 );
 
-declare module "@tanstack/react-hotkeys" {
+declare module '@tanstack/react-hotkeys' {
   interface Register {
     appHotkeys: typeof appHotkeys;
   }

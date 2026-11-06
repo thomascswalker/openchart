@@ -36,18 +36,18 @@
   outline-offset: -2px;
 }
 
-.list-view-option[aria-selected="true"] {
+.list-view-option[aria-selected='true'] {
   background: #34383d;
   color: #fff;
 }
 
-.list-view-option[aria-selected="true"]::after {
+.list-view-option[aria-selected='true']::after {
   position: absolute;
   top: 4px;
   bottom: 4px;
   left: 0;
   width: 2px;
   background: var(--blue-30);
-  content: "";
+  content: '';
   pointer-events: none;
 }

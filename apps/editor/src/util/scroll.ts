@@ -1,4 +1,4 @@
-export type ScrollGesture = "mouse-zoom" | "trackpad-pan" | "trackpad-pinch";
+export type ScrollGesture = 'mouse-zoom' | 'trackpad-pan' | 'trackpad-pinch';
 
 export interface WheelInput {
   deltaMode: number;
@@ -10,18 +10,18 @@ export interface WheelInput {
 
 export function getScrollGesture(event: WheelInput): ScrollGesture {
   if (event.deltaMode !== 0) {
-    return "mouse-zoom";
+    return 'mouse-zoom';
   }
 
   const absX = Math.abs(event.deltaX);
   const absY = Math.abs(event.deltaY);
 
   if (event.ctrlKey || event.metaKey) {
-    return "trackpad-pinch";
+    return 'trackpad-pinch';
   }
 
   if (absX > 0 && absY > 0) {
-    return "trackpad-pan";
+    return 'trackpad-pan';
   }
 
   const isStandardMouseStep =
@@ -29,8 +29,8 @@ export function getScrollGesture(event: WheelInput): ScrollGesture {
     (absY === 0 && absX % 20 === 0 && absX >= 60);
 
   if (isStandardMouseStep && absX === 0) {
-    return "mouse-zoom";
+    return 'mouse-zoom';
   }
 
-  return "trackpad-pan";
+  return 'trackpad-pan';
 }

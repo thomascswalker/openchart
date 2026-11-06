@@ -1,41 +1,50 @@
 import {
   MetaType,
-  MidiTrack,
   type Midi,
   type MidiChannelEvent,
+  MidiTrack,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/midi";
+} from '@openchart/midi';
 import {
   DomainCommandType,
   EditingModeId,
+  type EditingSession,
   EntityType,
-  formatNoteId,
-  parseEntityFromId,
+  type PreviewState,
   VocalNoteKind,
   VocalTrackView,
-  type EditingSession,
-  type PreviewState,
-} from "@openchart/views";
-import { Box2, Vector2 } from "three";
-import * as THREE from "three";
-import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
-import { type Engine, type EngineOptions } from "../../../rendering/engine";
-import { CoordinateSystem } from "./coordinates";
-import { HeaderController, type HeaderLane } from "./controllers/header";
-import { PianoRollInputController } from "./input/input";
-import { PianoRollLabels } from "./controllers/labels";
-import { NoteDataStore, toPianoRollNote } from "./noteData";
-import { NoteEditingController } from "./controllers/noteEditing";
-import { NoteGeometryCache } from "./rendering/geometry";
-import { PointerContext } from "./input/pointer";
+  formatNoteId,
+  parseEntityFromId,
+} from '@openchart/views';
+import { cloneDeep } from 'es-toolkit';
+import { Box2, Vector2 } from 'three';
+import * as THREE from 'three';
+
+import { type Engine, type EngineOptions } from '../../../rendering/engine';
+import { AbstractChartView, type ChartViewState } from '../AbstractChartView';
+import {
+  DefaultCamera,
+  DefaultTempoEvents,
+  DefaultTimeSignatureEvents,
+  EmptyMarks,
+  KeyboardWidth,
+} from './constants';
+import { HeaderController, type HeaderLane } from './controllers/header';
+import { PianoRollLabels } from './controllers/labels';
+import { NoteEditingController } from './controllers/noteEditing';
+import { CoordinateSystem } from './coordinates';
+import { PianoRollInputController } from './input/input';
+import { PointerContext } from './input/pointer';
+import { NoteDataStore, toPianoRollNote } from './noteData';
 import {
   GENERIC_PROFILE,
-  profileFromSession,
   type PianoRollProfile,
-} from "./profile";
-import { PianoRollRenderer } from "./rendering/rendering";
-import { SelectionContext } from "./selection";
+  profileFromSession,
+} from './profile';
+import { NoteGeometryCache } from './rendering/geometry';
+import { PianoRollRenderer } from './rendering/rendering';
+import { SelectionContext } from './selection';
 import type {
   PianoRollCamera,
   PianoRollCameraState,
@@ -43,15 +52,7 @@ import type {
   PianoRollNote,
   PianoRollVocalMarks,
   PianoRollVocalPlacement,
-} from "./types";
-import {
-  DefaultCamera,
-  DefaultTempoEvents,
-  DefaultTimeSignatureEvents,
-  EmptyMarks,
-  KeyboardWidth,
-} from "./constants";
-import { cloneDeep } from "es-toolkit";
+} from './types';
 
 class PianoRollView extends AbstractChartView<PianoRollNote> {
   public constructor(engineOptions?: EngineOptions) {
@@ -71,7 +72,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
   private profile: PianoRollProfile = GENERIC_PROFILE;
   /** Vertical camera remembered per profile across instrument switches. */
   private readonly profileCameras = new Map<
-    PianoRollProfile["id"],
+    PianoRollProfile['id'],
     { y: number; v: number }
   >();
   private pendingRangeFit = false;
@@ -129,7 +130,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
     getTimeSignatureEvents: () => this.#timeSignatureEvents,
     getTextEvents: () => {
       const events = this.getSelectedTrack()?.getTextEvents() ?? [];
-      return this.profile.header.textLane === "lyrics"
+      return this.profile.header.textLane === 'lyrics'
         ? events.filter((event) => event.type === MetaType.Lyric)
         : events;
     },
@@ -267,7 +268,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
       !isPianoRollCameraState(state) ||
       (state.profile !== this.profile.id &&
         !(
-          state.profile === "generic" &&
+          state.profile === 'generic' &&
           this.profile.id === EditingModeId.MidiRaw
         ))
     ) {
@@ -323,7 +324,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
     this.labels.mount(host);
     this.lyricPromptInput = this.header.getEditInput();
     this.lyricPromptInput?.addEventListener(
-      "keydown",
+      'keydown',
       this.handleEmptyLyricEnter,
       true,
     );
@@ -346,7 +347,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
   public override destroy(): void {
     this.input.detach();
     this.lyricPromptInput?.removeEventListener(
-      "keydown",
+      'keydown',
       this.handleEmptyLyricEnter,
       true,
     );
@@ -501,7 +502,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
   }
 
   /** Discriminant for `AnyChartView`. */
-  public readonly kind = "piano-roll" as const;
+  public readonly kind = 'piano-roll' as const;
 
   public focusSelection(): void {
     this.input.focusSelection();
@@ -601,7 +602,7 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
     const missingLyric = new Set<MidiChannelEvent>();
     const missingTicks: number[] = [];
     for (const issue of VocalTrackView.validateTrack(track, layout)) {
-      if (issue.type !== "missing-lyric") continue;
+      if (issue.type !== 'missing-lyric') continue;
       missingLyric.add(issue.note.noteOn);
       missingTicks.push(issue.tick);
     }
@@ -668,9 +669,9 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
 
   private readonly handleEmptyLyricEnter = (event: KeyboardEvent): void => {
     if (
-      event.key !== "Enter" ||
+      event.key !== 'Enter' ||
       !this.header.isPrompting ||
-      this.lyricPromptInput?.value.trim() !== ""
+      this.lyricPromptInput?.value.trim() !== ''
     ) {
       return;
     }
@@ -681,20 +682,20 @@ class PianoRollView extends AbstractChartView<PianoRollNote> {
 }
 
 function isPianoRollCameraState(value: unknown): value is PianoRollCameraState {
-  if (typeof value !== "object" || value === null) return false;
+  if (typeof value !== 'object' || value === null) return false;
   const state = value as Record<string, unknown>;
   return (
     (state.profile === EditingModeId.MidiRaw ||
-      state.profile === "generic" ||
+      state.profile === 'generic' ||
       state.profile === EditingModeId.MidiVocals) &&
     [state.y, state.v, state.h].every(
-      (item) => typeof item === "number" && Number.isFinite(item),
+      (item) => typeof item === 'number' && Number.isFinite(item),
     )
   );
 }
 
 export { PianoRollView };
-export type { PianoRollNote } from "./types";
-export { GENERIC_PROFILE } from "./profile";
-export type { PianoRollProfile } from "./profile";
-export type { PianoRollVocalPlacement } from "./types";
+export type { PianoRollNote } from './types';
+export { GENERIC_PROFILE } from './profile';
+export type { PianoRollProfile } from './profile';
+export type { PianoRollVocalPlacement } from './types';

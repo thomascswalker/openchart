@@ -1,6 +1,7 @@
-import { MidiTrack } from "@openchart/midi";
-import type { TrackRules } from "../ruleset/compile";
-import type { SongView } from "./song";
+import { MidiTrack } from '@openchart/midi';
+
+import type { TrackRules } from '../ruleset/compile';
+import type { SongView } from './song';
 
 /** Base view of one MIDI track, driven by its compiled {@link TrackRules}. */
 export class TrackView {

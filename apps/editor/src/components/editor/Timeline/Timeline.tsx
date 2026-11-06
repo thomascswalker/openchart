@@ -1,17 +1,17 @@
-import { useDocument } from "../../../hooks/useDocument";
-import type { AnyChartView } from "../../views/ChartViews";
-import TimelineControls from "./TimelineControls";
-import styles from "./Timeline.module.css";
-import TimelineViewport from "./TimelineViewport";
-import { useTimelineRender } from "./useTimelineRender";
-import { useTimelineSync } from "./useTimelineSync";
+import { useProject } from '../../../hooks/useProject';
+import type { AnyChartView } from '../../views/ChartViews';
+import styles from './Timeline.module.css';
+import TimelineControls from './TimelineControls';
+import TimelineViewport from './TimelineViewport';
+import { useTimelineRender } from './useTimelineRender';
+import { useTimelineSync } from './useTimelineSync';
 
 interface TimelineProps {
   chartViews: AnyChartView[];
 }
 
 export function Timeline({ chartViews }: TimelineProps) {
-  const { data: midi } = useDocument();
+  const { data: midi } = useProject();
   const { isPlaying, playbackTick, timelineTicks, syncPlayhead, position } =
     useTimelineSync({ midi: midi ?? null, chartViews });
   const { canvasRef, containerRef, scrubFrameRef } = useTimelineRender({
@@ -21,7 +21,7 @@ export function Timeline({ chartViews }: TimelineProps) {
   });
 
   return (
-    <div className={styles["timeline"]}>
+    <div className={styles['timeline']}>
       <TimelineControls position={position} isPlaying={isPlaying} />
       <TimelineViewport
         canvasRef={canvasRef}

@@ -15,20 +15,19 @@
  * Runtime-free of Zod on purpose (type imports only) so it can run on any
  * structurally valid ruleset.
  */
-
 import {
-  PitchSet,
-  PitchRange,
-  Ruleset,
-  TrackDefinition,
-  Threshold,
   Condition,
-} from "./config";
+  PitchRange,
+  PitchSet,
+  Ruleset,
+  Threshold,
+  TrackDefinition,
+} from './config';
 
 export interface RulesetIssue {
   path: (string | number)[];
   /** Semantic rule number (1-8), or `"schema"` / `"parse"` for structural. */
-  rule: number | "schema" | "parse";
+  rule: number | 'schema' | 'parse';
   message: string;
 }
 
@@ -55,7 +54,7 @@ interface Claim {
   shares?: readonly string[];
 }
 
-const trackKeyOf = (t: TrackDefinition, i: number): Path => ["tracks", i];
+const trackKeyOf = (t: TrackDefinition, i: number): Path => ['tracks', i];
 
 export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
   const issues: RulesetIssue[] = [];
@@ -69,7 +68,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       const prev = seenNames.get(name);
       if (prev !== undefined) {
         add(
-          ["tracks", ti, "trackNames", ni],
+          ['tracks', ti, 'trackNames', ni],
           5,
           `Track name "${name}" is already used by tracks[${prev}]`,
         );
@@ -83,7 +82,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
     const prev = seenTrackIds.get(t.id);
     if (prev !== undefined) {
       add(
-        ["tracks", ti, "id"],
+        ['tracks', ti, 'id'],
         4,
         `Track id "${t.id}" duplicates tracks[${prev}]`,
       );
@@ -107,12 +106,12 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
 
   // Detection --------------------------------------------------------------
   for (const [key, list] of [
-    ["requiredTracks", r.detection?.requiredTracks],
-    ["forbiddenTracks", r.detection?.forbiddenTracks],
+    ['requiredTracks', r.detection?.requiredTracks],
+    ['forbiddenTracks', r.detection?.forbiddenTracks],
   ] as const) {
     list?.forEach((name, i) => {
       if (!allTrackNames.has(name)) {
-        add(["detection", key, i], 3, `Unknown track name "${name}"`);
+        add(['detection', key, i], 3, `Unknown track name "${name}"`);
       }
     });
   }
@@ -129,7 +128,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
 
   const checkThreshold = (path: Path, t: Threshold | undefined) => {
     t?.overrides?.forEach((o, i) =>
-      checkSettingRef([...path, "overrides", i], o.source, o.key),
+      checkSettingRef([...path, 'overrides', i], o.source, o.key),
     );
   };
 
@@ -160,7 +159,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       items?.forEach((item, i) => {
         if (seen.has(item.id)) {
           add(
-            [...tp, kind, i, "id"],
+            [...tp, kind, i, 'id'],
             4,
             `Duplicate ${kind} id "${item.id}" in track "${t.id}"`,
           );
@@ -170,18 +169,18 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       return seen;
     };
 
-    const lanes = "lanes" in t ? t.lanes : undefined;
-    const phrases = "phrases" in t ? t.phrases : undefined;
-    const modifiers = "modifiers" in t ? t.modifiers : undefined;
-    const noteClasses = "noteClasses" in t ? t.noteClasses : undefined;
+    const lanes = 'lanes' in t ? t.lanes : undefined;
+    const phrases = 'phrases' in t ? t.phrases : undefined;
+    const modifiers = 'modifiers' in t ? t.modifiers : undefined;
+    const noteClasses = 'noteClasses' in t ? t.noteClasses : undefined;
 
-    const laneIds = uniq("lanes", lanes);
-    const phraseIds = uniq("phrases", phrases);
-    const modifierIds = uniq("modifiers", modifiers);
-    const noteClassIds = uniq("noteClasses", noteClasses);
-    const eventNoteIds = uniq("eventNotes", t.eventNotes);
-    const textEventIds = uniq("textEvents", t.textEvents);
-    uniq("constraints", t.constraints);
+    const laneIds = uniq('lanes', lanes);
+    const phraseIds = uniq('phrases', phrases);
+    const modifierIds = uniq('modifiers', modifiers);
+    const noteClassIds = uniq('noteClasses', noteClasses);
+    const eventNoteIds = uniq('eventNotes', t.eventNotes);
+    const textEventIds = uniq('textEvents', t.textEvents);
+    uniq('constraints', t.constraints);
 
     // ---- Claims (rules 1 & 2) ---------------------------------------------
     const claims: Claim[] = [];
@@ -201,45 +200,45 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
 
     const reservedRanges: { range: PitchRange; path: Path }[] = [];
     t.reserved?.forEach((range, i) => {
-      checkRange([...tp, "reserved", i], range);
-      reservedRanges.push({ range, path: [...tp, "reserved", i] });
+      checkRange([...tp, 'reserved', i], range);
+      reservedRanges.push({ range, path: [...tp, 'reserved', i] });
     });
 
-    if ("difficulties" in t) {
+    if ('difficulties' in t) {
       for (const [diff, block] of Object.entries(t.difficulties)) {
         if (!block) continue;
-        const dp: Path = [...tp, "difficulties", diff];
+        const dp: Path = [...tp, 'difficulties', diff];
         block.notes.forEach((n, i) => {
-          claim(n.pitch, `${diff} note`, [...dp, "notes", i, "pitch"]);
+          claim(n.pitch, `${diff} note`, [...dp, 'notes', i, 'pitch']);
           if (!laneIds.has(n.lane)) {
-            add([...dp, "notes", i, "lane"], 3, `Unknown lane "${n.lane}"`);
+            add([...dp, 'notes', i, 'lane'], 3, `Unknown lane "${n.lane}"`);
           }
           if (n.padType) {
             const lane = lanes?.find((l) => l.id === n.lane);
             if (lane?.padTypes && !lane.padTypes.includes(n.padType)) {
               add(
-                [...dp, "notes", i, "padType"],
+                [...dp, 'notes', i, 'padType'],
                 3,
                 `Lane "${n.lane}" does not support pad type "${n.padType}"`,
               );
             }
           }
           if (n.enabledWhen)
-            checkCondition([...dp, "notes", i, "enabledWhen"], n.enabledWhen);
+            checkCondition([...dp, 'notes', i, 'enabledWhen'], n.enabledWhen);
         });
         block.markers?.forEach((m, i) =>
-          claim(m.pitch, `${diff} marker`, [...dp, "markers", i, "pitch"]),
+          claim(m.pitch, `${diff} marker`, [...dp, 'markers', i, 'pitch']),
         );
         block.reserved?.forEach((range, i) => {
-          checkRange([...dp, "reserved", i], range);
-          reservedRanges.push({ range, path: [...dp, "reserved", i] });
+          checkRange([...dp, 'reserved', i], range);
+          reservedRanges.push({ range, path: [...dp, 'reserved', i] });
         });
       }
     }
 
     phrases?.forEach((ph, i) => {
       ph.pitches.forEach((p, pi) =>
-        claim(p, `phrase "${ph.id}"`, [...tp, "phrases", i, "pitches", pi], {
+        claim(p, `phrase "${ph.id}"`, [...tp, 'phrases', i, 'pitches', pi], {
           id: ph.id,
           shares: ph.sharesPitchesWith ?? [],
         }),
@@ -247,55 +246,55 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       ph.sharesPitchesWith?.forEach((other, oi) => {
         if (!phraseIds.has(other)) {
           add(
-            [...tp, "phrases", i, "sharesPitchesWith", oi],
+            [...tp, 'phrases', i, 'sharesPitchesWith', oi],
             3,
             `Unknown phrase "${other}"`,
           );
         }
       });
       if (ph.enabledWhen)
-        checkCondition([...tp, "phrases", i, "enabledWhen"], ph.enabledWhen);
+        checkCondition([...tp, 'phrases', i, 'enabledWhen'], ph.enabledWhen);
       if (ph.requires)
-        checkCondition([...tp, "phrases", i, "requires"], ph.requires);
+        checkCondition([...tp, 'phrases', i, 'requires'], ph.requires);
       if (ph.alsoActsAs)
         checkCondition(
-          [...tp, "phrases", i, "alsoActsAs", "when"],
+          [...tp, 'phrases', i, 'alsoActsAs', 'when'],
           ph.alsoActsAs.when,
         );
       checkThreshold(
-        [...tp, "phrases", i, "activation", "window"],
+        [...tp, 'phrases', i, 'activation', 'window'],
         ph.activation?.window,
       );
     });
 
     t.eventNotes?.forEach((en, i) => {
-      checkPitchSet([...tp, "eventNotes", i, "pitches"], en.pitches);
+      checkPitchSet([...tp, 'eventNotes', i, 'pitches'], en.pitches);
       expandPitchSet(en.pitches).forEach((p) =>
-        claim(p, `eventNote "${en.id}"`, [...tp, "eventNotes", i, "pitches"]),
+        claim(p, `eventNote "${en.id}"`, [...tp, 'eventNotes', i, 'pitches']),
       );
     });
 
     noteClasses?.forEach((nc, i) => {
-      checkPitchSet([...tp, "noteClasses", i, "pitches"], nc.pitches);
+      checkPitchSet([...tp, 'noteClasses', i, 'pitches'], nc.pitches);
       expandPitchSet(nc.pitches).forEach((p) =>
-        claim(p, `noteClass "${nc.id}"`, [...tp, "noteClasses", i, "pitches"]),
+        claim(p, `noteClass "${nc.id}"`, [...tp, 'noteClasses', i, 'pitches']),
       );
     });
 
     modifiers?.forEach((m, i) => {
-      if (m.source.kind === "note") {
+      if (m.source.kind === 'note') {
         claim(m.source.pitch, `modifier "${m.id}"`, [
           ...tp,
-          "modifiers",
+          'modifiers',
           i,
-          "source",
-          "pitch",
+          'source',
+          'pitch',
         ]);
       }
       m.appliesToLanes?.forEach((l, li) => {
         if (!laneIds.has(l))
           add(
-            [...tp, "modifiers", i, "appliesToLanes", li],
+            [...tp, 'modifiers', i, 'appliesToLanes', li],
             3,
             `Unknown lane "${l}"`,
           );
@@ -303,13 +302,13 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       m.excludeLanes?.forEach((l, li) => {
         if (!laneIds.has(l))
           add(
-            [...tp, "modifiers", i, "excludeLanes", li],
+            [...tp, 'modifiers', i, 'excludeLanes', li],
             3,
             `Unknown lane "${l}"`,
           );
       });
       if (m.enabledWhen)
-        checkCondition([...tp, "modifiers", i, "enabledWhen"], m.enabledWhen);
+        checkCondition([...tp, 'modifiers', i, 'enabledWhen'], m.enabledWhen);
     });
 
     // Rule 1
@@ -360,7 +359,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       lane.onlyOnTracks?.forEach((n, ni) => {
         if (!trackNames.has(n)) {
           add(
-            [...tp, "lanes", i, "onlyOnTracks", ni],
+            [...tp, 'lanes', i, 'onlyOnTracks', ni],
             3,
             `Track "${n}" is not one of this definition's trackNames`,
           );
@@ -372,7 +371,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
         !lane.padTypes.includes(lane.defaultPadType)
       ) {
         add(
-          [...tp, "lanes", i, "defaultPadType"],
+          [...tp, 'lanes', i, 'defaultPadType'],
           3,
           `defaultPadType "${lane.defaultPadType}" is not in padTypes`,
         );
@@ -381,12 +380,12 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
 
     // ---- Text events (rules 6 & 8) -----------------------------------------
     t.textEvents?.forEach((e, i) => {
-      if ("pattern" in e) {
+      if ('pattern' in e) {
         try {
           new RegExp(e.pattern);
         } catch (err) {
           add(
-            [...tp, "textEvents", i, "pattern"],
+            [...tp, 'textEvents', i, 'pattern'],
             6,
             `Invalid regex: ${err instanceof Error ? err.message : String(err)}`,
           );
@@ -395,17 +394,17 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       e.honoredOnTracks?.forEach((n, ni) => {
         if (!trackNames.has(n)) {
           add(
-            [...tp, "textEvents", i, "honoredOnTracks", ni],
+            [...tp, 'textEvents', i, 'honoredOnTracks', ni],
             8,
             `"${n}" is not one of this definition's trackNames`,
           );
         }
       });
-      if ("arguments" in e) {
+      if ('arguments' in e) {
         e.arguments?.forEach((arg, ai) => {
           if (arg.vocabulary && !vocabularyIds.has(arg.vocabulary)) {
             add(
-              [...tp, "textEvents", i, "arguments", ai, "vocabulary"],
+              [...tp, 'textEvents', i, 'arguments', ai, 'vocabulary'],
               3,
               `Unknown vocabulary "${arg.vocabulary}"`,
             );
@@ -414,9 +413,9 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
         e.arguments?.forEach((arg, ai, all) => {
           if (arg.variadic && ai !== all.length - 1) {
             add(
-              [...tp, "textEvents", i, "arguments", ai, "variadic"],
+              [...tp, 'textEvents', i, 'arguments', ai, 'variadic'],
               3,
-              "Only the last argument may be variadic",
+              'Only the last argument may be variadic',
             );
           }
         });
@@ -424,19 +423,19 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
     });
 
     // ---- Header version check ----------------------------------------------
-    if (t.kind === "header" && t.versionCheck) {
+    if (t.kind === 'header' && t.versionCheck) {
       const ev = t.textEvents?.find((e) => e.id === t.versionCheck!.textEvent);
       if (!ev) {
         add(
-          [...tp, "versionCheck", "textEvent"],
+          [...tp, 'versionCheck', 'textEvent'],
           3,
           `Unknown text event "${t.versionCheck.textEvent}"`,
         );
-      } else if ("pattern" in ev) {
+      } else if ('pattern' in ev) {
         const names = ev.captures?.map((c) => c.name) ?? [];
         if (!names.includes(t.versionCheck.argument)) {
           add(
-            [...tp, "versionCheck", "argument"],
+            [...tp, 'versionCheck', 'argument'],
             3,
             `Text event "${ev.id}" has no capture "${t.versionCheck.argument}"`,
           );
@@ -445,7 +444,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
         !ev.arguments?.some((a) => a.name === t.versionCheck!.argument)
       ) {
         add(
-          [...tp, "versionCheck", "argument"],
+          [...tp, 'versionCheck', 'argument'],
           3,
           `Text event "${ev.id}" has no argument "${t.versionCheck.argument}"`,
         );
@@ -454,7 +453,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
 
     // ---- Constraints ---------------------------------------------------------
     const markerEffects = new Set<string>();
-    if ("difficulties" in t) {
+    if ('difficulties' in t) {
       for (const block of Object.values(t.difficulties)) {
         block?.markers?.forEach((m) => markerEffects.add(m.effect));
       }
@@ -466,42 +465,42 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       if (!noteClassIds.has(id)) add(path, 3, `Unknown noteClass "${id}"`);
     };
     t.constraints?.forEach((c, i) => {
-      const cp: Path = [...tp, "constraints", i];
+      const cp: Path = [...tp, 'constraints', i];
       switch (c.rule) {
-        case "forbiddenPitches":
-          checkPitchSet([...cp, "pitches"], c.pitches);
+        case 'forbiddenPitches':
+          checkPitchSet([...cp, 'pitches'], c.pitches);
           break;
-        case "mutuallyExclusiveAtTick":
+        case 'mutuallyExclusiveAtTick':
           c.members.forEach((m, mi) => {
             if (!markerEffects.has(m) && !modifierIds.has(m)) {
               add(
-                [...cp, "members", mi],
+                [...cp, 'members', mi],
                 3,
                 `"${m}" is neither a marker effect nor a modifier id on this track`,
               );
             }
           });
           break;
-        case "notesWithinPhrase":
-          c.phrases.forEach((p, pi) => needPhrase([...cp, "phrases", pi], p));
+        case 'notesWithinPhrase':
+          c.phrases.forEach((p, pi) => needPhrase([...cp, 'phrases', pi], p));
           c.noteClasses.forEach((n, ni) =>
-            needNoteClass([...cp, "noteClasses", ni], n),
+            needNoteClass([...cp, 'noteClasses', ni], n),
           );
           break;
-        case "monophonic":
+        case 'monophonic':
           c.noteClasses.forEach((n, ni) =>
-            needNoteClass([...cp, "noteClasses", ni], n),
+            needNoteClass([...cp, 'noteClasses', ni], n),
           );
           break;
-        case "phrasesMayNotOverlap":
-          c.phrases.forEach((p, pi) => needPhrase([...cp, "phrases", pi], p));
+        case 'phrasesMayNotOverlap':
+          c.phrases.forEach((p, pi) => needPhrase([...cp, 'phrases', pi], p));
           break;
-        case "phraseMustBeBetween":
-          needPhrase([...cp, "phrase"], c.phrase);
-          needPhrase([...cp, "between"], c.between);
+        case 'phraseMustBeBetween':
+          needPhrase([...cp, 'phrase'], c.phrase);
+          needPhrase([...cp, 'between'], c.between);
           break;
-        case "noSustains":
-          checkThreshold([...cp, "threshold"], c.threshold);
+        case 'noSustains':
+          checkThreshold([...cp, 'threshold'], c.threshold);
           break;
         default:
           break;
@@ -509,40 +508,40 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
     });
 
     // ---- Mechanics thresholds --------------------------------------------------
-    if (t.kind === "guitar" && t.mechanics) {
+    if (t.kind === 'guitar' && t.mechanics) {
       const m = t.mechanics;
-      checkThreshold([...tp, "mechanics", "hopoThreshold"], m.hopoThreshold);
-      checkThreshold([...tp, "mechanics", "sustainCutoff"], m.sustainCutoff);
-      checkThreshold([...tp, "mechanics", "sustainGap"], m.sustainGap);
+      checkThreshold([...tp, 'mechanics', 'hopoThreshold'], m.hopoThreshold);
+      checkThreshold([...tp, 'mechanics', 'sustainCutoff'], m.sustainCutoff);
+      checkThreshold([...tp, 'mechanics', 'sustainGap'], m.sustainGap);
       checkThreshold(
-        [...tp, "mechanics", "positionSnap", "threshold"],
+        [...tp, 'mechanics', 'positionSnap', 'threshold'],
         m.positionSnap?.threshold,
       );
     }
 
     // ---- Drum variants ---------------------------------------------------------
-    if (t.kind === "drums") {
+    if (t.kind === 'drums') {
       const supported = new Set(t.variants.supported);
       t.variants.authored.forEach((v, i) => {
         if (!supported.has(v))
           add(
-            [...tp, "variants", "authored", i],
+            [...tp, 'variants', 'authored', i],
             3,
             `Variant "${v}" is not in supported`,
           );
       });
       t.variants.detection.forEach((d, i) => {
-        const dp: Path = [...tp, "variants", "detection", i];
-        const result = "default" in d ? d.default : d.result;
+        const dp: Path = [...tp, 'variants', 'detection', i];
+        const result = 'default' in d ? d.default : d.result;
         if (!supported.has(result))
           add(dp, 3, `Variant "${result}" is not in supported`);
-        if ("when" in d) checkCondition([...dp, "when"], d.when, supported);
+        if ('when' in d) checkCondition([...dp, 'when'], d.when, supported);
       });
       t.variants.derivations?.forEach((d, i) => {
-        for (const key of ["variant", "from"] as const) {
+        for (const key of ['variant', 'from'] as const) {
           if (!supported.has(d[key])) {
             add(
-              [...tp, "variants", "derivations", i, key],
+              [...tp, 'variants', 'derivations', i, key],
               3,
               `Variant "${d[key]}" is not in supported`,
             );
@@ -551,7 +550,7 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
       });
       if (t.variants.rejectWhen) {
         checkCondition(
-          [...tp, "variants", "rejectWhen"],
+          [...tp, 'variants', 'rejectWhen'],
           t.variants.rejectWhen,
           supported,
         );
@@ -562,51 +561,51 @@ export function validateRulesetSemantics(r: Ruleset): RulesetIssue[] {
     function checkCondition(
       path: Path,
       c: Condition,
-      variants: ReadonlySet<string> | undefined = t.kind === "drums"
+      variants: ReadonlySet<string> | undefined = t.kind === 'drums'
         ? new Set(t.variants.supported)
         : undefined,
     ): void {
-      if ("textEvent" in c) {
+      if ('textEvent' in c) {
         let ids: ReadonlySet<string> = textEventIds;
-        if (c.track && c.track !== "self") {
+        if (c.track && c.track !== 'self') {
           const other = textEventIdsByTrackName.get(c.track);
           if (!other) {
-            add([...path, "track"], 3, `Unknown track name "${c.track}"`);
+            add([...path, 'track'], 3, `Unknown track name "${c.track}"`);
             return;
           }
           ids = other;
         }
         if (!ids.has(c.textEvent))
-          add([...path, "textEvent"], 3, `Unknown text event "${c.textEvent}"`);
-      } else if ("setting" in c) {
-        checkSettingRef([...path, "setting"], c.setting.source, c.setting.key);
-      } else if ("playerOption" in c) {
+          add([...path, 'textEvent'], 3, `Unknown text event "${c.textEvent}"`);
+      } else if ('setting' in c) {
+        checkSettingRef([...path, 'setting'], c.setting.source, c.setting.key);
+      } else if ('playerOption' in c) {
         if (!playerOptionIds.has(c.playerOption))
           add(
-            [...path, "playerOption"],
+            [...path, 'playerOption'],
             3,
             `Unknown player option "${c.playerOption}"`,
           );
-      } else if ("variant" in c) {
+      } else if ('variant' in c) {
         if (!variants?.has(c.variant))
-          add([...path, "variant"], 3, `Unknown variant "${c.variant}"`);
-      } else if ("phraseAbsent" in c) {
+          add([...path, 'variant'], 3, `Unknown variant "${c.variant}"`);
+      } else if ('phraseAbsent' in c) {
         if (!phraseIds.has(c.phraseAbsent))
           add(
-            [...path, "phraseAbsent"],
+            [...path, 'phraseAbsent'],
             3,
             `Unknown phrase "${c.phraseAbsent}"`,
           );
-      } else if ("allOf" in c) {
+      } else if ('allOf' in c) {
         c.allOf.forEach((s, i) =>
-          checkCondition([...path, "allOf", i], s, variants),
+          checkCondition([...path, 'allOf', i], s, variants),
         );
-      } else if ("anyOf" in c) {
+      } else if ('anyOf' in c) {
         c.anyOf.forEach((s, i) =>
-          checkCondition([...path, "anyOf", i], s, variants),
+          checkCondition([...path, 'anyOf', i], s, variants),
         );
       } else {
-        checkCondition([...path, "not"], c.not, variants);
+        checkCondition([...path, 'not'], c.not, variants);
       }
     }
 

@@ -1,16 +1,16 @@
 /// <reference types="vite/client" />
+import type { Preview } from '@storybook/react-vite';
+import { sb } from 'storybook/test';
 
-import type { Preview } from "@storybook/react-vite";
-import { sb } from "storybook/test";
-import "../src/globals.css";
-import "../src/components/styles.css";
-import "./preview.css";
+import '../src/components/styles.css';
+import '../src/globals.css';
+import './preview.css';
 
 // Action execution is replaced by src/platform/actions/__mocks__/execute.ts, which
 // routes playback actions to the mock playback service.
-sb.mock("../src/platform/actions/execute.ts");
+sb.mock('../src/platform/actions/execute.ts');
 
-const { MockPlaybackService } = await import("../src/hooks/usePlayback.mock");
+const { MockPlaybackService } = await import('../src/hooks/usePlayback.mock');
 
 const preview: Preview = {
   beforeEach: () => {

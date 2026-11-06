@@ -1,6 +1,9 @@
-import { useRef, useState, type KeyboardEvent } from "react";
-import { useForm } from "@tanstack/react-form";
-import { z } from "zod";
+import { type KeyboardEvent, useRef, useState } from 'react';
+
+import { useForm } from '@tanstack/react-form';
+import { startCase } from 'es-toolkit';
+import { z } from 'zod';
+
 import {
   Button,
   Checkbox,
@@ -12,9 +15,8 @@ import {
   Modal,
   Section,
   Text,
-} from "..";
-import styles from "./form.module.css";
-import { startCase } from "es-toolkit";
+} from '..';
+import styles from './form.module.css';
 
 type FieldPath<T> = {
   [K in keyof T & string]: T[K] extends object ? `${K}.${FieldPath<T[K]>}` : K;
@@ -61,7 +63,7 @@ function fieldMetadata(schema: z.ZodType): FieldMetadata {
 function getTabs(schema: z.ZodType): DialogTab[] {
   if (!(schema instanceof z.ZodObject)) return [];
 
-  const tabs = new Map<string, DialogField[]>([["General", []]]);
+  const tabs = new Map<string, DialogField[]>([['General', []]]);
   for (const [key, fieldSchema] of Object.entries(schema.shape)) {
     if (fieldSchema instanceof z.ZodObject) {
       const title = fieldMetadata(fieldSchema).tab ?? key;
@@ -83,7 +85,7 @@ function getTabs(schema: z.ZodType): DialogTab[] {
     } else {
       const metadata = fieldMetadata(fieldSchema);
       if (!metadata.hidden) {
-        const title = metadata.tab ?? "General";
+        const title = metadata.tab ?? 'General';
         const fields = tabs.get(title) ?? [];
         fields.push({ key, name: key, schema: fieldSchema, metadata });
         tabs.set(title, fields);
@@ -111,7 +113,7 @@ const Form = <T extends object>({
   >({});
   const tabs = getTabs(schema);
   const options = tabs.map((tab) => startCase(tab.title));
-  const [selectedTab, setSelectedTab] = useState(options[0] ?? "");
+  const [selectedTab, setSelectedTab] = useState(options[0] ?? '');
   const dialogRef = useRef<HTMLDivElement>(null);
   const selectedIndex = Math.max(0, options.indexOf(selectedTab));
   const formSchema = z.custom<T>().transform((value) => schema.parse(value));
@@ -126,13 +128,13 @@ const Form = <T extends object>({
 
   const getAudioRootPath = (): string | null => {
     const values = form.store.state.values;
-    if (!("audio" in values)) return null;
+    if (!('audio' in values)) return null;
     const audio = values.audio;
     if (
-      typeof audio !== "object" ||
+      typeof audio !== 'object' ||
       audio === null ||
-      !("root" in audio) ||
-      typeof audio.root !== "string"
+      !('root' in audio) ||
+      typeof audio.root !== 'string'
     ) {
       return null;
     }
@@ -146,7 +148,7 @@ const Form = <T extends object>({
   const onTabDown = (event?: KeyboardEvent<HTMLDivElement>): void => {
     const focusable = [
       ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-        "button:not([disabled]), input:not([disabled]), select:not([disabled])",
+        'button:not([disabled]), input:not([disabled]), select:not([disabled])',
       ) ?? []),
     ];
     if (focusable.length === 0) {
@@ -172,7 +174,7 @@ const Form = <T extends object>({
       setValidationErrors(
         Object.fromEntries(
           result.error.issues.map((issue) => [
-            issue.path.join("."),
+            issue.path.join('.'),
             issue.message,
           ]),
         ),
@@ -230,7 +232,7 @@ const Form = <T extends object>({
 
                         return (
                           <Section className={styles.field}>
-                            {typeof value === "boolean" ? (
+                            {typeof value === 'boolean' ? (
                               <Checkbox
                                 checked={value}
                                 label={label}
@@ -254,7 +256,7 @@ const Form = <T extends object>({
                                     className={styles.input}
                                     aria-invalid={!!error}
                                     value={
-                                      typeof value === "string" ? value : ""
+                                      typeof value === 'string' ? value : ''
                                     }
                                     placeholder=""
                                     directory={field.metadata.directory}
@@ -309,23 +311,23 @@ const Form = <T extends object>({
                                     id={inputId}
                                     className={styles.input}
                                     type={
-                                      typeof value === "number"
-                                        ? "number"
-                                        : "text"
+                                      typeof value === 'number'
+                                        ? 'number'
+                                        : 'text'
                                     }
                                     min={field.metadata.min}
                                     max={field.metadata.max}
-                                    step={field.metadata.step ?? "any"}
+                                    step={field.metadata.step ?? 'any'}
                                     aria-invalid={!!error}
                                     value={
-                                      typeof value === "number"
+                                      typeof value === 'number'
                                         ? value
                                         : String(value)
                                     }
                                     placeholder=""
                                     onChange={(event) => {
                                       fieldApi.handleChange(
-                                        (typeof value === "number"
+                                        (typeof value === 'number'
                                           ? Number(event.target.value)
                                           : event.target.value) as typeof value,
                                       );

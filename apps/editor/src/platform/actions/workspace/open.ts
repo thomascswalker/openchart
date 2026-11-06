@@ -1,14 +1,10 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import type { WorkspaceService } from "../../services/workspace";
+import { Action } from '../../actions';
+import type { ServicesAccessor } from '../../services/registry';
+import type { WorkspaceService } from '../../services/workspace';
 
 export class OpenWorkspaceAction extends Action {
-  constructor() {
-    super();
-  }
-
-  async run(accessor: ServicesAccessor): Promise<void> {
-    const workspace = accessor.get<WorkspaceService>("workspace");
-    workspace.showSetDirectory();
+  async run(accessor: ServicesAccessor) {
+    const workspace = accessor.get<WorkspaceService>('workspace');
+    await workspace.showSetDirectory();
   }
 }

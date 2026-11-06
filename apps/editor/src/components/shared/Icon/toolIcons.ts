@@ -1,6 +1,7 @@
 import {
   ActivateIcon,
   BassIcon,
+  CursorIcon,
   DrumsIcon,
   EraserIcon,
   FourpadIcon,
@@ -9,8 +10,7 @@ import {
   PhraseIcon,
   SoloIcon,
   StagepowerIcon,
-  CursorIcon,
-} from "./Icon";
+} from './Icon';
 
 const toolIcons = {
   cursor: CursorIcon,
@@ -19,7 +19,7 @@ const toolIcons = {
   stagepower: StagepowerIcon,
   solo: SoloIcon,
   vocal: PhraseIcon,
-  "power-window": ActivateIcon,
+  'power-window': ActivateIcon,
   pad: FourpadIcon,
   cymbal: DrumsIcon,
   kick: BassIcon,

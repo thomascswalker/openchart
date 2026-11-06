@@ -1,12 +1,13 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PianoRollStoryHost } from "./PianoRollStoryHost";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { PianoRollStoryHost } from './PianoRollStoryHost';
 
 /** Storybook metadata for the piano roll view. */
 const meta = {
-  title: "Views/Piano Roll",
+  title: 'Views/Piano Roll',
   component: PianoRollStoryHost,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
     docs: {
       description: {
         component: `
@@ -27,22 +28,22 @@ type Story = StoryObj<typeof meta>;
 
 /** A guitar track with notes, fully editable. */
 export const PopulatedEditable: Story = {
-  args: { variant: "populated", initialTrackIndex: 1 },
+  args: { variant: 'populated', initialTrackIndex: 1 },
 };
 
 /** A chart with no notes, for testing creation from scratch. */
 export const EmptyChart: Story = {
-  args: { variant: "empty", initialTrackIndex: 1 },
+  args: { variant: 'empty', initialTrackIndex: 1 },
 };
 
 /** The same chart viewed on a different track. */
 export const AlternateTrack: Story = {
-  args: { variant: "populated", initialTrackIndex: 2 },
+  args: { variant: 'populated', initialTrackIndex: 2 },
 };
 
 /** Extra notes and a mid-song tempo change. */
 export const DenseTempoEvent: Story = {
-  args: { variant: "dense", initialTrackIndex: 1 },
+  args: { variant: 'dense', initialTrackIndex: 1 },
 };
 
 /**
@@ -52,10 +53,10 @@ export const DenseTempoEvent: Story = {
  * to the next note). The amber note has no lyric yet.
  */
 export const Vocals: Story = {
-  args: { variant: "vocals", initialTrackIndex: 1, instrument: "VOCALS" },
+  args: { variant: 'vocals', initialTrackIndex: 1, instrument: 'VOCALS' },
 };
 
 /** The vocals profile with an empty track. */
 export const VocalsEmpty: Story = {
-  args: { variant: "vocals-empty", initialTrackIndex: 1, instrument: "VOCALS" },
+  args: { variant: 'vocals-empty', initialTrackIndex: 1, instrument: 'VOCALS' },
 };

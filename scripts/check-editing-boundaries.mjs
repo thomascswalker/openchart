@@ -1,63 +1,63 @@
-import fs from "node:fs";
-import path from "node:path";
-import process from "node:process";
-import { fileURLToPath } from "node:url";
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const allowlistPath = path.join(
   root,
-  "scripts",
-  "editing-boundaries.allowlist.json",
+  'scripts',
+  'editing-boundaries.allowlist.json',
 );
-const strict = process.argv.includes("--strict");
+const strict = process.argv.includes('--strict');
 
 const documentMutators = [
-  "addNote",
-  "insertNote",
-  "addNoteAtPitch",
-  "removeNote",
-  "setNoteStart",
-  "setNotePitch",
-  "setNoteDuration",
-  "updateNote",
-  "addTextEvent",
-  "updateTextEvent",
-  "moveEvent",
-  "removeEvent",
-  "insertEventsAt",
-  "insertEventAt",
-  "updateEvent",
-  "updateEventAt",
-  "moveEventById",
-  "removeEventById",
-  "addTempoEvent",
-  "addTimeSignatureEvent",
-  "removeTempoEventAt",
-  "removeTimeSignatureEventAt",
-  "addNotePhrase",
-  "updateNotePhrase",
-  "removeNotePhrase",
-  "moveNote",
-  "setNoteEnd",
-  "ensureMidiTrack",
-  "ensureTrack",
+  'addNote',
+  'insertNote',
+  'addNoteAtPitch',
+  'removeNote',
+  'setNoteStart',
+  'setNotePitch',
+  'setNoteDuration',
+  'updateNote',
+  'addTextEvent',
+  'updateTextEvent',
+  'moveEvent',
+  'removeEvent',
+  'insertEventsAt',
+  'insertEventAt',
+  'updateEvent',
+  'updateEventAt',
+  'moveEventById',
+  'removeEventById',
+  'addTempoEvent',
+  'addTimeSignatureEvent',
+  'removeTempoEventAt',
+  'removeTimeSignatureEventAt',
+  'addNotePhrase',
+  'updateNotePhrase',
+  'removeNotePhrase',
+  'moveNote',
+  'setNoteEnd',
+  'ensureMidiTrack',
+  'ensureTrack',
 ];
 
 const domainMutators = [
-  "addNotePhrase",
-  "updateNotePhrase",
-  "removeNotePhrase",
-  "addVocalNote",
-  "moveVocalNotes",
-  "removeVocalNotes",
-  "setVocalLyric",
-  "addVocalPhrase",
-  "updateVocalPhrase",
-  "repairVocalTrack",
+  'addNotePhrase',
+  'updateNotePhrase',
+  'removeNotePhrase',
+  'addVocalNote',
+  'moveVocalNotes',
+  'removeVocalNotes',
+  'setVocalLyric',
+  'addVocalPhrase',
+  'updateVocalPhrase',
+  'repairVocalTrack',
 ];
 
-const excludedDirectoryNames = new Set(["__tests__", ".storybook"]);
-const sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx"]);
+const excludedDirectoryNames = new Set(['__tests__', '.storybook']);
+const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
 function walk(directory) {
   const files = [];
@@ -77,7 +77,7 @@ function walk(directory) {
 }
 
 function relativePath(filePath) {
-  return path.relative(root, filePath).split(path.sep).join("/");
+  return path.relative(root, filePath).split(path.sep).join('/');
 }
 
 function lineAt(source, offset) {
@@ -96,14 +96,14 @@ function collectMatches(source, pattern, description, filePath, violations) {
 }
 
 function scanComponent(filePath) {
-  const source = fs.readFileSync(filePath, "utf8");
+  const source = fs.readFileSync(filePath, 'utf8');
   const violations = [];
-  const methods = new RegExp(`\\.(${documentMutators.join("|")})\\s*\\(`, "g");
-  collectMatches(source, methods, "document mutation", filePath, violations);
+  const methods = new RegExp(`\\.(${documentMutators.join('|')})\\s*\\(`, 'g');
+  collectMatches(source, methods, 'document mutation', filePath, violations);
 
   const bareCalls = new RegExp(
-    `(?<![\\w$.])(${domainMutators.join("|")})\\s*\\(`,
-    "g",
+    `(?<![\\w$.])(${domainMutators.join('|')})\\s*\\(`,
+    'g',
   );
   for (const match of source.matchAll(bareCalls)) {
     const offset = match.index ?? 0;
@@ -113,7 +113,7 @@ function scanComponent(filePath) {
     violations.push({
       file: filePath,
       line: lineAt(source, offset),
-      rule: "domain mutation",
+      rule: 'domain mutation',
       text: match[0].trim(),
     });
   }
@@ -121,36 +121,36 @@ function scanComponent(filePath) {
 }
 
 function scanPackage(filePath, packageRoot) {
-  const source = fs.readFileSync(filePath, "utf8");
+  const source = fs.readFileSync(filePath, 'utf8');
   const violations = [];
   const imports =
     /\b(?:import|export)\s+(?:[\s\S]*?\s+from\s*)?["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
   for (const match of source.matchAll(imports)) {
     const specifier = match[1] ?? match[2];
-    if (specifier === "react" || specifier.startsWith("react/")) {
+    if (specifier === 'react' || specifier.startsWith('react/')) {
       violations.push({
         file: filePath,
         line: lineAt(source, match.index ?? 0),
-        rule: "packages/views imports react",
+        rule: 'packages/views imports react',
         text: specifier,
       });
     }
-    if (specifier === "three" || specifier.startsWith("three/")) {
+    if (specifier === 'three' || specifier.startsWith('three/')) {
       violations.push({
         file: filePath,
         line: lineAt(source, match.index ?? 0),
-        rule: "packages/views imports three",
+        rule: 'packages/views imports three',
         text: specifier,
       });
     }
-    if (specifier.startsWith(".")) {
+    if (specifier.startsWith('.')) {
       const resolved = path.resolve(path.dirname(filePath), specifier);
       const relative = path.relative(packageRoot, resolved);
-      if (relative === ".." || relative.startsWith(`..${path.sep}`)) {
+      if (relative === '..' || relative.startsWith(`..${path.sep}`)) {
         violations.push({
           file: filePath,
           line: lineAt(source, match.index ?? 0),
-          rule: "relative import leaves packages/views",
+          rule: 'relative import leaves packages/views',
           text: specifier,
         });
       }
@@ -159,9 +159,9 @@ function scanPackage(filePath, packageRoot) {
   return violations;
 }
 
-const componentRoot = path.join(root, "apps", "editor", "src", "components");
-const viewsRoot = path.join(root, "packages", "views");
-const viewsSourceRoot = path.join(viewsRoot, "src");
+const componentRoot = path.join(root, 'apps', 'editor', 'src', 'components');
+const viewsRoot = path.join(root, 'packages', 'views');
+const viewsSourceRoot = path.join(viewsRoot, 'src');
 const violations = [
   ...walk(componentRoot).flatMap(scanComponent),
   ...walk(viewsSourceRoot).flatMap((filePath) =>
@@ -171,14 +171,14 @@ const violations = [
 
 // Views must be built from the active ruleset: `new SongView(midi)` silently
 // falls back to the bundled default rules and ignores a loaded ruleset.
-const appsRoot = path.join(root, "apps");
+const appsRoot = path.join(root, 'apps');
 const singleArgSongView = /new\s+SongView\(\s*[\w$.]+\s*\)/g;
 for (const filePath of walk(appsRoot)) {
   if (filePath.includes(`${path.sep}node_modules${path.sep}`)) continue;
   collectMatches(
-    fs.readFileSync(filePath, "utf8"),
+    fs.readFileSync(filePath, 'utf8'),
     singleArgSongView,
-    "SongView built without the ruleset",
+    'SongView built without the ruleset',
     filePath,
     violations,
   );
@@ -189,9 +189,9 @@ const trackNameLiteral =
   /["'`](?:DRUMS|VOCALS|LEAD GUITAR|RHYTHM GUITAR|CHART HEADER|FOUR PAD|FIVE PAD)["'`]/g;
 for (const filePath of walk(componentRoot)) {
   collectMatches(
-    fs.readFileSync(filePath, "utf8"),
+    fs.readFileSync(filePath, 'utf8'),
     trackNameLiteral,
-    "track name literal (read it from the ruleset)",
+    'track name literal (read it from the ruleset)',
     filePath,
     violations,
   );
@@ -200,27 +200,27 @@ for (const filePath of walk(componentRoot)) {
 const entityIdPattern = /(["'`])(?:note:|text:|tempo:)/g;
 const specialPitchPattern = new RegExp(
   `(?:\\b(?:pitch|note|offset)\\b[^\\r\\n]{0,48}\\b(?:95|101|102|103|104|116|118)\\b|\\b(?:95|101|102|103|104|116|118)\\b[^\\r\\n]{0,48}\\b(?:pitch|note|offset)\\b)`,
-  "g",
+  'g',
 );
 for (const filePath of walk(componentRoot)) {
-  const source = fs.readFileSync(filePath, "utf8");
+  const source = fs.readFileSync(filePath, 'utf8');
   collectMatches(
     source,
     entityIdPattern,
-    "entity id literal",
+    'entity id literal',
     filePath,
     violations,
   );
   collectMatches(
     source,
     specialPitchPattern,
-    "special pitch literal",
+    'special pitch literal',
     filePath,
     violations,
   );
 }
 
-const allowances = JSON.parse(fs.readFileSync(allowlistPath, "utf8"));
+const allowances = JSON.parse(fs.readFileSync(allowlistPath, 'utf8'));
 const counts = new Map();
 for (const violation of violations) {
   const file = relativePath(violation.file);
@@ -236,7 +236,7 @@ for (const [file, count] of [...counts].sort(([left], [right]) =>
 )) {
   const allowance = Object.hasOwn(allowances, file)
     ? allowances[file]
-    : "not allowlisted";
+    : 'not allowlisted';
   console.log(`  ${file}: ${count} (allowance: ${allowance})`);
 }
 

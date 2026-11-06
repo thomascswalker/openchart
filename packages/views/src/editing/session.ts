@@ -1,36 +1,36 @@
 import {
-  createRulesetContext,
+  type CompiledRuleset,
   type RuleViolation,
   type RulesetContext,
-  type CompiledRuleset,
-} from "../ruleset/index";
-import { validateRawCommands } from "./validation";
-import type { ChartDocument } from "./chartDocument";
+  createRulesetContext,
+} from '../ruleset/index';
+import { ClipboardService } from './clipboard';
 import {
   DomainCommandType,
-  EditCommandType,
-  ICommand,
   type EditCommand,
+  EditCommandType,
   type GeneralCommand,
-} from "./commands";
-import { computePreview, type PreviewState } from "./preview";
-import {
-  EditRejectedError,
-  emptyEditResult,
-  type EditResult,
-  type Rejection,
-} from "./result";
-import { ClipboardService } from "./clipboard";
-import type { SelectionModel } from "./selectionModel";
-import { SelectionModel as SelectionModelImpl } from "./selectionModel";
+  ICommand,
+} from './commands';
+import type { Document } from './document';
 import type {
   EditingMode,
   EditingTarget,
   ModeContext,
   Projection,
   ToolDescriptor,
-} from "./modes/mode";
-import type { NoteSnapshot } from "./reader";
+} from './modes/mode';
+import { type PreviewState, computePreview } from './preview';
+import type { NoteSnapshot } from './reader';
+import {
+  EditRejectedError,
+  type EditResult,
+  type Rejection,
+  emptyEditResult,
+} from './result';
+import type { SelectionModel } from './selectionModel';
+import { SelectionModel as SelectionModelImpl } from './selectionModel';
+import { validateRawCommands } from './validation';
 
 /** Transaction operations supplied by the document/history owner. */
 export interface EditTransactionPort {
@@ -59,7 +59,7 @@ export interface EditingSession {
   getRulesContext(): RulesetContext;
   /** Toolbar tools for the current target; they depend on the track's rules. */
   getTools(): readonly ToolDescriptor[];
-  classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]>;
+  classifyNote(note: NoteSnapshot): ReturnType<EditingMode['classify']>;
   can(commandType: string): boolean;
   execute(command: EditCommand, options?: ExecuteOptions): EditResult;
   executeBatch(
@@ -82,7 +82,7 @@ export interface GestureHandle {
 
 /** Inputs required to bind a mode to one mutable chart document. */
 export interface CreateEditingSessionOptions {
-  document: ChartDocument;
+  document: Document;
   mode: EditingMode;
   target: EditingTarget;
   hostKind: string;
@@ -113,7 +113,7 @@ class EditingSessionImpl implements EditingSession {
   public readonly selection: SelectionModel;
   public readonly clipboard: ClipboardService;
   public readonly rules: CompiledRuleset;
-  private readonly document: ChartDocument;
+  private readonly document: Document;
   private readonly rulesContextSource:
     RulesetContext | (() => RulesetContext) | undefined;
   private readonly transaction: EditTransactionPort;
@@ -149,7 +149,7 @@ class EditingSessionImpl implements EditingSession {
     return this.mode.createProjection(this.createModeContext());
   }
 
-  public classifyNote(note: NoteSnapshot): ReturnType<EditingMode["classify"]> {
+  public classifyNote(note: NoteSnapshot): ReturnType<EditingMode['classify']> {
     return this.mode.classify(note, this.createModeContext());
   }
 
@@ -207,7 +207,7 @@ class EditingSessionImpl implements EditingSession {
 
   public pasteClipboard(anchorTick: number): EditResult {
     if (!Number.isSafeInteger(anchorTick) || anchorTick < 0) {
-      throw new RangeError("anchorTick must be a non-negative integer");
+      throw new RangeError('anchorTick must be a non-negative integer');
     }
     const payload = this.clipboard.getData();
     if (!payload) return emptyEditResult();
@@ -274,14 +274,14 @@ class EditingSessionImpl implements EditingSession {
           rolledBack = this.transaction.rollback();
         } catch (rollbackError) {
           throw new EditRejectedError(
-            "rollback-failed",
+            'rollback-failed',
             `Edit failed and rollback threw: ${describeError(rollbackError)}`,
             triggerCommand,
           );
         }
         if (!rolledBack) {
           throw new EditRejectedError(
-            "rollback-failed",
+            'rollback-failed',
             `Edit failed and the transaction could not be rolled back: ${describeError(error)}`,
             triggerCommand,
           );
@@ -290,7 +290,7 @@ class EditingSessionImpl implements EditingSession {
       }
       if (error instanceof EditRejectedError) throw error;
       throw new EditRejectedError(
-        "edit-failed",
+        'edit-failed',
         describeError(error),
         triggerCommand,
       );
@@ -329,7 +329,7 @@ class EditingSessionImpl implements EditingSession {
 
   public getRulesContext(): RulesetContext {
     const source = this.rulesContextSource;
-    if (typeof source === "function") return source();
+    if (typeof source === 'function') return source();
     return source ?? createRulesetContext({ ppqn: this.document.getPpqn() });
   }
 
@@ -362,8 +362,8 @@ class EditingSessionImpl implements EditingSession {
   } {
     const violations = this.createModeContext().validate(commands);
     return {
-      errors: violations.filter((v) => v.severity === "error"),
-      diagnostics: violations.filter((v) => v.severity !== "error"),
+      errors: violations.filter((v) => v.severity === 'error'),
+      diagnostics: violations.filter((v) => v.severity !== 'error'),
     };
   }
 
@@ -384,7 +384,7 @@ class EditingSessionImpl implements EditingSession {
         commands: [],
         rejections: [
           {
-            code: "unsupported-command",
+            code: 'unsupported-command',
             message: `Command '${command.type}' is not supported by mode '${this.mode.id}'`,
             command,
           },
@@ -406,8 +406,8 @@ class EditingSessionImpl implements EditingSession {
     if (this.targetValue.trackIndex === null && createsNotes) {
       if (!this.mode.capabilities.canCreateTrack) {
         throw new EditRejectedError(
-          "missing-track",
-          "This mode cannot create its target track",
+          'missing-track',
+          'This mode cannot create its target track',
           commands.find(
             (command) => command.type === EditCommandType.AddNotes,
           )!,
@@ -416,7 +416,7 @@ class EditingSessionImpl implements EditingSession {
       const trackIndex = this.document.ensureTrack(this.targetValue.trackKey);
       if (trackIndex === null) {
         throw new EditRejectedError(
-          "missing-track",
+          'missing-track',
           `Configured track '${this.targetValue.trackKey}' could not be created`,
           commands.find(
             (command) => command.type === EditCommandType.AddNotes,
@@ -502,7 +502,7 @@ class EditingGesture implements GestureHandle {
   }
 
   private ensureOpen(): void {
-    if (!this.open) throw new Error("Gesture is already closed");
+    if (!this.open) throw new Error('Gesture is already closed');
   }
 }
 

@@ -73,7 +73,7 @@ validation is `RuleEnforcer.validateTrack`.
 | Concept        | Contract                                                                                    |
 | -------------- | ------------------------------------------------------------------------------------------- |
 | Entity         | Addressable document data: note, phrase, lyric, text, tempo, or time signature.             |
-| Raw command    | MIDI-level operation that `ChartDocument` can apply without chart semantics.                |
+| Raw command    | MIDI-level operation that `Document` can apply without chart semantics.                     |
 | Domain command | Mode-specific intent expanded into validated raw commands.                                  |
 | Editing mode   | Declares tracks, commands, entities, tools, projection, classification, and pure expansion. |
 | Editing target | `{ trackKey, trackIndex, difficulty? }`, identifying the viewport's edit target.            |
@@ -88,10 +88,10 @@ validation is `RuleEnforcer.validateTrack`.
 
 ```ts
 type EntityKind =
-  "note" | "phrase" | "lyric" | "text" | "tempo" | "time-signature";
+  'note' | 'phrase' | 'lyric' | 'text' | 'tempo' | 'time-signature';
 
 interface ParsedEntityId {
-  kind: "note" | "text" | "tempo" | "time-signature";
+  kind: 'note' | 'text' | 'tempo' | 'time-signature';
   trackIndex: number | null;
   eventId: string;
 }
@@ -124,7 +124,7 @@ interface Rejection {
 }
 ```
 
-`ChartDocument.applyBatch` validates all commands before mutation. Validation
+`Document.applyBatch` validates all commands before mutation. Validation
 failures reject the batch without changes. Runtime failures after mutation
 begins are rethrown so the session's transaction port can restore the document.
 
@@ -135,7 +135,7 @@ are not part of the public editing API.
 
 ### Read-only document access
 
-`ChartDocumentReader` exposes PPQN, track descriptors, track lookup, note
+`DocumentReader` exposes PPQN, track descriptors, track lookup, note
 snapshots, lyrics, and text events. Modes, projections, classification, and
 preview computations read through this interface and do not mutate the MIDI.
 Note lookup uses an indexed event-ID path rather than scanning all notes.

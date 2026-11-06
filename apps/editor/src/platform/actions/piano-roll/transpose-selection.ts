@@ -1,29 +1,28 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
 import {
   DomainCommandType,
   EditCommandType,
   EditingModeId,
-} from "@openchart/views";
+} from '@openchart/views';
 
-import { parseSelectedNoteEntityIds } from "./util";
-
-import type { EditingService } from "../../services/editor/editing";
+import { Action } from '../../actions';
+import type { EditingService } from '../../services/editor/editing';
+import type { ServicesAccessor } from '../../services/registry';
+import { parseSelectedNoteEntityIds } from './util';
 
 /** Transposes selected notes through the active editing session. */
 export class TransposeSelectionAction extends Action<[number]> {
   constructor() {
     super({
       condition: {
-        "viewport.active-view": "piano-roll",
-        "editing.can.MOVE_SELECTION": true,
+        'viewport.active-view': 'piano-roll',
+        'editing.can.MOVE_SELECTION': true,
       },
     });
   }
 
   run(accessor: ServicesAccessor, semitones: number): void {
     const session = accessor
-      .get<EditingService>("editor.editing")
+      .get<EditingService>('editor.editing')
       .getActiveSession();
     if (!session) {
       return;

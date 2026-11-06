@@ -1,11 +1,12 @@
-import { z } from "zod";
-import { WavFilePickerTypes } from "../../../util/fs/pickers";
+import { Midi } from '@openchart/midi';
 import {
-  DefaultRuleset,
   type CompiledRuleset,
+  DefaultRuleset,
   type Ruleset,
-} from "@openchart/views";
-import { Midi } from "@openchart/midi";
+} from '@openchart/views';
+import { z } from 'zod';
+
+import { WavFilePickerTypes } from '../../../util/fs/pickers';
 
 const MetadataSettingsVersion = 1;
 
@@ -28,7 +29,7 @@ const chartSchema = z.object({
 });
 
 /** Track kinds that get a difficulty rating in the project settings. */
-const PLAYABLE_KINDS = new Set(["guitar", "drums", "vocals", "gamepad"]);
+const PLAYABLE_KINDS = new Set(['guitar', 'drums', 'vocals', 'gamepad']);
 
 /** `"LEAD GUITAR"` -> `"leadGuitar"`. */
 export function metadataKeyForTrack(name: string): string {
@@ -38,7 +39,7 @@ export function metadataKeyForTrack(name: string): string {
     .filter(Boolean);
   return words
     .map((word, i) => (i === 0 ? word : word[0]!.toUpperCase() + word.slice(1)))
-    .join("");
+    .join('');
 }
 
 /** Difficulty keys the ruleset defines: one per playable track name. */
@@ -65,7 +66,7 @@ function buildDifficultySchema(ruleset: Ruleset) {
 type SettingValue = boolean | number | string;
 
 function settingSchema(key: {
-  type: "boolean" | "integer" | "number" | "string";
+  type: 'boolean' | 'integer' | 'number' | 'string';
   allowedValues?: SettingValue[] | undefined;
   default?: SettingValue | undefined;
 }): z.ZodType<SettingValue> {
@@ -84,11 +85,11 @@ function settingSchema(key: {
           );
   } else {
     base =
-      key.type === "boolean"
+      key.type === 'boolean'
         ? z.boolean()
-        : key.type === "integer"
+        : key.type === 'integer'
           ? z.number().int()
-          : key.type === "number"
+          : key.type === 'number'
             ? z.number()
             : z.string();
   }
@@ -105,7 +106,7 @@ function settingSchema(key: {
 function buildSettingsSchema(ruleset: Ruleset) {
   const shape: Record<string, z.ZodType<SettingValue>> = {};
   for (const source of ruleset.settingsSources ?? []) {
-    if (source.file !== "info.json") continue;
+    if (source.file !== 'info.json') continue;
     for (const key of source.keys) shape[key.name] = settingSchema(key);
   }
   return z.object(shape);
@@ -132,7 +133,7 @@ export function buildMetadataSchema(ruleset: Ruleset = DefaultRuleset) {
   return z.object({
     version: z
       .literal(MetadataSettingsVersion, {
-        error: "Unsupported settings version.",
+        error: 'Unsupported settings version.',
       })
       .meta({ hidden: true }),
     song: songSchema,
@@ -172,25 +173,25 @@ export const makeDefaultMetadata = (
   return {
     version: MetadataSettingsVersion,
     song: {
-      name: "",
-      artist: "",
-      album: "",
-      genre: "",
+      name: '',
+      artist: '',
+      album: '',
+      genre: '',
       year: 2026,
       albumTrack: 1,
       cover: false,
-      coverArtist: "",
-      vocalGender: "",
+      coverArtist: '',
+      vocalGender: '',
     },
     chart: {
-      author: "",
+      author: '',
       previewStart: 0,
       previewEnd: 0,
     },
     difficulty: Object.fromEntries([
-      ["band", 1],
+      ['band', 1],
       ...difficultyKeys(ruleset).map((key) => [key, 1]),
-    ]) as Metadata["difficulty"],
+    ]) as Metadata['difficulty'],
     audio: {
       root: null,
       song: null,
@@ -201,15 +202,15 @@ export const makeDefaultMetadata = (
       harmony: null,
     },
     credits: {
-      publisher: "",
-      writer: "",
+      publisher: '',
+      writer: '',
     },
     settings: Object.fromEntries(
       (ruleset.settingsSources ?? [])
-        .filter((source) => source.file === "info.json")
+        .filter((source) => source.file === 'info.json')
         .flatMap((source) => source.keys)
         .filter((key) => key.default !== undefined)
         .map((key) => [key.name, key.default]),
-    ) as Metadata["settings"],
+    ) as Metadata['settings'],
   };
 };

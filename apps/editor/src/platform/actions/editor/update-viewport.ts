@@ -1,20 +1,20 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
+import { Action } from '../../actions';
 import {
   ViewportService,
   type ViewportSession,
-} from "../../services/editor/viewports";
+} from '../../services/editor/viewports';
+import type { ServicesAccessor } from '../../services/registry';
 
 export class UpdateViewportAction extends Action<
-  [string, Partial<Omit<ViewportSession, "id">>]
+  [string, Partial<Omit<ViewportSession, 'id'>>]
 > {
   run(
     accessor: ServicesAccessor,
     id: string,
-    update: Partial<Omit<ViewportSession, "id">>,
+    update: Partial<Omit<ViewportSession, 'id'>>,
   ): void {
     accessor
-      .get<ViewportService>("editor.viewports")
+      .get<ViewportService>('editor.viewports')
       .updateViewport(id, update);
   }
 }

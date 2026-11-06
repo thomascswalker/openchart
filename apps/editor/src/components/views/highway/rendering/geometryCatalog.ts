@@ -1,4 +1,4 @@
-import type { MaterialKey, MeshKey } from "../../../../rendering/registry";
+import type { MaterialKey, MeshKey } from '../../../../rendering/registry';
 
 export interface IVector3 {
   x: number;
@@ -16,38 +16,38 @@ export interface ITransform {
 }
 
 export type GeometryId =
-  | "board"
-  | "laneDivider"
-  | "beatLine"
-  | "strikeline"
-  | "sustain"
-  | "note"
-  | "bar"
-  | "cymbal"
-  | "pad"
-  | "barGhost"
-  | "cymbalGhost"
-  | "padGhost"
-  | "fret"
-  | "ghost";
+  | 'board'
+  | 'laneDivider'
+  | 'beatLine'
+  | 'strikeline'
+  | 'sustain'
+  | 'note'
+  | 'bar'
+  | 'cymbal'
+  | 'pad'
+  | 'barGhost'
+  | 'cymbalGhost'
+  | 'padGhost'
+  | 'fret'
+  | 'ghost';
 
 /**
  * Mesh family of a lane note, from the ruleset lane shape: `pad` (pad type
  * tom), `cymbal` (pad type cymbal) or `bar` (kickBar/openBar). Round `gem`
  * lanes use the plain `note` geometry.
  */
-export type NoteShapeKind = "pad" | "cymbal" | "bar";
-export type ShapeGhostGeometryId = "barGhost" | "cymbalGhost" | "padGhost";
+export type NoteShapeKind = 'pad' | 'cymbal' | 'bar';
+export type ShapeGhostGeometryId = 'barGhost' | 'cymbalGhost' | 'padGhost';
 export type GeometryRenderPass =
-  "opaque" | "sustain" | "note" | "topNote" | "overlay";
+  'opaque' | 'sustain' | 'note' | 'topNote' | 'overlay';
 
 export const SHAPE_GHOST_GEOMETRY_IDS: Record<
   NoteShapeKind,
   ShapeGhostGeometryId
 > = {
-  bar: "barGhost",
-  cymbal: "cymbalGhost",
-  pad: "padGhost",
+  bar: 'barGhost',
+  cymbal: 'cymbalGhost',
+  pad: 'padGhost',
 };
 
 export interface GeometryEntry {
@@ -85,135 +85,135 @@ const identityModelTransform: ITransform = {
 
 export const HIGHWAY_GEOMETRY_CATALOG: Record<GeometryId, GeometryEntry> = {
   board: {
-    id: "board",
+    id: 'board',
     transform: {
       position: { x: 0, y: -0.25, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 3.25, y: 0.15, z: 1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.board,
-    renderPass: "opaque",
+    renderPass: 'opaque',
   },
   laneDivider: {
-    id: "laneDivider",
+    id: 'laneDivider',
     transform: {
       position: { x: 0, y: -0.05, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 0.025, y: 0.04, z: 1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.markings,
-    renderPass: "opaque",
+    renderPass: 'opaque',
   },
   beatLine: {
-    id: "beatLine",
+    id: 'beatLine',
     transform: {
       position: { x: 0, y: -0.065, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 3, y: 0.008, z: 1 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.markings,
-    renderPass: "opaque",
+    renderPass: 'opaque',
   },
   strikeline: {
-    id: "strikeline",
+    id: 'strikeline',
     transform: {
       position: { x: 0, y: -0.04, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 3, y: 0.015, z: 0.06 },
     },
     layer: HIGHWAY_DEPTH_LAYERS.markings,
-    renderPass: "opaque",
+    renderPass: 'opaque',
   },
   fret: {
-    id: "fret",
+    id: 'fret',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "fret",
-    materialKey: "fret",
+    meshKey: 'fret',
+    materialKey: 'fret',
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: 'note',
   },
   note: {
-    id: "note",
+    id: 'note',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "roundNote",
-    materialKey: "roundNote",
+    meshKey: 'roundNote',
+    materialKey: 'roundNote',
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: 'note',
   },
   ghost: {
-    id: "ghost",
+    id: 'ghost',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "roundNote",
-    materialKey: "roundNote",
+    meshKey: 'roundNote',
+    materialKey: 'roundNote',
     layer: HIGHWAY_DEPTH_LAYERS.overlay,
-    renderPass: "overlay",
+    renderPass: 'overlay',
   },
   sustain: {
-    id: "sustain",
+    id: 'sustain',
     transform: {
       position: { x: 0, y: -0.04, z: 0 },
       rotation: { x: 90, y: 0, z: 0 },
       scale: { x: 0.32, y: 1, z: 1 },
     },
-    materialKey: "sustain",
+    materialKey: 'sustain',
     layer: HIGHWAY_DEPTH_LAYERS.sustain,
-    renderPass: "sustain",
+    renderPass: 'sustain',
   },
   bar: {
-    id: "bar",
+    id: 'bar',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "kickNote",
-    materialKey: "kickNote",
+    meshKey: 'kickNote',
+    materialKey: 'kickNote',
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "sustain",
+    renderPass: 'sustain',
   },
   barGhost: {
-    id: "barGhost",
+    id: 'barGhost',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "kickNote",
-    materialKey: "kickNote",
+    meshKey: 'kickNote',
+    materialKey: 'kickNote',
     layer: HIGHWAY_DEPTH_LAYERS.overlay,
-    renderPass: "sustain",
+    renderPass: 'sustain',
   },
   cymbal: {
-    id: "cymbal",
+    id: 'cymbal',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "cymbalNote",
-    materialKey: "roundNote",
+    meshKey: 'cymbalNote',
+    materialKey: 'roundNote',
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: 'note',
   },
   cymbalGhost: {
-    id: "cymbalGhost",
+    id: 'cymbalGhost',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "cymbalNote",
-    materialKey: "cymbalNote",
+    meshKey: 'cymbalNote',
+    materialKey: 'cymbalNote',
     layer: HIGHWAY_DEPTH_LAYERS.overlay,
-    renderPass: "overlay",
+    renderPass: 'overlay',
   },
   pad: {
-    id: "pad",
+    id: 'pad',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "roundNote",
-    materialKey: "roundNote",
+    meshKey: 'roundNote',
+    materialKey: 'roundNote',
     layer: HIGHWAY_DEPTH_LAYERS.note,
-    renderPass: "note",
+    renderPass: 'note',
   },
   padGhost: {
-    id: "padGhost",
+    id: 'padGhost',
     transform: identityModelTransform,
     placementOffset: { x: 0, y: 0, z: 0 },
-    meshKey: "roundNote",
-    materialKey: "roundNote",
+    meshKey: 'roundNote',
+    materialKey: 'roundNote',
     layer: HIGHWAY_DEPTH_LAYERS.overlay,
-    renderPass: "overlay",
+    renderPass: 'overlay',
   },
 };

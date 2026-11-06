@@ -1,27 +1,29 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FileTreeView } from "../Tree";
-import { Section } from "../../../shared";
-import { useEffect, useState } from "react";
-import { getOriginPrivateDirectory } from "native-file-system-adapter";
-import memoryAdapter from "native-file-system-adapter/src/adapters/memory.js";
+import { useEffect, useState } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { getOriginPrivateDirectory } from 'native-file-system-adapter';
+import memoryAdapter from 'native-file-system-adapter/src/adapters/memory.js';
+
+import { Section } from '../../../shared';
+import { FileTreeView } from '../Tree';
 
 interface MockDirectory {
   [name: string]: string | MockDirectory;
 }
 
 const MOCK_FILES: MockDirectory = {
-  "file2.txt": "content2",
+  'file2.txt': 'content2',
   dir1: {
-    "file1.txt": "content",
-    dir2: { "file4.txt": "content4" },
+    'file1.txt': 'content',
+    dir2: { 'file4.txt': 'content4' },
   },
-  "file3.txt": "content3",
+  'file3.txt': 'content3',
 };
 
 // Populates an in-memory directory (browser-safe; mock-fs requires Node).
 async function populate(dir: FileSystemDirectoryHandle, tree: MockDirectory) {
   for (const [name, value] of Object.entries(tree)) {
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       const file = await dir.getFileHandle(name, { create: true });
       const writable = await file.createWritable();
       await writable.write(value);
@@ -63,7 +65,7 @@ const Wrapper = () => {
 };
 
 const meta = {
-  title: "Components/Tree",
+  title: 'Components/Tree',
   component: Wrapper,
   decorators: [
     (Story) => {

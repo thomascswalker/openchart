@@ -7,13 +7,13 @@
  */
 
 /** Where a binding is active. Maps 1:1 onto a library scope of the same name. */
-export type InputScope = "global" | "highway" | "pianoroll";
+export type InputScope = 'global' | 'highway' | 'pianoroll';
 
 /**
  * `document`: fires wherever focus is (like the old window listeners).
  * `canvas`: fires only while the active view's canvas has focus.
  */
-export type BindingTarget = "document" | "canvas";
+export type BindingTarget = 'document' | 'canvas';
 
 export interface BindingSpec {
   /** Default chord in library syntax, e.g. `Mod+S`, `Shift+ArrowUp`, `]`. */
@@ -29,7 +29,7 @@ export interface BindingSpec {
   /** Set `requireReset: false` for bindings that should repeat while held. */
   options?: {
     requireReset?: boolean;
-    eventType?: "keydown" | "keyup";
+    eventType?: 'keydown' | 'keyup';
     ignoreInputs?: boolean;
   };
 }
@@ -50,7 +50,7 @@ export interface Binding {
   readonly target: BindingTarget;
   readonly options: {
     requireReset?: boolean;
-    eventType?: "keydown" | "keyup";
+    eventType?: 'keydown' | 'keyup';
     ignoreInputs?: boolean;
   };
 }
@@ -65,10 +65,10 @@ export function defineBindings(
 ): readonly Binding[] {
   const seen = new Set<string>();
   return Object.entries(table).map(([key, spec]) => {
-    const separator = key.indexOf("#");
+    const separator = key.indexOf('#');
     const action = separator < 0 ? key : key.slice(0, separator);
     const variant = separator < 0 ? undefined : key.slice(separator + 1);
-    const id = `${scope}.${action}${variant ? `.${variant}` : ""}`;
+    const id = `${scope}.${action}${variant ? `.${variant}` : ''}`;
     if (seen.has(id)) {
       throw new Error(`Duplicate binding id: ${id}`);
     }
@@ -82,7 +82,7 @@ export function defineBindings(
       args: spec.args ?? [],
       name: spec.name,
       group: spec.group,
-      target: spec.target ?? "document",
+      target: spec.target ?? 'document',
       options: spec.options ?? {},
     };
   });

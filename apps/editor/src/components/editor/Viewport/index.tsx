@@ -1,13 +1,3 @@
-import type { Midi } from "@openchart/midi";
-import {
-  Difficulty,
-  EditingModeId,
-  VocalNoteKind,
-  VocalPhraseKind,
-  type CompiledRuleset,
-  type ToolDescriptor,
-} from "@openchart/views";
-import { startCase } from "es-toolkit";
 import {
   useCallback,
   useEffect,
@@ -16,21 +6,34 @@ import {
   useMemo,
   useRef,
   useState,
-} from "react";
-import { runAction } from "../../../platform/actions/execute";
-import { useSettings } from "../../../hooks/useApplication";
-import { useDocument } from "../../../hooks/useDocument";
-import { useRuleset } from "../../../hooks/useRuleset";
-import { usePlaybackSelector } from "../../../hooks/usePlayback";
-import { useViewport } from "../../../hooks/useViewport";
-import { ViewHotkeyScopes } from "../../../input/ViewportHotkeyScopes";
-import Platform from "../../../platform";
-import type { EngineOptions } from "../../../rendering/engine";
-import { ActiveChartViewService } from "../../../platform/services/editor/activeChartView";
-import type { EditingService } from "../../../platform/services/editor/editing";
-import { type ViewportSession } from "../../../platform/services/editor/viewports";
-import { PlaybackService } from "../../../platform/services/playback/playback";
-import { Button, CloseButton } from "../../shared";
+} from 'react';
+
+import type { Midi } from '@openchart/midi';
+import {
+  type CompiledRuleset,
+  Difficulty,
+  EditingModeId,
+  type ToolDescriptor,
+  VocalNoteKind,
+  VocalPhraseKind,
+} from '@openchart/views';
+import { startCase } from 'es-toolkit';
+
+import { useSettings } from '../../../hooks/useApplication';
+import { usePlaybackSelector } from '../../../hooks/usePlayback';
+import { useProject } from '../../../hooks/useProject';
+import { useRuleset } from '../../../hooks/useRuleset';
+import { useViewport } from '../../../hooks/useViewport';
+import { ViewHotkeyScopes } from '../../../input/ViewportHotkeyScopes';
+import Platform from '../../../platform';
+import { runAction } from '../../../platform/actions/execute';
+import { ActiveChartViewService } from '../../../platform/services/editor/activeChartView';
+import type { EditingService } from '../../../platform/services/editor/editing';
+import { type ViewportSession } from '../../../platform/services/editor/viewports';
+import { PlaybackService } from '../../../platform/services/playback/playback';
+import type { EngineOptions } from '../../../rendering/engine';
+import { TrackList } from '../../dialogs';
+import { Button, CloseButton } from '../../shared';
 import {
   BassIcon,
   DrumsIcon,
@@ -41,18 +44,17 @@ import {
   PianoIcon,
   SplitIcon,
   VocalsIcon,
-} from "../../shared";
-import { ChartViewHost } from "../../views/ChartViewHost";
-import type { AnyChartView } from "../../views/ChartViews";
-import { ChartViews } from "../../views/ChartViews";
-import { HighwayView } from "../../views/highway";
-import type { HighwayMode } from "../../views/highway";
-import { PianoRollView, type PianoRollNote } from "../../views/pianoRoll";
-import type { PianoRollVocalPlacement } from "../../views/pianoRoll";
-import { Timeline } from "../Timeline/Timeline";
-import Toolbar from "../Toolbar";
-import { TrackList } from "../../dialogs";
-import styles from "./Viewport.module.css";
+} from '../../shared';
+import { ChartViewHost } from '../../views/ChartViewHost';
+import type { AnyChartView } from '../../views/ChartViews';
+import { ChartViews } from '../../views/ChartViews';
+import { HighwayView } from '../../views/highway';
+import type { HighwayMode } from '../../views/highway';
+import { type PianoRollNote, PianoRollView } from '../../views/pianoRoll';
+import type { PianoRollVocalPlacement } from '../../views/pianoRoll';
+import { Timeline } from '../Timeline/Timeline';
+import Toolbar from '../Toolbar';
+import styles from './Viewport.module.css';
 
 /**
  * Icon for a track, chosen by its ruleset `kind`. Guitar tracks whose name
@@ -67,21 +69,21 @@ function InstrumentIcon({
 }) {
   const track = rules.byName.get(instrument);
   switch (track?.kind) {
-    case "guitar":
+    case 'guitar':
       return /RHYTHM|BASS/i.test(track.name) ? (
         <BassIcon width={18} height={18} />
       ) : (
         <GuitarIcon width={18} height={18} />
       );
-    case "gamepad":
+    case 'gamepad':
       return track.columns.length >= 5 ? (
         <FivepadIcon width={18} height={18} />
       ) : (
         <FourpadIcon width={18} height={18} />
       );
-    case "drums":
+    case 'drums':
       return <DrumsIcon width={18} height={18} />;
-    case "vocals":
+    case 'vocals':
       return <VocalsIcon width={18} height={18} />;
     case undefined:
       return /SYNTH|KEYS|PIANO/i.test(instrument) ? (
@@ -107,9 +109,9 @@ function updateCameraData(
 
 function chartViewMatchesSession(
   view: AnyChartView,
-  viewKind: ViewportSession["view"],
+  viewKind: ViewportSession['view'],
 ): boolean {
-  return viewKind === "highway"
+  return viewKind === 'highway'
     ? view instanceof HighwayView
     : view instanceof PianoRollView;
 }
@@ -119,11 +121,11 @@ function trackIndexForSession(
   session: ViewportSession,
   rules: CompiledRuleset,
 ): number | null {
-  if (session.trackKey.startsWith("unmapped-")) {
+  if (session.trackKey.startsWith('unmapped-')) {
     // Header tracks are part of the ruleset, so they are excluded here too.
     const names = new Set(rules.tracks.map((track) => track.name));
     const tracks = midi.tracks.filter((track) => !names.has(track.name));
-    const index = Number(session.trackKey.slice("unmapped-".length));
+    const index = Number(session.trackKey.slice('unmapped-'.length));
     const selected = tracks[index];
     return selected ? midi.tracks.indexOf(selected) : null;
   }
@@ -191,7 +193,7 @@ function ViewportPanel({
     chartView: AnyChartView | null,
   ) => void;
 }) {
-  const { data: midiData } = useDocument();
+  const { data: midiData } = useProject();
   const { compiled: rules } = useRuleset();
   const { settings } = useSettings();
   const {
@@ -206,21 +208,21 @@ function ViewportPanel({
   const stopPreview = usePlaybackSelector((s) => s.stopPreview);
   const articleRef = useRef<HTMLElement | null>(null);
   const activeChartView = Platform.services.get<ActiveChartViewService>(
-    "editor.active-chart-view",
+    'editor.active-chart-view',
   );
   const editingService =
-    Platform.services.get<EditingService>("editor.editing");
+    Platform.services.get<EditingService>('editor.editing');
   const editingSession = editingService.getSession(session.id);
   const globalEditingSession =
-    session.view === "piano-roll"
-      ? editingService.getSession(session.id, "global")
+    session.view === 'piano-roll'
+      ? editingService.getSession(session.id, 'global')
       : null;
   const [chartView, setChartView] = useState<AnyChartView | null>(null);
   const modeState = getStateValues(editingSession?.getToolState());
   // Tools depend on the track's rules (phrases, placements), so ask the session.
   const tools = editingSession?.getTools() ?? [];
   const highwayMode = getHighwayMode(tools, modeState);
-  const notePlacementType = getModeValue(tools, modeState, "placement");
+  const notePlacementType = getModeValue(tools, modeState, 'placement');
   const vocalPlacement = getVocalPlacement(
     editingSession?.mode.id ?? null,
     modeState,
@@ -267,7 +269,7 @@ function ViewportPanel({
   }, [chartView, session.camera.tick]);
 
   function onNotePreview(this: PianoRollView, notes: readonly PianoRollNote[]) {
-    const playback = Platform.services.get<PlaybackService>("playback");
+    const playback = Platform.services.get<PlaybackService>('playback');
     if (!playback.getSnapshot().isVocalPitchFeedbackEnabled) return;
     playback.previewNotes(
       notes.map((note) => ({
@@ -283,7 +285,7 @@ function ViewportPanel({
   }
 
   function getStateValues(state: unknown): Record<string, unknown> {
-    if (typeof state !== "object" || state === null || Array.isArray(state)) {
+    if (typeof state !== 'object' || state === null || Array.isArray(state)) {
       return {};
     }
     return state as Record<string, unknown>;
@@ -295,7 +297,7 @@ function ViewportPanel({
     stateKey: string,
   ): unknown {
     return tools.some(
-      (tool) => tool.group === "placement" && tool.stateKey === stateKey,
+      (tool) => tool.group === 'placement' && tool.stateKey === stateKey,
     )
       ? state[stateKey]
       : undefined;
@@ -309,12 +311,12 @@ function ViewportPanel({
     const active = (stateKey: string) =>
       tools.find(
         (tool) =>
-          tool.group === "highway-tools" &&
+          tool.group === 'highway-tools' &&
           tool.stateKey === stateKey &&
           Object.is(state[tool.stateKey], tool.value),
       );
-    const value = (active("phrase") ?? active("tool"))?.value;
-    return typeof value === "string" ? value : null;
+    const value = (active('phrase') ?? active('tool'))?.value;
+    return typeof value === 'string' ? value : null;
   }
 
   function getVocalPlacement(
@@ -349,12 +351,12 @@ function ViewportPanel({
     if (view instanceof PianoRollView) {
       view.onNotePreview = onNotePreview;
     }
-    view.onSeekRequest = (tick) => runAction("playback.set-tick", tick);
+    view.onSeekRequest = (tick) => runAction('playback.set-tick', tick);
     view.onSnapDenominatorChange = (denominator) =>
-      runAction("editor.set-snap-denominator", denominator);
+      runAction('editor.set-snap-denominator', denominator);
     const unsubscribeCameraChange = view.subscribeCameraChange(() => {
       updateCameraData(articleRef.current, view);
-      runAction("editor.update-viewport", session.id, {
+      runAction('editor.update-viewport', session.id, {
         camera:
           view instanceof PianoRollView
             ? { tick: view.getCameraTick(), pianoRoll: view.getCameraState() }
@@ -375,7 +377,7 @@ function ViewportPanel({
     if (!chartView) {
       return;
     }
-    const playback = Platform.services.get<PlaybackService>("playback");
+    const playback = Platform.services.get<PlaybackService>('playback');
     const sync = (): void => {
       const { playbackTick } = playback.getSnapshot();
       chartView.setPlayheadTick(playbackTick);
@@ -384,7 +386,7 @@ function ViewportPanel({
       }
       const cameraTick = chartView.getCameraTickForPlayhead(playbackTick);
       if (cameraTick !== null && cameraTick !== getCameraTick()) {
-        runAction("editor.update-viewport", session.id, {
+        runAction('editor.update-viewport', session.id, {
           camera: { tick: cameraTick },
         });
       }
@@ -409,7 +411,7 @@ function ViewportPanel({
 
   useEffect(() => {
     if (chartView instanceof HighwayView) {
-      if (typeof notePlacementType === "string") {
+      if (typeof notePlacementType === 'string') {
         chartView.setNotePlacementType(notePlacementType);
       }
     }
@@ -450,8 +452,8 @@ function ViewportPanel({
       data-testid="viewport-panel"
       data-viewport-id={session.id}
       data-view={session.view}
-      className={`${styles.viewportPanel}${active ? ` ${styles.viewportPanelActive}` : ""}`}
-      onPointerDown={() => runAction("editor.focus-viewport", session.id)}
+      className={`${styles.viewportPanel}${active ? ` ${styles.viewportPanelActive}` : ''}`}
+      onPointerDown={() => runAction('editor.focus-viewport', session.id)}
     >
       <header className={styles.viewportPanelHeader}>
         <p className={styles.viewportPanelTitle}>
@@ -459,16 +461,16 @@ function ViewportPanel({
             <InstrumentIcon instrument={session.instrument} rules={rules} />
           </span>
           <span className={styles.viewportPanelTitleText}>
-            {session.view === "piano-roll"
+            {session.view === 'piano-roll'
               ? session.instrument
               : `${startCase(session.instrument)} (${Difficulty[session.difficulty]})`}
           </span>
         </p>
         <div className={styles.viewportPanelActions}>
           <Button
-            aria-label={`Split ${session.view === "piano-roll" ? "Piano Roll" : "Highway"} to the right`}
+            aria-label={`Split ${session.view === 'piano-roll' ? 'Piano Roll' : 'Highway'} to the right`}
             onClick={() =>
-              runAction("editor.add-viewport", session.view, session.id)
+              runAction('editor.add-viewport', session.view, session.id)
             }
             disabled={viewportSessions.length >= maxViewportCount}
             flat={true}
@@ -476,13 +478,13 @@ function ViewportPanel({
             minHeight="24px"
             maxWidth="24px"
             maxHeight="24px"
-            padding={"2px"}
+            padding={'2px'}
             borderRadius={4}
           >
             <SplitIcon />
           </Button>
           <CloseButton
-            onClick={() => runAction("editor.close-viewport", session.id)}
+            onClick={() => runAction('editor.close-viewport', session.id)}
             disabled={viewportSessions.length <= 1}
           />
         </div>
@@ -490,17 +492,17 @@ function ViewportPanel({
       <Toolbar session={session} />
       <div
         style={{
-          display: "flex",
-          flexDirection: "row",
-          flex: "1 1 0",
+          display: 'flex',
+          flexDirection: 'row',
+          flex: '1 1 0',
           minHeight: 0,
-          width: "100%",
+          width: '100%',
         }}
       >
         <div
           style={{
-            display: "flex",
-            flex: "0 0 30%",
+            display: 'flex',
+            flex: '0 0 30%',
             minWidth: 110,
             maxWidth: 200,
             minHeight: 0,
@@ -510,8 +512,8 @@ function ViewportPanel({
         </div>
         <div
           style={{
-            position: "relative",
-            flex: "1 1 0",
+            position: 'relative',
+            flex: '1 1 0',
             minWidth: 0,
             minHeight: 0,
           }}

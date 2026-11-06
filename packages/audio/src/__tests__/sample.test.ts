@@ -1,11 +1,12 @@
-import { expect, test, vi, type MockInstance } from "vitest";
-import { fileURLToPath } from "node:url";
-import AudioSample from "../sample.js";
-import { AudioEngine } from "../engine.js";
+import { fileURLToPath } from 'node:url';
+import { type MockInstance, expect, test, vi } from 'vitest';
 
-const SampleFileName = "./assets/sample.wav";
+import { AudioEngine } from '../engine.js';
+import AudioSample from '../sample.js';
 
-test("AudioSample loads the sample file", async () => {
+const SampleFileName = './assets/sample.wav';
+
+test('AudioSample loads the sample file', async () => {
   expect(AudioSample).toBeDefined();
 
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
@@ -13,7 +14,7 @@ test("AudioSample loads the sample file", async () => {
   expect(source.isValid).toBe(true);
 });
 
-test("AudioSample play, pause, and stop methods work", async () => {
+test('AudioSample play, pause, and stop methods work', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   expect(source.play()).toBe(true);
@@ -22,16 +23,16 @@ test("AudioSample play, pause, and stop methods work", async () => {
   expect(source.stop()).toBe(true);
 });
 
-test("AudioSample seeking updates position and restarts a playing source", async () => {
+test('AudioSample seeking updates position and restarts a playing source', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   const seekTime = source.duration / 2;
   const context = source.context;
   expect(context).not.toBeNull();
   if (!context) {
-    throw new Error("Audio context was not initialized");
+    throw new Error('Audio context was not initialized');
   }
-  const createBufferSource = vi.spyOn(context, "createBufferSource");
+  const createBufferSource = vi.spyOn(context, 'createBufferSource');
 
   expect(source.duration).toBeGreaterThan(0);
   expect(source.seek(seekTime)).toBe(true);
@@ -57,7 +58,7 @@ test("AudioSample seeking updates position and restarts a playing source", async
   expect(source.currentTime).toBe(0);
 });
 
-test("AudioSample rejects seek positions outside the buffer", async () => {
+test('AudioSample rejects seek positions outside the buffer', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
 
@@ -66,7 +67,7 @@ test("AudioSample rejects seek positions outside the buffer", async () => {
   expect(source.seek(Number.NaN)).toBe(false);
 });
 
-test("AudioSample can be disposed while loading", async () => {
+test('AudioSample can be disposed while loading', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = AudioSample.load(filename);
 
@@ -77,7 +78,7 @@ test("AudioSample can be disposed while loading", async () => {
   expect(source.play()).toBe(false);
 });
 
-test("AudioSample onLoaded callback is called", async () => {
+test('AudioSample onLoaded callback is called', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   let loadedCalled = false;
   await AudioSample.loadAsync(filename, {
@@ -88,7 +89,7 @@ test("AudioSample onLoaded callback is called", async () => {
   expect(loadedCalled).toBe(true);
 });
 
-test("AudioSample reload and reloadAsync methods work", async () => {
+test('AudioSample reload and reloadAsync methods work', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const source = await AudioSample.loadAsync(filename);
   source.reload();
@@ -96,18 +97,18 @@ test("AudioSample reload and reloadAsync methods work", async () => {
   expect(source.isValid).toBe(true);
 });
 
-test("AudioSample.play schedules at the requested context time and fades in", async () => {
+test('AudioSample.play schedules at the requested context time and fades in', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const sample = await AudioSample.loadAsync(filename);
   const context = sample.context;
   if (!context) {
-    throw new Error("Audio context was not initialized");
+    throw new Error('Audio context was not initialized');
   }
   const starts: MockInstance[] = [];
   const createBufferSource = context.createBufferSource.bind(context);
-  vi.spyOn(context, "createBufferSource").mockImplementation(() => {
+  vi.spyOn(context, 'createBufferSource').mockImplementation(() => {
     const node = createBufferSource();
-    starts.push(vi.spyOn(node, "start"));
+    starts.push(vi.spyOn(node, 'start'));
     return node;
   });
 
@@ -118,7 +119,7 @@ test("AudioSample.play schedules at the requested context time and fades in", as
   expect(starts[0]).toHaveBeenCalledWith(42, offset);
 });
 
-test("AudioSamples sharing an engine share one AudioContext", async () => {
+test('AudioSamples sharing an engine share one AudioContext', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const engine = new AudioEngine();
   const first = await AudioSample.loadAsync(filename, { engine });
@@ -134,15 +135,15 @@ test("AudioSamples sharing an engine share one AudioContext", async () => {
   engine.dispose();
 });
 
-test("AudioSample volume changes are smoothed instead of stepped", async () => {
+test('AudioSample volume changes are smoothed instead of stepped', async () => {
   const filename = fileURLToPath(new URL(SampleFileName, import.meta.url));
   const sample = await AudioSample.loadAsync(filename);
   expect(sample.play()).toBe(true);
   const context = sample.context;
   if (!context) {
-    throw new Error("Audio context was not initialized");
+    throw new Error('Audio context was not initialized');
   }
-  const smooth = vi.spyOn(sample.engine, "smooth");
+  const smooth = vi.spyOn(sample.engine, 'smooth');
 
   sample.volume = 0.25;
 

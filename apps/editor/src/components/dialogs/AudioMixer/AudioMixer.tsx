@@ -1,14 +1,15 @@
-import { useSnapshot } from "../../../platform";
-import { HorizontalSeparator, ResetIcon, Section, Text } from "../../shared";
-import type { MixerTrack } from "@openchart/audio";
-import type { MixerSnapshot } from "../../../platform/services/mixer/types";
-import styles from "./AudioMixer.module.css";
-import { VolumeSlider } from "./VolumeSlider";
-import { AudioTrackButton } from "./AudioTrackButton";
-import { AudioTrack } from "./AudioTrack";
+import type { MixerTrack } from '@openchart/audio';
+
+import { useSnapshot } from '../../../platform';
+import type { MixerSnapshot } from '../../../platform/services/mixer/types';
+import { HorizontalSeparator, ResetIcon, Section, Text } from '../../shared';
+import styles from './AudioMixer.module.css';
+import { AudioTrack } from './AudioTrack';
+import { AudioTrackButton } from './AudioTrackButton';
+import { VolumeSlider } from './VolumeSlider';
 
 const AudioMixer = () => {
-  const mixer = useSnapshot<MixerSnapshot>("mixer").mixer;
+  const mixer = useSnapshot<MixerSnapshot>('mixer').mixer;
   const hasSoloedTrack = Object.values(mixer.tracks).some(
     (track) => track.soloed,
   );
@@ -30,20 +31,20 @@ const AudioMixer = () => {
   };
 
   return (
-    <Section padding={0} gap="0" className={styles["ui-track-mixer"]}>
+    <Section padding={0} gap="0" className={styles['ui-track-mixer']}>
       <Section
         flexDirection="row"
         minHeight="64px"
         padding={0}
         backgroundColor="var(--neutral-85)"
-        className={styles["ui-track-mixer-master-row"]}
+        className={styles['ui-track-mixer-master-row']}
       >
         <Section
           paddingLeft="16px"
           paddingRight="16px"
           alignItems="center"
           flexDirection="row"
-          className={styles["ui-track-mixer-master-controls"]}
+          className={styles['ui-track-mixer-master-controls']}
         >
           <Text textAlign="left">MASTER</Text>
           <VolumeSlider
@@ -76,7 +77,7 @@ const AudioMixer = () => {
         paddingX="8px"
         paddingY="none"
         gap="0"
-        className={styles["ui-track-mixer-track-list"]}
+        className={styles['ui-track-mixer-track-list']}
       >
         {Object.keys(mixer.tracks).length === 0 && (
           <Text textAlign="center">No audio tracks loaded</Text>

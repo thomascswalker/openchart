@@ -1,17 +1,18 @@
-import type { Midi, MidiChannelEvent } from "@openchart/midi";
-import type { ChartView, EditingSession, PreviewState } from "@openchart/views";
-import type { ChartViewState } from "../AbstractChartView";
+import type { Midi, MidiChannelEvent } from '@openchart/midi';
+import type { ChartView, EditingSession, PreviewState } from '@openchart/views';
+
+import type { ChartViewState } from '../AbstractChartView';
 import type {
   HighwayGhostNoteLocation,
-  HighwaySelectionRange,
   HighwayMarqueeDragState,
   HighwayPhraseHoverState,
-} from "./types";
+  HighwaySelectionRange,
+} from './types';
 import type {
   HighwayMode,
   HighwayNotePlacementType,
   HighwayPhraseKind,
-} from "./types";
+} from './types';
 
 /** Narrow view services available to highway-specific collaborators. */
 export interface HighwayContext {

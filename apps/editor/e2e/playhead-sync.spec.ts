@@ -1,77 +1,78 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from '@playwright/test';
+
 import {
+  MIDI_END_TICK,
   addViewport,
   cameraTick,
   canvasShot,
   expectPlayheadFramed,
   loadSong,
-  MIDI_END_TICK,
   panel,
   playheadTick,
   scrubTimeline,
   switchView,
-} from "./helpers.js";
+} from './helpers.js';
 
 const HIGHWAY_CAMERA_OFFSET = -(4 / 3) * 480;
 
-test("stable canvas screenshot control", async ({ page }) => {
+test('stable canvas screenshot control', async ({ page }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
+  await switchView(viewport, 'highway');
   await page.mouse.move(2, 2);
   const first = await canvasShot(viewport);
   const second = await canvasShot(viewport);
   expect(second.equals(first)).toBe(true);
 });
 
-test("highway framebuffer capture exposes performance diagnostics", async ({
+test('highway framebuffer capture exposes performance diagnostics', async ({
   page,
 }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
-      "openchart.application-settings",
+      'openchart.application-settings',
       JSON.stringify({ display: { antialiasing: true } }),
     );
   });
   await page.addInitScript(() => {
-    Reflect.set(globalThis, "__captureFramebuffer", true);
+    Reflect.set(globalThis, '__captureFramebuffer', true);
   });
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  const canvas = viewport.locator(".midi-view-host canvas");
+  await switchView(viewport, 'highway');
+  const canvas = viewport.locator('.midi-view-host canvas');
   await expect
-    .poll(() => canvas.getAttribute("data-render-calls"))
+    .poll(() => canvas.getAttribute('data-render-calls'))
     .not.toBeNull();
 
   for (const metric of [
-    "geometry-count",
-    "texture-count",
-    "scene-objects",
-    "highway-draw-ms",
+    'geometry-count',
+    'texture-count',
+    'scene-objects',
+    'highway-draw-ms',
   ]) {
     await expect(canvas).toHaveAttribute(`data-${metric}`, /^\d+(\.\d+)?$/);
   }
   const contextAttributes = JSON.parse(
-    (await canvas.getAttribute("data-context-attributes")) ?? "{}",
+    (await canvas.getAttribute('data-context-attributes')) ?? '{}',
   ) as { antialias?: boolean };
   expect(contextAttributes.antialias).toBe(true);
 });
 
-test("T1: arrow keys move the highway camera with the playhead", async ({
+test('T1: arrow keys move the highway camera with the playhead', async ({
   page,
 }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  const canvas = viewport.locator(".midi-view-host canvas");
+  await switchView(viewport, 'highway');
+  const canvas = viewport.locator('.midi-view-host canvas');
   await canvas.click();
 
   const initialCamera = await cameraTick(viewport);
   const initialPlayhead = await playheadTick(viewport);
   const before = await canvasShot(viewport);
   for (let step = 0; step < 4; step += 1) {
-    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press('ArrowUp');
   }
 
   await expect
@@ -87,33 +88,33 @@ test("T1: arrow keys move the highway camera with the playhead", async ({
     .toBe(true);
 
   for (let step = 0; step < 4; step += 1) {
-    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press('ArrowDown');
   }
   await expect.poll(() => cameraTick(viewport)).toBe(initialCamera);
 });
 
-for (const view of ["highway", "piano-roll"] as const) {
+for (const view of ['highway', 'piano-roll'] as const) {
   test(`T2: jump to end and beginning frame ${view}`, async ({ page }) => {
     await loadSong(page);
     const viewport = panel(page, 0);
     await switchView(viewport, view);
     const initialCamera = await cameraTick(viewport);
 
-    await page.getByRole("button", { name: "Jump to End" }).click();
+    await page.getByRole('button', { name: 'Jump to End' }).click();
     await expect.poll(() => playheadTick(viewport)).toBe(MIDI_END_TICK);
     await expect.poll(() => cameraTick(viewport)).not.toBe(initialCamera);
     await expectPlayheadFramed(viewport, view);
 
-    await page.getByRole("button", { name: "Jump to Beginning" }).click();
+    await page.getByRole('button', { name: 'Jump to Beginning' }).click();
     await expect.poll(() => playheadTick(viewport)).toBe(0);
     await expect.poll(() => cameraTick(viewport)).toBe(initialCamera);
   });
 }
 
 for (const [originView, otherView] of [
-  ["highway", "highway"],
-  ["piano-roll", "highway"],
-  ["highway", "piano-roll"],
+  ['highway', 'highway'],
+  ['piano-roll', 'highway'],
+  ['highway', 'piano-roll'],
 ] as const) {
   test(`T3: ${originView} timeline scrubbing moves the other ${otherView} viewport`, async ({
     page,
@@ -122,7 +123,7 @@ for (const [originView, otherView] of [
     const origin = panel(page, 0);
     await switchView(origin, originView);
     await addViewport(origin);
-    await expect(page.getByTestId("viewport-timeline")).toHaveCount(1);
+    await expect(page.getByTestId('viewport-timeline')).toHaveCount(1);
     const other = panel(page, 1);
     await switchView(other, otherView);
     const initialOtherCamera = await cameraTick(other);
@@ -144,15 +145,15 @@ for (const [originView, otherView] of [
   });
 }
 
-test("T4: timeline viewport box redraws when the highway camera pans", async ({
+test('T4: timeline viewport box redraws when the highway camera pans', async ({
   page,
 }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  const timeline = page.getByTestId("viewport-timeline").locator("canvas");
-  const bounds = await viewport.locator(".midi-view-host canvas").boundingBox();
-  if (!bounds) throw new Error("Highway canvas is not visible");
+  await switchView(viewport, 'highway');
+  const timeline = page.getByTestId('viewport-timeline').locator('canvas');
+  const bounds = await viewport.locator('.midi-view-host canvas').boundingBox();
+  if (!bounds) throw new Error('Highway canvas is not visible');
   const before = await timeline.screenshot();
   const initialCamera = await cameraTick(viewport);
   await page.mouse.move(
@@ -167,12 +168,12 @@ test("T4: timeline viewport box redraws when the highway camera pans", async ({
     .toBe(true);
 });
 
-test("T5a: manual highway panning stays put while paused", async ({ page }) => {
+test('T5a: manual highway panning stays put while paused', async ({ page }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  const bounds = await viewport.locator(".midi-view-host canvas").boundingBox();
-  if (!bounds) throw new Error("Highway canvas is not visible");
+  await switchView(viewport, 'highway');
+  const bounds = await viewport.locator('.midi-view-host canvas').boundingBox();
+  if (!bounds) throw new Error('Highway canvas is not visible');
   const initialCamera = await cameraTick(viewport);
   await page.mouse.move(
     bounds.x + bounds.width / 2,
@@ -185,37 +186,37 @@ test("T5a: manual highway panning stays put while paused", async ({ page }) => {
   expect(await cameraTick(viewport)).toBe(pannedCamera);
 });
 
-test("T5b: changing the snap denominator does not move the camera", async ({
+test('T5b: changing the snap denominator does not move the camera', async ({
   page,
 }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  await viewport.locator(".midi-view-host canvas").click();
+  await switchView(viewport, 'highway');
+  await viewport.locator('.midi-view-host canvas').click();
   const initialCamera = await cameraTick(viewport);
-  await page.keyboard.press("ArrowLeft");
-  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowRight');
   expect(await cameraTick(viewport)).toBe(initialCamera);
 });
 
-test("T5c: playback advances and pauses both highway viewports", async ({
+test('T5c: playback advances and pauses both highway viewports', async ({
   page,
 }) => {
   await loadSong(page);
   const first = panel(page, 0);
-  await switchView(first, "highway");
+  await switchView(first, 'highway');
   await addViewport(first);
   const second = panel(page, 1);
-  await switchView(second, "highway");
+  await switchView(second, 'highway');
   const initialTick = await playheadTick(first);
   const firstCamera = await cameraTick(first);
   const secondCamera = await cameraTick(second);
 
-  await page.getByRole("button", { name: "Play/Pause", exact: true }).click();
+  await page.getByRole('button', { name: 'Play/Pause', exact: true }).click();
   await expect.poll(() => playheadTick(first)).toBeGreaterThan(initialTick);
   await expect.poll(() => cameraTick(first)).toBeGreaterThan(firstCamera);
   await expect.poll(() => cameraTick(second)).toBeGreaterThan(secondCamera);
-  await page.getByRole("button", { name: "Play/Pause", exact: true }).click();
+  await page.getByRole('button', { name: 'Play/Pause', exact: true }).click();
   const pausedTick = await playheadTick(first);
   const pausedFirstCamera = await cameraTick(first);
   const pausedSecondCamera = await cameraTick(second);
@@ -225,23 +226,23 @@ test("T5c: playback advances and pauses both highway viewports", async ({
   expect(await cameraTick(second)).toBe(pausedSecondCamera);
 });
 
-test("T5d: pressing play reframes a manually panned highway", async ({
+test('T5d: pressing play reframes a manually panned highway', async ({
   page,
 }) => {
   await loadSong(page);
   const viewport = panel(page, 0);
-  await switchView(viewport, "highway");
-  const bounds = await viewport.locator(".midi-view-host canvas").boundingBox();
-  if (!bounds) throw new Error("Highway canvas is not visible");
+  await switchView(viewport, 'highway');
+  const bounds = await viewport.locator('.midi-view-host canvas').boundingBox();
+  if (!bounds) throw new Error('Highway canvas is not visible');
   await page.mouse.move(
     bounds.x + bounds.width / 2,
     bounds.y + bounds.height / 2,
   );
   await page.mouse.wheel(0, -500);
   const pannedCamera = await cameraTick(viewport);
-  await page.getByRole("button", { name: "Play/Pause" }).click();
+  await page.getByRole('button', { name: 'Play/Pause' }).click();
   await expect.poll(() => cameraTick(viewport)).not.toBe(pannedCamera);
-  await page.getByRole("button", { name: "Play/Pause" }).click();
+  await page.getByRole('button', { name: 'Play/Pause' }).click();
   const pausedTick = await playheadTick(viewport);
   await expect
     .poll(async () => (await cameraTick(viewport)) - pausedTick)

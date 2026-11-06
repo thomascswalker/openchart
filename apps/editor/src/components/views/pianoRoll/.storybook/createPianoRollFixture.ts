@@ -1,9 +1,9 @@
-import { MetaType, Midi, MidiTrack } from "@openchart/midi";
-import { SongView, VocalNoteKind, VocalPhraseKind } from "@openchart/views";
+import { MetaType, Midi, MidiTrack } from '@openchart/midi';
+import { SongView, VocalNoteKind, VocalPhraseKind } from '@openchart/views';
 
 /** Which sample document a story loads. */
 export type PianoRollFixtureVariant =
-  "populated" | "empty" | "dense" | "vocals" | "vocals-empty";
+  'populated' | 'empty' | 'dense' | 'vocals' | 'vocals-empty';
 
 /** Inserts a note at an absolute tick, keeping the track ordered. */
 function insertNote(
@@ -29,13 +29,13 @@ function insertNote(
 function createVocalsFixture(withNotes: boolean): Midi {
   const midi = new Midi();
   midi.header.division = 480;
-  const conductor = new MidiTrack("CONDUCTOR");
+  const conductor = new MidiTrack('CONDUCTOR');
   midi.tracks.push(conductor);
   midi.addTempoEvent(0, 500_000);
   midi.addTimeSignatureEvent(0, 4, 2);
   const song = new SongView(midi);
-  song.ensureMidiTrack("vocals");
-  const view = song.getVocalTrackView("vocals")!;
+  song.ensureMidiTrack('vocals');
+  const view = song.getVocalTrackView('vocals')!;
   if (!withNotes) return midi;
 
   view.addPhrase(VocalPhraseKind.Vocal, 0, 3_840);
@@ -43,11 +43,11 @@ function createVocalsFixture(withNotes: boolean): Midi {
   view.addPhrase(VocalPhraseKind.StagePower, 2_880, 3_840);
   // Sung line as [pitch, start tick, duration ticks, lyric].
   const line: Array<[number, number, number, string | undefined]> = [
-    [60, 0, 360, "Sing"],
-    [62, 480, 240, "a"],
-    [64, 720, 720, "song,"],
-    [67, 1_920, 480, "é-"],
-    [67, 2_400, 240, "+"],
+    [60, 0, 360, 'Sing'],
+    [62, 480, 240, 'a'],
+    [64, 720, 720, 'song,'],
+    [67, 1_920, 480, 'é-'],
+    [67, 2_400, 240, '+'],
     [65, 2_880, 480, undefined],
   ];
   for (const [pitch, start, duration, lyric] of line) {
@@ -56,7 +56,7 @@ function createVocalsFixture(withNotes: boolean): Midi {
       ...(lyric === undefined ? {} : { lyric }),
     });
   }
-  view.addNote(VocalNoteKind.Pitchless, 3_360, 3_600, { lyric: "hey!" });
+  view.addNote(VocalNoteKind.Pitchless, 3_360, 3_600, { lyric: 'hey!' });
   view.addNote(VocalNoteKind.Percussion, 3_600, 3_720);
   return midi;
 }
@@ -66,25 +66,25 @@ function createVocalsFixture(withNotes: boolean): Midi {
  * guitar/bass chart, a dense variant with a tempo change, or a vocals chart.
  */
 export function createPianoRollFixture(
-  variant: PianoRollFixtureVariant = "populated",
+  variant: PianoRollFixtureVariant = 'populated',
 ): Midi {
-  if (variant === "vocals" || variant === "vocals-empty") {
-    return createVocalsFixture(variant === "vocals");
+  if (variant === 'vocals' || variant === 'vocals-empty') {
+    return createVocalsFixture(variant === 'vocals');
   }
   const midi = new Midi();
   midi.header.division = 480;
 
-  const conductor = new MidiTrack("CONDUCTOR");
-  const lead = new MidiTrack("LEAD GUITAR");
-  const bass = new MidiTrack("BASS");
+  const conductor = new MidiTrack('CONDUCTOR');
+  const lead = new MidiTrack('LEAD GUITAR');
+  const bass = new MidiTrack('BASS');
   midi.tracks.push(conductor, lead, bass);
 
-  if (variant === "empty") return midi;
+  if (variant === 'empty') return midi;
 
   midi.addTempoEvent(0, 500_000);
   midi.addTimeSignatureEvent(0, 4, 2);
-  lead.addTextEvent(MetaType.Text, 0, "[section Verse]");
-  lead.addTextEvent(MetaType.Text, 1_920, "[section Chorus]");
+  lead.addTextEvent(MetaType.Text, 0, '[section Verse]');
+  lead.addTextEvent(MetaType.Text, 1_920, '[section Chorus]');
 
   // Lead notes as [pitch, start tick, duration ticks, velocity].
   const leadNotes: Array<[number, number, number, number]> = [
@@ -93,7 +93,7 @@ export function createPianoRollFixture(
     [79, 480, 480, 110],
     [74, 960, 960, 100],
   ];
-  if (variant === "dense") {
+  if (variant === 'dense') {
     midi.addTempoEvent(1_920, 300_000);
     leadNotes.push(
       [77, 1_440, 240, 100],

@@ -1,27 +1,29 @@
-import type { ComponentType } from "react";
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Text, type IconProps } from "..";
-import * as allIcons from "..";
+import type { ComponentType } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { type IconProps, Text } from '..';
+import * as allIcons from '..';
 
 const { Icon, ...moduleIcons } = allIcons;
 
 const icons: Array<{
   name: string;
-  Icon: ComponentType<Omit<IconProps, "svg">>;
+  Icon: ComponentType<Omit<IconProps, 'svg'>>;
 }> = Object.entries(moduleIcons).map(([name, component]) => ({
-  name: name.substring(0, name.indexOf("Icon")),
+  name: name.substring(0, name.indexOf('Icon')),
   Icon: component as React.ComponentType<any>,
 }));
 
 const meta = {
-  title: "Shared/Icons",
+  title: 'Shared/Icons',
   component: Icon,
   parameters: {
     controls: {},
   },
   argTypes: {
     size: {
-      control: { type: "inline-radio" },
+      control: { type: 'inline-radio' },
       options: [16, 24, 32, 48],
     },
   },
@@ -34,8 +36,8 @@ export const Gallery: Story = {
   render: (args) => (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
         gap: 16,
       }}
     >
@@ -43,11 +45,11 @@ export const Gallery: Story = {
         <div
           key={name}
           style={{
-            display: "grid",
-            justifyItems: "center",
+            display: 'grid',
+            justifyItems: 'center',
             gap: 8,
             padding: 16,
-            border: "1px solid var(--neutral-60)",
+            border: '1px solid var(--neutral-60)',
           }}
         >
           {/* Forwards the active radio value to the icon */}

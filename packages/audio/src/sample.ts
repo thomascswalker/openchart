@@ -4,8 +4,8 @@ import {
   FADE_OUT_STOP_AFTER,
   FADE_OUT_TIME_CONSTANT,
   START_LEAD_SECONDS,
-} from "./engine.js";
-import type { AudioEventCallback } from "./events.js";
+} from './engine.js';
+import type { AudioEventCallback } from './events.js';
 
 export interface AudioSampleOptions {
   initialVolume?: number;
@@ -21,7 +21,7 @@ export interface AudioSampleOptions {
   onEnded?: AudioEventCallback;
 }
 
-const defaultAudioSampleOptions: Required<Omit<AudioSampleOptions, "engine">> =
+const defaultAudioSampleOptions: Required<Omit<AudioSampleOptions, 'engine'>> =
   {
     initialVolume: 1,
     onLoaded: () => {},
@@ -130,7 +130,7 @@ class AudioSample {
       return;
     }
     const buffer =
-      typeof window !== "undefined"
+      typeof window !== 'undefined'
         ? await this.#readFromBrowser()
         : await this.#readFromNode();
     if (this.#disposed) {
@@ -156,7 +156,7 @@ class AudioSample {
   }
 
   async #readFromNode(): Promise<ArrayBuffer> {
-    const { readFile } = await import("node:fs/promises");
+    const { readFile } = await import('node:fs/promises');
     const file = await readFile(this.#filename);
     return Uint8Array.from(file).buffer;
   }
@@ -273,7 +273,7 @@ class AudioSample {
     this.#isPlaying = true;
     source.start(when, offset);
     void this.#engine.resume().catch((error: unknown) => {
-      console.error("Error resuming audio context", error);
+      console.error('Error resuming audio context', error);
     });
   }
 
@@ -303,7 +303,7 @@ class AudioSample {
 
   public reload() {
     void this.#loadFile().catch((error: unknown) => {
-      console.error("Error reloading audio sample", error);
+      console.error('Error reloading audio sample', error);
     });
   }
 

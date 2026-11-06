@@ -1,15 +1,16 @@
-import classNames from "classnames";
+import classNames from 'classnames';
 import type {
+  BorderProps,
+  FlexboxProps,
+  FontSizeProps,
+  FontWeightProps,
+  SizeProps,
   TextAlignProps,
   TextColorProps,
-  FontWeightProps,
-  BorderProps,
-  FontSizeProps,
-  SizeProps,
-  FlexboxProps,
-} from "styled-system";
-import styles from "./text.module.css";
-import { getTextSystemStyles } from "./textStyles";
+} from 'styled-system';
+
+import styles from './text.module.css';
+import { getTextSystemStyles } from './textStyles';
 
 interface TextProps
   extends
@@ -37,9 +38,9 @@ const Text = ({
 }: TextProps) => {
   const style = getTextSystemStyles(props);
   const textClassName = classNames(
-    styles["ui-text"],
-    disabled ? styles["ui-text-disabled"] : null,
-    mono ? styles["ui-text-mono"] : null,
+    styles['ui-text'],
+    disabled ? styles['ui-text-disabled'] : null,
+    mono ? styles['ui-text-mono'] : null,
     className,
   );
 
