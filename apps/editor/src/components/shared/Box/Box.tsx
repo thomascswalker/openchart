@@ -1,29 +1,31 @@
-import { forwardRef, type ReactNode } from "react";
+import { type ReactNode, forwardRef } from 'react';
+
+import classNames from 'classnames';
 import {
-  flex,
-  color,
   border,
-  layout,
-  padding,
-  margin,
-  space,
-  flexbox,
+  color,
   compose,
-} from "styled-system";
+  flex,
+  flexbox,
+  layout,
+  margin,
+  padding,
+  space,
+} from 'styled-system';
 import type {
-  PaddingProps,
-  MarginProps,
-  FlexProps,
-  ColorProps,
   BorderProps,
-  LayoutProps,
-  SpaceProps,
+  ColorProps,
+  FlexProps,
   FlexboxProps,
+  LayoutProps,
+  MarginProps,
+  PaddingProps,
+  SpaceProps,
   styleFn,
-} from "styled-system";
-import classNames from "classnames";
-import styles from "./Box.module.css";
-import { gap, type GapProps } from "../../../util/css";
+} from 'styled-system';
+
+import { type GapProps, gap } from '../../../util/css';
+import styles from './Box.module.css';
 
 type Styles = FlexProps &
   ColorProps &
@@ -35,7 +37,7 @@ type Styles = FlexProps &
   SpaceProps &
   GapProps;
 
-type ItemAlignment = "start" | "equal" | "end";
+type ItemAlignment = 'start' | 'equal' | 'end';
 
 interface BoxProps extends Styles {
   ref?: HTMLDivElement;
@@ -57,11 +59,11 @@ const getSystemStyle: styleFn = compose(
 );
 
 const Box = forwardRef<HTMLDivElement, BoxProps>(
-  ({ alignItems = "equal", children, className, ...props }, ref) => {
+  ({ alignItems = 'equal', children, className, ...props }, ref) => {
     const boxStyle = getSystemStyle(props);
     const boxClassName = classNames(
       className,
-      styles["ui-box"],
+      styles['ui-box'],
       styles[`ui-box-align-items-${alignItems}`],
     );
 

@@ -1,47 +1,74 @@
-import { Midi } from "@openchart/midi";
-import { MetaType } from "@openchart/midi";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { DocumentService } from "../../document/document";
-import { mockWorkspaceService } from "../../workspace/__tests__/utils";
-import type { PlaybackService } from "../../playback/playback";
-import { EditingService } from "../editing";
-import { ViewportService } from "../viewports";
-import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
+import { Midi } from '@openchart/midi';
+import { MetaType } from '@openchart/midi';
 import {
   DomainCommandType,
   EditCommandType,
   EditingModeId,
   EntityType,
   VocalNoteKind,
-} from "@openchart/views";
-import { mockLoggerService } from "../../__mock__/logger.mock";
+} from '@openchart/views';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { mockLoggerService } from '../../__mock__/logger.mock';
+import { DocumentService } from '../../document/document';
+import type { PlaybackService } from '../../playback/playback';
+import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
+import { mockWorkspaceService } from '../../workspace/__tests__/utils';
+import { EditingService } from '../editing';
+import { ViewportService } from '../viewports';
 
 function createDocumentService(
   ruleset: ReturnType<typeof createTestRulesetService>,
 ): DocumentService {
   const logger = mockLoggerService();
   const workspace = mockWorkspaceService();
-  return new DocumentService(logger, ruleset, workspace);
+  const service = new DocumentService(logger, ruleset, workspace);
+  service.init();
+  return service;
 }
 
-describe("EditingService", () => {
+function createViewportService(
+  ruleset: ReturnType<typeof createTestRulesetService>,
+): ViewportService {
+  const service = new ViewportService(ruleset);
+  service.init();
+  return service;
+}
+
+function createEditingService(
+  documentService: DocumentService,
+  playbackService: PlaybackService,
+  viewportService: ViewportService,
+  rulesetService: ReturnType<typeof createTestRulesetService>,
+): EditingService {
+  const service = new EditingService(
+    documentService,
+    playbackService,
+    viewportService,
+    rulesetService,
+  );
+  service.init();
+  return service;
+}
+
+describe('EditingService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("routes commands through document history and keeps note selection across undo snapshots", () => {
+  it('routes commands through document history and keeps note selection across undo snapshots', () => {
     const ruleset = createTestRulesetService();
     const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
-    midi.tracks[0]!.name = "LEAD GUITAR";
+    midi.tracks[0]!.name = 'LEAD GUITAR';
     midi.tracks[0]!.addNote(60, 0, 100, 120);
     documentService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
-    const editing = new EditingService(
+    const editing = createEditingService(
       documentService,
       playback,
-      new ViewportService(ruleset),
+      createViewportService(ruleset),
       ruleset,
     );
     const noteId = editing
@@ -49,7 +76,7 @@ describe("EditingService", () => {
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
 
     editing.selection.add(noteId);
-    const session = editing.getSession("viewport-1");
+    const session = editing.getSession('viewport-1');
     expect(session).not.toBeNull();
     expect(
       session!.execute({
@@ -71,17 +98,17 @@ describe("EditingService", () => {
     });
   });
 
-  it("clears selection and clipboard when a new project is loaded", () => {
+  it('clears selection and clipboard when a new project is loaded', () => {
     const ruleset = createTestRulesetService();
     const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.addNote(60, 0, 100, 120);
     documentService.data = midi;
-    const editing = new EditingService(
+    const editing = createEditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
-      new ViewportService(ruleset),
+      createViewportService(ruleset),
       ruleset,
     );
     const noteId = editing
@@ -98,7 +125,7 @@ describe("EditingService", () => {
           pitch: 60,
           classification: {
             type: EntityType.Note,
-            subtype: "note",
+            subtype: 'note',
             movable: true,
             resizable: true,
           },
@@ -115,22 +142,22 @@ describe("EditingService", () => {
     expect(editing.clipboard.canPaste()).toBe(false);
   });
 
-  it("commits a generic gesture in one undo step and refreshes playback", () => {
+  it('commits a generic gesture in one undo step and refreshes playback', () => {
     const ruleset = createTestRulesetService();
     const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
-    midi.tracks[0]!.name = "LEAD GUITAR";
+    midi.tracks[0]!.name = 'LEAD GUITAR';
     midi.tracks[0]!.addNote(60, 0, 100, 120);
     documentService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
-    const editing = new EditingService(
+    const editing = createEditingService(
       documentService,
       playback,
-      new ViewportService(ruleset),
+      createViewportService(ruleset),
       ruleset,
     );
-    const session = editing.getSession("viewport-1")!;
+    const session = editing.getSession('viewport-1')!;
     const id = editing
       .getDocument()
       .getNoteId(0, midi.tracks[0]!.getNotes()[0]!);
@@ -159,27 +186,27 @@ describe("EditingService", () => {
     expect(documentService.getSnapshot().canUndo).toBe(false);
   });
 
-  it("provides an isolated global header session for tempo and section edits", () => {
+  it('provides an isolated global header session for tempo and section edits', () => {
     const ruleset = createTestRulesetService();
     const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
-    midi.tracks[0]!.name = "GLOBAL";
+    midi.tracks[0]!.name = 'GLOBAL';
     midi.addTrack();
-    midi.tracks[1]!.name = "LEAD GUITAR";
+    midi.tracks[1]!.name = 'LEAD GUITAR';
     midi.addTempoEvent(0, 500_000);
     documentService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
-    const editing = new EditingService(
+    const editing = createEditingService(
       documentService,
       playback,
-      new ViewportService(ruleset),
+      createViewportService(ruleset),
       ruleset,
     );
 
-    const global = editing.getSession("viewport-1", "global");
+    const global = editing.getSession('viewport-1', 'global');
     expect(global?.mode.id).toBe(EditingModeId.MidiGlobal);
-    expect(global?.hostKind).toBe("global");
+    expect(global?.hostKind).toBe('global');
     expect(
       global?.execute({
         type: EditCommandType.SetTempo,
@@ -191,7 +218,7 @@ describe("EditingService", () => {
       global?.execute({
         type: DomainCommandType.AddSection,
         tick: 960,
-        name: "Verse",
+        name: 'Verse',
       }).changed,
     ).toBe(true);
     expect(documentService.data.getTempoEvents()).toContainEqual(
@@ -202,33 +229,33 @@ describe("EditingService", () => {
     );
     expect(
       documentService.data
-        .getTrack("GLOBAL")!
+        .getTrack('GLOBAL')!
         .getTextEvents()
         .some(
           (event) =>
             event.type === MetaType.Text &&
-            event.text === "[section Verse]" &&
+            event.text === '[section Verse]' &&
             event.tick === 960,
         ),
     ).toBe(true);
     expect(playback.refresh).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects lyric mutations through the global session", () => {
+  it('rejects lyric mutations through the global session', () => {
     const ruleset = createTestRulesetService();
     const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
-    midi.tracks[0]!.name = "VOCALS";
-    const lyric = midi.tracks[0]!.addTextEvent(MetaType.Lyric, 0, "hello");
+    midi.tracks[0]!.name = 'VOCALS';
+    const lyric = midi.tracks[0]!.addTextEvent(MetaType.Lyric, 0, 'hello');
     documentService.data = midi;
-    const editing = new EditingService(
+    const editing = createEditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
-      new ViewportService(ruleset),
+      createViewportService(ruleset),
       ruleset,
     );
-    const global = editing.getSession("viewport-1", "global")!;
+    const global = editing.getSession('viewport-1', 'global')!;
     const lyricId = editing.getDocument().getTextEvents(0)[0]!.id;
 
     expect(
@@ -244,22 +271,22 @@ describe("EditingService", () => {
     ).toBe(true);
   });
 
-  it("schema-validates and stores mode tool state per viewport", () => {
+  it('schema-validates and stores mode tool state per viewport', () => {
     const ruleset = createTestRulesetService();
     const documentService = createDocumentService(ruleset);
     const midi = new Midi();
     midi.addTrack();
-    midi.tracks[0]!.name = "LEAD GUITAR";
+    midi.tracks[0]!.name = 'LEAD GUITAR';
     documentService.data = midi;
-    const viewports = new ViewportService(ruleset);
-    const editing = new EditingService(
+    const viewports = createViewportService(ruleset);
+    const editing = createEditingService(
       documentService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       viewports,
       ruleset,
     );
     const active = viewports.getSnapshot().activeViewportId;
-    const other = viewports.addViewport("piano-roll")!;
+    const other = viewports.addViewport('piano-roll')!;
 
     editing.updateToolState(active, EditingModeId.MidiVocals, {
       noteKind: VocalNoteKind.Percussion,
@@ -272,7 +299,7 @@ describe("EditingService", () => {
     });
     expect(() =>
       editing.updateToolState(active, EditingModeId.MidiVocals, {
-        noteKind: "invalid",
+        noteKind: 'invalid',
       }),
     ).toThrow();
     expect(

@@ -1,1 +1,1 @@
-export const ActiveHighway = { "viewport.active-view": "highway" };
+export const ActiveHighway = { 'viewport.active-view': 'highway' };

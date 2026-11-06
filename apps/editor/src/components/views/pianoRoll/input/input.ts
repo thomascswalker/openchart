@@ -1,20 +1,21 @@
-import { Box2, Vector2 } from "three";
-import { getScrollGesture } from "../../../../util/scroll";
+import { clone } from 'es-toolkit';
+import { Box2, Vector2 } from 'three';
+
+import { getScrollGesture } from '../../../../util/scroll';
 import {
   ClickMovementThreshold,
   HeaderHeight,
   KeyboardWidth,
-} from "../constants";
-import type { CoordinateSystem } from "../coordinates";
-import { HeaderController } from "../controllers/header";
-import type { NoteEditingController } from "../controllers/noteEditing";
-import { screenRectOf, type NoteGeometryCache } from "../rendering/geometry";
+} from '../constants';
+import { HeaderController } from '../controllers/header';
+import type { NoteEditingController } from '../controllers/noteEditing';
+import type { CoordinateSystem } from '../coordinates';
+import { type NoteGeometryCache, screenRectOf } from '../rendering/geometry';
+import type { PianoRollContext, PianoRollNote } from '../types';
 import {
   PointerButton,
   type PointerButton as PointerButtonType,
-} from "./pointer";
-import type { PianoRollContext, PianoRollNote } from "../types";
-import { clone } from "es-toolkit";
+} from './pointer';
 
 /** Owns DOM listeners and transient pointer/keyboard gesture state. */
 export class PianoRollInputController {
@@ -69,24 +70,24 @@ export class PianoRollInputController {
   /** Installs the canvas and window listeners needed for piano-roll input. */
   public attach(canvas: HTMLCanvasElement): void {
     this.#canvas = canvas;
-    canvas.style.touchAction = "none";
+    canvas.style.touchAction = 'none';
     canvas.tabIndex = 0;
 
     // Click input. Keyboard shortcuts are hotkey bindings (src/input).
-    canvas.addEventListener("click", this.handleClick);
-    canvas.addEventListener("contextmenu", this.handleContextMenu);
+    canvas.addEventListener('click', this.handleClick);
+    canvas.addEventListener('contextmenu', this.handleContextMenu);
 
     // Pointer gestures.
-    canvas.addEventListener("pointerdown", this.handlePointerDown);
-    canvas.addEventListener("pointermove", this.handlePointerMove);
-    canvas.addEventListener("pointerup", this.handlePointerUp);
-    canvas.addEventListener("pointercancel", this.handlePointerCancel);
-    canvas.addEventListener("pointerleave", this.handlePointerLeave);
+    canvas.addEventListener('pointerdown', this.handlePointerDown);
+    canvas.addEventListener('pointermove', this.handlePointerMove);
+    canvas.addEventListener('pointerup', this.handlePointerUp);
+    canvas.addEventListener('pointercancel', this.handlePointerCancel);
+    canvas.addEventListener('pointerleave', this.handlePointerLeave);
 
     // Non-pointer input and pointer-up events outside the canvas.
-    canvas.addEventListener("wheel", this.handleWheel, { passive: false });
-    canvas.addEventListener("auxclick", this.handleAuxClick);
-    window.addEventListener("pointerup", this.handlePointerUp);
+    canvas.addEventListener('wheel', this.handleWheel, { passive: false });
+    canvas.addEventListener('auxclick', this.handleAuxClick);
+    window.addEventListener('pointerup', this.handlePointerUp);
   }
 
   /** Removes listeners and clears any active pointer or editing gesture. */
@@ -94,19 +95,19 @@ export class PianoRollInputController {
     const canvas = this.#canvas;
     if (canvas) {
       // Remove the listeners installed on the canvas.
-      canvas.removeEventListener("click", this.handleClick);
-      canvas.removeEventListener("contextmenu", this.handleContextMenu);
-      canvas.removeEventListener("pointerdown", this.handlePointerDown);
-      canvas.removeEventListener("pointermove", this.handlePointerMove);
-      canvas.removeEventListener("pointerup", this.handlePointerUp);
-      canvas.removeEventListener("pointercancel", this.handlePointerCancel);
-      canvas.removeEventListener("pointerleave", this.handlePointerLeave);
-      canvas.removeEventListener("wheel", this.handleWheel);
-      canvas.removeEventListener("auxclick", this.handleAuxClick);
+      canvas.removeEventListener('click', this.handleClick);
+      canvas.removeEventListener('contextmenu', this.handleContextMenu);
+      canvas.removeEventListener('pointerdown', this.handlePointerDown);
+      canvas.removeEventListener('pointermove', this.handlePointerMove);
+      canvas.removeEventListener('pointerup', this.handlePointerUp);
+      canvas.removeEventListener('pointercancel', this.handlePointerCancel);
+      canvas.removeEventListener('pointerleave', this.handlePointerLeave);
+      canvas.removeEventListener('wheel', this.handleWheel);
+      canvas.removeEventListener('auxclick', this.handleAuxClick);
     }
 
     // Clear pointer state and finish any gesture before detaching.
-    window.removeEventListener("pointerup", this.handlePointerUp);
+    window.removeEventListener('pointerup', this.handlePointerUp);
     this.#canvas = null;
     const pointer = this.#context.getPointerContext();
     pointer.id = null;
@@ -298,10 +299,10 @@ export class PianoRollInputController {
   private handleUpdateHover(pos: Vector2) {
     if (this.#canvas) {
       this.#canvas.style.cursor = this.hitTestNoteEdge(pos)
-        ? "ew-resize"
+        ? 'ew-resize'
         : this.hitTestNote(pos)
-          ? "move"
-          : "";
+          ? 'move'
+          : '';
     }
     this.#header.updateHover(pos);
     this.#context.requestRender();
@@ -464,7 +465,7 @@ export class PianoRollInputController {
 
     // Apply the zoom or pan behavior inferred from the input device gesture.
     switch (getScrollGesture(event)) {
-      case "mouse-zoom":
+      case 'mouse-zoom':
         if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
           this.#coordinates.zoomHorizontal(
             this.#coordinates.getZoomFactor(-event.deltaX),
@@ -477,7 +478,7 @@ export class PianoRollInputController {
           );
         }
         break;
-      case "trackpad-pan":
+      case 'trackpad-pan':
         if (event.altKey) {
           this.#coordinates.zoomHorizontal(
             this.#coordinates.getZoomFactor(-delta.y),
@@ -485,7 +486,7 @@ export class PianoRollInputController {
           );
         } else this.#coordinates.pan(delta.x, delta.y);
         break;
-      case "trackpad-pinch":
+      case 'trackpad-pinch':
         this.#coordinates.zoomAtCursor(
           this.#coordinates.getZoomFactor(-event.deltaY * 4),
           pos,

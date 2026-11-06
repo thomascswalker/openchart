@@ -1,14 +1,14 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { DocumentService } from "../../services/document/document";
+import { Action } from '../../actions';
+import { DocumentService } from '../../services/document/document';
+import type { ServicesAccessor } from '../../services/registry';
 
 export class SaveDocumentAsAction extends Action {
   constructor() {
-    super({ condition: { "document.has-tracks": true } });
+    super({ condition: { 'document.has-tracks': true } });
   }
 
   async run(accessor: ServicesAccessor): Promise<void> {
-    const document = accessor.get<DocumentService>("document");
+    const document = accessor.get<DocumentService>('document');
     await document.saveAs();
   }
 }

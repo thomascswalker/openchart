@@ -1,9 +1,9 @@
-import { type SliderProps, Slider } from "../../shared";
-import styles from "./AudioMixer.module.css";
+import { Slider, type SliderProps } from '../../shared';
+import styles from './AudioMixer.module.css';
 
 interface VolumeSliderProps extends Omit<
   SliderProps,
-  "min" | "max" | "step" | "value" | "onChange"
+  'min' | 'max' | 'step' | 'value' | 'onChange'
 > {
   value: number;
   onChange?: (value: number) => void;
@@ -47,10 +47,10 @@ export const VolumeSlider = ({
   const sliderValue = volumeToSliderValue(value);
 
   return (
-    <span className={styles["ui-track-mixer-volume-control"]}>
+    <span className={styles['ui-track-mixer-volume-control']}>
       <Slider
         {...props}
-        className={styles["ui-track-mixer-volume-slider"]}
+        className={styles['ui-track-mixer-volume-slider']}
         min={0}
         max={1}
         step={0.001}
@@ -61,7 +61,7 @@ export const VolumeSlider = ({
         }
       />
       <span
-        className={styles["ui-track-mixer-volume-tooltip"]}
+        className={styles['ui-track-mixer-volume-tooltip']}
         style={{ left: `${sliderValue * 100}%` }}
       >
         {formatVolumeDb(value)}

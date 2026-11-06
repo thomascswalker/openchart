@@ -88,10 +88,10 @@ validation is `RuleEnforcer.validateTrack`.
 
 ```ts
 type EntityKind =
-  "note" | "phrase" | "lyric" | "text" | "tempo" | "time-signature";
+  'note' | 'phrase' | 'lyric' | 'text' | 'tempo' | 'time-signature';
 
 interface ParsedEntityId {
-  kind: "note" | "text" | "tempo" | "time-signature";
+  kind: 'note' | 'text' | 'tempo' | 'time-signature';
   trackIndex: number | null;
   eventId: string;
 }

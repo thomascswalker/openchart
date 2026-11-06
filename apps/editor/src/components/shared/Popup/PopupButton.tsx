@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
-import { Button, Popup } from "..";
+import { type ReactNode, useState } from 'react';
+
+import { Button, Popup } from '..';
 
 interface PopupButtonProps {
   icon: ReactNode;

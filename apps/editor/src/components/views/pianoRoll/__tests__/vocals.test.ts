@@ -1,48 +1,49 @@
-import { MetaType, Midi, MidiTrack, type TempoEvent } from "@openchart/midi";
+import { MetaType, Midi, MidiTrack, type TempoEvent } from '@openchart/midi';
 import {
+  Difficulty,
   DomainCommandType,
   EditCommandType,
+  EditingModeId,
   EntityType,
-  createStandaloneEditing,
-  Difficulty,
-  parseEntityFromId,
   SongView,
   VocalNoteKind,
   VocalPhraseKind,
   VocalTrackView,
-  EditingModeId,
-} from "@openchart/views";
-import { Vector2 } from "three";
-import { describe, expect, it } from "vitest";
-import { CoordinateSystem } from "../coordinates";
-import { HeaderHeight, KeyboardWidth } from "../constants";
-import { HeaderController } from "../controllers/header";
-import { NoteDataStore } from "../noteData";
-import { NoteEditingController } from "../controllers/noteEditing";
-import { NoteGeometryCache } from "../rendering/geometry";
+  createStandaloneEditing,
+  parseEntityFromId,
+} from '@openchart/views';
+import type { PreviewState } from '@openchart/views';
+import { Vector2 } from 'three';
+import { describe, expect, it } from 'vitest';
+
+import { HeaderHeight, KeyboardWidth } from '../constants';
+import { HeaderController } from '../controllers/header';
+import { NoteEditingController } from '../controllers/noteEditing';
+import { CoordinateSystem } from '../coordinates';
+import { NoteDataStore } from '../noteData';
+import { toPianoRollNote } from '../noteData';
 import {
   GENERIC_PROFILE,
+  type PianoRollProfile,
   pitchName,
   profileFromSession,
-  type PianoRollProfile,
-} from "../profile";
-import { SelectionContext } from "../selection";
+} from '../profile';
+import { NoteGeometryCache } from '../rendering/geometry';
+import { SelectionContext } from '../selection';
 import type {
-  PianoRollLyricPromptHandlers,
   PianoRollContext,
+  PianoRollLyricPromptHandlers,
   PianoRollNote,
   PianoRollVocalPlacement,
-} from "../types";
-import { toPianoRollNote } from "../noteData";
-import type { PreviewState } from "@openchart/views";
+} from '../types';
 
 const profileMidi = new Midi();
 profileMidi.addTrack();
 const profileEditing = createStandaloneEditing(profileMidi);
 const vocalDescriptor = new SongView(profileMidi)
   .getTrackDescriptors()
-  .find((descriptor) => descriptor.name === "VOCALS");
-if (!vocalDescriptor) throw new Error("Default config is missing vocals");
+  .find((descriptor) => descriptor.name === 'VOCALS');
+if (!vocalDescriptor) throw new Error('Default config is missing vocals');
 const VOCALS = profileFromSession(
   profileEditing.createSession(
     {
@@ -50,7 +51,7 @@ const VOCALS = profileFromSession(
       trackIndex: null,
       difficulty: Difficulty.Expert,
     },
-    "piano-roll",
+    'piano-roll',
   ),
 );
 const LANE_HEIGHT = 18;
@@ -89,7 +90,7 @@ function makeCoordinates(profile: PianoRollProfile, y = 84, height = 0) {
 function harness(
   midi = new Midi(),
   profile: PianoRollProfile = VOCALS,
-  selectedInstrument = "VOCALS",
+  selectedInstrument = 'VOCALS',
   selectedTrackIndex: number | null = null,
 ) {
   if (midi.trackCount === 0) midi.addTrack();
@@ -110,7 +111,7 @@ function harness(
         (targetTrack ? midi.tracks.indexOf(targetTrack) : null),
       difficulty: Difficulty.Expert,
     },
-    "piano-roll",
+    'piano-roll',
   );
   const activeProfile = profileFromSession(session);
   if (activeProfile.id !== profile.id) {
@@ -263,12 +264,12 @@ function harness(
 function seeded() {
   const midi = new Midi();
   const song = new SongView(midi);
-  song.ensureMidiTrack("vocals");
-  const vocals = song.getVocalTrackView("VOCALS")!;
-  vocals.addNote(VocalNoteKind.Pitched, 0, 240, { pitch: 60, lyric: "one" });
+  song.ensureMidiTrack('vocals');
+  const vocals = song.getVocalTrackView('VOCALS')!;
+  vocals.addNote(VocalNoteKind.Pitched, 0, 240, { pitch: 60, lyric: 'one' });
   vocals.addNote(VocalNoteKind.Pitched, 480, 720, {
     pitch: 62,
-    lyric: "two",
+    lyric: 'two',
   });
   vocals.addNote(VocalNoteKind.Percussion, 960, 1080);
   return harness(midi);
@@ -279,7 +280,7 @@ function copySelectionToClipboard(h: ReturnType<typeof harness>) {
   const trackIndex = track ? h.midi.tracks.indexOf(track) : -1;
   if (!track || trackIndex < 0 || h.selection.notes.length === 0) {
     throw new Error(
-      "Clipboard test selection must contain notes on the target track",
+      'Clipboard test selection must contain notes on the target track',
     );
   }
 
@@ -321,14 +322,14 @@ function copySelectionToClipboard(h: ReturnType<typeof harness>) {
   });
 }
 
-describe("piano-roll profiles", () => {
-  it("previews generic note drags in the session and commits one history entry on release", () => {
+describe('piano-roll profiles', () => {
+  it('previews generic note drags in the session and commits one history entry on release', () => {
     const midi = new Midi();
     const trackIndex = midi.addTrack();
     const track = midi.tracks[trackIndex]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(60, 0, 100, 120);
-    const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", trackIndex);
+    const h = harness(midi, GENERIC_PROFILE, 'LEAD GUITAR', trackIndex);
     const note = h.notes()[0]!;
 
     h.editing.beginMove(note);
@@ -350,15 +351,15 @@ describe("piano-roll profiles", () => {
     expect(h.standalone.history.isInTransaction).toBe(false);
   });
 
-  it("uses the shared clipboard and edit commands for generic notes", () => {
+  it('uses the shared clipboard and edit commands for generic notes', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     const { noteOn } = track.addNote(60, 0, 90, 120);
     const h = harness(
       midi,
       GENERIC_PROFILE,
-      "LEAD GUITAR",
+      'LEAD GUITAR',
       midi.tracks.indexOf(track),
     );
     h.selection.notes = [h.notes()[0]!];
@@ -379,27 +380,27 @@ describe("piano-roll profiles", () => {
     expect(h.selection.notes[0]?.midiNote?.noteOn).not.toBe(noteOn);
   });
 
-  it("derives the vocals profile from the editing session projection", () => {
+  it('derives the vocals profile from the editing session projection', () => {
     expect(VOCALS.id).toBe(EditingModeId.MidiVocals);
     expect(VOCALS.pitchRange).toEqual({ low: 36, high: 84 });
     expect(VOCALS.pinnedLanes.map((lane) => lane.id)).toEqual([
-      "vocal-phrase",
-      "power-window",
-      "stagepower",
-      "percussion",
-      "pitchless",
+      'vocal-phrase',
+      'power-window',
+      'stagepower',
+      'percussion',
+      'pitchless',
     ]);
-    const generic = harness(new Midi(), GENERIC_PROFILE, "LEAD GUITAR").session;
+    const generic = harness(new Midi(), GENERIC_PROFILE, 'LEAD GUITAR').session;
     expect(profileFromSession(generic)).toBe(GENERIC_PROFILE);
     expect(VOCALS.classify(85)).toBe(VocalNoteKind.Pitchless);
     expect(VOCALS.classify(35)).toBe(VocalNoteKind.Pitchless);
     expect(VOCALS.classify(111)).toBe(`phrase:${VocalPhraseKind.PowerWindow}`);
-    expect(VOCALS.laneForPitch(35)?.id).toBe("pitchless");
+    expect(VOCALS.laneForPitch(35)?.id).toBe('pitchless');
     expect(VOCALS.laneForPitch(60)).toBeNull();
-    expect([36, 60, 84].map(pitchName)).toEqual(["C2", "C4", "C6"]);
+    expect([36, 60, 84].map(pitchName)).toEqual(['C2', 'C4', 'C6']);
   });
 
-  it("keeps the generic grid identical: header origin and 0-127", () => {
+  it('keeps the generic grid identical: header origin and 0-127', () => {
     const coordinates = makeCoordinates(GENERIC_PROFILE, 127);
     expect(coordinates.getGridTop()).toBe(HeaderHeight);
     expect(coordinates.pitchAtScreenY(HeaderHeight)).toBe(127);
@@ -409,7 +410,7 @@ describe("piano-roll profiles", () => {
     expect(coordinates.laneAtScreenY(HeaderHeight + 2)).toBeNull();
   });
 
-  it("offsets the grid below the pinned lanes and clamps to C2-C6", () => {
+  it('offsets the grid below the pinned lanes and clamps to C2-C6', () => {
     const coordinates = makeCoordinates(VOCALS);
     expect(coordinates.getGridTop()).toBe(GRID_TOP);
     expect(coordinates.pitchAtScreenY(yAt(60))).toBe(60);
@@ -425,8 +426,8 @@ describe("piano-roll profiles", () => {
       yAt(60) - 5,
     );
 
-    expect(coordinates.laneAtScreenY(laneY(0))?.id).toBe("vocal-phrase");
-    expect(coordinates.laneAtScreenY(laneY(4))?.id).toBe("pitchless");
+    expect(coordinates.laneAtScreenY(laneY(0))?.id).toBe('vocal-phrase');
+    expect(coordinates.laneAtScreenY(laneY(4))?.id).toBe('pitchless');
     expect(coordinates.laneAtScreenY(GRID_TOP)).toBeNull();
     expect(coordinates.laneAtScreenY(HeaderHeight - 1)).toBeNull();
     expect(coordinates.pinnedRectForPitch(90)).toEqual({
@@ -441,7 +442,7 @@ describe("piano-roll profiles", () => {
     });
   });
 
-  it("scales pinned lanes with the pitch rows", () => {
+  it('scales pinned lanes with the pitch rows', () => {
     const coordinates = makeCoordinates(VOCALS);
     coordinates.zoomVertical(2, 0);
 
@@ -457,10 +458,10 @@ describe("piano-roll profiles", () => {
       coordinates.laneAtScreenY(
         HeaderHeight + 3 * LANE_HEIGHT * 2 + LANE_HEIGHT,
       )?.id,
-    ).toBe("percussion");
+    ).toBe('percussion');
   });
 
-  it("keeps the lowest keyboard pitch at the bottom of the viewport", () => {
+  it('keeps the lowest keyboard pitch at the bottom of the viewport', () => {
     const height = 1008;
     const coordinates = makeCoordinates(VOCALS, 84, height);
 
@@ -475,7 +476,7 @@ describe("piano-roll profiles", () => {
     expect(coordinates.pitchAtScreenY(height)).toBe(VOCALS.pitchRange.low);
   });
 
-  it("hit-tests lane notes at fixed Y and clips grid notes to the grid", () => {
+  it('hit-tests lane notes at fixed Y and clips grid notes to the grid', () => {
     const coordinates = makeCoordinates(VOCALS);
     const cache = new NoteGeometryCache();
     const note = (pitch: number) =>
@@ -517,13 +518,13 @@ describe("piano-roll profiles", () => {
     expect(cache.hitTest(new Vector2(100, laneY(1)), coordinates)).toBeNull();
   });
 
-  it("does not create [section New] from the vocals header lane", () => {
+  it('does not create [section New] from the vocals header lane', () => {
     for (const [profile, expected] of [
       [GENERIC_PROFILE, 1],
       [VOCALS, 0],
     ] as const) {
       const midi = new Midi();
-      const track = new SongView(midi).ensureMidiTrack("vocals")!;
+      const track = new SongView(midi).ensureMidiTrack('vocals')!;
       const header = new HeaderController(
         {
           getState: () => ({ isPlaying: false }),
@@ -563,8 +564,8 @@ describe("piano-roll profiles", () => {
   });
 });
 
-describe("vocal note editing", () => {
-  it("keeps the note as a preview until its lyric is committed", () => {
+describe('vocal note editing', () => {
+  it('keeps the note as a preview until its lyric is committed', () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
 
@@ -578,23 +579,23 @@ describe("vocal note editing", () => {
     expect(h.standalone.history.isInTransaction).toBe(false);
     expect(h.calls.previews).toBe(1);
 
-    expect(h.calls.prompts[0].handlers.onCommit("la")).toBe(true);
+    expect(h.calls.prompts[0].handlers.onCommit('la')).toBe(true);
     expect(h.standalone.history.undoDepth).toBe(1);
     expect(h.standalone.history.isInTransaction).toBe(false);
     expect(h.track()).not.toBeNull();
     expect(h.notes().map((n) => [n.pitch, n.tick, n.durationTicks])).toEqual([
       [60, 0, 480],
     ]);
-    expect(h.lyrics()).toEqual([[0, "la"]]);
+    expect(h.lyrics()).toEqual([[0, 'la']]);
     expect(VocalTrackView.validateTrack(h.track(), VOCALS.vocal!)).toEqual([]);
   });
 
-  it("cancels an empty lyric submission without changing MIDI or history", () => {
+  it('cancels an empty lyric submission without changing MIDI or history', () => {
     const h = harness();
     const before = h.midi.toBuffer();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
 
-    expect(h.calls.prompts[0]!.handlers.onCommit("   ")).toBe(false);
+    expect(h.calls.prompts[0]!.handlers.onCommit('   ')).toBe(false);
     expect(h.track()).toBeNull();
     expect(h.midi.toBuffer()).toEqual(before);
     expect(h.standalone.history.undoDepth).toBe(0);
@@ -602,24 +603,24 @@ describe("vocal note editing", () => {
     expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
-  describe("generic note editing", () => {
-    it("materializes the selected configured track for note placement", () => {
-      const h = harness(new Midi(), GENERIC_PROFILE, "LEAD GUITAR");
+  describe('generic note editing', () => {
+    it('materializes the selected configured track for note placement', () => {
+      const h = harness(new Midi(), GENERIC_PROFILE, 'LEAD GUITAR');
       const genericY = HeaderHeight + (84 - 60) * 18 + 5;
 
       h.drag(new Vector2(xAt(0), genericY), xAt(480));
 
-      expect(h.track()?.name).toBe("LEAD GUITAR");
+      expect(h.track()?.name).toBe('LEAD GUITAR');
       expect(
         h.notes().map((note) => [note.pitch, note.tick, note.durationTicks]),
       ).toEqual([[60, 0, 480]]);
     });
 
-    it("keeps an existing unmapped selected track as the placement target", () => {
+    it('keeps an existing unmapped selected track as the placement target', () => {
       const midi = new Midi();
-      const unmapped = new MidiTrack("Unmapped track");
+      const unmapped = new MidiTrack('Unmapped track');
       midi.tracks.push(unmapped);
-      const h = harness(midi, GENERIC_PROFILE, "LEAD GUITAR", 0);
+      const h = harness(midi, GENERIC_PROFILE, 'LEAD GUITAR', 0);
       const genericY = HeaderHeight + (84 - 60) * 18 + 5;
 
       h.drag(new Vector2(xAt(0), genericY), xAt(480));
@@ -629,8 +630,8 @@ describe("vocal note editing", () => {
       expect(h.notes().map((note) => note.pitch)).toEqual([60]);
     });
 
-    it("does not create a fallback track without a configured instrument", () => {
-      const h = harness(new Midi(), GENERIC_PROFILE, "not configured");
+    it('does not create a fallback track without a configured instrument', () => {
+      const h = harness(new Midi(), GENERIC_PROFILE, 'not configured');
       const genericY = HeaderHeight + (84 - 60) * 18 + 5;
       const initialTracks = [...h.midi.tracks];
 
@@ -641,7 +642,7 @@ describe("vocal note editing", () => {
     });
   });
 
-  it("cancels the whole create on Escape without a history rollback", () => {
+  it('cancels the whole create on Escape without a history rollback', () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.calls.prompts[0].handlers.onCancel();
@@ -653,10 +654,10 @@ describe("vocal note editing", () => {
     expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
-  it("cancels a vocal move with no document or history trace (I-2)", () => {
+  it('cancels a vocal move with no document or history trace (I-2)', () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
-    h.calls.prompts[0]!.handlers.onCommit("la");
+    h.calls.prompts[0]!.handlers.onCommit('la');
     const before = h.midi.toBuffer();
     const note = h.notes()[0]!;
     h.editing.beginMove(note);
@@ -674,7 +675,7 @@ describe("vocal note editing", () => {
     expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
-  it("previews an erase and cancels it without a document or history trace", () => {
+  it('previews an erase and cancels it without a document or history trace', () => {
     const h = seeded();
     const before = h.midi.toBuffer();
     const note = h.notes()[0]!;
@@ -691,7 +692,7 @@ describe("vocal note editing", () => {
     expect(h.context.getPreviewState!()).toBeNull();
   });
 
-  it("commits an erase gesture as one history entry", () => {
+  it('commits an erase gesture as one history entry', () => {
     const h = seeded();
     const note = h.notes()[0]!;
 
@@ -703,18 +704,18 @@ describe("vocal note editing", () => {
     expect(h.standalone.history.undoDepth).toBe(1);
   });
 
-  it("creates lane kinds by dragging in their lane, without a lyric prompt", () => {
+  it('creates lane kinds by dragging in their lane, without a lyric prompt', () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), laneY(3)), xAt(240));
     h.drag(new Vector2(xAt(480), laneY(4)), xAt(720));
     expect(h.notes().map((n) => n.pitch)).toEqual([90]);
     // Percussion: no prompt. Pitchless: prompt.
     expect(h.calls.prompts.map((p) => p.tick)).toEqual([480]);
-    expect(h.calls.prompts[0]!.handlers.onCommit("word")).toBe(true);
+    expect(h.calls.prompts[0]!.handlers.onCommit('word')).toBe(true);
     expect(h.notes().map((n) => n.pitch)).toEqual([90, 85]);
   });
 
-  it("uses the toolbar kind and phrase mode in the grid", () => {
+  it('uses the toolbar kind and phrase mode in the grid', () => {
     const h = harness();
     h.placement.noteKind = VocalNoteKind.Percussion;
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
@@ -730,15 +731,15 @@ describe("vocal note editing", () => {
     expect(h.standalone.history.isInTransaction).toBe(false);
   });
 
-  it("moves a note with its lyric and clamps it to the pitched range", () => {
+  it('moves a note with its lyric and clamps it to the pitched range', () => {
     const h = seeded();
     const first = h.notes().find((n) => n.pitch === 60)!;
     h.editing.beginMove(first);
     h.editing.updateMove(new Vector2(xAt(1440) + 1, yAt(62)));
     h.editing.finishGesture();
     expect(h.lyrics()).toEqual([
-      [480, "two"],
-      [1440, "one"],
+      [480, 'two'],
+      [1440, 'one'],
     ]);
     const moved = h.notes().find((n) => n.tick === 1440)!;
     expect(moved.pitch).toBe(62);
@@ -750,7 +751,7 @@ describe("vocal note editing", () => {
     expect(h.notes().find((n) => n.tick === 1440)!.pitch).toBe(84);
   });
 
-  it("keeps lane notes in their lane when dragged vertically", () => {
+  it('keeps lane notes in their lane when dragged vertically', () => {
     const h = seeded();
     const percussion = h.notes().find((n) => n.pitch === 90)!;
     h.editing.beginMove(percussion);
@@ -759,7 +760,7 @@ describe("vocal note editing", () => {
     expect(h.notes().find((n) => n.tick === 1440)!.pitch).toBe(90);
   });
 
-  it("transposes only pitched notes and deletes lyrics with notes", () => {
+  it('transposes only pitched notes and deletes lyrics with notes', () => {
     const h = seeded();
     h.selection.notes = h.notes();
     h.editing.transposeSelection(30);
@@ -767,19 +768,19 @@ describe("vocal note editing", () => {
 
     h.selection.notes = h.notes().filter((n) => n.tick === 0);
     h.editing.deleteSelection();
-    expect(h.lyrics()).toEqual([[480, "two"]]);
+    expect(h.lyrics()).toEqual([[480, 'two']]);
   });
 
-  it("copies and pastes notes with their lyrics", () => {
+  it('copies and pastes notes with their lyrics', () => {
     const h = seeded();
     h.selection.notes = h.notes();
     copySelectionToClipboard(h);
     h.session.pasteClipboard(1920);
     expect(h.lyrics()).toEqual([
-      [0, "one"],
-      [480, "two"],
-      [1920, "one"],
-      [2400, "two"],
+      [0, 'one'],
+      [480, 'two'],
+      [1920, 'one'],
+      [2400, 'two'],
     ]);
     expect(h.notes().filter((n) => n.pitch === 90)).toHaveLength(2);
     expect(VocalTrackView.validateTrack(h.track(), VOCALS.vocal!)).toEqual([]);

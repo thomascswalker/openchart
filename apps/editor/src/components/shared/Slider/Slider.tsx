@@ -1,29 +1,31 @@
-import type { InputHTMLAttributes } from "react";
-import classNames from "classnames";
-import { border, color, compose, layout, size, space } from "styled-system";
+import type { InputHTMLAttributes } from 'react';
+
+import classNames from 'classnames';
+import { border, color, compose, layout, size, space } from 'styled-system';
 import type {
   BorderProps,
   ColorProps,
   LayoutProps,
-  SpaceProps,
   SizeProps,
+  SpaceProps,
   styleFn,
-} from "styled-system";
-import styles from "./slider.module.css";
+} from 'styled-system';
+
+import styles from './slider.module.css';
 
 const getSystemStyles: styleFn = compose(space, color, layout, border, size);
 
 type HTMLInputRangeProps = Pick<
   InputHTMLAttributes<HTMLInputElement>,
-  | "className"
-  | "disabled"
-  | "min"
-  | "max"
-  | "step"
-  | "value"
-  | "aria-valuetext"
-  | "onInput"
-  | "onChange"
+  | 'className'
+  | 'disabled'
+  | 'min'
+  | 'max'
+  | 'step'
+  | 'value'
+  | 'aria-valuetext'
+  | 'onInput'
+  | 'onChange'
 >;
 
 export interface SliderProps
@@ -41,7 +43,7 @@ const Slider = ({
   max = 2.0,
   step = 0.1,
   value = 1.0,
-  "aria-valuetext": ariaValueText,
+  'aria-valuetext': ariaValueText,
   className,
   onInput = () => {},
   onChange = () => {},

@@ -1,12 +1,14 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useEffect } from "react";
-import { AudioMixer } from "../AudioMixer";
-import { useService } from "../../../../platform";
-import { MixerService } from "../../../../platform/services/mixer/mixer";
-import sample1Url from "./sample1.wav?url";
-import sample2Url from "./sample2.wav?url";
-import sample3Url from "./sample3.wav?url";
-import { Section } from "../../../shared";
+import { useEffect } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { useService } from '../../../../platform';
+import { MixerService } from '../../../../platform/services/mixer/mixer';
+import { Section } from '../../../shared';
+import { AudioMixer } from '../AudioMixer';
+import sample1Url from './sample1.wav?url';
+import sample2Url from './sample2.wav?url';
+import sample3Url from './sample3.wav?url';
 
 const Wrapper = () => {
   return (
@@ -22,19 +24,19 @@ const Wrapper = () => {
 };
 
 const meta = {
-  title: "Dialogs/Track Mixer",
+  title: 'Dialogs/Track Mixer',
   component: Wrapper,
   decorators: [
     (Story) => {
-      const mixer = useService<MixerService>("mixer");
+      const mixer = useService<MixerService>('mixer');
 
       useEffect(() => {
         if (!mixer) {
-          throw new Error("Mixer could not be initialized");
+          throw new Error('Mixer could not be initialized');
         } else {
-          mixer.addTrackFromUrl("sample1", sample1Url);
-          mixer.addTrackFromUrl("sample2", sample2Url);
-          mixer.addTrackFromUrl("sample3", sample3Url);
+          mixer.addTrackFromUrl('sample1', sample1Url);
+          mixer.addTrackFromUrl('sample2', sample2Url);
+          mixer.addTrackFromUrl('sample3', sample3Url);
         }
       }, [mixer]);
 

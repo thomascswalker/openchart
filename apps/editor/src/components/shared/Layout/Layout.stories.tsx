@@ -1,8 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { HorizontalSeparator, Section, VerticalSeparator } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { HorizontalSeparator, Section, VerticalSeparator } from '..';
 
 const meta = {
-  title: "Shared/Layout",
+  title: 'Shared/Layout',
   component: Section,
 } satisfies Meta<typeof Section>;
 
@@ -11,7 +12,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Sections: Story = {
   render: () => (
-    <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
+    <div style={{ display: 'grid', gap: 16, maxWidth: 560 }}>
       <Section
         flexDirection="column"
         gap="8px"
@@ -38,7 +39,7 @@ export const Sections: Story = {
 
 export const Separators: Story = {
   render: () => (
-    <div style={{ display: "grid", gap: 16, width: 360 }}>
+    <div style={{ display: 'grid', gap: 16, width: 360 }}>
       <span>Content above</span>
       <HorizontalSeparator />
       <span>Content below</span>

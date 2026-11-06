@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Button, HorizontalSeparator, Text } from "../../shared";
-import { useShortcutResolver } from "../../../input/labels";
-import styles from "./Menubar.module.css";
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+
+import { useShortcutResolver } from '../../../input/labels';
+import { Button, HorizontalSeparator, Text } from '../../shared';
+import styles from './Menubar.module.css';
 
 export type MenuCommandId = string;
 
 interface MenuCommandDefinition {
-  type?: "item";
+  type?: 'item';
   id: MenuCommandId;
   label: string;
   shortcut?: string;
@@ -14,7 +15,7 @@ interface MenuCommandDefinition {
 }
 
 interface MenuSeparatorDefinition {
-  type: "separator";
+  type: 'separator';
 }
 
 type MenuItemDefinition = MenuCommandDefinition | MenuSeparatorDefinition;
@@ -34,65 +35,65 @@ interface MenubarProps {
 
 const MENUS: MenuDefinition[] = [
   {
-    id: "file",
-    label: "File",
+    id: 'file',
+    label: 'File',
     items: [
-      { id: "document.new", label: "New Project" },
-      { id: "document.open", label: "Open Project..." },
-      { id: "document.save", label: "Save" },
+      { id: 'document.new', label: 'New Project' },
+      { id: 'document.open', label: 'Open Project...' },
+      { id: 'document.save', label: 'Save' },
       {
-        id: "document.save-as",
-        label: "Save As...",
+        id: 'document.save-as',
+        label: 'Save As...',
       },
-      { type: "separator" },
-      { id: "workspace.open", label: "Open Workspace..." },
-      { type: "separator" },
-      { id: "document.import-midi", label: "Import" },
-      { id: "document.export-midi", label: "Export" },
-      { type: "separator" },
-      { id: "dialog.open-project", label: "Project..." },
+      { type: 'separator' },
+      { id: 'workspace.open', label: 'Open Workspace...' },
+      { type: 'separator' },
+      { id: 'document.import-midi', label: 'Import' },
+      { id: 'document.export-midi', label: 'Export' },
+      { type: 'separator' },
+      { id: 'dialog.open-project', label: 'Project...' },
       {
-        id: "dialog.open-settings",
-        label: "Settings...",
+        id: 'dialog.open-settings',
+        label: 'Settings...',
       },
     ],
   },
   {
-    id: "edit",
-    label: "Edit",
+    id: 'edit',
+    label: 'Edit',
     items: [
-      { id: "clipboard.cut", label: "Cut" },
-      { id: "clipboard.copy", label: "Copy" },
-      { id: "clipboard.paste", label: "Paste" },
+      { id: 'clipboard.cut', label: 'Cut' },
+      { id: 'clipboard.copy', label: 'Copy' },
+      { id: 'clipboard.paste', label: 'Paste' },
     ],
   },
   {
-    id: "playback",
-    label: "Playback",
+    id: 'playback',
+    label: 'Playback',
     items: [
       {
-        id: "playback.toggle-metronome",
-        label: "Metronome",
+        id: 'playback.toggle-metronome',
+        label: 'Metronome',
         checkable: true,
       },
       {
-        id: "playback.toggle-clap",
-        label: "Highway Clap",
+        id: 'playback.toggle-clap',
+        label: 'Highway Clap',
         checkable: true,
       },
       {
-        id: "playback.toggle-vocal-pitch-feedback",
-        label: "Vocal Pitch Feedback",
+        id: 'playback.toggle-vocal-pitch-feedback',
+        label: 'Vocal Pitch Feedback',
         checkable: true,
       },
     ],
   },
   {
-    id: "help",
-    label: "Help",
+    id: 'help',
+    label: 'Help',
     items: [
-      { id: "updater.check", label: "Check for updates..." },
-      { id: "dialog.open-about", label: "About" },
+      { id: 'updater.check', label: 'Check for updates...' },
+      { id: 'dialog.open-about', label: 'About' },
     ],
   },
 ];
@@ -102,7 +103,7 @@ function enabledItemIndexes(
   canExecute: (command: MenuCommandId) => boolean,
 ): number[] {
   return items.reduce<number[]>((indexes, item, index) => {
-    if (item.type !== "separator" && canExecute(item.id)) indexes.push(index);
+    if (item.type !== 'separator' && canExecute(item.id)) indexes.push(index);
     return indexes;
   }, []);
 }
@@ -185,8 +186,8 @@ export function Menubar({
       }
     };
 
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, []);
 
   useEffect(
@@ -209,17 +210,17 @@ export function Menubar({
     menuIndex: number,
   ): void => {
     switch (event.key) {
-      case "ArrowRight":
+      case 'ArrowRight':
         event.preventDefault();
         moveTrigger(menuIndex, 1);
         break;
-      case "ArrowLeft":
+      case 'ArrowLeft':
         event.preventDefault();
         moveTrigger(menuIndex, -1);
         break;
-      case "ArrowDown":
-      case "Enter":
-      case " ":
+      case 'ArrowDown':
+      case 'Enter':
+      case ' ':
         event.preventDefault();
         if (openMenu === menus[menuIndex].id) {
           closeMenu(false);
@@ -231,15 +232,15 @@ export function Menubar({
           openMenuAt(menuIndex, enabled[0] ?? 0);
         }
         break;
-      case "Escape":
+      case 'Escape':
         event.preventDefault();
         closeMenu(true);
         break;
-      case "Home":
+      case 'Home':
         event.preventDefault();
         focusTrigger(0);
         break;
-      case "End":
+      case 'End':
         event.preventDefault();
         focusTrigger(menus.length - 1);
         break;
@@ -256,7 +257,7 @@ export function Menubar({
     const enabledPosition = enabled.indexOf(itemIndex);
 
     switch (event.key) {
-      case "ArrowDown":
+      case 'ArrowDown':
         event.preventDefault();
         if (enabled.length > 0) {
           focusItem(
@@ -265,7 +266,7 @@ export function Menubar({
           );
         }
         break;
-      case "ArrowUp":
+      case 'ArrowUp':
         event.preventDefault();
         if (enabled.length > 0) {
           focusItem(
@@ -274,27 +275,27 @@ export function Menubar({
           );
         }
         break;
-      case "Home":
+      case 'Home':
         event.preventDefault();
         focusItem(menuIndex, enabled[0] ?? itemIndex);
         break;
-      case "End":
+      case 'End':
         event.preventDefault();
         focusItem(menuIndex, enabled[enabled.length - 1] ?? itemIndex);
         break;
-      case "ArrowLeft":
+      case 'ArrowLeft':
         event.preventDefault();
         moveTrigger(menuIndex, -1);
         break;
-      case "ArrowRight":
+      case 'ArrowRight':
         event.preventDefault();
         moveTrigger(menuIndex, 1);
         break;
-      case "Escape":
+      case 'Escape':
         event.preventDefault();
         closeMenu(true);
         break;
-      case "Tab":
+      case 'Tab':
         closeMenu(false);
         break;
     }
@@ -318,7 +319,7 @@ export function Menubar({
               openMenuAt(menuIndex, enabled[0] ?? 0);
             }
           };
-          const size = "24px";
+          const size = '24px';
 
           return (
             <div className={styles.midiMenubarMenu} key={menu.id}>
@@ -348,7 +349,7 @@ export function Menubar({
                   role="menu"
                 >
                   {menu.items.map((item, itemIndex) => {
-                    if (item.type === "separator") {
+                    if (item.type === 'separator') {
                       return (
                         <HorizontalSeparator
                           key={`separator-${itemIndex}`}
@@ -377,7 +378,7 @@ export function Menubar({
                         }}
                         key={item.id}
                         flat
-                        role={item.checkable ? "menuitemcheckbox" : "menuitem"}
+                        role={item.checkable ? 'menuitemcheckbox' : 'menuitem'}
                         className={styles.midiMenubarItem}
                         disabled={disabled}
                         aria-disabled={disabled}
@@ -388,7 +389,7 @@ export function Menubar({
                           handleItemKeyDown(event, menuIndex, itemIndex)
                         }
                         height={size}
-                        maxWidth={"calc(100% - 4px)"}
+                        maxWidth={'calc(100% - 4px)'}
                         minHeight={size}
                         maxHeight={size}
                         paddingX="var(--size-med)"
@@ -398,9 +399,9 @@ export function Menubar({
                         <Text
                           disabled={disabled}
                           textAlign="left"
-                          flexWrap={"nowrap"}
+                          flexWrap={'nowrap'}
                         >
-                          {checked ? "✓ " : ""}
+                          {checked ? '✓ ' : ''}
                           {item.label}
                         </Text>
                         {shortcut && (

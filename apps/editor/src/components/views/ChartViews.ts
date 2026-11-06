@@ -1,7 +1,7 @@
-import { PianoRollView } from "./pianoRoll";
-import { HighwayView } from "./highway";
-import { ResourceRegistry } from "../../rendering/registry";
-import type { EngineOptions } from "../../rendering/engine";
+import type { EngineOptions } from '../../rendering/engine';
+import { ResourceRegistry } from '../../rendering/registry';
+import { HighwayView } from './highway';
+import { PianoRollView } from './pianoRoll';
 
 export type AnyChartView = PianoRollView | HighwayView;
 export type ChartViewFactory = (engineOptions?: EngineOptions) => AnyChartView;
@@ -17,21 +17,21 @@ export interface ChartViewDefinition {
 // Starting preload here lets switching views reuse the same immutable assets.
 export const ApplicationRenderAssets = new ResourceRegistry();
 void ApplicationRenderAssets.loadResources().catch((error) => {
-  console.error("Assets failed to load: ", error);
+  console.error('Assets failed to load: ', error);
 });
 
 export const ChartViews: ChartViewDefinition[] = [
   {
-    id: "piano-roll",
-    name: "Piano Roll",
+    id: 'piano-roll',
+    name: 'Piano Roll',
 
     createRenderer: (engineOptions) => {
       return new PianoRollView(engineOptions);
     },
   },
   {
-    id: "highway",
-    name: "Highway",
+    id: 'highway',
+    name: 'Highway',
 
     createRenderer: (engineOptions) => {
       return new HighwayView(ApplicationRenderAssets, engineOptions);

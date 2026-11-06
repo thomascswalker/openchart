@@ -1,17 +1,18 @@
-import { DefaultCompiledRuleset, Difficulty } from "@openchart/views";
-import { describe, expect, it } from "vitest";
+import { DefaultCompiledRuleset, Difficulty } from '@openchart/views';
+import { describe, expect, it } from 'vitest';
+
 import {
+  type GuitarNoteLike,
   getFiveFretNoteStyles,
   getTapSysExRanges,
-  type GuitarNoteLike,
-} from "../rendering/noteStyles";
+} from '../rendering/noteStyles';
 
 function note(pitch: number, start: number, end = start): GuitarNoteLike {
   return { pitch: pitch, start, end };
 }
 
-describe("five-fret note styles", () => {
-  it("keeps force markers registered for every guitar difficulty", () => {
+describe('five-fret note styles', () => {
+  it('keeps force markers registered for every guitar difficulty', () => {
     const expected = {
       expert: [103, 102, 101],
       hard: [91, 90, 89],
@@ -24,21 +25,21 @@ describe("five-fret note styles", () => {
       Difficulty.Medium,
       Difficulty.Easy,
     ];
-    for (const key of ["lead-guitar", "rhythm-guitar"]) {
+    for (const key of ['lead-guitar', 'rhythm-guitar']) {
       const track = DefaultCompiledRuleset.byKey.get(key);
-      expect(track?.kind).toBe("guitar");
+      expect(track?.kind).toBe('guitar');
       if (!track) continue;
       difficulties.forEach((difficulty, index) => {
         const [tap, strum, hopo] = Object.values(expected)[index]!;
         const chart = track.difficulties.get(difficulty);
-        expect(chart?.pitchForMarker("forceTap")).toBe(tap);
-        expect(chart?.pitchForMarker("forceStrum")).toBe(strum);
-        expect(chart?.pitchForMarker("forceHopo")).toBe(hopo);
+        expect(chart?.pitchForMarker('forceTap')).toBe(tap);
+        expect(chart?.pitchForMarker('forceStrum')).toBe(strum);
+        expect(chart?.pitchForMarker('forceHopo')).toBe(hopo);
       });
     }
   });
 
-  it("classifies natural and forced HOPOs but not strums or chords", () => {
+  it('classifies natural and forced HOPOs but not strums or chords', () => {
     const previous = note(96, 0);
     const natural = note(97, 160);
     const sameLane = note(97, 300);
@@ -64,7 +65,7 @@ describe("five-fret note styles", () => {
         forceStrumPitch: 102,
         tapMarkerPitches: [103, 104],
         hopoThresholdTicks: 170,
-        autoHopoExclusions: ["sameLaneAsPrevious", "chord"],
+        autoHopoExclusions: ['sameLaneAsPrevious', 'chord'],
       },
     );
 
@@ -77,7 +78,7 @@ describe("five-fret note styles", () => {
     expect(styles.get(afterChord)?.hopo).toBe(true);
   });
 
-  it("marks notes inside tap-marker notes and tap SysEx phrases", () => {
+  it('marks notes inside tap-marker notes and tap SysEx phrases', () => {
     const markerTap = note(96, 10);
     const phraseTap = note(97, 30);
     const strum = note(98, 60);

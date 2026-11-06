@@ -1,35 +1,35 @@
-import { MAX_VARIABLE_LENGTH_VALUE } from "./constants";
+import { MAX_VARIABLE_LENGTH_VALUE } from './constants';
 import {
-  MidiMetaPayload,
   DefaultMetaPayload,
   MetaType,
   MidiEvent,
+  MidiMetaPayload,
   MidiSysExEvent,
   extractMetaPayload,
-} from "./types";
-import { isTwoByteMessage } from "./util";
+} from './types';
+import { isTwoByteMessage } from './util';
 
 /** Browser-safe base64url helpers. `Midi` is used by the editor bundle, so
  * these deliberately do not depend on Node's Buffer global. */
 export function encodeBase64(bytes: Uint8Array): string {
-  if (bytes.length === 0) return "-";
+  if (bytes.length === 0) return '-';
 
-  let binary = "";
+  let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
 export function decodeBase64(value: string): Uint8Array {
-  if (value === "-") return new Uint8Array(0);
+  if (value === '-') return new Uint8Array(0);
   if (!/^[A-Za-z0-9_-]+$/.test(value)) {
     throw new Error(`Invalid base64 MIDI payload: ${value}`);
   }
 
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
   let binary: string;
   try {
     binary = atob(padded);
@@ -111,7 +111,7 @@ export function writeUInt32BE(
   target[offset + 3] = value & 0xff;
 }
 const utf8Encoder = new TextEncoder();
-const strictUtf8Decoder = new TextDecoder("utf-8", { fatal: true });
+const strictUtf8Decoder = new TextDecoder('utf-8', { fatal: true });
 /** Encodes text-meta payloads (lyrics, markers, track names) as UTF-8. ASCII
  * is a strict subset, so existing ASCII charts serialize byte-for-byte. */
 
@@ -135,7 +135,7 @@ export function decodeText(bytes: Uint8Array): string {
   try {
     return strictUtf8Decoder.decode(bytes);
   } catch {
-    let text = "";
+    let text = '';
     for (const byte of bytes) text += String.fromCharCode(byte);
     return text;
   }
@@ -148,7 +148,7 @@ export function encodeVariableLengthValue(value: number): Uint8Array {
     value > MAX_VARIABLE_LENGTH_VALUE
   ) {
     throw new RangeError(
-      "MIDI variable-length values must be between 0 and 0x0fffffff",
+      'MIDI variable-length values must be between 0 and 0x0fffffff',
     );
   }
 
@@ -171,7 +171,7 @@ export function encodeMetaPayload(
     return new Uint8Array(data);
   }
 
-  if (data && typeof data === "object" && "bytes" in data) {
+  if (data && typeof data === 'object' && 'bytes' in data) {
     return new Uint8Array((data as DefaultMetaPayload).bytes);
   }
 
@@ -193,15 +193,15 @@ export function encodeMetaPayload(
     case MetaType.CuePoint:
     case 0x08:
     case 0x09:
-      return encodeText(payload.text ?? "");
+      return encodeText(payload.text ?? '');
 
     case 0x20:
       return new Uint8Array([
-        requireByte(payload.channel, "MIDI channel prefix"),
+        requireByte(payload.channel, 'MIDI channel prefix'),
       ]);
 
     case 0x21:
-      return new Uint8Array([requireByte(payload.port, "MIDI port")]);
+      return new Uint8Array([requireByte(payload.port, 'MIDI port')]);
 
     case MetaType.EndOfTrack:
       return new Uint8Array(0);
@@ -217,31 +217,31 @@ export function encodeMetaPayload(
 
     case MetaType.SMPTEOffset:
       return new Uint8Array([
-        requireByte(payload.hr, "SMPTE hour"),
-        requireByte(payload.mn, "SMPTE minute"),
-        requireByte(payload.se, "SMPTE second"),
-        requireByte(payload.fr, "SMPTE frame"),
-        requireByte(payload.ff, "SMPTE fractional frame"),
+        requireByte(payload.hr, 'SMPTE hour'),
+        requireByte(payload.mn, 'SMPTE minute'),
+        requireByte(payload.se, 'SMPTE second'),
+        requireByte(payload.fr, 'SMPTE frame'),
+        requireByte(payload.ff, 'SMPTE fractional frame'),
       ]);
 
     case MetaType.TimeSignature:
       return new Uint8Array([
-        requireByte(payload.numerator, "time-signature numerator"),
-        requireByte(payload.denominator, "time-signature denominator"),
+        requireByte(payload.numerator, 'time-signature numerator'),
+        requireByte(payload.denominator, 'time-signature denominator'),
         requireByte(
           payload.clocksPerClick ?? 24,
-          "time-signature clocks-per-click",
+          'time-signature clocks-per-click',
         ),
         requireByte(
           payload.thirtySecondNotesPerQuarter ?? 8,
-          "time-signature thirty-second notes",
+          'time-signature thirty-second notes',
         ),
       ]);
 
     case 0x59:
       return new Uint8Array([
-        requireSignedByte(payload.key, "key signature key"),
-        requireByte(payload.scale, "key-signature scale"),
+        requireSignedByte(payload.key, 'key signature key'),
+        requireByte(payload.scale, 'key-signature scale'),
       ]);
 
     default:
@@ -333,7 +333,7 @@ export function decodeMetaPayload(
 export function encodeMidiEvent(event: MidiEvent): Uint8Array {
   const deltaTime = encodeVariableLengthValue(event.deltaTime);
 
-  if (event.status === 0xff && "type" in event) {
+  if (event.status === 0xff && 'type' in event) {
     const payload = encodeMetaPayload(event.type, extractMetaPayload(event));
 
     return concatBytes([
@@ -355,8 +355,8 @@ export function encodeMidiEvent(event: MidiEvent): Uint8Array {
     ]);
   }
 
-  if (!("messageType" in event)) {
-    throw new Error("Cannot serialize an unsupported MIDI event");
+  if (!('messageType' in event)) {
+    throw new Error('Cannot serialize an unsupported MIDI event');
   }
 
   const status =
@@ -365,12 +365,12 @@ export function encodeMidiEvent(event: MidiEvent): Uint8Array {
       : event.messageType | (event.channel & 0x0f);
 
   const messageType = status & 0xf0;
-  const data1 = requireByte(event.data1, "MIDI event data1") & 0x7f;
+  const data1 = requireByte(event.data1, 'MIDI event data1') & 0x7f;
 
   const bytes = [status, data1];
 
   if (isTwoByteMessage(messageType)) {
-    bytes.push(requireByte(event.data2 ?? 0, "MIDI event data2") & 0x7f);
+    bytes.push(requireByte(event.data2 ?? 0, 'MIDI event data2') & 0x7f);
   }
 
   return concatBytes([deltaTime, new Uint8Array(bytes)]);

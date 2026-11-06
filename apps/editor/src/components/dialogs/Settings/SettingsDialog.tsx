@@ -1,20 +1,20 @@
-import { runActionAsync, runAction } from "../../../platform/actions/execute";
-import { useSettings } from "../../../hooks/useApplication";
+import { useSettings } from '../../../hooks/useApplication';
+import { runAction, runActionAsync } from '../../../platform/actions/execute';
 import {
-  ApplicationSettingsSchema,
   type ApplicationSettings,
-} from "../../../platform/services/settings/schema";
-import { Form } from "../../shared";
+  ApplicationSettingsSchema,
+} from '../../../platform/services/settings/schema';
+import { Form } from '../../shared';
 
 const SettingsDialog = () => {
   const { settings } = useSettings();
 
   const close = (): void => {
-    runAction("dialog.close-settings");
+    runAction('dialog.close-settings');
   };
 
   const apply = (values: ApplicationSettings): Promise<boolean> => {
-    return runActionAsync("settings.apply", values);
+    return runActionAsync('settings.apply', values);
   };
 
   return (

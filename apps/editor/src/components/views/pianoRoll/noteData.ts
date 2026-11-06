@@ -1,10 +1,11 @@
-import type { Midi, MidiNote, MidiTrack } from "@openchart/midi";
-import { formatNoteId } from "@openchart/views";
+import type { Midi, MidiNote, MidiTrack } from '@openchart/midi';
+import { formatNoteId } from '@openchart/views';
+
 import {
-  buildNoteIndex,
   type PianoRollNoteIndex,
-} from "./rendering/visibility";
-import type { PianoRollNote } from "./types";
+  buildNoteIndex,
+} from './rendering/visibility';
+import type { PianoRollNote } from './types';
 
 /** Converts a MIDI note into the piano roll's flattened representation. */
 export function toPianoRollNote(

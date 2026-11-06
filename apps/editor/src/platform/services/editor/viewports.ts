@@ -1,16 +1,18 @@
 import {
-  Difficulty,
-  EditingModeRegistry,
   type CompiledRuleset,
+  Difficulty,
   type EditingModeId,
+  EditingModeRegistry,
   type ModeRegistry,
   type TrackDescriptor,
-} from "@openchart/views";
-import { defaultModes } from "@openchart/views";
-import { StatefulService } from "../../services";
-import type { RulesetService } from "../ruleset";
+} from '@openchart/views';
+import { defaultModes } from '@openchart/views';
 
-export type ViewportKind = "piano-roll" | "highway";
+import { IRulesetService } from '../ruleset';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
+
+export type ViewportKind = 'piano-roll' | 'highway';
 
 export interface ViewportCameraState {
   tick: number;
@@ -24,11 +26,11 @@ export function enforceAvailableView(
   canHost: (session: ViewportSession, hostKind: ViewportKind) => boolean,
 ): ViewportSession {
   if (canHost(session, session.view)) return session;
-  if (canHost(session, "piano-roll")) {
-    return { ...session, view: "piano-roll" };
+  if (canHost(session, 'piano-roll')) {
+    return { ...session, view: 'piano-roll' };
   }
-  if (canHost(session, "highway")) {
-    return { ...session, view: "highway" };
+  if (canHost(session, 'highway')) {
+    return { ...session, view: 'highway' };
   }
   return session;
 }
@@ -55,9 +57,9 @@ export interface ViewportSnapshot {
   getActiveViewport: () => ViewportSession | undefined;
 }
 
-const DEFAULT_VIEWPORT_ID = "viewport-1";
+const DEFAULT_VIEWPORT_ID = 'viewport-1';
 const DEFAULT_MAX_VIEWPORT_COUNT = 4;
-const DEFAULT_VIEW_ID = "piano-roll";
+const DEFAULT_VIEW_ID = 'piano-roll';
 
 /** The track new viewports open on: the first visible, editable track. */
 function defaultTrack(rules: CompiledRuleset): TrackDescriptor {
@@ -66,14 +68,14 @@ function defaultTrack(rules: CompiledRuleset): TrackDescriptor {
     descriptors.find((track) => track.visible && track.editable) ??
     descriptors.find((track) => track.visible) ??
     descriptors[0];
-  if (!found) throw new Error("The ruleset defines no tracks.");
+  if (!found) throw new Error('The ruleset defines no tracks.');
   return found;
 }
 
 function createViewportSession(
   id: string,
-  track: Pick<TrackDescriptor, "key" | "name">,
-  view: ViewportKind = "piano-roll",
+  track: Pick<TrackDescriptor, 'key' | 'name'>,
+  view: ViewportKind = 'piano-roll',
   cameraTick = 0,
 ): ViewportSession {
   return {
@@ -93,10 +95,7 @@ function createViewportSession(
 }
 
 export class ViewportService extends StatefulService<ViewportSnapshot> {
-  public static dependencies = ["ruleset"];
-
-  private readonly rulesetService: RulesetService;
-  private viewportSessions: ViewportSession[];
+  private viewportSessions!: ViewportSession[];
   private activeViewportId = DEFAULT_VIEWPORT_ID;
   private maxViewportCount = DEFAULT_MAX_VIEWPORT_COUNT;
   private activeViewId = DEFAULT_VIEW_ID;
@@ -109,16 +108,20 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     session,
   ) => this.resolveFromRules(session);
 
-  constructor(rulesetService: RulesetService) {
+  constructor(
+    @IRulesetService private readonly rulesetService: IRulesetService,
+  ) {
     super();
-    this.rulesetService = rulesetService;
+  }
+
+  public init(): void {
     this.viewportSessions = [
       createViewportSession(
         DEFAULT_VIEWPORT_ID,
-        defaultTrack(rulesetService.compiled),
+        defaultTrack(this.rulesetService.compiled),
       ),
     ];
-    rulesetService.subscribe(this.syncRuleset);
+    this.rulesetService.subscribe(this.syncRuleset);
     const registry = new EditingModeRegistry();
     defaultModes.forEach((mode) => registry.register(mode));
     this.modeRegistry = registry;
@@ -162,7 +165,7 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     this.viewportSessions = this.viewportSessions.map((session) => {
       const exists =
         rules.byKey.has(session.trackKey) ||
-        session.trackKey.startsWith("unmapped-");
+        session.trackKey.startsWith('unmapped-');
       const next = exists
         ? session
         : {
@@ -248,7 +251,7 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
 
   public readonly updateViewport = (
     id: string,
-    update: Partial<Omit<ViewportSession, "id">>,
+    update: Partial<Omit<ViewportSession, 'id'>>,
   ): void => {
     const current = this.getViewport(id);
     if (!current) return;
@@ -368,3 +371,7 @@ export class ViewportService extends StatefulService<ViewportSnapshot> {
     return this.modeRegistry.canHost(this.trackResolver(session), hostKind);
   }
 }
+
+export type IViewportService = ViewportService;
+export const IViewportService =
+  createDecorator<IViewportService>('editor.viewports');

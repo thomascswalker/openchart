@@ -1,4 +1,4 @@
-import type { Threshold } from "./config";
+import type { Threshold } from './config';
 
 export type SettingValue = boolean | number | string;
 
@@ -7,7 +7,7 @@ export interface ThresholdContext {
   /** Project settings: `settings(source, key)` → value, if the project sets it. */
   settings?: (source: string, key: string) => SettingValue | undefined;
   /** Unit of a setting (`ticks` | `seconds` | `none`). Defaults to `ticks`. */
-  settingUnit?: (source: string, key: string) => "ticks" | "seconds" | "none";
+  settingUnit?: (source: string, key: string) => 'ticks' | 'seconds' | 'none';
   /** Converts a duration in seconds to ticks at the point being evaluated. */
   secondsToTicks?: (seconds: number) => number;
 }
@@ -17,10 +17,10 @@ export interface ResolvedThreshold {
   inclusive: boolean;
 }
 
-function roundWith(mode: "floor" | "round" | "ceil", v: number): number {
-  return mode === "floor"
+function roundWith(mode: 'floor' | 'round' | 'ceil', v: number): number {
+  return mode === 'floor'
     ? Math.floor(v)
-    : mode === "ceil"
+    : mode === 'ceil'
       ? Math.ceil(v)
       : Math.round(v);
 }
@@ -28,13 +28,13 @@ function roundWith(mode: "floor" | "round" | "ceil", v: number): number {
 function baseTicks(t: Threshold, ctx: ThresholdContext): number | null {
   const v = t.value;
   switch (v.unit) {
-    case "step":
+    case 'step':
       return (ctx.ppqn * 4) / v.denominator;
-    case "ticks":
+    case 'ticks':
       return v.ticks;
-    case "resolutionFormula":
+    case 'resolutionFormula':
       return roundWith(v.rounding, ctx.ppqn / v.divisor) + v.addTicks;
-    case "seconds":
+    case 'seconds':
       return ctx.secondsToTicks ? ctx.secondsToTicks(v.seconds) : null;
   }
 }
@@ -53,9 +53,9 @@ export function resolveThreshold(
 
   for (const o of t.overrides ?? []) {
     const raw = ctx.settings?.(o.source, o.key);
-    if (typeof raw !== "number") continue;
-    const unit = ctx.settingUnit?.(o.source, o.key) ?? "ticks";
-    if (unit === "seconds") {
+    if (typeof raw !== 'number') continue;
+    const unit = ctx.settingUnit?.(o.source, o.key) ?? 'ticks';
+    if (unit === 'seconds') {
       if (!ctx.secondsToTicks) continue;
       ticks = ctx.secondsToTicks(raw);
     } else {

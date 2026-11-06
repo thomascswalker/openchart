@@ -1,4 +1,4 @@
 export {
   ResourceRegistry,
   AssetLoadError,
-} from "../../../../rendering/registry";
+} from '../../../../rendering/registry';

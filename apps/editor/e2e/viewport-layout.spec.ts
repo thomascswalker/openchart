@@ -1,15 +1,16 @@
-import { expect, test } from "@playwright/test";
-import { loadSong, panel } from "./helpers.js";
+import { expect, test } from '@playwright/test';
 
-test("resizes a viewport command panel by dragging its splitter", async ({
+import { loadSong, panel } from './helpers.js';
+
+test('resizes a viewport command panel by dragging its splitter', async ({
   page,
 }) => {
   await loadSong(page);
   await expect(panel(page, 0)).toBeVisible();
-  const splitter = page.getByRole("separator", { name: "Resize panels" });
+  const splitter = page.getByRole('separator', { name: 'Resize panels' });
   const box = await splitter.boundingBox();
   expect(box).not.toBeNull();
-  await expect(splitter).toHaveAttribute("aria-valuenow", "400");
+  await expect(splitter).toHaveAttribute('aria-valuenow', '400');
 
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.mouse.down();
@@ -20,5 +21,5 @@ test("resizes a viewport command panel by dragging its splitter", async ({
   );
   await page.mouse.up();
 
-  await expect(splitter).toHaveAttribute("aria-valuenow", "500");
+  await expect(splitter).toHaveAttribute('aria-valuenow', '500');
 });

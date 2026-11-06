@@ -1,15 +1,16 @@
-import type { MidiNote, MidiTrack } from "@openchart/midi";
-import type { PhraseDef } from "../ruleset/config";
-import { classifyPitch, type PitchRole } from "../ruleset/classify";
+import type { MidiNote, MidiTrack } from '@openchart/midi';
+
+import { type PitchRole, classifyPitch } from '../ruleset/classify';
 import {
-  difficultyName,
   type ChartRules,
   type CompiledLane,
   type TrackRules,
-} from "../ruleset/compile";
-import type { Difficulty } from "../ruleset/difficulty";
-import type { InstrumentTrackView } from "./instrument";
-import type { SongView } from "./song";
+  difficultyName,
+} from '../ruleset/compile';
+import type { PhraseDef } from '../ruleset/config';
+import type { Difficulty } from '../ruleset/difficulty';
+import type { InstrumentTrackView } from './instrument';
+import type { SongView } from './song';
 
 /**
  * Read-only view of one difficulty of a chart track. All semantics (lanes,
@@ -92,7 +93,7 @@ export class ChartView {
     return this.#rules.phrases.filter(
       (phrase) =>
         !phrase.appliesTo ||
-        phrase.appliesTo === "all" ||
+        phrase.appliesTo === 'all' ||
         phrase.appliesTo.includes(name),
     );
   }

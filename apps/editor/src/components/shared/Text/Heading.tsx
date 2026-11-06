@@ -1,8 +1,10 @@
-import classNames from "classnames";
-import type { JSX } from "react/jsx-runtime";
-import { getTextSystemStyles } from "./textStyles";
-import type { TextProps } from "./Text";
-import styles from "./text.module.css";
+import type { JSX } from 'react/jsx-runtime';
+
+import classNames from 'classnames';
+
+import type { TextProps } from './Text';
+import styles from './text.module.css';
+import { getTextSystemStyles } from './textStyles';
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -20,8 +22,8 @@ const Heading = ({
   const safeLevel = Math.min(Math.max(level, 1), 6);
   const style = getTextSystemStyles(props);
   const headingClassName = classNames(
-    styles["ui-heading"],
-    disabled ? styles["ui-heading-disabled"] : null,
+    styles['ui-heading'],
+    disabled ? styles['ui-heading-disabled'] : null,
     styles[`ui-h${safeLevel}`],
     className,
   );

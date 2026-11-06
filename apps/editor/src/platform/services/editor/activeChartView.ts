@@ -1,7 +1,8 @@
-import type { AnyChartView } from "../../../components/views/ChartViews";
-import { StatefulService } from "../../services";
+import type { AnyChartView } from '../../../components/views/ChartViews';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
 
-type ViewOfKind<K extends AnyChartView["kind"]> = Extract<
+type ViewOfKind<K extends AnyChartView['kind']> = Extract<
   AnyChartView,
   { kind: K }
 >;
@@ -9,6 +10,9 @@ type ViewOfKind<K extends AnyChartView["kind"]> = Extract<
 export class ActiveChartViewService extends StatefulService<AnyChartView | null> {
   constructor() {
     super();
+  }
+
+  public init(): void {
     this._snapshot = null;
   }
 
@@ -22,10 +26,15 @@ export class ActiveChartViewService extends StatefulService<AnyChartView | null>
   };
 
   /** The active view when it is of the given kind, otherwise null. */
-  public getActive<K extends AnyChartView["kind"]>(
+  public getActive<K extends AnyChartView['kind']>(
     kind: K,
   ): ViewOfKind<K> | null {
     const view = this._snapshot;
     return view?.kind === kind ? (view as ViewOfKind<K>) : null;
   }
 }
+
+export type IActiveChartViewService = ActiveChartViewService;
+export const IActiveChartViewService = createDecorator<IActiveChartViewService>(
+  'editor.active-chart-view',
+);

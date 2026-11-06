@@ -1,15 +1,17 @@
-import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { useDocument } from "../../../hooks/useDocument";
-import { Midi, MidiTrack } from "@openchart/midi";
-import { TrackList } from "./TrackList";
+import { act } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
 
-vi.mock("../../../hooks/useDocument", () => ({
+import { Midi, MidiTrack } from '@openchart/midi';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { useDocument } from '../../../hooks/useDocument';
+import { TrackList } from './TrackList';
+
+vi.mock('../../../hooks/useDocument', () => ({
   useDocument: vi.fn(),
 }));
 
-vi.mock("../../../actions/execute", () => ({
+vi.mock('../../../actions/execute', () => ({
   runActionAsync: vi.fn(),
 }));
 
@@ -25,7 +27,7 @@ afterEach(() => {
 });
 
 function renderTrackList(): void {
-  container = document.createElement("div");
+  container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
   act(() => root?.render(<TrackList />));
@@ -38,23 +40,23 @@ function setMidi(midi: Midi | null): void {
   act(() => root?.render(<TrackList />));
 }
 
-describe("TrackList", () => {
-  it("keeps hooks stable and rebuilds its SongView when the document changes", () => {
+describe('TrackList', () => {
+  it('keeps hooks stable and rebuilds its SongView when the document changes', () => {
     mockedUseDocument.mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useDocument>);
     renderTrackList();
-    expect(container?.textContent).toContain("No MIDI data");
+    expect(container?.textContent).toContain('No MIDI data');
 
     const firstMidi = new Midi();
-    firstMidi.tracks.push(new MidiTrack("LEAD GUITAR"));
+    firstMidi.tracks.push(new MidiTrack('LEAD GUITAR'));
     setMidi(firstMidi);
-    expect(container?.textContent).toContain("LEAD GUITAR");
+    expect(container?.textContent).toContain('LEAD GUITAR');
 
     const nextMidi = new Midi();
-    nextMidi.tracks.push(new MidiTrack("VOCALS"));
+    nextMidi.tracks.push(new MidiTrack('VOCALS'));
     setMidi(nextMidi);
-    expect(container?.textContent).toContain("VOCALS");
-    expect(container?.textContent).not.toContain("LEAD GUITAR");
+    expect(container?.textContent).toContain('VOCALS');
+    expect(container?.textContent).not.toContain('LEAD GUITAR');
   });
 });

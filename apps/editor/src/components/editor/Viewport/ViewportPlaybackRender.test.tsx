@@ -1,18 +1,20 @@
-import { act, Profiler } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
-import { Runtime } from "../Runtime";
-import { Viewport } from "./";
-import Platform from "../../../platform";
-import { PlaybackService } from "../../../platform/services/playback/playback";
+import { Profiler, act } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
 
-vi.mock("../../views/ChartViewHost", () => ({
+import { describe, expect, it, vi } from 'vitest';
+
+import Platform from '../../../platform';
+import { PlaybackService } from '../../../platform/services/playback/playback';
+import { Runtime } from '../Runtime';
+import { Viewport } from './';
+
+vi.mock('../../views/ChartViewHost', () => ({
   ChartViewHost: () => null,
 }));
 
-describe("viewport playback rendering", () => {
-  it("does not commit the viewport panel for playback ticks alone", () => {
-    const container = document.createElement("div");
+describe('viewport playback rendering', () => {
+  it('does not commit the viewport panel for playback ticks alone', () => {
+    const container = document.createElement('div');
     document.body.append(container);
     const root: Root = createRoot(container);
     let commits = 0;
@@ -29,7 +31,7 @@ describe("viewport playback rendering", () => {
       );
 
       const initialCommits = commits;
-      const playback = Platform.services.get<PlaybackService>("playback");
+      const playback = Platform.services.get<PlaybackService>('playback');
       act(() => playback.setPlaybackTick(120));
       act(() => playback.setPlaybackTick(240));
       act(() => playback.setPlaybackTick(360));

@@ -1,31 +1,32 @@
 import {
   MetaType,
-  TextMetaType,
   type Midi,
   type MidiEvent,
   type MidiNote,
   type MidiTrack,
-} from "@openchart/midi";
-import { SongView } from "../views/song";
+  TextMetaType,
+} from '@openchart/midi';
+
 import {
-  DefaultCompiledRuleset,
   type CompiledRuleset,
+  DefaultCompiledRuleset,
   type TrackDescriptor,
-} from "../ruleset/compile";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader";
+} from '../ruleset/compile';
+import { SongView } from '../views/song';
+import { EditCommandType, type GeneralCommand } from './commands';
 import {
+  type EntityId,
   EntityType,
   formatNoteId,
   formatTempoId,
   formatTextId,
   formatTimeSignatureId,
   parseEntityFromId,
-  type EntityId,
-} from "./entity";
-import { emptyEditResult, EditRejectedError, type EditResult } from "./result";
-import { EditCommandType, type GeneralCommand } from "./commands";
+} from './entity';
+import type { ChartDocumentReader, NoteSnapshot } from './reader';
+import { EditRejectedError, type EditResult, emptyEditResult } from './result';
 
-export type { NoteSnapshot } from "./reader";
+export type { NoteSnapshot } from './reader';
 
 /** Headless raw-command executor and read-only projection of a MIDI document. */
 export class ChartDocument implements ChartDocumentReader {
@@ -125,9 +126,9 @@ export class ChartDocument implements ChartDocumentReader {
     return track.events.flatMap((source) => {
       if (
         source.status !== 0xff ||
-        !("type" in source) ||
-        !("text" in source) ||
-        typeof source.text !== "string"
+        !('type' in source) ||
+        !('text' in source) ||
+        typeof source.text !== 'string'
       ) {
         return [];
       }
@@ -206,8 +207,8 @@ export class ChartDocument implements ChartDocumentReader {
           if (!Number.isSafeInteger(spec.tick + spec.duration)) {
             this.reject(
               command,
-              "invalid-note-range",
-              "Note end tick is too large",
+              'invalid-note-range',
+              'Note end tick is too large',
             );
           }
           if (
@@ -216,7 +217,7 @@ export class ChartDocument implements ChartDocumentReader {
               spec.velocity < 1 ||
               spec.velocity > 127)
           ) {
-            this.reject(command, "invalid-velocity", "Velocity must be 1–127");
+            this.reject(command, 'invalid-velocity', 'Velocity must be 1–127');
           }
         }
         break;
@@ -232,7 +233,7 @@ export class ChartDocument implements ChartDocumentReader {
               patch.pitch < 0 ||
               patch.pitch > 127)
           ) {
-            this.reject(command, "invalid-pitch", "Pitch must be 0–127");
+            this.reject(command, 'invalid-pitch', 'Pitch must be 0–127');
           }
           if (
             patch.duration !== undefined &&
@@ -240,8 +241,8 @@ export class ChartDocument implements ChartDocumentReader {
           ) {
             this.reject(
               command,
-              "invalid-duration",
-              "Duration must be a positive integer",
+              'invalid-duration',
+              'Duration must be a positive integer',
             );
           }
           if (
@@ -250,22 +251,22 @@ export class ChartDocument implements ChartDocumentReader {
               patch.velocity < 1 ||
               patch.velocity > 127)
           ) {
-            this.reject(command, "invalid-velocity", "Velocity must be 1–127");
+            this.reject(command, 'invalid-velocity', 'Velocity must be 1–127');
           }
           const nextStart = patch.tick ?? note.start;
           const nextDuration = patch.duration ?? note.end - note.start;
           if (!Number.isSafeInteger(nextStart + nextDuration)) {
             this.reject(
               command,
-              "invalid-note-range",
-              "Note end tick is too large",
+              'invalid-note-range',
+              'Note end tick is too large',
             );
           }
         }
         break;
       case EditCommandType.MoveNotes:
-        this.validateInteger(command, command.tickDelta, "tickDelta");
-        this.validateInteger(command, command.pitchDelta, "pitchDelta");
+        this.validateInteger(command, command.tickDelta, 'tickDelta');
+        this.validateInteger(command, command.pitchDelta, 'pitchDelta');
         command.targetIds.forEach((id) => {
           const { note } = this.requireCommandNote(command, id);
           const start = Math.max(0, note.start + command.tickDelta);
@@ -275,14 +276,14 @@ export class ChartDocument implements ChartDocumentReader {
           ) {
             this.reject(
               command,
-              "invalid-note-range",
-              "Moved note end tick is too large",
+              'invalid-note-range',
+              'Moved note end tick is too large',
             );
           }
         });
         break;
       case EditCommandType.ResizeNotes:
-        this.validateInteger(command, command.durationDelta, "durationDelta");
+        this.validateInteger(command, command.durationDelta, 'durationDelta');
         command.targetIds.forEach((id) => {
           const { note } = this.requireCommandNote(command, id);
           const duration = Math.max(
@@ -292,8 +293,8 @@ export class ChartDocument implements ChartDocumentReader {
           if (!Number.isSafeInteger(note.start + duration)) {
             this.reject(
               command,
-              "invalid-note-range",
-              "Resized note end tick is too large",
+              'invalid-note-range',
+              'Resized note end tick is too large',
             );
           }
         });
@@ -303,7 +304,7 @@ export class ChartDocument implements ChartDocumentReader {
           if (!this.entityExists(id)) {
             this.reject(
               command,
-              "missing-entity",
+              'missing-entity',
               `Entity '${id}' does not exist`,
             );
           }
@@ -315,29 +316,29 @@ export class ChartDocument implements ChartDocumentReader {
         if (!this.isTextMetaType(command.metaType)) {
           this.reject(
             command,
-            "invalid-text-type",
-            "Text meta type is invalid",
+            'invalid-text-type',
+            'Text meta type is invalid',
           );
         }
-        if (typeof command.text !== "string" || !command.text.trim()) {
-          this.reject(command, "invalid-text", "Text must not be empty");
+        if (typeof command.text !== 'string' || !command.text.trim()) {
+          this.reject(command, 'invalid-text', 'Text must not be empty');
         }
         break;
       case EditCommandType.UpdateText: {
         this.requireTextEvent(command, command.id);
         if (
           command.text !== undefined &&
-          (typeof command.text !== "string" || !command.text.trim())
+          (typeof command.text !== 'string' || !command.text.trim())
         ) {
-          this.reject(command, "invalid-text", "Text must not be empty");
+          this.reject(command, 'invalid-text', 'Text must not be empty');
         }
         if (command.tick !== undefined)
           this.validateTick(command, command.tick);
         if (command.text === undefined && command.tick === undefined) {
           this.reject(
             command,
-            "empty-update",
-            "Text update has no changed fields",
+            'empty-update',
+            'Text update has no changed fields',
           );
         }
         break;
@@ -351,8 +352,8 @@ export class ChartDocument implements ChartDocumentReader {
         ) {
           this.reject(
             command,
-            "invalid-tempo",
-            "Microseconds per quarter note must fit in three bytes",
+            'invalid-tempo',
+            'Microseconds per quarter note must fit in three bytes',
           );
         }
         break;
@@ -369,8 +370,8 @@ export class ChartDocument implements ChartDocumentReader {
         ) {
           this.reject(
             command,
-            "invalid-time-signature",
-            "Numerator must be 1–255",
+            'invalid-time-signature',
+            'Numerator must be 1–255',
           );
         }
         if (
@@ -380,8 +381,8 @@ export class ChartDocument implements ChartDocumentReader {
         ) {
           this.reject(
             command,
-            "invalid-time-signature",
-            "Denominator exponent must be 0–7",
+            'invalid-time-signature',
+            'Denominator exponent must be 0–7',
           );
         }
         break;
@@ -529,8 +530,8 @@ export class ChartDocument implements ChartDocumentReader {
         const entity = parseEntityFromId(command.id)!;
         const track = this.getTrack(entity.trackIndex!);
         const event = track.getEventById(entity.eventId)!;
-        if (event.status !== 0xff || !("text" in event)) {
-          throw new Error("Validated text event changed before execution");
+        if (event.status !== 0xff || !('text' in event)) {
+          throw new Error('Validated text event changed before execution');
         }
         const currentTick = event.tick;
         const textChanged =
@@ -541,13 +542,13 @@ export class ChartDocument implements ChartDocumentReader {
         if (textChanged) {
           const text = command.text;
           if (text === undefined || !track.updateTextEvent(event, text)) {
-            throw new Error("Validated text event could not be updated");
+            throw new Error('Validated text event could not be updated');
           }
         }
         if (tickChanged) {
           const tick = command.tick;
           if (tick === undefined || !track.moveEvent(event, tick)) {
-            throw new Error("Validated text event could not be moved");
+            throw new Error('Validated text event could not be moved');
           }
         }
         return {
@@ -560,7 +561,7 @@ export class ChartDocument implements ChartDocumentReader {
         const existing = this.globalEventAt(MetaType.Tempo, command.tick);
         if (
           existing &&
-          "microsecondsPerQuarterNote" in existing &&
+          'microsecondsPerQuarterNote' in existing &&
           existing.microsecondsPerQuarterNote ===
             command.microsecondsPerQuarterNote
         ) {
@@ -574,8 +575,8 @@ export class ChartDocument implements ChartDocumentReader {
           command.tick,
           command.microsecondsPerQuarterNote,
         );
-        const added = this.globalEventAt(MetaType.Tempo, command.tick, "last");
-        if (!added) throw new Error("Inserted tempo event is missing");
+        const added = this.globalEventAt(MetaType.Tempo, command.tick, 'last');
+        if (!added) throw new Error('Inserted tempo event is missing');
         const id = formatTempoId(this.getTrack(0).getEventId(added));
         return {
           changed: true,
@@ -587,7 +588,7 @@ export class ChartDocument implements ChartDocumentReader {
         };
       }
       case EditCommandType.RemoveTempo:
-        return this.removeGlobalEventAt(command, MetaType.Tempo, "tempo");
+        return this.removeGlobalEventAt(command, MetaType.Tempo, 'tempo');
       case EditCommandType.SetTimeSignature: {
         const existing = this.globalEventAt(
           MetaType.TimeSignature,
@@ -595,8 +596,8 @@ export class ChartDocument implements ChartDocumentReader {
         );
         if (
           existing &&
-          "numerator" in existing &&
-          "denominator" in existing &&
+          'numerator' in existing &&
+          'denominator' in existing &&
           existing.numerator === command.numerator &&
           existing.denominator === command.denominator
         ) {
@@ -614,9 +615,9 @@ export class ChartDocument implements ChartDocumentReader {
         const added = this.globalEventAt(
           MetaType.TimeSignature,
           command.tick,
-          "last",
+          'last',
         );
-        if (!added) throw new Error("Inserted time-signature event is missing");
+        if (!added) throw new Error('Inserted time-signature event is missing');
         const id = formatTimeSignatureId(this.getTrack(0).getEventId(added));
         return {
           changed: true,
@@ -631,7 +632,7 @@ export class ChartDocument implements ChartDocumentReader {
         return this.removeGlobalEventAt(
           command,
           MetaType.TimeSignature,
-          "time-signature",
+          'time-signature',
         );
     }
   }
@@ -655,7 +656,7 @@ export class ChartDocument implements ChartDocumentReader {
     id: string,
   ): { trackIndex: number; track: MidiTrack; note: MidiNote } | null {
     const parsed = parseEntityFromId(id);
-    if (parsed?.type !== "note" || parsed.trackIndex === undefined) {
+    if (parsed?.type !== 'note' || parsed.trackIndex === undefined) {
       return null;
     }
     const track = this.midi.tracks[parsed.trackIndex];
@@ -670,21 +671,21 @@ export class ChartDocument implements ChartDocumentReader {
   ): { trackIndex: number; track: MidiTrack; note: MidiNote } {
     const target = this.resolveNote(id);
     if (!target) {
-      this.reject(command, "missing-note", `Note '${id}' does not exist`);
+      this.reject(command, 'missing-note', `Note '${id}' does not exist`);
     }
     return target;
   }
 
   private requireTextEvent(command: GeneralCommand, id: EntityId): MidiEvent {
     const parsed = parseEntityFromId(id);
-    if (parsed?.type !== "text" || parsed.trackIndex === undefined) {
-      this.reject(command, "invalid-entity-id", `Text ID '${id}' is invalid`);
+    if (parsed?.type !== 'text' || parsed.trackIndex === undefined) {
+      this.reject(command, 'invalid-entity-id', `Text ID '${id}' is invalid`);
     }
     const event = this.midi.tracks[parsed.trackIndex]?.getEventById(
       parsed.eventId,
     );
-    if (!event || event.status !== 0xff || !("text" in event)) {
-      this.reject(command, "missing-text", `Text event '${id}' does not exist`);
+    if (!event || event.status !== 0xff || !('text' in event)) {
+      this.reject(command, 'missing-text', `Text event '${id}' does not exist`);
     }
     return event;
   }
@@ -692,7 +693,7 @@ export class ChartDocument implements ChartDocumentReader {
   private entityExists(id: EntityId): boolean {
     const parsed = parseEntityFromId(id);
     if (!parsed) return false;
-    if (parsed.type === "note") return this.resolveNote(id) !== null;
+    if (parsed.type === 'note') return this.resolveNote(id) !== null;
     if (parsed.trackIndex !== undefined) {
       const event = this.midi.tracks[parsed.trackIndex]?.getEventById(
         parsed.eventId,
@@ -700,15 +701,15 @@ export class ChartDocument implements ChartDocumentReader {
       return Boolean(
         event &&
         event.status === 0xff &&
-        (parsed.type !== "text" || "text" in event),
+        (parsed.type !== 'text' || 'text' in event),
       );
     }
     const event = this.midi.tracks[0]?.getEventById(parsed.eventId);
     return Boolean(
       event &&
       event.status === 0xff &&
-      "type" in event &&
-      (parsed.type === "tempo"
+      'type' in event &&
+      (parsed.type === 'tempo'
         ? event.type === MetaType.Tempo
         : event.type === MetaType.TimeSignature),
     );
@@ -725,7 +726,7 @@ export class ChartDocument implements ChartDocumentReader {
     ) {
       this.reject(
         command,
-        "missing-track",
+        'missing-track',
         `MIDI track ${trackIndex} does not exist`,
       );
     }
@@ -736,8 +737,8 @@ export class ChartDocument implements ChartDocumentReader {
     if (!this.midi.tracks[0]) {
       this.reject(
         command,
-        "missing-global-track",
-        "MIDI track 0 does not exist",
+        'missing-global-track',
+        'MIDI track 0 does not exist',
       );
     }
   }
@@ -746,8 +747,8 @@ export class ChartDocument implements ChartDocumentReader {
     if (!Number.isSafeInteger(tick) || tick < 0) {
       this.reject(
         command,
-        "invalid-tick",
-        "Tick must be a non-negative integer",
+        'invalid-tick',
+        'Tick must be a non-negative integer',
       );
     }
   }
@@ -758,7 +759,7 @@ export class ChartDocument implements ChartDocumentReader {
     name: string,
   ): void {
     if (!Number.isSafeInteger(value)) {
-      this.reject(command, "invalid-integer", `${name} must be an integer`);
+      this.reject(command, 'invalid-integer', `${name} must be an integer`);
     }
   }
 
@@ -770,25 +771,25 @@ export class ChartDocument implements ChartDocumentReader {
   ): void {
     this.validateTick(command, tick);
     if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
-      this.reject(command, "invalid-pitch", "Pitch must be 0–127");
+      this.reject(command, 'invalid-pitch', 'Pitch must be 0–127');
     }
     if (!Number.isSafeInteger(duration) || duration < 1) {
       this.reject(
         command,
-        "invalid-duration",
-        "Duration must be a positive integer",
+        'invalid-duration',
+        'Duration must be a positive integer',
       );
     }
   }
 
   private isTextMetaType(value: number): value is TextMetaType {
-    return typeof value === "number" && Boolean(TextMetaType[value]);
+    return typeof value === 'number' && Boolean(TextMetaType[value]);
   }
 
   private globalEventAt(
     type: MetaType.Tempo | MetaType.TimeSignature,
     tick: number,
-    position: "first" | "last" = "first",
+    position: 'first' | 'last' = 'first',
   ): MidiEvent | undefined {
     const track = this.midi.tracks[0];
     if (!track) return undefined;
@@ -796,10 +797,10 @@ export class ChartDocument implements ChartDocumentReader {
       (event) =>
         event.tick === tick &&
         event.status === 0xff &&
-        "type" in event &&
+        'type' in event &&
         event.type === type,
     );
-    return position === "first" ? matching[0] : matching[matching.length - 1];
+    return position === 'first' ? matching[0] : matching[matching.length - 1];
   }
 
   private removeGlobalEventAt(
@@ -810,12 +811,12 @@ export class ChartDocument implements ChartDocumentReader {
       }
     >,
     type: MetaType.Tempo | MetaType.TimeSignature,
-    kind: "tempo" | "time-signature",
+    kind: 'tempo' | 'time-signature',
   ): EditResult {
     const event = this.globalEventAt(type, command.tick);
     if (!event) return emptyEditResult();
     const id =
-      kind === "tempo"
+      kind === 'tempo'
         ? formatTempoId(this.getTrack(0).getEventId(event))
         : formatTimeSignatureId(this.getTrack(0).getEventId(event));
     const removed =
@@ -842,7 +843,7 @@ export class ChartDocument implements ChartDocumentReader {
 
   private getTrack(trackIndex: number): MidiTrack {
     if (!Number.isInteger(trackIndex) || trackIndex < 0) {
-      throw new RangeError("trackIndex must be a non-negative integer");
+      throw new RangeError('trackIndex must be a non-negative integer');
     }
     const track = this.midi.tracks[trackIndex];
     if (!track) throw new RangeError(`MIDI track ${trackIndex} does not exist`);
@@ -850,12 +851,12 @@ export class ChartDocument implements ChartDocumentReader {
   }
 
   private validateNote(tick: number, pitch: number, duration: number): void {
-    this.requireInteger(tick, "tick");
-    this.requireInteger(pitch, "pitch");
-    this.requireInteger(duration, "duration");
+    this.requireInteger(tick, 'tick');
+    this.requireInteger(pitch, 'pitch');
+    this.requireInteger(duration, 'duration');
     if (tick < 0 || pitch < 0 || pitch > 127 || duration < 1) {
       throw new RangeError(
-        "Note tick, pitch, or duration is outside its valid range",
+        'Note tick, pitch, or duration is outside its valid range',
       );
     }
   }

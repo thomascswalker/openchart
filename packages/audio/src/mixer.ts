@@ -1,7 +1,7 @@
-import { type TrackId, MixerTrack } from "./track";
-import { AudioEngine, START_LEAD_SECONDS } from "./engine";
-import type { AudioEngineOptions } from "./engine";
-import type { AudioEvent, AudioEventCallback } from "./events";
+import { AudioEngine, START_LEAD_SECONDS } from './engine';
+import type { AudioEngineOptions } from './engine';
+import type { AudioEvent, AudioEventCallback } from './events';
+import { MixerTrack, type TrackId } from './track';
 
 export interface MixerOptions {
   /** Share an existing engine; otherwise the mixer creates (and owns) one. */
@@ -157,7 +157,7 @@ class Mixer {
    * audio as the time source, e.g. before the context is allowed to start.
    */
   public get clockTime(): number | null {
-    return this.#playing && this.#engine.state === "running"
+    return this.#playing && this.#engine.state === 'running'
       ? this.currentTime
       : null;
   }
@@ -205,15 +205,15 @@ class Mixer {
   }
 
   #attachTrackEvents(track: MixerTrack): void {
-    const onLoaded = this.#getTrackEventHandler("loaded");
+    const onLoaded = this.#getTrackEventHandler('loaded');
     track.onLoaded = (event) => {
       this.#joinTransport(track);
       onLoaded(event);
     };
-    track.onPlay = this.#getTrackEventHandler("play");
-    track.onPause = this.#getTrackEventHandler("pause");
-    track.onStop = this.#getTrackEventHandler("stop");
-    const onEnded = this.#getTrackEventHandler("ended");
+    track.onPlay = this.#getTrackEventHandler('play');
+    track.onPause = this.#getTrackEventHandler('pause');
+    track.onStop = this.#getTrackEventHandler('stop');
+    const onEnded = this.#getTrackEventHandler('ended');
     track.onEnded = (event) => {
       this.#settleTransport();
       onEnded(event);
@@ -221,23 +221,23 @@ class Mixer {
   }
 
   public set onLoaded(callback: AudioEventCallback) {
-    this.#on("loaded", callback);
+    this.#on('loaded', callback);
   }
 
   public set onPlay(callback: AudioEventCallback) {
-    this.#on("play", callback);
+    this.#on('play', callback);
   }
 
   public set onPause(callback: AudioEventCallback) {
-    this.#on("pause", callback);
+    this.#on('pause', callback);
   }
 
   public set onStop(callback: AudioEventCallback) {
-    this.#on("stop", callback);
+    this.#on('stop', callback);
   }
 
   public set onEnded(callback: AudioEventCallback) {
-    this.#on("ended", callback);
+    this.#on('ended', callback);
   }
 
   public set onChange(callback: () => void) {

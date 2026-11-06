@@ -1,13 +1,15 @@
-import type { ComponentType } from "react";
-import type { EditingMode } from "@openchart/views";
-import type { ViewportSession } from "../../../platform/services/editor/viewports";
+import type { ComponentType } from 'react';
+
+import type { EditingMode } from '@openchart/views';
+
+import type { ViewportSession } from '../../../platform/services/editor/viewports';
 
 export interface ToolbarContextState {
-  activeView: ViewportSession["view"];
+  activeView: ViewportSession['view'];
   trackType: string;
   sessionId: string;
   playbackTick: number;
-  canHostView: (view: ViewportSession["view"]) => boolean;
+  canHostView: (view: ViewportSession['view']) => boolean;
 }
 
 export interface ToolbarEditorState {

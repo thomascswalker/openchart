@@ -1,18 +1,18 @@
-import { resolveThreshold } from "../thresholds";
 import {
-  compact,
-  violation,
   type ClassifiedNote,
   type ConstraintOf,
   type RuleCheck,
-} from "../context";
+  compact,
+  violation,
+} from '../context';
+import { resolveThreshold } from '../thresholds';
 
 /**
  * A sustain may not overlap another note on the same lane. Notes at or below
  * the sustain cutoff are not sustains and only conflict when they coincide.
  */
 export const checkNoOverlappingSameLane: RuleCheck<
-  ConstraintOf<"noOverlappingSameLane">
+  ConstraintOf<'noOverlappingSameLane'>
 > = (ctx, c) => {
   const cutoff = ctx.rules.mechanics?.sustainCutoff
     ? resolveThreshold(ctx.rules.mechanics.sustainCutoff, ctx.thresholds)
@@ -27,7 +27,7 @@ export const checkNoOverlappingSameLane: RuleCheck<
 
   const byLane = new Map<string, ClassifiedNote[]>();
   for (const n of ctx.notes) {
-    if (n.role.kind !== "laneNote") continue;
+    if (n.role.kind !== 'laneNote') continue;
     const key = `${n.role.difficulty}:${n.role.laneId}`;
     const list = byLane.get(key);
     if (list) list.push(n);
@@ -53,7 +53,7 @@ export const checkNoOverlappingSameLane: RuleCheck<
           violation(
             c.id,
             c.severity,
-            "Notes on the same lane overlap",
+            'Notes on the same lane overlap',
             b.tick,
             [a.id, b.id],
           ),

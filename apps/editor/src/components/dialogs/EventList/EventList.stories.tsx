@@ -1,13 +1,14 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { EventList } from "./EventList";
 import {
-  addRandomMetaEvents,
-  addRandomChannelEvents,
   Midi,
-} from "@openchart/midi";
+  addRandomChannelEvents,
+  addRandomMetaEvents,
+} from '@openchart/midi';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { EventList } from './EventList';
 
 const meta = {
-  title: "Editor/Event List",
+  title: 'Editor/Event List',
   component: EventList,
 } satisfies Meta<typeof EventList>;
 
@@ -15,8 +16,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const trackDefs = [
-  { name: "GLOBAL", type: "meta" },
-  { name: "NOTES", type: "channel" },
+  { name: 'GLOBAL', type: 'meta' },
+  { name: 'NOTES', type: 'channel' },
 ];
 const makeDefaultMidi = () => {
   const midi = new Midi();
@@ -27,10 +28,10 @@ const makeDefaultMidi = () => {
     track.name = def.name;
 
     switch (def.type) {
-      case "meta":
+      case 'meta':
         addRandomMetaEvents(track, 20);
         break;
-      case "channel":
+      case 'channel':
         addRandomChannelEvents(track, 20);
         break;
     }

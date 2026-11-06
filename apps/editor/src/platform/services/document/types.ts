@@ -1,13 +1,13 @@
 export const MidiFilePickerTypes: FilePickerAcceptType[] = [
   {
-    description: "MIDI file",
-    accept: { "audio/midi": [".mid", ".midi"] },
+    description: 'MIDI file',
+    accept: { 'audio/midi': ['.mid', '.midi'] },
   },
 ];
 
 export const ProjectFilePickerTypes: FilePickerAcceptType[] = [
   {
-    description: "OpenChart project metadata",
-    accept: { "application/json": [".json"] },
+    description: 'OpenChart project metadata',
+    accept: { 'application/json': ['.json'] },
   },
 ];

@@ -1,15 +1,15 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { EditorStateService } from "../../services/editor/state";
+import { Action } from '../../actions';
+import { EditorStateService } from '../../services/editor/state';
+import type { ServicesAccessor } from '../../services/registry';
 
 /** Closes the frontmost open dialog (About, Settings, Project). */
 export class CloseTopmostDialogAction extends Action {
   constructor() {
-    super({ condition: { "dialog.any-open": true } });
+    super({ condition: { 'dialog.any-open': true } });
   }
 
   run(accessor: ServicesAccessor): void {
-    const state = accessor.get<EditorStateService>("editor.state");
+    const state = accessor.get<EditorStateService>('editor.state');
     const snapshot = state.getSnapshot();
     if (snapshot.aboutVisible) state.setAboutVisible(false);
     else if (snapshot.settingsVisible) state.setSettingsVisible(false);

@@ -1,9 +1,10 @@
-import { WorkspaceService, type IWorkspaceService } from "..";
+import { type IWorkspaceService, WorkspaceService } from '..';
 
 export const mockWorkspaceService = (): IWorkspaceService => {
   return {
     snapshot: WorkspaceService.defaultSnapshot(),
     reset: () => {},
+    subscribe: () => () => {},
     isValid: () => true,
     discover: () => Promise.resolve(),
   } as unknown as IWorkspaceService;

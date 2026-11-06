@@ -1,29 +1,31 @@
 import {
   MetaType,
-  msToTicks,
-  ticksToMs,
   type Midi,
   type MidiNote,
   type TempoEvent,
-} from "@openchart/midi";
+  msToTicks,
+  ticksToMs,
+} from '@openchart/midi';
 import {
+  type CompiledRuleset,
   DefaultCompiledRuleset,
   Difficulty,
   SongView,
   VocalNoteKind,
-  type CompiledRuleset,
-} from "@openchart/views";
+} from '@openchart/views';
+
 import {
-  Soundboard,
-  type SoundboardSettings,
   type PitchRange,
   type PreviewNote,
-} from "../../../audio/soundboard";
-import type { DocumentService } from "../document/document";
-import type { MixerService } from "../mixer/mixer";
-import type { RulesetService } from "../ruleset";
-import type { ApplicationSettings } from "../settings/schema";
-import { StatefulService } from "../../services";
+  Soundboard,
+  type SoundboardSettings,
+} from '../../../audio/soundboard';
+import { IDocumentService } from '../document/document';
+import { IMixerService } from '../mixer/mixer';
+import { IRulesetService } from '../ruleset';
+import { createDecorator } from '../service';
+import type { ApplicationSettings } from '../settings/schema';
+import { StatefulService } from '../statefulService';
 
 export interface PlaybackSnapshot {
   isPlaying: boolean;
@@ -116,14 +118,11 @@ export function notesForVocalFeedback(
 }
 
 export class PlaybackService extends StatefulService<PlaybackSnapshot> {
-  static dependencies = ["document", "mixer", "ruleset"];
-
   private engine = new Soundboard();
-  private documentUnsubscribe: (() => void) | undefined;
   private midiData: Midi | null | undefined;
   private documentId: number | undefined;
   private settings: ApplicationSettings | null = null;
-  private selectedInstrument = "";
+  private selectedInstrument = '';
   private selectedDifficulty: Difficulty = Difficulty.Expert;
   private selectedTrackIndex: number | null = null;
   private metronomeEnabled = false;
@@ -134,7 +133,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private vocalFeedbackEnabled = false;
   private vocalNotes: readonly MidiNote[] = [];
   private feedbackSettings: SoundboardSettings | null = null;
-  private feedbackSettingsSource: ApplicationSettings["feedback"] | null = null;
+  private feedbackSettingsSource: ApplicationSettings['feedback'] | null = null;
   private snapEnabled = true;
   private snapDenominator = 4;
   private isPlaying = false;
@@ -146,26 +145,25 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private animationFrame: number | null = null;
   private lastFrameMs: number | null = null;
   private configured = false;
-  private readonly mixerService?: MixerService;
-
-  private readonly rulesetService: RulesetService | undefined;
+  private documentUnsubscribe: (() => void) | undefined;
 
   constructor(
-    documentService?: DocumentService,
-    mixerService?: MixerService,
-    rulesetService?: RulesetService,
+    @IDocumentService private documentService: IDocumentService,
+    @IMixerService private mixerService: IMixerService,
+    @IRulesetService private rulesetService: IRulesetService,
   ) {
     super();
-    this.mixerService = mixerService;
-    this.rulesetService = rulesetService;
+  }
+
+  init() {
     this.selectedInstrument = this.defaultInstrument();
     // Edits publish synchronously, so the end never lags behind the document.
-    this.documentUnsubscribe = documentService?.subscribe(() => {
+    this.documentUnsubscribe = this.documentService.subscribe(() => {
       if (this.configured) {
-        this.refresh(documentService.data);
+        this.refresh(this.documentService.data);
       }
     });
-    rulesetService?.subscribe(() => {
+    this.rulesetService.subscribe(() => {
       if (this.configured) this.refresh(this.midiData ?? null);
     });
     this._snapshot = this.buildSnapshot();
@@ -181,7 +179,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     return (
       tracks.find((track) => track.visible && track.editable)?.name ??
       tracks[0]?.name ??
-      ""
+      ''
     );
   }
 
@@ -368,7 +366,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   };
 
   public readonly setActiveView = (viewId: string): void => {
-    const active = viewId === "highway";
+    const active = viewId === 'highway';
     if (active === this.highwayActive) return;
     this.highwayActive = active;
     this.configureEngine();
@@ -579,3 +577,6 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     this.notify();
   }
 }
+
+export type IPlaybackService = PlaybackService;
+export const IPlaybackService = createDecorator<IPlaybackService>('playback');

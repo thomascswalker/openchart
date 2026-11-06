@@ -1,17 +1,17 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { ActiveChartViewService } from "../../services/editor/activeChartView";
+import { Action } from '../../actions';
+import { ActiveChartViewService } from '../../services/editor/activeChartView';
+import type { ServicesAccessor } from '../../services/registry';
 
 /** Frames the selected piano roll notes in the viewport. */
 export class FocusSelectionAction extends Action {
   constructor() {
-    super({ condition: { "viewport.active-view": "piano-roll" } });
+    super({ condition: { 'viewport.active-view': 'piano-roll' } });
   }
 
   run(accessor: ServicesAccessor): void {
     accessor
-      .get<ActiveChartViewService>("editor.active-chart-view")
-      .getActive("piano-roll")
+      .get<ActiveChartViewService>('editor.active-chart-view')
+      .getActive('piano-roll')
       ?.focusSelection();
   }
 }

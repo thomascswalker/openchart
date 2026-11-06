@@ -1,14 +1,14 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { DocumentService } from "../../services/document/document";
+import { Action } from '../../actions';
+import { DocumentService } from '../../services/document/document';
+import type { ServicesAccessor } from '../../services/registry';
 
 export class NewDocumentAction extends Action {
   run(accessor: ServicesAccessor): void {
-    const document = accessor.get<DocumentService>("document");
+    const document = accessor.get<DocumentService>('document');
     if (
       document.isDirty &&
       !window.confirm(
-        "This document has unsaved changes. Discard them and continue?",
+        'This document has unsaved changes. Discard them and continue?',
       )
     ) {
       return;

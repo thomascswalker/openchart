@@ -1,7 +1,7 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { ActiveChartViewService } from "../../services/editor/activeChartView";
-import { ActiveHighway } from "../conditions";
+import { Action } from '../../actions';
+import { ActiveChartViewService } from '../../services/editor/activeChartView';
+import type { ServicesAccessor } from '../../services/registry';
+import { ActiveHighway } from '../conditions';
 
 /** Adds or removes the note in a lane (0-based) at the playhead. */
 export class ToggleLaneNoteAction extends Action<[number, boolean?]> {
@@ -15,9 +15,9 @@ export class ToggleLaneNoteAction extends Action<[number, boolean?]> {
     preserveSustain: boolean = false,
   ): void {
     const chartViewService = accessor.get<ActiveChartViewService>(
-      "editor.active-chart-view",
+      'editor.active-chart-view',
     );
-    const highwayView = chartViewService.getActive("highway");
+    const highwayView = chartViewService.getActive('highway');
     if (!highwayView) {
       return;
     }

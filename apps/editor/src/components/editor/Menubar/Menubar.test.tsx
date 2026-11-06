@@ -1,11 +1,13 @@
-import { act, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
-import { Menubar } from "./";
-import { shortcutLabel } from "../../../input/labels";
+import { type ReactNode, act } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
+
+import { describe, expect, it, vi } from 'vitest';
+
+import { shortcutLabel } from '../../../input/labels';
+import { Menubar } from './';
 
 function render(element: ReactNode): { container: HTMLDivElement; root: Root } {
-  const container = document.createElement("div");
+  const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   act(() => root.render(element));
@@ -20,8 +22,8 @@ async function settle(): Promise<void> {
   });
 }
 
-describe("Menubar", () => {
-  it("puts Project and Settings in File and editing actions in Edit", async () => {
+describe('Menubar', () => {
+  it('puts Project and Settings in File and editing actions in Edit', async () => {
     const { container, root } = render(
       <Menubar canExecute={() => true} onCommand={() => {}} />,
     );
@@ -31,68 +33,68 @@ describe("Menubar", () => {
       ),
     ];
     expect(triggers.map((trigger) => trigger.textContent)).toEqual([
-      "File",
-      "Edit",
-      "Playback",
-      "Help",
+      'File',
+      'Edit',
+      'Playback',
+      'Help',
     ]);
     act(() => triggers[0].click());
     await settle();
     const fileItems = [
-      ...container.querySelectorAll<HTMLButtonElement>("[data-command]"),
+      ...container.querySelectorAll<HTMLButtonElement>('[data-command]'),
     ].map((button) => button.textContent?.trim());
-    expect(fileItems.indexOf("Import")).toBeLessThan(
-      fileItems.indexOf("Export"),
+    expect(fileItems.indexOf('Import')).toBeLessThan(
+      fileItems.indexOf('Export'),
     );
     expect(
       container.querySelectorAll('[role="menu"] [role="separator"]'),
     ).toHaveLength(3);
-    expect(fileItems).toContain("Open Workspace...");
-    expect(fileItems).toContain("Import");
+    expect(fileItems).toContain('Open Workspace...');
+    expect(fileItems).toContain('Import');
     expect(
-      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+      [...container.querySelectorAll<HTMLButtonElement>('[data-command]')].map(
         (button) => button.textContent?.trim(),
       ),
-    ).toContain("Project...");
+    ).toContain('Project...');
     expect(
-      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+      [...container.querySelectorAll<HTMLButtonElement>('[data-command]')].map(
         (button) => button.textContent?.trim(),
       ),
-    ).toContain(`Settings...${shortcutLabel("dialog.open-settings")}`);
+    ).toContain(`Settings...${shortcutLabel('dialog.open-settings')}`);
     act(() => triggers[2].click());
     await settle();
     expect(
-      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+      [...container.querySelectorAll<HTMLButtonElement>('[data-command]')].map(
         (button) => button.textContent?.trim(),
       ),
     ).toEqual([
-      `Metronome${shortcutLabel("playback.toggle-metronome")}`,
-      `Highway Clap${shortcutLabel("playback.toggle-clap")}`,
-      `Vocal Pitch Feedback${shortcutLabel("playback.toggle-vocal-pitch-feedback")}`,
+      `Metronome${shortcutLabel('playback.toggle-metronome')}`,
+      `Highway Clap${shortcutLabel('playback.toggle-clap')}`,
+      `Vocal Pitch Feedback${shortcutLabel('playback.toggle-vocal-pitch-feedback')}`,
     ]);
     act(() => triggers[1].click());
     await settle();
     expect(
-      container.querySelectorAll("[role=menu] [data-command]"),
+      container.querySelectorAll('[role=menu] [data-command]'),
     ).toHaveLength(3);
     expect(
-      [...container.querySelectorAll<HTMLButtonElement>("[data-command]")].map(
+      [...container.querySelectorAll<HTMLButtonElement>('[data-command]')].map(
         (button) => button.textContent?.trim(),
       ),
     ).toEqual([
-      `Cut${shortcutLabel("clipboard.cut")}`,
-      `Copy${shortcutLabel("clipboard.copy")}`,
-      `Paste${shortcutLabel("clipboard.paste")}`,
+      `Cut${shortcutLabel('clipboard.cut')}`,
+      `Copy${shortcutLabel('clipboard.copy')}`,
+      `Paste${shortcutLabel('clipboard.paste')}`,
     ]);
     act(() => root.unmount());
     container.remove();
   });
 
-  it("opens with the keyboard, skips disabled items, and returns focus on Escape", async () => {
+  it('opens with the keyboard, skips disabled items, and returns focus on Escape', async () => {
     const onCommand = vi.fn();
     const { container, root } = render(
       <Menubar
-        canExecute={(command) => command !== "document.save"}
+        canExecute={(command) => command !== 'document.save'}
         onCommand={onCommand}
       />,
     );
@@ -103,42 +105,42 @@ describe("Menubar", () => {
     act(() => fileTrigger.click());
     await settle();
 
-    expect(fileTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(fileTrigger.getAttribute('aria-expanded')).toBe('true');
     expect(container.querySelector('[role="menu"]')).not.toBeNull();
-    expect(document.activeElement?.textContent).toContain("New");
+    expect(document.activeElement?.textContent).toContain('New');
 
     act(() =>
       document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
       ),
     );
-    expect(document.activeElement?.textContent).toContain("Open");
+    expect(document.activeElement?.textContent).toContain('Open');
     act(() =>
       document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
       ),
     );
     await settle();
     const save = [
-      ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.dataset.command === "document.save")!;
+      ...container.querySelectorAll<HTMLButtonElement>('button'),
+    ].find((button) => button.dataset.command === 'document.save')!;
     expect(save.disabled).toBe(true);
-    expect(document.activeElement?.textContent).toContain("Save As");
+    expect(document.activeElement?.textContent).toContain('Save As');
     act(() =>
       document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
       ),
     );
-    expect(document.activeElement?.textContent).toContain("Workspace");
+    expect(document.activeElement?.textContent).toContain('Workspace');
     act(() =>
       document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
       ),
     );
-    expect(document.activeElement?.textContent).toContain("Import");
+    expect(document.activeElement?.textContent).toContain('Import');
     act(() =>
       document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       ),
     );
     await settle();
@@ -149,7 +151,7 @@ describe("Menubar", () => {
     container.remove();
   });
 
-  it("dispatches clipboard actions from the Edit menu", async () => {
+  it('dispatches clipboard actions from the Edit menu', async () => {
     const onCommand = vi.fn();
     const { container, root } = render(
       <Menubar canExecute={() => true} onCommand={onCommand} />,
@@ -166,12 +168,12 @@ describe("Menubar", () => {
     );
     expect(copy).not.toBeNull();
     act(() => copy?.click());
-    expect(onCommand).toHaveBeenCalledWith("clipboard.copy");
+    expect(onCommand).toHaveBeenCalledWith('clipboard.copy');
     act(() => root.unmount());
     container.remove();
   });
 
-  it("lists update and about commands in the Help menu", async () => {
+  it('lists update and about commands in the Help menu', async () => {
     const onCommand = vi.fn();
     const { container, root } = render(
       <Menubar canExecute={() => true} onCommand={onCommand} />,
@@ -180,29 +182,29 @@ describe("Menubar", () => {
       ...container.querySelectorAll<HTMLButtonElement>(
         'button[role="menuitem"]',
       ),
-    ].find((trigger) => trigger.textContent === "Help")!;
+    ].find((trigger) => trigger.textContent === 'Help')!;
     act(() => helpTrigger.click());
     await settle();
     const items = [
       ...container.querySelectorAll<HTMLButtonElement>(
-        "[role=menu] [data-command]",
+        '[role=menu] [data-command]',
       ),
     ];
     expect(items.map((item) => item.textContent?.trim())).toEqual([
-      "Check for updates...",
-      "About",
+      'Check for updates...',
+      'About',
     ]);
     expect(items.map((item) => item.dataset.command)).toEqual([
-      "updater.check",
-      "dialog.open-about",
+      'updater.check',
+      'dialog.open-about',
     ]);
     act(() => items[1].click());
-    expect(onCommand).toHaveBeenCalledWith("dialog.open-about");
+    expect(onCommand).toHaveBeenCalledWith('dialog.open-about');
     act(() => root.unmount());
     container.remove();
   });
 
-  it("dismisses an open menu when the pointer is pressed outside", async () => {
+  it('dismisses an open menu when the pointer is pressed outside', async () => {
     const { container, root } = render(
       <>
         <Menubar canExecute={() => true} onCommand={() => {}} />
@@ -222,7 +224,7 @@ describe("Menubar", () => {
       '[data-testid="outside"]',
     )!;
     act(() => {
-      outside.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
       outside.click();
     });
     await settle();

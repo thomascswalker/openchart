@@ -1,19 +1,19 @@
-import type { MidiNote } from "@openchart/midi";
+import type { MidiNote } from '@openchart/midi';
 import type {
   ChartView,
   EditingSession,
   EntityId,
   NoteSnapshot,
   PreviewState,
-} from "@openchart/views";
-import { formatNoteId } from "@openchart/views";
+} from '@openchart/views';
+import { formatNoteId } from '@openchart/views';
 
 /**
  * Visual kind of an indexed entry, derived from the lane's shape and pad type:
  * `gem` -> `note`, `pad` (tom) -> `pad`, `pad` (cymbal) -> `cymbal`,
  * `kickBar`/`openBar` -> `bar`.
  */
-export type IndexedNoteKind = "note" | "bar" | "cymbal" | "pad" | "phrase";
+export type IndexedNoteKind = 'note' | 'bar' | 'cymbal' | 'pad' | 'phrase';
 
 export interface IndexedNote {
   id: EntityId;
@@ -165,7 +165,7 @@ export class HighwayNoteIndex {
     snapshot: NoteSnapshot,
     source: MidiNote | null,
     session: EditingSession,
-    projection: ReturnType<EditingSession["getProjection"]>,
+    projection: ReturnType<EditingSession['getProjection']>,
     chart: ChartView,
   ): IndexedNote | null {
     const classification = session.classifyNote(snapshot);
@@ -173,31 +173,31 @@ export class HighwayNoteIndex {
     let phraseKind: string | null = null;
     let laneId: string | null = null;
     let lane = 0;
-    if (classification.type === "phrase") {
-      kind = "phrase";
+    if (classification.type === 'phrase') {
+      kind = 'phrase';
       phraseKind = classification.subtype;
     } else {
-      if (!classification.movable || classification.subtype === "unmapped") {
+      if (!classification.movable || classification.subtype === 'unmapped') {
         return null;
       }
       const row = projection.rowForNote(snapshot);
       if (!row) return null;
       const role = chart.classify(snapshot.pitch);
-      if (role.kind !== "laneNote" || !role.available) return null;
+      if (role.kind !== 'laneNote' || !role.available) return null;
       const laneDef = chart.getLanes().find((l) => l.id === role.laneId);
       if (!laneDef) return null;
       laneId = laneDef.id;
       if (laneDef.isBar) {
-        kind = "bar";
+        kind = 'bar';
         lane = 0;
       } else {
         lane = row.index;
         kind =
-          laneDef.shape === "pad"
-            ? role.padType === "cymbal"
-              ? "cymbal"
-              : "pad"
-            : "note";
+          laneDef.shape === 'pad'
+            ? role.padType === 'cymbal'
+              ? 'cymbal'
+              : 'pad'
+            : 'note';
       }
     }
     return {
@@ -247,20 +247,20 @@ export function laneVisualFor(
   chart: ChartView,
   pitch: number,
 ): {
-  kind: Exclude<IndexedNoteKind, "phrase">;
+  kind: Exclude<IndexedNoteKind, 'phrase'>;
   lane: number;
   laneId: string;
 } | null {
   const role = chart.classify(pitch);
-  if (role.kind !== "laneNote" || !role.available) return null;
+  if (role.kind !== 'laneNote' || !role.available) return null;
   const laneDef = chart.getLanes().find((l) => l.id === role.laneId);
   if (!laneDef) return null;
-  if (laneDef.isBar) return { kind: "bar", lane: 0, laneId: laneDef.id };
+  if (laneDef.isBar) return { kind: 'bar', lane: 0, laneId: laneDef.id };
   const kind =
-    laneDef.shape === "pad"
-      ? role.padType === "cymbal"
-        ? "cymbal"
-        : "pad"
-      : "note";
+    laneDef.shape === 'pad'
+      ? role.padType === 'cymbal'
+        ? 'cymbal'
+        : 'pad'
+      : 'note';
   return { kind, lane: laneDef.column, laneId: laneDef.id };
 }

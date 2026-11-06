@@ -1,13 +1,14 @@
-import classNames from "classnames";
-import { Section, Text, type TextProps } from "..";
-import styles from "./text.module.css";
+import classNames from 'classnames';
+
+import { Section, Text, type TextProps } from '..';
+import styles from './text.module.css';
 
 type CodeProps = TextProps;
 
 const Code = ({ children, className, ...props }: CodeProps) => {
   const codeClassName = classNames(
-    styles["ui-text"],
-    styles["ui-code"],
+    styles['ui-text'],
+    styles['ui-code'],
     className,
   );
   return (
@@ -17,30 +18,30 @@ const Code = ({ children, className, ...props }: CodeProps) => {
   );
 };
 
-type Variation = "normal" | "error";
+type Variation = 'normal' | 'error';
 
 interface CodeBlockProps extends CodeProps {
   variation?: Variation;
 }
 
-const CodeBlock = ({ variation = "normal", children }: CodeBlockProps) => {
-  const color = variation === "error" ? "var(--red-40)" : "var(--text-primary)";
+const CodeBlock = ({ variation = 'normal', children }: CodeBlockProps) => {
+  const color = variation === 'error' ? 'var(--red-40)' : 'var(--text-primary)';
   const border =
-    variation === "error"
-      ? "1px solid var(--red-40)"
-      : "1px solid var(--text-primary)";
+    variation === 'error'
+      ? '1px solid var(--red-40)'
+      : '1px solid var(--text-primary)';
   return (
     <Section
       padding="var(--size-med)"
       border={border}
       borderRadius="var(--radius-med)"
     >
-      <Code className={styles["ui-code-block"]} color={color}>
+      <Code className={styles['ui-code-block']} color={color}>
         {children &&
           String(children)
-            .split("\n")
+            .split('\n')
             .map((line, index) => (
-              <span className={styles["ui-code-line"]} key={index}>
+              <span className={styles['ui-code-line']} key={index}>
                 <span>{index} | </span>
                 <span>{line}</span>
               </span>

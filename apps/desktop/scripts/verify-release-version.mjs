@@ -1,5 +1,5 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 function parseVersion(version) {
   const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
@@ -18,10 +18,10 @@ function compareVersions(left, right) {
   return 0;
 }
 
-const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
 const packageVersion = parseVersion(version);
-const tags = execFileSync("git", ["tag", "--list", "v[0-9]*"], {
-  encoding: "utf8",
+const tags = execFileSync('git', ['tag', '--list', 'v[0-9]*'], {
+  encoding: 'utf8',
 })
   .trim()
   .split(/\r?\n/)

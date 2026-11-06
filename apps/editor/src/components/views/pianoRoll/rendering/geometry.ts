@@ -1,9 +1,10 @@
-import type { MidiTrack, TempoEvent } from "@openchart/midi";
-import { Box2, Vector2 } from "three";
-import { KeyboardWidth, NoteResizeHandleWidth } from "../constants";
-import type { PianoRollNote } from "../types";
-import type { PianoRollNoteIndex } from "./visibility";
-import { getVisibleNoteRange } from "./visibility";
+import type { MidiTrack, TempoEvent } from '@openchart/midi';
+import { Box2, Vector2 } from 'three';
+
+import { KeyboardWidth, NoteResizeHandleWidth } from '../constants';
+import type { PianoRollNote } from '../types';
+import type { PianoRollNoteIndex } from './visibility';
+import { getVisibleNoteRange } from './visibility';
 
 export interface NoteGeometry {
   x: number;

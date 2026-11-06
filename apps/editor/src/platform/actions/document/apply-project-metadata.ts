@@ -1,9 +1,9 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { EditorStateService } from "../../services/editor/state";
-import { DocumentService } from "../../services/document/document";
-import { MixerService } from "../../services/mixer/mixer";
-import { type MetadataValidationError } from "../../services/document/schema";
+import { Action } from '../../actions';
+import { DocumentService } from '../../services/document/document';
+import { type MetadataValidationError } from '../../services/document/schema';
+import { EditorStateService } from '../../services/editor/state';
+import { MixerService } from '../../services/mixer/mixer';
+import type { ServicesAccessor } from '../../services/registry';
 
 export class ApplyProjectMetadataAction extends Action<
   [unknown, boolean?],
@@ -14,16 +14,16 @@ export class ApplyProjectMetadataAction extends Action<
     metadata: unknown,
     forceReload = false,
   ): Promise<readonly MetadataValidationError[]> {
-    const document = accessor.get<DocumentService>("document");
+    const document = accessor.get<DocumentService>('document');
     const result = document.metadataSchema.safeParse(metadata);
     if (result.success) {
-      const mixer = accessor.get<MixerService>("mixer");
+      const mixer = accessor.get<MixerService>('mixer');
       const projectRoot = document.getSnapshot().directoryHandle;
       const tracks = (
         Object.keys(result.data.audio) as Array<keyof typeof result.data.audio>
       ).filter(
-        (track): track is Exclude<keyof typeof result.data.audio, "root"> =>
-          track !== "root",
+        (track): track is Exclude<keyof typeof result.data.audio, 'root'> =>
+          track !== 'root',
       );
       const files = tracks
         .map((track) => [track, result.data.audio[track]] as const)
@@ -35,17 +35,17 @@ export class ApplyProjectMetadataAction extends Action<
 
       if (files.length > 0 && !projectRoot) {
         pathErrors.push({
-          path: "$.audio",
-          message: "Save the project to a folder before loading audio files.",
+          path: '$.audio',
+          message: 'Save the project to a folder before loading audio files.',
         });
       }
       if (result.data.audio.root === null) {
         for (const [track, path] of files) {
-          if (path.includes("/") || path.includes("\\")) {
+          if (path.includes('/') || path.includes('\\')) {
             pathErrors.push({
               path: `$.audio.${track}`,
               message:
-                "Without an audio root folder, audio files must be beside notes.mid and info.json.",
+                'Without an audio root folder, audio files must be beside notes.mid and info.json.',
             });
           }
         }
@@ -53,11 +53,11 @@ export class ApplyProjectMetadataAction extends Action<
 
       if (pathErrors.length > 0) {
         accessor
-          .get<EditorStateService>("editor.state")
+          .get<EditorStateService>('editor.state')
           .setError(
             pathErrors
               .map((issue) => `${issue.path}: ${issue.message}`)
-              .join("\n"),
+              .join('\n'),
           );
         return pathErrors;
       }
@@ -87,18 +87,18 @@ export class ApplyProjectMetadataAction extends Action<
       }
 
       document.metadata = result.data;
-      accessor.get<EditorStateService>("editor.state").clearError();
+      accessor.get<EditorStateService>('editor.state').clearError();
       return [];
     }
 
     const issues = result.error.issues.map((issue) => ({
-      path: issue.path.length > 0 ? `$.${issue.path.join(".")}` : "$",
+      path: issue.path.length > 0 ? `$.${issue.path.join('.')}` : '$',
       message: issue.message,
     }));
     accessor
-      .get<EditorStateService>("editor.state")
+      .get<EditorStateService>('editor.state')
       .setError(
-        issues.map((issue) => `${issue.path}: ${issue.message}`).join("\n"),
+        issues.map((issue) => `${issue.path}: ${issue.message}`).join('\n'),
       );
     return issues;
   }

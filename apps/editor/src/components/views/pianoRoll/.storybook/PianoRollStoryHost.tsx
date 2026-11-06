@@ -1,50 +1,52 @@
-import { MetaType, Midi, type MidiNote, type MidiTrack } from "@openchart/midi";
-import {
-  DefaultCompiledRuleset,
-  Difficulty,
-  EditingModeId,
-  VocalNoteKind,
-  createStandaloneEditing,
-} from "@openchart/views";
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
-} from "react";
-import { ChartViewHost } from "../../ChartViewHost";
-import type { AnyChartView } from "../../ChartViews";
-import type { ChartViewState, SnapSettings } from "../../AbstractChartView";
-import { PianoRollView } from "../index";
-import { profileFromSession } from "../profile";
-import { PlaybackService } from "../../../../platform/services/playback/playback";
-import { DefaultApplicationSettings } from "../../../../platform/services/settings/schema";
+} from 'react';
+
+import { MetaType, Midi, type MidiNote, type MidiTrack } from '@openchart/midi';
+import {
+  DefaultCompiledRuleset,
+  Difficulty,
+  EditingModeId,
+  VocalNoteKind,
+  createStandaloneEditing,
+} from '@openchart/views';
+
+import { PlaybackService } from '../../../../platform/services/playback/playback';
+import { DefaultApplicationSettings } from '../../../../platform/services/settings/schema';
 import {
   Button,
   Checkbox,
   Dropdown,
+  type DropdownOption,
   Input,
   Label,
   Section,
   Text,
-  type DropdownOption,
-} from "../../../shared/index";
+} from '../../../shared/index';
+import type { ChartViewState, SnapSettings } from '../../AbstractChartView';
+import { ChartViewHost } from '../../ChartViewHost';
+import type { AnyChartView } from '../../ChartViews';
+import { PianoRollView } from '../index';
+import { profileFromSession } from '../profile';
+import './PianoRollStoryHost.css';
 import {
-  createPianoRollFixture,
   type PianoRollFixtureVariant,
-} from "./createPianoRollFixture";
-import { usePianoRollStoryHotkeys } from "./usePianoRollStoryHotkeys";
-import "./PianoRollStoryHost.css";
+  createPianoRollFixture,
+} from './createPianoRollFixture';
+import { usePianoRollStoryHotkeys } from './usePianoRollStoryHotkeys';
 
 /** Instrument whose profile is used when a story names none. */
-const DEFAULT_INSTRUMENT = "LEAD GUITAR";
+const DEFAULT_INSTRUMENT = 'LEAD GUITAR';
 
 /** Note types offered by the vocal toolbar dropdown. */
 const VOCAL_KIND_OPTIONS: DropdownOption[] = [
-  { value: VocalNoteKind.Pitched, label: "Pitched" },
-  { value: VocalNoteKind.Percussion, label: "Percussion" },
-  { value: VocalNoteKind.Pitchless, label: "Pitchless" },
+  { value: VocalNoteKind.Pitched, label: 'Pitched' },
+  { value: VocalNoteKind.Percussion, label: 'Percussion' },
+  { value: VocalNoteKind.Pitchless, label: 'Pitchless' },
 ];
 /** Difficulty reported to the view; the piano roll ignores it. */
 const SELECTED_DIFFICULTY = Difficulty.Expert;
@@ -89,8 +91,8 @@ interface CameraDiagnostics {
 
 /** True when the browser can create a WebGL context. */
 function webGLAvailable(): boolean {
-  const canvas = document.createElement("canvas");
-  return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+  const canvas = document.createElement('canvas');
+  return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
 }
 
 /** Serializes a track's notes for the `data-note-data` test attribute. */
@@ -124,7 +126,14 @@ export function PianoRollStoryHost({
   );
   const [midi] = useState<Midi>(() => createPianoRollFixture(variant));
   const editing = useMemo(() => createStandaloneEditing(midi), [midi]);
-  const [playback] = useState(() => new PlaybackService());
+  const [playback] = useState(
+    () =>
+      new PlaybackService(
+        undefined as never,
+        undefined as never,
+        undefined as never,
+      ),
+  );
   const [selectedTrackIndex, setSelectedTrackIndex] =
     useState(initialTrackIndex);
   const [snapEnabled, setSnapEnabled] = useState(true);
@@ -136,7 +145,7 @@ export function PianoRollStoryHost({
   });
   const [webGLSupported, setWebGLSupported] = useState<boolean | null>(null);
   const [revision, setRevision] = useState(0);
-  const [transaction, setTransaction] = useState("Ready");
+  const [transaction, setTransaction] = useState('Ready');
   const target = useMemo(() => {
     const track = midi.tracks[selectedTrackIndex];
     if (!track) {
@@ -154,7 +163,7 @@ export function PianoRollStoryHost({
     };
   }, [midi, selectedTrackIndex]);
   const editingSession = useMemo(
-    () => editing.createSession(target, "piano-roll"),
+    () => editing.createSession(target, 'piano-roll'),
     [editing, target],
   );
   const profile = profileFromSession(editingSession);
@@ -205,7 +214,7 @@ export function PianoRollStoryHost({
 
   // Tell the playback service this story is the piano roll.
   useEffect(() => {
-    playback.setActiveView("piano-roll");
+    playback.setActiveView('piano-roll');
   }, [playback]);
 
   // Keep playback in step with the selected track and snap settings.
@@ -238,7 +247,7 @@ export function PianoRollStoryHost({
   useEffect(
     () =>
       editing.history.subscribe(() => {
-        setTransaction(editing.history.isInTransaction ? "Editing" : "Ready");
+        setTransaction(editing.history.isInTransaction ? 'Editing' : 'Ready');
         playback.refresh(midi);
         setRevision((current) => current + 1);
       }),
@@ -356,7 +365,7 @@ export function PianoRollStoryHost({
           type="button"
           onClick={snapshot.isPlaying ? snapshot.pause : snapshot.play}
         >
-          {snapshot.isPlaying ? "Pause" : "Play"}
+          {snapshot.isPlaying ? 'Pause' : 'Play'}
         </Button>
         <Button
           type="button"
@@ -385,15 +394,15 @@ export function PianoRollStoryHost({
           <Text>Tick: {Math.round(snapshot.playbackTick)}</Text>
         </output>
         <output data-testid="playback-state">
-          <Text>{snapshot.isPlaying ? "Playing" : "Paused"}</Text>
+          <Text>{snapshot.isPlaying ? 'Playing' : 'Paused'}</Text>
         </output>
       </div>
 
       <div className="piano-roll-story__diagnostics" aria-live="polite">
         <span data-testid="selected-track">
           <Text>
-            Track {selectedTrackIndex}:{" "}
-            {midi.tracks[selectedTrackIndex]?.name ?? "None"}
+            Track {selectedTrackIndex}:{' '}
+            {midi.tracks[selectedTrackIndex]?.name ?? 'None'}
           </Text>
         </span>
         <span data-testid="note-count">

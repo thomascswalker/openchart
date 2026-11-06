@@ -21,7 +21,8 @@
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "erasableSyntaxOnly": false,
+    "experimentalDecorators": true,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src", ".storybook", "**/.storybook/*.stories.tsx"]

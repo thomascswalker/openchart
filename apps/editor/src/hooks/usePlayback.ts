@@ -1,12 +1,13 @@
-import { useSyncExternalStore } from "react";
-import Platform from "../platform";
+import { useSyncExternalStore } from 'react';
+
+import Platform from '../platform';
 import {
   PlaybackService,
   type PlaybackSnapshot,
-} from "../platform/services/playback/playback";
+} from '../platform/services/playback/playback';
 
 export function usePlayback() {
-  const playbackService = Platform.services.get<PlaybackService>("playback");
+  const playbackService = Platform.services.get<PlaybackService>('playback');
   const playback = useSyncExternalStore(
     playbackService.subscribe,
     playbackService.getSnapshot,
@@ -20,7 +21,7 @@ export function usePlayback() {
 export function usePlaybackSelector<T>(
   select: (snapshot: PlaybackSnapshot) => T,
 ): T {
-  const playback = Platform.services.get<PlaybackService>("playback");
+  const playback = Platform.services.get<PlaybackService>('playback');
   const read = () => select(playback.getSnapshot());
   return useSyncExternalStore(playback.subscribe, read, read);
 }

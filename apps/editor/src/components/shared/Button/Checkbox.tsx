@@ -1,15 +1,17 @@
-import type { InputHTMLAttributes } from "react";
-import classNames from "classnames";
-import { space, color, layout, compose, border } from "styled-system";
+import type { InputHTMLAttributes } from 'react';
+
+import classNames from 'classnames';
+import { border, color, compose, layout, space } from 'styled-system';
 import type {
-  SpaceProps,
+  BorderProps,
   ColorProps,
   LayoutProps,
-  BorderProps,
+  SpaceProps,
   styleFn,
-} from "styled-system";
-import { Text } from "..";
-import styles from "./checkbox.module.css";
+} from 'styled-system';
+
+import { Text } from '..';
+import styles from './checkbox.module.css';
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);
@@ -33,10 +35,10 @@ const Checkbox = ({
       ([propName]) => !systemPropNames.has(propName),
     ),
   );
-  const checkboxClassName = classNames(styles["ui-checkbox"], className);
+  const checkboxClassName = classNames(styles['ui-checkbox'], className);
 
   return (
-    <label className={styles["ui-checkbox-label"]}>
+    <label className={styles['ui-checkbox-label']}>
       <input
         {...htmlProps}
         type="checkbox"

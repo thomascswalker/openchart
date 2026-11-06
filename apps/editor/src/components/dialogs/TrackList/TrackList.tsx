@@ -1,10 +1,11 @@
-import { useDocument } from "../../../hooks/useDocument";
-import { useRuleset } from "../../../hooks/useRuleset";
-import { runActionAsync } from "../../../platform/actions/execute";
-import type { ViewportSession } from "../../../platform/services/editor/viewports";
-import { Box, Button, Text } from "../../shared";
-import styles from "./TrackList.module.css";
-import type { MidiTrack } from "@openchart/midi";
+import type { MidiTrack } from '@openchart/midi';
+
+import { useDocument } from '../../../hooks/useDocument';
+import { useRuleset } from '../../../hooks/useRuleset';
+import { runActionAsync } from '../../../platform/actions/execute';
+import type { ViewportSession } from '../../../platform/services/editor/viewports';
+import { Box, Button, Text } from '../../shared';
+import styles from './TrackList.module.css';
 
 interface TrackListProps {
   session?: ViewportSession;
@@ -46,9 +47,9 @@ export function TrackList({ session }: TrackListProps) {
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => {
               if (session) {
-                void runActionAsync("editor.focus-viewport", session.id)
+                void runActionAsync('editor.focus-viewport', session.id)
                   .then(() =>
-                    runActionAsync("editor.update-viewport", session.id, {
+                    runActionAsync('editor.update-viewport', session.id, {
                       trackKey: key,
                       instrument: track.name,
                     }),

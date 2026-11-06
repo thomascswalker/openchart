@@ -1,80 +1,76 @@
-import type { Midi } from "@openchart/midi";
+import type { Midi } from '@openchart/midi';
 import {
   ChartDocument,
   ClipboardService,
-  createRulesetContext,
-  createUnmappedTrackRules,
+  type EditResult,
   EditingModeId,
   EditingModeRegistry,
-  SelectionModel,
-  SongView,
-  createEditingSession,
   type EditingSession,
   type EditingTarget,
-  type EditResult,
   type ModeRegistry,
+  SelectionModel,
+  SongView,
   type TrackDescriptor,
-} from "@openchart/views";
-import { Service } from "../../services";
-import { DocumentService } from "../document/document";
-import { PlaybackService } from "../playback/playback";
-import { RulesetService } from "../ruleset";
-import { ViewportService, type ViewportSession } from "./viewports";
-import { defaultModes } from "@openchart/views";
+  createEditingSession,
+  createRulesetContext,
+  createUnmappedTrackRules,
+} from '@openchart/views';
+import { defaultModes } from '@openchart/views';
+
+import { IDocumentService } from '../document/document';
+import { IPlaybackService } from '../playback/playback';
+import { IRulesetService } from '../ruleset';
+import { Service, createDecorator } from '../service';
+import { IViewportService, type ViewportSession } from './viewports';
 
 type ResultListener = (result: EditResult) => void;
 
 /** Bridges editing modes and sessions to editor history and playback. */
 export class EditingService extends Service {
-  public static dependencies = [
-    "document",
-    "playback",
-    "editor.viewports",
-    "ruleset",
-  ];
-
   public readonly selection = new SelectionModel();
-  public readonly clipboard: ClipboardService;
+  private clipboardInstance!: ClipboardService;
+  private registryInstance!: ModeRegistry;
 
-  public readonly registry: ModeRegistry;
-
-  private readonly documentService: DocumentService;
-  private readonly playbackService: PlaybackService;
-  private readonly viewportService: ViewportService;
-  private readonly rulesetService: RulesetService;
   private readonly resultListeners = new Set<ResultListener>();
   private readonly sessions = new Map<string, EditingSession>();
   private readonly sessionSignatures = new Map<string, string>();
   private chartDocument: ChartDocument | null = null;
   private syncedMidi: Midi | undefined;
-  private documentId: number;
+  private documentId!: number;
   private lastResultValue: EditResult = emptyResult();
 
   public constructor(
-    documentService: DocumentService,
-    playbackService: PlaybackService,
-    viewportService: ViewportService,
-    rulesetService: RulesetService,
+    @IDocumentService private readonly documentService: IDocumentService,
+    @IPlaybackService private readonly playbackService: IPlaybackService,
+    @IViewportService private readonly viewportService: IViewportService,
+    @IRulesetService private readonly rulesetService: IRulesetService,
   ) {
     super();
-    this.rulesetService = rulesetService;
-    this.documentService = documentService;
-    this.playbackService = playbackService;
-    this.viewportService = viewportService;
-    this.registry = new EditingModeRegistry();
-    defaultModes.forEach((mode) => this.registry.register(mode));
-    this.viewportService.setModeRegistry(this.registry);
+  }
+
+  public init(): void {
+    this.registryInstance = new EditingModeRegistry();
+    defaultModes.forEach((mode) => this.registryInstance.register(mode));
+    this.viewportService.setModeRegistry(this.registryInstance);
     this.viewportService.setTrackResolver(
       (viewport) => this.resolveTrack(viewport).descriptor,
     );
-    this.syncedMidi = documentService.data;
-    this.documentId = documentService.documentId;
-    const chartDocument = this.createChartDocument(documentService.data);
+    this.syncedMidi = this.documentService.data;
+    this.documentId = this.documentService.documentId;
+    const chartDocument = this.createChartDocument(this.documentService.data);
     this.chartDocument = chartDocument;
-    this.clipboard = new ClipboardService();
+    this.clipboardInstance = new ClipboardService();
     this.documentService.subscribe(this.syncDocument);
     this.viewportService.subscribe(this.syncViewports);
     this.rulesetService.subscribe(this.syncRuleset);
+  }
+
+  public get clipboard(): ClipboardService {
+    return this.clipboardInstance;
+  }
+
+  public get registry(): ModeRegistry {
+    return this.registryInstance;
   }
 
   /** Last result emitted to EditingService subscribers. */
@@ -100,7 +96,7 @@ export class EditingService extends Service {
   /** @deprecated Use the active EditingSession. */
   public getDocument(): ChartDocument {
     if (!this.chartDocument) {
-      throw new Error("There is no MIDI document to edit.");
+      throw new Error('There is no MIDI document to edit.');
     }
     return this.chartDocument;
   }
@@ -108,13 +104,13 @@ export class EditingService extends Service {
   /** Returns the cached session for the specified viewport, if supported. */
   public getSession(
     viewportId: string,
-    requestedModeId?: EditingModeId | "global",
+    requestedModeId?: EditingModeId | 'global',
   ): EditingSession | null {
     const viewport = this.viewportService.getViewport(viewportId);
     if (!viewport || !this.chartDocument || !this.documentService.data)
       return null;
     const modeId =
-      requestedModeId === "global" ? EditingModeId.MidiGlobal : requestedModeId;
+      requestedModeId === 'global' ? EditingModeId.MidiGlobal : requestedModeId;
     const cacheKey = modeId ? `${viewportId}::${modeId}` : viewportId;
     const signature = this.sessionSignature(viewport, modeId);
     if (this.sessionSignatures.get(cacheKey) === signature) {
@@ -212,7 +208,7 @@ export class EditingService extends Service {
         .viewportSessions.map((viewport) => viewport.id),
     );
     for (const cacheKey of this.sessions.keys()) {
-      const separator = cacheKey.indexOf("::");
+      const separator = cacheKey.indexOf('::');
       const viewportId =
         separator < 0 ? cacheKey : cacheKey.slice(0, separator);
       const modeId =
@@ -281,7 +277,7 @@ export class EditingService extends Service {
   } | null {
     const descriptor = this.rulesetService.compiled
       .descriptors()
-      .find((track) => track.kind === "global");
+      .find((track) => track.kind === 'global');
     if (!descriptor) return null;
     const index = this.documentService.data!.tracks.findIndex(
       (track) => track.name === descriptor.name,
@@ -303,11 +299,11 @@ export class EditingService extends Service {
     trackIndex: number | null;
   } {
     const midi = this.documentService.data;
-    if (!midi) throw new Error("There is no MIDI document to resolve.");
+    if (!midi) throw new Error('There is no MIDI document to resolve.');
     const song = new SongView(midi, this.rulesetService.compiled);
     const descriptors = song.getTrackDescriptors();
-    if (viewport.trackKey.startsWith("unmapped-")) {
-      const index = Number(viewport.trackKey.slice("unmapped-".length));
+    if (viewport.trackKey.startsWith('unmapped-')) {
+      const index = Number(viewport.trackKey.slice('unmapped-'.length));
       const track = Number.isSafeInteger(index)
         ? song.getUnmappedMidiTracks()[index]
         : undefined;
@@ -358,10 +354,10 @@ export class EditingService extends Service {
           (item) => item.id === source,
         );
         const value =
-          sourceDefinition?.file === "info.json" ? settings[key] : undefined;
-        return typeof value === "boolean" ||
-          typeof value === "number" ||
-          typeof value === "string"
+          sourceDefinition?.file === 'info.json' ? settings[key] : undefined;
+        return typeof value === 'boolean' ||
+          typeof value === 'number' ||
+          typeof value === 'string'
           ? value
           : undefined;
       },
@@ -376,12 +372,12 @@ export class EditingService extends Service {
     return [
       this.documentService.documentId,
       this.rulesetService.getSnapshot().revision,
-      modeId ?? "primary",
+      modeId ?? 'primary',
       viewport.trackKey,
       trackIndex,
       viewport.difficulty,
-      modeId ? "global" : viewport.view,
-    ].join(":");
+      modeId ? 'global' : viewport.view,
+    ].join(':');
   }
 
   private createChartDocument(midi: Midi): ChartDocument {
@@ -397,7 +393,7 @@ export class EditingService extends Service {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function emptyResult(): EditResult {
@@ -410,6 +406,10 @@ function emptyResult(): EditResult {
     diagnostics: [],
   };
 }
+
+export type IEditingService = EditingService;
+export const IEditingService =
+  createDecorator<IEditingService>('editor.editing');
 
 /** @deprecated Use EditingService. */
 export type EditorEditingService = EditingService;

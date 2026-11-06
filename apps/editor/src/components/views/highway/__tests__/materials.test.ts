@@ -1,30 +1,31 @@
-import * as THREE from "three";
-import { describe, expect, it, vi } from "vitest";
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
+
+import type { ResolvedMaterialDefinition } from '../../../../assets/index';
 import type {
   MaterialKey,
   ResourceRegistry,
-} from "../../../../rendering/registry";
-import type { ResolvedMaterialDefinition } from "../../../../assets/index";
-import { assetDefinitions } from "../../../../rendering/registry";
-import { createMaterialSet, rgbFromHex } from "../rendering/materials";
-import { primitiveRolesForModel } from "../rendering/instances";
-import { HIGHWAY_GEOMETRY_CATALOG } from "../rendering/geometryCatalog";
+} from '../../../../rendering/registry';
+import { assetDefinitions } from '../../../../rendering/registry';
+import { HIGHWAY_GEOMETRY_CATALOG } from '../rendering/geometryCatalog';
+import { primitiveRolesForModel } from '../rendering/instances';
+import { createMaterialSet, rgbFromHex } from '../rendering/materials';
 
 export const CIRCULAR_MATERIAL_MAPPING = {
-  baseColor: "optional diffuse texture or white default * uBaseColor",
-  laneTint: "uBaseColor",
+  baseColor: 'optional diffuse texture or white default * uBaseColor',
+  laneTint: 'uBaseColor',
   emission:
-    "emissionTex.rgb * mix(1, uEmissionColor, emissionMaskTexture.r) * uEmissionIntensity",
-  alpha: "baseTexture.a * uAlpha with a 0.02 discard cutoff",
-  tint: "manifest tintedMaterialIds select the slots that multiply by uBaseColor",
+    'emissionTex.rgb * mix(1, uEmissionColor, emissionMaskTexture.r) * uEmissionIntensity',
+  alpha: 'baseTexture.a * uAlpha with a 0.02 discard cutoff',
+  tint: 'manifest tintedMaterialIds select the slots that multiply by uBaseColor',
   passed:
-    "final composed colour is converted to luminance at/near the strike line",
-  depth: "depth test enabled; opaque notes write depth; ghost/sustain do not",
-  culling: "double-sided imported circular/fret surfaces",
-  selected: "uSelected brightens the lane tint and emission",
-  ghost: "uGhost mixes a neutral tint and reduces alpha",
+    'final composed colour is converted to luminance at/near the strike line',
+  depth: 'depth test enabled; opaque notes write depth; ghost/sustain do not',
+  culling: 'double-sided imported circular/fret surfaces',
+  selected: 'uSelected brightens the lane tint and emission',
+  ghost: 'uGhost mixes a neutral tint and reduces alpha',
   sustain:
-    "solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png",
+    'solid uBaseColor; generated quad UVs do not map cleanly to Sustain.png',
 } as const;
 
 function resolvedMaterial(
@@ -35,7 +36,7 @@ function resolvedMaterial(
     mask?: THREE.Texture;
   } = {},
 ): ResolvedMaterialDefinition {
-  const properties: ResolvedMaterialDefinition["properties"] = {};
+  const properties: ResolvedMaterialDefinition['properties'] = {};
   if (textures.diffuse) {
     properties.diffuseTex = {
       path: `${key}-diffuse.png`,
@@ -57,11 +58,11 @@ function resolvedMaterial(
   return {
     key,
     definition: {
-      vert: "vert.glsl",
-      pixel: key === "sustain" ? "solid.frag.glsl" : "note.frag.glsl",
+      vert: 'vert.glsl',
+      pixel: key === 'sustain' ? 'solid.frag.glsl' : 'note.frag.glsl',
       properties: {},
     },
-    vertexShader: "vertex source",
+    vertexShader: 'vertex source',
     fragmentShader: `${key} fragment source`,
     properties,
   };
@@ -69,19 +70,19 @@ function resolvedMaterial(
 
 function makeRegistry(textures: Record<string, THREE.Texture>) {
   const definitions: Record<MaterialKey, ResolvedMaterialDefinition> = {
-    roundNote: resolvedMaterial("roundNote", {
+    roundNote: resolvedMaterial('roundNote', {
       emission: textures.roundEmission,
       mask: textures.roundMask,
     }),
-    kickNote: resolvedMaterial("kickNote", { emission: textures.kickEmission }),
-    cymbalNote: resolvedMaterial("cymbalNote", {
+    kickNote: resolvedMaterial('kickNote', { emission: textures.kickEmission }),
+    cymbalNote: resolvedMaterial('cymbalNote', {
       emission: textures.cymbalEmission,
     }),
-    sustain: resolvedMaterial("sustain", {
+    sustain: resolvedMaterial('sustain', {
       diffuse: textures.sustainDiffuse,
       emission: textures.sustainEmission,
     }),
-    fret: resolvedMaterial("fret", { emission: textures.fretEmission }),
+    fret: resolvedMaterial('fret', { emission: textures.fretEmission }),
   };
   return {
     registry: {
@@ -91,21 +92,21 @@ function makeRegistry(textures: Record<string, THREE.Texture>) {
   };
 }
 
-describe("manifest highway material factory", () => {
-  it("documents the shader state contract", () => {
+describe('manifest highway material factory', () => {
+  it('documents the shader state contract', () => {
     expect(CIRCULAR_MATERIAL_MAPPING).toMatchObject({
-      baseColor: expect.stringContaining("white default"),
-      emission: expect.stringContaining("uEmissionIntensity"),
-      alpha: expect.stringContaining("uAlpha"),
-      tint: expect.stringContaining("tintedMaterialIds"),
-      passed: expect.stringContaining("luminance"),
-      selected: expect.stringContaining("uSelected"),
-      ghost: expect.stringContaining("uGhost"),
-      sustain: expect.stringContaining("solid uBaseColor"),
+      baseColor: expect.stringContaining('white default'),
+      emission: expect.stringContaining('uEmissionIntensity'),
+      alpha: expect.stringContaining('uAlpha'),
+      tint: expect.stringContaining('tintedMaterialIds'),
+      passed: expect.stringContaining('luminance'),
+      selected: expect.stringContaining('uSelected'),
+      ghost: expect.stringContaining('uGhost'),
+      sustain: expect.stringContaining('solid uBaseColor'),
     });
   });
 
-  it("preserves the five lane colours", () => {
+  it('preserves the five lane colours', () => {
     expect(
       [0x00a651, 0xdc2626, 0xfacc15, 0x2563eb, 0xf97316].map(rgbFromHex),
     ).toEqual([
@@ -117,7 +118,7 @@ describe("manifest highway material factory", () => {
     ]);
   });
 
-  it("uses definition shaders and optional texture fallbacks", () => {
+  it('uses definition shaders and optional texture fallbacks', () => {
     const textures = {
       roundEmission: new THREE.Texture(),
       roundMask: new THREE.Texture(),
@@ -159,7 +160,7 @@ describe("manifest highway material factory", () => {
     Object.values(textures).forEach((texture) => texture.dispose());
   });
 
-  it("creates tinted, neutral, and transparent ghost variants for each slot material", () => {
+  it('creates tinted, neutral, and transparent ghost variants for each slot material', () => {
     const { registry } = makeRegistry({
       roundEmission: new THREE.Texture(),
       roundMask: new THREE.Texture(),
@@ -184,7 +185,7 @@ describe("manifest highway material factory", () => {
     materials.destroy();
   });
 
-  it("assigns tint only to manifest-declared named material slots", () => {
+  it('assigns tint only to manifest-declared named material slots', () => {
     for (const definition of Object.values(assetDefinitions.meshes)) {
       if (!definition.mesh) continue;
       const materials = definition.materialIds.map((name) => {
@@ -196,7 +197,7 @@ describe("manifest highway material factory", () => {
 
       expect(primitiveRolesForModel(model, definition)).toEqual(
         definition.materialIds.map((id) =>
-          definition.tintedMaterialIds?.includes(id) ? "tinted" : "neutral",
+          definition.tintedMaterialIds?.includes(id) ? 'tinted' : 'neutral',
         ),
       );
       model.geometry.dispose();
@@ -204,20 +205,20 @@ describe("manifest highway material factory", () => {
     }
   });
 
-  it("uses round notes for pads and preserves named color-slot tinting", () => {
-    expect(HIGHWAY_GEOMETRY_CATALOG.pad.meshKey).toBe("roundNote");
-    expect(HIGHWAY_GEOMETRY_CATALOG.pad.materialKey).toBe("roundNote");
-    expect(HIGHWAY_GEOMETRY_CATALOG.padGhost.meshKey).toBe("roundNote");
+  it('uses round notes for pads and preserves named color-slot tinting', () => {
+    expect(HIGHWAY_GEOMETRY_CATALOG.pad.meshKey).toBe('roundNote');
+    expect(HIGHWAY_GEOMETRY_CATALOG.pad.materialKey).toBe('roundNote');
+    expect(HIGHWAY_GEOMETRY_CATALOG.padGhost.meshKey).toBe('roundNote');
     expect(assetDefinitions.meshes.roundNote.tintedMaterialIds).toEqual([
-      "RoundNoteColor",
+      'RoundNoteColor',
     ]);
     expect(assetDefinitions.meshes.cymbalNote.tintedMaterialIds).toEqual([
-      "CymbalNoteColor",
+      'CymbalNoteColor',
     ]);
-    expect("rectNote" in assetDefinitions.meshes).toBe(false);
+    expect('rectNote' in assetDefinitions.meshes).toBe(false);
   });
 
-  it("renders pads and cymbals above kick notes without depth rejection", () => {
+  it('renders pads and cymbals above kick notes without depth rejection', () => {
     const { registry } = makeRegistry({
       roundEmission: new THREE.Texture(),
       roundMask: new THREE.Texture(),

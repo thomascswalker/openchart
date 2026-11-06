@@ -1,6 +1,6 @@
-@import "@fontsource/roboto/400.css";
-@import "@fontsource/roboto/600.css";
-@import "@fontsource/roboto-mono/400.css";
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/600.css';
+@import '@fontsource/roboto-mono/400.css';
 
 :root {
   /* Colors */
@@ -104,8 +104,8 @@
   --text-success: var(--green-50);
   --text-disabled: var(--neutral-50);
 
-  --font-primary: "Roboto", sans-serif;
-  --font-mono: "Roboto Mono", monospace;
+  --font-primary: 'Roboto', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
   --font-size: 13px;
   --font-weight: 400;
 

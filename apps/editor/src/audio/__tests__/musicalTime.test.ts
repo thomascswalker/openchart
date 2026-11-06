@@ -1,12 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { MetaType, ticksToMs } from "@openchart/midi";
+import { MetaType, ticksToMs } from '@openchart/midi';
+import { describe, expect, it } from 'vitest';
+
 import {
   beatCrossings,
   tickToBeatPosition,
   tickWindowForLookAhead,
-} from "../musicalTime";
+} from '../musicalTime';
 
-describe("musical playback positions", () => {
+describe('musical playback positions', () => {
   const tempoEvents = [
     {
       deltaTime: 0,
@@ -27,7 +28,7 @@ describe("musical playback positions", () => {
   ];
   const timeSignatures = [{ tick: 0, numerator: 4, denominator: 2 }];
 
-  it("crosses beats using tempo-aware look-ahead", () => {
+  it('crosses beats using tempo-aware look-ahead', () => {
     const endTick = tickWindowForLookAhead(900, 100, 480, tempoEvents);
     expect(endTick).toBe(978);
     expect(beatCrossings(900, 960, 480, timeSignatures)).toEqual([
@@ -36,7 +37,7 @@ describe("musical playback positions", () => {
     expect(ticksToMs(endTick, 480, tempoEvents)).toBe(1_037.5);
   });
 
-  it("starts a new downbeat at a time-signature event", () => {
+  it('starts a new downbeat at a time-signature event', () => {
     const events = [
       { tick: 0, numerator: 4, denominator: 2 },
       { tick: 1_920, numerator: 3, denominator: 2 },

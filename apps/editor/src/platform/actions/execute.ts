@@ -1,18 +1,18 @@
-import Platform from "..";
-import { ActionCancelledError, ActionUnavailableError } from "../actions";
-import { EditorStateService } from "../services/editor/state";
+import Platform from '..';
+import { ActionCancelledError, ActionUnavailableError } from '../actions';
+import { EditorStateService } from '../services/editor/state';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error && error.message
     ? error.message
-    : "The action could not be completed.";
+    : 'The action could not be completed.';
 }
 
 export async function runActionAsync<Result = void>(
   id: string,
   ...args: unknown[]
 ): Promise<Result> {
-  const editorState = Platform.services.get<EditorStateService>("editor.state");
+  const editorState = Platform.services.get<EditorStateService>('editor.state');
   editorState.clearError();
   try {
     return await Platform.actions.executeAction<Result>(id, ...args);

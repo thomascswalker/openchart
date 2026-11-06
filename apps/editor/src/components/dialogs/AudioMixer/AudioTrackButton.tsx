@@ -1,10 +1,12 @@
-import classNames from "classnames";
-import type { ReactNode } from "react";
-import { type ButtonProps, Button } from "../../shared";
-import styles from "./AudioMixer.module.css";
+import type { ReactNode } from 'react';
 
-interface AudioTrackButtonProps extends Omit<ButtonProps, "type"> {
-  type: "solo" | "mute" | "reset";
+import classNames from 'classnames';
+
+import { Button, type ButtonProps } from '../../shared';
+import styles from './AudioMixer.module.css';
+
+interface AudioTrackButtonProps extends Omit<ButtonProps, 'type'> {
+  type: 'solo' | 'mute' | 'reset';
   checked?: boolean;
   onClick: () => void;
   disabled?: boolean;
@@ -36,7 +38,7 @@ export const AudioTrackButton = ({
       disabled={disabled}
       flat
       className={classNames(
-        styles["ui-track-mixer-button"],
+        styles['ui-track-mixer-button'],
         styles[`ui-track-mixer-${type}-button`],
       )}
     >

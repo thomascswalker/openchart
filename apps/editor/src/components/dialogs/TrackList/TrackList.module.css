@@ -33,8 +33,8 @@ div.trackList {
   background: #303030;
 }
 
-.trackRow[aria-pressed="true"],
-.trackRow[aria-pressed="true"]:hover:not(:disabled) {
+.trackRow[aria-pressed='true'],
+.trackRow[aria-pressed='true']:hover:not(:disabled) {
   background: #333;
 }
 

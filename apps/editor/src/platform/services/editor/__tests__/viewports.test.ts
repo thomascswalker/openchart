@@ -1,19 +1,26 @@
-import { describe, expect, it, vi } from "vitest";
 import {
   EditingModeId,
   VocalNoteKind,
   VocalPhraseKind,
-} from "@openchart/views";
-import { enforceAvailableView, ViewportService } from "../viewports";
-import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
+} from '@openchart/views';
+import { describe, expect, it, vi } from 'vitest';
 
-describe("ViewportService", () => {
-  it("owns viewport sessions and publishes focus and snap changes", () => {
-    const service = new ViewportService(createTestRulesetService());
+import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
+import { ViewportService, enforceAvailableView } from '../viewports';
+
+function createViewportService(): ViewportService {
+  const service = new ViewportService(createTestRulesetService());
+  service.init();
+  return service;
+}
+
+describe('ViewportService', () => {
+  it('owns viewport sessions and publishes focus and snap changes', () => {
+    const service = createViewportService();
     const listener = vi.fn();
     service.subscribe(listener);
 
-    const id = service.addViewport("highway");
+    const id = service.addViewport('highway');
     expect(id).not.toBeNull();
     expect(service.getSnapshot().viewportSessions).toHaveLength(2);
     expect(service.getSnapshot().activeViewportId).toBe(id);
@@ -30,52 +37,52 @@ describe("ViewportService", () => {
     expect(listener).toHaveBeenCalledTimes(3);
   });
 
-  it("forces the Piano Roll when Vocals is selected from any view", () => {
-    const service = new ViewportService(createTestRulesetService());
-    const id = service.addViewport("highway")!;
-    expect(service.getSnapshot().activeViewId).toBe("highway");
+  it('forces the Piano Roll when Vocals is selected from any view', () => {
+    const service = createViewportService();
+    const id = service.addViewport('highway')!;
+    expect(service.getSnapshot().activeViewId).toBe('highway');
 
     // e.g. the Highway's instrument buttons.
-    service.updateViewport(id, { instrument: "VOCALS", trackKey: "vocals" });
-    expect(service.getViewport(id)?.view).toBe("piano-roll");
-    expect(service.getSnapshot().activeViewId).toBe("piano-roll");
+    service.updateViewport(id, { instrument: 'VOCALS', trackKey: 'vocals' });
+    expect(service.getViewport(id)?.view).toBe('piano-roll');
+    expect(service.getSnapshot().activeViewId).toBe('piano-roll');
 
     // The Highway can't be selected while Vocals is the instrument.
-    service.updateViewport(id, { view: "highway" });
-    expect(service.getViewport(id)?.view).toBe("piano-roll");
+    service.updateViewport(id, { view: 'highway' });
+    expect(service.getViewport(id)?.view).toBe('piano-roll');
 
     // Other instruments still switch freely.
     service.updateViewport(id, {
-      instrument: "LEAD GUITAR",
-      trackKey: "lead-guitar",
+      instrument: 'LEAD GUITAR',
+      trackKey: 'lead-guitar',
     });
-    service.updateViewport(id, { view: "highway" });
-    expect(service.getViewport(id)?.view).toBe("highway");
+    service.updateViewport(id, { view: 'highway' });
+    expect(service.getViewport(id)?.view).toBe('highway');
   });
 
-  it("keeps camera-only updates from touching the active view id", () => {
-    const service = new ViewportService(createTestRulesetService());
+  it('keeps camera-only updates from touching the active view id', () => {
+    const service = createViewportService();
     const id = service.getSnapshot().activeViewportId;
-    service.setActiveView("custom");
+    service.setActiveView('custom');
     service.updateViewport(id, { camera: { tick: 480 } });
-    expect(service.getSnapshot().activeViewId).toBe("custom");
+    expect(service.getSnapshot().activeViewId).toBe('custom');
     expect(service.getViewport(id)?.camera.tick).toBe(480);
   });
 
-  it("falls back to the first host allowed by a mode registry", () => {
-    const service = new ViewportService(createTestRulesetService());
+  it('falls back to the first host allowed by a mode registry', () => {
+    const service = createViewportService();
     const session = service.getActiveViewport()!;
     const available = enforceAvailableView(
       session,
-      (_target, hostKind) => hostKind === "highway",
+      (_target, hostKind) => hostKind === 'highway',
     );
-    expect(available.view).toBe("highway");
+    expect(available.view).toBe('highway');
   });
 
-  it("keeps every viewport on the same camera tick", () => {
-    const service = new ViewportService(createTestRulesetService());
+  it('keeps every viewport on the same camera tick', () => {
+    const service = createViewportService();
     const firstId = service.getSnapshot().activeViewportId;
-    const secondId = service.addViewport("highway")!;
+    const secondId = service.addViewport('highway')!;
 
     service.updateViewport(secondId, { camera: { tick: 960 } });
     expect(
@@ -84,7 +91,7 @@ describe("ViewportService", () => {
         .viewportSessions.map((session) => session.camera.tick),
     ).toEqual([960, 960]);
 
-    const thirdId = service.addViewport("piano-roll")!;
+    const thirdId = service.addViewport('piano-roll')!;
     expect(service.getViewport(thirdId)?.camera.tick).toBe(960);
 
     service.updateViewport(firstId, { camera: { tick: 1200 } });
@@ -95,21 +102,21 @@ describe("ViewportService", () => {
     ).toEqual([1200, 1200, 1200]);
   });
 
-  it("stores arbitrary mode tool state independently per viewport", () => {
-    const service = new ViewportService(createTestRulesetService());
+  it('stores arbitrary mode tool state independently per viewport', () => {
+    const service = createViewportService();
     const first = service.getSnapshot().activeViewportId;
-    const second = service.addViewport("highway")!;
+    const second = service.addViewport('highway')!;
 
-    service.setModeToolState(second, "test.custom", { active: "place" });
+    service.setModeToolState(second, 'test.custom', { active: 'place' });
     service.setModeToolState(first, EditingModeId.MidiVocals, {
       noteKind: VocalNoteKind.Percussion,
       phrase: VocalPhraseKind.Vocal,
     });
 
     const sessions = service.getSnapshot().viewportSessions;
-    expect(sessions.find((s) => s.id === second)?.tools["test.custom"]).toEqual(
+    expect(sessions.find((s) => s.id === second)?.tools['test.custom']).toEqual(
       {
-        active: "place",
+        active: 'place',
       },
     );
     expect(
@@ -126,13 +133,13 @@ describe("ViewportService", () => {
     });
   });
 
-  it("preserves tools when other session fields update", () => {
-    const service = new ViewportService(createTestRulesetService());
+  it('preserves tools when other session fields update', () => {
+    const service = createViewportService();
     const id = service.getSnapshot().activeViewportId;
     service.setModeToolState(id, EditingModeId.ChartLanes, {
-      tool: "solo",
+      tool: 'solo',
       phrase: null,
-      placement: "normal",
+      placement: 'normal',
     });
     service.updateViewport(id, { camera: { tick: 960 } });
     expect(
@@ -141,6 +148,6 @@ describe("ViewportService", () => {
           tool: string;
         }
       ).tool,
-    ).toBe("solo");
+    ).toBe('solo');
   });
 });

@@ -1,28 +1,30 @@
-import { MetaType, Midi } from "@openchart/midi";
+import { MetaType, Midi } from '@openchart/midi';
 import {
   Difficulty,
-  formatNoteId,
   SongView,
   VocalNoteKind,
-} from "@openchart/views";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AnyChartView } from "../../../../components/views/ChartViews";
-import { ActiveChartViewService } from "../activeChartView";
-import { EditorClipboardService } from "../clipboard";
-import { DocumentService } from "../../document/document";
-import type { PlaybackService } from "../../playback/playback";
-import { EditorStateService } from "../state";
-import { EditingService } from "../editing";
-import { ViewportService } from "../viewports";
-import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
-import { mockWorkspaceService } from "../../workspace/__tests__/utils";
-import { mockLoggerService } from "../../__mock__/logger.mock";
+  formatNoteId,
+} from '@openchart/views';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { AnyChartView } from '../../../../components/views/ChartViews';
+import { mockLoggerService } from '../../__mock__/logger.mock';
+import { DocumentService } from '../../document/document';
+import type { PlaybackService } from '../../playback/playback';
+import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
+import { mockWorkspaceService } from '../../workspace/__tests__/utils';
+import { ActiveChartViewService } from '../activeChartView';
+import { EditorClipboardService } from '../clipboard';
+import { EditingService } from '../editing';
+import { EditorStateService } from '../state';
+import { ViewportService } from '../viewports';
 
 function createClipboardHarness(midi: Midi) {
   const ruleset = createTestRulesetService();
   const logger = mockLoggerService();
   const workspace = mockWorkspaceService();
   const document = new DocumentService(logger, ruleset, workspace);
+  document.init();
   document.data = midi;
   const playbackListeners = new Set<() => void>();
   let isPlaying = false;
@@ -35,6 +37,7 @@ function createClipboardHarness(midi: Midi) {
     },
   } as unknown as PlaybackService;
   const viewports = new ViewportService(ruleset);
+  viewports.init();
   const firstTrack = midi.tracks[0];
   const descriptor = firstTrack
     ? ruleset.compiled.byName.get(firstTrack.name)
@@ -46,7 +49,9 @@ function createClipboardHarness(midi: Midi) {
     });
   }
   const editing = new EditingService(document, playback, viewports, ruleset);
+  editing.init();
   const activeView = new ActiveChartViewService();
+  activeView.init();
   const state = new EditorStateService();
   const clipboard = new EditorClipboardService(
     activeView,
@@ -54,6 +59,7 @@ function createClipboardHarness(midi: Midi) {
     state,
     playback,
   );
+  clipboard.init();
 
   return {
     activeView,
@@ -71,7 +77,7 @@ function createClipboardHarness(midi: Midi) {
 
 function setActiveView(
   activeView: ActiveChartViewService,
-  kind: "highway" | "piano-roll",
+  kind: 'highway' | 'piano-roll',
   tick: number,
 ) {
   activeView.set({
@@ -82,38 +88,38 @@ function setActiveView(
 
 function selectOnlyNote(
   editing: EditingService,
-  track: Midi["tracks"][number],
+  track: Midi['tracks'][number],
 ): void {
   const session = editing.getActiveSession();
-  if (!session) throw new Error("Expected an active editing session");
+  if (!session) throw new Error('Expected an active editing session');
   const trackIndex = session.target.trackIndex;
-  if (trackIndex === null) throw new Error("Expected a resolved target track");
+  if (trackIndex === null) throw new Error('Expected a resolved target track');
   const note = track.getNotes()[0];
-  if (!note) throw new Error("Expected a note to select");
+  if (!note) throw new Error('Expected a note to select');
   session.selection.setSelectedIds([
     formatNoteId(trackIndex, track.getEventId(note.noteOn)),
   ]);
 }
 
-describe("EditorClipboardService", () => {
+describe('EditorClipboardService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("pastes Highway notes into Piano Roll as raw pitches", () => {
+  it('pastes Highway notes into Piano Roll as raw pitches', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(96, 0, 90, 120);
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
-    h.viewports.updateViewport(viewportId, { view: "highway" });
-    setActiveView(h.activeView, "highway", 0);
+    h.viewports.updateViewport(viewportId, { view: 'highway' });
+    setActiveView(h.activeView, 'highway', 0);
     selectOnlyNote(h.editing, track);
 
     h.clipboard.copy();
-    h.viewports.updateViewport(viewportId, { view: "piano-roll" });
-    setActiveView(h.activeView, "piano-roll", 480);
+    h.viewports.updateViewport(viewportId, { view: 'piano-roll' });
+    setActiveView(h.activeView, 'piano-roll', 480);
     expect(h.editing.getActiveSession()?.selection.getSelectedIds()).toEqual([
       formatNoteId(0, track.getEventId(track.getNotes()[0]!.noteOn)),
     ]);
@@ -125,19 +131,19 @@ describe("EditorClipboardService", () => {
     ]);
   });
 
-  it("pastes an in-range Piano Roll pitch into Highway lanes", () => {
+  it('pastes an in-range Piano Roll pitch into Highway lanes', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(96, 0, 90, 120);
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
-    setActiveView(h.activeView, "piano-roll", 0);
+    setActiveView(h.activeView, 'piano-roll', 0);
     selectOnlyNote(h.editing, track);
     h.clipboard.copy();
 
-    h.viewports.updateViewport(viewportId, { view: "highway" });
-    setActiveView(h.activeView, "highway", 480);
+    h.viewports.updateViewport(viewportId, { view: 'highway' });
+    setActiveView(h.activeView, 'highway', 480);
     h.clipboard.paste();
 
     expect(track.getNotes()).toMatchObject([
@@ -147,19 +153,19 @@ describe("EditorClipboardService", () => {
     expect(h.state.getSnapshot().error).toBeNull();
   });
 
-  it("preserves Expert Kick2 when copying and pasting in Highway", () => {
+  it('preserves Expert Kick2 when copying and pasting in Highway', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "DRUMS";
+    track.name = 'DRUMS';
     track.addNote(95, 0, 90, 1);
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
     h.viewports.updateViewport(viewportId, {
-      trackKey: "drums",
-      instrument: "DRUMS",
-      view: "highway",
+      trackKey: 'drums',
+      instrument: 'DRUMS',
+      view: 'highway',
     });
-    setActiveView(h.activeView, "highway", 480);
+    setActiveView(h.activeView, 'highway', 480);
     selectOnlyNote(h.editing, track);
 
     h.clipboard.copy();
@@ -173,46 +179,46 @@ describe("EditorClipboardService", () => {
     ]);
   });
 
-  it("reports rejected Piano Roll notes pasted outside Highway lanes", () => {
+  it('reports rejected Piano Roll notes pasted outside Highway lanes', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(20, 0, 90, 120);
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
-    setActiveView(h.activeView, "piano-roll", 0);
+    setActiveView(h.activeView, 'piano-roll', 0);
     selectOnlyNote(h.editing, track);
     h.clipboard.copy();
 
-    h.viewports.updateViewport(viewportId, { view: "highway" });
-    setActiveView(h.activeView, "highway", 480);
+    h.viewports.updateViewport(viewportId, { view: 'highway' });
+    setActiveView(h.activeView, 'highway', 480);
     h.clipboard.paste();
 
     expect(track.getNotes()).toHaveLength(1);
     expect(h.state.getSnapshot().error).toBe(
-      "1 note could not be pasted into this chart.",
+      '1 note could not be pasted into this chart.',
     );
   });
 
-  it("preserves lyrics when copying and pasting Vocal notes", () => {
+  it('preserves lyrics when copying and pasting Vocal notes', () => {
     const midi = new Midi();
     const song = new SongView(midi);
-    song.ensureMidiTrack("vocals");
-    const vocals = song.getVocalTrackView("VOCALS")!;
+    song.ensureMidiTrack('vocals');
+    const vocals = song.getVocalTrackView('VOCALS')!;
     vocals.addNote(VocalNoteKind.Pitched, 0, 240, {
       pitch: 60,
-      lyric: "hello",
+      lyric: 'hello',
     });
-    const track = midi.getTrack("VOCALS")!;
+    const track = midi.getTrack('VOCALS')!;
     const h = createClipboardHarness(midi);
     const viewportId = h.viewports.getSnapshot().activeViewportId;
     h.viewports.updateViewport(viewportId, {
-      trackKey: "vocals",
-      instrument: "VOCALS",
+      trackKey: 'vocals',
+      instrument: 'VOCALS',
       difficulty: Difficulty.Expert,
-      view: "piano-roll",
+      view: 'piano-roll',
     });
-    setActiveView(h.activeView, "piano-roll", 960);
+    setActiveView(h.activeView, 'piano-roll', 960);
     selectOnlyNote(h.editing, track);
 
     h.clipboard.copy();
@@ -224,18 +230,18 @@ describe("EditorClipboardService", () => {
         .filter((event) => event.type === MetaType.Lyric)
         .map(({ tick, text }) => [tick, text]),
     ).toEqual([
-      [0, "hello"],
-      [960, "hello"],
+      [0, 'hello'],
+      [960, 'hello'],
     ]);
   });
 
-  it("cuts notes in one undoable transaction", () => {
+  it('cuts notes in one undoable transaction', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(60, 0, 90, 120);
     const h = createClipboardHarness(midi);
-    setActiveView(h.activeView, "piano-roll", 0);
+    setActiveView(h.activeView, 'piano-roll', 0);
     selectOnlyNote(h.editing, track);
 
     h.clipboard.cut();
@@ -247,13 +253,13 @@ describe("EditorClipboardService", () => {
     expect(h.document.getSnapshot().canUndo).toBe(false);
   });
 
-  it("updates menu enablement when playback state changes", () => {
+  it('updates menu enablement when playback state changes', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(60, 0, 90, 120);
     const h = createClipboardHarness(midi);
-    setActiveView(h.activeView, "piano-roll", 0);
+    setActiveView(h.activeView, 'piano-roll', 0);
     selectOnlyNote(h.editing, track);
     expect(h.clipboard.canCut()).toBe(true);
     h.clipboard.copy();
@@ -268,19 +274,19 @@ describe("EditorClipboardService", () => {
     expect(h.clipboard.canPaste()).toBe(true);
   });
 
-  it("shares selected entity IDs across viewport sessions", () => {
+  it('shares selected entity IDs across viewport sessions', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
-    track.name = "LEAD GUITAR";
+    track.name = 'LEAD GUITAR';
     track.addNote(60, 0, 90, 120);
     track.addNote(64, 240, 90, 120);
     const h = createClipboardHarness(midi);
     const firstViewportId = h.viewports.getSnapshot().activeViewportId;
-    const secondViewportId = h.viewports.addViewport("highway");
-    if (!secondViewportId) throw new Error("Expected a second viewport");
+    const secondViewportId = h.viewports.addViewport('highway');
+    if (!secondViewportId) throw new Error('Expected a second viewport');
     h.viewports.updateViewport(secondViewportId, {
-      trackKey: "lead-guitar",
-      instrument: "LEAD GUITAR",
+      trackKey: 'lead-guitar',
+      instrument: 'LEAD GUITAR',
       difficulty: Difficulty.Expert,
     });
 

@@ -1,15 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { ActionRegistry } from "../actions";
-import { ContextStore } from "../context";
-import Platform from "../index";
-import { ServiceRegistry } from "../services";
-import { DocumentService } from "../services/document/document";
-import { FileSystemService } from "../services/filesystem";
-import { LoggerService } from "../services/logger";
-import { SettingsService } from "../services/settings/settings";
+import { describe, expect, it } from 'vitest';
 
-describe("Platform", () => {
-  it("constructs the registries and registers the service classes", () => {
+import { ActionRegistry } from '../actions';
+import { ContextStore } from '../context';
+import Platform from '../index';
+import { DocumentService } from '../services/document/document';
+import { FileSystemService } from '../services/filesystem';
+import { LoggerService } from '../services/logger';
+import { ServiceRegistry } from '../services/registry';
+import { SettingsService } from '../services/settings/settings';
+
+describe('Platform', () => {
+  it('constructs the registries and registers the service classes', () => {
     expect(Platform.services).toBeInstanceOf(ServiceRegistry);
     expect(Platform.context).toBeInstanceOf(ContextStore);
     expect(Platform.actions).toBeInstanceOf(ActionRegistry);
@@ -17,33 +18,31 @@ describe("Platform", () => {
     expect(Platform.actions.serviceRegistry).toBe(Platform.services);
     expect(Platform.actions.contextStore).toBe(Platform.context);
 
-    expect(Platform.services.get("logger")).toBeInstanceOf(LoggerService);
-    expect(Platform.services.get("filesystem")).toBeInstanceOf(
+    expect(Platform.services.get('logger')).toBeInstanceOf(LoggerService);
+    expect(Platform.services.get('filesystem')).toBeInstanceOf(
       FileSystemService,
     );
-    expect(Platform.services.get("document")).toBeInstanceOf(DocumentService);
-    expect(Platform.services.get("settings")).toBeInstanceOf(SettingsService);
+    expect(Platform.services.get('document')).toBeInstanceOf(DocumentService);
+    expect(Platform.services.get('settings')).toBeInstanceOf(SettingsService);
 
     const serviceIds = [
-      "document",
-      "editor.active-chart-view",
-      "editor.clipboard",
-      "editor.state",
-      "editor.viewports",
-      "filesystem",
-      "logger",
-      "mixer",
-      "playback",
-      "settings",
+      'document',
+      'editor.active-chart-view',
+      'editor.clipboard',
+      'editor.state',
+      'editor.viewports',
+      'filesystem',
+      'logger',
+      'mixer',
+      'playback',
+      'settings',
     ];
-    expect(
-      serviceIds.filter((id) => !Platform.services.hasService(id)),
-    ).toEqual([]);
-    expect(Platform.actions.hasAction("document.save")).toBe(true);
+    expect(serviceIds.filter((id) => !Platform.services.has(id))).toEqual([]);
+    expect(Platform.actions.hasAction('document.save')).toBe(true);
   });
 
-  it("constructs a document service and initializes a new document", () => {
-    const docService = Platform.services.get<DocumentService>("document");
+  it('constructs a document service and initializes a new document', () => {
+    const docService = Platform.services.get<DocumentService>('document');
     expect(docService).toBeInstanceOf(DocumentService);
 
     docService.reset();

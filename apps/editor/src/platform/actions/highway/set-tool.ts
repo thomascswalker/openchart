@@ -1,13 +1,14 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { DomainCommandType } from "@openchart/views";
-import type { EditingService } from "../../services/editor/editing";
-import { ViewportService } from "../../services/editor/viewports";
-import { ActiveHighway } from "../conditions";
+import { DomainCommandType } from '@openchart/views';
+
+import { Action } from '../../actions';
+import type { EditingService } from '../../services/editor/editing';
+import { ViewportService } from '../../services/editor/viewports';
+import type { ServicesAccessor } from '../../services/registry';
+import { ActiveHighway } from '../conditions';
 
 /** Selects a Highway tool (select, place, remove) in the active viewport. */
 export class SetHighwayToolAction extends Action<
-  ["select" | "place" | "remove"]
+  ['select' | 'place' | 'remove']
 > {
   constructor() {
     super({
@@ -18,18 +19,18 @@ export class SetHighwayToolAction extends Action<
     });
   }
 
-  run(accessor: ServicesAccessor, tool: "select" | "place" | "remove"): void {
-    const editing = accessor.get<EditingService>("editor.editing");
+  run(accessor: ServicesAccessor, tool: 'select' | 'place' | 'remove'): void {
+    const editing = accessor.get<EditingService>('editor.editing');
     const session = editing.getActiveSession();
     const viewport = accessor
-      .get<ViewportService>("editor.viewports")
+      .get<ViewportService>('editor.viewports')
       .getActiveViewport();
     if (session && viewport) {
       const update: Record<string, unknown> = { tool };
       if (
         session
           .getTools()
-          .some((descriptor) => descriptor.stateKey === "phrase")
+          .some((descriptor) => descriptor.stateKey === 'phrase')
       ) {
         update.phrase = null;
       }

@@ -1,9 +1,10 @@
-import { DomainCommandType, formatNoteId } from "@openchart/views";
-import { describe, expect, it } from "vitest";
-import { createHighwayTestSetup } from "./testUtils";
+import { DomainCommandType, formatNoteId } from '@openchart/views';
+import { describe, expect, it } from 'vitest';
 
-describe("Highway session selection", () => {
-  it("keeps entity selection stable across undo and redo", () => {
+import { createHighwayTestSetup } from './testUtils';
+
+describe('Highway session selection', () => {
+  it('keeps entity selection stable across undo and redo', () => {
     const setup = createHighwayTestSetup();
     const note = setup.midiTrack.insertNote({
       pitch: setup.chart.getOffset(),

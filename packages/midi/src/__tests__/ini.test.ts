@@ -1,5 +1,7 @@
-import { expect, test } from "vitest";
-import { Midi } from "../../src/midi.js";
+import { expect, test } from 'vitest';
+
+import { Midi } from '../../src/midi.js';
+import { MidiTrack } from '../../src/track.js';
 import {
   ChannelMessage,
   MetaType,
@@ -7,13 +9,12 @@ import {
   MidiMetaEvent,
   MidiSysExEvent,
   TextMidiEvent,
-} from "../../src/types.js";
-import { MidiTrack } from "../../src/track.js";
+} from '../../src/types.js';
 
 function createMidi(): Midi {
   const midi = new Midi();
-  const controlTrack = new MidiTrack("Control Track");
-  const notesTrack = new MidiTrack("Notes");
+  const controlTrack = new MidiTrack('Control Track');
+  const notesTrack = new MidiTrack('Notes');
 
   // tick/order are recomputed from deltaTime by the events setter.
   controlTrack.events = [
@@ -106,7 +107,7 @@ e[]=120 133 60 0
 e[]=0 199 12
 `;
 
-test("fromIni reconstructs typed events from compact plaintext", () => {
+test('fromIni reconstructs typed events from compact plaintext', () => {
   const midi = Midi.fromIni(expectedIni);
 
   expect(midi.header).toMatchObject({
@@ -116,14 +117,14 @@ test("fromIni reconstructs typed events from compact plaintext", () => {
     isSMPTE: false,
   });
   expect(midi.tracks.map((track) => track.name)).toEqual([
-    "Control Track",
-    "Notes",
+    'Control Track',
+    'Notes',
   ]);
   expect(midi.tracks[0].events).toEqual(createMidi().tracks[0].events);
   expect(midi.tracks[1].events).toEqual(createMidi().tracks[1].events);
 });
 
-test("INI conversion is canonical and preserves MIDI bytes", () => {
+test('INI conversion is canonical and preserves MIDI bytes', () => {
   const midi = createMidi();
   const restored = Midi.fromIni(midi.toIni());
 

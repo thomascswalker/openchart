@@ -1,9 +1,10 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Timeline } from "../Timeline";
-import { MockPlaybackService } from "../../../../hooks/usePlayback.mock";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { MockPlaybackService } from '../../../../hooks/usePlayback.mock';
+import { Timeline } from '../Timeline';
 
 const meta = {
-  title: "Editor/Timeline",
+  title: 'Editor/Timeline',
   component: Timeline,
 } satisfies Meta<typeof Timeline>;
 

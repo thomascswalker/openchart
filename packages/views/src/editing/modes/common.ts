@@ -1,9 +1,9 @@
-import type { TrackDescriptor, TrackRules } from "../../ruleset/compile";
-import type { EntityId } from "../entity";
-import type { EditCommand, GeneralCommand } from "../commands";
-import type { ModeContext } from "../modes/mode";
-import type { NoteSnapshot } from "../reader";
-import type { Rejection } from "../result";
+import type { TrackDescriptor, TrackRules } from '../../ruleset/compile';
+import type { EditCommand, GeneralCommand } from '../commands';
+import type { EntityId } from '../entity';
+import type { ModeContext } from '../modes/mode';
+import type { NoteSnapshot } from '../reader';
+import type { Rejection } from '../result';
 
 export function rejection(
   command: EditCommand,
@@ -61,7 +61,7 @@ export function ownsNotes(
         notes: [],
         rejection: rejection(
           command,
-          "missing-note",
+          'missing-note',
           `Note '${id}' does not exist`,
         ),
       };
@@ -74,7 +74,7 @@ export function ownsNotes(
         notes: [],
         rejection: rejection(
           command,
-          "wrong-track",
+          'wrong-track',
           `Note '${id}' does not belong to the session target`,
         ),
       };

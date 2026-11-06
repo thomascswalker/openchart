@@ -1,10 +1,11 @@
-import { Midi } from "@openchart/midi";
-import { describe, expect, it } from "vitest";
-import { mockLoggerService } from "../../platform/services/__mock__/logger.mock";
-import { DocumentService } from "../../platform/services/document/document.js";
-import { History } from "../History.js";
-import { createTestRulesetService } from "../../platform/services/ruleset/__tests__/testUtils.js";
-import { mockWorkspaceService } from "../../platform/services/workspace/__tests__/utils.js";
+import { Midi } from '@openchart/midi';
+import { describe, expect, it } from 'vitest';
+
+import { mockLoggerService } from '../../platform/services/__mock__/logger.mock';
+import { DocumentService } from '../../platform/services/document/document.js';
+import { createTestRulesetService } from '../../platform/services/ruleset/__tests__/testUtils.js';
+import { mockWorkspaceService } from '../../platform/services/workspace/__tests__/utils.js';
+import { History } from '../History.js';
 
 function createMidi(): Midi {
   const midi = new Midi();
@@ -12,8 +13,8 @@ function createMidi(): Midi {
   return midi;
 }
 
-describe("history transaction rollback", () => {
-  it("restores the pre-transaction document without adding history", () => {
+describe('history transaction rollback', () => {
+  it('restores the pre-transaction document without adding history', () => {
     const midi = createMidi();
     const history = new History();
     history.reset(midi);
@@ -36,7 +37,7 @@ describe("history transaction rollback", () => {
     expect(history.canUndo).toBe(false);
   });
 
-  it("returns null when no transaction is open", () => {
+  it('returns null when no transaction is open', () => {
     const history = new History();
     history.reset(createMidi());
     expect(history.rollbackTransaction()).toBeNull();
@@ -49,6 +50,7 @@ describe("history transaction rollback", () => {
       createTestRulesetService(),
       mockWorkspaceService(),
     );
+    document.init();
     let published = 0;
     document.subscribe(() => published++);
     const before = document.data!;

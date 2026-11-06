@@ -1,8 +1,7 @@
 /**
  * Utility functions and extensions for Zod schemas.
  */
-
-import * as zod from "zod/v4";
+import * as zod from 'zod/v4';
 
 export const isObject = (o: zod.ZodType): o is zod.ZodObject => {
   return o instanceof zod.ZodObject;

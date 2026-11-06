@@ -1,20 +1,20 @@
-import type { Constraint, Severity } from "./config";
-import type { Difficulty } from "./difficulty";
-import { classifyPitch, type PitchRole } from "./classify";
-import type { TrackRules } from "./compile";
-import { EnforcerNote } from "./enforce";
-import type { ThresholdContext } from "./thresholds";
+import { type PitchRole, classifyPitch } from './classify';
+import type { TrackRules } from './compile';
+import type { Constraint, Severity } from './config';
+import type { Difficulty } from './difficulty';
+import { EnforcerNote } from './enforce';
+import type { ThresholdContext } from './thresholds';
 
 export interface RuleViolation {
   /** Constraint id, `policy.*` for pitch policies or `implicit.*`. */
   ruleId: string;
-  severity: Exclude<Severity, "ignore">;
+  severity: Exclude<Severity, 'ignore'>;
   message: string;
   tick: number;
   entityIds: string[];
 }
 
-export type ConstraintOf<R extends Constraint["rule"]> = Extract<
+export type ConstraintOf<R extends Constraint['rule']> = Extract<
   Constraint,
   { rule: R }
 >;
@@ -89,7 +89,7 @@ export function violation(
   tick: number,
   entityIds: string[],
 ): RuleViolation | null {
-  if (severity === "ignore") return null;
+  if (severity === 'ignore') return null;
   return { ruleId, severity, message, tick, entityIds };
 }
 

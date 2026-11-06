@@ -3,28 +3,29 @@ import {
   type MidiNote,
   type MidiTrack,
   type TextMidiEvent,
-} from "@openchart/midi";
-import type { MidiNotePhrase } from "../editing/phrase";
-import type { PhraseEffect } from "../ruleset/config";
-import type { TrackRules } from "../ruleset/compile";
-import { expandPitchSet } from "../ruleset/semantics";
-import { phraseLabel } from "../ruleset/labels";
-import type { SongView } from "./song";
-import { TrackView } from "./track";
-import { EntityType } from "../editing/entity";
+} from '@openchart/midi';
+
+import { EntityType } from '../editing/entity';
+import type { MidiNotePhrase } from '../editing/phrase';
+import type { TrackRules } from '../ruleset/compile';
+import type { PhraseEffect } from '../ruleset/config';
+import { phraseLabel } from '../ruleset/labels';
+import { expandPitchSet } from '../ruleset/semantics';
+import type { SongView } from './song';
+import { TrackView } from './track';
 
 /** Note kinds that live on the VOCALS track. */
 export enum VocalNoteKind {
-  Pitched = "pitched",
-  Pitchless = "pitchless",
-  Percussion = "percussion",
+  Pitched = 'pitched',
+  Pitchless = 'pitchless',
+  Percussion = 'percussion',
 }
 
 /** Phrase kinds that live on the VOCALS track. */
 export enum VocalPhraseKind {
-  Vocal = "vocal",
-  PowerWindow = "power-window",
-  StagePower = "stagepower",
+  Vocal = 'vocal',
+  PowerWindow = 'power-window',
+  StagePower = 'stagepower',
 }
 
 export interface VocalLaneSpec {
@@ -102,10 +103,10 @@ export interface VocalMove {
 }
 
 export type VocalIssue =
-  | { type: "missing-lyric"; tick: number; note: MidiNote }
-  | { type: "orphan-lyric"; tick: number; lyric: TextMidiEvent }
+  | { type: 'missing-lyric'; tick: number; note: MidiNote }
+  | { type: 'orphan-lyric'; tick: number; lyric: TextMidiEvent }
   | {
-      type: "mismatched-tick";
+      type: 'mismatched-tick';
       tick: number;
       lyric: TextMidiEvent;
       note: MidiNote;
@@ -128,9 +129,9 @@ interface LyricPairing {
 }
 
 const PHRASE_KIND_EFFECT: Record<VocalPhraseKind, PhraseEffect> = {
-  [VocalPhraseKind.Vocal]: "lyricPhrase",
-  [VocalPhraseKind.PowerWindow]: "powerWindow",
-  [VocalPhraseKind.StagePower]: "starPower",
+  [VocalPhraseKind.Vocal]: 'lyricPhrase',
+  [VocalPhraseKind.PowerWindow]: 'powerWindow',
+  [VocalPhraseKind.StagePower]: 'starPower',
 };
 
 /**
@@ -169,9 +170,9 @@ export class VocalTrackView extends TrackView {
         pitched.length > 0
           ? { low: Math.min(...pitched), high: Math.max(...pitched) }
           : { low: -1, high: -2 },
-      vocalPhrase: phrasePitch("lyricPhrase"),
-      powerWindow: phrasePitch("powerWindow"),
-      power: phrasePitch("starPower"),
+      vocalPhrase: phrasePitch('lyricPhrase'),
+      powerWindow: phrasePitch('powerWindow'),
+      power: phrasePitch('starPower'),
       percussion: percussion[0] ?? -1,
       pitchlessHigh,
       pitchlessLow: pitchless.length > 0 ? Math.min(...pitchless) : -1,
@@ -194,20 +195,20 @@ export class VocalTrackView extends TrackView {
       phrase: kind,
     });
     const specs: VocalLaneSpec[] = [
-      phrase("vocal-phrase", VocalPhraseKind.Vocal, layout.vocalPhrase),
-      phrase("power-window", VocalPhraseKind.PowerWindow, layout.powerWindow),
-      phrase("stagepower", VocalPhraseKind.StagePower, layout.power),
+      phrase('vocal-phrase', VocalPhraseKind.Vocal, layout.vocalPhrase),
+      phrase('power-window', VocalPhraseKind.PowerWindow, layout.powerWindow),
+      phrase('stagepower', VocalPhraseKind.StagePower, layout.power),
       {
-        id: "percussion",
-        label: "Perc",
+        id: 'percussion',
+        label: 'Perc',
         pitches: [layout.percussion],
         createPitch: layout.percussion,
         kind: VocalNoteKind.Percussion,
         phrase: null,
       },
       {
-        id: "pitchless",
-        label: "Spoken",
+        id: 'pitchless',
+        label: 'Spoken',
         pitches: [layout.pitchlessHigh, layout.pitchlessLow],
         createPitch: layout.pitchlessPlacement,
         kind: VocalNoteKind.Pitchless,
@@ -350,14 +351,14 @@ export class VocalTrackView extends TrackView {
       if (near) {
         matchedMissing.add(near.note);
         issues.push({
-          type: "mismatched-tick",
+          type: 'mismatched-tick',
           tick: orphan.tick,
           lyric: orphan,
           note: near.note,
         });
       } else {
         issues.push({
-          type: "orphan-lyric",
+          type: 'orphan-lyric',
           tick: orphan.tick,
           lyric: orphan,
         });
@@ -366,7 +367,7 @@ export class VocalTrackView extends TrackView {
     for (const item of missing) {
       if (matchedMissing.has(item.note)) continue;
       issues.push({
-        type: "missing-lyric",
+        type: 'missing-lyric',
         tick: item.note.start,
         note: item.note,
       });
@@ -399,11 +400,11 @@ export class VocalTrackView extends TrackView {
     const percussionTicks = new Set<number>();
     for (const note of track.getNotes()) {
       const classification = VocalTrackView.classifyPitch(layout, note.pitch);
-      if (classification.type === "unknown") {
+      if (classification.type === 'unknown') {
         unknown.push(note);
         continue;
       }
-      if (classification.type !== "note") continue;
+      if (classification.type !== 'note') continue;
       const { kind } = classification;
       if (!VocalTrackView.kindNeedsLyric(kind)) {
         percussionTicks.add(note.start);
@@ -518,7 +519,7 @@ export class VocalTrackView extends TrackView {
       const classification = this.classify(move.note.pitch);
       if (
         move.pitch !== undefined &&
-        classification.type === "note" &&
+        classification.type === 'note' &&
         classification.kind === VocalNoteKind.Pitched
       ) {
         pitch = Math.max(
@@ -642,9 +643,9 @@ export class VocalTrackView extends TrackView {
     if (!track) return 0;
     let fixed = 0;
     for (const issue of this.validate(options)) {
-      if (issue.type === "mismatched-tick") {
+      if (issue.type === 'mismatched-tick') {
         if (track.moveEvent(issue.lyric, issue.note.start)) fixed++;
-      } else if (issue.type === "orphan-lyric" && options?.removeOrphans) {
+      } else if (issue.type === 'orphan-lyric' && options?.removeOrphans) {
         if (track.removeEvent(issue.lyric)) fixed++;
       }
     }

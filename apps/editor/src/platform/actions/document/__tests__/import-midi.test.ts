@@ -1,19 +1,20 @@
-import { Midi } from "@openchart/midi";
-import { describe, expect, it, vi } from "vitest";
-import type { ServicesAccessor } from "../../../services";
-import { DocumentService } from "../../../services/document/document";
-import { makeDefaultMetadata } from "../../../services/document/schema";
-import { ImportMidiAction } from "../import-midi";
-import { createTestRulesetService } from "../../../services/ruleset/__tests__/testUtils";
-import { mockWorkspaceService } from "../../../services/workspace/__tests__/utils";
-import { mockLoggerService } from "../../../services/__mock__/logger.mock";
+import { Midi } from '@openchart/midi';
+import { describe, expect, it, vi } from 'vitest';
 
-describe("ImportMidiAction", () => {
-  it("replaces the current MIDI while preserving project metadata", async () => {
+import { mockLoggerService } from '../../../services/__mock__/logger.mock';
+import { DocumentService } from '../../../services/document/document';
+import { makeDefaultMetadata } from '../../../services/document/schema';
+import type { ServicesAccessor } from '../../../services/registry';
+import { createTestRulesetService } from '../../../services/ruleset/__tests__/testUtils';
+import { mockWorkspaceService } from '../../../services/workspace/__tests__/utils';
+import { ImportMidiAction } from '../import-midi';
+
+describe('ImportMidiAction', () => {
+  it('replaces the current MIDI while preserving project metadata', async () => {
     const importedMidi = new Midi();
     importedMidi.addTrack();
     const metadata = makeDefaultMetadata();
-    metadata.song.name = "Keep this metadata";
+    metadata.song.name = 'Keep this metadata';
 
     const logger = mockLoggerService();
     const document = new DocumentService(
@@ -21,9 +22,10 @@ describe("ImportMidiAction", () => {
       createTestRulesetService(),
       mockWorkspaceService(),
     );
+    document.init();
     document.metadata = metadata;
     const read = vi.fn(async () => ({
-      name: "imported.mid",
+      name: 'imported.mid',
       bytes: importedMidi.toBuffer(),
       handle: null,
     }));
@@ -42,6 +44,6 @@ describe("ImportMidiAction", () => {
     expect(document.getSnapshot().data?.trackCount).toBe(1);
     expect(document.metadata).toEqual(metadata);
     expect(document.isDirty).toBe(true);
-    expect(logger.info).toHaveBeenCalledWith("MIDI imported: imported.mid");
+    expect(logger.info).toHaveBeenCalledWith('MIDI imported: imported.mid');
   });
 });

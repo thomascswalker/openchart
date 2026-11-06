@@ -1,19 +1,20 @@
 import {
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useRef,
   useSyncExternalStore,
-  type ReactNode,
-} from "react";
-import { usePlatform, useService } from "../../../platform";
-import { useSettings } from "../../../hooks/useApplication";
-import { useDocument } from "../../../hooks/useDocument";
-import { useViewport } from "../../../hooks/useViewport";
-import { DocumentService } from "../../../platform/services/document/document";
-import { EditorStateService } from "../../../platform/services/editor/state";
-import type { EditingService } from "../../../platform/services/editor/editing";
-import { createEditingContextSnapshot } from "../../../platform/services/editor/editingContext";
-import { Playback } from "../Playback";
+} from 'react';
+
+import { useSettings } from '../../../hooks/useApplication';
+import { useDocument } from '../../../hooks/useDocument';
+import { useViewport } from '../../../hooks/useViewport';
+import { usePlatform, useService } from '../../../platform';
+import { DocumentService } from '../../../platform/services/document/document';
+import type { EditingService } from '../../../platform/services/editor/editing';
+import { createEditingContextSnapshot } from '../../../platform/services/editor/editingContext';
+import { EditorStateService } from '../../../platform/services/editor/state';
+import { Playback } from '../Playback';
 
 interface RuntimeProps {
   children: ReactNode;
@@ -26,9 +27,9 @@ export function Runtime({ children }: RuntimeProps) {
   const { viewportSessions, maxViewportCount, activeViewportId } =
     useViewport();
 
-  const doc = useService<DocumentService>("document");
-  const editorState = useService<EditorStateService>("editor.state");
-  const editing = useService<EditingService>("editor.editing");
+  const doc = useService<DocumentService>('document');
+  const editorState = useService<EditorStateService>('editor.state');
+  const editing = useService<EditingService>('editor.editing');
 
   const editorStore = useSyncExternalStore(
     editorState.subscribe,
@@ -59,17 +60,17 @@ export function Runtime({ children }: RuntimeProps) {
       previousCapabilityKeys.current,
     );
     context.update({
-      "document.has-tracks": hasTracks,
-      "history.can-undo": canUndo,
-      "history.can-redo": canRedo,
-      "dialog.project-open": editorStore.projectVisible,
-      "dialog.settings-open": editorStore.settingsVisible,
-      "dialog.about-open": editorStore.aboutVisible,
-      "dialog.any-open": isAnyDialogOpen,
-      "viewport.active-view": activeView,
+      'document.has-tracks': hasTracks,
+      'history.can-undo': canUndo,
+      'history.can-redo': canRedo,
+      'dialog.project-open': editorStore.projectVisible,
+      'dialog.settings-open': editorStore.settingsVisible,
+      'dialog.about-open': editorStore.aboutVisible,
+      'dialog.any-open': isAnyDialogOpen,
+      'viewport.active-view': activeView,
       ...editingContext.values,
-      "editor.can-add-viewport": canAddViewport,
-      "editor.can-close-viewport": canCloseViewport,
+      'editor.can-add-viewport': canAddViewport,
+      'editor.can-close-viewport': canCloseViewport,
     });
     previousCapabilityKeys.current = editingContext.commandTypes;
   }, [

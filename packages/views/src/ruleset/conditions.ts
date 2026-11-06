@@ -1,5 +1,5 @@
-import type { Condition } from "./config";
-import type { SettingValue } from "./thresholds";
+import type { Condition } from './config';
+import type { SettingValue } from './thresholds';
 
 export interface ConditionContext {
   /** Player options currently enabled. Empty by default. */
@@ -33,14 +33,14 @@ export function evaluateCondition(
   c: Condition,
   ctx: ConditionContext,
 ): boolean {
-  if ("allOf" in c) return c.allOf.every((s) => evaluateCondition(s, ctx));
-  if ("anyOf" in c) return c.anyOf.some((s) => evaluateCondition(s, ctx));
-  if ("not" in c) return !evaluateCondition(c.not, ctx);
-  if ("playerOption" in c) return ctx.playerOptions.has(c.playerOption);
-  if ("variant" in c) return ctx.variant === c.variant;
-  if ("phraseAbsent" in c)
+  if ('allOf' in c) return c.allOf.every((s) => evaluateCondition(s, ctx));
+  if ('anyOf' in c) return c.anyOf.some((s) => evaluateCondition(s, ctx));
+  if ('not' in c) return !evaluateCondition(c.not, ctx);
+  if ('playerOption' in c) return ctx.playerOptions.has(c.playerOption);
+  if ('variant' in c) return ctx.variant === c.variant;
+  if ('phraseAbsent' in c)
     return !(ctx.phrasesPresent?.has(c.phraseAbsent) ?? false);
-  if ("setting" in c) {
+  if ('setting' in c) {
     const value = ctx.settings(c.setting.source, c.setting.key);
     if (
       c.setting.present !== undefined &&
@@ -53,6 +53,6 @@ export function evaluateCondition(
   }
   // textEvent
   const track =
-    !c.track || c.track === "self" ? (ctx.selfTrack ?? "self") : c.track;
+    !c.track || c.track === 'self' ? (ctx.selfTrack ?? 'self') : c.track;
   return ctx.textEventsAt(track).has(c.textEvent);
 }

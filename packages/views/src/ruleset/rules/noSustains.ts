@@ -1,13 +1,13 @@
-import { resolveThreshold } from "../thresholds";
 import {
-  compact,
-  violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context";
+  compact,
+  violation,
+} from '../context';
+import { resolveThreshold } from '../thresholds';
 
 /** Lane notes longer than the threshold are sustains, which this track forbids. */
-export const checkNoSustains: RuleCheck<ConstraintOf<"noSustains">> = (
+export const checkNoSustains: RuleCheck<ConstraintOf<'noSustains'>> = (
   ctx,
   c,
 ) => {
@@ -15,7 +15,7 @@ export const checkNoSustains: RuleCheck<ConstraintOf<"noSustains">> = (
   if (!t) return [];
   return compact(
     ctx.notes
-      .filter((n) => ctx.touched.has(n.id) && n.role.kind === "laneNote")
+      .filter((n) => ctx.touched.has(n.id) && n.role.kind === 'laneNote')
       .filter((n) =>
         t.inclusive ? n.duration > t.ticks : n.duration >= t.ticks,
       )
@@ -23,7 +23,7 @@ export const checkNoSustains: RuleCheck<ConstraintOf<"noSustains">> = (
         violation(
           c.id,
           c.severity,
-          "Sustains are not allowed on this track",
+          'Sustains are not allowed on this track',
           n.tick,
           [n.id],
         ),

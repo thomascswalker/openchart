@@ -1,22 +1,22 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { DocumentService } from "../../services/document/document";
-import { LoggerService } from "../../services/logger";
-import { MixerService } from "../../services/mixer/mixer";
-import { ApplyProjectMetadataAction } from "./apply-project-metadata";
+import { Action } from '../../actions';
+import { DocumentService } from '../../services/document/document';
+import { LoggerService } from '../../services/logger';
+import { MixerService } from '../../services/mixer/mixer';
+import type { ServicesAccessor } from '../../services/registry';
+import { ApplyProjectMetadataAction } from './apply-project-metadata';
 
 export class OpenDocumentAction extends Action {
   async run(accessor: ServicesAccessor): Promise<void> {
-    const logger = accessor.get<LoggerService>("logger");
-    const document = accessor.get<DocumentService>("document");
+    const logger = accessor.get<LoggerService>('logger');
+    const document = accessor.get<DocumentService>('document');
 
     if (
       document.isDirty &&
       !window.confirm(
-        "This document has unsaved changes. Discard them and continue?",
+        'This document has unsaved changes. Discard them and continue?',
       )
     ) {
-      logger.error("Exiting file open");
+      logger.error('Exiting file open');
       return;
     }
 
@@ -26,7 +26,7 @@ export class OpenDocumentAction extends Action {
         return;
       }
 
-      accessor.get<MixerService>("mixer").reset();
+      accessor.get<MixerService>('mixer').reset();
       const issues = await new ApplyProjectMetadataAction().run(
         accessor,
         document.metadata,
@@ -34,14 +34,14 @@ export class OpenDocumentAction extends Action {
       );
       if (issues.length > 0) {
         throw new Error(
-          issues.map((issue) => `${issue.path}: ${issue.message}`).join("\n"),
+          issues.map((issue) => `${issue.path}: ${issue.message}`).join('\n'),
         );
       }
       document.isDirty = false;
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "AbortError") {
-          logger.debug("Closed open file dialog");
+        if (error.name === 'AbortError') {
+          logger.debug('Closed open file dialog');
           return;
         }
         logger.error(`An error occurred: ${error.message}`);

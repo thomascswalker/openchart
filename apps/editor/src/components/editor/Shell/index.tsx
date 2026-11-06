@@ -1,24 +1,25 @@
-import { useLayoutEffect, useSyncExternalStore } from "react";
-import { runAction } from "../../../platform/actions/execute";
-import { useEditor } from "../../../hooks/useEditorState";
-import { globalBindings } from "../../../input";
-import { Hotkeys } from "../../../input/Hotkeys";
-import { usePlatform } from "../../../platform";
-import { EditorClipboardService } from "../../../platform/services/editor/clipboard";
-import { PlaybackService } from "../../../platform/services/playback/playback";
-import { UpdaterService } from "../../../platform/services/updater/updater";
-import { AboutDialog } from "../../dialogs/About/AboutDialog";
-import { ProjectDialog } from "../../dialogs/Project/ProjectDialog";
-import { SettingsDialog } from "../../dialogs/Settings/SettingsDialog";
-import { UpdateDialog } from "../../dialogs/Update/UpdateDialog";
-import { Section, Text } from "../../shared";
-import { Menubar, type MenuCommandId } from "../Menubar";
-import { Workspace } from "../Workspace";
+import { useLayoutEffect, useSyncExternalStore } from 'react';
+
+import { useEditor } from '../../../hooks/useEditorState';
+import { globalBindings } from '../../../input';
+import { Hotkeys } from '../../../input/Hotkeys';
+import { usePlatform } from '../../../platform';
+import { runAction } from '../../../platform/actions/execute';
+import { EditorClipboardService } from '../../../platform/services/editor/clipboard';
+import { PlaybackService } from '../../../platform/services/playback/playback';
+import { UpdaterService } from '../../../platform/services/updater/updater';
+import { AboutDialog } from '../../dialogs/About/AboutDialog';
+import { ProjectDialog } from '../../dialogs/Project/ProjectDialog';
+import { SettingsDialog } from '../../dialogs/Settings/SettingsDialog';
+import { UpdateDialog } from '../../dialogs/Update/UpdateDialog';
+import { Section, Text } from '../../shared';
+import { type MenuCommandId, Menubar } from '../Menubar';
+import { Workspace } from '../Workspace';
 
 const Shell = () => {
   const { error, projectVisible, settingsVisible, aboutVisible } = useEditor();
   const { services, actions } = usePlatform();
-  const playbackService = services.get<PlaybackService>("playback");
+  const playbackService = services.get<PlaybackService>('playback');
   const isMetronomeEnabled = useSyncExternalStore(
     playbackService.subscribe,
     () => playbackService.getSnapshot().isMetronomeEnabled,
@@ -34,13 +35,13 @@ const Shell = () => {
     () => playbackService.getSnapshot().isVocalPitchFeedbackEnabled,
     () => playbackService.getSnapshot().isVocalPitchFeedbackEnabled,
   );
-  const updater = services.get<UpdaterService>("updater");
+  const updater = services.get<UpdaterService>('updater');
   const updaterStatus = useSyncExternalStore(
     updater.subscribe,
     () => updater.getSnapshot().status,
     () => updater.getSnapshot().status,
   );
-  const clipboard = services.get<EditorClipboardService>("editor.clipboard");
+  const clipboard = services.get<EditorClipboardService>('editor.clipboard');
   useLayoutEffect(() => {
     clipboard.sync();
   }, [clipboard]);
@@ -56,22 +57,22 @@ const Shell = () => {
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: "100vh",
-        overflow: "hidden",
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100vh',
+        overflow: 'hidden',
       }}
     >
       <Hotkeys bindings={globalBindings} />
       <Menubar
         canExecute={canRunMenuCommand}
         isChecked={(command) =>
-          command === "playback.toggle-metronome"
+          command === 'playback.toggle-metronome'
             ? isMetronomeEnabled
-            : command === "playback.toggle-clap"
+            : command === 'playback.toggle-clap'
               ? isClapEnabled
-              : command === "playback.toggle-vocal-pitch-feedback"
+              : command === 'playback.toggle-vocal-pitch-feedback'
                 ? isVocalPitchFeedbackEnabled
                 : false
         }
@@ -80,15 +81,15 @@ const Shell = () => {
       <Workspace />
       <Section
         minHeight={12}
-        backgroundColor={error ? "var(--red-80)" : "transparent"}
+        backgroundColor={error ? 'var(--red-80)' : 'transparent'}
         padding={2}
       >
-        <Text fontSize={12}>{error || "..."}</Text>
+        <Text fontSize={12}>{error || '...'}</Text>
       </Section>
       {projectVisible ? <ProjectDialog /> : null}
       {settingsVisible ? <SettingsDialog /> : null}
       {aboutVisible ? <AboutDialog /> : null}
-      {updaterStatus !== "idle" ? <UpdateDialog /> : null}
+      {updaterStatus !== 'idle' ? <UpdateDialog /> : null}
     </div>
   );
 };

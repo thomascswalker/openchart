@@ -1,24 +1,26 @@
-import type { CSSProperties, HTMLAttributes } from "react";
-import classNames from "classnames";
-import styles from "./section.module.css";
-import {
-  compose,
-  space,
-  color,
-  layout,
-  border,
-  flexbox,
-  system,
-  type styleFn,
-  type FlexboxProps,
-  type SpaceProps,
-  type ColorProps,
-  type LayoutProps,
-  type BorderProps,
-  type ResponsiveValue,
-} from "styled-system";
+import type { CSSProperties, HTMLAttributes } from 'react';
 
-const gap = system({ gap: { property: "gap", scale: "space" } });
+import classNames from 'classnames';
+import {
+  type BorderProps,
+  type ColorProps,
+  type FlexboxProps,
+  type LayoutProps,
+  type ResponsiveValue,
+  type SpaceProps,
+  border,
+  color,
+  compose,
+  flexbox,
+  layout,
+  space,
+  type styleFn,
+  system,
+} from 'styled-system';
+
+import styles from './section.module.css';
+
+const gap = system({ gap: { property: 'gap', scale: 'space' } });
 const getSystemStyles: styleFn = compose(
   space,
   color,
@@ -28,7 +30,7 @@ const getSystemStyles: styleFn = compose(
   gap,
 );
 
-type GapProps = { gap?: ResponsiveValue<CSSProperties["gap"]> };
+type GapProps = { gap?: ResponsiveValue<CSSProperties['gap']> };
 type SystemProps = SpaceProps &
   ColorProps &
   LayoutProps &
@@ -38,11 +40,11 @@ type SystemProps = SpaceProps &
 
 interface SectionProps
   extends
-    Omit<HTMLAttributes<HTMLElement>, keyof SystemProps | "style">,
+    Omit<HTMLAttributes<HTMLElement>, keyof SystemProps | 'style'>,
     SystemProps {}
 
-const defaultSectionProps: Pick<SectionProps, "flexDirection"> = {
-  flexDirection: "column",
+const defaultSectionProps: Pick<SectionProps, 'flexDirection'> = {
+  flexDirection: 'column',
 };
 
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);
@@ -51,10 +53,10 @@ const Section = ({ className, children, ...props }: SectionProps) => {
   const style = getSystemStyles({ ...defaultSectionProps, ...props });
   const htmlProps = Object.fromEntries(
     Object.entries(props).filter(
-      ([propName]) => propName !== "style" && !systemPropNames.has(propName),
+      ([propName]) => propName !== 'style' && !systemPropNames.has(propName),
     ),
   );
-  const sectionClassName: string = classNames(styles["ui-section"], className);
+  const sectionClassName: string = classNames(styles['ui-section'], className);
 
   return (
     <section {...htmlProps} className={sectionClassName} style={style}>

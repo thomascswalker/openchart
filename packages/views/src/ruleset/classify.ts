@@ -1,10 +1,10 @@
-import type { MarkerEffect, PadType, PhraseDef } from "./config";
-import type { Difficulty } from "./difficulty";
-import { difficultyName, expandPitchSet, type TrackRules } from "./compile";
+import { type TrackRules, difficultyName, expandPitchSet } from './compile';
+import type { MarkerEffect, PadType, PhraseDef } from './config';
+import type { Difficulty } from './difficulty';
 
 export type PitchRole =
   | {
-      kind: "laneNote";
+      kind: 'laneNote';
       laneId: string;
       padType: PadType | undefined;
       difficulty: Difficulty;
@@ -13,25 +13,25 @@ export type PitchRole =
       bar: boolean;
       available: boolean;
     }
-  | { kind: "marker"; effect: MarkerEffect; difficulty: Difficulty }
+  | { kind: 'marker'; effect: MarkerEffect; difficulty: Difficulty }
   | {
-      kind: "phrase";
+      kind: 'phrase';
       id: string;
-      effect: PhraseDef["effect"];
+      effect: PhraseDef['effect'];
       difficulty: Difficulty | null;
     }
-  | { kind: "eventNote"; id: string; category: string; valueIndex: number }
+  | { kind: 'eventNote'; id: string; category: string; valueIndex: number }
   | {
-      kind: "noteClass";
+      kind: 'noteClass';
       id: string;
-      class: "pitched" | "pitchless" | "percussion";
+      class: 'pitched' | 'pitchless' | 'percussion';
     }
-  | { kind: "reserved" }
-  | { kind: "ignored" }
-  | { kind: "unknown" };
+  | { kind: 'reserved' }
+  | { kind: 'ignored' }
+  | { kind: 'unknown' };
 
 function phraseAppliesTo(p: PhraseDef, d: Difficulty | null): boolean {
-  if (!p.appliesTo || p.appliesTo === "all" || d === null) return true;
+  if (!p.appliesTo || p.appliesTo === 'all' || d === null) return true;
   return p.appliesTo.includes(difficultyName(d));
 }
 
@@ -58,7 +58,7 @@ export function classifyPitch(
     if (note) {
       const lane = rules.lanes.find((l) => l.id === note.laneId);
       return {
-        kind: "laneNote",
+        kind: 'laneNote',
         laneId: note.laneId,
         padType: note.padType ?? lane?.defaultPadType,
         difficulty: chart.difficulty,
@@ -70,7 +70,7 @@ export function classifyPitch(
     const marker = chart.markers.get(pitch);
     if (marker)
       return {
-        kind: "marker",
+        kind: 'marker',
         effect: marker.effect,
         difficulty: chart.difficulty,
       };
@@ -78,7 +78,7 @@ export function classifyPitch(
 
   for (const p of rules.phrases) {
     if (p.pitches.includes(pitch) && phraseAppliesTo(p, difficulty)) {
-      return { kind: "phrase", id: p.id, effect: p.effect, difficulty };
+      return { kind: 'phrase', id: p.id, effect: p.effect, difficulty };
     }
   }
 
@@ -87,7 +87,7 @@ export function classifyPitch(
     const idx = pitches.indexOf(pitch);
     if (idx >= 0)
       return {
-        kind: "eventNote",
+        kind: 'eventNote',
         id: e.id,
         category: e.category,
         valueIndex: idx,
@@ -96,11 +96,11 @@ export function classifyPitch(
 
   for (const nc of rules.noteClasses) {
     if (expandPitchSet(nc.pitches).includes(pitch)) {
-      return { kind: "noteClass", id: nc.id, class: nc.class };
+      return { kind: 'noteClass', id: nc.id, class: nc.class };
     }
   }
 
-  if (rules.ignoredPitches.has(pitch)) return { kind: "ignored" };
+  if (rules.ignoredPitches.has(pitch)) return { kind: 'ignored' };
 
   const reserved = (r: { from: number; to: number }) =>
     pitch >= r.from && pitch <= r.to;
@@ -108,7 +108,7 @@ export function classifyPitch(
     rules.reserved.some(reserved) ||
     charts.some((c) => c.reserved.some(reserved))
   ) {
-    return { kind: "reserved" };
+    return { kind: 'reserved' };
   }
-  return { kind: "unknown" };
+  return { kind: 'unknown' };
 }

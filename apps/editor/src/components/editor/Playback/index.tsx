@@ -1,16 +1,18 @@
 import {
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useSyncExternalStore,
-  type ReactNode,
-} from "react";
-import { Difficulty } from "@openchart/views";
-import { useSettings } from "../../../hooks/useApplication";
-import { useDocument } from "../../../hooks/useDocument";
-import { useRuleset } from "../../../hooks/useRuleset";
-import { useViewport } from "../../../hooks/useViewport";
-import Platform from "../../../platform";
-import { PlaybackService } from "../../../platform/services/playback/playback";
+} from 'react';
+
+import { Difficulty } from '@openchart/views';
+
+import { useSettings } from '../../../hooks/useApplication';
+import { useDocument } from '../../../hooks/useDocument';
+import { useRuleset } from '../../../hooks/useRuleset';
+import { useViewport } from '../../../hooks/useViewport';
+import Platform from '../../../platform';
+import { PlaybackService } from '../../../platform/services/playback/playback';
 
 export function Playback({ children }: { children: ReactNode }) {
   const { data: midiData, documentId } = useDocument();
@@ -32,9 +34,9 @@ export function Playback({ children }: { children: ReactNode }) {
     activeViewport?.instrument ??
     rules.descriptors().find((track) => track.visible && track.editable)
       ?.name ??
-    "";
+    '';
   const selectedDifficulty = activeViewport?.difficulty ?? Difficulty.Expert;
-  const playbackService = Platform.services.get<PlaybackService>("playback");
+  const playbackService = Platform.services.get<PlaybackService>('playback');
   const isPlaying = useSyncExternalStore(
     playbackService.subscribe,
     () => playbackService.getSnapshot().isPlaying,
@@ -42,8 +44,8 @@ export function Playback({ children }: { children: ReactNode }) {
   );
 
   useLayoutEffect(() => {
-    Platform.context.set("playback.is-playing", isPlaying);
-    Platform.context.set("playback.can-seek", !isPlaying);
+    Platform.context.set('playback.is-playing', isPlaying);
+    Platform.context.set('playback.can-seek', !isPlaying);
   }, [isPlaying]);
 
   useEffect(() => {

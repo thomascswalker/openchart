@@ -1,8 +1,9 @@
-import { vi } from "vitest";
-import { mockLoggerService } from "../../__mock__/logger.mock";
-import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
-import { type OpenedProject, DocumentService } from "../document";
-import { mockWorkspaceService } from "../../workspace/__tests__/utils";
+import { vi } from 'vitest';
+
+import { mockLoggerService } from '../../__mock__/logger.mock';
+import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
+import { mockWorkspaceService } from '../../workspace/__tests__/utils';
+import { DocumentService, type OpenedProject } from '../document';
 
 export function makeDocumentService(
   openedProject?: OpenedProject,
@@ -17,6 +18,7 @@ export function makeDocumentService(
     createTestRulesetService(),
     workspace,
   );
+  service.init();
 
   if (openedProject) {
     Object.assign(service, {

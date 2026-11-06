@@ -1,15 +1,16 @@
-import { StatefulService } from "../../services";
-import { Mixer, MixerTrack } from "@openchart/audio";
-import type { LoggerService } from "../logger";
-import type { MixerSnapshot } from "./types";
+import { Mixer, MixerTrack } from '@openchart/audio';
+
+import { ILoggerService } from '../logger';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
+import type { MixerSnapshot } from './types';
 
 export class MixerService extends StatefulService<MixerSnapshot> {
-  static dependencies = ["logger"];
-  readonly #logger: LoggerService;
-
-  constructor(logger: LoggerService) {
+  constructor(@ILoggerService private loggerService: ILoggerService) {
     super();
-    this.#logger = logger;
+  }
+
+  init() {
     this.reset();
   }
 
@@ -29,11 +30,17 @@ export class MixerService extends StatefulService<MixerSnapshot> {
     }
     const mixer = new Mixer();
     mixer.onPlay = (event) =>
-      this.#logger.info(`Mixer playback started: ${JSON.stringify(event)}`);
+      this.loggerService.info(
+        `Mixer playback started: ${JSON.stringify(event)}`,
+      );
     mixer.onPause = (event) =>
-      this.#logger.info(`Mixer playback paused: ${JSON.stringify(event)}`);
+      this.loggerService.info(
+        `Mixer playback paused: ${JSON.stringify(event)}`,
+      );
     mixer.onStop = (event) =>
-      this.#logger.info(`Mixer playback stopped: ${JSON.stringify(event)}`);
+      this.loggerService.info(
+        `Mixer playback stopped: ${JSON.stringify(event)}`,
+      );
     mixer.onChange = this.publish;
     this._snapshot = { mixer };
     this.notify();
@@ -51,10 +58,10 @@ export class MixerService extends StatefulService<MixerSnapshot> {
 
     let directory = root;
     const parts = [
-      ...(audioRootPath ?? "").split(/[\\/]/),
+      ...(audioRootPath ?? '').split(/[\\/]/),
       ...relativePath.split(/[\\/]/),
     ].filter(Boolean);
-    if (parts.some((part) => part === "." || part === "..")) {
+    if (parts.some((part) => part === '.' || part === '..')) {
       throw new Error(`Invalid audio path for ${id}: ${relativePath}`);
     }
     const fileName = parts.pop();
@@ -68,15 +75,15 @@ export class MixerService extends StatefulService<MixerSnapshot> {
     // A File is already a Blob, so wrap it directly instead of copying the
     // bytes through an ArrayBuffer and two Uint8Arrays.
     const file = await handle.getFile();
-    const blob = new Blob([file], { type: "audio/wav" });
+    const blob = new Blob([file], { type: 'audio/wav' });
     const fileURL = URL.createObjectURL(blob);
     this._snapshot.mixer.addTrack(id, fileURL);
-    this.#logger.info(`Track added: ${id}`);
+    this.loggerService.info(`Track added: ${id}`);
   };
 
   public addTrackFromUrl = (id: string, url: string): void => {
     this._snapshot.mixer.addTrack(id, url);
-    this.#logger.info(`Track added: ${id}`);
+    this.loggerService.info(`Track added: ${id}`);
   };
 
   public removeTrack = (id: string): void => {
@@ -84,9 +91,9 @@ export class MixerService extends StatefulService<MixerSnapshot> {
     this._snapshot.mixer.removeTrack(id);
   };
 
-  #revokeTrackUrl(id: string, mixer: MixerSnapshot["mixer"]): void {
+  #revokeTrackUrl(id: string, mixer: MixerSnapshot['mixer']): void {
     const filename = mixer.getTrack(id)?.filename;
-    if (filename?.startsWith("blob:")) {
+    if (filename?.startsWith('blob:')) {
       URL.revokeObjectURL(filename);
     }
   }
@@ -128,3 +135,6 @@ export class MixerService extends StatefulService<MixerSnapshot> {
     this.notify();
   };
 }
+
+export type IMixerService = MixerService;
+export const IMixerService = createDecorator<IMixerService>('mixer');

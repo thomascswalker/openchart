@@ -1,13 +1,13 @@
-import { expandPitchSet } from "../semantics";
 import {
-  compact,
-  violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context";
+  compact,
+  violation,
+} from '../context';
+import { expandPitchSet } from '../semantics';
 
 export const checkForbiddenPitches: RuleCheck<
-  ConstraintOf<"forbiddenPitches">
+  ConstraintOf<'forbiddenPitches'>
 > = (ctx, c) => {
   const forbidden = new Set(expandPitchSet(c.pitches));
   return compact(

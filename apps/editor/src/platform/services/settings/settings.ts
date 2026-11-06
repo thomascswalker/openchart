@@ -1,22 +1,26 @@
-import { StatefulService } from "../../services";
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
+import { IWorkspaceService } from '../workspace';
 import {
-  StorageKey,
-  DefaultApplicationSettings,
   type ApplicationSettingGroup,
   type ApplicationSettingPath,
   type ApplicationSettingValue,
   type ApplicationSettings,
   ApplicationSettingsSchema,
-} from "./schema";
-import { WorkspaceService } from "../workspace";
+  DefaultApplicationSettings,
+  StorageKey,
+} from './schema';
 
 export class SettingsService extends StatefulService<ApplicationSettings> {
-  public static dependencies = ["workspace"];
-  private readonly workspace: WorkspaceService;
-
-  constructor(workspace: WorkspaceService) {
+  constructor(@IWorkspaceService private workspaceService: IWorkspaceService) {
     super();
-    this.workspace = workspace;
+  }
+
+  defaultSnapshot(): ApplicationSettings {
+    return DefaultApplicationSettings;
+  }
+
+  public init(): void {
     this._snapshot = this.read();
   }
 
@@ -25,8 +29,8 @@ export class SettingsService extends StatefulService<ApplicationSettings> {
       StorageKey,
       JSON.stringify(DefaultApplicationSettings),
     );
-    this._snapshot = DefaultApplicationSettings;
-    this.workspace.reset();
+    this._snapshot = this.defaultSnapshot();
+    this.workspaceService.reset();
     this.notify();
   };
 
@@ -39,7 +43,7 @@ export class SettingsService extends StatefulService<ApplicationSettings> {
    * the default settings are returned.
    */
   private readonly read = (): ApplicationSettings => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return DefaultApplicationSettings;
     }
 
@@ -99,7 +103,7 @@ export class SettingsService extends StatefulService<ApplicationSettings> {
     path: Path,
     value: ApplicationSettingValue<Path>,
   ): boolean => {
-    const [group, key] = path.split(".") as [ApplicationSettingGroup, string];
+    const [group, key] = path.split('.') as [ApplicationSettingGroup, string];
     const settings = {
       ...this._snapshot,
       [group]: { ...this._snapshot[group], [key]: value },
@@ -107,3 +111,6 @@ export class SettingsService extends StatefulService<ApplicationSettings> {
     return this.applySettings(settings);
   };
 }
+
+export type ISettingsService = SettingsService;
+export const ISettingsService = createDecorator<ISettingsService>('settings');

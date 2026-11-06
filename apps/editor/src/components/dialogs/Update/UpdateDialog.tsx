@@ -1,12 +1,13 @@
-import { useSyncExternalStore, type ReactNode } from "react";
-import { useDocument } from "../../../hooks/useDocument";
-import { useService } from "../../../platform";
+import { type ReactNode, useSyncExternalStore } from 'react';
+
+import { useDocument } from '../../../hooks/useDocument';
+import { useService } from '../../../platform';
 import type {
   UpdaterService,
   UpdaterSnapshot,
-} from "../../../platform/services/updater/updater";
-import { Button, Modal, Section, Text } from "../../shared";
-import styles from "./UpdateDialog.module.css";
+} from '../../../platform/services/updater/updater';
+import { Button, Modal, Section, Text } from '../../shared';
+import styles from './UpdateDialog.module.css';
 
 function formatMegabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -25,7 +26,7 @@ function progressLabel(snapshot: UpdaterSnapshot): string {
 }
 
 const UpdateDialog = () => {
-  const updater = useService<UpdaterService>("updater");
+  const updater = useService<UpdaterService>('updater');
   const snapshot = useSyncExternalStore(
     updater.subscribe,
     updater.getSnapshot,
@@ -44,10 +45,10 @@ const UpdateDialog = () => {
   let actions: ReactNode = null;
 
   switch (snapshot.status) {
-    case "checking":
+    case 'checking':
       body = <Text role="status">Checking for updates...</Text>;
       break;
-    case "up-to-date":
+    case 'up-to-date':
       body = (
         <Text role="status">
           {snapshot.currentVersion
@@ -57,7 +58,7 @@ const UpdateDialog = () => {
       );
       actions = <Button onClick={dismiss}>OK</Button>;
       break;
-    case "available":
+    case 'available':
       body = (
         <>
           <Text>
@@ -83,7 +84,7 @@ const UpdateDialog = () => {
         </>
       );
       break;
-    case "downloading":
+    case 'downloading':
       body = (
         <>
           <Text role="status">{progressLabel(snapshot)}</Text>
@@ -97,20 +98,20 @@ const UpdateDialog = () => {
         </>
       );
       break;
-    case "installing":
+    case 'installing':
       body = (
         <Text role="status">Installing update... OpenChart will restart.</Text>
       );
       break;
-    case "error":
+    case 'error':
       body = (
         <Text role="alert">
-          {`Couldn't ${snapshot.errorPhase === "install" ? "install the update" : "check for updates"}: ${snapshot.error}`}
+          {`Couldn't ${snapshot.errorPhase === 'install' ? 'install the update' : 'check for updates'}: ${snapshot.error}`}
         </Text>
       );
       actions = <Button onClick={dismiss}>Close</Button>;
       break;
-    case "idle":
+    case 'idle':
       return null;
   }
 

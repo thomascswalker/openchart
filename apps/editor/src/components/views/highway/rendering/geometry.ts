@@ -1,9 +1,10 @@
-import * as THREE from "three";
+import * as THREE from 'three';
+
 import {
   HIGHWAY_GEOMETRY_CATALOG,
-  type IVector3,
   type ITransform,
-} from "./geometryCatalog";
+  type IVector3,
+} from './geometryCatalog';
 
 export interface WorldPosition {
   x: number;

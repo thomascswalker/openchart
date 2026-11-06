@@ -6,7 +6,7 @@
   overflow: hidden;
 }
 
-.commandPanel:has([data-collapsed="true"]) {
+.commandPanel:has([data-collapsed='true']) {
   width: max-content;
   flex: 0 0 auto;
 }

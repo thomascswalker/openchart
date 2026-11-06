@@ -4,24 +4,25 @@ import {
   type MidiTrack,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/midi";
-import { Box2, Vector2 } from "three";
-import { describe, expect, it, vi } from "vitest";
-import { formatNoteId, SelectionModel } from "@openchart/views";
+} from '@openchart/midi';
+import { SelectionModel, formatNoteId } from '@openchart/views';
+import { Box2, Vector2 } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+
 import {
   parseTempoString,
   parseTimeSignatureString,
-} from "../../../../audio/musicalTime";
-import { CoordinateSystem } from "../coordinates";
-import { HeaderHeight } from "../constants";
-import { DefaultHeaderLanes, HeaderController } from "../controllers/header";
-import { PianoRollInputController } from "../input/input";
-import { NoteGeometryCache } from "../rendering/geometry";
-import { PointerContext } from "../input/pointer";
-import { iterateGridBeats } from "../rendering/rendering";
-import { SelectionContext } from "../selection";
-import type { PianoRollNote } from "../types";
-import { applyStyle } from "../../../../util/css";
+} from '../../../../audio/musicalTime';
+import { applyStyle } from '../../../../util/css';
+import { HeaderHeight } from '../constants';
+import { DefaultHeaderLanes, HeaderController } from '../controllers/header';
+import { CoordinateSystem } from '../coordinates';
+import { PianoRollInputController } from '../input/input';
+import { PointerContext } from '../input/pointer';
+import { NoteGeometryCache } from '../rendering/geometry';
+import { iterateGridBeats } from '../rendering/rendering';
+import { SelectionContext } from '../selection';
+import type { PianoRollNote } from '../types';
 
 function makeCoordinates(
   tempoEvents: TempoEvent[] = [
@@ -44,7 +45,7 @@ function makeCoordinates(
         ({
           midi: null,
           selectedTrackIndex: null,
-          selectedInstrument: "",
+          selectedInstrument: '',
           selectedDifficulty: 0,
           snap,
         }) as never,
@@ -68,8 +69,8 @@ function makeNote(
   };
 }
 
-describe("piano-roll coordinates", () => {
-  it("round-trips ticks and pixels across tempo segments", () => {
+describe('piano-roll coordinates', () => {
+  it('round-trips ticks and pixels across tempo segments', () => {
     const coordinates = makeCoordinates([
       {
         deltaTime: 0,
@@ -95,7 +96,7 @@ describe("piano-roll coordinates", () => {
     }
   });
 
-  it("floors regular snapping and rounds nearest snapping independently", () => {
+  it('floors regular snapping and rounds nearest snapping independently', () => {
     const coordinates = makeCoordinates();
     expect(coordinates.snapTick(719)).toBe(480);
     expect(coordinates.snapTickToNearest(721)).toBe(960);
@@ -111,7 +112,7 @@ describe("piano-roll coordinates", () => {
   });
 });
 
-describe("piano-roll grid", () => {
+describe('piano-roll grid', () => {
   it("uses the active signature's beat and measure lengths", () => {
     const events: TimeSignatureEvent[] = [
       {
@@ -143,8 +144,8 @@ describe("piano-roll grid", () => {
   });
 });
 
-describe("note geometry", () => {
-  it("finds note bodies and right-edge resize handles", () => {
+describe('note geometry', () => {
+  it('finds note bodies and right-edge resize handles', () => {
     const coordinates = makeCoordinates();
     const cache = new NoteGeometryCache();
     const note = makeNote(0, 480);
@@ -175,7 +176,7 @@ describe("note geometry", () => {
     expect(cache.hitTest(new Vector2(500, 100), coordinates)).toBeNull();
   });
 
-  it("normalizes marquee rectangles regardless of drag direction", () => {
+  it('normalizes marquee rectangles regardless of drag direction', () => {
     const rectangle = new Box2(new Vector2(100, 80), new Vector2(60, 60));
     const selection = new SelectionContext();
     selection.bounds = rectangle;
@@ -185,38 +186,38 @@ describe("note geometry", () => {
   });
 });
 
-describe("header input validation", () => {
-  it("accepts positive tempos and power-of-two signatures only", () => {
-    expect(parseTempoString("120")).toBe(120);
-    expect(parseTempoString("0")).toBeNull();
-    expect(parseTempoString("fast")).toBeNull();
-    expect(parseTimeSignatureString("7 / 8")).toEqual({
+describe('header input validation', () => {
+  it('accepts positive tempos and power-of-two signatures only', () => {
+    expect(parseTempoString('120')).toBe(120);
+    expect(parseTempoString('0')).toBeNull();
+    expect(parseTempoString('fast')).toBeNull();
+    expect(parseTimeSignatureString('7 / 8')).toEqual({
       numerator: 7,
       denominator: 3,
     });
-    expect(parseTimeSignatureString("4/3")).toBeNull();
-    expect(parseTimeSignatureString("4/0")).toBeNull();
+    expect(parseTimeSignatureString('4/3')).toBeNull();
+    expect(parseTimeSignatureString('4/0')).toBeNull();
   });
 });
 
-describe("header lanes", () => {
-  it("renders all lanes by default and supports changing visibility and order", () => {
+describe('header lanes', () => {
+  it('renders all lanes by default and supports changing visibility and order', () => {
     const requestRender = vi.fn();
     const header = new HeaderController(
       { requestRender } as never,
       makeCoordinates(),
     );
 
-    expect(DefaultHeaderLanes).toEqual(["tempo", "timeSignature", "text"]);
-    expect(header.laneAt(0)).toBe("tempo");
-    expect(header.laneAt(12)).toBe("timeSignature");
-    expect(header.laneAt(24)).toBe("text");
+    expect(DefaultHeaderLanes).toEqual(['tempo', 'timeSignature', 'text']);
+    expect(header.laneAt(0)).toBe('tempo');
+    expect(header.laneAt(12)).toBe('timeSignature');
+    expect(header.laneAt(24)).toBe('text');
     expect(header.laneAt(HeaderHeight)).toBeNull();
 
-    header.setVisibleLanes(["text", "tempo"]);
-    expect(header.laneAt(0)).toBe("text");
-    expect(header.laneAt(18)).toBe("tempo");
-    expect(header.laneAt(HeaderHeight - 1)).toBe("tempo");
+    header.setVisibleLanes(['text', 'tempo']);
+    expect(header.laneAt(0)).toBe('text');
+    expect(header.laneAt(18)).toBe('tempo');
+    expect(header.laneAt(HeaderHeight - 1)).toBe('tempo');
     expect(requestRender).toHaveBeenCalledOnce();
 
     header.setVisibleLanes([]);
@@ -225,21 +226,21 @@ describe("header lanes", () => {
   });
 });
 
-describe("DOM styles", () => {
+describe('DOM styles', () => {
   it("applies styles to the element's style declaration", () => {
     const element = { style: {} } as HTMLElement;
 
-    applyStyle(element, { position: "absolute", top: "36px" });
+    applyStyle(element, { position: 'absolute', top: '36px' });
 
-    expect(element.style.position).toBe("absolute");
-    expect(element.style.top).toBe("36px");
+    expect(element.style.position).toBe('absolute');
+    expect(element.style.top).toBe('36px');
   });
 });
 
-describe("selection identity", () => {
-  it("resolves selected entity ids to fresh notes after document replacement", () => {
-    const firstEvent = {} as NonNullable<PianoRollNote["midiNote"]>["noteOn"];
-    const secondEvent = {} as NonNullable<PianoRollNote["midiNote"]>["noteOn"];
+describe('selection identity', () => {
+  it('resolves selected entity ids to fresh notes after document replacement', () => {
+    const firstEvent = {} as NonNullable<PianoRollNote['midiNote']>['noteOn'];
+    const secondEvent = {} as NonNullable<PianoRollNote['midiNote']>['noteOn'];
     const first = {
       ...makeNote(0, 120),
       midiNote: { noteOn: firstEvent } as MidiNote,
@@ -259,8 +260,8 @@ describe("selection identity", () => {
     expect(selection.notes).toEqual([second]);
 
     const restoredEvent = {} as NonNullable<
-      PianoRollNote["midiNote"]
-    >["noteOn"];
+      PianoRollNote['midiNote']
+    >['noteOn'];
     const restored = {
       ...second,
       midiNote: { noteOn: restoredEvent } as MidiNote,
@@ -272,8 +273,8 @@ describe("selection identity", () => {
   });
 });
 
-describe("piano-roll note creation", () => {
-  it("seeks on an empty click and creates only after a minimal drag", () => {
+describe('piano-roll note creation', () => {
+  it('seeks on an empty click and creates only after a minimal drag', () => {
     const selection = new SelectionContext();
     const pointer = new PointerContext();
     const beginCreate = vi.fn();
@@ -351,7 +352,7 @@ describe("piano-roll note creation", () => {
     expect(requestSeek).toHaveBeenCalledTimes(1);
   });
 
-  it("cancels an active gesture on pointercancel instead of committing it", () => {
+  it('cancels an active gesture on pointercancel instead of committing it', () => {
     const pointer = new PointerContext();
     const beginPointerGesture = vi.fn();
     const finishGesture = vi.fn();
@@ -402,7 +403,7 @@ describe("piano-roll note creation", () => {
     expect(pointer.id).toBeNull();
   });
 
-  it("pans the camera by the middle-button drag distance", () => {
+  it('pans the camera by the middle-button drag distance', () => {
     const pointer = new PointerContext();
     const pan = vi.fn();
     const input = new PianoRollInputController(

@@ -1,18 +1,20 @@
+import { useEffect, useMemo, useState } from 'react';
+
 import {
   ChannelMessage,
   MetaType,
-  MidiTrack,
-  getStatusString,
   type MidiChannelEvent,
   type MidiEvent,
   type MidiMetaEvent,
-} from "@openchart/midi";
-import { startCase } from "es-toolkit";
-import { useEffect, useMemo, useState } from "react";
-import { useDocument } from "../../../hooks/useDocument";
-import { useRuleset } from "../../../hooks/useRuleset";
-import { useViewport } from "../../../hooks/useViewport";
-import { vars } from "../../../util/css";
+  MidiTrack,
+  getStatusString,
+} from '@openchart/midi';
+import { startCase } from 'es-toolkit';
+
+import { useDocument } from '../../../hooks/useDocument';
+import { useRuleset } from '../../../hooks/useRuleset';
+import { useViewport } from '../../../hooks/useViewport';
+import { vars } from '../../../util/css';
 import {
   Box,
   DataTable,
@@ -21,20 +23,20 @@ import {
   Label,
   Section,
   Text,
-} from "../../shared";
-import { createAppColumnHelper } from "../../shared/Table";
-import type { DropdownOption } from "../../shared/Dropdown";
+} from '../../shared';
+import type { DropdownOption } from '../../shared/Dropdown';
+import { createAppColumnHelper } from '../../shared/Table';
 
-type EventType = "channel" | "meta" | "sysex";
+type EventType = 'channel' | 'meta' | 'sysex';
 type Row = Record<string, any>;
 
 const columnHelper = createAppColumnHelper();
 const str = ({ cell }: any) => String(cell.getValue());
 const statusCell = ({ cell }: any) => String(getStatusString(cell.getValue()));
 const baseColumns = () => [
-  columnHelper.accessor("tick" as "deltaTime", { header: "Tick", cell: str }),
-  columnHelper.accessor("deltaTime", { header: "Delta Time", cell: str }),
-  columnHelper.accessor("status", { header: "Status", cell: statusCell }),
+  columnHelper.accessor('tick' as 'deltaTime', { header: 'Tick', cell: str }),
+  columnHelper.accessor('deltaTime', { header: 'Delta Time', cell: str }),
+  columnHelper.accessor('status', { header: 'Status', cell: statusCell }),
 ];
 
 interface EventTypeConfig {
@@ -64,13 +66,13 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
     },
     columnDefs: [
       ...baseColumns(),
-      columnHelper.accessor("channel", { header: "Channel", cell: str }),
-      columnHelper.accessor("messageType", {
-        header: "Message Type",
+      columnHelper.accessor('channel', { header: 'Channel', cell: str }),
+      columnHelper.accessor('messageType', {
+        header: 'Message Type',
         cell: ({ cell }) => ChannelMessage[cell.getValue() as number],
       }),
-      columnHelper.accessor("data1", { header: "Data 1", cell: str }),
-      columnHelper.accessor("data2", { header: "Data 2", cell: str }),
+      columnHelper.accessor('data1', { header: 'Data 1', cell: str }),
+      columnHelper.accessor('data2', { header: 'Data 2', cell: str }),
     ],
   },
   meta: {
@@ -81,16 +83,16 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
         .filter(
           ([key]) =>
             ![
-              "deltaTime",
-              "status",
-              "type",
-              "length",
-              "tick",
-              "order",
+              'deltaTime',
+              'status',
+              'type',
+              'length',
+              'tick',
+              'order',
             ].includes(key),
         )
         .map(([key, value]) => `${key}: ${String(value)}`)
-        .join(", ");
+        .join(', ');
       return {
         ...baseRow(item),
         type: event.type,
@@ -100,12 +102,12 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
     },
     columnDefs: [
       ...baseColumns(),
-      columnHelper.accessor("type", {
-        header: "Type",
+      columnHelper.accessor('type', {
+        header: 'Type',
         cell: ({ cell }) => String(MetaType[cell.getValue() as number]),
       }),
-      columnHelper.accessor("length", { header: "Length", cell: str }),
-      columnHelper.accessor("data", { header: "Data", cell: str }),
+      columnHelper.accessor('length', { header: 'Length', cell: str }),
+      columnHelper.accessor('data', { header: 'Data', cell: str }),
     ],
   },
   sysex: {
@@ -113,11 +115,11 @@ const eventTypeConfigs: Record<EventType, EventTypeConfig> = {
     toRow: (item) => ({
       ...baseRow(item),
       length:
-        "length" in item && typeof item.length === "number" ? item.length : 0,
+        'length' in item && typeof item.length === 'number' ? item.length : 0,
     }),
     columnDefs: [
       ...baseColumns(),
-      columnHelper.accessor("length", { header: "Length", cell: str }),
+      columnHelper.accessor('length', { header: 'Length', cell: str }),
     ],
   },
 };
@@ -160,7 +162,7 @@ const EventList = () => {
     setSelectedTrackName(trackName ?? null);
   }, [viewportSessions, activeViewportId, midi, compiled]);
 
-  const [eventType, setEventType] = useState<EventType>("channel");
+  const [eventType, setEventType] = useState<EventType>('channel');
   const config = eventTypeConfigs[eventType];
 
   useEffect(() => {
@@ -186,7 +188,7 @@ const EventList = () => {
 
   return (
     <Box
-      padding={vars("space-large")}
+      padding={vars('space-large')}
       paddingBottom={0}
       justifyContent="flex-start"
       gap="0"
@@ -209,7 +211,7 @@ const EventList = () => {
           <Text>{data.length}</Text>
         </Section>
       </Section>
-      <HorizontalSeparator marginTop={vars("space-large")} />
+      <HorizontalSeparator marginTop={vars('space-large')} />
       <DataTable
         id={`event-list-${eventType}`}
         data={data}

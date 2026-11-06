@@ -1,18 +1,19 @@
-import type { MidiNote } from "@openchart/midi";
+import type { MidiNote } from '@openchart/midi';
 import {
+  type ChartView,
   DomainCommandType,
   EditCommandType,
-  EntityType,
-  type ChartView,
   type EditingSession,
   type EntityId,
+  EntityType,
   type GestureHandle,
   type NoteSnapshot,
-} from "@openchart/views";
-import { formatNoteId, parseEntityFromId } from "@openchart/views";
-import type { HighwayContext } from "../context";
-import { chartHasSustains } from "../hitTesting";
-import { laneVisualFor, type IndexedNote } from "../noteIndex";
+} from '@openchart/views';
+import { formatNoteId, parseEntityFromId } from '@openchart/views';
+
+import type { HighwayContext } from '../context';
+import { chartHasSustains } from '../hitTesting';
+import { type IndexedNote, laneVisualFor } from '../noteIndex';
 
 export class HighwayNoteEditingController {
   private readonly context: HighwayContext;
@@ -40,7 +41,7 @@ export class HighwayNoteEditingController {
       type: DomainCommandType.PlaceChartNote,
       lane,
       tick,
-      placement: this.context.getNotePlacementType?.() ?? "normal",
+      placement: this.context.getNotePlacementType?.() ?? 'normal',
       cutPolicy: getCutPolicy(
         shiftKey,
         preferredSustainId !== undefined,
@@ -66,8 +67,8 @@ export class HighwayNoteEditingController {
       lane,
       tick: startTick,
       endTick: Math.max(startTick + 1, endTick),
-      placement: this.context.getNotePlacementType?.() ?? "normal",
-      cutPolicy: preserveSustain ? "none" : "all",
+      placement: this.context.getNotePlacementType?.() ?? 'normal',
+      cutPolicy: preserveSustain ? 'none' : 'all',
     };
     const preview = this.gesture.preview(command);
     this.context.setPreviewState(preview);
@@ -160,7 +161,7 @@ export class HighwayNoteEditingController {
         type: DomainCommandType.SetSustainEnd,
         targetIds: [id],
         endTick,
-        extendPastNext: "allow",
+        extendPastNext: 'allow',
       }),
     );
     return true;
@@ -192,7 +193,7 @@ export class HighwayNoteEditingController {
     chart: ChartView,
     notes: readonly MidiNote[],
     endTick: number,
-    extendPastNext: "allow" | "stop-at-next",
+    extendPastNext: 'allow' | 'stop-at-next',
   ): boolean {
     const session = this.context.getEditingSession();
     const targetIds = notes
@@ -284,27 +285,27 @@ export class HighwayNoteEditingController {
   ): number | null {
     if (!session) return null;
     const classification = session.classifyNote(snapshot);
-    if (classification.type !== "note" || !classification.movable) return null;
+    if (classification.type !== 'note' || !classification.movable) return null;
     // Bar lanes (kick, open) span the highway and sit on lane 0.
     const chart = this.context.getCurrentChart();
     if (chart) {
       const role = chart.classify(snapshot.pitch);
-      if (role.kind === "laneNote" && role.bar) return 0;
+      if (role.kind === 'laneNote' && role.bar) return 0;
     }
     return session.getProjection().rowForNote(snapshot)?.index ?? null;
   }
 }
 
 function getMidiNote(note: MidiNote | IndexedNote): MidiNote | null {
-  return "source" in note ? note.source : note;
+  return 'source' in note ? note.source : note;
 }
 
 function getCutPolicy(
   shiftKey: boolean,
   hasPreferredSustain: boolean,
   sameLanePlacement: boolean,
-): "all" | "none" | "preferred-only" | "all-but-preferred" {
-  if (!hasPreferredSustain) return shiftKey ? "none" : "all";
-  if (sameLanePlacement) return shiftKey ? "preferred-only" : "all";
-  return shiftKey ? "all" : "preferred-only";
+): 'all' | 'none' | 'preferred-only' | 'all-but-preferred' {
+  if (!hasPreferredSustain) return shiftKey ? 'none' : 'all';
+  if (sameLanePlacement) return shiftKey ? 'preferred-only' : 'all';
+  return shiftKey ? 'all' : 'preferred-only';
 }

@@ -1,22 +1,24 @@
-import { useState, type InputHTMLAttributes } from "react";
-import classNames from "classnames";
-import styles from "./input.module.css";
-import { Button, CloseButton, DirectoryIcon } from "..";
+import { type InputHTMLAttributes, useState } from 'react';
+
+import classNames from 'classnames';
 import {
+  type BorderProps,
+  type ColorProps,
+  type LayoutProps,
+  type SpaceProps,
   border,
   color,
   compose,
   layout,
   space,
-  type BorderProps,
-  type ColorProps,
-  type LayoutProps,
-  type SpaceProps,
   type styleFn,
-} from "styled-system";
-import Platform from "../../../platform";
-import type { FileSystemService } from "../../../platform/services/filesystem";
-import type { LoadFile } from "../../../platform/services/filesystem/types";
+} from 'styled-system';
+
+import { Button, CloseButton, DirectoryIcon } from '..';
+import Platform from '../../../platform';
+import type { FileSystemService } from '../../../platform/services/filesystem';
+import type { LoadFile } from '../../../platform/services/filesystem/types';
+import styles from './input.module.css';
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);
@@ -28,9 +30,9 @@ type InputProps = Omit<
 > &
   StyleProps;
 
-const defaultInputProps: Pick<InputProps, "type" | "placeholder"> = {
-  type: "text",
-  placeholder: "Enter text...",
+const defaultInputProps: Pick<InputProps, 'type' | 'placeholder'> = {
+  type: 'text',
+  placeholder: 'Enter text...',
 };
 
 const Input = ({ className, ...props }: InputProps) => {
@@ -41,7 +43,7 @@ const Input = ({ className, ...props }: InputProps) => {
       ([propName]) => !systemPropNames.has(propName),
     ),
   );
-  const inputClassName = classNames(styles["ui-input"], className);
+  const inputClassName = classNames(styles['ui-input'], className);
   return <input {...htmlProps} className={inputClassName} style={style} />;
 };
 
@@ -70,16 +72,16 @@ const FileInput = ({
   const hasFile = directory
     ? selectedPath !== undefined || Boolean(props.value)
     : Boolean(file || props.value);
-  const size = "var(--size-med)";
+  const size = 'var(--size-med)';
 
   const handleOnClick = async () => {
     try {
       if (!rootDirectoryHandle) {
         throw new Error(
-          "Save or open a project folder before selecting project files.",
+          'Save or open a project folder before selecting project files.',
         );
       }
-      const fs = Platform.services.get<FileSystemService>("filesystem");
+      const fs = Platform.services.get<FileSystemService>('filesystem');
       if (directory) {
         const loadedDirectory = await fs.readDirectory(rootDirectoryHandle);
         setSelectedPath(loadedDirectory.relativePath);
@@ -96,13 +98,13 @@ const FileInput = ({
       }
       if (!loadedFile.relativePath) {
         throw new Error(
-          "The selected audio file has no path relative to the project folder.",
+          'The selected audio file has no path relative to the project folder.',
         );
       }
       setFile(loadedFile);
       onFileChange?.(loadedFile);
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       const fileError =
         error instanceof Error ? error : new Error(String(error));
       if (onFileError) onFileError(fileError);
@@ -118,7 +120,7 @@ const FileInput = ({
   };
 
   return (
-    <div style={{ display: "flex" }}>
+    <div style={{ display: 'flex' }}>
       <Input
         {...props}
         value={
@@ -142,7 +144,7 @@ const FileInput = ({
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
         onClick={handleOnClick}
-        padding={"2px"}
+        padding={'2px'}
         icon={<DirectoryIcon size={16} />}
       />
       <CloseButton

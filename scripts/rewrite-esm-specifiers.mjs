@@ -1,12 +1,12 @@
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import path from "node:path";
-import ts from "typescript";
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import ts from 'typescript';
 
 async function isFile(filePath) {
   try {
     return (await stat(filePath)).isFile();
   } catch (error) {
-    if (error.code === "ENOENT") return false;
+    if (error.code === 'ENOENT') return false;
     throw error;
   }
 }
@@ -19,7 +19,7 @@ async function collectFiles(directory) {
       if (entry.isDirectory()) return collectFiles(entryPath);
       if (
         entry.isFile() &&
-        (entry.name.endsWith(".js") || entry.name.endsWith(".d.ts"))
+        (entry.name.endsWith('.js') || entry.name.endsWith('.d.ts'))
       ) {
         return [entryPath];
       }
@@ -62,11 +62,11 @@ function getSpecifierNodes(sourceFile) {
 }
 
 async function resolveOutputSpecifier(filePath, specifier) {
-  if (!specifier.startsWith("./") && !specifier.startsWith("../")) return null;
-  if (path.posix.extname(specifier) !== "") return null;
+  if (!specifier.startsWith('./') && !specifier.startsWith('../')) return null;
+  if (path.posix.extname(specifier) !== '') return null;
 
   const targetPath = path.resolve(path.dirname(filePath), specifier);
-  const extension = filePath.endsWith(".d.ts") ? ".d.ts" : ".js";
+  const extension = filePath.endsWith('.d.ts') ? '.d.ts' : '.js';
 
   if (await isFile(`${targetPath}${extension}`)) return `${specifier}.js`;
   if (await isFile(path.join(targetPath, `index${extension}`))) {
@@ -79,13 +79,13 @@ async function resolveOutputSpecifier(filePath, specifier) {
 }
 
 async function rewriteFile(filePath) {
-  let text = await readFile(filePath, "utf8");
+  let text = await readFile(filePath, 'utf8');
   const sourceFile = ts.createSourceFile(
     filePath,
     text,
     ts.ScriptTarget.Latest,
     true,
-    filePath.endsWith(".d.ts") ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+    filePath.endsWith('.d.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS,
   );
   const replacements = [];
 
@@ -107,10 +107,10 @@ async function rewriteFile(filePath) {
   if (replacements.length > 0) await writeFile(filePath, text);
 }
 
-const outputDirectory = path.resolve(process.cwd(), process.argv[2] ?? "");
+const outputDirectory = path.resolve(process.cwd(), process.argv[2] ?? '');
 if (path.dirname(outputDirectory) !== process.cwd()) {
   throw new Error(
-    "Provide a package output directory directly inside the package, for example: ./dist",
+    'Provide a package output directory directly inside the package, for example: ./dist',
   );
 }
 

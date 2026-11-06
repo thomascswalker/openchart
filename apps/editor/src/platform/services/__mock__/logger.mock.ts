@@ -1,5 +1,6 @@
-import { vi } from "vitest";
-import { type LoggerService } from "../logger";
+import { vi } from 'vitest';
+
+import { type LoggerService } from '../logger';
 
 type ILoggerService = LoggerService;
 
