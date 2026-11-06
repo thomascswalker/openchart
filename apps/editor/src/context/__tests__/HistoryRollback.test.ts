@@ -1,8 +1,10 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import { DocumentService } from "../../services/document.js";
+import { mockLoggerService } from "../../platform/services/__mock__/logger.mock";
+import { DocumentService } from "../../platform/services/document/document.js";
 import { History } from "../History.js";
-import { createTestRulesetService } from "../../services/__tests__/testUtils";
+import { createTestRulesetService } from "../../platform/services/ruleset/__tests__/testUtils.js";
+import { mockWorkspaceService } from "../../platform/services/workspace/__tests__/utils.js";
 
 function createMidi(): Midi {
   const midi = new Midi();
@@ -41,10 +43,11 @@ describe("history transaction rollback", () => {
   });
 
   it("replaces the document's MIDI and publishes on rollback", () => {
-    const logger = { debug() {}, info() {}, warn() {}, error() {} };
+    const logger = mockLoggerService();
     const document = new DocumentService(
       logger as never,
       createTestRulesetService(),
+      mockWorkspaceService(),
     );
     let published = 0;
     document.subscribe(() => published++);

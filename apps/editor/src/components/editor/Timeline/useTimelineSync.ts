@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { usePlaybackSelector } from "#usePlayback";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import type { AnyChartView } from "../../views/ChartViews";
 import {
   DefaultTempoEvents,

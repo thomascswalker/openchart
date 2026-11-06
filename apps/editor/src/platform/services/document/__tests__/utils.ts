@@ -1,0 +1,27 @@
+import { vi } from "vitest";
+import { mockLoggerService } from "../../__mock__/logger.mock";
+import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
+import { type OpenedProject, DocumentService } from "../document";
+import { mockWorkspaceService } from "../../workspace/__tests__/utils";
+
+export function makeDocumentService(
+  openedProject?: OpenedProject,
+  rootHandle?: FileSystemDirectoryHandle,
+): DocumentService {
+  const workspace = mockWorkspaceService();
+  if (rootHandle) {
+    Object.assign(workspace, { getRootHandle: () => rootHandle });
+  }
+  const service = new DocumentService(
+    mockLoggerService(),
+    createTestRulesetService(),
+    workspace,
+  );
+
+  if (openedProject) {
+    Object.assign(service, {
+      readProject: vi.fn(async () => openedProject),
+    });
+  }
+  return service;
+}

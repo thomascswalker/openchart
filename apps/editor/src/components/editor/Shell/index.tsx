@@ -1,12 +1,12 @@
 import { useLayoutEffect, useSyncExternalStore } from "react";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { useEditor } from "../../../hooks/useEditorState";
 import { globalBindings } from "../../../input";
 import { Hotkeys } from "../../../input/Hotkeys";
 import { usePlatform } from "../../../platform";
-import { EditorClipboardService } from "../../../services/editor/clipboard";
-import { PlaybackService } from "../../../services/playback";
-import { UpdaterService } from "../../../services/updater";
+import { EditorClipboardService } from "../../../platform/services/editor/clipboard";
+import { PlaybackService } from "../../../platform/services/playback/playback";
+import { UpdaterService } from "../../../platform/services/updater/updater";
 import { AboutDialog } from "../../dialogs/About/AboutDialog";
 import { ProjectDialog } from "../../dialogs/Project/ProjectDialog";
 import { SettingsDialog } from "../../dialogs/Settings/SettingsDialog";

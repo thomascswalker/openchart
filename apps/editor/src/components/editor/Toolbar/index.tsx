@@ -1,10 +1,10 @@
 import { Fragment } from "react";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { usePlaybackSelector } from "../../../hooks/usePlayback";
 import { useViewport } from "../../../hooks/useViewport";
 import Platform from "../../../platform";
-import type { EditingService } from "../../../services/editor/editing";
-import type { ViewportSession } from "../../../services/editor/viewports";
+import type { EditingService } from "../../../platform/services/editor/editing";
+import type { ViewportSession } from "../../../platform/services/editor/viewports";
 import { Dropdown, Section } from "../../shared";
 import { ToolGroup } from "./ToolGroup";
 import {

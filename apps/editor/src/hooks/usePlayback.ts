@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from "react";
 import Platform from "../platform";
-import { PlaybackService, type PlaybackSnapshot } from "../services/playback";
+import {
+  PlaybackService,
+  type PlaybackSnapshot,
+} from "../platform/services/playback/playback";
 
 export function usePlayback() {
   const playbackService = Platform.services.get<PlaybackService>("playback");

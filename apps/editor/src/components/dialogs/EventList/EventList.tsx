@@ -131,7 +131,7 @@ const eventTypeOptions: DropdownOption[] = (
 
 const EventList = () => {
   const documentSnapshot = useDocument();
-  const { midi } = documentSnapshot;
+  const { data: midi } = documentSnapshot;
   const { viewportSessions, activeViewportId } = useViewport();
   const { compiled } = useRuleset();
 

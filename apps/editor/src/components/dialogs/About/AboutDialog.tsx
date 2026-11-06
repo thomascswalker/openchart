@@ -1,4 +1,4 @@
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { Modal, Section, Text } from "../../shared";
 
 const AboutDialog = () => {

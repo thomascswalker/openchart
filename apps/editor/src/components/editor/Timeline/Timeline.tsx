@@ -11,9 +11,9 @@ interface TimelineProps {
 }
 
 export function Timeline({ chartViews }: TimelineProps) {
-  const { midi } = useDocument();
+  const { data: midi } = useDocument();
   const { isPlaying, playbackTick, timelineTicks, syncPlayhead, position } =
-    useTimelineSync({ midi, chartViews });
+    useTimelineSync({ midi: midi ?? null, chartViews });
   const { canvasRef, containerRef, scrubFrameRef } = useTimelineRender({
     chartViews,
     timelineTicks,

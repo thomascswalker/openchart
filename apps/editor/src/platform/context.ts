@@ -1,3 +1,9 @@
+/**
+ * ContextStore is responsible for managing context flags within the editor.
+ * It allows setting, getting, updating, and evaluating context values.
+ * Contexts are used to determine whether certain actions can be executed
+ * based on the current state of the editor.
+ */
 export class ContextStore {
   private contexts = new Map<string, any>();
 

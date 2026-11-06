@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import Platform from "../platform";
-import type { RulesetService } from "../services/ruleset";
+import type { RulesetService } from "../platform/services/ruleset";
 
 /** Subscribes to the active ruleset; re-renders when it is replaced. */
 export function useRuleset() {

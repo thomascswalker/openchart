@@ -2,14 +2,14 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useEditor } from "../../../hooks/useEditorState";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import Platform from "../../../platform";
-import { SettingsService } from "../../../services/settings";
-import { DefaultApplicationSettings } from "../../../services/settings/schema";
+import { SettingsService } from "../../../platform/services/settings/settings";
+import { DefaultApplicationSettings } from "../../../platform/services/settings/schema";
 import { useSettings } from "../../../hooks/useApplication";
 import { Runtime } from "../../editor/Runtime";
 import { SettingsDialog } from "./SettingsDialog";
-import { mockWorkspaceService } from "../../../services/__mock__/workspace.mock";
+import { mockWorkspaceService } from "../../../platform/services/workspace/__tests__/utils";
 
 function SettingsTestShell() {
   const { settingsVisible } = useEditor();

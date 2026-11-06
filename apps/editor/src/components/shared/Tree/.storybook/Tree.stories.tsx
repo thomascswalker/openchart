@@ -2,10 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FileTreeView } from "../Tree";
 import { Section } from "../../../shared";
 import { useEffect, useState } from "react";
-import {
-  getOriginPrivateDirectory,
-  type FileSystemDirectoryHandle,
-} from "native-file-system-adapter";
+import { getOriginPrivateDirectory } from "native-file-system-adapter";
 import memoryAdapter from "native-file-system-adapter/src/adapters/memory.js";
 
 interface MockDirectory {
@@ -41,7 +38,9 @@ const Wrapper = () => {
 
   useEffect(() => {
     (async () => {
-      const root = await getOriginPrivateDirectory(memoryAdapter);
+      const root = (await getOriginPrivateDirectory(
+        memoryAdapter,
+      )) as unknown as FileSystemDirectoryHandle;
       await populate(root, MOCK_FILES);
       setRootHandle(root);
     })();

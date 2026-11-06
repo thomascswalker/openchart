@@ -1,6 +1,6 @@
 import { kebabCase } from "es-toolkit";
 import type { ContextStore } from "./context";
-import { moduleId, type ModuleCollection } from "./modules";
+import { buildModuleId, type ModuleCollection } from "./modules";
 import type { ServiceRegistry, ServicesAccessor } from "./services";
 
 export interface ActionOptions {
@@ -70,7 +70,7 @@ export class ActionRegistry {
     this.contextStore = contextStore;
 
     for (const filepath of Object.keys(modules).sort()) {
-      const id = moduleId(filepath, "actions");
+      const id = buildModuleId(filepath, "actions");
       if (!id) {
         continue;
       }

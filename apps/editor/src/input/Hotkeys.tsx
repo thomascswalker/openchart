@@ -1,6 +1,6 @@
 import { useContext, useMemo, useSyncExternalStore } from "react";
 import { useService } from "../platform";
-import type { ActiveChartViewService } from "../services/editor/activeChartView";
+import type { ActiveChartViewService } from "../platform/services/editor/activeChartView.ts";
 import { InputProviderContext } from "./context.ts";
 import type { Binding } from "./define.ts";
 import { dispatchBinding } from "./dispatch.ts";

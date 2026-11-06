@@ -9,17 +9,18 @@ import { createContext, useContext, useSyncExternalStore } from "react";
 
 const serviceModules = import.meta.glob<Record<string, unknown>>(
   [
-    "../services/**/*.ts",
-    "!../services/**/__tests__/**",
-    "!../services/**/__mock__/**",
+    "./services/**/*.ts",
+    "!./services/services/**",
+    "!./services/**/__tests__/**",
+    "!./services/**/__mock__/**",
   ],
   { eager: true },
 );
 const actionModules = import.meta.glob<Record<string, unknown>>(
   [
-    "../actions/**/*.ts",
-    "!../actions/**/__tests__/**",
-    "!../actions/**/__mocks__/**",
+    "./actions/**/*.ts",
+    "!./actions/**/__tests__/**",
+    "!./actions/**/__mocks__/**",
   ],
   { eager: true },
 );
@@ -45,11 +46,8 @@ function useService<T extends IService>(serviceId: string): T {
 function useSnapshot<T>(serviceId: string): T {
   const platform = useContext(PlatformContext);
   const service: IStatefulService = platform.services.get(serviceId);
-  return useSyncExternalStore(
-    service.subscribe,
-    service.getSnapshot,
-    service.getSnapshot,
-  ) as T;
+  const getSnapshot = service.getSnapshot.bind(service);
+  return useSyncExternalStore(service.subscribe, getSnapshot, getSnapshot) as T;
 }
 
 function usePlatform() {

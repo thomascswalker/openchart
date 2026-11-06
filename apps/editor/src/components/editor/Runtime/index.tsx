@@ -9,10 +9,10 @@ import { usePlatform, useService } from "../../../platform";
 import { useSettings } from "../../../hooks/useApplication";
 import { useDocument } from "../../../hooks/useDocument";
 import { useViewport } from "../../../hooks/useViewport";
-import { DocumentService } from "../../../services/document";
-import { EditorStateService } from "../../../services/editor/state";
-import type { EditingService } from "../../../services/editor/editing";
-import { createEditingContextSnapshot } from "../../../services/editor/editingContext";
+import { DocumentService } from "../../../platform/services/document/document";
+import { EditorStateService } from "../../../platform/services/editor/state";
+import type { EditingService } from "../../../platform/services/editor/editing";
+import { createEditingContextSnapshot } from "../../../platform/services/editor/editingContext";
 import { Playback } from "../Playback";
 
 interface RuntimeProps {
@@ -22,7 +22,7 @@ interface RuntimeProps {
 export function Runtime({ children }: RuntimeProps) {
   const { settings } = useSettings();
 
-  const { midi: midiData, canUndo: canUndo, canRedo: canRedo } = useDocument();
+  const { data: midiData, canUndo: canUndo, canRedo: canRedo } = useDocument();
   const { viewportSessions, maxViewportCount, activeViewportId } =
     useViewport();
 

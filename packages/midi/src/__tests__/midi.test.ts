@@ -106,7 +106,7 @@ test("clone preserves an empty MIDI document", () => {
 test("read file", async () => {
   const { default: testData } = await import("./assets/data.json");
 
-  const midiPath = new URL(`../${testData.filename}`, import.meta.url);
+  const midiPath = new URL(`../../${testData.filename}`, import.meta.url);
   const content = fs.readFileSync(midiPath);
   const midi = new Midi(content);
 
@@ -557,7 +557,7 @@ test("getAbsoluteTickAt and getInsertionIndexAt read cached ticks", () => {
 
 test("parsed MIDI events carry ticks matching their deltas", async () => {
   const { default: testData } = await import("./assets/data.json");
-  const midiPath = new URL(`../${testData.filename}`, import.meta.url);
+  const midiPath = new URL(`../../${testData.filename}`, import.meta.url);
   const midi = new Midi(fs.readFileSync(midiPath));
 
   for (const track of midi.tracks) {

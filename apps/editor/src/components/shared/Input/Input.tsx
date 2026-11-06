@@ -15,8 +15,8 @@ import {
   type styleFn,
 } from "styled-system";
 import Platform from "../../../platform";
-import type { FileSystemService } from "../../../services/filesystem";
-import type { LoadFile } from "../../../services/filesystem/types";
+import type { FileSystemService } from "../../../platform/services/filesystem";
+import type { LoadFile } from "../../../platform/services/filesystem/types";
 
 const getSystemStyles: styleFn = compose(space, color, layout, border);
 const systemPropNames = new Set(getSystemStyles.propNames ?? []);

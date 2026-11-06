@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { useEditor } from "../../../hooks/useEditorState";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { useDocument } from "../../../hooks/useDocument";
 import { Runtime } from "../../editor/Runtime";
 import { Playback } from "../../editor/Playback";

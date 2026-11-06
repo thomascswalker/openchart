@@ -1,7 +1,7 @@
 import { useDocument } from "../../../hooks/useDocument";
 import { useRuleset } from "../../../hooks/useRuleset";
-import { runActionAsync } from "../../../actions/execute";
-import type { ViewportSession } from "../../../services/editor/viewports";
+import { runActionAsync } from "../../../platform/actions/execute";
+import type { ViewportSession } from "../../../platform/services/editor/viewports";
 import { Box, Button, Text } from "../../shared";
 import styles from "./TrackList.module.css";
 import type { MidiTrack } from "@openchart/midi";
@@ -11,7 +11,7 @@ interface TrackListProps {
 }
 
 export function TrackList({ session }: TrackListProps) {
-  const { midi } = useDocument();
+  const { data: midi } = useDocument();
   const { compiled } = useRuleset();
   if (!midi) {
     return <Text>No MIDI data</Text>;

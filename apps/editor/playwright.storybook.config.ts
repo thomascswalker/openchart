@@ -6,7 +6,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:6006",
+    baseURL: "http://127.0.0.1:6007",
     viewport: { width: 1440, height: 900 },
     launchOptions: {
       args: [
@@ -18,9 +18,10 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
-    command: "npm run storybook -- --ci --host 127.0.0.1",
-    url: "http://127.0.0.1:6006",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    command:
+      "npm run build-storybook && vite preview --outDir storybook-static --host 127.0.0.1 --port 6007 --strictPort --base /",
+    url: "http://127.0.0.1:6007",
+    reuseExistingServer: false,
+    timeout: 180_000,
   },
 });

@@ -10,9 +10,9 @@ import {
 } from "../../shared";
 import Platform, { useSnapshot } from "../../../platform";
 import type {
-  WorkspaceService,
   WorkspaceSnapshot,
-} from "../../../services/workspace";
+  WorkspaceService,
+} from "../../../platform/services/workspace";
 
 const DefaultTabIconSize = 24;
 
@@ -57,7 +57,7 @@ const useCommandPanel = (
   return {
     options: tabOptions,
     children: [
-      <FileTreeView key="files" rootHandle={workspace?.rootHandle} />,
+      <FileTreeView key="files" rootHandle={workspace?.getRootHandle()} />,
       <AudioMixer key="mixer" />,
       <EventList key="event-list" />,
       <ViewportSettings key="settings" />,

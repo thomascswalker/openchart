@@ -17,7 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { useSettings } from "../../../hooks/useApplication";
 import { useDocument } from "../../../hooks/useDocument";
 import { useRuleset } from "../../../hooks/useRuleset";
@@ -26,10 +26,10 @@ import { useViewport } from "../../../hooks/useViewport";
 import { ViewHotkeyScopes } from "../../../input/ViewportHotkeyScopes";
 import Platform from "../../../platform";
 import type { EngineOptions } from "../../../rendering/engine";
-import { ActiveChartViewService } from "../../../services/editor/activeChartView";
-import type { EditingService } from "../../../services/editor/editing";
-import { type ViewportSession } from "../../../services/editor/viewports";
-import { PlaybackService } from "../../../services/playback";
+import { ActiveChartViewService } from "../../../platform/services/editor/activeChartView";
+import type { EditingService } from "../../../platform/services/editor/editing";
+import { type ViewportSession } from "../../../platform/services/editor/viewports";
+import { PlaybackService } from "../../../platform/services/playback/playback";
 import { Button, CloseButton } from "../../shared";
 import {
   BassIcon,
@@ -191,7 +191,7 @@ function ViewportPanel({
     chartView: AnyChartView | null,
   ) => void;
 }) {
-  const { midi: midiData } = useDocument();
+  const { data: midiData } = useDocument();
   const { compiled: rules } = useRuleset();
   const { settings } = useSettings();
   const {
@@ -520,7 +520,7 @@ function ViewportPanel({
             createRenderer={activeView.createRenderer}
             engineOptions={engineOptions}
             state={{
-              midi: midiData,
+              midi: midiData ?? null,
               selectedTrackKey: session.trackKey,
               selectedTrackIndex,
               selectedInstrument: session.instrument,
