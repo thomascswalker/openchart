@@ -22,7 +22,7 @@ describe("DocumentService", () => {
     expect(service.getSnapshot().isDirty).toBe(true);
 
     service.undoEdit();
-    expect(service.getSnapshot().midi?.tracks[0]?.getNotes()).toHaveLength(0);
+    expect(service.getSnapshot().data?.tracks[0]?.getNotes()).toHaveLength(0);
     expect(service.getSnapshot().canRedo).toBe(true);
   });
 
@@ -57,9 +57,9 @@ describe("DocumentService", () => {
     await expect(service.open()).resolves.toBe(true);
 
     const snapshot = service.getSnapshot();
-    expect(snapshot.midi?.trackCount).toBe(1);
-    expect(snapshot.file).toBe("notes.mid");
-    expect(snapshot.handle).toBe(midiHandle);
+    expect(snapshot.data?.trackCount).toBe(1);
+    expect(snapshot.midiFileHandle?.name).toBe("notes.mid");
+    expect(snapshot.projectFileHandle?.name).toBe("info.json");
     expect(snapshot.directoryHandle).toBe(directoryHandle);
     expect(snapshot.metadata).toEqual(metadata);
     expect(snapshot.isDirty).toBe(false);
@@ -89,7 +89,10 @@ describe("DocumentService", () => {
     } as unknown as FileSystemDirectoryHandle;
     const service = makeDocumentService();
     service.data = midi;
-    service.rebind("saved.mid", null, directoryHandle);
+    service.rebind(
+      { name: "notes.mid" } as unknown as FileSystemFileHandle,
+      directoryHandle,
+    );
 
     await expect(service.save()).resolves.toBe(true);
 
@@ -98,8 +101,8 @@ describe("DocumentService", () => {
       JSON.parse(new TextDecoder().decode(writtenFiles.get("info.json"))),
     ).toEqual(service.metadata);
     expect(service.getSnapshot()).toMatchObject({
-      file: "notes.mid",
-      handle: { name: "notes.mid" },
+      midiFileHandle: { name: "notes.mid" },
+      projectFileHandle: { name: "info.json" },
       directoryHandle,
       isDirty: false,
     });
@@ -128,16 +131,14 @@ describe("DocumentService", () => {
       },
     } as unknown as FileSystemFileHandle;
     const directoryHandle = {
-      getFileHandle: vi.fn(async (name: string) =>
-        name === "info.json" ? projectHandle : midiHandle,
-      ),
+      getFileHandle: vi.fn(async () => midiHandle),
     } as unknown as FileSystemDirectoryHandle;
-    const showDirectoryPicker = vi.fn(async () => directoryHandle);
+    const showOpenFilePicker = vi.fn(async () => [projectHandle]);
     vi.stubGlobal("window", {
-      showDirectoryPicker,
+      showOpenFilePicker,
     });
 
-    const service = makeDocumentService();
+    const service = makeDocumentService(undefined, directoryHandle);
     await expect(service.readProject()).resolves.toEqual({
       projectBytes,
       midiBytes,
@@ -145,11 +146,7 @@ describe("DocumentService", () => {
       midiHandle,
       directoryHandle,
     });
-    expect(showDirectoryPicker).toHaveBeenCalledWith({ mode: "read" });
-    expect(directoryHandle.getFileHandle).toHaveBeenNthCalledWith(
-      1,
-      "info.json",
-    );
+    expect(showOpenFilePicker).toHaveBeenCalledWith({ multiple: false });
     expect(directoryHandle.getFileHandle).toHaveBeenCalledWith("notes.mid");
   });
 

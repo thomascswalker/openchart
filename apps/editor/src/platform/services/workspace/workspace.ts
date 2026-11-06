@@ -1,9 +1,5 @@
 import { StatefulService } from "../../services";
 import { FileTreeModel } from "../../../models/tree/fileTree";
-import {
-  FileSystemDirectoryHandle,
-  FileSystemFileHandle,
-} from "native-file-system-adapter";
 
 export interface WorkspaceSnapshot {
   /** The file tree representing the structure of the workspace. */

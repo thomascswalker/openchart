@@ -33,7 +33,7 @@ function renderTrackList(): void {
 
 function setMidi(midi: Midi | null): void {
   mockedUseDocument.mockReturnValue({
-    midi,
+    data: midi,
   } as ReturnType<typeof useDocument>);
   act(() => root?.render(<TrackList />));
 }
@@ -41,8 +41,8 @@ function setMidi(midi: Midi | null): void {
 describe("TrackList", () => {
   it("keeps hooks stable and rebuilds its SongView when the document changes", () => {
     mockedUseDocument.mockReturnValue({
-      midi: null,
-    } as ReturnType<typeof useDocument>);
+      data: null,
+    } as unknown as ReturnType<typeof useDocument>);
     renderTrackList();
     expect(container?.textContent).toContain("No MIDI data");
 

@@ -2,7 +2,6 @@ import {
   useFileTreeModel,
   type FileTreeNode,
 } from "../../../models/tree/fileTree";
-import { FileSystemDirectoryHandle } from "native-file-system-adapter";
 import { Text } from "../Text";
 import { DownIcon, FileIcon, ResetIcon } from "../Icon";
 import styles from "./Tree.module.css";

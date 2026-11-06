@@ -10,7 +10,7 @@ export class ExportMidiAction extends Action {
   async run(accessor: ServicesAccessor): Promise<void> {
     const document = accessor.get<DocumentService>("document");
     const state = document.getSnapshot();
-    if (!state.midi?.trackCount) {
+    if (!state.data?.trackCount) {
       throw new Error("There is no MIDI document to export.");
     }
     const { bytes, suggestedName } = document.export();

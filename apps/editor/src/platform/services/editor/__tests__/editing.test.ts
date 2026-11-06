@@ -2,7 +2,7 @@ import { Midi } from "@openchart/midi";
 import { MetaType } from "@openchart/midi";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DocumentService } from "../../document/document";
-import type { LoggerService } from "../../logger";
+import { mockWorkspaceService } from "../../workspace/__tests__/utils";
 import type { PlaybackService } from "../../playback/playback";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
@@ -14,17 +14,14 @@ import {
   EntityType,
   VocalNoteKind,
 } from "@openchart/views";
+import { mockLoggerService } from "../../__mock__/logger.mock";
 
 function createDocumentService(
   ruleset: ReturnType<typeof createTestRulesetService>,
 ): DocumentService {
-  const logger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
-    error: vi.fn(),
-  } as unknown as LoggerService;
-  return new DocumentService(logger, ruleset);
+  const logger = mockLoggerService();
+  const workspace = mockWorkspaceService();
+  return new DocumentService(logger, ruleset, workspace);
 }
 
 describe("EditingService", () => {

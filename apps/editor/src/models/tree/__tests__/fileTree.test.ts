@@ -1,9 +1,6 @@
 import { it, expect, describe, beforeEach, afterEach, vi } from "vitest";
 import mock from "mock-fs";
-import {
-  getOriginPrivateDirectory,
-  FileSystemDirectoryHandle,
-} from "native-file-system-adapter";
+import { getOriginPrivateDirectory } from "native-file-system-adapter";
 import nodeAdapter from "native-file-system-adapter/src/adapters/node.js";
 import { FileTreeModel } from "../fileTree";
 
@@ -30,7 +27,7 @@ describe("FileTreeModel", () => {
   beforeEach(async () => {
     mock(FileSystem);
     await getDirectory("__root__").then((dir) => {
-      root = dir;
+      root = dir as unknown as FileSystemDirectoryHandle;
     });
   });
   afterEach(() => {

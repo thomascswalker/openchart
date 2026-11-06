@@ -10,22 +10,19 @@ import type { AnyChartView } from "../../../../components/views/ChartViews";
 import { ActiveChartViewService } from "../activeChartView";
 import { EditorClipboardService } from "../clipboard";
 import { DocumentService } from "../../document/document";
-import type { LoggerService } from "../../logger";
 import type { PlaybackService } from "../../playback/playback";
 import { EditorStateService } from "../state";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
 import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
+import { mockWorkspaceService } from "../../workspace/__tests__/utils";
+import { mockLoggerService } from "../../__mock__/logger.mock";
 
 function createClipboardHarness(midi: Midi) {
   const ruleset = createTestRulesetService();
-  const logger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
-    error: vi.fn(),
-  } as unknown as LoggerService;
-  const document = new DocumentService(logger, ruleset);
+  const logger = mockLoggerService();
+  const workspace = mockWorkspaceService();
+  const document = new DocumentService(logger, ruleset, workspace);
   document.data = midi;
   const playbackListeners = new Set<() => void>();
   let isPlaying = false;

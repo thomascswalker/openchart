@@ -191,7 +191,7 @@ function ViewportPanel({
     chartView: AnyChartView | null,
   ) => void;
 }) {
-  const { midi: midiData } = useDocument();
+  const { data: midiData } = useDocument();
   const { compiled: rules } = useRuleset();
   const { settings } = useSettings();
   const {
@@ -520,7 +520,7 @@ function ViewportPanel({
             createRenderer={activeView.createRenderer}
             engineOptions={engineOptions}
             state={{
-              midi: midiData,
+              midi: midiData ?? null,
               selectedTrackKey: session.trackKey,
               selectedTrackIndex,
               selectedInstrument: session.instrument,

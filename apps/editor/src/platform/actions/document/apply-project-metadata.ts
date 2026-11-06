@@ -3,10 +3,7 @@ import type { ServicesAccessor } from "../../services";
 import { EditorStateService } from "../../services/editor/state";
 import { DocumentService } from "../../services/document/document";
 import { MixerService } from "../../services/mixer/mixer";
-import {
-  normalizeLegacyMetadata,
-  type MetadataValidationError,
-} from "../../services/document/schema";
+import { type MetadataValidationError } from "../../services/document/schema";
 
 export class ApplyProjectMetadataAction extends Action<
   [unknown, boolean?],
@@ -18,9 +15,7 @@ export class ApplyProjectMetadataAction extends Action<
     forceReload = false,
   ): Promise<readonly MetadataValidationError[]> {
     const document = accessor.get<DocumentService>("document");
-    const result = document.metadataSchema.safeParse(
-      normalizeLegacyMetadata(metadata),
-    );
+    const result = document.metadataSchema.safeParse(metadata);
     if (result.success) {
       const mixer = accessor.get<MixerService>("mixer");
       const projectRoot = document.getSnapshot().directoryHandle;

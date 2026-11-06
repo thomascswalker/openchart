@@ -22,7 +22,7 @@ interface RuntimeProps {
 export function Runtime({ children }: RuntimeProps) {
   const { settings } = useSettings();
 
-  const { midi: midiData, canUndo: canUndo, canRedo: canRedo } = useDocument();
+  const { data: midiData, canUndo: canUndo, canRedo: canRedo } = useDocument();
   const { viewportSessions, maxViewportCount, activeViewportId } =
     useViewport();
 

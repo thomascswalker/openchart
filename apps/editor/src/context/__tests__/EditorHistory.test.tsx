@@ -10,7 +10,7 @@ import { useDocument } from "../../hooks/useDocument";
 import { EditCommandType } from "@openchart/views";
 
 function HistoryHarness() {
-  const { midi, canUndo, canRedo, isDirty } = useDocument();
+  const { data: midi, canUndo, canRedo, isDirty } = useDocument();
   const document = Platform.services.get<DocumentService>("document");
   const [view, setView] = useState<"highway" | "piano-roll">("highway");
 

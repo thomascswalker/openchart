@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { WavFilePickerTypes } from "../../../util/fs/pickers";
-import { DefaultRuleset, type Ruleset } from "@openchart/views";
+import {
+  DefaultRuleset,
+  type CompiledRuleset,
+  type Ruleset,
+} from "@openchart/views";
+import { Midi } from "@openchart/midi";
 
 const MetadataSettingsVersion = 1;
 
@@ -142,27 +147,6 @@ export function buildMetadataSchema(ruleset: Ruleset = DefaultRuleset) {
 /** Schema for the bundled default ruleset; use `buildMetadataSchema` for others. */
 export const MetadataSchema = buildMetadataSchema();
 
-/**
- * Upgrades metadata written by older versions before it is parsed: the legacy
- * `difficulty.lead` becomes `leadGuitar`, and a missing `settings` section is
- * added. Kept outside the schema so it stays a plain object for the Form.
- */
-export function normalizeLegacyMetadata(raw: unknown): unknown {
-  if (typeof raw !== "object" || raw === null) return raw;
-  const next: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
-  const difficulty = next.difficulty;
-  if (typeof difficulty === "object" && difficulty !== null) {
-    const copy = { ...(difficulty as Record<string, unknown>) };
-    if ("lead" in copy && !("leadGuitar" in copy)) {
-      copy.leadGuitar = copy.lead;
-    }
-    delete copy.lead;
-    next.difficulty = copy;
-  }
-  next.settings ??= {};
-  return next;
-}
-
 export type Metadata = z.infer<typeof MetadataSchema>;
 
 export interface MetadataValidationError {
@@ -171,6 +155,16 @@ export interface MetadataValidationError {
 }
 
 export type MetadataValidationErrors = readonly MetadataValidationError[];
+
+export const makeDefaultMidi = (rules: CompiledRuleset): Midi => {
+  const midi = new Midi();
+  rules.descriptors().forEach((desc) => {
+    const index = midi.addTrack();
+    const track = midi.tracks[index];
+    track.name = desc.name;
+  });
+  return midi;
+};
 
 export const makeDefaultMetadata = (
   ruleset: Ruleset = DefaultRuleset,

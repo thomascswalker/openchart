@@ -13,7 +13,7 @@ import Platform from "../../../platform";
 import { PlaybackService } from "../../../platform/services/playback/playback";
 
 export function Playback({ children }: { children: ReactNode }) {
-  const { midi: midiData, documentId } = useDocument();
+  const { data: midiData, documentId } = useDocument();
   const { viewportSessions, activeViewportId, snapEnabled, snapDenominator } =
     useViewport();
   const activeViewport = viewportSessions.find(

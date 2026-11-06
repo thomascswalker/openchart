@@ -13,15 +13,16 @@ import {
 } from "@openchart/views";
 import { describe, expect, it, vi } from "vitest";
 import { ContextStore } from "../../../context";
-import type { LoggerService } from "../../logger";
 import type { PlaybackService } from "../../playback/playback";
-import { DocumentService } from "../../document/document";
 import { createModeToolbarGroups } from "../../../../components/editor/Toolbar/definitions";
 import { createEditingContextSnapshot } from "../editingContext";
 import { EditingService } from "../editing";
 import { ViewportService } from "../viewports";
 import { z } from "zod";
 import { createTestRulesetService } from "../../ruleset/__tests__/testUtils";
+import { mockWorkspaceService } from "../../workspace/__tests__/utils";
+import { mockLoggerService } from "../../__mock__/logger.mock";
+import { DocumentService } from "../../document";
 
 const lanes = ["green", "red", "yellow", "blue"] as const;
 type FourLaneToolState = { lane: (typeof lanes)[number] };
@@ -125,15 +126,9 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
 function createDocumentService(
   ruleset: ReturnType<typeof createTestRulesetService>,
 ): DocumentService {
-  return new DocumentService(
-    {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warning: vi.fn(),
-      error: vi.fn(),
-    } as unknown as LoggerService,
-    ruleset,
-  );
+  const logger = mockLoggerService();
+  const workspace = mockWorkspaceService();
+  return new DocumentService(logger, ruleset, workspace);
 }
 
 describe("editing mode extensibility acceptance", () => {

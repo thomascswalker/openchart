@@ -33,9 +33,7 @@ export class EditingService extends Service {
     "ruleset",
   ];
 
-  /** @deprecated Removed after the Piano Roll migration in Phase 6. */
   public readonly selection = new SelectionModel();
-  /** Shared payload used by every editing session. */
   public readonly clipboard: ClipboardService;
 
   public readonly registry: ModeRegistry;
@@ -48,8 +46,8 @@ export class EditingService extends Service {
   private readonly sessions = new Map<string, EditingSession>();
   private readonly sessionSignatures = new Map<string, string>();
   private chartDocument: ChartDocument | null = null;
-  private midi: Midi | null = null;
-  private documentId = -1;
+  private syncedMidi: Midi | undefined;
+  private documentId: number;
   private lastResultValue: EditResult = emptyResult();
 
   public constructor(
@@ -69,8 +67,8 @@ export class EditingService extends Service {
     this.viewportService.setTrackResolver(
       (viewport) => this.resolveTrack(viewport).descriptor,
     );
-    this.midi = documentService.data;
-    this.documentId = documentService.getSnapshot().documentId;
+    this.syncedMidi = documentService.data;
+    this.documentId = documentService.documentId;
     const chartDocument = this.createChartDocument(documentService.data);
     this.chartDocument = chartDocument;
     this.clipboard = new ClipboardService();
@@ -113,7 +111,8 @@ export class EditingService extends Service {
     requestedModeId?: EditingModeId | "global",
   ): EditingSession | null {
     const viewport = this.viewportService.getViewport(viewportId);
-    if (!viewport || !this.chartDocument || !this.midi) return null;
+    if (!viewport || !this.chartDocument || !this.documentService.data)
+      return null;
     const modeId =
       requestedModeId === "global" ? EditingModeId.MidiGlobal : requestedModeId;
     const cacheKey = modeId ? `${viewportId}::${modeId}` : viewportId;
@@ -164,7 +163,7 @@ export class EditingService extends Service {
   /** Reports whether the selected track can be hosted by the requested view. */
   public canHost(viewportId: string, hostKind: string): boolean {
     const viewport = this.viewportService.getViewport(viewportId);
-    if (!viewport || !this.midi) return false;
+    if (!viewport || !this.documentService.data) return false;
     return this.registry.canHost(
       this.resolveTrack(viewport).descriptor,
       hostKind,
@@ -179,11 +178,13 @@ export class EditingService extends Service {
 
   private readonly syncDocument = (): void => {
     const snapshot = this.documentService.getSnapshot();
-    const midi = snapshot.midi;
-    if (midi === this.midi && snapshot.documentId === this.documentId) return;
+    const midi = snapshot.data;
+    if (midi === this.syncedMidi && snapshot.documentId === this.documentId) {
+      return;
+    }
 
     const projectChanged = snapshot.documentId !== this.documentId;
-    this.midi = midi;
+    this.syncedMidi = midi;
     this.documentId = snapshot.documentId;
     this.chartDocument = midi ? this.createChartDocument(midi) : null;
     this.sessions.clear();
@@ -197,7 +198,7 @@ export class EditingService extends Service {
 
   /** A new ruleset invalidates the document's track rules and every session. */
   private readonly syncRuleset = (): void => {
-    const midi = this.midi;
+    const midi = this.documentService.data;
     this.chartDocument = midi ? this.createChartDocument(midi) : null;
     this.sessions.clear();
     this.sessionSignatures.clear();
@@ -236,7 +237,7 @@ export class EditingService extends Service {
     viewport: ViewportSession,
     modeId?: EditingModeId,
   ): EditingSession | null {
-    if (!this.midi || !this.chartDocument) return null;
+    if (!this.documentService.data || !this.chartDocument) return null;
     const viewportTarget = this.resolveTrack(viewport);
     const mode = modeId
       ? this.registry.getById(modeId)
@@ -282,7 +283,7 @@ export class EditingService extends Service {
       .descriptors()
       .find((track) => track.kind === "global");
     if (!descriptor) return null;
-    const index = this.midi!.tracks.findIndex(
+    const index = this.documentService.data!.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
     return { descriptor, trackIndex: index >= 0 ? index : null };
@@ -301,7 +302,7 @@ export class EditingService extends Service {
     descriptor: TrackDescriptor;
     trackIndex: number | null;
   } {
-    const midi = this.midi;
+    const midi = this.documentService.data;
     if (!midi) throw new Error("There is no MIDI document to resolve.");
     const song = new SongView(midi, this.rulesetService.compiled);
     const descriptors = song.getTrackDescriptors();
@@ -315,7 +316,9 @@ export class EditingService extends Service {
           viewport.trackKey,
           track?.name ?? viewport.instrument,
         ),
-        trackIndex: track ? midi.tracks.indexOf(track) : null,
+        trackIndex: track
+          ? this.documentService.data!.tracks.indexOf(track)
+          : null,
       };
     }
     const descriptor =
@@ -324,7 +327,7 @@ export class EditingService extends Service {
           item.key === viewport.trackKey || item.name === viewport.instrument,
       ) ??
       this.createUnmappedDescriptor(viewport.trackKey, viewport.instrument);
-    const index = midi.tracks.findIndex(
+    const index = this.documentService.data!.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
     return { descriptor, trackIndex: index >= 0 ? index : null };
@@ -345,7 +348,7 @@ export class EditingService extends Service {
 
   /** Rule-evaluation inputs: ppqn, project settings and player options. */
   private createRulesContext() {
-    const midi = this.midi;
+    const midi = this.documentService.data;
     const settings = this.documentService.getSnapshot().metadata.settings;
     const settingsSources = this.rulesetService.compiled.settingsSources;
     return createRulesetContext({
@@ -371,7 +374,7 @@ export class EditingService extends Service {
   ): string {
     const { trackIndex } = this.resolveTrack(viewport);
     return [
-      this.documentId,
+      this.documentService.documentId,
       this.rulesetService.getSnapshot().revision,
       modeId ?? "primary",
       viewport.trackKey,

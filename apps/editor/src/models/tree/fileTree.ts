@@ -4,11 +4,7 @@ import {
 } from "../../models/tree/objectTree";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ITreeNode } from "./tree";
-import {
-  FileSystemDirectoryHandle,
-  FileSystemFileHandle,
-  FileSystemHandle,
-} from "native-file-system-adapter";
+import type { FileSystemHandle } from "native-file-system-adapter";
 
 export type FileTreeNode = ITreeNode<FileSystemHandle>;
 

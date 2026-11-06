@@ -11,7 +11,7 @@ interface TrackListProps {
 }
 
 export function TrackList({ session }: TrackListProps) {
-  const { midi } = useDocument();
+  const { data: midi } = useDocument();
   const { compiled } = useRuleset();
   if (!midi) {
     return <Text>No MIDI data</Text>;

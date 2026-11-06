@@ -1,41 +1,30 @@
 import { Midi } from "@openchart/midi";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../../../context/History";
 import type { SaveFile } from "../filesystem/types";
-import type { LoggerService } from "../logger";
+import { makeDefaultMidi } from "./schema";
 import { StatefulService } from "../../services";
 import type { RulesetService } from "../ruleset";
 import {
   buildMetadataSchema,
   makeDefaultMetadata,
-  normalizeLegacyMetadata,
   type Metadata,
 } from "./schema";
 import { toArrayBuffer } from "../../../util/array";
-import type { CompiledRuleset } from "@openchart/views";
+import type { WorkspaceService } from "../workspace";
+import type { LoggerService } from "../logger";
 
-function createDefaultMidi(rules: CompiledRuleset) {
-  const midi = new Midi();
-  rules.descriptors().forEach((desc) => {
-    const index = midi.addTrack();
-    const track = midi.tracks[index];
-    track.name = desc.name;
-  });
-  return midi;
-}
-
-const ProjectFileName = "info.json";
 const MidiFileName = "notes.mid";
 
 export interface DocumentSnapshot {
   documentId: number;
-  midi: Midi | null;
-  file: string | null;
-  handle: FileSystemFileHandle | null;
-  directoryHandle: FileSystemDirectoryHandle | null;
+  data?: Midi;
+  metadata: Metadata;
+  projectFileHandle?: FileSystemFileHandle;
+  midiFileHandle?: FileSystemFileHandle;
+  directoryHandle?: FileSystemDirectoryHandle;
   isDirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
-  metadata: Metadata;
 }
 
 export interface MidiExport {
@@ -67,31 +56,47 @@ export const DefaultOpenedProject: OpenedProject = {
 
 export class DocumentService extends StatefulService<DocumentSnapshot> {
   static readonly id = "document";
-  static dependencies = ["logger", "ruleset"];
+  static dependencies = ["logger", "ruleset", "workspace"];
 
   // Services
   #logger: LoggerService;
-  readonly #rulesetService: RulesetService;
+  readonly #ruleset: RulesetService;
+  readonly #workspace: WorkspaceService;
 
-  #metadataSchema: ReturnType<typeof buildMetadataSchema>;
   #data: Midi | null = new Midi();
+  #metadataSchema: ReturnType<typeof buildMetadataSchema>;
   #documentId = 0;
-  #fileName: string | null = null;
-  #fileHandle: FileSystemFileHandle | null = null;
+  #projectFileHandle: FileSystemFileHandle | null = null;
+  #midiFileHandle: FileSystemFileHandle | null = null;
   #directoryHandle: FileSystemDirectoryHandle | null = null;
   #isDirty = false;
   #metadata: Metadata;
   readonly #history = new History(DEFAULT_HISTORY_CAPACITY);
 
-  constructor(logger: LoggerService, ruleset: RulesetService) {
+  constructor(
+    logger: LoggerService,
+    ruleset: RulesetService,
+    workspace: WorkspaceService,
+  ) {
     super();
     this.#logger = logger;
-    this.#rulesetService = ruleset;
+    this.#ruleset = ruleset;
+    ruleset.subscribe(this.syncRuleset);
+    this.#workspace = workspace;
+
+    // Initialize metadata schema and default metadata based on the current ruleset.
     this.#metadataSchema = buildMetadataSchema(ruleset.getSnapshot().ruleset);
     this.#metadata = makeDefaultMetadata(ruleset.getSnapshot().ruleset);
-    ruleset.subscribe(this.syncRuleset);
+
+    // Initialize the history with the current MIDI data.
     this.#history.reset(this.#data!);
+
+    // Publish the initial state of the document.
     this.publish();
+  }
+
+  public get documentId(): number {
+    return this.#documentId;
   }
 
   public get data(): Midi {
@@ -110,34 +115,12 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
     return this.#metadata;
   }
 
-  /** Project-settings schema for the active ruleset (rebuilt when it changes). */
   public get metadataSchema(): ReturnType<typeof buildMetadataSchema> {
     return this.#metadataSchema;
   }
 
-  /** Parses metadata of any age against the active ruleset's schema. */
-  public parseMetadata(raw: unknown): Metadata {
-    return this.#metadataSchema.parse(normalizeLegacyMetadata(raw)) as Metadata;
-  }
-
-  /**
-   * A new ruleset changes the difficulty and settings fields. Existing values
-   * are kept where the new schema accepts them; otherwise defaults apply.
-   */
-  private readonly syncRuleset = (): void => {
-    const { ruleset } = this.#rulesetService.getSnapshot();
-    this.#metadataSchema = buildMetadataSchema(ruleset);
-    const migrated = this.#metadataSchema.safeParse(
-      normalizeLegacyMetadata(this.#metadata),
-    );
-    this.#metadata = migrated.success
-      ? (migrated.data as Metadata)
-      : makeDefaultMetadata(ruleset);
-    this.publish();
-  };
-
   public set metadata(metadata: Metadata) {
-    this.#metadata = this.parseMetadata(metadata);
+    this.#metadata = this.#metadataSchema.parse(metadata);
     this.#isDirty = true;
     this.publish();
   }
@@ -154,14 +137,41 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
     this.publish();
   }
 
-  public readonly reset = (): void => {
-    this.update(
-      createDefaultMidi(this.#rulesetService.compiled),
-      null,
-      null,
-      null,
-      makeDefaultMetadata(this.#rulesetService.getSnapshot().ruleset),
-    );
+  /** Resets the document to its default state, including MIDI data and metadata. */
+  public override reset(): void {
+    this.data = makeDefaultMidi(this.#ruleset.compiled);
+    this.metadata = makeDefaultMetadata(this.#ruleset.getSnapshot().ruleset);
+    this.isDirty = false;
+  }
+
+  /** Publishes the current state of the document to subscribers. */
+  private publish(): void {
+    this._snapshot = {
+      documentId: this.#documentId,
+      data: this.#data ?? undefined,
+      metadata: this.#metadata,
+      midiFileHandle: this.#midiFileHandle ?? undefined,
+      projectFileHandle: this.#projectFileHandle ?? undefined,
+      directoryHandle: this.#directoryHandle ?? undefined,
+      isDirty: this.#isDirty,
+      canUndo: this.#history.canUndo,
+      canRedo: this.#history.canRedo,
+    };
+    this.notify();
+  }
+
+  /**
+   * A new ruleset changes the difficulty and settings fields. Existing values
+   * are kept where the new schema accepts them; otherwise defaults apply.
+   */
+  private readonly syncRuleset = (): void => {
+    const { ruleset } = this.#ruleset.getSnapshot();
+    this.#metadataSchema = buildMetadataSchema(ruleset);
+    const migrated = this.#metadataSchema.safeParse(this.#metadata);
+    this.#metadata = migrated.success
+      ? (migrated.data as Metadata)
+      : makeDefaultMetadata(ruleset);
+    this.publish();
   };
 
   public async open(): Promise<boolean> {
@@ -172,17 +182,16 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
           return false;
         }
         this.#logger.info("Project directory opened...");
-        const metadata = this.parseMetadata(
-          JSON.parse(new TextDecoder().decode(project.projectBytes)),
-        );
+        const raw = JSON.parse(new TextDecoder().decode(project.projectBytes));
+        const metadata = this.#metadataSchema.parse(raw);
 
-        this.update(
-          new Midi(project.midiBytes),
-          "notes.mid",
-          project.midiHandle,
-          project.directoryHandle,
-          metadata,
-        );
+        this.data = new Midi(project.midiBytes);
+        this.metadata = metadata;
+        this.#projectFileHandle = project.projectHandle;
+        this.#midiFileHandle = project.midiHandle;
+        this.#directoryHandle = project.directoryHandle;
+        this.#isDirty = false;
+        this.publish();
         this.#logger.info("Project opened from metadata JSON.");
         return true;
       })
@@ -195,18 +204,17 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public async readProject(): Promise<OpenedProject | null> {
-    const directoryHandle = await window.showDirectoryPicker({
-      mode: "read",
+    const [projectHandle] = await window.showOpenFilePicker({
+      multiple: false,
     });
 
-    const projectHandle = await directoryHandle
-      .getFileHandle(ProjectFileName)
-      .catch(() => {
-        throw new Error(`${ProjectFileName} not found.`);
-      });
     const projectFile = await projectHandle.getFile();
 
-    const midiFileHandle = await directoryHandle
+    const directoryHandle = this.#workspace.getRootHandle();
+    if (!directoryHandle) {
+      throw new Error("Workspace root directory not found.");
+    }
+    const midiFileHandle: FileSystemFileHandle = await directoryHandle
       .getFileHandle(MidiFileName)
       .catch(() => {
         throw new Error(`${MidiFileName} not found.`);
@@ -214,9 +222,10 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
     const midiFile = await midiFileHandle.getFile();
 
     this.#logger.info(`Project loaded: ${projectFile.name}`);
+
     return {
       projectBytes: new Uint8Array(await projectFile.arrayBuffer()),
-      projectHandle: projectHandle,
+      projectHandle: projectHandle as unknown as FileSystemFileHandle,
       midiBytes: new Uint8Array(await midiFile.arrayBuffer()),
       midiHandle: midiFileHandle,
       directoryHandle,
@@ -234,7 +243,7 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   public async writeFiles(
     files: DocumentFile[],
     directoryHandle: FileSystemDirectoryHandle | null = null,
-  ): Promise<SaveFile> {
+  ): Promise<SaveFile & { handles: FileSystemFileHandle[] }> {
     const [primaryFile] = files;
     if (!primaryFile) {
       throw new Error("At least one file is required.");
@@ -242,9 +251,9 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
 
     let targetDirectory = directoryHandle;
     if (!targetDirectory && typeof window.showDirectoryPicker === "function") {
-      targetDirectory = await window.showDirectoryPicker({
+      targetDirectory = (await window.showDirectoryPicker({
         mode: "readwrite",
-      });
+      })) as unknown as FileSystemDirectoryHandle;
     }
 
     if (!targetDirectory) {
@@ -258,10 +267,11 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
         anchor.click();
         URL.revokeObjectURL(url);
       }
-      const saved: SaveFile = {
+      const saved: SaveFile & { handles: FileSystemFileHandle[] } = {
         name: primaryFile.name,
         handle: null,
         directoryHandle: null,
+        handles: [],
       };
       this.#logger.info(
         `Files saved: ${files.map((file) => file.name).join(", ")}`,
@@ -279,10 +289,11 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
       await writable.close();
       handles.push(handle);
     }
-    const saved: SaveFile = {
+    const saved: SaveFile & { handles: FileSystemFileHandle[] } = {
       name: handles[0]!.name,
       handle: handles[0]!,
       directoryHandle: targetDirectory,
+      handles,
     };
     this.#logger.info(
       `Files saved: ${files.map((file) => file.name).join(", ")}`,
@@ -315,8 +326,11 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
       ],
       directoryHandle,
     );
-    this.rebind(saved.name, saved.handle, saved.directoryHandle ?? null);
-    this.isDirty = false;
+    this.#midiFileHandle = saved.handles[0] ?? null;
+    this.#projectFileHandle = saved.handles[1] ?? null;
+    this.#directoryHandle = saved.directoryHandle ?? null;
+    this.#isDirty = false;
+    this.publish();
     return true;
   }
 
@@ -324,8 +338,9 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
     if (!this.#data) {
       throw new Error("There is no MIDI document to export.");
     }
+    const fileName = this.#midiFileHandle?.name;
     const baseName = (
-      this.#fileName ??
+      fileName ??
       this.#metadata.song.name ??
       "untitled"
     ).replace(/\.(mid|midi)$/i, "");
@@ -336,12 +351,10 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
   }
 
   public readonly rebind = (
-    fileName: string | null,
     fileHandle: FileSystemFileHandle | null,
     directoryHandle: FileSystemDirectoryHandle | null = null,
   ): void => {
-    this.#fileName = fileName;
-    this.#fileHandle = fileHandle;
+    this.#projectFileHandle = fileHandle;
     this.#directoryHandle = directoryHandle;
     this.publish();
   };
@@ -407,37 +420,4 @@ export class DocumentService extends StatefulService<DocumentSnapshot> {
     this.#history.setCapacity(capacity);
     this.publish();
   };
-
-  private update(
-    midi: Midi,
-    name: string | null,
-    handle: FileSystemFileHandle | null,
-    directoryHandle: FileSystemDirectoryHandle | null,
-    metadata: Metadata,
-  ): void {
-    this.#data = midi;
-    this.#documentId += 1;
-    this.#fileName = name;
-    this.#fileHandle = handle;
-    this.#directoryHandle = directoryHandle;
-    this.#metadata = metadata;
-    this.#isDirty = false;
-    this.#history.reset(midi);
-    this.publish();
-  }
-
-  private publish(): void {
-    this._snapshot = {
-      documentId: this.#documentId,
-      midi: this.#data,
-      file: this.#fileName,
-      handle: this.#fileHandle,
-      directoryHandle: this.#directoryHandle,
-      isDirty: this.#isDirty,
-      canUndo: this.#history.canUndo,
-      canRedo: this.#history.canRedo,
-      metadata: this.#metadata,
-    };
-    this.notify();
-  }
 }

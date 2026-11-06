@@ -5,7 +5,7 @@
     "target": "es2023",
     "lib": ["ESNext", "DOM"],
     "module": "esnext",
-    "types": ["vite/client", "wicg-file-system-access"],
+    "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
     /* Bundler mode */
