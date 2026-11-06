@@ -129,6 +129,9 @@ Run these commands from the repository root. Build the package exports first;
 the editor imports `@openchart/midi` and `@openchart/views` from their `dist`
 directories.
 
+The Storybook browser tests build a static Storybook and serve it on port 6007;
+they do not reuse the development server on port 6006.
+
 ```bash
 npm ci
 npm run build --workspace=@openchart/midi
