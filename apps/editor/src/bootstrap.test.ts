@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bootstrap } from "./bootstrap";
 import Platform from "./platform";
-import { DocumentService } from "./services/document/document";
-import { EditorStateService } from "./services/editor/state";
-import { ViewportService } from "./services/editor/viewports";
+import { DocumentService } from "./platform/services/document/document";
+import { EditorStateService } from "./platform/services/editor/state";
+import { ViewportService } from "./platform/services/editor/viewports";
 
 describe("bootstrap", () => {
   afterEach(() => {

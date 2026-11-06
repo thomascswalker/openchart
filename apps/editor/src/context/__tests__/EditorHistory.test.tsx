@@ -2,10 +2,10 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "../../components/editor/Runtime";
-import { runActionAsync } from "../../actions/execute";
+import { runActionAsync } from "../../platform/actions/execute";
 import Platform from "../../platform";
-import { EditingService } from "../../services/editor/editing";
-import { DocumentService } from "../../services/document/document";
+import { EditingService } from "../../platform/services/editor/editing";
+import { DocumentService } from "../../platform/services/document/document";
 import { useDocument } from "../../hooks/useDocument";
 import { EditCommandType } from "@openchart/views";
 

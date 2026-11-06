@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import styles from "./Timeline.module.css";
 import { useTimelineBounds } from "./useTimelineBounds";
 

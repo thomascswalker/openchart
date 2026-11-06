@@ -1,6 +1,6 @@
-import { runAction } from "../actions/execute";
+import { runAction } from "../platform/actions/execute.ts";
 import Platform from "../platform";
-import type { EditorClipboardService } from "../services/editor/clipboard";
+import type { EditorClipboardService } from "../platform/services/editor/clipboard.ts";
 import type { Binding } from "./define.ts";
 
 /**

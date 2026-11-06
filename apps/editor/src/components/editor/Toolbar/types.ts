@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import type { EditingMode } from "@openchart/views";
-import type { ViewportSession } from "../../../services/editor/viewports";
+import type { ViewportSession } from "../../../platform/services/editor/viewports";
 
 export interface ToolbarContextState {
   activeView: ViewportSession["view"];

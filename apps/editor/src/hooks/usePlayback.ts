@@ -3,7 +3,7 @@ import Platform from "../platform";
 import {
   PlaybackService,
   type PlaybackSnapshot,
-} from "../services/playback/playback";
+} from "../platform/services/playback/playback";
 
 export function usePlayback() {
   const playbackService = Platform.services.get<PlaybackService>("playback");

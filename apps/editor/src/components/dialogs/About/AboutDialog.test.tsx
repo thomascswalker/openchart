@@ -1,10 +1,10 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { useEditor } from "../../../hooks/useEditorState";
 import Platform from "../../../platform";
-import { EditorStateService } from "../../../services/editor/state";
+import { EditorStateService } from "../../../platform/services/editor/state";
 import { Runtime } from "../../editor/Runtime";
 import { AboutDialog } from "./AboutDialog";
 

@@ -1,8 +1,8 @@
 import { Midi } from "@openchart/midi";
 import { describe, expect, it } from "vitest";
-import { DocumentService } from "../../services/document/document.js";
+import { DocumentService } from "../../platform/services/document/document.js";
 import { History } from "../History.js";
-import { createTestRulesetService } from "../../services/ruleset/__tests__/testUtils.js";
+import { createTestRulesetService } from "../../platform/services/ruleset/__tests__/testUtils.js";
 
 function createMidi(): Midi {
   const midi = new Midi();

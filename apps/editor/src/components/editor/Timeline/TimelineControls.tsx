@@ -1,4 +1,4 @@
-import { runAction } from "../../../actions/execute";
+import { runAction } from "../../../platform/actions/execute";
 import { Box, Button, Text } from "../../shared";
 import styles from "./Timeline.module.css";
 import type { TimelinePosition } from "./util";

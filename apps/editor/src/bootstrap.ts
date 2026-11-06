@@ -1,9 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import Platform from "./platform";
-import { DocumentService } from "./services/document/document";
-import type { EditingService } from "./services/editor/editing";
-import { EditorStateService } from "./services/editor/state";
-import { ViewportService } from "./services/editor/viewports";
+import { DocumentService } from "./platform/services/document/document";
+import type { EditingService } from "./platform/services/editor/editing";
+import { EditorStateService } from "./platform/services/editor/state";
+import { ViewportService } from "./platform/services/editor/viewports";
 
 /**
  * Resets editor state before mounting the runtime.

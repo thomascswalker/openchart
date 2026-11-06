@@ -4,7 +4,7 @@ import { useService } from "../../../platform";
 import type {
   UpdaterService,
   UpdaterSnapshot,
-} from "../../../services/updater/updater";
+} from "../../../platform/services/updater/updater";
 import { Button, Modal, Section, Text } from "../../shared";
 import styles from "./UpdateDialog.module.css";
 

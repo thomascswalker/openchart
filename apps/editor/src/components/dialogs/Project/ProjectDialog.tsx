@@ -1,11 +1,11 @@
-import { runActionAsync, runAction } from "../../../actions/execute";
+import { runActionAsync, runAction } from "../../../platform/actions/execute";
 import { useDocument } from "../../../hooks/useDocument";
 import {
   type Metadata,
   type MetadataValidationErrors,
-} from "../../../services/document/schema";
+} from "../../../platform/services/document/schema";
 import Platform from "../../../platform";
-import type { DocumentService } from "../../../services/document/document";
+import type { DocumentService } from "../../../platform/services/document/document";
 import { Form } from "../../shared";
 
 const ProjectDialog = () => {

@@ -1,5 +1,5 @@
 import { useSettings } from "../../../hooks/useApplication";
-import { HighwayScrollSpeedRange } from "../../../services/settings/schema";
+import { HighwayScrollSpeedRange } from "../../../platform/services/settings/schema";
 import { Checkbox, Slider, Text } from "../../shared";
 
 export const ViewportSettings = () => {

@@ -1,6 +1,6 @@
 import { fn } from "storybook/test";
 import { useSyncExternalStore } from "react";
-import type { PlaybackSnapshot } from "../services/playback/playback";
+import type { PlaybackSnapshot } from "../platform/services/playback/playback";
 
 export * from "./usePlayback";
 

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Runtime } from "../Runtime";
 import { Viewport } from "./";
 import Platform from "../../../platform";
-import { PlaybackService } from "../../../services/playback/playback";
+import { PlaybackService } from "../../../platform/services/playback/playback";
 
 vi.mock("../../views/ChartViewHost", () => ({
   ChartViewHost: () => null,

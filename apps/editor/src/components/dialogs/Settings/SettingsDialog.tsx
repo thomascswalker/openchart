@@ -1,9 +1,9 @@
-import { runActionAsync, runAction } from "../../../actions/execute";
+import { runActionAsync, runAction } from "../../../platform/actions/execute";
 import { useSettings } from "../../../hooks/useApplication";
 import {
   ApplicationSettingsSchema,
   type ApplicationSettings,
-} from "../../../services/settings/schema";
+} from "../../../platform/services/settings/schema";
 import { Form } from "../../shared";
 
 const SettingsDialog = () => {

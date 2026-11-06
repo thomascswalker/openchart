@@ -12,7 +12,7 @@ import Platform, { useSnapshot } from "../../../platform";
 import type {
   WorkspaceSnapshot,
   WorkspaceService,
-} from "../../../services/workspace";
+} from "../../../platform/services/workspace";
 
 const DefaultTabIconSize = 24;
 
