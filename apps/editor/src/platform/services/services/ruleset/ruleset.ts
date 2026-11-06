@@ -5,8 +5,8 @@ import {
   type CompiledRuleset,
   type Ruleset,
 } from "@openchart/views";
-import { StatefulService } from "../..";
-import type { EditorStateService } from "../editor/state";
+import { StatefulService } from "../../../services";
+import type { EditorStateService } from "../../editor/state";
 
 export interface RulesetSnapshot {
   /** The active, validated ruleset. */

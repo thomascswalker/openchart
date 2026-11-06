@@ -20,10 +20,10 @@ import {
   type PreviewNote,
 } from "../../../../audio/soundboard";
 import type { DocumentService } from "../document/document";
-import type { MixerService } from "../mixer/mixer";
-import type { RulesetService } from "../ruleset";
-import type { ApplicationSettings } from "../settings/schema";
-import { StatefulService } from "..";
+import type { MixerService } from "../../mixer/mixer";
+import type { RulesetService } from "../../ruleset";
+import type { ApplicationSettings } from "../../settings/schema";
+import { StatefulService } from "../../../services";
 
 export interface PlaybackSnapshot {
   isPlaying: boolean;

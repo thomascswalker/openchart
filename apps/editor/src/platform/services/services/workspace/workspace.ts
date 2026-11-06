@@ -1,4 +1,4 @@
-import { StatefulService } from "../..";
+import { StatefulService } from "../../../services";
 import { FileTreeModel } from "../../../../models/tree/fileTree";
 import {
   FileSystemDirectoryHandle,

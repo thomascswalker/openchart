@@ -1,8 +1,16 @@
-import { Service } from "../..";
+import { Service } from "../../../services";
 import { toArrayBuffer } from "../../../../util/array";
-import { ProjectFilePickerTypes, MidiFilePickerTypes } from "../document/types";
-import type { LoggerService } from "../logger";
-import type { SaveFile, LoadFile, LoadDirectory, ProjectFiles } from "./types";
+import {
+  ProjectFilePickerTypes,
+  MidiFilePickerTypes,
+} from "../../document/types";
+import type { LoggerService } from "../../logger";
+import type {
+  SaveFile,
+  LoadFile,
+  LoadDirectory,
+  ProjectFiles,
+} from "../../filesystem/types";
 
 export class FileSystemService extends Service {
   static dependencies = ["logger"];

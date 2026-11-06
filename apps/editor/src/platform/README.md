@@ -6,7 +6,7 @@ The _backend_, so to speak, of the editor revolves around **services** and **act
 
 **Services** are modular, reusable classes intended to provide a "global" accessor for various features within the editor. They are dynamically discovered, registered, and finally constructed when the application starts.
 
-They are automatically discovered via the `ServiceRegistry`. It recursively walks `./services` in order to find any classes which subclass `Service`.
+They are automatically discovered via the `ServiceRegistry`. It recursively walks `./services` to find classes which subclass `Service`, excluding tests, mocks, and the nested `./services/services` tree whose classes duplicate registered service IDs.
 
 Services which are discovered have their constructors stored in the registry and a single instance of the service is constructed and stored in a mapping of the service ID to the instance object. The service ID is just the name of the module the service is defined in.
 

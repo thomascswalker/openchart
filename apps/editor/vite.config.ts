@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: [zodAlias],
       "@src": path.resolve(dir, "src"),
-      "@services": path.resolve(dir, "src/services"),
+      "@services": path.resolve(dir, "src/platform/services"),
     },
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),

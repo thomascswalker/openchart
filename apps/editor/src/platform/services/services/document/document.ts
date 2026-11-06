@@ -1,15 +1,15 @@
 import { Midi } from "@openchart/midi";
 import { DEFAULT_HISTORY_CAPACITY, History } from "../../../../context/History";
-import type { SaveFile } from "../filesystem/types";
-import type { LoggerService } from "../logger";
-import { StatefulService } from "..";
-import type { RulesetService } from "../ruleset";
+import type { SaveFile } from "../../filesystem/types";
+import type { LoggerService } from "../../logger";
+import { StatefulService } from "../../../services";
+import type { RulesetService } from "../../ruleset";
 import {
   buildMetadataSchema,
   makeDefaultMetadata,
   normalizeLegacyMetadata,
   type Metadata,
-} from "./schema";
+} from "../../document/schema";
 import { toArrayBuffer } from "../../../../util/array";
 import type { CompiledRuleset } from "@openchart/views";
 

@@ -9,14 +9,17 @@ import {
 
 // Action ids come from file paths, exactly like the ActionRegistry derives them.
 const actionFiles = import.meta.glob([
-  "../../actions/**/*.ts",
-  "!../../actions/**/__tests__/**",
-  "!../../actions/__mocks__/**",
+  "../../platform/actions/**/*.ts",
+  "!../../platform/actions/**/__tests__/**",
+  "!../../platform/actions/__mocks__/**",
 ]);
 const actionIds = new Set(
   Object.keys(actionFiles)
     .map((path) =>
-      buildModuleId(path.replace("../../actions/", "../actions/"), "actions"),
+      buildModuleId(
+        path.replace("../../platform/actions/", "../actions/"),
+        "actions",
+      ),
     )
     .filter((id): id is string => id !== null),
 );

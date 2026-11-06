@@ -7,8 +7,10 @@ function isTestFile(filepath: string): boolean {
 export function buildModuleId(filepath: string, root: string): string | null {
   // Check if the filepath starts with the expected prefix and is not a test
   // file
-  const prefix = `../${root}/`;
-  if (!filepath.startsWith(prefix) || isTestFile(filepath)) {
+  const prefix = [`../${root}/`, `./${root}/`].find((candidate) =>
+    filepath.startsWith(candidate),
+  );
+  if (!prefix || isTestFile(filepath)) {
     return null;
   }
 

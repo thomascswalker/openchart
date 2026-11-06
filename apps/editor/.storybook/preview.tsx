@@ -6,9 +6,9 @@ import "../src/globals.css";
 import "../src/components/styles.css";
 import "./preview.css";
 
-// Action execution is replaced by src/actions/__mocks__/execute.ts, which
+// Action execution is replaced by src/platform/actions/__mocks__/execute.ts, which
 // routes playback actions to the mock playback service.
-sb.mock("../src/actions/execute.ts");
+sb.mock("../src/platform/actions/execute.ts");
 
 const { MockPlaybackService } = await import("../src/hooks/usePlayback.mock");
 

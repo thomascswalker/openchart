@@ -16,7 +16,7 @@ const engine = vi.hoisted(() => ({
   dispose: vi.fn(),
 }));
 
-vi.mock("../../../audio/soundboard", () => ({
+vi.mock("../../../../audio/soundboard", () => ({
   Soundboard: vi.fn(function () {
     return engine;
   }),
