@@ -32,8 +32,9 @@ export abstract class StatefulService<T> extends Service {
 
   constructor() {
     super();
-    this._snapshot = (this.constructor as typeof StatefulService)
-      .defaultSnapshot() as T;
+    this._snapshot = (
+      this.constructor as typeof StatefulService
+    ).defaultSnapshot() as T;
   }
 
   /** Set the current snapshot of the service's state. */
@@ -83,10 +84,7 @@ export class ServiceRegistry {
       const ServiceClass = serviceClasses[0];
       if (ServiceClass) {
         const segments = generatedId.split(".");
-        if (
-          segments.length > 1 &&
-          segments.at(-1) === segments.at(-2)
-        ) {
+        if (segments.length > 1 && segments.at(-1) === segments.at(-2)) {
           segments.pop();
         }
         const id =
