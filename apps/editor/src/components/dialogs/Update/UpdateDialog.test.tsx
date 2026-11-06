@@ -4,7 +4,7 @@ import { type Root, createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Platform from '../../../platform';
-import { DocumentService } from '../../../platform/services/document/document';
+import { ProjectService } from '../../../platform/services/project/project';
 import { UpdaterService } from '../../../platform/services/updater/updater';
 import { UpdateDialog } from './UpdateDialog';
 
@@ -47,7 +47,7 @@ describe('UpdateDialog', () => {
   afterEach(() => {
     act(() => {
       updater().reset();
-      Platform.services.get<DocumentService>('document').isDirty = false;
+      Platform.services.get<ProjectService>('project').isDirty = false;
     });
     mocks.check.mockReset();
     mocks.relaunch.mockReset();
@@ -92,10 +92,10 @@ describe('UpdateDialog', () => {
     container.remove();
   });
 
-  it('warns about unsaved changes when the document is dirty', async () => {
+  it('warns about unsaved changes when the project is dirty', async () => {
     mocks.check.mockResolvedValue(availableUpdate());
     act(
-      () => (Platform.services.get<DocumentService>('document').isDirty = true),
+      () => (Platform.services.get<ProjectService>('project').isDirty = true),
     );
     const { container, root } = renderDialog();
     await act(async () => updater().check());

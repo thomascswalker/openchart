@@ -16,7 +16,7 @@ import {
 } from '../commands';
 import type { EntityType } from '../entity';
 import type { NoteSnapshot } from '../reader';
-import type { ChartDocumentReader } from '../reader';
+import type { DocumentReader } from '../reader';
 import type { Rejection } from '../result';
 
 export const EditingModeId = {
@@ -31,7 +31,7 @@ export type EditingModeId =
 
 /** Document, target, and configuration visible to a pure editing mode. */
 export interface ModeContext {
-  reader: ChartDocumentReader;
+  reader: DocumentReader;
   target: EditingTarget;
   /** Compiled ruleset describing every track's lanes, phrases and rules. */
   rules: CompiledRuleset;

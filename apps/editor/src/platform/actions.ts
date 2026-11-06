@@ -4,7 +4,7 @@ import type { ContextStore } from './context';
 import { type ModuleCollection, buildModuleId } from './modules';
 import type { ServiceRegistry, ServicesAccessor } from './services';
 
-export interface ActionOptions {
+interface ActionOptions {
   id?: string;
   condition?: Record<string, unknown>;
 }
@@ -47,6 +47,7 @@ export abstract class Action<Args extends unknown[] = [], Result = void> {
 
   abstract run(
     accessor: ServicesAccessor,
+
     ...args: Args
   ): Result | Promise<Result>;
 }

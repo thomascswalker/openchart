@@ -20,11 +20,11 @@ export const globalBindings = defineBindings('global', {
     group: 'Playback',
   },
 
-  // Document
-  'document.new': { hotkey: 'Mod+N', name: 'New project', group: 'File' },
-  'document.open': { hotkey: 'Mod+O', name: 'Open project', group: 'File' },
-  'document.save': { hotkey: 'Mod+S', name: 'Save', group: 'File' },
-  'document.save-as': {
+  // Project
+  'project.new': { hotkey: 'Mod+N', name: 'New project', group: 'File' },
+  'project.open': { hotkey: 'Mod+O', name: 'Open project', group: 'File' },
+  'project.save': { hotkey: 'Mod+S', name: 'Save', group: 'File' },
+  'project.save-as': {
     hotkey: 'Mod+Shift+S',
     name: 'Save as',
     group: 'File',

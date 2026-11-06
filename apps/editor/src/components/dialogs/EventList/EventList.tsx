@@ -11,7 +11,7 @@ import {
 } from '@openchart/midi';
 import { startCase } from 'es-toolkit';
 
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import { useRuleset } from '../../../hooks/useRuleset';
 import { useViewport } from '../../../hooks/useViewport';
 import { vars } from '../../../util/css';
@@ -132,8 +132,8 @@ const eventTypeOptions: DropdownOption[] = (
 }));
 
 const EventList = () => {
-  const documentSnapshot = useDocument();
-  const { data: midi } = documentSnapshot;
+  const projectSnapshot = useProject();
+  const { data: midi } = projectSnapshot;
   const { viewportSessions, activeViewportId } = useViewport();
   const { compiled } = useRuleset();
 
@@ -175,7 +175,7 @@ const EventList = () => {
     () =>
       midi?.tracks.find((track) => track.name === selectedTrackName) ?? null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [midi, selectedTrackName, documentSnapshot],
+    [midi, selectedTrackName, projectSnapshot],
   );
   const data = useMemo(
     () =>
@@ -183,7 +183,7 @@ const EventList = () => {
         .filter((event) => config.filter(event))
         .map((item, i) => ({ id: String(i), ...config.toRow(item) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedTrack, config, documentSnapshot],
+    [selectedTrack, config, projectSnapshot],
   );
 
   return (

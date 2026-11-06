@@ -20,8 +20,8 @@ import {
 import { startCase } from 'es-toolkit';
 
 import { useSettings } from '../../../hooks/useApplication';
-import { useDocument } from '../../../hooks/useDocument';
 import { usePlaybackSelector } from '../../../hooks/usePlayback';
+import { useProject } from '../../../hooks/useProject';
 import { useRuleset } from '../../../hooks/useRuleset';
 import { useViewport } from '../../../hooks/useViewport';
 import { ViewHotkeyScopes } from '../../../input/ViewportHotkeyScopes';
@@ -193,7 +193,7 @@ function ViewportPanel({
     chartView: AnyChartView | null,
   ) => void;
 }) {
-  const { data: midiData } = useDocument();
+  const { data: midiData } = useProject();
   const { compiled: rules } = useRuleset();
   const { settings } = useSettings();
   const {

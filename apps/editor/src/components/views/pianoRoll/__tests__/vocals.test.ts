@@ -654,7 +654,7 @@ describe('vocal note editing', () => {
     expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
-  it('cancels a vocal move with no document or history trace (I-2)', () => {
+  it('cancels a vocal move with no project or history trace (I-2)', () => {
     const h = harness();
     h.drag(new Vector2(xAt(0), yAt(60)), xAt(480));
     h.calls.prompts[0]!.handlers.onCommit('la');
@@ -675,7 +675,7 @@ describe('vocal note editing', () => {
     expect(h.editing.isAwaitingLyric).toBe(false);
   });
 
-  it('previews an erase and cancels it without a document or history trace', () => {
+  it('previews an erase and cancels it without a project or history trace', () => {
     const h = seeded();
     const before = h.midi.toBuffer();
     const note = h.notes()[0]!;

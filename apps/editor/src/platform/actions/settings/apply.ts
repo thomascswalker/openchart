@@ -3,11 +3,10 @@ import type { ServicesAccessor } from '../../services/registry';
 import type { ApplicationSettings } from '../../services/settings/schema';
 import { SettingsService } from '../../services/settings/settings';
 
-export class ApplySettingsAction extends Action<
-  [ApplicationSettings],
-  boolean
-> {
-  run(accessor: ServicesAccessor, settings: ApplicationSettings): boolean {
+type TArgs = [ApplicationSettings];
+type TResult = boolean;
+export class ApplySettingsAction extends Action<TArgs, TResult> {
+  run(accessor: ServicesAccessor, settings: ApplicationSettings) {
     return accessor.get<SettingsService>('settings').applySettings(settings);
   }
 }

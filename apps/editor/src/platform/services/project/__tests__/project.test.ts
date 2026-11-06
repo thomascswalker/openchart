@@ -1,17 +1,17 @@
 import { Midi } from '@openchart/midi';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { type OpenedProject } from '../document';
+import { type OpenedProject } from '../project';
 import { makeDefaultMetadata } from '../schema';
-import { makeDocumentService } from './utils';
+import { makeProjectService } from './utils';
 
-describe('DocumentService', () => {
+describe('ProjectService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it('owns MIDI data, project metadata, dirty state, and history', () => {
-    const service = makeDocumentService();
+    const service = makeProjectService();
     const midi = new Midi();
     midi.addTrack();
     service.data = midi;
@@ -28,7 +28,7 @@ describe('DocumentService', () => {
   });
 
   it('does not dirty an empty edit transaction', () => {
-    const service = makeDocumentService();
+    const service = makeProjectService();
     service.isDirty = false;
     service.beginEdit();
     service.endEdit();
@@ -54,7 +54,7 @@ describe('DocumentService', () => {
       directoryHandle,
     };
 
-    const service = makeDocumentService(openedProject);
+    const service = makeProjectService(openedProject);
     await expect(service.open()).resolves.toBe(true);
 
     const snapshot = service.getSnapshot();
@@ -66,7 +66,7 @@ describe('DocumentService', () => {
     expect(snapshot.isDirty).toBe(false);
   });
 
-  it('saves MIDI and metadata using state owned by the document', async () => {
+  it('saves MIDI and metadata using state owned by the project', async () => {
     const midi = new Midi();
     midi.addTrack();
     const writtenFiles = new Map<string, Uint8Array>();
@@ -88,7 +88,7 @@ describe('DocumentService', () => {
         };
       },
     } as unknown as FileSystemDirectoryHandle;
-    const service = makeDocumentService();
+    const service = makeProjectService();
     service.data = midi;
     service.rebind(
       { name: 'notes.mid' } as unknown as FileSystemFileHandle,
@@ -139,7 +139,7 @@ describe('DocumentService', () => {
       showOpenFilePicker,
     });
 
-    const service = makeDocumentService(undefined, directoryHandle);
+    const service = makeProjectService(undefined, directoryHandle);
     await expect(service.readProject()).resolves.toEqual({
       projectBytes,
       midiBytes,
@@ -176,7 +176,7 @@ describe('DocumentService', () => {
     vi.stubGlobal('window', {
       showDirectoryPicker: vi.fn(async () => directoryHandle),
     });
-    const service = makeDocumentService();
+    const service = makeProjectService();
     service.data = midi;
 
     await expect(service.saveAs()).resolves.toBe(true);

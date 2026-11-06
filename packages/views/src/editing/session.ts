@@ -4,7 +4,6 @@ import {
   type RulesetContext,
   createRulesetContext,
 } from '../ruleset/index';
-import type { ChartDocument } from './chartDocument';
 import { ClipboardService } from './clipboard';
 import {
   DomainCommandType,
@@ -13,6 +12,7 @@ import {
   type GeneralCommand,
   ICommand,
 } from './commands';
+import type { Document } from './document';
 import type {
   EditingMode,
   EditingTarget,
@@ -82,7 +82,7 @@ export interface GestureHandle {
 
 /** Inputs required to bind a mode to one mutable chart document. */
 export interface CreateEditingSessionOptions {
-  document: ChartDocument;
+  document: Document;
   mode: EditingMode;
   target: EditingTarget;
   hostKind: string;
@@ -113,7 +113,7 @@ class EditingSessionImpl implements EditingSession {
   public readonly selection: SelectionModel;
   public readonly clipboard: ClipboardService;
   public readonly rules: CompiledRuleset;
-  private readonly document: ChartDocument;
+  private readonly document: Document;
   private readonly rulesContextSource:
     RulesetContext | (() => RulesetContext) | undefined;
   private readonly transaction: EditTransactionPort;

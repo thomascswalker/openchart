@@ -1,5 +1,5 @@
 import { Action } from '../../actions';
-import { DocumentService } from '../../services/document/document';
+import { ProjectService } from '../../services/project/project';
 import type { ServicesAccessor } from '../../services/registry';
 
 export class RedoAction extends Action {
@@ -7,7 +7,7 @@ export class RedoAction extends Action {
     super({ condition: { 'history.can-redo': true } });
   }
 
-  run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>('document').redoEdit();
+  run(accessor: ServicesAccessor) {
+    accessor.get<ProjectService>('project').redoEdit();
   }
 }

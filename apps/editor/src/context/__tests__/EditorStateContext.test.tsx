@@ -4,33 +4,33 @@ import { type Root, createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Runtime } from '../../components/editor/Runtime';
-import { useDocument } from '../../hooks/useDocument';
 import { useEditor } from '../../hooks/useEditorState';
 import { usePlayback } from '../../hooks/usePlayback';
+import { useProject } from '../../hooks/useProject';
 import Platform from '../../platform';
 import { runAction, runActionAsync } from '../../platform/actions/execute';
 
 function CommandEnablementProbe() {
-  const { isDirty } = useDocument();
+  const { isDirty } = useProject();
   const { error } = useEditor();
   const { isMetronomeEnabled, isClapEnabled } = usePlayback();
   return (
     <>
-      <button type="button" onClick={() => runAction('document.mark-dirty')}>
-        Change document
+      <button type="button" onClick={() => runAction('project.mark-dirty')}>
+        Change project
       </button>
-      <button type="button" onClick={() => runAction('document.save')}>
+      <button type="button" onClick={() => runAction('project.save')}>
         Save
       </button>
-      <button type="button" onClick={() => runAction('document.new')}>
-        New document
+      <button type="button" onClick={() => runAction('project.new')}>
+        New project
       </button>
       <span data-testid="dirty">{String(isDirty)}</span>
       <span data-testid="save-enabled">
-        {String(Platform.actions.isAvailable('document.save'))}
+        {String(Platform.actions.isAvailable('project.save'))}
       </span>
       <span data-testid="export-enabled">
-        {String(Platform.actions.isAvailable('document.export-midi'))}
+        {String(Platform.actions.isAvailable('project.export-midi'))}
       </span>
       <span data-testid="command-error">{error ?? ''}</span>
       <span data-testid="metronome-enabled">{String(isMetronomeEnabled)}</span>
@@ -54,7 +54,7 @@ function renderCommands(): { container: HTMLDivElement; root: Root } {
 }
 
 describe('editor action state', () => {
-  it('disables document commands until the active document has tracks', () => {
+  it('disables project commands until the active project has tracks', () => {
     const { container, root } = renderCommands();
 
     expect(
@@ -96,7 +96,7 @@ describe('editor action state', () => {
     container.remove();
   });
 
-  it('routes the new-document command to its executor', () => {
+  it('routes the new-project command to its executor', () => {
     const { container, root } = renderCommands();
 
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);

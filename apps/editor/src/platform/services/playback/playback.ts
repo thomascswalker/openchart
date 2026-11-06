@@ -20,8 +20,8 @@ import {
   Soundboard,
   type SoundboardSettings,
 } from '../../../audio/soundboard';
-import { IDocumentService } from '../document/document';
 import { IMixerService } from '../mixer/mixer';
+import { IProjectService } from '../project/project';
 import { IRulesetService } from '../ruleset';
 import { createDecorator } from '../service';
 import type { ApplicationSettings } from '../settings/schema';
@@ -55,7 +55,7 @@ export interface PlaybackSnapshot {
 
 export interface PlaybackConfiguration {
   midiData: Midi | null | undefined;
-  documentId?: number;
+  projectId?: number;
   settings: ApplicationSettings;
   snapEnabled: boolean;
   snapDenominator: number;
@@ -120,7 +120,7 @@ export function notesForVocalFeedback(
 export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private engine = new Soundboard();
   private midiData: Midi | null | undefined;
-  private documentId: number | undefined;
+  private projectId: number | undefined;
   private settings: ApplicationSettings | null = null;
   private selectedInstrument = '';
   private selectedDifficulty: Difficulty = Difficulty.Expert;
@@ -145,10 +145,10 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   private animationFrame: number | null = null;
   private lastFrameMs: number | null = null;
   private configured = false;
-  private documentUnsubscribe: (() => void) | undefined;
+  private projectUnsubscribe: (() => void) | undefined;
 
   constructor(
-    @IDocumentService private documentService: IDocumentService,
+    @IProjectService private projectService: IProjectService,
     @IMixerService private mixerService: IMixerService,
     @IRulesetService private rulesetService: IRulesetService,
   ) {
@@ -157,10 +157,10 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
 
   init() {
     this.selectedInstrument = this.defaultInstrument();
-    // Edits publish synchronously, so the end never lags behind the document.
-    this.documentUnsubscribe = this.documentService.subscribe(() => {
+    // Edits publish synchronously, so the end never lags behind the project.
+    this.projectUnsubscribe = this.projectService.subscribe(() => {
       if (this.configured) {
-        this.refresh(this.documentService.data);
+        this.refresh(this.projectService.data);
       }
     });
     this.rulesetService.subscribe(() => {
@@ -201,17 +201,17 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   };
 
   public readonly configure = (options: PlaybackConfiguration): void => {
-    const documentChanged =
-      options.documentId === undefined
+    const projectChanged =
+      options.projectId === undefined
         ? this.midiData !== options.midiData
-        : this.documentId !== options.documentId;
+        : this.projectId !== options.projectId;
     const selectionChanged =
-      documentChanged ||
+      projectChanged ||
       this.selectedInstrument !== options.selectedInstrument ||
       this.selectedDifficulty !== options.selectedDifficulty;
 
     this.midiData = options.midiData;
-    this.documentId = options.documentId;
+    this.projectId = options.projectId;
     this.settings = options.settings;
     this.snapEnabled = options.snapEnabled;
     this.snapDenominator = options.snapDenominator;
@@ -236,7 +236,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
     }
     this.configureEngine();
 
-    if (this.configured && documentChanged) {
+    if (this.configured && projectChanged) {
       this.stopPlayback(true);
       this.playbackTick = 0;
       this.syncMixerPosition();
@@ -399,7 +399,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
   public dispose(): void {
     this.stopPlayback(true);
     this.engine.dispose();
-    this.documentUnsubscribe?.();
+    this.projectUnsubscribe?.();
     this.listeners.clear();
     this.resetSession();
   }
@@ -450,7 +450,7 @@ export class PlaybackService extends StatefulService<PlaybackSnapshot> {
 
   // Only collected while the toggle is on, so playback without vocal
   // feedback never walks the vocal track. The array identity changes only
-  // with the document or selection, which the engine uses to reset.
+  // with the project or selection, which the engine uses to reset.
   private updateVocalNotes(): void {
     this.vocalNotes = this.vocalFeedbackEnabled
       ? notesForVocalFeedback(

@@ -9,8 +9,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AnyChartView } from '../../../../components/views/ChartViews';
 import { mockLoggerService } from '../../__mock__/logger.mock';
-import { DocumentService } from '../../document/document';
 import type { PlaybackService } from '../../playback/playback';
+import { ProjectService } from '../../project/project';
 import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
 import { mockWorkspaceService } from '../../workspace/__tests__/utils';
 import { ActiveChartViewService } from '../activeChartView';
@@ -23,9 +23,9 @@ function createClipboardHarness(midi: Midi) {
   const ruleset = createTestRulesetService();
   const logger = mockLoggerService();
   const workspace = mockWorkspaceService();
-  const document = new DocumentService(logger, ruleset, workspace);
-  document.init();
-  document.data = midi;
+  const project = new ProjectService(logger, ruleset, workspace);
+  project.init();
+  project.data = midi;
   const playbackListeners = new Set<() => void>();
   let isPlaying = false;
   const playback = {
@@ -48,7 +48,7 @@ function createClipboardHarness(midi: Midi) {
       instrument: descriptor.name,
     });
   }
-  const editing = new EditingService(document, playback, viewports, ruleset);
+  const editing = new EditingService(project, playback, viewports, ruleset);
   editing.init();
   const activeView = new ActiveChartViewService();
   activeView.init();
@@ -64,7 +64,7 @@ function createClipboardHarness(midi: Midi) {
   return {
     activeView,
     clipboard,
-    document,
+    project,
     editing,
     setPlaying(playing: boolean) {
       isPlaying = playing;
@@ -247,10 +247,10 @@ describe('EditorClipboardService', () => {
     h.clipboard.cut();
 
     expect(track.getNotes()).toHaveLength(0);
-    expect(h.document.getSnapshot().canUndo).toBe(true);
-    h.document.undoEdit();
-    expect(h.document.data.tracks[0]?.getNotes()).toHaveLength(1);
-    expect(h.document.getSnapshot().canUndo).toBe(false);
+    expect(h.project.getSnapshot().canUndo).toBe(true);
+    h.project.undoEdit();
+    expect(h.project.data.tracks[0]?.getNotes()).toHaveLength(1);
+    expect(h.project.getSnapshot().canUndo).toBe(false);
   });
 
   it('updates menu enablement when playback state changes', () => {

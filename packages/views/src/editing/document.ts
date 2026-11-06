@@ -23,13 +23,13 @@ import {
   formatTimeSignatureId,
   parseEntityFromId,
 } from './entity';
-import type { ChartDocumentReader, NoteSnapshot } from './reader';
+import type { DocumentReader, NoteSnapshot } from './reader';
 import { EditRejectedError, type EditResult, emptyEditResult } from './result';
 
 export type { NoteSnapshot } from './reader';
 
 /** Headless raw-command executor and read-only projection of a MIDI document. */
-export class ChartDocument implements ChartDocumentReader {
+export class Document implements DocumentReader {
   private readonly midi: Midi;
   private readonly trackDescriptors: readonly TrackDescriptor[];
   private readonly rules: CompiledRuleset;

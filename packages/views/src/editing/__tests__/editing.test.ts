@@ -2,8 +2,8 @@ import { MetaType, Midi } from '@openchart/midi';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  ChartDocument,
   Difficulty,
+  Document,
   DomainCommandType,
   EditCommandType,
   EditRejectedError,
@@ -32,7 +32,7 @@ function createDocument() {
     240,
     secondNoteInsertAt,
   );
-  const document = new ChartDocument(midi);
+  const document = new Document(midi);
   return { midi, track, document };
 }
 
@@ -57,7 +57,7 @@ describe('shared chart editing primitives', () => {
     const [first, second] = track.getNotes();
     const firstId = document.getNoteId(0, first!);
 
-    const clonedDocument = new ChartDocument(midi.clone());
+    const clonedDocument = new Document(midi.clone());
     expect(clonedDocument.getNote(firstId)).toMatchObject({
       tick: 0,
       pitch: 60,
@@ -283,7 +283,7 @@ describe('shared chart editing primitives', () => {
     ];
     const preview = computePreview(commands, document);
     const before = midi.toBuffer();
-    const appliedDocument = new ChartDocument(midi.clone());
+    const appliedDocument = new Document(midi.clone());
     const result = appliedDocument.applyBatch(commands);
 
     expect(preview.rejections).toEqual([]);
@@ -307,7 +307,7 @@ describe('shared chart editing primitives', () => {
     const trackIndex = midi.addTrack();
     const track = midi.tracks[trackIndex]!;
     track.addNote(60, 60, 90, 120);
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const noteId = document.getNoteId(0, track.getNotes()[0]!);
 
     expect(
@@ -329,7 +329,7 @@ describe('shared chart editing primitives', () => {
     const track = midi.tracks[midi.addTrack()]!;
     track.addNote(96, 0, 100, 120);
     track.addNote(97, 240, 100, 120);
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const targetIds = track
       .getNotes()
       .map((note) => document.getNoteId(0, note));
@@ -418,7 +418,7 @@ describe('shared chart editing primitives', () => {
     const midi = new Midi();
     const track = midi.tracks[midi.addTrack()]!;
     const note = track.addNote(60, 0, 90, 120);
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const noteId = document.getNoteId(0, note);
     const before = midi.toBuffer();
     const preview = computePreview(

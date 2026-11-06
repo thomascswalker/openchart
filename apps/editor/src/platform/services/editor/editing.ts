@@ -1,7 +1,7 @@
 import type { Midi } from '@openchart/midi';
 import {
-  ChartDocument,
   ClipboardService,
+  Document,
   type EditResult,
   EditingModeId,
   EditingModeRegistry,
@@ -17,8 +17,8 @@ import {
 } from '@openchart/views';
 import { defaultModes } from '@openchart/views';
 
-import { IDocumentService } from '../document/document';
 import { IPlaybackService } from '../playback/playback';
+import { IProjectService } from '../project/project';
 import { IRulesetService } from '../ruleset';
 import { Service, createDecorator } from '../service';
 import { IViewportService, type ViewportSession } from './viewports';
@@ -34,13 +34,13 @@ export class EditingService extends Service {
   private readonly resultListeners = new Set<ResultListener>();
   private readonly sessions = new Map<string, EditingSession>();
   private readonly sessionSignatures = new Map<string, string>();
-  private chartDocument: ChartDocument | null = null;
+  private document: Document | null = null;
   private syncedMidi: Midi | undefined;
-  private documentId!: number;
+  private projectId!: number;
   private lastResultValue: EditResult = emptyResult();
 
   public constructor(
-    @IDocumentService private readonly documentService: IDocumentService,
+    @IProjectService private readonly projectService: IProjectService,
     @IPlaybackService private readonly playbackService: IPlaybackService,
     @IViewportService private readonly viewportService: IViewportService,
     @IRulesetService private readonly rulesetService: IRulesetService,
@@ -55,12 +55,12 @@ export class EditingService extends Service {
     this.viewportService.setTrackResolver(
       (viewport) => this.resolveTrack(viewport).descriptor,
     );
-    this.syncedMidi = this.documentService.data;
-    this.documentId = this.documentService.documentId;
-    const chartDocument = this.createChartDocument(this.documentService.data);
-    this.chartDocument = chartDocument;
+    this.syncedMidi = this.projectService.data;
+    this.projectId = this.projectService.projectId;
+    const document = this.createDocument(this.projectService.data);
+    this.document = document;
     this.clipboardInstance = new ClipboardService();
-    this.documentService.subscribe(this.syncDocument);
+    this.projectService.subscribe(this.syncDocument);
     this.viewportService.subscribe(this.syncViewports);
     this.rulesetService.subscribe(this.syncRuleset);
   }
@@ -94,11 +94,11 @@ export class EditingService extends Service {
   };
 
   /** @deprecated Use the active EditingSession. */
-  public getDocument(): ChartDocument {
-    if (!this.chartDocument) {
+  public getDocument(): Document {
+    if (!this.document) {
       throw new Error('There is no MIDI document to edit.');
     }
-    return this.chartDocument;
+    return this.document;
   }
 
   /** Returns the cached session for the specified viewport, if supported. */
@@ -107,8 +107,7 @@ export class EditingService extends Service {
     requestedModeId?: EditingModeId | 'global',
   ): EditingSession | null {
     const viewport = this.viewportService.getViewport(viewportId);
-    if (!viewport || !this.chartDocument || !this.documentService.data)
-      return null;
+    if (!viewport || !this.document || !this.projectService.data) return null;
     const modeId =
       requestedModeId === 'global' ? EditingModeId.MidiGlobal : requestedModeId;
     const cacheKey = modeId ? `${viewportId}::${modeId}` : viewportId;
@@ -159,7 +158,7 @@ export class EditingService extends Service {
   /** Reports whether the selected track can be hosted by the requested view. */
   public canHost(viewportId: string, hostKind: string): boolean {
     const viewport = this.viewportService.getViewport(viewportId);
-    if (!viewport || !this.documentService.data) return false;
+    if (!viewport || !this.projectService.data) return false;
     return this.registry.canHost(
       this.resolveTrack(viewport).descriptor,
       hostKind,
@@ -173,16 +172,16 @@ export class EditingService extends Service {
   }
 
   private readonly syncDocument = (): void => {
-    const snapshot = this.documentService.getSnapshot();
+    const snapshot = this.projectService.getSnapshot();
     const midi = snapshot.data;
-    if (midi === this.syncedMidi && snapshot.documentId === this.documentId) {
+    if (midi === this.syncedMidi && snapshot.projectId === this.projectId) {
       return;
     }
 
-    const projectChanged = snapshot.documentId !== this.documentId;
+    const projectChanged = snapshot.projectId !== this.projectId;
     this.syncedMidi = midi;
-    this.documentId = snapshot.documentId;
-    this.chartDocument = midi ? this.createChartDocument(midi) : null;
+    this.projectId = snapshot.projectId;
+    this.document = midi ? this.createDocument(midi) : null;
     this.sessions.clear();
     this.sessionSignatures.clear();
     if (projectChanged) {
@@ -194,8 +193,8 @@ export class EditingService extends Service {
 
   /** A new ruleset invalidates the document's track rules and every session. */
   private readonly syncRuleset = (): void => {
-    const midi = this.documentService.data;
-    this.chartDocument = midi ? this.createChartDocument(midi) : null;
+    const midi = this.projectService.data;
+    this.document = midi ? this.createDocument(midi) : null;
     this.sessions.clear();
     this.sessionSignatures.clear();
     this.notify();
@@ -233,7 +232,7 @@ export class EditingService extends Service {
     viewport: ViewportSession,
     modeId?: EditingModeId,
   ): EditingSession | null {
-    if (!this.documentService.data || !this.chartDocument) return null;
+    if (!this.projectService.data || !this.document) return null;
     const viewportTarget = this.resolveTrack(viewport);
     const mode = modeId
       ? this.registry.getById(modeId)
@@ -253,17 +252,17 @@ export class EditingService extends Service {
         mode.id === EditingModeId.MidiGlobal ? null : viewport.difficulty,
     };
     return createEditingSession({
-      document: this.chartDocument,
+      document: this.document,
       mode,
       target,
       hostKind: mode.hostKinds.values().next().value ?? viewport.view,
       rules: this.rulesetService.compiled,
       rulesContext: () => this.createRulesContext(),
       transaction: {
-        begin: this.documentService.beginEdit,
-        record: this.documentService.recordEdit,
-        end: this.documentService.endEdit,
-        rollback: this.documentService.rollbackEdit,
+        begin: this.projectService.beginEdit,
+        record: this.projectService.recordEdit,
+        end: this.projectService.endEdit,
+        rollback: this.projectService.rollbackEdit,
       },
       selection: this.selection,
       clipboard: this.clipboard,
@@ -279,7 +278,7 @@ export class EditingService extends Service {
       .descriptors()
       .find((track) => track.kind === 'global');
     if (!descriptor) return null;
-    const index = this.documentService.data!.tracks.findIndex(
+    const index = this.projectService.data!.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
     return { descriptor, trackIndex: index >= 0 ? index : null };
@@ -298,7 +297,7 @@ export class EditingService extends Service {
     descriptor: TrackDescriptor;
     trackIndex: number | null;
   } {
-    const midi = this.documentService.data;
+    const midi = this.projectService.data;
     if (!midi) throw new Error('There is no MIDI document to resolve.');
     const song = new SongView(midi, this.rulesetService.compiled);
     const descriptors = song.getTrackDescriptors();
@@ -313,7 +312,7 @@ export class EditingService extends Service {
           track?.name ?? viewport.instrument,
         ),
         trackIndex: track
-          ? this.documentService.data!.tracks.indexOf(track)
+          ? this.projectService.data!.tracks.indexOf(track)
           : null,
       };
     }
@@ -323,7 +322,7 @@ export class EditingService extends Service {
           item.key === viewport.trackKey || item.name === viewport.instrument,
       ) ??
       this.createUnmappedDescriptor(viewport.trackKey, viewport.instrument);
-    const index = this.documentService.data!.tracks.findIndex(
+    const index = this.projectService.data!.tracks.findIndex(
       (track) => track.name === descriptor.name,
     );
     return { descriptor, trackIndex: index >= 0 ? index : null };
@@ -344,8 +343,8 @@ export class EditingService extends Service {
 
   /** Rule-evaluation inputs: ppqn, project settings and player options. */
   private createRulesContext() {
-    const midi = this.documentService.data;
-    const settings = this.documentService.getSnapshot().metadata.settings;
+    const midi = this.projectService.data;
+    const settings = this.projectService.getSnapshot().metadata.settings;
     const settingsSources = this.rulesetService.compiled.settingsSources;
     return createRulesetContext({
       ppqn: midi?.header.division ?? 480,
@@ -370,7 +369,7 @@ export class EditingService extends Service {
   ): string {
     const { trackIndex } = this.resolveTrack(viewport);
     return [
-      this.documentService.documentId,
+      this.projectService.projectId,
       this.rulesetService.getSnapshot().revision,
       modeId ?? 'primary',
       viewport.trackKey,
@@ -380,13 +379,13 @@ export class EditingService extends Service {
     ].join(':');
   }
 
-  private createChartDocument(midi: Midi): ChartDocument {
-    return new ChartDocument(midi, this.rulesetService.compiled);
+  private createDocument(midi: Midi): Document {
+    return new Document(midi, this.rulesetService.compiled);
   }
 
   private publishResult(result: EditResult): void {
     this.lastResultValue = result;
-    this.playbackService.refresh(this.documentService.data);
+    this.playbackService.refresh(this.projectService.data);
     for (const listener of [...this.resultListeners]) listener(result);
     this.notify();
   }

@@ -4,18 +4,18 @@ import { type Root, createRoot } from 'react-dom/client';
 import { Midi, MidiTrack } from '@openchart/midi';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import { TrackList } from './TrackList';
 
-vi.mock('../../../hooks/useDocument', () => ({
-  useDocument: vi.fn(),
+vi.mock('../../../hooks/useProject', () => ({
+  useProject: vi.fn(),
 }));
 
 vi.mock('../../../actions/execute', () => ({
   runActionAsync: vi.fn(),
 }));
 
-const mockedUseDocument = vi.mocked(useDocument);
+const mockedUseProject = vi.mocked(useProject);
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
@@ -34,17 +34,17 @@ function renderTrackList(): void {
 }
 
 function setMidi(midi: Midi | null): void {
-  mockedUseDocument.mockReturnValue({
+  mockedUseProject.mockReturnValue({
     data: midi,
-  } as ReturnType<typeof useDocument>);
+  } as ReturnType<typeof useProject>);
   act(() => root?.render(<TrackList />));
 }
 
 describe('TrackList', () => {
-  it('keeps hooks stable and rebuilds its SongView when the document changes', () => {
-    mockedUseDocument.mockReturnValue({
+  it('keeps hooks stable and rebuilds its SongView when the project changes', () => {
+    mockedUseProject.mockReturnValue({
       data: null,
-    } as unknown as ReturnType<typeof useDocument>);
+    } as unknown as ReturnType<typeof useProject>);
     renderTrackList();
     expect(container?.textContent).toContain('No MIDI data');
 

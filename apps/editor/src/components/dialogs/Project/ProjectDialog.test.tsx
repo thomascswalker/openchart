@@ -3,8 +3,8 @@ import { type Root, createRoot } from 'react-dom/client';
 
 import { describe, expect, it } from 'vitest';
 
-import { useDocument } from '../../../hooks/useDocument';
 import { useEditor } from '../../../hooks/useEditorState';
+import { useProject } from '../../../hooks/useProject';
 import { runAction } from '../../../platform/actions/execute';
 import { Playback } from '../../editor/Playback';
 import { Runtime } from '../../editor/Runtime';
@@ -12,7 +12,7 @@ import { ProjectDialog } from './ProjectDialog';
 
 function ProjectTestShell() {
   const { projectVisible } = useEditor();
-  const { metadata } = useDocument();
+  const { metadata } = useProject();
   return (
     <>
       <button type="button" onClick={() => runAction('dialog.open-project')}>

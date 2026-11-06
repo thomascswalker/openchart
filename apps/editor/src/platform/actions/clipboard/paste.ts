@@ -7,7 +7,8 @@ export class PasteAction extends Action {
     super({ condition: { 'clipboard.can-paste': true } });
   }
 
-  run(accessor: ServicesAccessor): void {
-    accessor.get<EditorClipboardService>('editor.clipboard').paste();
+  run(accessor: ServicesAccessor) {
+    const clipboard = accessor.get<EditorClipboardService>('editor.clipboard');
+    clipboard.paste();
   }
 }

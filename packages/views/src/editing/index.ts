@@ -1,4 +1,4 @@
-export * from './chartDocument';
+export * from './document';
 export * from './clipboard';
 export * from './commands';
 export * from './constants';

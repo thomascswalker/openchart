@@ -1,6 +1,6 @@
 import { type ReactNode, useSyncExternalStore } from 'react';
 
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import { useService } from '../../../platform';
 import type {
   UpdaterService,
@@ -32,7 +32,7 @@ const UpdateDialog = () => {
     updater.getSnapshot,
     updater.getSnapshot,
   );
-  const { isDirty } = useDocument();
+  const { isDirty } = useProject();
 
   const dismiss = (): void => {
     if (updater.canDismiss()) updater.dismiss();

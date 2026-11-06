@@ -5,15 +5,15 @@ import { EditCommandType } from '@openchart/views';
 import { describe, expect, it } from 'vitest';
 
 import { Runtime } from '../../components/editor/Runtime';
-import { useDocument } from '../../hooks/useDocument';
+import { useProject } from '../../hooks/useProject';
 import Platform from '../../platform';
 import { runActionAsync } from '../../platform/actions/execute';
-import { DocumentService } from '../../platform/services/document/document';
 import { EditingService } from '../../platform/services/editor/editing';
+import { ProjectService } from '../../platform/services/project/project';
 
 function HistoryHarness() {
-  const { data: midi, canUndo, canRedo, isDirty } = useDocument();
-  const document = Platform.services.get<DocumentService>('document');
+  const { data: midi, canUndo, canRedo, isDirty } = useProject();
+  const project = Platform.services.get<ProjectService>('project');
   const [view, setView] = useState<'highway' | 'piano-roll'>('highway');
 
   const addNote = (): void => {
@@ -64,8 +64,8 @@ function HistoryHarness() {
       >
         Switch view
       </button>
-      <button type="button" onClick={() => document.reset()}>
-        Replace document
+      <button type="button" onClick={() => project.reset()}>
+        Replace project
       </button>
       <input aria-label="Text field" />
     </>
@@ -124,7 +124,7 @@ describe('editor history commands', () => {
     ).toBe('1');
 
     const replaceButton = [...container.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Replace document',
+      (button) => button.textContent === 'Replace project',
     )!;
     act(() => replaceButton.click());
     expect(

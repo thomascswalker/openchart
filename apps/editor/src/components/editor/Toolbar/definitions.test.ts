@@ -1,7 +1,7 @@
 import { Midi } from '@openchart/midi';
 import {
-  ChartDocument,
   DefaultCompiledRuleset,
+  Document,
   createEditingSession,
   createRawMidiMode,
 } from '@openchart/views';
@@ -34,7 +34,7 @@ describe('mode-driven toolbar definitions', () => {
     const track = midi.tracks[midi.addTrack()]!;
     track.name = 'LEAD GUITAR';
     const session = createEditingSession({
-      document: new ChartDocument(midi),
+      document: new Document(midi),
       mode: extension,
       target: { trackKey: 'lead-guitar', trackIndex: 0, difficulty: null },
       hostKind: 'test-view',

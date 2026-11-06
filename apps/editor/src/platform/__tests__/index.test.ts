@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { ActionRegistry } from '../actions';
 import { ContextStore } from '../context';
 import Platform from '../index';
-import { DocumentService } from '../services/document/document';
 import { FileSystemService } from '../services/filesystem';
 import { LoggerService } from '../services/logger';
+import { ProjectService } from '../services/project/project';
 import { ServiceRegistry } from '../services/registry';
 import { SettingsService } from '../services/settings/settings';
 
@@ -22,11 +22,11 @@ describe('Platform', () => {
     expect(Platform.services.get('filesystem')).toBeInstanceOf(
       FileSystemService,
     );
-    expect(Platform.services.get('document')).toBeInstanceOf(DocumentService);
+    expect(Platform.services.get('project')).toBeInstanceOf(ProjectService);
     expect(Platform.services.get('settings')).toBeInstanceOf(SettingsService);
 
     const serviceIds = [
-      'document',
+      'project',
       'editor.active-chart-view',
       'editor.clipboard',
       'editor.state',
@@ -38,14 +38,14 @@ describe('Platform', () => {
       'settings',
     ];
     expect(serviceIds.filter((id) => !Platform.services.has(id))).toEqual([]);
-    expect(Platform.actions.hasAction('document.save')).toBe(true);
+    expect(Platform.actions.hasAction('project.save')).toBe(true);
   });
 
-  it('constructs a document service and initializes a new document', () => {
-    const docService = Platform.services.get<DocumentService>('document');
-    expect(docService).toBeInstanceOf(DocumentService);
+  it('constructs a project service and initializes a new project', () => {
+    const projectService = Platform.services.get<ProjectService>('project');
+    expect(projectService).toBeInstanceOf(ProjectService);
 
-    docService.reset();
-    expect(docService.isDirty).toBe(false);
+    projectService.reset();
+    expect(projectService.isDirty).toBe(false);
   });
 });

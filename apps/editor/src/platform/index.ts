@@ -59,6 +59,7 @@ export namespace initialization {
   }
 }
 
+export * from './services';
 export default initialization.Platform;
 export const PlatformContext = initialization.PlatformContext;
 export const PlatformProvider = initialization.PlatformProvider;

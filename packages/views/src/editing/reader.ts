@@ -12,7 +12,7 @@ export interface NoteSnapshot {
 }
 
 /** Read-only document surface available to pure editing modes. */
-export interface ChartDocumentReader {
+export interface DocumentReader {
   getPpqn(): number;
   getTrackDescriptor(trackIndex: number): TrackDescriptor | null;
   findTrackIndex(trackKey: string): number | null;

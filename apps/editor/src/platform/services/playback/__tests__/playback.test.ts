@@ -10,8 +10,8 @@ import {
 
 /** Test double that lets each test provide only the dependencies it needs. */
 class PlaybackService extends BasePlaybackService {
-  constructor(documentService?: unknown, mixerService?: unknown) {
-    super(documentService as never, mixerService as never, undefined as never);
+  constructor(projectService?: unknown, mixerService?: unknown) {
+    super(projectService as never, mixerService as never, undefined as never);
   }
 }
 
@@ -305,7 +305,7 @@ describe('PlaybackService', () => {
     service.dispose();
   });
 
-  it('refreshes the timeline from the current document data', () => {
+  it('refreshes the timeline from the current project data', () => {
     const service = new PlaybackService();
     const currentTrack = {
       events: [{ deltaTime: 961, tick: 961 }],
@@ -323,18 +323,18 @@ describe('PlaybackService', () => {
     service.dispose();
   });
 
-  it('follows document edits without an explicit refresh', () => {
+  it('follows project edits without an explicit refresh', () => {
     let listener = () => {};
     const track = { events: [{ deltaTime: 961, tick: 961 }] };
     const currentMidi = midi([track]);
-    const documentService = {
+    const projectService = {
       subscribe: (next: () => void) => {
         listener = next;
         return () => {};
       },
       data: currentMidi,
     };
-    const service = new PlaybackService(documentService, undefined);
+    const service = new PlaybackService(projectService, undefined);
     Object.assign(service, {
       rulesetService: { subscribe: () => () => {} },
     });
@@ -357,14 +357,14 @@ describe('PlaybackService', () => {
   it('preserves the playback tick when undo or redo provides a MIDI clone', () => {
     const service = new PlaybackService();
     const originalMidi = midi();
-    configure(service, { midiData: originalMidi, documentId: 1 });
+    configure(service, { midiData: originalMidi, projectId: 1 });
     service.setPlaybackTick(240);
 
-    configure(service, { midiData: midi(), documentId: 1 });
+    configure(service, { midiData: midi(), projectId: 1 });
     expect(service.getSnapshot().playbackTick).toBe(240);
     expect(engine.stop).not.toHaveBeenCalled();
 
-    configure(service, { midiData: midi(), documentId: 2 });
+    configure(service, { midiData: midi(), projectId: 2 });
     expect(service.getSnapshot().playbackTick).toBe(0);
     expect(engine.stop).toHaveBeenCalled();
     service.dispose();

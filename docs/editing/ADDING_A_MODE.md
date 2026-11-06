@@ -32,7 +32,7 @@ cancel/commit/undo without changing an existing production mode or view.
    `context.validate(commands)` if you need a dry run).
    Validate domain intent in `expand`, return
    errors as rejections, and translate accepted operations into raw commands.
-   `ChartDocument` validates the raw commands before mutation. Keep this logic
+   `Document` validates the raw commands before mutation. Keep this logic
    pure: do not mutate a `MidiTrack`, read editor services, or import app code.
 5. **Implement clipboard expansion.** `expandPaste` receives a defensive,
    mode-tagged payload. Map source entities to the destination's rows and

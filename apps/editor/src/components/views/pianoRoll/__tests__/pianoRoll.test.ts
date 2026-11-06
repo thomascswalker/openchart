@@ -238,7 +238,7 @@ describe('DOM styles', () => {
 });
 
 describe('selection identity', () => {
-  it('resolves selected entity ids to fresh notes after document replacement', () => {
+  it('resolves selected entity ids to fresh notes after project replacement', () => {
     const firstEvent = {} as NonNullable<PianoRollNote['midiNote']>['noteOn'];
     const secondEvent = {} as NonNullable<PianoRollNote['midiNote']>['noteOn'];
     const first = {

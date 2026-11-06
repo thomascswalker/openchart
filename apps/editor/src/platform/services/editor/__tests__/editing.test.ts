@@ -10,19 +10,19 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { mockLoggerService } from '../../__mock__/logger.mock';
-import { DocumentService } from '../../document/document';
 import type { PlaybackService } from '../../playback/playback';
+import { ProjectService } from '../../project/project';
 import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
 import { mockWorkspaceService } from '../../workspace/__tests__/utils';
 import { EditingService } from '../editing';
 import { ViewportService } from '../viewports';
 
-function createDocumentService(
+function createProjectService(
   ruleset: ReturnType<typeof createTestRulesetService>,
-): DocumentService {
+): ProjectService {
   const logger = mockLoggerService();
   const workspace = mockWorkspaceService();
-  const service = new DocumentService(logger, ruleset, workspace);
+  const service = new ProjectService(logger, ruleset, workspace);
   service.init();
   return service;
 }
@@ -36,13 +36,13 @@ function createViewportService(
 }
 
 function createEditingService(
-  documentService: DocumentService,
+  projectService: ProjectService,
   playbackService: PlaybackService,
   viewportService: ViewportService,
   rulesetService: ReturnType<typeof createTestRulesetService>,
 ): EditingService {
   const service = new EditingService(
-    documentService,
+    projectService,
     playbackService,
     viewportService,
     rulesetService,
@@ -58,15 +58,15 @@ describe('EditingService', () => {
 
   it('routes commands through document history and keeps note selection across undo snapshots', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = 'LEAD GUITAR';
     midi.tracks[0]!.addNote(60, 0, 100, 120);
-    documentService.data = midi;
+    projectService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
     const editing = createEditingService(
-      documentService,
+      projectService,
       playback,
       createViewportService(ruleset),
       ruleset,
@@ -85,12 +85,12 @@ describe('EditingService', () => {
       }).changed,
     ).toBe(true);
     expect(playback.refresh).toHaveBeenCalledTimes(1);
-    expect(documentService.getSnapshot().canUndo).toBe(true);
-    expect(documentService.data.tracks[0]?.getNotes()).toHaveLength(2);
+    expect(projectService.getSnapshot().canUndo).toBe(true);
+    expect(projectService.data.tracks[0]?.getNotes()).toHaveLength(2);
 
-    documentService.undoEdit();
+    projectService.undoEdit();
 
-    expect(documentService.data.tracks[0]?.getNotes()).toHaveLength(1);
+    expect(projectService.data.tracks[0]?.getNotes()).toHaveLength(1);
     expect(editing.selection.isSelected(noteId)).toBe(true);
     expect(editing.getDocument().getNote(noteId)).toMatchObject({
       tick: 0,
@@ -100,13 +100,13 @@ describe('EditingService', () => {
 
   it('clears selection and clipboard when a new project is loaded', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.addNote(60, 0, 100, 120);
-    documentService.data = midi;
+    projectService.data = midi;
     const editing = createEditingService(
-      documentService,
+      projectService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       createViewportService(ruleset),
       ruleset,
@@ -136,7 +136,7 @@ describe('EditingService', () => {
 
     const nextMidi = new Midi();
     nextMidi.addTrack();
-    documentService.data = nextMidi;
+    projectService.data = nextMidi;
 
     expect(editing.selection.getSelectedIds()).toEqual([]);
     expect(editing.clipboard.canPaste()).toBe(false);
@@ -144,15 +144,15 @@ describe('EditingService', () => {
 
   it('commits a generic gesture in one undo step and refreshes playback', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = 'LEAD GUITAR';
     midi.tracks[0]!.addNote(60, 0, 100, 120);
-    documentService.data = midi;
+    projectService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
     const editing = createEditingService(
-      documentService,
+      projectService,
       playback,
       createViewportService(ruleset),
       ruleset,
@@ -171,34 +171,34 @@ describe('EditingService', () => {
 
     expect(gesture.commit()).toMatchObject({ changed: true, updatedIds: [id] });
     expect(playback.refresh).toHaveBeenCalledTimes(1);
-    expect(documentService.getSnapshot().canUndo).toBe(true);
-    expect(documentService.data.tracks[0]?.getNotes()[0]).toMatchObject({
+    expect(projectService.getSnapshot().canUndo).toBe(true);
+    expect(projectService.data.tracks[0]?.getNotes()[0]).toMatchObject({
       start: 240,
       pitch: 62,
     });
 
-    documentService.undoEdit();
+    projectService.undoEdit();
 
-    expect(documentService.data.tracks[0]?.getNotes()[0]).toMatchObject({
+    expect(projectService.data.tracks[0]?.getNotes()[0]).toMatchObject({
       start: 0,
       pitch: 60,
     });
-    expect(documentService.getSnapshot().canUndo).toBe(false);
+    expect(projectService.getSnapshot().canUndo).toBe(false);
   });
 
   it('provides an isolated global header session for tempo and section edits', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = 'GLOBAL';
     midi.addTrack();
     midi.tracks[1]!.name = 'LEAD GUITAR';
     midi.addTempoEvent(0, 500_000);
-    documentService.data = midi;
+    projectService.data = midi;
     const playback = { refresh: vi.fn() } as unknown as PlaybackService;
     const editing = createEditingService(
-      documentService,
+      projectService,
       playback,
       createViewportService(ruleset),
       ruleset,
@@ -221,14 +221,14 @@ describe('EditingService', () => {
         name: 'Verse',
       }).changed,
     ).toBe(true);
-    expect(documentService.data.getTempoEvents()).toContainEqual(
+    expect(projectService.data.getTempoEvents()).toContainEqual(
       expect.objectContaining({
         tick: 480,
         microsecondsPerQuarterNote: 400_000,
       }),
     );
     expect(
-      documentService.data
+      projectService.data
         .getTrack('GLOBAL')!
         .getTextEvents()
         .some(
@@ -243,14 +243,14 @@ describe('EditingService', () => {
 
   it('rejects lyric mutations through the global session', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = 'VOCALS';
     const lyric = midi.tracks[0]!.addTextEvent(MetaType.Lyric, 0, 'hello');
-    documentService.data = midi;
+    projectService.data = midi;
     const editing = createEditingService(
-      documentService,
+      projectService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       createViewportService(ruleset),
       ruleset,
@@ -265,7 +265,7 @@ describe('EditingService', () => {
       }).changed,
     ).toBe(false);
     expect(
-      documentService.data.tracks[0]!.getTextEvents().some(
+      projectService.data.tracks[0]!.getTextEvents().some(
         (event) => event.type === MetaType.Lyric && event.text === lyric.text,
       ),
     ).toBe(true);
@@ -273,14 +273,14 @@ describe('EditingService', () => {
 
   it('schema-validates and stores mode tool state per viewport', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = 'LEAD GUITAR';
-    documentService.data = midi;
+    projectService.data = midi;
     const viewports = createViewportService(ruleset);
     const editing = createEditingService(
-      documentService,
+      projectService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       viewports,
       ruleset,

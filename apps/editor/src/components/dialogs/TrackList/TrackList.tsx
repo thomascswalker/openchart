@@ -1,6 +1,6 @@
 import type { MidiTrack } from '@openchart/midi';
 
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import { useRuleset } from '../../../hooks/useRuleset';
 import { runActionAsync } from '../../../platform/actions/execute';
 import type { ViewportSession } from '../../../platform/services/editor/viewports';
@@ -12,7 +12,7 @@ interface TrackListProps {
 }
 
 export function TrackList({ session }: TrackListProps) {
-  const { data: midi } = useDocument();
+  const { data: midi } = useProject();
   const { compiled } = useRuleset();
   if (!midi) {
     return <Text>No MIDI data</Text>;

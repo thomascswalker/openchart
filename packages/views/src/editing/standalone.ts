@@ -7,8 +7,8 @@ import {
   createUnmappedTrackRules,
 } from '../ruleset/compile';
 import type { RulesetContext } from '../ruleset/enforce';
-import { ChartDocument } from './chartDocument';
 import { ClipboardService } from './clipboard';
+import { Document } from './document';
 import { createDefaultModeRegistry } from './modes/index';
 import type { EditingTarget, ModeRegistry } from './modes/mode';
 import { SelectionModel } from './selectionModel';
@@ -46,7 +46,7 @@ export function createStandaloneEditing(
   rules: CompiledRuleset = DefaultCompiledRuleset,
   rulesContext?: RulesetContext | (() => RulesetContext),
 ): StandaloneEditing {
-  const document = new ChartDocument(midi, rules);
+  const document = new Document(midi, rules);
   const history = new StandaloneHistoryImpl(midi);
   const registry = createDefaultModeRegistry();
   const selection = new SelectionModel();
@@ -88,7 +88,7 @@ export function createStandaloneEditing(
 
 function resolveTarget(
   target: EditingTarget,
-  document: ChartDocument,
+  document: Document,
 ): EditingTarget {
   return {
     ...target,

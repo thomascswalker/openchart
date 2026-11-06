@@ -31,7 +31,7 @@ const initialState: MockState = {
 /**
  * In-memory stand-in for PlaybackService. It owns the same state and exposes
  * the same commands, so the Timeline controls and scrubbing behave as in the
- * app without audio or a document.
+ * app without audio or a project.
  */
 function createMockPlaybackService() {
   let state: MockState = { ...initialState };

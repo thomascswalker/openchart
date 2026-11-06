@@ -1,7 +1,7 @@
 import type { RuleViolation } from '../ruleset/index';
 import { EditCommandType, type GeneralCommand } from './commands';
 import type { EntityId } from './entity';
-import type { ChartDocumentReader, NoteSnapshot } from './reader';
+import type { DocumentReader, NoteSnapshot } from './reader';
 import type { Rejection } from './result';
 
 /** Volatile note projection produced without changing MIDI or history. */
@@ -17,7 +17,7 @@ export interface PreviewState {
 /** Computes the visible note overlay for raw commands without mutating reader. */
 export function computePreview(
   commands: readonly GeneralCommand[],
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
 ): PreviewState {
   const updated = new Map<EntityId, NoteSnapshot>();
   const added = new Map<EntityId, NoteSnapshot>();

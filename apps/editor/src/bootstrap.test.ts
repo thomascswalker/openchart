@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bootstrap } from './bootstrap';
 import Platform from './platform';
-import { DocumentService } from './platform/services/document/document';
 import { EditorStateService } from './platform/services/editor/state';
 import { ViewportService } from './platform/services/editor/viewports';
+import { ProjectService } from './platform/services/project/project';
 
 describe('bootstrap', () => {
   afterEach(() => {
@@ -14,15 +14,15 @@ describe('bootstrap', () => {
   it('resets application services without React', () => {
     const editorState =
       Platform.services.get<EditorStateService>('editor.state');
-    const document = Platform.services.get<DocumentService>('document');
+    const project = Platform.services.get<ProjectService>('project');
     const viewports =
       Platform.services.get<ViewportService>('editor.viewports');
 
     const resetEditorState = vi
       .spyOn(editorState, 'reset')
       .mockImplementation(() => {});
-    const resetDocument = vi
-      .spyOn(document, 'reset')
+    const resetProject = vi
+      .spyOn(project, 'reset')
       .mockImplementation(() => {});
     const resetViewports = vi
       .spyOn(viewports, 'reset')
@@ -30,7 +30,7 @@ describe('bootstrap', () => {
     bootstrap();
 
     expect(resetEditorState).toHaveBeenCalledOnce();
-    expect(resetDocument).toHaveBeenCalledOnce();
+    expect(resetProject).toHaveBeenCalledOnce();
     expect(resetViewports).toHaveBeenCalledOnce();
   });
 });

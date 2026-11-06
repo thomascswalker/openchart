@@ -7,13 +7,13 @@ import {
 } from 'react';
 
 import { useSettings } from '../../../hooks/useApplication';
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import { useViewport } from '../../../hooks/useViewport';
 import { usePlatform, useService } from '../../../platform';
-import { DocumentService } from '../../../platform/services/document/document';
 import type { EditingService } from '../../../platform/services/editor/editing';
 import { createEditingContextSnapshot } from '../../../platform/services/editor/editingContext';
 import { EditorStateService } from '../../../platform/services/editor/state';
+import { ProjectService } from '../../../platform/services/project/project';
 import { Playback } from '../Playback';
 
 interface RuntimeProps {
@@ -23,11 +23,11 @@ interface RuntimeProps {
 export function Runtime({ children }: RuntimeProps) {
   const { settings } = useSettings();
 
-  const { data: midiData, canUndo: canUndo, canRedo: canRedo } = useDocument();
+  const { data: midiData, canUndo: canUndo, canRedo: canRedo } = useProject();
   const { viewportSessions, maxViewportCount, activeViewportId } =
     useViewport();
 
-  const doc = useService<DocumentService>('document');
+  const project = useService<ProjectService>('project');
   const editorState = useService<EditorStateService>('editor.state');
   const editing = useService<EditingService>('editor.editing');
 
@@ -60,7 +60,7 @@ export function Runtime({ children }: RuntimeProps) {
       previousCapabilityKeys.current,
     );
     context.update({
-      'document.has-tracks': hasTracks,
+      'project.has-tracks': hasTracks,
       'history.can-undo': canUndo,
       'history.can-redo': canRedo,
       'dialog.project-open': editorStore.projectVisible,
@@ -89,8 +89,8 @@ export function Runtime({ children }: RuntimeProps) {
   ]);
 
   useEffect(() => {
-    doc.setHistoryCapacity(settings.history.capacity);
-  }, [doc, settings.history.capacity]);
+    project.setHistoryCapacity(settings.history.capacity);
+  }, [project, settings.history.capacity]);
 
   return <Playback>{children}</Playback>;
 }

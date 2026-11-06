@@ -7,7 +7,8 @@ export class CopyAction extends Action {
     super({ condition: { 'clipboard.can-copy': true } });
   }
 
-  run(accessor: ServicesAccessor): void {
-    accessor.get<EditorClipboardService>('editor.clipboard').copy();
+  run(accessor: ServicesAccessor) {
+    const clipboard = accessor.get<EditorClipboardService>('editor.clipboard');
+    clipboard.copy();
   }
 }

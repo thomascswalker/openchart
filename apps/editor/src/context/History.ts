@@ -74,7 +74,7 @@ export class History {
   }
 
   /**
-   * Abandons every open transaction and returns a copy of the document as it
+   * Abandons every open transaction and returns a copy of the project as it
    * was before the outermost one began, without adding history. Returns null
    * when no transaction is open.
    */

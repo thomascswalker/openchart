@@ -5,8 +5,8 @@ import { DefaultCompiledRuleset } from '../../ruleset/compile.js';
 import { Difficulty } from '../../ruleset/difficulty.js';
 import { createRulesetContext } from '../../ruleset/enforce.js';
 import { SongView } from '../../views/song.js';
-import { ChartDocument } from '../chartDocument.js';
 import { EditCommandType } from '../commands.js';
+import { Document } from '../document.js';
 import { formatNoteId } from '../entity.js';
 import { createRawMidiMode } from '../modes/midi/rawMidi.js';
 import { ModeContext } from '../modes/mode.js';
@@ -78,7 +78,7 @@ describe('standalone editing sessions', () => {
       }),
     ).not.toBeNull();
     const documentBytes = midi.toBuffer();
-    const document = new ChartDocument(midi);
+    const document = new Document(midi);
     const context: ModeContext = {
       reader: document,
       target: session.target,
@@ -215,7 +215,7 @@ describe('standalone editing sessions', () => {
       .find((track) => track.key === target.trackKey)!;
     const mode = standalone.registry.resolve(descriptor, 'piano-roll')!;
     const session = createEditingSession({
-      document: new ChartDocument(midi),
+      document: new Document(midi),
       mode,
       target,
       hostKind: 'piano-roll',

@@ -10,6 +10,9 @@ const config: StorybookConfig = {
     name: '@storybook/react-vite',
     options: {},
   },
+  typescript: {
+    reactDocgen: 'react-docgen-typescript',
+  },
   // Selects the "storybook" entries of package.json "imports" (e.g. #usePlayback).
   viteFinal: (viteConfig) => ({
     ...viteConfig,

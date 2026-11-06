@@ -94,7 +94,7 @@ describe('Menubar', () => {
     const onCommand = vi.fn();
     const { container, root } = render(
       <Menubar
-        canExecute={(command) => command !== 'document.save'}
+        canExecute={(command) => command !== 'project.save'}
         onCommand={onCommand}
       />,
     );
@@ -123,7 +123,7 @@ describe('Menubar', () => {
     await settle();
     const save = [
       ...container.querySelectorAll<HTMLButtonElement>('button'),
-    ].find((button) => button.dataset.command === 'document.save')!;
+    ].find((button) => button.dataset.command === 'project.save')!;
     expect(save.disabled).toBe(true);
     expect(document.activeElement?.textContent).toContain('Save As');
     act(() =>

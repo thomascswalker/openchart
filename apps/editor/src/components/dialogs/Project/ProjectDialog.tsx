@@ -1,17 +1,17 @@
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import Platform from '../../../platform';
 import { runAction, runActionAsync } from '../../../platform/actions/execute';
-import type { DocumentService } from '../../../platform/services/document/document';
+import type { ProjectService } from '../../../platform/services/project/project';
 import {
   type Metadata,
   type MetadataValidationErrors,
-} from '../../../platform/services/document/schema';
+} from '../../../platform/services/project/schema';
 import { Form } from '../../shared';
 
 const ProjectDialog = () => {
-  const { metadata, directoryHandle } = useDocument();
+  const { metadata, directoryHandle } = useProject();
   // The schema follows the active ruleset (difficulty and settings fields).
-  const documentService = Platform.services.get<DocumentService>('document');
+  const projectService = Platform.services.get<ProjectService>('project');
 
   const close = (): void => {
     runAction('dialog.close-project');
@@ -19,7 +19,7 @@ const ProjectDialog = () => {
 
   const apply = async (values: Metadata): Promise<boolean> => {
     const errors = await runActionAsync<MetadataValidationErrors>(
-      'document.apply-project-metadata',
+      'project.apply-project-metadata',
       values,
     );
     return errors.length === 0;
@@ -28,7 +28,7 @@ const ProjectDialog = () => {
   return (
     <Form
       title="Project"
-      schema={documentService.metadataSchema}
+      schema={projectService.metadataSchema}
       values={metadata}
       optionsLabel="Project sections"
       fileRootDirectory={directoryHandle}

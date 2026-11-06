@@ -2,7 +2,7 @@ import { Midi } from '@openchart/midi';
 import { describe, expect, it } from 'vitest';
 
 import { mockLoggerService } from '../../platform/services/__mock__/logger.mock';
-import { DocumentService } from '../../platform/services/document/document.js';
+import { ProjectService } from '../../platform/services/project/project.js';
 import { createTestRulesetService } from '../../platform/services/ruleset/__tests__/testUtils.js';
 import { mockWorkspaceService } from '../../platform/services/workspace/__tests__/utils.js';
 import { History } from '../History.js';
@@ -14,7 +14,7 @@ function createMidi(): Midi {
 }
 
 describe('history transaction rollback', () => {
-  it('restores the pre-transaction document without adding history', () => {
+  it('restores the pre-transaction project without adding history', () => {
     const midi = createMidi();
     const history = new History();
     history.reset(midi);
@@ -43,27 +43,27 @@ describe('history transaction rollback', () => {
     expect(history.rollbackTransaction()).toBeNull();
   });
 
-  it("replaces the document's MIDI and publishes on rollback", () => {
+  it("replaces the project's MIDI and publishes on rollback", () => {
     const logger = mockLoggerService();
-    const document = new DocumentService(
+    const project = new ProjectService(
       logger as never,
       createTestRulesetService(),
       mockWorkspaceService(),
     );
-    document.init();
+    project.init();
     let published = 0;
-    document.subscribe(() => published++);
-    const before = document.data!;
+    project.subscribe(() => published++);
+    const before = project.data!;
 
-    document.beginEdit();
+    project.beginEdit();
     before.addTrack();
-    document.recordEdit();
-    expect(document.rollbackEdit()).toBe(true);
+    project.recordEdit();
+    expect(project.rollbackEdit()).toBe(true);
 
-    expect(document.data).not.toBe(before);
-    expect(document.data!.tracks).toHaveLength(0);
-    expect(document.getSnapshot().canUndo).toBe(false);
+    expect(project.data).not.toBe(before);
+    expect(project.data!.tracks).toHaveLength(0);
+    expect(project.getSnapshot().canUndo).toBe(false);
     expect(published).toBeGreaterThan(0);
-    expect(document.rollbackEdit()).toBe(false);
+    expect(project.rollbackEdit()).toBe(false);
   });
 });

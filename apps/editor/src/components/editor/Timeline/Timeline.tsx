@@ -1,4 +1,4 @@
-import { useDocument } from '../../../hooks/useDocument';
+import { useProject } from '../../../hooks/useProject';
 import type { AnyChartView } from '../../views/ChartViews';
 import styles from './Timeline.module.css';
 import TimelineControls from './TimelineControls';
@@ -11,7 +11,7 @@ interface TimelineProps {
 }
 
 export function Timeline({ chartViews }: TimelineProps) {
-  const { data: midi } = useDocument();
+  const { data: midi } = useProject();
   const { isPlaying, playbackTick, timelineTicks, syncPlayhead, position } =
     useTimelineSync({ midi: midi ?? null, chartViews });
   const { canvasRef, containerRef, scrubFrameRef } = useTimelineRender({

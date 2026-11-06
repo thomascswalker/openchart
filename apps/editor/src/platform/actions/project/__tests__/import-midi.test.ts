@@ -2,8 +2,8 @@ import { Midi } from '@openchart/midi';
 import { describe, expect, it, vi } from 'vitest';
 
 import { mockLoggerService } from '../../../services/__mock__/logger.mock';
-import { DocumentService } from '../../../services/document/document';
-import { makeDefaultMetadata } from '../../../services/document/schema';
+import { ProjectService } from '../../../services/project/project';
+import { makeDefaultMetadata } from '../../../services/project/schema';
 import type { ServicesAccessor } from '../../../services/registry';
 import { createTestRulesetService } from '../../../services/ruleset/__tests__/testUtils';
 import { mockWorkspaceService } from '../../../services/workspace/__tests__/utils';
@@ -17,20 +17,20 @@ describe('ImportMidiAction', () => {
     metadata.song.name = 'Keep this metadata';
 
     const logger = mockLoggerService();
-    const document = new DocumentService(
+    const project = new ProjectService(
       logger,
       createTestRulesetService(),
       mockWorkspaceService(),
     );
-    document.init();
-    document.metadata = metadata;
+    project.init();
+    project.metadata = metadata;
     const read = vi.fn(async () => ({
       name: 'imported.mid',
       bytes: importedMidi.toBuffer(),
       handle: null,
     }));
     const services = {
-      document,
+      project,
       filesystem: { read },
       logger,
     };
@@ -41,9 +41,9 @@ describe('ImportMidiAction', () => {
     await new ImportMidiAction().run(accessor);
 
     expect(read).toHaveBeenCalledOnce();
-    expect(document.getSnapshot().data?.trackCount).toBe(1);
-    expect(document.metadata).toEqual(metadata);
-    expect(document.isDirty).toBe(true);
+    expect(project.getSnapshot().data?.trackCount).toBe(1);
+    expect(project.metadata).toEqual(metadata);
+    expect(project.isDirty).toBe(true);
     expect(logger.info).toHaveBeenCalledWith('MIDI imported: imported.mid');
   });
 });

@@ -1,5 +1,5 @@
 import { Action } from '../../actions';
-import { DocumentService } from '../../services/document/document';
+import { ProjectService } from '../../services/project/project';
 import type { ServicesAccessor } from '../../services/registry';
 
 export class UndoAction extends Action {
@@ -7,7 +7,7 @@ export class UndoAction extends Action {
     super({ condition: { 'history.can-undo': true } });
   }
 
-  run(accessor: ServicesAccessor): void {
-    accessor.get<DocumentService>('document').undoEdit();
+  run(accessor: ServicesAccessor) {
+    accessor.get<ProjectService>('project').undoEdit();
   }
 }

@@ -17,8 +17,8 @@ import { z } from 'zod';
 import { createModeToolbarGroups } from '../../../../components/editor/Toolbar/definitions';
 import { ContextStore } from '../../../context';
 import { mockLoggerService } from '../../__mock__/logger.mock';
-import { DocumentService } from '../../document';
 import type { PlaybackService } from '../../playback/playback';
+import { ProjectService } from '../../project';
 import { createTestRulesetService } from '../../ruleset/__tests__/testUtils';
 import { mockWorkspaceService } from '../../workspace/__tests__/utils';
 import { EditingService } from '../editing';
@@ -124,12 +124,12 @@ function fourLaneMode(): EditingMode<FourLaneToolState> {
   };
 }
 
-function createDocumentService(
+function createProjectService(
   ruleset: ReturnType<typeof createTestRulesetService>,
-): DocumentService {
+): ProjectService {
   const logger = mockLoggerService();
   const workspace = mockWorkspaceService();
-  const service = new DocumentService(logger, ruleset, workspace);
+  const service = new ProjectService(logger, ruleset, workspace);
   service.init();
   return service;
 }
@@ -137,16 +137,16 @@ function createDocumentService(
 describe('editing mode extensibility acceptance', () => {
   it('resolves, renders, publishes context, executes, pastes, and gestures a test mode', () => {
     const ruleset = createTestRulesetService();
-    const documentService = createDocumentService(ruleset);
+    const projectService = createProjectService(ruleset);
     const midi = new Midi();
     midi.addTrack();
     midi.tracks[0]!.name = 'LEAD GUITAR';
     midi.tracks[0]!.addNote(60, 0, 100, 120);
-    documentService.data = midi;
+    projectService.data = midi;
     const viewports = new ViewportService(ruleset);
     viewports.init();
     const editing = new EditingService(
-      documentService,
+      projectService,
       { refresh: vi.fn() } as unknown as PlaybackService,
       viewports,
       ruleset,
@@ -155,7 +155,7 @@ describe('editing mode extensibility acceptance', () => {
     const mode = fourLaneMode();
     editing.registry.register(mode);
 
-    const descriptor = new SongView(documentService.data)
+    const descriptor = new SongView(projectService.data)
       .getTrackDescriptors()
       .find((track) => track.name === 'LEAD GUITAR')!;
     expect(editing.registry.resolve(descriptor, 'test-view')?.id).toBe(
@@ -215,7 +215,7 @@ describe('editing mode extensibility acceptance', () => {
 
     const noteId = editing
       .getDocument()
-      .getNoteId(0, documentService.data.tracks[0]!.getNotes()[0]!);
+      .getNoteId(0, projectService.data.tracks[0]!.getNotes()[0]!);
     const cancelled = session.beginGesture();
     cancelled.preview({
       type: EditCommandType.MoveNotes,
@@ -223,9 +223,9 @@ describe('editing mode extensibility acceptance', () => {
       tickDelta: 120,
       pitchDelta: 0,
     });
-    expect(documentService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
+    expect(projectService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
     cancelled.cancel();
-    expect(documentService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
+    expect(projectService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
 
     const committed = session.beginGesture();
     committed.preview({
@@ -235,9 +235,9 @@ describe('editing mode extensibility acceptance', () => {
       pitchDelta: 0,
     });
     expect(committed.commit().changed).toBe(true);
-    expect(documentService.data.tracks[0]!.getNotes()[0]!.start).toBe(120);
-    documentService.undoEdit();
-    expect(documentService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
+    expect(projectService.data.tracks[0]!.getNotes()[0]!.start).toBe(120);
+    projectService.undoEdit();
+    expect(projectService.data.tracks[0]!.getNotes()[0]!.start).toBe(0);
 
     const copiedNote = editing.getDocument().getNote(noteId)!;
     session.clipboard.setData({
@@ -262,7 +262,7 @@ describe('editing mode extensibility acceptance', () => {
       editing.getSession('viewport-1', 'test.fourLane')!.pasteClipboard(960)
         .createdIds,
     ).toHaveLength(1);
-    expect(documentService.data.tracks[0]!.getNotes()).toContainEqual(
+    expect(projectService.data.tracks[0]!.getNotes()).toContainEqual(
       expect.objectContaining({ start: 960, pitch: copiedNote.pitch }),
     );
   });

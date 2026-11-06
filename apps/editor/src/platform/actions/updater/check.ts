@@ -7,7 +7,7 @@ export class CheckForUpdatesAction extends Action {
     super({ condition: { 'platform.is-tauri': true } });
   }
 
-  async run(accessor: ServicesAccessor): Promise<void> {
+  async run(accessor: ServicesAccessor) {
     await accessor.get<UpdaterService>('updater').check();
   }
 }
