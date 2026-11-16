@@ -5,5 +5,6 @@ coverage
 apps/editor/playwright-report
 apps/editor/test-results
 package-lock.json
-apps/desktop/src-tauri/gen/**
+apps/editor/desktop/src/gen/**
+apps/workflow/desktop/src/gen/**
 **/*.wxs

@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Verify package version is newer than the latest version tag
-        run: node apps/desktop/scripts/verify-release-version.mjs
+        run: node apps/editor/desktop/scripts/verify-release-version.mjs
 
   build-linux:
     name: Build Linux bundles
@@ -62,10 +62,10 @@ jobs:
         run: npm run build:desktop
 
       - name: Prepare release version
-        run: node apps/desktop/scripts/prepare-release.mjs
+        run: node apps/editor/desktop/scripts/prepare-release.mjs
 
       - name: Build desktop application
-        run: npm run desktop:build
+        run: npm run editor-desktop:build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bundle_root="apps/desktop/src-tauri/target/release/bundle"
+          bundle_root="apps/editor/desktop/src/target/release/bundle"
           test -n "$(find "$bundle_root/appimage" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
           test -n "$(find "$bundle_root/appimage" -maxdepth 1 -type f -name '*.AppImage.sig' -print -quit)"
           test -n "$(find "$bundle_root/deb" -maxdepth 1 -type f -name '*.deb' -print -quit)"
@@ -85,10 +85,10 @@ jobs:
         with:
           name: openchart-linux-x86_64
           path: |
-            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
-            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
-            apps/desktop/src-tauri/target/release/bundle/deb/*.deb
-            apps/desktop/src-tauri/target/release/bundle/rpm/*.rpm
+            apps/editor/desktop/src/target/release/bundle/appimage/*.AppImage
+            apps/editor/desktop/src/target/release/bundle/appimage/*.AppImage.sig
+            apps/editor/desktop/src/target/release/bundle/deb/*.deb
+            apps/editor/desktop/src/target/release/bundle/rpm/*.rpm
           if-no-files-found: error
           retention-days: 14
 
@@ -119,10 +119,10 @@ jobs:
         run: npm run build:desktop
 
       - name: Prepare release version
-        run: node apps/desktop/scripts/prepare-release.mjs
+        run: node apps/editor/desktop/scripts/prepare-release.mjs
 
       - name: Build desktop application
-        run: npm run desktop:build
+        run: npm run editor-desktop:build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -130,7 +130,7 @@ jobs:
       - name: Verify Windows bundles
         shell: pwsh
         run: |
-          $bundleRoot = "apps/desktop/src-tauri/target/release/bundle"
+          $bundleRoot = "apps/editor/desktop/src/target/release/bundle"
           $nsisBundles = Get-ChildItem "$bundleRoot/nsis" -Filter "*.exe" -File
           $msiBundles = Get-ChildItem "$bundleRoot/msi" -Filter "*.msi" -File
           if ($nsisBundles.Count -eq 0) { throw "No NSIS installer was produced." }
@@ -145,10 +145,10 @@ jobs:
         with:
           name: openchart-windows-x86_64
           path: |
-            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
-            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
-            apps/desktop/src-tauri/target/release/bundle/msi/*.msi
-            apps/desktop/src-tauri/target/release/bundle/msi/*.msi.sig
+            apps/editor/desktop/src/target/release/bundle/nsis/*.exe
+            apps/editor/desktop/src/target/release/bundle/nsis/*.exe.sig
+            apps/editor/desktop/src/target/release/bundle/msi/*.msi
+            apps/editor/desktop/src/target/release/bundle/msi/*.msi.sig
           if-no-files-found: error
           retention-days: 14
 
@@ -182,7 +182,7 @@ jobs:
 
       - name: Generate updater manifest
         run: |
-          node apps/desktop/scripts/generate-latest-json.mjs \
+          node apps/editor/desktop/scripts/generate-latest-json.mjs \
             --version "${{ steps.package-version.outputs.version }}" \
             --tag "v${{ steps.package-version.outputs.version }}" \
             --repo "$GITHUB_REPOSITORY" \

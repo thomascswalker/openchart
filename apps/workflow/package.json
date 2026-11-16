@@ -1,25 +1,24 @@
 {
-  "name": "@openchart/git",
-  "version": "1.0.0",
-  "description": "Empty JavaScript/TypeScript package for future Git integration.",
+  "name": "@openchart/workflow",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist"
-  ],
+  "version": "1.0.0",
   "scripts": {
-    "build": "node ../../scripts/clean-package-output.mjs ./dist && tsc -p tsconfig.json",
-    "check-types": "tsc -p tsconfig.json --noEmit"
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@openchart/core": "1.0.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "typescript": "~6.0.2"
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2"
   }
 }

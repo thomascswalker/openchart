@@ -5,24 +5,20 @@ import './styles.css';
 
 const App = () => {
   return (
-    <main className="git-desktop-app">
+    <main className="workflow-desktop-app">
       <Box
-        className="git-desktop-shell"
+        className="workflow-desktop-shell"
         flexDirection="column"
         gap={16}
         padding={24}
       >
         <Text className="eyebrow">OpenChart</Text>
-        <Text
-          className="title"
-          role="heading"
-          style={{ fontSize: 32, fontWeight: 600 }}
-        >
-          Git Desktop
+        <Text className="title" role="heading">
+          Workflow Desktop
         </Text>
         <Text className="subtitle">
-          This foundation app is intentionally minimal. Repository workflows,
-          MIDI editing, and Git automation are deferred to a future milestone.
+          This foundation app is intentionally minimal. Repository and MIDI
+          workflows are deferred to a future milestone.
         </Text>
         <Box gap={12}>
           <Button

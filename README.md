@@ -6,16 +6,16 @@ TypeScript application (web/desktop) and libraries for editing and reviewing MID
 
 ## What's in this repo
 
-| Type    | Name                     | Description                                                                                                                                                                     |
-| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Package | `@openchart/core`        | Shared React UI primitives, shared styling, and reusable file-tree models.                                                                                                      |
-| Package | `@openchart/midi`        | Core MIDI parsing (read/write) library.                                                                                                                                         |
-| Package | `@openchart/views`       | MIDI view library providing non-owning "views" of MIDI data. These views provide an abstraction of the MIDI data in order to more easily interface with a specific MIDI schema. |
-| Package | `@openchart/audio`       | Audio playback, shared-clock mixing, and multitrack controls.                                                                                                                   |
-| Package | `@openchart/git`         | Placeholder TypeScript package for future Git integration. No runtime Git implementation is included.                                                                           |
-| App     | `@openchart/editor`      | React + Three.js web-based MIDI editor app.                                                                                                                                     |
-| App     | `@openchart/desktop`     | Tauri v2 desktop container for `@openchart/editor` across Windows, macOS, and Linux.                                                                                            |
-| App     | `@openchart/git-desktop` | Minimal Tauri 2 + React foundation shell demonstrating `@openchart/core` consumption without Git or MIDI functionality.                                                         |
+| Type    | Name                          | Description                                                                                                                                                                     |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Package | `@openchart/core`             | Shared React UI primitives, shared styling, and reusable file-tree models.                                                                                                      |
+| Package | `@openchart/midi`             | Core MIDI parsing (read/write) library.                                                                                                                                         |
+| Package | `@openchart/views`            | MIDI view library providing non-owning "views" of MIDI data. These views provide an abstraction of the MIDI data in order to more easily interface with a specific MIDI schema. |
+| Package | `@openchart/audio`            | Audio playback, shared-clock mixing, and multitrack controls.                                                                                                                   |
+| App     | `@openchart/editor`           | React + Three.js web-based MIDI editor app.                                                                                                                                     |
+| App     | `@openchart/editor-desktop`   | Tauri v2 desktop container for `@openchart/editor` across Windows, macOS, and Linux.                                                                                            |
+| App     | `@openchart/workflow`         | React web app for workflow integrations.                                                                                                                                        |
+| App     | `@openchart/workflow-desktop` | Tauri v2 desktop container for `@openchart/workflow`.                                                                                                                           |
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ node -v
 npm -v
 ```
 
-### Desktop App (`@openchart/desktop`)
+### Editor Desktop App (`@openchart/editor-desktop`)
 
 Building the desktop application requires the **Rust** toolchain and OS-specific C/C++ build tools & system libraries:
 
@@ -167,31 +167,31 @@ Consumers must explicitly import `@openchart/core/styles.css` for the shared
 theme, fonts, and global UI rules. Import `@openchart/core/theme.css` only when
 tokens are needed without the base styles.
 
-### Git package (`@openchart/git`)
+### Workflow web app (`@openchart/workflow`)
 
 ```bash
-# Build the empty git package entry point
-npm run build --workspace=@openchart/git
+# Run the workflow app in a browser, including its workspace dependencies
+npx turbo run dev --filter=@openchart/workflow
+
+# Build the workflow app and its workspace dependencies
+npm run test:workflow-desktop
 ```
 
-### Git Desktop foundation app (`@openchart/git-desktop`)
+### Workflow Desktop App (`@openchart/workflow-desktop`)
 
 ```bash
-# Run the minimal frontend in dev mode
-npm run dev --workspace=@openchart/git-desktop
-
-# Launch the Tauri shell
-npm run tauri:dev --workspace=@openchart/git-desktop
+# Launch the workflow app in the Tauri desktop shell
+npm run dev --workspace=@openchart/workflow-desktop
 ```
 
-### Desktop App (`@openchart/desktop`)
+### Editor Desktop App (`@openchart/editor-desktop`)
 
 ```bash
 # Launch desktop app in development mode
-npm run desktop:dev
+npm run editor-desktop:dev
 
 # Package native desktop application installers
-npm run desktop:build
+npm run editor-desktop:build
 ```
 
 ### Desktop Releases & Auto-Update
@@ -211,7 +211,6 @@ npm run test
 Package-specific API documentation and examples:
 
 - [`@openchart/core`](packages/core/README.md) — shared UI primitives, styling, and reusable file-tree models for desktop and editor consumers.
-- [`@openchart/git`](packages/git/README.md) — placeholder package for future Git integrations; intentionally empty for now.
 - [`@openchart/midi`](packages/midi/README.md) — read, edit, and write Standard MIDI Files.
 - [`@openchart/views`](packages/views/README.md) — create chart-oriented views and edit instrument charts.
 - [`@openchart/audio`](packages/audio/README.md) — audio playback and multitrack mixing.

@@ -17,14 +17,14 @@ body {
   min-height: 100vh;
 }
 
-.git-desktop-app {
+.workflow-desktop-app {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.git-desktop-shell {
+.workflow-desktop-shell {
   width: min(720px, calc(100vw - 32px));
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 16px;
@@ -41,6 +41,8 @@ body {
 
 .title {
   margin: 0;
+  font-size: 32px;
+  font-weight: 600;
 }
 
 .subtitle {

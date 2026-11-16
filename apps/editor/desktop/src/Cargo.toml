@@ -19,7 +19,7 @@ tauri-plugin-process = "2"
 tauri-plugin-updater = { version = "2.8.1", default-features = false, features = ["rustls-tls", "system-proxy"] }
 
 [lib]
-name = "openchart_desktop_lib"
+name = "openchart_editor_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [profile.release]

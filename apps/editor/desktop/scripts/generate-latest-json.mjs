@@ -3,7 +3,7 @@
 // from the signed bundles downloaded into a directory.
 //
 // Usage:
-//   node apps/desktop/scripts/generate-latest-json.mjs \
+//   node apps/editor/desktop/scripts/generate-latest-json.mjs \
 //     --version 0.1.42 --tag build-<sha> --repo owner/name \
 //     --assets release-assets --out release-assets/latest.json
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';

@@ -1,17 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenChart Git Desktop",
+  "productName": "OpenChart Workflow Desktop",
   "version": "0.1.0",
-  "identifier": "com.openchart.gitdesktop",
+  "identifier": "com.openchart.workflowdesktop",
   "build": {
-    "beforeDevCommand": "npm run dev --workspace=@openchart/git-desktop",
-    "beforeBuildCommand": "npm run build --workspace=@openchart/git-desktop",
-    "frontendDist": "../dist"
+    "beforeDevCommand": "npm run dev --workspace=@openchart/workflow",
+    "beforeBuildCommand": "npm run build --workspace=@openchart/workflow",
+    "devUrl": "http://localhost:5174",
+    "frontendDist": "../../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "OpenChart Git Desktop",
+        "title": "OpenChart Workflow Desktop",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -34,7 +35,7 @@
     ],
     "category": "Utility",
     "copyright": "© OpenChart",
-    "shortDescription": "OpenChart Git Desktop foundation shell",
+    "shortDescription": "OpenChart Workflow Desktop foundation shell",
     "longDescription": "A minimal GUI shell for future repository and MIDI workflows."
   }
 }
