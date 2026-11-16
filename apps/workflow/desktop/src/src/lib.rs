@@ -1,4 +1,6 @@
-#[cfg_attr(mobile, allow(dead_code))]
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  println!("OpenChart Workflow Desktop foundation app is ready.");
+  tauri::Builder::default()
+    .run(tauri::generate_context!())
+    .expect("error while running workflow desktop application");
 }

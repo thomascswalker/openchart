@@ -1,61 +1,11 @@
 :root {
   color-scheme: dark;
-  background: #0d1117;
+  background: var(--primary-darker);
   font-family: var(--font-primary);
-}
-
-body {
   margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(96, 165, 250, 0.18), transparent 35%),
-    #0f172a;
-  color: var(--text-primary);
-}
-
-#root {
-  min-height: 100vh;
-}
-
-.workflow-desktop-app {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.workflow-desktop-shell {
-  width: min(720px, calc(100vw - 32px));
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.82);
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.42);
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 11px;
-  color: var(--secondary);
-}
-
-.title {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 600;
-}
-
-.subtitle {
-  color: var(--text-secondary);
-  max-width: 52ch;
-  line-height: 1.6;
-}
-
-.primary-button {
-  background: var(--secondary);
-  border-color: var(--secondary);
-}
-
-.secondary-button {
   color: var(--text-primary);
 }
