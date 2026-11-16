@@ -1,0 +1,62 @@
+{
+  "name": "@openchart/core",
+  "version": "1.0.0",
+  "description": "Shared reusable UI and model primitives for OpenChart applications.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./theme.css": "./dist/theme.css",
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "dependencies": {
+    "@tanstack/react-table": "^9.3.1",
+    "@tanstack/react-virtual": "^3.14.21",
+    "@fontsource/roboto": "^5.3.0",
+    "@fontsource/roboto-mono": "^5.3.0",
+    "choices.js": "^11.2.4",
+    "classnames": "^2.5.1",
+    "native-file-system-adapter": "^3.0.1",
+    "styled-system": "^5.1.5"
+  },
+  "scripts": {
+    "build": "node ../../scripts/clean-package-output.mjs ./dist && tsc -p tsconfig.json && node ../../scripts/copy-core-assets.mjs",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run test:unit && vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build"
+  },
+  "devDependencies": {
+    "@storybook/addon-docs": "^10.6.1",
+    "@storybook/react-vite": "^10.6.1",
+    "@types/node": "^26.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/styled-system": "^5.1.25",
+    "@vitejs/plugin-react": "^6.1.0",
+    "@vitest/browser-playwright": "^4.1.12",
+    "@types/mock-fs": "^4.13.4",
+    "mock-fs": "^5.5.0",
+    "playwright": "latest",
+    "storybook": "^10.6.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.12"
+  }
+}

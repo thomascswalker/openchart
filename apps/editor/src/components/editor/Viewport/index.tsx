@@ -8,6 +8,18 @@ import {
   useState,
 } from 'react';
 
+import { Button, CloseButton } from '@openchart/core';
+import {
+  BassIcon,
+  DrumsIcon,
+  FivepadIcon,
+  FourpadIcon,
+  GuitarIcon,
+  NoteIcon,
+  PianoIcon,
+  SplitIcon,
+  VocalsIcon,
+} from '@openchart/core';
 import type { Midi } from '@openchart/midi';
 import {
   type CompiledRuleset,
@@ -33,18 +45,6 @@ import { type ViewportSession } from '../../../platform/services/editor/viewport
 import { PlaybackService } from '../../../platform/services/playback/playback';
 import type { EngineOptions } from '../../../rendering/engine';
 import { TrackList } from '../../dialogs';
-import { Button, CloseButton } from '../../shared';
-import {
-  BassIcon,
-  DrumsIcon,
-  FivepadIcon,
-  FourpadIcon,
-  GuitarIcon,
-  NoteIcon,
-  PianoIcon,
-  SplitIcon,
-  VocalsIcon,
-} from '../../shared';
 import { ChartViewHost } from '../../views/ChartViewHost';
 import type { AnyChartView } from '../../views/ChartViews';
 import { ChartViews } from '../../views/ChartViews';

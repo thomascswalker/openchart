@@ -1,8 +1,8 @@
 import type { MixerTrack } from '@openchart/audio';
+import { HorizontalSeparator, ResetIcon, Section, Text } from '@openchart/core';
 
 import { useSnapshot } from '../../../platform';
 import type { MixerSnapshot } from '../../../platform/services/mixer/types';
-import { HorizontalSeparator, ResetIcon, Section, Text } from '../../shared';
 import styles from './AudioMixer.module.css';
 import { AudioTrack } from './AudioTrack';
 import { AudioTrackButton } from './AudioTrackButton';

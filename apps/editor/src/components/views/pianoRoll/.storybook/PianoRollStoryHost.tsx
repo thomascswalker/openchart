@@ -6,6 +6,16 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  type DropdownOption,
+  Input,
+  Label,
+  Section,
+  Text,
+} from '@openchart/core';
 import { MetaType, Midi, type MidiNote, type MidiTrack } from '@openchart/midi';
 import {
   DefaultCompiledRuleset,
@@ -17,16 +27,6 @@ import {
 
 import { PlaybackService } from '../../../../platform/services/playback/playback';
 import { DefaultApplicationSettings } from '../../../../platform/services/settings/schema';
-import {
-  Button,
-  Checkbox,
-  Dropdown,
-  type DropdownOption,
-  Input,
-  Label,
-  Section,
-  Text,
-} from '../../../shared/index';
 import type { ChartViewState, SnapSettings } from '../../AbstractChartView';
 import { ChartViewHost } from '../../ChartViewHost';
 import type { AnyChartView } from '../../ChartViews';

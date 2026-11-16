@@ -8,14 +8,19 @@
     "help": "turbo --help",
     "build": "turbo run build",
     "build:desktop": "turbo run build:desktop",
+    "build:packages": "turbo run build --filter=@openchart/core --filter=@openchart/git --filter=@openchart/midi --filter=@openchart/views --filter=@openchart/audio",
     "lock": "npm install --package-lock-only",
     "desktop:dev": "npm run dev:desktop",
     "desktop:build": "npm run build --workspace=@openchart/desktop",
     "dev": "npm run dev:web",
     "dev:web": "turbo run dev --filter=@openchart/editor",
     "dev:desktop": "npm run dev --workspace=@openchart/desktop",
+    "dev:git-desktop": "npm run dev --workspace=@openchart/git-desktop",
     "storybook": "npm run storybook --workspace=@openchart/editor",
     "build-storybook": "npm run build-storybook --workspace=@openchart/editor",
+    "storybook:core": "npm run storybook --workspace=@openchart/core",
+    "build-storybook:core": "npm run build-storybook --workspace=@openchart/core",
+    "test:core-components": "npm run test --workspace=@openchart/core",
     "ci": "npm run format && npm run lint && npm run check-types && npm run test && npm run test:e2e --workspace=@openchart/editor && npm run test:storybook --workspace=@openchart/editor",
     "lint": "eslint --config eslint.config.js .",
     "format": "prettier --write .",
@@ -28,6 +33,7 @@
     "test:core": "turbo run test --filter=@openchart/midi",
     "test:views": "turbo run test --filter=@openchart/views",
     "test:audio": "turbo run test --filter=@openchart/audio",
+    "test:git-desktop": "npm run build --workspace=@openchart/git-desktop",
     "test:storybook": "npm run test:storybook --workspace=@openchart/editor",
     "deploy:editor": "turbo run build --filter=@openchart/editor^... && npm run deploy --workspace=@openchart/editor"
   },
@@ -63,6 +69,7 @@
     "packages/*",
     "apps/*"
   ],
+  "packageManager": "npm@11.0.0",
   "allowScripts": {
     "esbuild@0.28.2": true
   },

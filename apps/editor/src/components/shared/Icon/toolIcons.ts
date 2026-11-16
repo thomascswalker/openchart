@@ -10,7 +10,7 @@ import {
   PhraseIcon,
   SoloIcon,
   StagepowerIcon,
-} from './Icon';
+} from '@openchart/core';
 
 const toolIcons = {
   cursor: CursorIcon,

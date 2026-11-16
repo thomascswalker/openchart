@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 
+import { Dropdown, Section } from '@openchart/core';
 import { EditingModeId } from '@openchart/views';
 
 import { usePlaybackSelector } from '../../../hooks/usePlayback';
@@ -8,7 +9,6 @@ import Platform from '../../../platform';
 import { runAction } from '../../../platform/actions/execute';
 import type { EditingService } from '../../../platform/services/editor/editing';
 import type { ViewportSession } from '../../../platform/services/editor/viewports';
-import { Dropdown, Section } from '../../shared';
 import { ToolGroup } from './ToolGroup';
 import { SnapOptions } from './constants';
 import {

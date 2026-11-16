@@ -1,10 +1,10 @@
+import { Box, Button, Text } from '@openchart/core';
 import type { MidiTrack } from '@openchart/midi';
 
 import { useProject } from '../../../hooks/useProject';
 import { useRuleset } from '../../../hooks/useRuleset';
 import { runActionAsync } from '../../../platform/actions/execute';
 import type { ViewportSession } from '../../../platform/services/editor/viewports';
-import { Box, Button, Text } from '../../shared';
 import styles from './TrackList.module.css';
 
 interface TrackListProps {

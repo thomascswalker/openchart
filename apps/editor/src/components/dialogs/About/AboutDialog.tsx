@@ -1,5 +1,6 @@
+import { Modal, Section, Text } from '@openchart/core';
+
 import { runAction } from '../../../platform/actions/execute';
-import { Modal, Section, Text } from '../../shared';
 
 const AboutDialog = () => {
   const close = (): void => {

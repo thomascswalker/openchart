@@ -1,8 +1,8 @@
+import { Box, Button, Text } from '@openchart/core';
 import { type LayoutProps, compose, layout, type styleFn } from 'styled-system';
 
 import { runAction } from '../../../platform/actions/execute';
 import { vars } from '../../../util/css';
-import { Box, Button, Text } from '../../shared';
 import styles from './Timeline.module.css';
 import type { TimelinePosition } from './util';
 

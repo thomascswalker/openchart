@@ -28,7 +28,7 @@ Thumbs.db
 .turbo
 
 # Tauri/Rust build outputs
-/apps/desktop/src-tauri/target/
+/apps/**/src-tauri/target/
 /apps/editor/.vitest-attachments
 
 **/__screenshots__/**

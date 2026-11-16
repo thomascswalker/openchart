@@ -1,6 +1,3 @@
-import type { EditingSession } from '@openchart/views';
-import { Difficulty, EditingModeId } from '@openchart/views';
-
 import {
   EasyIcon,
   ExpertIcon,
@@ -12,7 +9,10 @@ import {
   SnapIcon,
   UnlockIcon,
   VolumeIcon,
-} from '../../shared/Icon/Icon';
+} from '@openchart/core';
+import type { EditingSession } from '@openchart/views';
+import { Difficulty, EditingModeId } from '@openchart/views';
+
 import { getToolIcon } from '../../shared/Icon/toolIcons';
 import type { ToolGroupDef, ToolItemDef, ToolbarContextState } from './types';
 

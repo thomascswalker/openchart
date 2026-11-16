@@ -1,4 +1,5 @@
-import { Box, Tabs } from '../../shared';
+import { Box, Tabs } from '@openchart/core';
+
 import styles from './CommandPanel.module.css';
 import { useCommandPanel } from './useCommandPanel';
 

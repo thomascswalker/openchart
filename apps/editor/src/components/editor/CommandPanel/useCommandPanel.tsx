@@ -1,19 +1,20 @@
 import type { ReactNode } from 'react';
 
-import Platform, { useSnapshot } from '../../../platform';
-import type {
-  WorkspaceService,
-  WorkspaceSnapshot,
-} from '../../../platform/services/workspace';
-import { AudioMixer, EventList, ViewportSettings } from '../../dialogs';
-import { FileTreeView } from '../../shared';
+import { FileTreeView } from '@openchart/core';
 import {
   FilesIcon,
   MixerIcon,
   SettingsIcon,
   type TabOption,
   TracksIcon,
-} from '../../shared';
+} from '@openchart/core';
+
+import Platform, { useSnapshot } from '../../../platform';
+import type {
+  WorkspaceService,
+  WorkspaceSnapshot,
+} from '../../../platform/services/workspace';
+import { AudioMixer, EventList, ViewportSettings } from '../../dialogs';
 
 const DefaultTabIconSize = 24;
 
