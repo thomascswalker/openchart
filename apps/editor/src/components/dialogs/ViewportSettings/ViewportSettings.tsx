@@ -1,6 +1,7 @@
+import { Checkbox, Slider, Text } from '@openchart/core';
+
 import { useSettings } from '../../../hooks/useApplication';
 import { HighwayScrollSpeedRange } from '../../../platform/services/settings/schema';
-import { Checkbox, Slider, Text } from '../../shared';
 
 export const ViewportSettings = () => {
   const { settings, applySetting } = useSettings();

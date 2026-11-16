@@ -1,4 +1,5 @@
-import { Slider, type SliderProps } from '../../shared';
+import { Slider, type SliderProps } from '@openchart/core';
+
 import styles from './AudioMixer.module.css';
 
 interface VolumeSliderProps extends Omit<

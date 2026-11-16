@@ -9,7 +9,8 @@ export default defineConfig([
     '**/build/**',
     '**/coverage/**',
     '**/target/**',
-    'apps/desktop/src-tauri/gen/**',
+    'apps/editor/desktop/src/gen/**',
+    'apps/workflow/desktop/src/gen/**',
     // apps/editor has its own eslint.config.js for React-specific rules.
     'apps/editor/**',
   ]),

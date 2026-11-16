@@ -1,0 +1,54 @@
+@import './theme.css';
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-primary);
+  font-size: var(--font-size);
+  background: var(--neutral-95);
+  color: var(--text-primary);
+}
+
+body {
+  margin: 0;
+  background: var(--neutral-95);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+.ui-button,
+.ui-select {
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-family: var(--font-primary);
+  padding: var(--space-med);
+  line-height: 1.5;
+  border: var(--border-primary);
+  border-radius: var(--radius-small);
+  background: var(--neutral-80);
+  color: var(--white);
+  min-height: var(--size-small);
+}
+
+.text:disabled,
+.input:disabled {
+  background: var(--neutral-80);
+  color: var(--neutral-30);
+}
+
+* {
+  box-sizing: border-box;
+}

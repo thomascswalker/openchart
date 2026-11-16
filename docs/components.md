@@ -1,128 +1,50 @@
 # Shared Components
 
-Components in the [`shared`](../apps/editor/src/components/shared) folder are
-intended to be default and not implementation-specific.
+Reusable UI components are owned by [`@openchart/core`](../packages/core).
+Their stories are discovered by the core Storybook:
+
+```bash
+npm run storybook:core
+```
+
+Consumers must import `@openchart/core/styles.css` for the shared theme,
+fonts, and global rules. Editor-specific `Form`, `FileInput`, and `getToolIcon`
+remain in the editor because they depend on project services or editor
+behavior.
 
 ## Components
 
-### Button ✅
-
-[Source](../apps/editor/src/components/shared/Button/Button.tsx)
-
-A reusable button with active, disabled, and styling options.
-
-### Close Button ✅
-
-[Source](../apps/editor/src/components/shared/Button/CloseButton.tsx)
-
-A button that displays an `x` and is intended to close its containing UI.
-
-### Tool Button ✅
-
-[Source](../apps/editor/src/components/shared/Button/ToolButton.tsx)
-
-A button that combines an icon with optional text for a tool action.
-
-### Checkbox ✅
-
-[Source](../apps/editor/src/components/shared/Button/Checkbox.tsx)
-
-A labeled checkbox input with shared styling.
-
-### Dropdown ✅
-
-[Source](../apps/editor/src/components/shared/Dropdown/Dropdown.tsx)
-
-A select control for choosing one value from a list of options.
-
-### Dropdown Button ✅
-
-[Source](../apps/editor/src/components/shared/Dropdown/DropdownButton.tsx)
-
-A button paired with a dropdown for toggling and selecting an option.
-
-### Popup ✅
-
-[Source](../apps/editor/src/components/shared/Popup/Popup.tsx)
-
-A non-modal panel anchored to a button passed as a `ReactNode` trigger, with
-viewport-aware placement and outside-click, Escape, and trigger-toggle
-dismissal.
-
-### Error Boundary ✅
-
-[Source](../apps/editor/src/components/shared/ErrorBoundary/ErrorBoundary.tsx)
-
-A React boundary that catches rendering errors and displays diagnostic details.
-
-### Icon ✅
-
-[Source](../apps/editor/src/components/shared/Icon/Icon.tsx)
-
-An SVG wrapper that provides consistent sizing for interface icons.
-
-### Modal ✅
-
-[Source](../apps/editor/src/components/shared/Modal/Modal.tsx)
-
-A dialog backdrop with an optional title-and-close header.
-
-### Section ✅
-
-[Source](../apps/editor/src/components/shared/Section/Section.tsx)
-
-A styled semantic section for arranging and spacing child content.
-
-### Separator ✅
-
-[Source](../apps/editor/src/components/shared/Separator/Separator.tsx)
-
-A horizontal or vertical divider between interface elements.
-
-### Text ✅
-
-[Source](../apps/editor/src/components/shared/Text/Text.tsx)
-
-A styled inline text component with common typography options.
-
-### Heading ✅
-
-[Source](../apps/editor/src/components/shared/Text/Heading.tsx)
-
-A semantic heading component that renders a configurable level from `h1` to `h6`.
-
-### Header ❌
-
-No default shared Header component is present.
-
-### Input ✅
-
-[Source](../apps/editor/src/components/shared/Input/Input.tsx)
-
-A styled text input with standard HTML input attributes.
-
-### List ✅
-
-[Source](../apps/editor/src/components/shared/ListView/ListView.tsx)
-
-A keyboard-navigable listbox for selecting one value from a list.
-
-### Table ❌
-
-No shared Table component is present.
-
-### Panel ❌
-
-No default shared Panel component is present.
-
-### Tabs ❌
-
-No shared Tabs component is present.
-
-### Toaster ❌
-
-No shared Toaster component is present.
-
-### Tooltip ❌
-
-No shared Tooltip component is present.
+- [Box](../packages/core/src/components/shared/Box/Box.tsx) — styled layout
+  container.
+- [Button and Checkbox](../packages/core/src/components/shared/Button/Button.tsx)
+  — shared buttons and labeled checkbox.
+- [Dropdown](../packages/core/src/components/shared/Dropdown/Dropdown.tsx) —
+  select control and dropdown button.
+- [ErrorBoundary](../packages/core/src/components/shared/ErrorBoundary/ErrorBoundary.tsx)
+  — render-error boundary with diagnostics.
+- [Icon](../packages/core/src/components/shared/Icon/Icon.tsx) — SVG wrapper
+  and generated generic icons.
+- [Input](../packages/core/src/components/shared/Input/Input.tsx) — styled
+  text input.
+- [ListView](../packages/core/src/components/shared/ListView/ListView.tsx) —
+  keyboard-navigable listbox.
+- [Modal](../packages/core/src/components/shared/Modal/Modal.tsx) — dialog
+  backdrop and header.
+- [Popup](../packages/core/src/components/shared/Popup/Popup.tsx) — anchored,
+  dismissible non-modal panel.
+- [Section](../packages/core/src/components/shared/Section/Section.tsx) —
+  styled semantic section.
+- [Separator](../packages/core/src/components/shared/Separator/Separator.tsx)
+  — horizontal or vertical divider.
+- [Slider](../packages/core/src/components/shared/Slider/Slider.tsx) — styled
+  range input.
+- [Splitter](../packages/core/src/components/shared/Splitter/Splitter.tsx) —
+  resizable two-pane layout.
+- [Table and DataTable](../packages/core/src/components/shared/Table/Table.tsx)
+  — table primitives and virtualized data table.
+- [Tabs](../packages/core/src/components/shared/Tabs/Tab.tsx) — selectable,
+  optionally collapsible tabs.
+- [Text](../packages/core/src/components/shared/Text/Text.tsx) — styled
+  typography primitives.
+- [FileTreeView](../packages/core/src/components/shared/Tree/Tree.tsx) —
+  searchable file-tree view backed by core tree models.

@@ -1,5 +1,6 @@
+import { Button } from '@openchart/core';
+
 import { runAction } from '../../../platform/actions/execute';
-import { Button } from '../../shared';
 import type {
   ToolItemDef,
   ToolbarContextState,

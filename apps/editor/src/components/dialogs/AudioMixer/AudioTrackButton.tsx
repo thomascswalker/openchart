@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { Button, type ButtonProps } from '@openchart/core';
 import classNames from 'classnames';
 
-import { Button, type ButtonProps } from '../../shared';
 import styles from './AudioMixer.module.css';
 
 interface AudioTrackButtonProps extends Omit<ButtonProps, 'type'> {

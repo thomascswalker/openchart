@@ -1,0 +1,13 @@
+{
+  "name": "@openchart/workflow-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npx tauri dev --config src/tauri.conf.json",
+    "build": "npx tauri build --config src/tauri.conf.json"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.3.0"
+  }
+}

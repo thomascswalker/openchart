@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
+import '@openchart/core/styles.css';
 import type { Preview } from '@storybook/react-vite';
 import { sb } from 'storybook/test';
 
 import '../src/components/styles.css';
-import '../src/globals.css';
 import './preview.css';
 
 // Action execution is replaced by src/platform/actions/__mocks__/execute.ts, which

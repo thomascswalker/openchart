@@ -1,5 +1,7 @@
 import { useLayoutEffect, useSyncExternalStore } from 'react';
 
+import { Section, Text } from '@openchart/core';
+
 import { useEditor } from '../../../hooks/useEditorState';
 import { globalBindings } from '../../../input';
 import { Hotkeys } from '../../../input/Hotkeys';
@@ -12,7 +14,6 @@ import { AboutDialog } from '../../dialogs/About/AboutDialog';
 import { ProjectDialog } from '../../dialogs/Project/ProjectDialog';
 import { SettingsDialog } from '../../dialogs/Settings/SettingsDialog';
 import { UpdateDialog } from '../../dialogs/Update/UpdateDialog';
-import { Section, Text } from '../../shared';
 import { type MenuCommandId, Menubar } from '../Menubar';
 import { Workspace } from '../Workspace';
 

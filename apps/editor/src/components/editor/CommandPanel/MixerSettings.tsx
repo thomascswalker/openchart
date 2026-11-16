@@ -1,6 +1,6 @@
+import { MixerIcon, PopupButton } from '@openchart/core';
+
 import { AudioMixer } from '../../dialogs/AudioMixer/AudioMixer';
-import { MixerIcon } from '../../shared';
-import { PopupButton } from '../../shared/Popup';
 import styles from '../Viewport/Viewport.module.css';
 
 export const MixerSettings = () => (

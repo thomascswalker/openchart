@@ -1,7 +1,8 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
+import { Button, HorizontalSeparator, Text } from '@openchart/core';
+
 import { useShortcutResolver } from '../../../input/labels';
-import { Button, HorizontalSeparator, Text } from '../../shared';
 import styles from './Menubar.module.css';
 
 export type MenuCommandId = string;

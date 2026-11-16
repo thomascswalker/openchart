@@ -1,4 +1,5 @@
-import { FileTreeModel } from '../../../models/tree/fileTree';
+import { FileTreeModel } from '@openchart/core';
+
 import { createDecorator } from '../service';
 import { StatefulService } from '../statefulService';
 

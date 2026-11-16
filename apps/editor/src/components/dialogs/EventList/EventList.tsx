@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
+  Box,
+  DataTable,
+  Dropdown,
+  HorizontalSeparator,
+  Label,
+  Section,
+  Text,
+} from '@openchart/core';
+import type { DropdownOption } from '@openchart/core';
+import { createAppColumnHelper } from '@openchart/core';
+import {
   ChannelMessage,
   MetaType,
   type MidiChannelEvent,
@@ -15,17 +26,6 @@ import { useProject } from '../../../hooks/useProject';
 import { useRuleset } from '../../../hooks/useRuleset';
 import { useViewport } from '../../../hooks/useViewport';
 import { vars } from '../../../util/css';
-import {
-  Box,
-  DataTable,
-  Dropdown,
-  HorizontalSeparator,
-  Label,
-  Section,
-  Text,
-} from '../../shared';
-import type { DropdownOption } from '../../shared/Dropdown';
-import { createAppColumnHelper } from '../../shared/Table';
 
 type EventType = 'channel' | 'meta' | 'sysex';
 type Row = Record<string, any>;

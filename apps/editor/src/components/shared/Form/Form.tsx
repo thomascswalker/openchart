@@ -1,21 +1,21 @@
 import { type KeyboardEvent, useRef, useState } from 'react';
 
-import { useForm } from '@tanstack/react-form';
-import { startCase } from 'es-toolkit';
-import { z } from 'zod';
-
 import {
   Button,
   Checkbox,
   Dropdown,
-  FileInput,
   Input,
   Label,
   ListView,
   Modal,
   Section,
   Text,
-} from '..';
+} from '@openchart/core';
+import { useForm } from '@tanstack/react-form';
+import { startCase } from 'es-toolkit';
+import { z } from 'zod';
+
+import { FileInput } from '../Input/FileInput';
 import styles from './form.module.css';
 
 type FieldPath<T> = {

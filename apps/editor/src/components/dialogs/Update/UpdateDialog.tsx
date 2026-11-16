@@ -1,12 +1,13 @@
 import { type ReactNode, useSyncExternalStore } from 'react';
 
+import { Button, Modal, Section, Text } from '@openchart/core';
+
 import { useProject } from '../../../hooks/useProject';
 import { useService } from '../../../platform';
 import type {
   UpdaterService,
   UpdaterSnapshot,
 } from '../../../platform/services/updater/updater';
-import { Button, Modal, Section, Text } from '../../shared';
 import styles from './UpdateDialog.module.css';
 
 function formatMegabytes(bytes: number): string {

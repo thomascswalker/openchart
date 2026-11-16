@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 
+import { Section } from '@openchart/core';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { useService } from '../../../../platform';
 import { MixerService } from '../../../../platform/services/mixer/mixer';
-import { Section } from '../../../shared';
 import { AudioMixer } from '../AudioMixer';
 import sample1Url from './sample1.wav?url';
 import sample2Url from './sample2.wav?url';

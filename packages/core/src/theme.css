@@ -1,0 +1,119 @@
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/600.css';
+@import '@fontsource/roboto-mono/400.css';
+
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --neutral-10: rgb(230, 230, 230);
+  --neutral-20: rgb(204, 204, 204);
+  --neutral-30: rgb(179, 179, 179);
+  --neutral-40: rgb(153, 153, 153);
+  --neutral-50: rgb(128, 128, 128);
+  --neutral-60: rgb(102, 102, 102);
+  --neutral-65: rgb(90, 90, 90);
+  --neutral-70: rgb(77, 77, 77);
+  --neutral-75: rgb(64, 64, 64);
+  --neutral-80: rgb(51, 51, 51);
+  --neutral-85: rgb(38, 38, 38);
+  --neutral-90: rgb(26, 26, 26);
+  --neutral-95: rgb(13, 13, 13);
+  --red-10: hsl(0, 90%, 90%);
+  --red-20: hsl(0, 90%, 80%);
+  --red-30: hsl(0, 90%, 70%);
+  --red-40: hsl(0, 90%, 60%);
+  --red-50: hsl(0, 90%, 50%);
+  --red-60: hsl(0, 90%, 40%);
+  --red-70: hsl(0, 90%, 30%);
+  --red-80: hsl(0, 90%, 20%);
+  --red-90: hsl(0, 90%, 10%);
+  --blue-10: hsl(220, 90%, 90%);
+  --blue-20: hsl(220, 90%, 80%);
+  --blue-30: hsl(220, 90%, 70%);
+  --blue-40: hsl(220, 90%, 60%);
+  --blue-50: hsl(220, 90%, 50%);
+  --blue-60: hsl(220, 90%, 40%);
+  --blue-70: hsl(220, 90%, 30%);
+  --blue-80: hsl(220, 90%, 20%);
+  --blue-90: hsl(220, 90%, 10%);
+  --green-10: hsl(150, 90%, 90%);
+  --green-20: hsl(150, 90%, 80%);
+  --green-30: hsl(150, 90%, 70%);
+  --green-40: hsl(150, 90%, 60%);
+  --green-50: hsl(150, 90%, 50%);
+  --green-60: hsl(150, 90%, 40%);
+  --green-70: hsl(150, 90%, 30%);
+  --green-80: hsl(150, 90%, 20%);
+  --green-90: hsl(150, 90%, 10%);
+  --yellow-10: hsl(55, 88%, 90%);
+  --yellow-20: hsl(55, 90%, 80%);
+  --yellow-30: hsl(55, 90%, 70%);
+  --yellow-40: hsl(55, 90%, 60%);
+  --yellow-50: hsl(55, 90%, 50%);
+  --yellow-60: hsl(55, 90%, 40%);
+  --yellow-70: hsl(55, 90%, 30%);
+  --yellow-80: hsl(55, 90%, 20%);
+  --yellow-90: hsl(55, 90%, 10%);
+
+  --primary-lighter: var(--neutral-70);
+  --primary-light: var(--neutral-75);
+  --primary: var(--neutral-80);
+  --primary-dark: var(--neutral-85);
+  --primary-darker: var(--neutral-90);
+  --primary-darkest: var(--neutral-95);
+  --primary-hover: var(--primary-lighter);
+  --primary-active: var(--primary-darker);
+  --secondary: var(--blue-40);
+  --secondary-hover: var(--blue-30);
+  --secondary-active: var(--blue-50);
+
+  --size-x-large: 48px;
+  --size-large: 32px;
+  --size-med: 24px;
+  --size-small: 12px;
+  --size-x-small: 8px;
+  --size-xx-small: 4px;
+
+  --space-x-large: 24px;
+  --space-large: 12px;
+  --space-med: 8px;
+  --space-small: 4px;
+  --space-none: 0px;
+
+  --radius-large: 12px;
+  --radius-med: 8px;
+  --radius-small: 4px;
+  --radius-none: 0px;
+
+  --border-color-primary: var(--neutral-75);
+  --border-primary: 1px solid var(--border-color-primary);
+
+  --text-primary: var(--neutral-10);
+  --text-secondary: var(--neutral-30);
+  --text-error: var(--red-50);
+  --text-success: var(--green-50);
+  --text-disabled: var(--neutral-50);
+
+  --font-primary: 'Roboto', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+  --font-size: 13px;
+  --font-weight: 400;
+
+  --label-font-size: 14px;
+  --label-font-weight: 600;
+
+  --heading-font-size: 24px;
+  --heading-font-weight: 600;
+  --h1-font-size: 32px;
+  --h1-font-weight: 600;
+  --h2-font-size: 24px;
+  --h2-font-weight: 600;
+  --h3-font-size: 20px;
+  --h3-font-weight: 600;
+  --h4-font-size: 18px;
+  --h4-font-weight: 600;
+  --h5-font-size: 16px;
+  --h5-font-weight: 600;
+  --h6-font-size: 14px;
+  --h6-font-weight: 600;
+}

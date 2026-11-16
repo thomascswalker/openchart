@@ -1,4 +1,5 @@
-import { Splitter } from '../../shared';
+import { Splitter } from '@openchart/core';
+
 import { CommandPanel } from '../CommandPanel';
 import { Viewport } from '../Viewport';
 import styles from './Workspace.module.css';
