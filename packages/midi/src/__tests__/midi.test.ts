@@ -1,25 +1,26 @@
-import { Midi } from "../midi.js";
-import { MidiTrack } from "../track.js";
-import { expect, test } from "vitest";
-import * as fs from "fs";
+import * as fs from 'fs';
+import { expect, test } from 'vitest';
+
+import { Midi } from '../midi.js';
+import { MidiTrack } from '../track.js';
 import {
   ChannelMessage,
   MetaType,
   MidiChannelEvent,
   TempoEvent,
-} from "../types.js";
-import { msToTicks, ticksToMs } from "../util.js";
+} from '../types.js';
+import { msToTicks, ticksToMs } from '../util.js';
 
-test("is constructed", () => {
+test('is constructed', () => {
   const midi = new Midi();
   expect(midi).toBeDefined();
 });
 
-test("MIDI meta events are added and match expected values", () => {
-  const track = new MidiTrack("Lead");
+test('MIDI meta events are added and match expected values', () => {
+  const track = new MidiTrack('Lead');
   const tempo = track.addTempoEvent(0, 120);
   const timeSignature = track.addTimeSignatureEvent(480, 3, 2);
-  const text = track.addTextEvent(MetaType.TrackName, 960, "Lead");
+  const text = track.addTextEvent(MetaType.TrackName, 960, 'Lead');
 
   expect(tempo).toMatchObject({
     type: MetaType.Tempo,
@@ -35,20 +36,20 @@ test("MIDI meta events are added and match expected values", () => {
   expect(text).toMatchObject({
     type: MetaType.TrackName,
     tick: 960,
-    text: "Lead",
+    text: 'Lead',
   });
-  expect("data" in tempo).toBe(false);
-  expect("data" in timeSignature).toBe(false);
-  expect("data" in text).toBe(false);
+  expect('data' in tempo).toBe(false);
+  expect('data' in timeSignature).toBe(false);
+  expect('data' in text).toBe(false);
 });
 
-test("clone preserves MIDI data and isolates mutable event payloads", () => {
+test('clone preserves MIDI data and isolates mutable event payloads', () => {
   const midi = new Midi();
-  const track = new MidiTrack("Lead");
+  const track = new MidiTrack('Lead');
   midi.header.division = 960;
   midi.tracks = [track];
   track.addNote(60, 0, 100, 240);
-  track.addTextEvent(1, 480, "section");
+  track.addTextEvent(1, 480, 'section');
   // tick is recomputed from deltaTime by the events setter.
   track.events = [
     ...track.events,
@@ -81,20 +82,20 @@ test("clone preserves MIDI data and isolates mutable event payloads", () => {
   expect(clonedMeta).not.toBe(originalMeta);
   expect(clonedSysEx).not.toBe(originalSysEx);
 
-  if (!("text" in clonedMeta) || !("text" in originalMeta)) {
-    throw new Error("Expected cloned and original text meta events");
+  if (!('text' in clonedMeta) || !('text' in originalMeta)) {
+    throw new Error('Expected cloned and original text meta events');
   }
-  if (!("data" in clonedSysEx) || !("data" in originalSysEx)) {
-    throw new Error("Expected cloned and original SysEx events");
+  if (!('data' in clonedSysEx) || !('data' in originalSysEx)) {
+    throw new Error('Expected cloned and original SysEx events');
   }
 
-  clonedMeta.text = "changed";
+  clonedMeta.text = 'changed';
   clonedSysEx.data[0] = 9;
-  expect(originalMeta.text).toBe("section");
+  expect(originalMeta.text).toBe('section');
   expect(originalSysEx.data[0]).toBe(1);
 });
 
-test("clone preserves an empty MIDI document", () => {
+test('clone preserves an empty MIDI document', () => {
   const midi = new Midi();
 
   const cloned = midi.clone();
@@ -103,8 +104,8 @@ test("clone preserves an empty MIDI document", () => {
   expect(cloned.tracks).toEqual([]);
 });
 
-test("read file", async () => {
-  const { default: testData } = await import("./assets/data.json");
+test('read file', async () => {
+  const { default: testData } = await import('./assets/data.json');
 
   const midiPath = new URL(`../../${testData.filename}`, import.meta.url);
   const content = fs.readFileSync(midiPath);
@@ -124,7 +125,7 @@ test("read file", async () => {
   );
 });
 
-test("write file", async () => {
+test('write file', async () => {
   const midi = new Midi();
   const track = new MidiTrack();
   midi.tracks = [track];
@@ -137,7 +138,7 @@ test("write file", async () => {
   expect(track.getNotes().length).toBe(4);
 
   // Write the MIDI to a file
-  const outPath = "./test-write.mid";
+  const outPath = './test-write.mid';
   const outData = midi.toBuffer();
   fs.writeFileSync(outPath, outData);
 
@@ -150,7 +151,7 @@ test("write file", async () => {
   fs.unlinkSync(outPath);
 });
 
-test("setNotePitch mutates pitch and invalidates note cache", () => {
+test('setNotePitch mutates pitch and invalidates note cache', () => {
   const midi = new Midi();
   const track = new MidiTrack();
   midi.tracks = [track];
@@ -162,7 +163,7 @@ test("setNotePitch mutates pitch and invalidates note cache", () => {
   expect(track.getNotes()[0].pitch).toBe(60);
 });
 
-test("insertNote inserts at an absolute tick and indexes the note by event ID", () => {
+test('insertNote inserts at an absolute tick and indexes the note by event ID', () => {
   const track = new MidiTrack();
   const note = track.insertNote({
     tick: 120,
@@ -182,7 +183,7 @@ test("insertNote inserts at an absolute tick and indexes the note by event ID", 
   expect(track.getEventById(eventId)).toBe(note.noteOn);
 });
 
-test("event and note ID indexes survive cloning and are cleared on removal", () => {
+test('event and note ID indexes survive cloning and are cleared on removal', () => {
   const track = new MidiTrack();
   const note = track.insertNote({ tick: 0, pitch: 50, duration: 240 });
   const eventId = track.getEventId(note.noteOn);
@@ -200,7 +201,7 @@ test("event and note ID indexes survive cloning and are cleared on removal", () 
   expect(track.getEventById(eventId)).toBe(note.noteOn);
 });
 
-test("updateNote applies a move and pitch change in one revision", () => {
+test('updateNote applies a move and pitch change in one revision', () => {
   const track = new MidiTrack();
   const note = track.insertNote({
     tick: 120,
@@ -225,7 +226,7 @@ test("updateNote applies a move and pitch change in one revision", () => {
   ]);
 });
 
-test("updateNote validates the whole patch before changing MIDI events", () => {
+test('updateNote validates the whole patch before changing MIDI events', () => {
   const track = new MidiTrack();
   const note = track.insertNote({
     tick: 120,
@@ -243,10 +244,10 @@ test("updateNote validates the whole patch before changing MIDI events", () => {
   expect(track.getNoteRevision()).toBe(revision);
 });
 
-test("absolute insertion and atomic updates preserve legacy MIDI byte ordering", () => {
-  const source = new MidiTrack("Lead");
-  source.addTextEvent(MetaType.Marker, 0, "start");
-  source.addTextEvent(MetaType.Marker, 240, "equal tick");
+test('absolute insertion and atomic updates preserve legacy MIDI byte ordering', () => {
+  const source = new MidiTrack('Lead');
+  source.addTextEvent(MetaType.Marker, 0, 'start');
+  source.addTextEvent(MetaType.Marker, 240, 'equal tick');
   // tick is recomputed from deltaTime by the events setter.
   source.events = [
     ...source.events,
@@ -297,7 +298,7 @@ test("absolute insertion and atomic updates preserve legacy MIDI byte ordering",
   expect(absoluteTrack.toBuffer()).toEqual(legacyTrack.toBuffer());
 });
 
-test("insertNote validates optional channel and inserts on that channel", () => {
+test('insertNote validates optional channel and inserts on that channel', () => {
   const track = new MidiTrack();
   const note = track.insertNote({
     tick: 0,
@@ -313,7 +314,7 @@ test("insertNote validates optional channel and inserts on that channel", () => 
   expect(track.getNotes()).toHaveLength(1);
 });
 
-test("note revision advances once for each note mutation", () => {
+test('note revision advances once for each note mutation', () => {
   const track = new MidiTrack();
   track.addNote(50, 0);
   const [note] = track.getNotes();
@@ -329,7 +330,7 @@ test("note revision advances once for each note mutation", () => {
   expect(track.getNoteRevision()).toBe(afterAdd + 3);
 });
 
-test("setNotePitch rejects out-of-range pitch", () => {
+test('setNotePitch rejects out-of-range pitch', () => {
   const midi = new Midi();
   const track = new MidiTrack();
   midi.tracks = [track];
@@ -340,7 +341,7 @@ test("setNotePitch rejects out-of-range pitch", () => {
   expect(() => track.setNotePitch(note, 128)).toThrow(RangeError);
 });
 
-test("getNotes includes time elapsed by non-note events", () => {
+test('getNotes includes time elapsed by non-note events', () => {
   const track = new MidiTrack();
   track.events = [
     {
@@ -372,7 +373,7 @@ test("getNotes includes time elapsed by non-note events", () => {
   expect(track.getNotes()).toMatchObject([{ start: 120, end: 360 }]);
 });
 
-test("addTempoEvent/removeTempoEventAt", () => {
+test('addTempoEvent/removeTempoEventAt', () => {
   const midi = new Midi();
   midi.tracks = [new MidiTrack()];
 
@@ -391,7 +392,7 @@ test("addTempoEvent/removeTempoEventAt", () => {
   expect(midi.removeTempoEventAt(480)).toBe(false);
 });
 
-test("addTimeSignatureEvent/removeTimeSignatureEventAt", () => {
+test('addTimeSignatureEvent/removeTimeSignatureEventAt', () => {
   const midi = new Midi();
   midi.tracks = [new MidiTrack()];
 
@@ -412,7 +413,7 @@ test("addTimeSignatureEvent/removeTimeSignatureEventAt", () => {
   ).toBe(false);
 });
 
-test("insertEventsAt bumps trailing EndOfTrack past inserted notes", () => {
+test('insertEventsAt bumps trailing EndOfTrack past inserted notes', () => {
   const midi = new Midi();
   const track = new MidiTrack();
   midi.tracks = [track];
@@ -438,7 +439,7 @@ function expectTimingConsistent(track: MidiTrack): void {
   });
 }
 
-test("every event carries its absolute tick and order", () => {
+test('every event carries its absolute tick and order', () => {
   const track = new MidiTrack();
   track.events = [
     {
@@ -477,9 +478,9 @@ test("every event carries its absolute tick and order", () => {
   ]);
 });
 
-test("tick and order stay current through insert, move, update and remove", () => {
+test('tick and order stay current through insert, move, update and remove', () => {
   const track = new MidiTrack();
-  const marker = track.addTextEvent(MetaType.Marker, 480, "m");
+  const marker = track.addTextEvent(MetaType.Marker, 480, 'm');
   const note = track.insertNote({ tick: 0, pitch: 60, duration: 240 });
   expectTimingConsistent(track);
 
@@ -497,9 +498,9 @@ test("tick and order stay current through insert, move, update and remove", () =
   expect(track.events.map((event) => event.tick)).toEqual([1200, 1440]);
 });
 
-test("updateEvent moves an event when the patch has a tick", () => {
+test('updateEvent moves an event when the patch has a tick', () => {
   const track = new MidiTrack();
-  const marker = track.addTextEvent(MetaType.Marker, 0, "m");
+  const marker = track.addTextEvent(MetaType.Marker, 0, 'm');
   track.insertNote({ tick: 240, pitch: 60, duration: 240 });
 
   expect(track.updateEvent(marker, { tick: 600, order: 99 })).toBe(true);
@@ -508,7 +509,7 @@ test("updateEvent moves an event when the patch has a tick", () => {
   expectTimingConsistent(track);
 });
 
-test("EndOfTrack stays last and is bumped past inserted events", () => {
+test('EndOfTrack stays last and is bumped past inserted events', () => {
   const track = new MidiTrack();
   track.events = [
     {
@@ -526,11 +527,11 @@ test("EndOfTrack stays last and is bumped past inserted events", () => {
   expectTimingConsistent(track);
 });
 
-test("meta getters return events with ticks without manual rebuilds", () => {
+test('meta getters return events with ticks without manual rebuilds', () => {
   const track = new MidiTrack();
   track.addTempoEvent(480, 120);
   track.addTimeSignatureEvent(960, 3, 2);
-  track.addTextEvent(MetaType.Lyric, 240, "la");
+  track.addTextEvent(MetaType.Lyric, 240, 'la');
 
   expect(track.getTempoEvents().map((event) => event.tick)).toEqual([480]);
   expect(track.getTimeSignatureEvents().map((event) => event.tick)).toEqual([
@@ -542,7 +543,7 @@ test("meta getters return events with ticks without manual rebuilds", () => {
   expect(track.getTempoEvents().map((event) => event.tick)).toEqual([0, 480]);
 });
 
-test("getAbsoluteTickAt and getInsertionIndexAt read cached ticks", () => {
+test('getAbsoluteTickAt and getInsertionIndexAt read cached ticks', () => {
   const track = new MidiTrack();
   track.insertNote({ tick: 0, pitch: 60, duration: 240 });
   track.insertNote({ tick: 480, pitch: 62, duration: 240 });
@@ -555,8 +556,8 @@ test("getAbsoluteTickAt and getInsertionIndexAt read cached ticks", () => {
   expect(track.getInsertionIndexAt(10_000)).toBe(track.events.length);
 });
 
-test("parsed MIDI events carry ticks matching their deltas", async () => {
-  const { default: testData } = await import("./assets/data.json");
+test('parsed MIDI events carry ticks matching their deltas', async () => {
+  const { default: testData } = await import('./assets/data.json');
   const midiPath = new URL(`../../${testData.filename}`, import.meta.url);
   const midi = new Midi(fs.readFileSync(midiPath));
 
@@ -565,18 +566,18 @@ test("parsed MIDI events carry ticks matching their deltas", async () => {
   }
 });
 
-test("INI round trip does not serialize tick or order", () => {
+test('INI round trip does not serialize tick or order', () => {
   const midi = new Midi();
-  midi.tracks = [new MidiTrack("T")];
+  midi.tracks = [new MidiTrack('T')];
   midi.addTempoEvent(480, 500_000);
 
-  expect(midi.toIni()).not.toContain("tick");
+  expect(midi.toIni()).not.toContain('tick');
   const restored = Midi.fromIni(midi.toIni());
   expect(restored.toBuffer()).toEqual(midi.toBuffer());
   expect(restored.getTempoEvents()[0]).toMatchObject({ tick: 480, order: 0 });
 });
 
-test("ticksToMs and msToTicks accept tempo events directly", () => {
+test('ticksToMs and msToTicks accept tempo events directly', () => {
   const tempoEvents: TempoEvent[] = [
     {
       deltaTime: 0,

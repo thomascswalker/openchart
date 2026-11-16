@@ -7,23 +7,24 @@
  * its preview overlay (command → mode expansion → preview → `checkEdits`).
  * Tracks without rules (unmapped tracks) get no ruleset validation.
  */
-import type { Constraint, Severity } from "./config";
 import {
-  isUnmappedTrackRules,
   type CompiledRuleset,
   type TrackRules,
-} from "./compile";
-import { evaluateCondition, type ConditionContext } from "./conditions";
-import type { ThresholdContext } from "./thresholds";
-import Rules from "./rules/index";
+  isUnmappedTrackRules,
+} from './compile';
+import { type ConditionContext, evaluateCondition } from './conditions';
+import type { Constraint, Severity } from './config';
 import {
+  type RuleCtx,
+  type RuleViolation,
   classifyNotes,
   indexByPitch,
   violation,
-  type RuleCtx,
-  type RuleViolation,
-} from "./context";
-export { IMPLICIT_PHRASE_SELF_OVERLAP } from "./rules/implicit";
+} from './context';
+import Rules from './rules/index';
+import type { ThresholdContext } from './thresholds';
+
+export { IMPLICIT_PHRASE_SELF_OVERLAP } from './rules/implicit';
 
 /** Minimal note shape the enforcer needs; independent of the editing kernel. */
 export interface EnforcerNote {
@@ -66,7 +67,7 @@ export function thresholdContext(
   return {
     ppqn: ctx.ppqn,
     settings: ctx.settings,
-    settingUnit: (s, k) => compiled.settingUnits.get(`${s}.${k}`) ?? "none",
+    settingUnit: (s, k) => compiled.settingUnits.get(`${s}.${k}`) ?? 'none',
     ...(ctx.secondsToTicks ? { secondsToTicks: ctx.secondsToTicks } : {}),
   };
 }
@@ -83,23 +84,23 @@ export interface TrackEdit {
 
 function runConstraint(ctx: RuleCtx, c: Constraint): RuleViolation[] {
   switch (c.rule) {
-    case "noOverlappingSamePitch":
+    case 'noOverlappingSamePitch':
       return Rules.noOverlappingSamePitch(ctx, c);
-    case "noOverlappingSameLane":
+    case 'noOverlappingSameLane':
       return Rules.noOverlappingSameLane(ctx, c);
-    case "mutuallyExclusiveAtTick":
+    case 'mutuallyExclusiveAtTick':
       return Rules.mutuallyExclusiveAtTick(ctx, c);
-    case "phrasesMayNotOverlap":
+    case 'phrasesMayNotOverlap':
       return Rules.phrasesMayNotOverlap(ctx, c);
-    case "phraseMustBeBetween":
+    case 'phraseMustBeBetween':
       return Rules.phraseMustBeBetween(ctx, c);
-    case "notesWithinPhrase":
+    case 'notesWithinPhrase':
       return Rules.notesWithinPhrase(ctx, c);
-    case "monophonic":
+    case 'monophonic':
       return Rules.monophonic(ctx, c);
-    case "forbiddenPitches":
+    case 'forbiddenPitches':
       return Rules.forbiddenPitches(ctx, c);
-    case "noSustains":
+    case 'noSustains':
       return Rules.noSustains(ctx, c);
   }
 }
@@ -156,28 +157,28 @@ export class RuleEnforcer {
     for (const n of notes) {
       if (!edit.touched.has(n.id)) continue;
       const at = (sev: Severity | undefined, id: string, msg: string) =>
-        push(violation(id, sev ?? "error", msg, n.tick, [n.id]));
+        push(violation(id, sev ?? 'error', msg, n.tick, [n.id]));
       const role = n.role;
 
-      if (role.kind === "unknown") {
+      if (role.kind === 'unknown') {
         at(
           rules.unknownPitchPolicy ?? policies.unknownPitch,
-          "policy.unknownPitch",
+          'policy.unknownPitch',
           `Pitch ${n.pitch} is not defined on ${rules.name}`,
         );
-      } else if (role.kind === "reserved") {
+      } else if (role.kind === 'reserved') {
         at(
-          policies.reservedPitch ?? "error",
-          "policy.reservedPitch",
+          policies.reservedPitch ?? 'error',
+          'policy.reservedPitch',
           `Pitch ${n.pitch} is reserved on ${rules.name}`,
         );
-      } else if (role.kind === "laneNote") {
+      } else if (role.kind === 'laneNote') {
         const chart = rules.difficulties.get(role.difficulty);
         const rule = chart?.notes.get(n.pitch);
         if (rule && !rule.laneAvailable) {
           at(
-            rule.laneWhenDisabled ?? "error",
-            "policy.laneDisabled",
+            rule.laneWhenDisabled ?? 'error',
+            'policy.laneDisabled',
             `Lane "${role.laneId}" does not exist on ${rules.name}`,
           );
         } else if (
@@ -185,8 +186,8 @@ export class RuleEnforcer {
           !evaluateCondition(rule.enabledWhen, condCtx)
         ) {
           at(
-            rule.whenDisabled ?? "error",
-            "policy.noteDisabled",
+            rule.whenDisabled ?? 'error',
+            'policy.noteDisabled',
             `Pitch ${n.pitch} is not enabled`,
           );
         }
@@ -194,16 +195,16 @@ export class RuleEnforcer {
 
       if (n.duration === 0 && !midi.noteDefaults.allowZeroLength) {
         at(
-          midi.noteDefaults.zeroLengthSeverity ?? "error",
-          "policy.zeroLength",
-          "Zero-length notes are not allowed",
+          midi.noteDefaults.zeroLengthSeverity ?? 'error',
+          'policy.zeroLength',
+          'Zero-length notes are not allowed',
         );
       }
     }
 
     // ---- Constraints -----------------------------------------------------
     for (const c of rules.constraints) {
-      if (c.severity === "ignore") continue;
+      if (c.severity === 'ignore') continue;
       out.push(...runConstraint(rctx, c));
     }
     out.push(...Rules.phraseSelfOverlap(rctx, undefined as never));
@@ -212,4 +213,4 @@ export class RuleEnforcer {
 }
 
 export const hasErrors = (violations: readonly RuleViolation[]): boolean =>
-  violations.some((v) => v.severity === "error");
+  violations.some((v) => v.severity === 'error');

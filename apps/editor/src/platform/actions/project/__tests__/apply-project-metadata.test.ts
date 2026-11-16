@@ -1,21 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
-import type { ServicesAccessor } from "../../../services";
-import {
-  makeDefaultMetadata,
-  MetadataSchema,
-} from "../../../services/document/schema";
-import { ApplyProjectMetadataAction } from "../apply-project-metadata";
+import { describe, expect, it, vi } from 'vitest';
 
-describe("ApplyProjectMetadataAction", () => {
-  it("updates mixer tracks whose audio paths changed", async () => {
+import {
+  MetadataSchema,
+  makeDefaultMetadata,
+} from '../../../services/project/schema';
+import type { ServicesAccessor } from '../../../services/registry';
+import { ApplyProjectMetadataAction } from '../apply-project-metadata';
+
+describe('ApplyProjectMetadataAction', () => {
+  it('updates mixer tracks whose audio paths changed', async () => {
     const previousMetadata = makeDefaultMetadata();
-    previousMetadata.audio.lead = "old-lead.wav";
-    previousMetadata.audio.bass = "bass.wav";
+    previousMetadata.audio.lead = 'old-lead.wav';
+    previousMetadata.audio.bass = 'bass.wav';
     const root = {
-      queryPermission: vi.fn().mockResolvedValue("granted"),
-      requestPermission: vi.fn().mockResolvedValue("granted"),
+      queryPermission: vi.fn().mockResolvedValue('granted'),
+      requestPermission: vi.fn().mockResolvedValue('granted'),
     } as unknown as FileSystemDirectoryHandle;
-    const document = {
+    const project = {
       metadata: previousMetadata,
       metadataSchema: MetadataSchema,
       getSnapshot: () => ({ directoryHandle: root }),
@@ -25,15 +26,15 @@ describe("ApplyProjectMetadataAction", () => {
     const clearError = vi.fn();
     const setError = vi.fn();
     const services = {
-      document,
+      project,
       mixer: { removeTrack, addTrack },
-      "editor.state": { clearError, setError },
+      'editor.state': { clearError, setError },
     };
     const accessor: ServicesAccessor = {
       get: <T>(id: string) => services[id as keyof typeof services] as T,
     };
     const metadata = makeDefaultMetadata();
-    metadata.audio.lead = "new-lead.wav";
+    metadata.audio.lead = 'new-lead.wav';
 
     const issues = await new ApplyProjectMetadataAction().run(
       accessor,
@@ -41,16 +42,16 @@ describe("ApplyProjectMetadataAction", () => {
     );
 
     expect(issues).toEqual([]);
-    expect(removeTrack.mock.calls).toEqual([["lead"], ["bass"]]);
-    expect(addTrack.mock.calls).toEqual([["lead", "new-lead.wav", root, null]]);
-    expect(document.metadata).toEqual(metadata);
+    expect(removeTrack.mock.calls).toEqual([['lead'], ['bass']]);
+    expect(addTrack.mock.calls).toEqual([['lead', 'new-lead.wav', root, null]]);
+    expect(project.metadata).toEqual(metadata);
     expect(clearError).toHaveBeenCalledOnce();
     expect(setError).not.toHaveBeenCalled();
   });
 
-  it("loads nested audio paths from a selected audio root", async () => {
+  it('loads nested audio paths from a selected audio root', async () => {
     const projectRoot = {} as FileSystemDirectoryHandle;
-    const document = {
+    const project = {
       metadata: makeDefaultMetadata(),
       metadataSchema: MetadataSchema,
       getSnapshot: () => ({ directoryHandle: projectRoot }),
@@ -60,16 +61,16 @@ describe("ApplyProjectMetadataAction", () => {
     const clearError = vi.fn();
     const setError = vi.fn();
     const services = {
-      document,
+      project,
       mixer: { removeTrack, addTrack },
-      "editor.state": { clearError, setError },
+      'editor.state': { clearError, setError },
     };
     const accessor: ServicesAccessor = {
       get: <T>(id: string) => services[id as keyof typeof services] as T,
     };
     const metadata = makeDefaultMetadata();
-    metadata.audio.root = "stems";
-    metadata.audio.lead = "lead.wav";
+    metadata.audio.root = 'stems';
+    metadata.audio.lead = 'lead.wav';
 
     const issues = await new ApplyProjectMetadataAction().run(
       accessor,
@@ -78,13 +79,13 @@ describe("ApplyProjectMetadataAction", () => {
 
     expect(issues).toEqual([]);
     expect(addTrack.mock.calls).toEqual([
-      ["lead", "lead.wav", projectRoot, "stems"],
+      ['lead', 'lead.wav', projectRoot, 'stems'],
     ]);
   });
 
-  it("requires audio paths to be project-folder siblings without a custom root", async () => {
+  it('requires audio paths to be project-folder siblings without a custom root', async () => {
     const projectRoot = {} as FileSystemDirectoryHandle;
-    const document = {
+    const project = {
       metadata: makeDefaultMetadata(),
       metadataSchema: MetadataSchema,
       getSnapshot: () => ({ directoryHandle: projectRoot }),
@@ -94,15 +95,15 @@ describe("ApplyProjectMetadataAction", () => {
     const clearError = vi.fn();
     const setError = vi.fn();
     const services = {
-      document,
+      project,
       mixer: { removeTrack, addTrack },
-      "editor.state": { clearError, setError },
+      'editor.state': { clearError, setError },
     };
     const accessor: ServicesAccessor = {
       get: <T>(id: string) => services[id as keyof typeof services] as T,
     };
     const metadata = makeDefaultMetadata();
-    metadata.audio.lead = "stems/lead.wav";
+    metadata.audio.lead = 'stems/lead.wav';
 
     const issues = await new ApplyProjectMetadataAction().run(
       accessor,
@@ -111,9 +112,9 @@ describe("ApplyProjectMetadataAction", () => {
 
     expect(issues).toEqual([
       {
-        path: "$.audio.lead",
+        path: '$.audio.lead',
         message:
-          "Without an audio root folder, audio files must be beside notes.mid and info.json.",
+          'Without an audio root folder, audio files must be beside notes.mid and info.json.',
       },
     ]);
     expect(removeTrack).not.toHaveBeenCalled();
@@ -121,12 +122,12 @@ describe("ApplyProjectMetadataAction", () => {
     expect(setError).toHaveBeenCalledOnce();
   });
 
-  it("reloads existing tracks when the audio root path changes", async () => {
+  it('reloads existing tracks when the audio root path changes', async () => {
     const projectRoot = {} as FileSystemDirectoryHandle;
     const previousMetadata = makeDefaultMetadata();
-    previousMetadata.audio.root = "old-stems";
-    previousMetadata.audio.lead = "lead.wav";
-    const document = {
+    previousMetadata.audio.root = 'old-stems';
+    previousMetadata.audio.lead = 'lead.wav';
+    const project = {
       metadata: previousMetadata,
       metadataSchema: MetadataSchema,
       getSnapshot: () => ({ directoryHandle: projectRoot }),
@@ -136,9 +137,9 @@ describe("ApplyProjectMetadataAction", () => {
     const clearError = vi.fn();
     const setError = vi.fn();
     const services = {
-      document,
+      project,
       mixer: { removeTrack, addTrack },
-      "editor.state": { clearError, setError },
+      'editor.state': { clearError, setError },
     };
     const accessor: ServicesAccessor = {
       get: <T>(id: string) => services[id as keyof typeof services] as T,
@@ -147,7 +148,7 @@ describe("ApplyProjectMetadataAction", () => {
       ...previousMetadata,
       audio: { ...previousMetadata.audio },
     };
-    metadata.audio.root = "new-stems";
+    metadata.audio.root = 'new-stems';
 
     const issues = await new ApplyProjectMetadataAction().run(
       accessor,
@@ -155,20 +156,20 @@ describe("ApplyProjectMetadataAction", () => {
     );
 
     expect(issues).toEqual([]);
-    expect(removeTrack).toHaveBeenCalledWith("lead");
+    expect(removeTrack).toHaveBeenCalledWith('lead');
     expect(addTrack).toHaveBeenCalledWith(
-      "lead",
-      "lead.wav",
+      'lead',
+      'lead.wav',
       projectRoot,
-      "new-stems",
+      'new-stems',
     );
   });
 
-  it("reapplies unchanged audio paths when opening a project", async () => {
+  it('reapplies unchanged audio paths when opening a project', async () => {
     const projectRoot = {} as FileSystemDirectoryHandle;
     const metadata = makeDefaultMetadata();
-    metadata.audio.song = "song.wav";
-    const document = {
+    metadata.audio.song = 'song.wav';
+    const project = {
       metadata,
       metadataSchema: MetadataSchema,
       getSnapshot: () => ({ directoryHandle: projectRoot }),
@@ -178,9 +179,9 @@ describe("ApplyProjectMetadataAction", () => {
     const clearError = vi.fn();
     const setError = vi.fn();
     const services = {
-      document,
+      project,
       mixer: { removeTrack, addTrack },
-      "editor.state": { clearError, setError },
+      'editor.state': { clearError, setError },
     };
     const accessor: ServicesAccessor = {
       get: <T>(id: string) => services[id as keyof typeof services] as T,
@@ -193,17 +194,17 @@ describe("ApplyProjectMetadataAction", () => {
     );
 
     expect(issues).toEqual([]);
-    expect(removeTrack).toHaveBeenCalledWith("song");
+    expect(removeTrack).toHaveBeenCalledWith('song');
     expect(addTrack).toHaveBeenCalledWith(
-      "song",
-      "song.wav",
+      'song',
+      'song.wav',
       projectRoot,
       null,
     );
   });
 
-  it("does not change mixer tracks when metadata is invalid", async () => {
-    const document = {
+  it('does not change mixer tracks when metadata is invalid', async () => {
+    const project = {
       metadata: makeDefaultMetadata(),
       metadataSchema: MetadataSchema,
     };
@@ -212,9 +213,9 @@ describe("ApplyProjectMetadataAction", () => {
     const clearError = vi.fn();
     const setError = vi.fn();
     const services = {
-      document,
+      project,
       mixer: { removeTrack, addTrack },
-      "editor.state": { clearError, setError },
+      'editor.state': { clearError, setError },
     };
     const accessor: ServicesAccessor = {
       get: <T>(id: string) => services[id as keyof typeof services] as T,

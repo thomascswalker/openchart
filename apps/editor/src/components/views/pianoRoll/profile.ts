@@ -6,13 +6,14 @@ import {
   type VocalLaneSpec,
   type VocalLayout,
   type VocalPhraseKind,
-} from "@openchart/views";
-import { formatNoteId, VocalNoteKind, VocalTrackView } from "@openchart/views";
-import type { PitchRange } from "../../../audio/soundboard";
+} from '@openchart/views';
+import { VocalNoteKind, VocalTrackView, formatNoteId } from '@openchart/views';
+
+import type { PitchRange } from '../../../audio/soundboard';
 
 /** How a note is drawn and edited. Generic notes are plain pitched notes. */
 export type PianoRollNoteKind =
-  "generic" | VocalNoteKind | `phrase:${VocalPhraseKind}` | "unknown";
+  'generic' | VocalNoteKind | `phrase:${VocalPhraseKind}` | 'unknown';
 
 /** Pinned lane ids come from the vocal projection (derived from the ruleset). */
 export type PinnedLaneId = string;
@@ -21,7 +22,7 @@ export type PianoRollProfileId =
   typeof EditingModeId.MidiRaw | typeof EditingModeId.MidiVocals;
 
 export interface PianoRollHeaderOptions {
-  textLane: "all" | "lyrics";
+  textLane: 'all' | 'lyrics';
   createOnClick: boolean;
   deleteText: boolean;
   dragText: boolean;
@@ -40,7 +41,7 @@ export interface PianoRollProfile {
 }
 
 const GenericHeader: PianoRollHeaderOptions = Object.freeze({
-  textLane: "all",
+  textLane: 'all',
   createOnClick: true,
   deleteText: true,
   dragText: true,
@@ -48,7 +49,7 @@ const GenericHeader: PianoRollHeaderOptions = Object.freeze({
 });
 
 const VocalHeader: PianoRollHeaderOptions = Object.freeze({
-  textLane: "lyrics",
+  textLane: 'lyrics',
   createOnClick: false,
   deleteText: false,
   dragText: false,
@@ -63,7 +64,7 @@ export const GENERIC_PROFILE: PianoRollProfile = Object.freeze({
   keyboardLabels: false,
   header: GenericHeader,
   vocal: null,
-  classify: () => "generic",
+  classify: () => 'generic',
   laneForPitch: () => null,
 });
 
@@ -80,7 +81,7 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
   const rows = projection.getRows();
   const pitchRows = rows.filter((row) => row.kind === VocalNoteKind.Pitched);
   if (pitchRows.length === 0) {
-    throw new Error("Vocal Piano Roll projection has no pitched rows");
+    throw new Error('Vocal Piano Roll projection has no pitched rows');
   }
   const pitchValues = pitchRows.map((row) => Number(row.id));
   const range = {
@@ -112,7 +113,7 @@ export function profileFromSession(session: EditingSession): PianoRollProfile {
     vocal: layout,
     classify: (pitch) => {
       const row = rowForPitch(projection, pitch);
-      if (!row) return "unknown";
+      if (!row) return 'unknown';
       return row.kind === VocalNoteKind.Pitched
         ? VocalNoteKind.Pitched
         : (row.kind as PianoRollNoteKind);
@@ -134,8 +135,8 @@ function laneFromProjection(
   if (createPitch === undefined) {
     throw new Error(`Vocal lane '${row.id}' has no creation pitch`);
   }
-  const phrase = row.kind.startsWith("phrase:")
-    ? (row.kind.slice("phrase:".length) as VocalPhraseKind)
+  const phrase = row.kind.startsWith('phrase:')
+    ? (row.kind.slice('phrase:'.length) as VocalPhraseKind)
     : null;
   const kind = phrase
     ? (`phrase:${phrase}` as const)
@@ -164,18 +165,18 @@ function rowForPitch(projection: Projection, pitch: number) {
 /** Scientific pitch name with C4 = 60. */
 export function pitchName(pitch: number): string {
   const names = [
-    "C",
-    "C#",
-    "D",
-    "D#",
-    "E",
-    "F",
-    "F#",
-    "G",
-    "G#",
-    "A",
-    "A#",
-    "B",
+    'C',
+    'C#',
+    'D',
+    'D#',
+    'E',
+    'F',
+    'F#',
+    'G',
+    'G#',
+    'A',
+    'A#',
+    'B',
   ];
   return `${names[((pitch % 12) + 12) % 12]}${Math.floor(pitch / 12) - 1}`;
 }

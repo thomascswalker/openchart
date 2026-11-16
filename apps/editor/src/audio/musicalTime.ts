@@ -1,17 +1,17 @@
 import {
   MetaType,
-  msToTicks,
-  ticksToMs,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/midi";
+  msToTicks,
+  ticksToMs,
+} from '@openchart/midi';
 
-export type Tempo = Pick<TempoEvent, "tick" | "microsecondsPerQuarterNote">;
+export type Tempo = Pick<TempoEvent, 'tick' | 'microsecondsPerQuarterNote'>;
 export type TimeSignature = Pick<
   TimeSignatureEvent,
-  "numerator" | "denominator"
+  'numerator' | 'denominator'
 >;
-type TimedTimeSignature = TimeSignature & Pick<TimeSignatureEvent, "tick">;
+type TimedTimeSignature = TimeSignature & Pick<TimeSignatureEvent, 'tick'>;
 
 export interface BeatPosition {
   tick: number;

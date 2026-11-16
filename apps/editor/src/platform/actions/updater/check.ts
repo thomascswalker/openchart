@@ -1,13 +1,13 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { UpdaterService } from "../../services/updater/updater";
+import { Action } from '../../actions';
+import type { ServicesAccessor } from '../../services/registry';
+import { UpdaterService } from '../../services/updater/updater';
 
 export class CheckForUpdatesAction extends Action {
   constructor() {
-    super({ condition: { "platform.is-tauri": true } });
+    super({ condition: { 'platform.is-tauri': true } });
   }
 
-  async run(accessor: ServicesAccessor): Promise<void> {
-    await accessor.get<UpdaterService>("updater").check();
+  async run(accessor: ServicesAccessor) {
+    await accessor.get<UpdaterService>('updater').check();
   }
 }

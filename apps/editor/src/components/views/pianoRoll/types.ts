@@ -3,21 +3,22 @@ import type {
   MidiChannelEvent,
   MidiNote,
   MidiTrack,
-  TextMidiEvent,
   TempoEvent,
+  TextMidiEvent,
   TimeSignatureEvent,
-} from "@openchart/midi";
+} from '@openchart/midi';
 import type {
-  EntityId,
   EditingSession,
+  EntityId,
   PreviewState,
   VocalNoteKind,
   VocalPhraseKind,
-} from "@openchart/views";
-import type { ChartViewState } from "../AbstractChartView";
-import type { PianoRollProfile } from "./profile";
-import type { SelectionContext } from "./selection";
-import type { PointerContext } from "./input/pointer";
+} from '@openchart/views';
+
+import type { ChartViewState } from '../AbstractChartView';
+import type { PointerContext } from './input/pointer';
+import type { PianoRollProfile } from './profile';
+import type { SelectionContext } from './selection';
 
 export interface PianoRollNote {
   id: EntityId;
@@ -114,7 +115,7 @@ export interface PianoRollContext {
 }
 
 export interface PianoRollCameraState {
-  profile: PianoRollProfile["id"] | "generic";
+  profile: PianoRollProfile['id'] | 'generic';
   y: number;
   v: number;
   h: number;

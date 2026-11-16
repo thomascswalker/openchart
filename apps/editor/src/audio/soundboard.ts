@@ -3,14 +3,15 @@ import type {
   MidiNote,
   TempoEvent,
   TimeSignatureEvent,
-} from "@openchart/midi";
-import { ticksToMs } from "@openchart/midi";
+} from '@openchart/midi';
+import { ticksToMs } from '@openchart/midi';
+
 import {
   beatCrossings,
   tickWindowForLookAhead,
   ticksPerBeat,
-} from "./musicalTime";
-import { NoteCrossingTracker } from "./noteCrossing";
+} from './musicalTime';
+import { NoteCrossingTracker } from './noteCrossing';
 
 const LOOK_AHEAD_MS = 120;
 const SCHEDULER_INTERVAL_MS = 25;
@@ -90,7 +91,7 @@ function createSoundboardContext(): AudioContext {
         typeof globalThis & { webkitAudioContext?: typeof AudioContext }
     ).webkitAudioContext;
   if (!AudioContextConstructor) {
-    throw new Error("This browser does not support audio feedback.");
+    throw new Error('This browser does not support audio feedback.');
   }
   return new AudioContextConstructor();
 }
@@ -101,7 +102,7 @@ function clamp(value: number): number {
 
 export function midiPitchToFrequency(pitch: number): number {
   if (!Number.isInteger(pitch) || pitch < 0 || pitch > 127) {
-    throw new RangeError("MIDI pitch must be an integer from 0 through 127.");
+    throw new RangeError('MIDI pitch must be an integer from 0 through 127.');
   }
   return 440 * 2 ** ((pitch - 69) / 12);
 }
@@ -115,7 +116,7 @@ export function validatePitchRange(range: PitchRange): PitchRange {
     range.low > range.high
   ) {
     throw new RangeError(
-      "Pitch ranges must be inclusive MIDI pitches from 0 through 127.",
+      'Pitch ranges must be inclusive MIDI pitches from 0 through 127.',
     );
   }
   return range;
@@ -189,7 +190,7 @@ export class Soundboard {
     if (!this.context) {
       this.context = this.contextFactory?.() ?? createSoundboardContext();
     }
-    if (this.context.state === "suspended") {
+    if (this.context.state === 'suspended') {
       if (this.resumePromise === null) {
         let pendingResume: Promise<void>;
         pendingResume = this.context.resume().finally(() => {
@@ -523,7 +524,7 @@ export class Soundboard {
 
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = "triangle";
+    oscillator.type = 'triangle';
     oscillator.frequency.setValueAtTime(midiPitchToFrequency(pitch), startTime);
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(volume, startTime + attack);
@@ -589,7 +590,7 @@ export class Soundboard {
     if (!context) return;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = "triangle";
+    oscillator.type = 'triangle';
     oscillator.frequency.setValueAtTime(1_650, time);
     gain.gain.setValueAtTime(clamp(volume), time);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
@@ -620,7 +621,7 @@ export class Soundboard {
       configuration.settings.previewReleaseMs / 1_000,
     );
     const velocity = clamp((note.velocity ?? 100) / 127);
-    oscillator.type = "sine";
+    oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(
       midiPitchToFrequency(note.pitch),
       startTime,

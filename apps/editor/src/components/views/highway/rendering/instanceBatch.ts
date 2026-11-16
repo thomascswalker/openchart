@@ -1,9 +1,10 @@
-import * as THREE from "three";
-import type { MaterialSet, Rgb } from "./materials";
-import { setMaterialStateForMaterial } from "./materials";
-import { meshesInModel } from "./geometry";
-import type { PrimitiveMaterialRole } from "./instances";
-import type { ITransform } from "./geometryCatalog";
+import * as THREE from 'three';
+
+import { meshesInModel } from './geometry';
+import type { ITransform } from './geometryCatalog';
+import type { PrimitiveMaterialRole } from './instances';
+import type { MaterialSet, Rgb } from './materials';
+import { setMaterialStateForMaterial } from './materials';
 
 export interface NoteInstanceData {
   x: number;
@@ -66,7 +67,7 @@ export class NoteInstanceBatch {
     scene: THREE.Scene,
     template: THREE.Object3D,
     roles: readonly PrimitiveMaterialRole[],
-    materialSet: Pick<MaterialSet, "noteTinted" | "noteGrayscale">,
+    materialSet: Pick<MaterialSet, 'noteTinted' | 'noteGrayscale'>,
     capacity: number,
     transform: ITransform,
     renderOrder: number,
@@ -134,16 +135,16 @@ export class NoteInstanceBatch {
       }
       geometry.setIndex(baked.entry.geometry.index);
       this.geometryReferences.push(baked);
-      geometry.setAttribute("aLaneColorSelected", this.colorAttribute);
-      geometry.setAttribute("aNoteFlags", this.styleAttribute);
-      geometry.setAttribute("aStartTick", this.tickAttribute);
+      geometry.setAttribute('aLaneColorSelected', this.colorAttribute);
+      geometry.setAttribute('aNoteFlags', this.styleAttribute);
+      geometry.setAttribute('aStartTick', this.tickAttribute);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
       this.geometries.push(geometry);
-      const role = this.roles[index] ?? "neutral";
+      const role = this.roles[index] ?? 'neutral';
       const mesh = new THREE.InstancedMesh(
         geometry,
-        role === "tinted" ? this.materials[0] : this.materials[1],
+        role === 'tinted' ? this.materials[0] : this.materials[1],
         capacity,
       );
       mesh.instanceMatrix = this.matrixAttribute;
@@ -364,7 +365,7 @@ export class NoteInstanceBatch {
     const key = transformMatrix
       .clone()
       .multiply(templateMesh.matrixWorld)
-      .elements.join(",");
+      .elements.join(',');
     let entries = bakedGeometryCache.get(source);
     if (!entries) {
       entries = new Map();

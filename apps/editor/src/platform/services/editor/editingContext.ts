@@ -2,7 +2,7 @@ import {
   DomainCommandType,
   EditCommandType,
   type EditingSession,
-} from "@openchart/views";
+} from '@openchart/views';
 
 export interface EditingContextSnapshot {
   values: Record<string, string | boolean | null>;
@@ -21,7 +21,7 @@ export function createEditingContextSnapshot(
       ]
     : [];
   const values: Record<string, string | boolean | null> = {
-    "editing.mode": session?.mode.id ?? null,
+    'editing.mode': session?.mode.id ?? null,
   };
   for (const commandType of new Set([
     ...previousCommandTypes,
@@ -29,7 +29,7 @@ export function createEditingContextSnapshot(
   ])) {
     values[`editing.can.${commandType}`] = Boolean(session?.can(commandType));
   }
-  values["editing.can.MOVE_SELECTION"] = Boolean(
+  values['editing.can.MOVE_SELECTION'] = Boolean(
     session?.can(EditCommandType.MoveNotes) ||
     session?.can(DomainCommandType.MoveChartNotes) ||
     session?.can(DomainCommandType.MoveVocalEntities),

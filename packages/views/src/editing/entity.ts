@@ -4,13 +4,13 @@ export type EntityId = string & { readonly [entityIdBrand]: true };
 
 /** Entity categories exposed by editing modes. */
 export enum EntityType {
-  Note = "note",
-  Phrase = "phrase",
-  Lyric = "lyric",
-  Text = "text",
-  Tempo = "tempo",
-  TimeSignature = "time-signature",
-  Unknown = "unknown",
+  Note = 'note',
+  Phrase = 'phrase',
+  Lyric = 'lyric',
+  Text = 'text',
+  Tempo = 'tempo',
+  TimeSignature = 'time-signature',
+  Unknown = 'unknown',
 }
 
 export type TrackEntityType = EntityType.Note | EntityType.Text;
@@ -34,10 +34,10 @@ function formatTrackEntityId(
   eventId: string,
 ): EntityId {
   if (!Number.isSafeInteger(trackIndex) || trackIndex < 0) {
-    throw new RangeError("trackIndex must be a non-negative safe integer");
+    throw new RangeError('trackIndex must be a non-negative safe integer');
   }
   if (!eventId) {
-    throw new RangeError("eventId must not be empty");
+    throw new RangeError('eventId must not be empty');
   }
   return `${type}:${trackIndex}:${eventId}` as EntityId;
 }
@@ -47,7 +47,7 @@ function formatGlobalEntityId(
   eventId: string,
 ): EntityId {
   if (!eventId) {
-    throw new RangeError("eventId must not be empty");
+    throw new RangeError('eventId must not be empty');
   }
   return `${type}:${eventId}` as EntityId;
 }
@@ -80,7 +80,7 @@ export function formatTimeSignatureId(eventId: string): EntityId {
  */
 export function parseEntityFromId(id: string): Entity | null {
   // Determine the type of entity and the rest of the ID after the first colon.
-  const separator = id.indexOf(":");
+  const separator = id.indexOf(':');
 
   // If there is no colon or it's the first character, the ID is malformed.
   if (separator < 1) {
@@ -106,7 +106,7 @@ export function parseEntityFromId(id: string): Entity | null {
 
   // Handle track-based entities. These have a track index followed by the
   // event ID.
-  const trackSeparator = rest.indexOf(":");
+  const trackSeparator = rest.indexOf(':');
 
   // If there is no colon or it's the first character, the track-based ID is
   // malformed.

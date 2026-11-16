@@ -1,1 +1,1 @@
-export { CommandPanel } from "./CommandPanel";
+export { CommandPanel } from './CommandPanel';

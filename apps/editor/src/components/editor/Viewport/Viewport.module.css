@@ -28,7 +28,7 @@
 .viewportPanelHeader,
 .viewportPanelActions,
 .highwayToolbar,
-.highwayToolbar [role="group"] {
+.highwayToolbar [role='group'] {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -60,15 +60,15 @@
   background: #0b0b0b;
 }
 
-.viewportGrid[data-count="2"] {
+.viewportGrid[data-count='2'] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.viewportGrid[data-count="3"] {
+.viewportGrid[data-count='3'] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.viewportGrid[data-count="4"] {
+.viewportGrid[data-count='4'] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
@@ -177,7 +177,7 @@
   font-size: 10px;
 }
 
-.highwayToolbar button[aria-pressed="true"] {
+.highwayToolbar button[aria-pressed='true'] {
   border-color: #8cc8ff;
   background: #32516d;
 }

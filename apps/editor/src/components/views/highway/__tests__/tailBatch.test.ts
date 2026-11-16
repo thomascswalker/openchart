@@ -1,10 +1,11 @@
-import * as THREE from "three";
-import { describe, expect, it } from "vitest";
-import { rgbFromHex } from "../rendering/materials";
-import { SustainTailBatch } from "../rendering/tailBatch";
+import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
 
-describe("SustainTailBatch", () => {
-  it("writes transforms and lane/selection attributes to one instanced mesh", () => {
+import { rgbFromHex } from '../rendering/materials';
+import { SustainTailBatch } from '../rendering/tailBatch';
+
+describe('SustainTailBatch', () => {
+  it('writes transforms and lane/selection attributes to one instanced mesh', () => {
     const scene = new THREE.Scene();
     const material = new THREE.ShaderMaterial();
     const batch = new SustainTailBatch(scene, material, 4, 10, {
@@ -32,13 +33,13 @@ describe("SustainTailBatch", () => {
     expect(batch.mesh.renderOrder).toBe(10);
     expect(batch.mesh.frustumCulled).toBe(false);
     expect(
-      batch.mesh.geometry.getAttribute("aLaneColorSelected").array,
+      batch.mesh.geometry.getAttribute('aLaneColorSelected').array,
     ).toEqual(expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1 }));
     expect(batch.mesh.instanceMatrix.array[12]).toBe(1);
     const matrixVersion = batch.mesh.instanceMatrix.version;
     const colorVersion = (
       batch.mesh.geometry.getAttribute(
-        "aLaneColorSelected",
+        'aLaneColorSelected',
       ) as THREE.BufferAttribute
     ).version;
     batch.write([
@@ -58,7 +59,7 @@ describe("SustainTailBatch", () => {
     expect(
       (
         batch.mesh.geometry.getAttribute(
-          "aLaneColorSelected",
+          'aLaneColorSelected',
         ) as THREE.BufferAttribute
       ).version,
     ).toBe(colorVersion);
@@ -71,7 +72,7 @@ describe("SustainTailBatch", () => {
     material.dispose();
   });
 
-  it("grows without dropping visible sustain tails", () => {
+  it('grows without dropping visible sustain tails', () => {
     const scene = new THREE.Scene();
     const material = new THREE.ShaderMaterial();
     const batch = new SustainTailBatch(scene, material, 2, 10, {});
@@ -95,7 +96,7 @@ describe("SustainTailBatch", () => {
     material.dispose();
   });
 
-  it("writes every supplied sustain tail", () => {
+  it('writes every supplied sustain tail', () => {
     const scene = new THREE.Scene();
     const material = new THREE.ShaderMaterial();
     const batch = new SustainTailBatch(scene, material, 4, 10, {});

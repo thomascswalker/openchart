@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { MixerService } from "../mixer";
-import { mockLoggerService } from "../../__mock__/logger.mock";
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock("@openchart/audio", () => ({
+import { mockLoggerService } from '../../__mock__/logger.mock';
+import { MixerService } from '../mixer';
+
+vi.mock('@openchart/audio', () => ({
   Mixer: class MockMixer {
     tracks: Record<string, { filename: string }> = {};
     onChange?: () => void;
@@ -22,11 +23,13 @@ vi.mock("@openchart/audio", () => ({
 }));
 
 const makeMixerService = () => {
-  return new MixerService(mockLoggerService());
+  const service = new MixerService(mockLoggerService());
+  service.init();
+  return service;
 };
 
-describe("MixerService", () => {
-  it("publishes a new snapshot when the mixer changes directly", () => {
+describe('MixerService', () => {
+  it('publishes a new snapshot when the mixer changes directly', () => {
     const service = makeMixerService();
     const listener = vi.fn();
     const initialSnapshot = service.getSnapshot();
@@ -39,15 +42,15 @@ describe("MixerService", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
-  it("adds a track from a URL and publishes the updated snapshot", () => {
+  it('adds a track from a URL and publishes the updated snapshot', () => {
     const service = makeMixerService();
     const listener = vi.fn();
     service.subscribe(listener);
 
-    service.addTrackFromUrl("sample.wav", "/assets/sample.wav");
+    service.addTrackFromUrl('sample.wav', '/assets/sample.wav');
 
-    expect(service.getTracks()["sample.wav"]?.filename).toBe(
-      "/assets/sample.wav",
+    expect(service.getTracks()['sample.wav']?.filename).toBe(
+      '/assets/sample.wav',
     );
     expect(listener).toHaveBeenCalledOnce();
   });

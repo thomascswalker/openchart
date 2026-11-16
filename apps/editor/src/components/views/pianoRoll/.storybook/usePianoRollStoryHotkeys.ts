@@ -1,7 +1,7 @@
-import { globalBindings, pianoRollBindings } from "../../../../input/index";
-import { useHotkeys } from "../../../../input/lib";
-import { PianoRollView } from "../index";
-import type { AnyChartView } from "../../ChartViews";
+import { globalBindings, pianoRollBindings } from '../../../../input/index';
+import { useHotkeys } from '../../../../input/lib';
+import type { AnyChartView } from '../../ChartViews';
+import { PianoRollView } from '../index';
 
 type Handler = (view: PianoRollView, args: readonly unknown[]) => void;
 
@@ -11,14 +11,14 @@ type Handler = (view: PianoRollView, args: readonly unknown[]) => void;
  * from `src/input`, so remapping a hotkey there changes the story too.
  */
 const HANDLERS: Record<string, Handler> = {
-  "piano-roll.transpose-selection": (view, [semitones]) =>
+  'piano-roll.transpose-selection': (view, [semitones]) =>
     view.transposeSelection(semitones as number),
-  "piano-roll.move-selection": (view, [direction]) =>
+  'piano-roll.move-selection': (view, [direction]) =>
     view.moveSelection(direction as -1 | 1),
-  "piano-roll.select-all": (view) => view.selectAll(),
-  "piano-roll.clear-selection": (view) => view.clearSelection(),
-  "piano-roll.focus-selection": (view) => view.focusSelection(),
-  "editor.delete-selection": (view) => view.deleteSelection(),
+  'piano-roll.select-all': (view) => view.selectAll(),
+  'piano-roll.clear-selection': (view) => view.clearSelection(),
+  'piano-roll.focus-selection': (view) => view.focusSelection(),
+  'editor.delete-selection': (view) => view.deleteSelection(),
 };
 
 const STORY_BINDINGS = [...pianoRollBindings, ...globalBindings].filter(

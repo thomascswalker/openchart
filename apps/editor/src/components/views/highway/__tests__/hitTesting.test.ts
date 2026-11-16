@@ -1,18 +1,19 @@
-import { describe, expect, it } from "vitest";
-import type { MidiNote } from "@openchart/midi";
-import { Vector2 } from "three";
-import * as THREE from "three";
-import { Difficulty, type MidiNotePhrase } from "@openchart/views";
-import { getHighwayNoteIndex, type IndexedNote } from "../noteIndex";
-import type { ChartViewState } from "../../AbstractChartView";
-import { HighwayCoordinateSystem } from "../coordinates";
-import { nearBoardZ } from "../constants";
+import type { MidiNote } from '@openchart/midi';
+import { Difficulty, type MidiNotePhrase } from '@openchart/views';
+import { Vector2 } from 'three';
+import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
+
+import type { ChartViewState } from '../../AbstractChartView';
+import { nearBoardZ } from '../constants';
+import { HighwayCoordinateSystem } from '../coordinates';
 import {
   HighwayHitTester,
-  getPhraseBoundaryHitOperation,
   type PhraseBoundaryProjection,
-} from "../hitTesting";
-import { createHighwayTestSetup } from "./testUtils";
+  getPhraseBoundaryHitOperation,
+} from '../hitTesting';
+import { type IndexedNote, getHighwayNoteIndex } from '../noteIndex';
+import { createHighwayTestSetup } from './testUtils';
 
 function boundary(y: number): PhraseBoundaryProjection {
   return {
@@ -23,20 +24,20 @@ function boundary(y: number): PhraseBoundaryProjection {
   };
 }
 
-describe("phrase boundary hit testing", () => {
-  it("identifies the start or end edge inside the pixel threshold", () => {
+describe('phrase boundary hit testing', () => {
+  it('identifies the start or end edge inside the pixel threshold', () => {
     const start = boundary(200);
     const end = boundary(260);
 
     expect(
       getPhraseBoundaryHitOperation(new Vector2(300, 205), start, end, 9),
-    ).toBe("resize-start");
+    ).toBe('resize-start');
     expect(
       getPhraseBoundaryHitOperation(new Vector2(300, 256), start, end, 9),
-    ).toBe("resize-end");
+    ).toBe('resize-end');
   });
 
-  it("does not treat the phrase body as a resize edge", () => {
+  it('does not treat the phrase body as a resize edge', () => {
     expect(
       getPhraseBoundaryHitOperation(
         new Vector2(300, 230),
@@ -48,12 +49,12 @@ describe("phrase boundary hit testing", () => {
   });
 });
 
-describe("phrase screen hit bounds", () => {
+describe('phrase screen hit bounds', () => {
   const state: ChartViewState = {
     midi: null,
     selectedTrackKey: null,
     selectedTrackIndex: null,
-    selectedInstrument: "LEAD GUITAR",
+    selectedInstrument: 'LEAD GUITAR',
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
     lockCursor: false,
@@ -82,19 +83,19 @@ describe("phrase screen hit bounds", () => {
     return { start, end } as MidiNotePhrase;
   }
 
-  it("ignores a phrase fully before the visible highway interval", () => {
+  it('ignores a phrase fully before the visible highway interval', () => {
     expect(hitTesting.getPhraseScreenBounds(phrase(1_000, 1_800))).toBeNull();
   });
 
-  it("clips a partially visible phrase to the visible interval", () => {
+  it('clips a partially visible phrase to the visible interval', () => {
     expect(hitTesting.getPhraseScreenBounds(phrase(2_800, 4_000))).toEqual(
       hitTesting.getPhraseScreenBounds(phrase(3_000, 4_000)),
     );
   });
 });
 
-describe("drum note hit testing", () => {
-  it("uses the same contextual pad and cymbal offsets as rendering", () => {
+describe('drum note hit testing', () => {
+  it('uses the same contextual pad and cymbal offsets as rendering', () => {
     const coordinates = {
       getLaneX: () => 0,
       getNoteZ: () => 0,
@@ -107,15 +108,15 @@ describe("drum note hit testing", () => {
       getPreviewState: () => null,
     });
     const note = { pitch: 100, start: 480 } as MidiNote;
-    const pad = hitTesting.getGemScreenBounds(note, 1, "pad")!;
-    const cymbal = hitTesting.getGemScreenBounds(note, 1, "cymbal")!;
+    const pad = hitTesting.getGemScreenBounds(note, 1, 'pad')!;
+    const cymbal = hitTesting.getGemScreenBounds(note, 1, 'cymbal')!;
 
     expect((pad.left + pad.right) / 2).toBeCloseTo(0);
     expect((cymbal.left + cymbal.right) / 2).toBeCloseTo(0);
   });
 
-  it("hits cymbals on their pad lane and excludes marker pitches", () => {
-    const setup = createHighwayTestSetup("drums");
+  it('hits cymbals on their pad lane and excludes marker pitches', () => {
+    const setup = createHighwayTestSetup('drums');
     setup.midiTrack.insertNote({
       pitch: 101,
       tick: 480,
@@ -153,8 +154,8 @@ describe("drum note hit testing", () => {
     );
   });
 
-  it("uses normalized kick bounds and ignores flam markers", () => {
-    const setup = createHighwayTestSetup("drums");
+  it('uses normalized kick bounds and ignores flam markers', () => {
+    const setup = createHighwayTestSetup('drums');
     setup.midiTrack.insertNote({
       pitch: 95,
       tick: 480,

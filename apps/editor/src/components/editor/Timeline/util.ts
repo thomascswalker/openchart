@@ -3,8 +3,9 @@ import {
   type TempoEvent,
   type TimeSignatureEvent,
   ticksToMs,
-} from "@openchart/midi";
-import type { AnyChartView } from "../../views/ChartViews";
+} from '@openchart/midi';
+
+import type { AnyChartView } from '../../views/ChartViews';
 
 export interface TimelinePosition {
   tick: string;
@@ -12,10 +13,10 @@ export interface TimelinePosition {
   measure: string;
 }
 
-const BackgroundColor = "#101010";
-const ViewportColor = "rgba(255, 255, 255, 0.12)";
-const ViewportBorderColor = "rgba(255, 255, 255, 0.35)";
-const PlayheadColor = "#ff3b30";
+const BackgroundColor = '#101010';
+const ViewportColor = 'rgba(255, 255, 255, 0.12)';
+const ViewportBorderColor = 'rgba(255, 255, 255, 0.35)';
+const PlayheadColor = '#ff3b30';
 
 export const DefaultTempoEvents: TempoEvent[] = [
   {
@@ -48,7 +49,7 @@ export function drawTimeline(
   timelineTicks: number,
   playbackTick: number,
 ): void {
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
   const width = canvas.width;
@@ -88,10 +89,10 @@ function formatTime(milliseconds: number): string {
   const seconds = totalSeconds % 60;
   const totalMinutes = Math.floor(totalSeconds / 60);
   const minutes = totalMinutes % 60;
-  const fraction = String(centiseconds % 100).padStart(2, "0");
+  const fraction = String(centiseconds % 100).padStart(2, '0');
   const clock = [minutes, seconds]
-    .map((part) => String(part).padStart(2, "0"))
-    .join(":");
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':');
 
   return `${clock}.${fraction}`;
 }
@@ -136,7 +137,7 @@ function formatMeasure(
   );
 
   measure += completedMeasures;
-  return `${measure}.${quarterBeat}.${String(fraction).padStart(2, "0")}`;
+  return `${measure}.${quarterBeat}.${String(fraction).padStart(2, '0')}`;
 }
 
 export function getTimelinePosition(

@@ -1,14 +1,15 @@
-import { MetaType, Midi, MidiTrack } from "@openchart/midi";
+import { MetaType, Midi, MidiTrack } from '@openchart/midi';
+
 import {
-  DefaultCompiledRuleset,
   type CompiledRuleset,
+  DefaultCompiledRuleset,
   type TrackDescriptor,
   type TrackRules,
-} from "../ruleset/compile";
-import { GlobalTrackView } from "./global";
-import { InstrumentTrackView } from "./instrument";
-import type { TrackView } from "./track";
-import { VocalTrackView } from "./vocal";
+} from '../ruleset/compile';
+import { GlobalTrackView } from './global';
+import { InstrumentTrackView } from './instrument';
+import type { TrackView } from './track';
+import { VocalTrackView } from './vocal';
 
 class SongView {
   private midi: Midi;
@@ -39,14 +40,14 @@ class SongView {
     midiTrack: MidiTrack | undefined,
   ): TrackView {
     switch (rules.kind) {
-      case "header":
-      case "global":
+      case 'header':
+      case 'global':
         return new GlobalTrackView(this, midiTrack, rules);
-      case "vocals":
+      case 'vocals':
         return new VocalTrackView(this, midiTrack, rules);
-      case "guitar":
-      case "drums":
-      case "gamepad":
+      case 'guitar':
+      case 'drums':
+      case 'gamepad':
         return new InstrumentTrackView(this, midiTrack, rules);
     }
   }
@@ -57,7 +58,7 @@ class SongView {
 
   public getVisibleTrackDescriptors(): readonly TrackDescriptor[] {
     return this.getTrackDescriptors().filter(
-      (descriptor) => descriptor.visible && descriptor.kind !== "header",
+      (descriptor) => descriptor.visible && descriptor.kind !== 'header',
     );
   }
 
@@ -107,7 +108,7 @@ class SongView {
     keyOrDescriptor: string | TrackDescriptor,
   ): MidiTrack | undefined {
     const key =
-      typeof keyOrDescriptor === "string"
+      typeof keyOrDescriptor === 'string'
         ? keyOrDescriptor
         : keyOrDescriptor.key;
     const rules = this.rules.byKey.get(key);
@@ -117,7 +118,7 @@ class SongView {
   /** Materialize a configured track only for an intentional edit. */
   public ensureMidiTrack(key: string): MidiTrack | undefined {
     const rules = this.rules.byKey.get(key);
-    if (!rules || rules.kind === "header") return undefined;
+    if (!rules || rules.kind === 'header') return undefined;
     const existing = this.midi.getTrack(rules.name);
     if (existing) return existing;
 

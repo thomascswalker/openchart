@@ -1,19 +1,20 @@
 import {
   DomainCommandType,
-  EditCommandType,
-  EditingModeId,
   type EditCommand,
-  type EntityId,
-  type EditingSession,
+  EditCommandType,
   type EditResult,
+  EditingModeId,
+  type EditingSession,
+  type EntityId,
   type GestureHandle,
   type PreviewState,
   VocalNoteKind,
   type VocalPhraseKind,
-} from "@openchart/views";
-import { Vector2 } from "three";
-import type { CoordinateSystem } from "../coordinates";
-import type { PianoRollContext, PianoRollNote } from "../types";
+} from '@openchart/views';
+import { Vector2 } from 'three';
+
+import type { CoordinateSystem } from '../coordinates';
+import type { PianoRollContext, PianoRollNote } from '../types';
 
 interface CreateSpec {
   tick: number;
@@ -487,7 +488,7 @@ export class NoteEditingController {
 
   private preview(command: EditCommand): PreviewState {
     if (!this.gesture)
-      throw new Error("Cannot preview without an open gesture");
+      throw new Error('Cannot preview without an open gesture');
     const preview = this.gesture.preview(command);
     this.context.setPreviewState?.(preview);
     this.context.requestRender();

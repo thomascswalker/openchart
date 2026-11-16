@@ -1,7 +1,5 @@
-import { vi } from "vitest";
-
-vi.mock("../sample.js", async () => {
-  const { createMockAudio } = await import("./audioMock.js");
+export async function createSampleMock() {
+  const { createMockAudio } = await import('./audioMock.js');
   return {
     default: {
       load: (
@@ -13,12 +11,12 @@ vi.mock("../sample.js", async () => {
       },
     },
   };
-});
+}
 
-vi.mock("../engine.js", () => {
+export function createEngineMock() {
   class MockAudioEngine {
     now = 0;
-    state = "running";
+    state = 'running';
     outputLatency = 0;
     disposed = false;
     dispose() {
@@ -30,4 +28,4 @@ vi.mock("../engine.js", () => {
     AudioEngine: MockAudioEngine,
     START_LEAD_SECONDS: 0.03,
   };
-});
+}

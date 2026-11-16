@@ -1,7 +1,7 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { ActiveChartViewService } from "../../services/editor/activeChartView";
-import { ActiveHighway } from "../conditions";
+import { Action } from '../../actions';
+import { ActiveChartViewService } from '../../services/editor/activeChartView';
+import type { ServicesAccessor } from '../../services/registry';
+import { ActiveHighway } from '../conditions';
 
 /** Clears the Highway keyboard selection range. */
 export class ClearSelectionAction extends Action {
@@ -11,9 +11,9 @@ export class ClearSelectionAction extends Action {
 
   run(accessor: ServicesAccessor): void {
     const chartView = accessor.get<ActiveChartViewService>(
-      "editor.active-chart-view",
+      'editor.active-chart-view',
     );
-    const activeView = chartView.getActive("highway");
+    const activeView = chartView.getActive('highway');
     if (!activeView) {
       return;
     }

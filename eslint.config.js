@@ -1,20 +1,20 @@
-import js from "@eslint/js";
-import globals from "globals";
-import tseslint from "typescript-eslint";
-import { defineConfig, globalIgnores } from "eslint/config";
+import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default defineConfig([
   globalIgnores([
-    "**/dist/**",
-    "**/build/**",
-    "**/coverage/**",
-    "**/target/**",
-    "apps/desktop/src-tauri/gen/**",
+    '**/dist/**',
+    '**/build/**',
+    '**/coverage/**',
+    '**/target/**',
+    'apps/desktop/src-tauri/gen/**',
     // apps/editor has its own eslint.config.js for React-specific rules.
-    "apps/editor/**",
+    'apps/editor/**',
   ]),
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       globals: {
@@ -23,11 +23,11 @@ export default defineConfig([
       },
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-namespace": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_" },
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-namespace': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
       ],
     },
   },

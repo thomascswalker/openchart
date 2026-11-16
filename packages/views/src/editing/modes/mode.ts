@@ -1,28 +1,29 @@
-import type { ZodType } from "zod";
-import type { Difficulty } from "../../ruleset/difficulty";
-import { RuleViolation } from "../../ruleset/context";
+import type { ZodType } from 'zod';
+
+import { RuleViolation } from '../../ruleset/context';
+import type { Difficulty } from '../../ruleset/difficulty';
 import type {
   CompiledRuleset,
-  TrackDescriptor,
   RulesetContext,
-} from "../../ruleset/index";
-import type { ClipboardPayload } from "../clipboard";
-import type { NoteSnapshot } from "../reader";
-import type { EntityType } from "../entity";
+  TrackDescriptor,
+} from '../../ruleset/index';
+import type { ClipboardPayload } from '../clipboard';
 import {
   DomainCommandType,
-  EditCommandType,
   type EditCommand,
+  EditCommandType,
   type GeneralCommand,
-} from "../commands";
-import type { ChartDocumentReader } from "../reader";
-import type { Rejection } from "../result";
+} from '../commands';
+import type { EntityType } from '../entity';
+import type { NoteSnapshot } from '../reader';
+import type { DocumentReader } from '../reader';
+import type { Rejection } from '../result';
 
 export const EditingModeId = {
-  MidiRaw: "midi.raw",
-  MidiGlobal: "midi.global",
-  MidiVocals: "midi.vocals",
-  ChartLanes: "chart.lanes",
+  MidiRaw: 'midi.raw',
+  MidiGlobal: 'midi.global',
+  MidiVocals: 'midi.vocals',
+  ChartLanes: 'chart.lanes',
 } as const;
 
 export type EditingModeId =
@@ -30,7 +31,7 @@ export type EditingModeId =
 
 /** Document, target, and configuration visible to a pure editing mode. */
 export interface ModeContext {
-  reader: ChartDocumentReader;
+  reader: DocumentReader;
   target: EditingTarget;
   /** Compiled ruleset describing every track's lanes, phrases and rules. */
   rules: CompiledRuleset;

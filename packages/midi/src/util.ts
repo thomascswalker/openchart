@@ -1,8 +1,9 @@
-import { TempoEvent } from "./types";
-import { startCase } from "es-toolkit";
+import { startCase } from 'es-toolkit';
+
+import { TempoEvent } from './types';
 
 /** The fields of a tempo change that time conversion needs. */
-type TempoChange = Pick<TempoEvent, "tick" | "microsecondsPerQuarterNote">;
+type TempoChange = Pick<TempoEvent, 'tick' | 'microsecondsPerQuarterNote'>;
 
 /**
  * Determines the length of a MIDI message based on its status byte.
@@ -63,7 +64,7 @@ export function getStatusString(status: number): string {
   if (StatusNames[type] !== undefined) {
     return startCase(StatusNames[type]);
   }
-  return type >= 0xf0 ? "System Message" : "Unknown";
+  return type >= 0xf0 ? 'System Message' : 'Unknown';
 }
 
 /**

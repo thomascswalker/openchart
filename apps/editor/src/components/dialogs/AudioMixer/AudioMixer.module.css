@@ -256,16 +256,16 @@
   color: var(--yellow-50);
 }
 
-.ui-track-mixer-solo-button[aria-pressed="true"] {
+.ui-track-mixer-solo-button[aria-pressed='true'] {
   color: var(--text-primary);
   background-color: var(--yellow-70);
 }
 
-.ui-track-mixer-solo-button[aria-pressed="true"]:hover {
+.ui-track-mixer-solo-button[aria-pressed='true']:hover {
   background-color: var(--yellow-60);
 }
 
-.ui-track-mixer-solo-button[aria-pressed="true"]:hover:active {
+.ui-track-mixer-solo-button[aria-pressed='true']:hover:active {
   background-color: var(--yellow-80);
 }
 
@@ -273,15 +273,15 @@
   color: var(--red-60);
 }
 
-.ui-track-mixer-mute-button[aria-pressed="true"] {
+.ui-track-mixer-mute-button[aria-pressed='true'] {
   color: var(--text-primary);
   background-color: var(--red-70);
 }
 
-.ui-track-mixer-mute-button[aria-pressed="true"]:hover {
+.ui-track-mixer-mute-button[aria-pressed='true']:hover {
   background-color: var(--red-60);
 }
 
-.ui-track-mixer-mute-button[aria-pressed="true"]:hover:active {
+.ui-track-mixer-mute-button[aria-pressed='true']:hover:active {
   background-color: var(--red-80);
 }

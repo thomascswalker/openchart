@@ -1,23 +1,25 @@
-import { act, StrictMode, useEffect } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { describe, expect, it } from "vitest";
-import { Runtime } from "../Runtime";
-import { usePlayback } from "../../../hooks/usePlayback";
+import { StrictMode, act, useEffect } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
+
+import { describe, expect, it } from 'vitest';
+
+import { usePlayback } from '../../../hooks/usePlayback';
+import { Runtime } from '../Runtime';
 
 function FeedbackConsumer() {
   const { setActiveView, stopPreview } = usePlayback();
 
   useEffect(() => {
-    setActiveView("highway");
+    setActiveView('highway');
     stopPreview();
   }, [setActiveView, stopPreview]);
 
   return null;
 }
 
-describe("Playback", () => {
-  it("makes feedback available before descendant effects run", () => {
-    const container = document.createElement("div");
+describe('Playback', () => {
+  it('makes feedback available before descendant effects run', () => {
+    const container = document.createElement('div');
     document.body.append(container);
     const root: Root = createRoot(container);
 

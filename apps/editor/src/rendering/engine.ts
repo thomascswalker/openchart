@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 
 declare global {
   interface Window {
@@ -86,15 +86,15 @@ export class Engine {
     this.renderer = new THREE.WebGLRenderer({
       antialias: antialias,
       alpha: false,
-      powerPreference: "high-performance",
+      powerPreference: 'high-performance',
     });
 
     // Extract the canvas element from the renderer and set its default style
     this.canvas = this.renderer.domElement;
-    this.canvas.style.display = "block";
-    this.canvas.style.width = "100%";
-    this.canvas.style.height = "100%";
-    this.canvas.style.touchAction = "none";
+    this.canvas.style.display = 'block';
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+    this.canvas.style.touchAction = 'none';
 
     // Set the clear color and other renderer properties
     this.renderer.setClearColor(background, 1);
@@ -116,7 +116,7 @@ export class Engine {
       Math.max(1, Math.floor(value.y)),
     );
     const pixelRatio = Math.min(
-      typeof window === "undefined" ? 1 : window.devicePixelRatio || 1,
+      typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
       this.pixelRatioCap,
     );
     this.renderer.setPixelRatio(pixelRatio);
@@ -141,7 +141,7 @@ export class Engine {
 
     // Optionally capture diagnostic data
     const captureDiagnostics =
-      typeof window !== "undefined" && window.__captureFramebuffer;
+      typeof window !== 'undefined' && window.__captureFramebuffer;
     if (captureDiagnostics) {
       this.captureDiagnostics(scene);
     }
@@ -178,8 +178,8 @@ export class Engine {
     dataset.visibleNotes = String(scene.userData.visibleNotes ?? 0);
     dataset.visibleSustains = String(scene.userData.visibleSustains ?? 0);
     dataset.contextType = this.renderer.capabilities.isWebGL2
-      ? "webgl2"
-      : "webgl";
+      ? 'webgl2'
+      : 'webgl';
     dataset.contextAttributes = JSON.stringify(gl.getContextAttributes());
     dataset.pixel = JSON.stringify([...pixels]);
     dataset.framebuffer = String(gl.getParameter(gl.FRAMEBUFFER_BINDING));
@@ -195,10 +195,10 @@ export class Engine {
       gl.UNSIGNED_BYTE,
       framebufferPixels,
     );
-    const capture = document.createElement("canvas");
+    const capture = document.createElement('canvas');
     capture.width = gl.drawingBufferWidth;
     capture.height = gl.drawingBufferHeight;
-    const captureContext = capture.getContext("2d");
+    const captureContext = capture.getContext('2d');
     if (captureContext) {
       const image = captureContext.createImageData(
         gl.drawingBufferWidth,

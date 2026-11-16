@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { MetaType, type MidiNote } from "@openchart/midi";
+import { MetaType, type MidiNote } from '@openchart/midi';
+import { describe, expect, it } from 'vitest';
+
 import {
-  Soundboard,
-  midiPitchToFrequency,
   type AudioContext,
+  Soundboard,
   type SoundboardSettings,
-} from "../soundboard";
+  midiPitchToFrequency,
+} from '../soundboard';
 
 class FakeParam {
   public value = 0;
@@ -22,7 +23,7 @@ class FakeParam {
 }
 
 class FakeOscillator {
-  public type: OscillatorType = "sine";
+  public type: OscillatorType = 'sine';
   public frequency = new FakeParam();
   public startCount = 0;
   public stopCount = 0;
@@ -68,8 +69,8 @@ function settings(
   return {
     metronomeEnabled: false,
     metronomeVolume: 0.4,
-    metronomeDownbeatSound: "square",
-    metronomeBeatSound: "sine",
+    metronomeDownbeatSound: 'square',
+    metronomeBeatSound: 'sine',
     previewVolume: 0.3,
     previewAttackMs: 5,
     previewReleaseMs: 25,
@@ -86,20 +87,20 @@ function note(start: number): MidiNote {
     velocity: 100,
     start,
     end: start + 120,
-    noteOn: { data1: 60 } as MidiNote["noteOn"],
-    noteOff: { data1: 60 } as MidiNote["noteOff"],
+    noteOn: { data1: 60 } as MidiNote['noteOn'],
+    noteOff: { data1: 60 } as MidiNote['noteOff'],
   };
 }
 
-describe("Soundboard", () => {
-  it("maps MIDI pitches and cleans up preview voices", async () => {
+describe('Soundboard', () => {
+  it('maps MIDI pitches and cleans up preview voices', async () => {
     expect(midiPitchToFrequency(69)).toBe(440);
     expect(() => midiPitchToFrequency(128)).toThrow(RangeError);
 
     const oscillators: FakeOscillator[] = [];
     const context = {
       currentTime: 0,
-      state: "running",
+      state: 'running',
       destination: {},
       resume: async () => {},
       close: async () => {},
@@ -120,7 +121,7 @@ describe("Soundboard", () => {
       clapEnabled: false,
       highwayActive: false,
       highwayNotes: [],
-      highwayKey: "highway:expert",
+      highwayKey: 'highway:expert',
     });
     engine.previewTrack([{ pitch: 60, startTick: 0, endTick: 480 }]);
     await Promise.resolve();
@@ -129,12 +130,12 @@ describe("Soundboard", () => {
     expect(oscillators[0].stopCount).toBeGreaterThanOrEqual(1);
   });
 
-  it("creates audio lazily and resets metronome/clap state on stop and seek", async () => {
+  it('creates audio lazily and resets metronome/clap state on stop and seek', async () => {
     let contextCount = 0;
     const oscillators: FakeOscillator[] = [];
     const context = {
       currentTime: 0,
-      state: "running",
+      state: 'running',
       destination: {},
       resume: async () => {},
       close: async () => {},
@@ -159,7 +160,7 @@ describe("Soundboard", () => {
       clapEnabled: true,
       highwayActive: true,
       highwayNotes: [note(480)],
-      highwayKey: "highway:expert",
+      highwayKey: 'highway:expert',
     });
 
     expect(contextCount).toBe(0);
@@ -177,11 +178,11 @@ describe("Soundboard", () => {
     engine.stop();
   });
 
-  it("does not create audio when feedback is disabled", () => {
+  it('does not create audio when feedback is disabled', () => {
     let contextCount = 0;
     const engine = new Soundboard(() => {
       contextCount++;
-      throw new Error("audio should remain lazy");
+      throw new Error('audio should remain lazy');
     });
     engine.configure({
       midi: null,
@@ -192,7 +193,7 @@ describe("Soundboard", () => {
       clapEnabled: false,
       highwayActive: false,
       highwayNotes: [],
-      highwayKey: "highway:expert",
+      highwayKey: 'highway:expert',
     });
     engine.start(0);
     engine.updateTick(480);
@@ -200,13 +201,13 @@ describe("Soundboard", () => {
     expect(contextCount).toBe(0);
   });
 
-  it("waits for a pending context resume before closing audio", async () => {
+  it('waits for a pending context resume before closing audio', async () => {
     let finishResume!: () => void;
     let resumeCount = 0;
     let closeCount = 0;
     const context = {
       currentTime: 0,
-      state: "suspended",
+      state: 'suspended',
       destination: {},
       resume: () => {
         resumeCount++;
@@ -235,11 +236,11 @@ describe("Soundboard", () => {
     expect(closeCount).toBe(1);
   });
 
-  it("claps only for notes visible on the active highway chart", async () => {
+  it('claps only for notes visible on the active highway chart', async () => {
     const oscillators: FakeOscillator[] = [];
     const context = {
       currentTime: 0,
-      state: "running",
+      state: 'running',
       destination: {},
       resume: async () => {},
       close: async () => {},
@@ -260,7 +261,7 @@ describe("Soundboard", () => {
       clapEnabled: true,
       highwayActive: true,
       highwayNotes: [note(10_000), note(10_000), note(10_000), note(10_500)],
-      highwayKey: "highway:expert",
+      highwayKey: 'highway:expert',
     });
     engine.start(0);
     await Promise.resolve();

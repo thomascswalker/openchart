@@ -1,6 +1,8 @@
-import { useRef, type KeyboardEvent } from "react";
-import classNames from "classnames";
-import styles from "./listView.module.css";
+import { type KeyboardEvent, useRef } from 'react';
+
+import classNames from 'classnames';
+
+import styles from './listView.module.css';
 
 interface ListViewProps {
   options: readonly string[];
@@ -29,13 +31,13 @@ const ListView = ({
     if (options.length === 0) return;
 
     const nextIndex =
-      event.key === "Home"
+      event.key === 'Home'
         ? 0
-        : event.key === "End"
+        : event.key === 'End'
           ? options.length - 1
-          : event.key === "ArrowDown"
+          : event.key === 'ArrowDown'
             ? (index + 1) % options.length
-            : event.key === "ArrowUp"
+            : event.key === 'ArrowUp'
               ? (index - 1 + options.length) % options.length
               : -1;
 
@@ -48,7 +50,7 @@ const ListView = ({
   return (
     <div
       id={id}
-      className={classNames(styles["list-view"], className)}
+      className={classNames(styles['list-view'], className)}
       role="listbox"
       aria-label={ariaLabel}
       aria-orientation="vertical"
@@ -60,7 +62,7 @@ const ListView = ({
             optionRefs.current[index] = element;
           }}
           id={id ? `${id}-option-${index}` : undefined}
-          className={styles["list-view-option"]}
+          className={styles['list-view-option']}
           role="option"
           aria-selected={index === selectedIndex}
           tabIndex={index === selectedIndex ? 0 : -1}

@@ -1,13 +1,12 @@
-import type { Midi, MidiNote } from "@openchart/midi";
-import type { EditingSession, PreviewState } from "@openchart/views";
-import { ChartView, SongView, type CompiledRuleset } from "@openchart/views";
-import * as THREE from "three";
-import { AbstractChartView, type ChartViewState } from "../AbstractChartView";
-import type { Engine } from "../../../rendering/engine";
-import type { EngineOptions } from "../../../rendering/engine";
-import { ResourceRegistry } from "./rendering/assets";
-import { getHighwaySnapDenominator } from "./interactionMath";
-import { SnapDenominators } from "../pianoRoll/constants";
+import type { Midi, MidiNote } from '@openchart/midi';
+import type { EditingSession, PreviewState } from '@openchart/views';
+import { ChartView, type CompiledRuleset, SongView } from '@openchart/views';
+import * as THREE from 'three';
+
+import type { Engine } from '../../../rendering/engine';
+import type { EngineOptions } from '../../../rendering/engine';
+import { AbstractChartView, type ChartViewState } from '../AbstractChartView';
+import { SnapDenominators } from '../pianoRoll/constants';
 import {
   defaultCameraFieldOfView,
   defaultCameraPosition,
@@ -15,26 +14,29 @@ import {
   farBoardZ,
   nearBoardZ,
   strikeLineZ,
-} from "./constants";
+} from './constants';
+import type { HighwayContext } from './context';
+import { HighwayCoordinateSystem } from './coordinates';
+import { HighwayNoteEditingController } from './editing/noteEditing';
+import { HighwayPhraseEditingController } from './editing/phraseEditing';
+import { HighwayHitTester } from './hitTesting';
+import { HighwayInputController } from './input/input';
+import { getHighwaySnapDenominator } from './interactionMath';
+import { ResourceRegistry } from './rendering/assets';
 import {
-  getPhraseModeForHighwayMode,
+  type HighwayRenderDiagnostics,
+  HighwayRenderer,
+} from './rendering/rendering';
+import {
   type HighwayMode,
   type HighwayNotePlacementType,
   type HighwayPhraseKind,
   type HighwaySelectionRange,
-} from "./types";
-import type { HighwayContext } from "./context";
-import { HighwayCoordinateSystem } from "./coordinates";
-import { HighwayHitTester } from "./hitTesting";
-import { HighwayNoteEditingController } from "./editing/noteEditing";
-import { HighwayPhraseEditingController } from "./editing/phraseEditing";
-import { HighwayInputController } from "./input/input";
-import {
-  HighwayRenderer,
-  type HighwayRenderDiagnostics,
-} from "./rendering/rendering";
-export type { HighwayMode, HighwayTool } from "./types";
-export type { HighwayNotePlacementType, HighwayPhraseKind } from "./types";
+  getPhraseModeForHighwayMode,
+} from './types';
+
+export type { HighwayMode, HighwayTool } from './types';
+export type { HighwayNotePlacementType, HighwayPhraseKind } from './types';
 
 export class HighwayView extends AbstractChartView<MidiNote> {
   private readonly threeCamera = new THREE.PerspectiveCamera(
@@ -127,8 +129,8 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   private previewState: PreviewState | null = null;
   private unsubscribeSelection: (() => void) | null = null;
   private selectionRange: HighwaySelectionRange | null = null;
-  private mode: HighwayMode = "select";
-  private notePlacementType: HighwayNotePlacementType = "normal";
+  private mode: HighwayMode = 'select';
+  private notePlacementType: HighwayNotePlacementType = 'normal';
   private phraseMode: HighwayPhraseKind | null = null;
 
   public constructor(
@@ -253,7 +255,7 @@ export class HighwayView extends AbstractChartView<MidiNote> {
   }
 
   /** Discriminant for `AnyChartView`. */
-  public readonly kind = "highway" as const;
+  public readonly kind = 'highway' as const;
 
   public setMode(mode: HighwayMode): void {
     if (mode === this.mode) return;

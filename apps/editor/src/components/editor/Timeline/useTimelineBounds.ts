@@ -1,6 +1,7 @@
-import { useCallback } from "react";
-import type { RefObject } from "react";
-import { xToTick } from "./util";
+import { useCallback } from 'react';
+import type { RefObject } from 'react';
+
+import { xToTick } from './util';
 
 interface UseTimelineBoundsOptions {
   canvasRef: RefObject<HTMLCanvasElement | null>;

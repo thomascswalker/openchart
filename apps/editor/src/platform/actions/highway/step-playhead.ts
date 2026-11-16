@@ -1,7 +1,7 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { ActiveChartViewService } from "../../services/editor/activeChartView";
-import { ActiveHighway } from "../conditions";
+import { Action } from '../../actions';
+import { ActiveChartViewService } from '../../services/editor/activeChartView';
+import type { ServicesAccessor } from '../../services/registry';
+import { ActiveHighway } from '../conditions';
 
 /** Moves the playhead one step forward (1) or backward (-1). */
 export class StepPlayheadAction extends Action<[-1 | 1, boolean?]> {
@@ -17,8 +17,8 @@ export class StepPlayheadAction extends Action<[-1 | 1, boolean?]> {
     extendSelection = false,
   ): void {
     accessor
-      .get<ActiveChartViewService>("editor.active-chart-view")
-      .getActive("highway")
+      .get<ActiveChartViewService>('editor.active-chart-view')
+      .getActive('highway')
       ?.stepPlayhead(direction, extendSelection);
   }
 }

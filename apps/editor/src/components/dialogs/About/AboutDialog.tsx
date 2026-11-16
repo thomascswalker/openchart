@@ -1,9 +1,9 @@
-import { runAction } from "../../../platform/actions/execute";
-import { Modal, Section, Text } from "../../shared";
+import { runAction } from '../../../platform/actions/execute';
+import { Modal, Section, Text } from '../../shared';
 
 const AboutDialog = () => {
   const close = (): void => {
-    runAction("dialog.close-about");
+    runAction('dialog.close-about');
   };
 
   return (

@@ -1,5 +1,5 @@
-import type { CoordinateSystem } from "./coordinates";
-import type { PianoRollContext } from "./types";
+import type { CoordinateSystem } from './coordinates';
+import type { PianoRollContext } from './types';
 
 /** Base class for piano-roll surfaces that mount DOM and draw each frame. */
 export abstract class IController {

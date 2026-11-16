@@ -1,6 +1,6 @@
-import type { CompiledRuleset, TrackRules } from "./compile";
-import { isUnmappedTrackRules } from "./compile";
-import type { RuleViolation } from "./context";
+import type { CompiledRuleset, TrackRules } from './compile';
+import { isUnmappedTrackRules } from './compile';
+import type { RuleViolation } from './context';
 
 /**
  * Check a text event against the ruleset's text-event grammar and the track's
@@ -24,9 +24,9 @@ export function checkTextEvent(
   if (!grammar.metaEventTypes.includes(metaType)) return null;
 
   const severity = policies.unknownTextEvent;
-  if (severity === "ignore") return null;
+  if (severity === 'ignore') return null;
   const fail = (message: string): RuleViolation => ({
-    ruleId: "policy.unknownTextEvent",
+    ruleId: 'policy.unknownTextEvent',
     severity,
     message,
     tick,
@@ -36,21 +36,21 @@ export function checkTextEvent(
   const trimmed = text.trim();
   const bracketed = /^\[([\s\S]*)\]$/.exec(trimmed);
   let inner = bracketed ? bracketed[1]! : trimmed;
-  if (!bracketed && grammar.brackets === "required") {
+  if (!bracketed && grammar.brackets === 'required') {
     return fail(`Text event "${text}" must be written in [brackets]`);
   }
   inner = inner.trim();
 
   const caseSensitive = grammar.caseSensitive ?? true;
   const norm = (value: string) => (caseSensitive ? value : value.toLowerCase());
-  const head = inner.split(/\s+/, 1)[0] ?? "";
+  const head = inner.split(/\s+/, 1)[0] ?? '';
 
   for (const event of rules.textEvents) {
-    if ("identifier" in event) {
+    if ('identifier' in event) {
       if (norm(head) === norm(event.identifier)) return null;
     } else {
       try {
-        if (new RegExp(event.pattern, caseSensitive ? "" : "i").test(inner)) {
+        if (new RegExp(event.pattern, caseSensitive ? '' : 'i').test(inner)) {
           return null;
         }
       } catch {

@@ -1,5 +1,5 @@
-import { MinimumNoteWidthPixels } from "../constants";
-import type { PianoRollNote } from "../types";
+import { MinimumNoteWidthPixels } from '../constants';
+import type { PianoRollNote } from '../types';
 
 /**
  * Prefix maxima over a tick-sorted note list. They let a binary search find

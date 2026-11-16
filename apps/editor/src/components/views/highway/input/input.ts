@@ -1,42 +1,43 @@
-import type { MidiChannelEvent, MidiNote } from "@openchart/midi";
+import type { MidiChannelEvent, MidiNote } from '@openchart/midi';
 import {
+  type ChartView,
+  type EditingSession,
+  type EntityId,
   findSection,
   formatNoteId,
   getHighwaySustainEnd,
-  type ChartView,
-  type EntityId,
-  type EditingSession,
-} from "@openchart/views";
-import { HighwayCoordinateSystem } from "../coordinates";
-import type { HighwayContext } from "../context";
-import { HighwayHitTester, type HighwayPhrase } from "../hitTesting";
-import {
-  getHighwayDragTarget,
-  getHighwaySteppedTick,
-  getHighwayWheelTick,
-  getPhraseAutoScrollDelta,
-  getPhrasePointerAction,
-} from "../interactionMath";
-import { HighwayNoteEditingController } from "../editing/noteEditing";
-import { HighwayPhraseEditingController } from "../editing/phraseEditing";
-import { isHighwayTool, type HighwayDragState } from "../types";
-import type {
-  HighwayGhostNoteLocation,
-  HighwayMarqueeDragState,
-} from "../types";
+} from '@openchart/views';
+
 import {
   farBoardZ,
   nearBoardZ,
   phraseAutoScrollEdgeMargin,
   phraseAutoScrollMaximumTicksPerFrame,
   wheelTicksPerPixel,
-} from "../constants";
-import type { HighwayPhraseHoverState } from "../types";
+} from '../constants';
+import type { HighwayContext } from '../context';
+import { HighwayCoordinateSystem } from '../coordinates';
+import { HighwayNoteEditingController } from '../editing/noteEditing';
+import { HighwayPhraseEditingController } from '../editing/phraseEditing';
+import { HighwayHitTester, type HighwayPhrase } from '../hitTesting';
 import {
+  getHighwayDragTarget,
+  getHighwaySteppedTick,
+  getHighwayWheelTick,
+  getPhraseAutoScrollDelta,
+  getPhrasePointerAction,
+} from '../interactionMath';
+import {
+  type IndexedNote,
   getHighwayNoteIndex,
   laneVisualFor,
-  type IndexedNote,
-} from "../noteIndex";
+} from '../noteIndex';
+import { type HighwayDragState, isHighwayTool } from '../types';
+import type {
+  HighwayGhostNoteLocation,
+  HighwayMarqueeDragState,
+} from '../types';
+import type { HighwayPhraseHoverState } from '../types';
 
 function physicalLaneForNote(
   context: HighwayContext,
@@ -46,10 +47,10 @@ function physicalLaneForNote(
   const classification = getClassification(context, chart, note);
   const session = context.getEditingSession();
   if (!classification || !session) return -1;
-  if (classification.type !== "note" || !classification.movable) return -1;
+  if (classification.type !== 'note' || !classification.movable) return -1;
   // Bar lanes (kick, open) span the whole highway and sit on lane 0.
   const role = chart.classify(note.pitch);
-  if (role.kind === "laneNote" && role.bar) return 0;
+  if (role.kind === 'laneNote' && role.bar) return 0;
   const snapshot = getNoteSnapshot(context, chart, note);
   return snapshot
     ? (session.getProjection().rowForNote(snapshot)?.index ?? -1)
@@ -60,7 +61,7 @@ function getClassification(
   context: HighwayContext,
   chart: ChartView,
   note: MidiNote,
-): ReturnType<EditingSession["classifyNote"]> | null {
+): ReturnType<EditingSession['classifyNote']> | null {
   const session = context.getEditingSession();
   const snapshot = getNoteSnapshot(context, chart, note);
   return session && snapshot ? session.classifyNote(snapshot) : null;
@@ -126,41 +127,41 @@ export class HighwayInputController {
     this.detach();
     this.canvas = canvas;
     canvas.tabIndex = 0;
-    canvas.style.touchAction = "none";
-    canvas.addEventListener("click", this.handleClick);
-    canvas.addEventListener("contextmenu", this.handleContextMenu);
-    canvas.addEventListener("wheel", this.handleWheel, { passive: false });
-    canvas.addEventListener("pointerdown", this.handlePointerDown);
-    canvas.addEventListener("pointermove", this.handlePointerMove);
-    canvas.addEventListener("pointerleave", this.handlePointerLeave);
-    canvas.addEventListener("pointerup", this.handlePointerUp);
-    canvas.addEventListener("pointercancel", this.handlePointerCancel);
-    window.addEventListener("pointerup", this.handlePointerUp);
-    window.addEventListener("pointercancel", this.handlePointerCancel);
-    window.addEventListener("keydown", this.handleModifierKey);
-    window.addEventListener("keyup", this.handleModifierKey);
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('click', this.handleClick);
+    canvas.addEventListener('contextmenu', this.handleContextMenu);
+    canvas.addEventListener('wheel', this.handleWheel, { passive: false });
+    canvas.addEventListener('pointerdown', this.handlePointerDown);
+    canvas.addEventListener('pointermove', this.handlePointerMove);
+    canvas.addEventListener('pointerleave', this.handlePointerLeave);
+    canvas.addEventListener('pointerup', this.handlePointerUp);
+    canvas.addEventListener('pointercancel', this.handlePointerCancel);
+    window.addEventListener('pointerup', this.handlePointerUp);
+    window.addEventListener('pointercancel', this.handlePointerCancel);
+    window.addEventListener('keydown', this.handleModifierKey);
+    window.addEventListener('keyup', this.handleModifierKey);
   }
 
   public detach(): void {
     this.cancelActiveGestures();
     this.clearKeyboardSelectionAnchor();
     if (this.canvas) {
-      this.canvas.removeEventListener("click", this.handleClick);
-      this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
-      this.canvas.removeEventListener("wheel", this.handleWheel);
-      this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
-      this.canvas.removeEventListener("pointermove", this.handlePointerMove);
-      this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
-      this.canvas.removeEventListener("pointerup", this.handlePointerUp);
+      this.canvas.removeEventListener('click', this.handleClick);
+      this.canvas.removeEventListener('contextmenu', this.handleContextMenu);
+      this.canvas.removeEventListener('wheel', this.handleWheel);
+      this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+      this.canvas.removeEventListener('pointermove', this.handlePointerMove);
+      this.canvas.removeEventListener('pointerleave', this.handlePointerLeave);
+      this.canvas.removeEventListener('pointerup', this.handlePointerUp);
       this.canvas.removeEventListener(
-        "pointercancel",
+        'pointercancel',
         this.handlePointerCancel,
       );
     }
-    window.removeEventListener("pointerup", this.handlePointerUp);
-    window.removeEventListener("pointercancel", this.handlePointerCancel);
-    window.removeEventListener("keydown", this.handleModifierKey);
-    window.removeEventListener("keyup", this.handleModifierKey);
+    window.removeEventListener('pointerup', this.handlePointerUp);
+    window.removeEventListener('pointercancel', this.handlePointerCancel);
+    window.removeEventListener('keydown', this.handleModifierKey);
+    window.removeEventListener('keyup', this.handleModifierKey);
     this.canvas = null;
   }
 
@@ -189,7 +190,7 @@ export class HighwayInputController {
       !this.context.getState().isPlaying &&
       !this.drag &&
       !this.context.getPhraseMode() &&
-      this.tool === "place"
+      this.tool === 'place'
     );
   }
 
@@ -235,9 +236,9 @@ export class HighwayInputController {
     if (phraseDrag) this.suppressNextClick = true;
   }
 
-  private get tool(): "select" | "place" | "remove" {
+  private get tool(): 'select' | 'place' | 'remove' {
     const mode = this.context.getMode();
-    return isHighwayTool(mode) ? mode : "select";
+    return isHighwayTool(mode) ? mode : 'select';
   }
 
   private get canEditNotes(): boolean {
@@ -258,7 +259,7 @@ export class HighwayInputController {
       this.suppressNextClick = false;
       return;
     }
-    if (this.tool !== "place") return;
+    if (this.tool !== 'place') return;
     const chart = this.getCurrentChart();
     const location = this.coordinates.getChartLocation(event);
     if (!chart || !location) return;
@@ -311,7 +312,7 @@ export class HighwayInputController {
         inPhraseBand,
         note !== undefined,
       );
-      if (phraseAction === "edit-phrase" && existingPhrase) {
+      if (phraseAction === 'edit-phrase' && existingPhrase) {
         const tick = location?.tick ?? existingPhrase.start;
         const operation = this.hitTesting.getPhraseDragOperation(
           existingPhrase,
@@ -327,13 +328,13 @@ export class HighwayInputController {
         );
         return;
       }
-      if (phraseAction === "create-phrase" && location) {
+      if (phraseAction === 'create-phrase' && location) {
         this.beginPhraseGesture(
           event,
           phraseMode,
           location.tick,
           null,
-          "create",
+          'create',
         );
         return;
       }
@@ -341,12 +342,12 @@ export class HighwayInputController {
       return;
     }
     if (phraseMode) return;
-    if (!location && this.tool === "select" && event.button === 0) {
+    if (!location && this.tool === 'select' && event.button === 0) {
       this.beginMarquee(event);
       return;
     }
     if (!location) return;
-    if (this.tool === "place") {
+    if (this.tool === 'place') {
       if (event.button !== 0 || !sustainHit) return;
       event.preventDefault();
       this.canvas?.focus();
@@ -378,7 +379,7 @@ export class HighwayInputController {
       this.context.requestRender();
       return;
     }
-    if (this.tool === "remove") {
+    if (this.tool === 'remove') {
       if (event.button !== 0) return;
       event.preventDefault();
       this.canvas?.focus();
@@ -476,11 +477,11 @@ export class HighwayInputController {
         const canvas = this.canvas;
         if (canvas) {
           canvas.style.cursor =
-            phraseDrag.operation === "move"
-              ? "grabbing"
-              : phraseDrag.operation === "create"
-                ? "default"
-                : "ns-resize";
+            phraseDrag.operation === 'move'
+              ? 'grabbing'
+              : phraseDrag.operation === 'create'
+                ? 'default'
+                : 'ns-resize';
         }
         this.phraseEditing.updatePhraseDrag(location.tick);
         this.context.requestRender();
@@ -501,7 +502,7 @@ export class HighwayInputController {
           ) >= 4;
         if (marquee.moved) {
           this.suppressNextClick = true;
-          if (this.canvas) this.canvas.style.cursor = "crosshair";
+          if (this.canvas) this.canvas.style.cursor = 'crosshair';
           this.context.updateMarqueeOutline(marquee);
         }
         this.context.requestRender();
@@ -536,7 +537,7 @@ export class HighwayInputController {
         chart,
         candidates,
         endTick,
-        event.shiftKey || event.altKey ? "allow" : "stop-at-next",
+        event.shiftKey || event.altKey ? 'allow' : 'stop-at-next',
       );
     } else {
       const dragTarget = getHighwayDragTarget(
@@ -567,14 +568,14 @@ export class HighwayInputController {
     const phraseDrag = this.phraseEditing.getDragState();
     if (this.canvas) {
       this.canvas.style.cursor =
-        phraseDrag?.operation === "move"
-          ? "grabbing"
-          : phraseDrag?.operation === "resize-start" ||
-              phraseDrag?.operation === "resize-end"
-            ? "ns-resize"
-            : phraseDrag?.operation === "create"
-              ? "default"
-              : "default";
+        phraseDrag?.operation === 'move'
+          ? 'grabbing'
+          : phraseDrag?.operation === 'resize-start' ||
+              phraseDrag?.operation === 'resize-end'
+            ? 'ns-resize'
+            : phraseDrag?.operation === 'create'
+              ? 'default'
+              : 'default';
     }
     this.context.requestRender();
   };
@@ -601,13 +602,13 @@ export class HighwayInputController {
                 chart,
                 note,
               );
-              if (classification?.type !== "note" || !classification.movable) {
+              if (classification?.type !== 'note' || !classification.movable) {
                 return false;
               }
               const visual = laneVisualFor(chart, note.pitch);
               if (!visual) return false;
               const noteBounds =
-                visual.kind === "bar"
+                visual.kind === 'bar'
                   ? this.hitTesting.getBarScreenBounds(note)
                   : this.hitTesting.getGemScreenBounds(
                       note,
@@ -760,7 +761,7 @@ export class HighwayInputController {
     const row = projection
       .getRows()
       .find(
-        (candidate) => candidate.kind === "lane" && candidate.index === lane,
+        (candidate) => candidate.kind === 'lane' && candidate.index === lane,
       );
     const expectedPitch = row
       ? projection.pitchForRow(row, session.getToolState())
@@ -889,21 +890,21 @@ export class HighwayInputController {
     const canvas = this.canvas;
     if (!canvas) return;
     if (!this.canEditNotes) {
-      canvas.style.cursor = "default";
+      canvas.style.cursor = 'default';
       return;
     }
     const phraseMode = this.context.getPhraseMode();
     if (phraseMode) {
       const activeDrag = this.phraseEditing.getDragState();
       const pointerId =
-        event && "pointerId" in event ? event.pointerId : undefined;
+        event && 'pointerId' in event ? event.pointerId : undefined;
       if (activeDrag && pointerId === activeDrag.pointerId) {
         canvas.style.cursor =
-          activeDrag.operation === "move"
-            ? "grabbing"
-            : activeDrag.operation === "create"
-              ? "default"
-              : "ns-resize";
+          activeDrag.operation === 'move'
+            ? 'grabbing'
+            : activeDrag.operation === 'create'
+              ? 'default'
+              : 'ns-resize';
         return;
       }
       const chart = event ? this.getCurrentChart() : null;
@@ -920,37 +921,37 @@ export class HighwayInputController {
         );
         const isDragging = Boolean(event && event.buttons & 1);
         canvas.style.cursor =
-          operation === "move"
+          operation === 'move'
             ? isDragging
-              ? "grabbing"
-              : "grab"
-            : "ns-resize";
+              ? 'grabbing'
+              : 'grab'
+            : 'ns-resize';
       } else {
         canvas.style.cursor =
-          this.phraseHoverState?.operation === "resize-start" ||
-          this.phraseHoverState?.operation === "resize-end"
-            ? "ns-resize"
-            : this.phraseHoverState?.operation === "move"
-              ? "grab"
-              : this.phraseHoverState?.operation === "create"
-                ? "default"
-                : "default";
+          this.phraseHoverState?.operation === 'resize-start' ||
+          this.phraseHoverState?.operation === 'resize-end'
+            ? 'ns-resize'
+            : this.phraseHoverState?.operation === 'move'
+              ? 'grab'
+              : this.phraseHoverState?.operation === 'create'
+                ? 'default'
+                : 'default';
       }
       return;
     }
-    if (hoveringNote && this.tool === "select" && event?.buttons) {
-      canvas.style.cursor = event.buttons & 2 ? "ns-resize" : "grabbing";
+    if (hoveringNote && this.tool === 'select' && event?.buttons) {
+      canvas.style.cursor = event.buttons & 2 ? 'ns-resize' : 'grabbing';
       return;
     }
     switch (this.tool) {
-      case "select":
-        canvas.style.cursor = hoveringNote ? "grab" : "default";
+      case 'select':
+        canvas.style.cursor = hoveringNote ? 'grab' : 'default';
         break;
-      case "place":
-        canvas.style.cursor = "default";
+      case 'place':
+        canvas.style.cursor = 'default';
         break;
-      case "remove":
-        canvas.style.cursor = hoveringNote ? "pointer" : "default";
+      case 'remove':
+        canvas.style.cursor = hoveringNote ? 'pointer' : 'default';
         break;
     }
   }
@@ -975,11 +976,11 @@ export class HighwayInputController {
   }
 
   private readonly handleModifierKey = (event: KeyboardEvent): void => {
-    if (event.key === "Shift" && event.type === "keyup") {
+    if (event.key === 'Shift' && event.type === 'keyup') {
       this.clearKeyboardSelectionAnchor();
     }
     if (
-      (event.key !== "Shift" && event.key !== "Alt") ||
+      (event.key !== 'Shift' && event.key !== 'Alt') ||
       !this.ghostNoteLocation
     )
       return;
@@ -1017,7 +1018,7 @@ export class HighwayInputController {
     kind: string,
     tick: number,
     phrase: HighwayPhrase | null | undefined,
-    operation: "create" | "move" | "resize-start" | "resize-end",
+    operation: 'create' | 'move' | 'resize-start' | 'resize-end',
   ): void {
     this.phraseEditing.beginPhraseDrag(
       event.pointerId,
@@ -1030,15 +1031,15 @@ export class HighwayInputController {
     this.phraseHoverState = {
       id: phrase?.id ?? null,
       operation,
-      placementTick: operation === "create" ? tick : null,
+      placementTick: operation === 'create' ? tick : null,
     };
     if (this.canvas) {
       this.canvas.style.cursor =
-        operation === "move"
-          ? "grabbing"
-          : operation === "create"
-            ? "default"
-            : "ns-resize";
+        operation === 'move'
+          ? 'grabbing'
+          : operation === 'create'
+            ? 'default'
+            : 'ns-resize';
     }
     this.canvas?.setPointerCapture(event.pointerId);
     this.context.requestRender();
@@ -1074,7 +1075,7 @@ export class HighwayInputController {
           }
         : {
             id: null,
-            operation: inPhraseBand && !noteHit ? "create" : null,
+            operation: inPhraseBand && !noteHit ? 'create' : null,
             placementTick:
               inPhraseBand && !noteHit ? (location?.tick ?? null) : null,
           };
@@ -1107,7 +1108,7 @@ export class HighwayInputController {
       entries,
     );
     return entries
-      .filter((entry) => entry.kind === "phrase" && entry.phraseKind === kind)
+      .filter((entry) => entry.kind === 'phrase' && entry.phraseKind === kind)
       .filter((entry) => {
         const phraseBounds = this.hitTesting.getPhraseScreenBounds(entry);
         return (
@@ -1127,7 +1128,7 @@ export class HighwayInputController {
     if (
       !drag ||
       !pointer ||
-      (drag.operation !== "resize-start" && drag.operation !== "resize-end")
+      (drag.operation !== 'resize-start' && drag.operation !== 'resize-end')
     ) {
       this.stopPhraseAutoScroll();
       return;
@@ -1156,8 +1157,8 @@ export class HighwayInputController {
         !currentDrag ||
         !currentPointer ||
         !currentBounds ||
-        (currentDrag.operation !== "resize-start" &&
-          currentDrag.operation !== "resize-end")
+        (currentDrag.operation !== 'resize-start' &&
+          currentDrag.operation !== 'resize-end')
       )
         return;
       const scroll = getPhraseAutoScrollDelta(

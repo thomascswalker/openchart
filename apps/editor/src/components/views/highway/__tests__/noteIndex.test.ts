@@ -1,7 +1,8 @@
-import { formatNoteId, type ChartView, type EntityId } from "@openchart/views";
-import { describe, expect, it } from "vitest";
-import { HighwayNoteIndex, type IndexedNote } from "../noteIndex";
-import { createHighwayTestSetup } from "./testUtils";
+import { type ChartView, type EntityId, formatNoteId } from '@openchart/views';
+import { describe, expect, it } from 'vitest';
+
+import { HighwayNoteIndex, type IndexedNote } from '../noteIndex';
+import { createHighwayTestSetup } from './testUtils';
 
 function addNote(
   setup: ReturnType<typeof createHighwayTestSetup>,
@@ -17,8 +18,8 @@ function addNote(
   });
 }
 
-describe("HighwayNoteIndex", () => {
-  it("matches interval queries for long and zero-length projected notes", () => {
+describe('HighwayNoteIndex', () => {
+  it('matches interval queries for long and zero-length projected notes', () => {
     const setup = createHighwayTestSetup();
     const offset = setup.chart.getOffset();
     let randomState = 42;
@@ -72,8 +73,8 @@ describe("HighwayNoteIndex", () => {
     }
   });
 
-  it("classifies drum kinds through the bound mode and rebuilds after revision", () => {
-    const setup = createHighwayTestSetup("drums");
+  it('classifies drum kinds through the bound mode and rebuilds after revision', () => {
+    const setup = createHighwayTestSetup('drums');
     for (const [pitch, start, duration] of [
       [95, 0, 1],
       [96, 100, 100],
@@ -94,9 +95,9 @@ describe("HighwayNoteIndex", () => {
 
     index.query(chart, setup.session, null, 0, 1_000, actual);
     expect(actual.map(({ kind, lane }) => [kind, lane])).toEqual([
-      ["bar", 0],
-      ["bar", 0],
-      ["cymbal", 1],
+      ['bar', 0],
+      ['bar', 0],
+      ['cymbal', 1],
     ]);
 
     addNote(setup, 97, 700, 100);
@@ -109,14 +110,14 @@ describe("HighwayNoteIndex", () => {
     } as unknown as ChartView;
     index.query(revisedChart, setup.session, null, 0, 1_000, actual);
     expect(actual.map(({ kind }) => kind)).toEqual([
-      "bar",
-      "bar",
-      "cymbal",
-      "pad",
+      'bar',
+      'bar',
+      'cymbal',
+      'pad',
     ]);
   });
 
-  it("overlays moved, added, and removed entities without rebuilding the base", () => {
+  it('overlays moved, added, and removed entities without rebuilding the base', () => {
     const setup = createHighwayTestSetup();
     const offset = setup.chart.getOffset();
     addNote(setup, offset, 100, 120);

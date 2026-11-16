@@ -1,17 +1,18 @@
-import type { ChartView, EntityId } from "@openchart/views";
-import { Vector2 } from "three";
-import * as THREE from "three";
+import type { ChartView, EntityId } from '@openchart/views';
+import { Vector2 } from 'three';
+import * as THREE from 'three';
+
+import type { MeshKey } from '../../../rendering/registry';
+import { farBoardZ, nearBoardZ, strikeLineZ } from './constants';
+import type { HighwayContext } from './context';
+import { HighwayCoordinateSystem } from './coordinates';
+import { type IndexedNote, getHighwayNoteIndex } from './noteIndex';
+import { noteWorldPosition } from './rendering/geometry';
 import {
-  HIGHWAY_GEOMETRY_CATALOG,
   type GeometryId,
-} from "./rendering/geometryCatalog";
-import type { MeshKey } from "../../../rendering/registry";
-import { noteWorldPosition } from "./rendering/geometry";
-import { farBoardZ, nearBoardZ, strikeLineZ } from "./constants";
-import type { HighwayPhraseDragState, HighwayScreenBounds } from "./types";
-import { HighwayCoordinateSystem } from "./coordinates";
-import { getHighwayNoteIndex, type IndexedNote } from "./noteIndex";
-import type { HighwayContext } from "./context";
+  HIGHWAY_GEOMETRY_CATALOG,
+} from './rendering/geometryCatalog';
+import type { HighwayPhraseDragState, HighwayScreenBounds } from './types';
 
 export interface HighwayPhrase {
   id: EntityId;
@@ -32,7 +33,7 @@ export function getPhraseBoundaryHitOperation(
   start: PhraseBoundaryProjection,
   end: PhraseBoundaryProjection,
   threshold: number,
-): "resize-start" | "resize-end" | null {
+): 'resize-start' | 'resize-end' | null {
   const startDistance = distanceToSegment(
     point,
     start.screenStart,
@@ -40,7 +41,7 @@ export function getPhraseBoundaryHitOperation(
   );
   const endDistance = distanceToSegment(point, end.screenStart, end.screenEnd);
   if (startDistance > threshold && endDistance > threshold) return null;
-  return startDistance <= endDistance ? "resize-start" : "resize-end";
+  return startDistance <= endDistance ? 'resize-start' : 'resize-end';
 }
 
 function distanceToSegment(
@@ -69,13 +70,13 @@ export class HighwayHitTester {
   private readonly coordinates: HighwayCoordinateSystem;
   private readonly context: Pick<
     HighwayContext,
-    "getEditingSession" | "getPreviewState"
+    'getEditingSession' | 'getPreviewState'
   >;
   private readonly modelBounds = new Map<MeshKey, THREE.Box3>();
 
   public constructor(
     coordinates: HighwayCoordinateSystem,
-    context: Pick<HighwayContext, "getEditingSession" | "getPreviewState">,
+    context: Pick<HighwayContext, 'getEditingSession' | 'getPreviewState'>,
   ) {
     this.coordinates = coordinates;
     this.context = context;
@@ -112,19 +113,19 @@ export class HighwayHitTester {
       candidates,
     );
     for (const note of candidates) {
-      if (note.kind === "phrase") continue;
+      if (note.kind === 'phrase') continue;
       const gemBounds =
-        note.kind === "bar"
+        note.kind === 'bar'
           ? this.getBarScreenBounds(note)
           : this.getGemScreenBounds(
               note,
               note.lane,
-              note.kind === "pad" || note.kind === "cymbal"
+              note.kind === 'pad' || note.kind === 'cymbal'
                 ? note.kind
-                : "note",
+                : 'note',
             );
       const tailBounds =
-        note.kind === "note" ? this.getTailScreenBounds(note, note.lane) : null;
+        note.kind === 'note' ? this.getTailScreenBounds(note, note.lane) : null;
       if (
         (!gemBounds ||
           !this.containsScreenPoint(gemBounds, pointer.x, pointer.y)) &&
@@ -163,7 +164,7 @@ export class HighwayHitTester {
       candidates,
     );
     for (const note of candidates) {
-      if (note.kind !== "note") continue;
+      if (note.kind !== 'note') continue;
       if (tick <= note.start || tick >= note.end) continue;
       const bounds = this.getTailScreenBounds(note, note.lane);
       if (!bounds || !this.containsScreenPoint(bounds, pointer.x, pointer.y)) {
@@ -196,7 +197,7 @@ export class HighwayHitTester {
       candidates,
     );
     return candidates
-      .filter((entry) => entry.kind === "phrase" && entry.phraseKind === kind)
+      .filter((entry) => entry.kind === 'phrase' && entry.phraseKind === kind)
       .map((entry) => ({
         id: entry.id,
         start: entry.start,
@@ -210,14 +211,14 @@ export class HighwayHitTester {
   }
 
   public getPhraseDragOperation(
-    phrase: Pick<HighwayPhrase, "start" | "end">,
+    phrase: Pick<HighwayPhrase, 'start' | 'end'>,
     tick: number,
     event?: MouseEvent,
-  ): HighwayPhraseDragState["operation"] {
+  ): HighwayPhraseDragState['operation'] {
     if (event) {
       const point = this.coordinates.getCanvasPoint(event);
-      const start = this.getPhraseBoundaryProjection(phrase, "start");
-      const end = this.getPhraseBoundaryProjection(phrase, "end");
+      const start = this.getPhraseBoundaryProjection(phrase, 'start');
+      const end = this.getPhraseBoundaryProjection(phrase, 'end');
       if (point && start && end) {
         return (
           getPhraseBoundaryHitOperation(
@@ -225,7 +226,7 @@ export class HighwayHitTester {
             start,
             end,
             9,
-          ) ?? "move"
+          ) ?? 'move'
         );
       }
     }
@@ -233,17 +234,17 @@ export class HighwayHitTester {
     const distanceToEnd = Math.abs(tick - phrase.end);
     const edgeThreshold = this.coordinates.getSnapTicks() * 2;
     return Math.min(distanceToStart, distanceToEnd) > edgeThreshold
-      ? "move"
+      ? 'move'
       : distanceToStart <= distanceToEnd
-        ? "resize-start"
-        : "resize-end";
+        ? 'resize-start'
+        : 'resize-end';
   }
 
   public getPhraseBoundaryProjection(
-    phrase: Pick<HighwayPhrase, "start" | "end">,
-    boundary: "start" | "end",
+    phrase: Pick<HighwayPhrase, 'start' | 'end'>,
+    boundary: 'start' | 'end',
   ): PhraseBoundaryProjection | null {
-    const tick = boundary === "start" ? phrase.start : phrase.end;
+    const tick = boundary === 'start' ? phrase.start : phrase.end;
     const worldStart = new THREE.Vector3(
       -3,
       -0.035,
@@ -261,7 +262,7 @@ export class HighwayHitTester {
   }
 
   public getPhraseScreenBounds(
-    phrase: Pick<HighwayPhrase, "start" | "end">,
+    phrase: Pick<HighwayPhrase, 'start' | 'end'>,
   ): HighwayScreenBounds | null {
     const visibleStart = Math.max(
       0,
@@ -272,7 +273,7 @@ export class HighwayHitTester {
     const end = Math.min(phrase.end, visibleEnd);
     if (end < start) return null;
 
-    const points = (["start", "end"] as const).flatMap((boundary) => {
+    const points = (['start', 'end'] as const).flatMap((boundary) => {
       const projection = this.getPhraseBoundaryProjection(
         { start, end },
         boundary,
@@ -289,9 +290,9 @@ export class HighwayHitTester {
   }
 
   public getGemScreenBounds(
-    note: Pick<IndexedNote, "start" | "end">,
+    note: Pick<IndexedNote, 'start' | 'end'>,
     lane: number,
-    geometryId: GeometryId = "note",
+    geometryId: GeometryId = 'note',
   ): HighwayScreenBounds | null {
     if (lane < 0 || lane >= this.coordinates.getPhysicalLaneCount()) {
       return null;
@@ -351,13 +352,13 @@ export class HighwayHitTester {
 
   /** Bounds of a full-width bar note (kick, open). */
   public getBarScreenBounds(
-    note: Pick<IndexedNote, "start" | "end">,
+    note: Pick<IndexedNote, 'start' | 'end'>,
   ): HighwayScreenBounds | null {
-    return this.getGemScreenBounds(note, 0, "bar");
+    return this.getGemScreenBounds(note, 0, 'bar');
   }
 
   public getTailScreenBounds(
-    note: Pick<IndexedNote, "start" | "end">,
+    note: Pick<IndexedNote, 'start' | 'end'>,
     lane: number,
   ): HighwayScreenBounds | null {
     if (

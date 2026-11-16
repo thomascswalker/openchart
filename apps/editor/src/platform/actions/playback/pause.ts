@@ -1,14 +1,14 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { PlaybackService } from "../../services/playback/playback";
+import { Action } from '../../actions';
+import { PlaybackService } from '../../services/playback/playback';
+import type { ServicesAccessor } from '../../services/registry';
 
 export class PauseAction extends Action {
   constructor() {
-    super({ condition: { "playback.is-playing": true } });
+    super({ condition: { 'playback.is-playing': true } });
   }
 
   run(accessor: ServicesAccessor): void {
-    const timeline = accessor.get<PlaybackService>("playback");
+    const timeline = accessor.get<PlaybackService>('playback');
     timeline.pause();
   }
 }

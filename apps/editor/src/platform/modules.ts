@@ -18,7 +18,7 @@ export function buildModuleId(filepath: string, root: string): string | null {
   // module root
   const relativePath = filepath
     .slice(prefix.length)
-    .replace(/\.(?:[cm]?[jt]sx?)$/, "");
+    .replace(/\.(?:[cm]?[jt]sx?)$/, '');
   if (!relativePath) {
     return null;
   }
@@ -26,14 +26,14 @@ export function buildModuleId(filepath: string, root: string): string | null {
   // Convert the relative path into a module ID by replacing slashes with dots
   // and normalizing each segment
   return relativePath
-    .split("/")
+    .split('/')
     .map((segment) =>
       segment
-        .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-        .replace(/[^a-zA-Z0-9-]/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/[^a-zA-Z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
         .toLowerCase(),
     )
-    .join(".");
+    .join('.');
 }

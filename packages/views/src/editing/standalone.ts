@@ -1,21 +1,22 @@
-import { Midi } from "@openchart/midi";
+import { Midi } from '@openchart/midi';
+
 import {
-  DefaultCompiledRuleset,
-  createUnmappedTrackRules,
   type CompiledRuleset,
+  DefaultCompiledRuleset,
   type TrackDescriptor,
-} from "../ruleset/compile";
-import type { RulesetContext } from "../ruleset/enforce";
-import { ChartDocument } from "./chartDocument";
-import { ClipboardService } from "./clipboard";
-import type { EditingTarget, ModeRegistry } from "./modes/mode";
-import { createDefaultModeRegistry } from "./modes/index";
-import { SelectionModel } from "./selectionModel";
+  createUnmappedTrackRules,
+} from '../ruleset/compile';
+import type { RulesetContext } from '../ruleset/enforce';
+import { ClipboardService } from './clipboard';
+import { Document } from './document';
+import { createDefaultModeRegistry } from './modes/index';
+import type { EditingTarget, ModeRegistry } from './modes/mode';
+import { SelectionModel } from './selectionModel';
 import {
-  createEditingSession,
   EditTransactionPort,
   type EditingSession,
-} from "./session";
+  createEditingSession,
+} from './session';
 
 /** In-memory snapshot history returned by standalone editing instances. */
 export interface StandaloneHistory extends EditTransactionPort {
@@ -45,7 +46,7 @@ export function createStandaloneEditing(
   rules: CompiledRuleset = DefaultCompiledRuleset,
   rulesContext?: RulesetContext | (() => RulesetContext),
 ): StandaloneEditing {
-  const document = new ChartDocument(midi, rules);
+  const document = new Document(midi, rules);
   const history = new StandaloneHistoryImpl(midi);
   const registry = createDefaultModeRegistry();
   const selection = new SelectionModel();
@@ -87,7 +88,7 @@ export function createStandaloneEditing(
 
 function resolveTarget(
   target: EditingTarget,
-  document: ChartDocument,
+  document: Document,
 ): EditingTarget {
   return {
     ...target,
@@ -174,7 +175,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
 
   public record(): void {
     if (this.transactionDepth === 0) {
-      throw new Error("Cannot record outside an editing transaction");
+      throw new Error('Cannot record outside an editing transaction');
     }
     this.transactionChanged = true;
     this.notify();
@@ -182,7 +183,7 @@ class StandaloneHistoryImpl implements StandaloneHistory {
 
   public end(): void {
     if (this.transactionDepth === 0) {
-      throw new Error("Cannot end an editing transaction that is not open");
+      throw new Error('Cannot end an editing transaction that is not open');
     }
     this.transactionDepth -= 1;
     if (this.transactionDepth > 0) return;

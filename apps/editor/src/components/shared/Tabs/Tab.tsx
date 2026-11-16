@@ -1,19 +1,21 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { flex, color, border, layout, compose } from "styled-system";
+import { type ReactNode, useEffect, useState } from 'react';
+
+import classNames from 'classnames';
+import { border, color, compose, flex, layout } from 'styled-system';
 import type {
-  FlexProps,
-  ColorProps,
   BorderProps,
+  ColorProps,
+  FlexProps,
   LayoutProps,
   styleFn,
-} from "styled-system";
-import classNames from "classnames";
-import styles from "./Tab.module.css";
-import { Button, H6 } from "..";
-import { vars } from "../../../util/css";
+} from 'styled-system';
 
-type Orientation = "horizontal" | "vertical";
-type Alignment = "top" | "right" | "bottom" | "left";
+import { Button, H6 } from '..';
+import { vars } from '../../../util/css';
+import styles from './Tab.module.css';
+
+type Orientation = 'horizontal' | 'vertical';
+type Alignment = 'top' | 'right' | 'bottom' | 'left';
 type Styles = FlexProps & ColorProps & BorderProps & LayoutProps;
 const getSystemStyle: styleFn = compose(flex, color, border, layout);
 
@@ -24,12 +26,12 @@ interface TabBodyProps extends Styles {
 
 const TabBody = ({ title, children }: TabBodyProps) => {
   return (
-    <div className={styles["ui-tab-body"]}>
+    <div className={styles['ui-tab-body']}>
       <div
         style={{
-          padding: "var(--size-small)",
-          borderBottom: vars("border-primary"),
-          backgroundColor: vars("primary-darker"),
+          padding: 'var(--size-small)',
+          borderBottom: vars('border-primary'),
+          backgroundColor: vars('primary-darker'),
         }}
       >
         <H6>{title.toUpperCase()}</H6>
@@ -56,13 +58,13 @@ interface TabListProps extends Styles {
 const TabList = ({
   options,
   flat = false,
-  orientation = "horizontal",
-  alignment = "top",
+  orientation = 'horizontal',
+  alignment = 'top',
   activeIndex,
   onClick,
 }: TabListProps) => {
   const tabListClassName = classNames(
-    styles["ui-tab-list"],
+    styles['ui-tab-list'],
     styles[`ui-tab-list-${orientation}`],
     styles[`ui-tab-list-${alignment}`],
   );
@@ -94,7 +96,7 @@ interface TabsProps extends Styles {
 const TabContainer = ({
   options = [],
   flat = false,
-  alignment = "top",
+  alignment = 'top',
   collapsible = false,
   onTabChange,
   children = [],
@@ -105,7 +107,7 @@ const TabContainer = ({
   const isCollapsed = collapsible && activeTabIndex === null;
   const tabStyle = {
     ...getSystemStyle(props),
-    ...(isCollapsed ? { width: "max-content", flex: "0 0 auto" } : {}),
+    ...(isCollapsed ? { width: 'max-content', flex: '0 0 auto' } : {}),
   };
 
   const handleTabClick = (index: number) => {
@@ -117,19 +119,19 @@ const TabContainer = ({
 
   useEffect(() => {
     if (!Array.isArray(children)) {
-      throw new Error("Children of a TabContainer must be an array.");
+      throw new Error('Children of a TabContainer must be an array.');
     }
 
     if (children.length !== options.length) {
-      throw new Error("Child/Option mismatch.");
+      throw new Error('Child/Option mismatch.');
     }
   }, [children, options.length]);
 
   const orientation: Orientation =
-    alignment === "top" || alignment === "bottom" ? "horizontal" : "vertical";
-  const tabClassName = classNames(styles["ui-tab-container"], {
+    alignment === 'top' || alignment === 'bottom' ? 'horizontal' : 'vertical';
+  const tabClassName = classNames(styles['ui-tab-container'], {
     [styles[`ui-tab-container-${alignment}`]]: true,
-    [styles["ui-tab-container-collapsed"]]: isCollapsed,
+    [styles['ui-tab-container-collapsed']]: isCollapsed,
   });
 
   return (

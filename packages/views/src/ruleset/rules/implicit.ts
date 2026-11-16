@@ -1,7 +1,7 @@
-import { compact, spansOverlap, violation, type RuleCheck } from "../context";
-import { phraseId, phraseSpans } from "../phrases";
+import { type RuleCheck, compact, spansOverlap, violation } from '../context';
+import { phraseId, phraseSpans } from '../phrases';
 
-export const IMPLICIT_PHRASE_SELF_OVERLAP = "implicit.phraseSelfOverlap";
+export const IMPLICIT_PHRASE_SELF_OVERLAP = 'implicit.phraseSelfOverlap';
 
 /**
  * Spans of the same phrase id may not overlap. The ruleset never states this,
@@ -10,7 +10,7 @@ export const IMPLICIT_PHRASE_SELF_OVERLAP = "implicit.phraseSelfOverlap";
 export const checkPhraseSelfOverlap: RuleCheck<never> = (ctx) => {
   const byId = new Map<string, ReturnType<typeof phraseSpans>>();
   for (const s of phraseSpans(ctx)) {
-    const key = `${phraseId(s)}|${s.role.kind === "phrase" ? (s.role.difficulty ?? "") : ""}`;
+    const key = `${phraseId(s)}|${s.role.kind === 'phrase' ? (s.role.difficulty ?? '') : ''}`;
     const list = byId.get(key);
     if (list) list.push(s);
     else byId.set(key, [s]);
@@ -28,7 +28,7 @@ export const checkPhraseSelfOverlap: RuleCheck<never> = (ctx) => {
           out.push(
             violation(
               IMPLICIT_PHRASE_SELF_OVERLAP,
-              "error",
+              'error',
               `Phrase "${phraseId(a)}" overlaps itself`,
               b.tick,
               [a.id, b.id],

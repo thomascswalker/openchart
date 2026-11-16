@@ -1,13 +1,15 @@
-import { useCallback, useMemo } from "react";
-import { usePlaybackSelector } from "#usePlayback";
-import { runAction } from "../../../platform/actions/execute";
-import type { AnyChartView } from "../../views/ChartViews";
+import { useCallback, useMemo } from 'react';
+
+import { usePlaybackSelector } from '#usePlayback';
+import type { Midi } from '@openchart/midi';
+
+import { runAction } from '../../../platform/actions/execute';
+import type { AnyChartView } from '../../views/ChartViews';
 import {
   DefaultTempoEvents,
   DefaultTimeSignatureEvents,
   getTimelinePosition,
-} from "./util";
-import type { Midi } from "@openchart/midi";
+} from './util';
 
 interface TimelineSyncOptions {
   midi: Midi | null;
@@ -24,7 +26,7 @@ export function useTimelineSync({ midi, chartViews }: TimelineSyncOptions) {
 
   const syncPlayhead = useCallback(
     (tick: number): void => {
-      runAction("playback.set-tick", tick);
+      runAction('playback.set-tick', tick);
 
       for (const chartView of chartViews) {
         const cameraTick = chartView.getCameraTickForPlayhead(tick);

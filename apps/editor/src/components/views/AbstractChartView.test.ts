@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-import { AbstractChartView } from "./AbstractChartView";
+import { describe, expect, it, vi } from 'vitest';
+
+import { AbstractChartView } from './AbstractChartView';
 
 class TestChartView extends AbstractChartView<never> {
   public cameraTick = 0;
@@ -24,8 +25,8 @@ class TestChartView extends AbstractChartView<never> {
   }
 }
 
-describe("AbstractChartView", () => {
-  it("notifies all camera subscribers and removes listeners independently", () => {
+describe('AbstractChartView', () => {
+  it('notifies all camera subscribers and removes listeners independently', () => {
     const view = new TestChartView();
     const first = vi.fn();
     const second = vi.fn();
@@ -46,7 +47,7 @@ describe("AbstractChartView", () => {
     expect(second).toHaveBeenCalledTimes(2);
   });
 
-  it("uses the visible margin when framing a playhead", () => {
+  it('uses the visible margin when framing a playhead', () => {
     const view = new TestChartView();
 
     expect(view.getCameraTickForPlayhead(480)).toBeNull();

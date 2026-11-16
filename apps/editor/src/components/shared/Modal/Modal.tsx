@@ -4,26 +4,28 @@ import type {
   KeyboardEventHandler,
   ReactNode,
   RefObject,
-} from "react";
-import { useCallback } from "react";
-import classNames from "classnames";
+} from 'react';
+import { useCallback } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
+
+import classNames from 'classnames';
 import {
+  type BorderProps,
+  type ColorProps,
+  type FlexboxProps,
+  type LayoutProps,
+  type SpaceProps,
   border,
   color,
   compose,
   flexbox,
   layout,
   space,
-  type BorderProps,
-  type ColorProps,
-  type FlexboxProps,
-  type LayoutProps,
-  type SpaceProps,
   type styleFn,
-} from "styled-system";
-import { CloseButton, Section, Text } from "..";
-import type { KeyboardEvent, MouseEvent } from "react";
-import styles from "./modal.module.css";
+} from 'styled-system';
+
+import { CloseButton, Section, Text } from '..';
+import styles from './modal.module.css';
 
 const getSystemStyles: styleFn = compose(space, color, layout, border, flexbox);
 
@@ -39,7 +41,7 @@ interface ModalHeaderProps {
 }
 
 const ModalHeader = ({ title, onClick }: ModalHeaderProps) => {
-  const headerClassName = classNames(styles["ui-modal-header"]);
+  const headerClassName = classNames(styles['ui-modal-header']);
   return (
     <Section
       flexDirection="row"
@@ -60,7 +62,7 @@ interface ModalBodyProps {
 }
 
 const ModalBody = ({ children }: ModalBodyProps) => {
-  return <div className={styles["ui-modal-body"]}>{children}</div>;
+  return <div className={styles['ui-modal-body']}>{children}</div>;
 };
 
 interface FixedSize {
@@ -69,14 +71,14 @@ interface FixedSize {
 }
 
 type ModalStyle = CSSProperties & {
-  "--modal-width"?: string;
-  "--modal-height"?: string;
+  '--modal-width'?: string;
+  '--modal-height'?: string;
 };
 
 interface ModalProps
   extends
-    Omit<HTMLAttributes<HTMLDivElement>, keyof SystemProps | "style">,
-    Omit<SystemProps, "size"> {
+    Omit<HTMLAttributes<HTMLDivElement>, keyof SystemProps | 'style'>,
+    Omit<SystemProps, 'size'> {
   fixedSize?: FixedSize;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   onEscapeDown?: (event?: KeyboardEvent<HTMLDivElement>) => void;
@@ -107,23 +109,23 @@ const Modal = ({
   const modalStyle: ModalStyle = {
     ...getSystemStyles(props),
     ...(fixedSize && {
-      "--modal-width": `${fixedSize.width}px`,
-      "--modal-height": `${fixedSize.height}px`,
+      '--modal-width': `${fixedSize.width}px`,
+      '--modal-height': `${fixedSize.height}px`,
     }),
   };
   const modalClassName = classNames(
-    styles["ui-modal"],
-    fixedSize && styles["ui-modal-fixed"],
+    styles['ui-modal'],
+    fixedSize && styles['ui-modal-fixed'],
     className,
   );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     switch (event.key) {
-      case "Escape":
+      case 'Escape':
         event.preventDefault();
         onEscapeDown?.(event);
         break;
-      case "Tab":
+      case 'Tab':
         event.preventDefault();
         onTabDown?.(event);
         break;
@@ -140,7 +142,7 @@ const Modal = ({
 
   return (
     <div
-      className={styles["ui-modal-backdrop"]}
+      className={styles['ui-modal-backdrop']}
       onMouseDown={handleBackdropClick}
     >
       <div

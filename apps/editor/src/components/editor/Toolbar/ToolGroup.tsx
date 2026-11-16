@@ -1,10 +1,10 @@
+import { ToolButton } from './ToolButton';
+import styles from './toolbar.module.css';
 import type {
+  ToolGroupDef,
   ToolbarContextState,
   ToolbarEditorState,
-  ToolGroupDef,
-} from "./types";
-import { ToolButton } from "./ToolButton";
-import styles from "./toolbar.module.css";
+} from './types';
 
 interface ToolGroupProps {
   group: ToolGroupDef;

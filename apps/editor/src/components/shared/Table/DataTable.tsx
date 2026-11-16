@@ -1,13 +1,15 @@
-import { Table, Text } from "..";
+import { useMemo, useRef } from 'react';
+
 import {
-  tableFeatures,
-  createTableHook,
   columnVisibilityFeature,
-} from "@tanstack/react-table";
-import type { RowData } from "@tanstack/react-table";
-import { useMemo, useRef } from "react";
-import { vars } from "../../../util/css";
-import { useVirtualizer } from "@tanstack/react-virtual";
+  createTableHook,
+  tableFeatures,
+} from '@tanstack/react-table';
+import type { RowData } from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+import { Table, Text } from '..';
+import { vars } from '../../../util/css';
 
 const Features = tableFeatures({
   columnVisibilityFeature,
@@ -17,15 +19,15 @@ const { createAppColumnHelper, useAppTable } = createTableHook({
   features: Features,
   getRowId: (row) => row.id,
   cellComponents: {
-    "Table.Cell": Table.Cell,
-    "Table.HeaderCell": Table.HeaderCell,
-    "Table.Row": Table.Row,
-    "Table.Head": Table.Head,
-    "Table.Body": Table.Body,
+    'Table.Cell': Table.Cell,
+    'Table.HeaderCell': Table.HeaderCell,
+    'Table.Row': Table.Row,
+    'Table.Head': Table.Head,
+    'Table.Body': Table.Body,
   },
 });
 export type AppColumnDef<TData extends RowData> = Parameters<
-  ReturnType<typeof createAppColumnHelper<TData>>["columns"]
+  ReturnType<typeof createAppColumnHelper<TData>>['columns']
 >[0][number];
 
 type DataType = Record<string, any>;
@@ -79,8 +81,8 @@ const DataTable = ({ id, data, columnDefs }: DataTableProps) => {
       <Table.Body>
         {!totalSize ? (
           <tr>
-            <td colSpan={columns.length} style={{ textAlign: "center" }}>
-              <Text color={vars("text-disabled")}>No events</Text>
+            <td colSpan={columns.length} style={{ textAlign: 'center' }}>
+              <Text color={vars('text-disabled')}>No events</Text>
             </td>
           </tr>
         ) : (

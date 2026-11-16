@@ -1,4 +1,4 @@
-import { defineBindings, type BindingSpec } from "./define.ts";
+import { type BindingSpec, defineBindings } from './define.ts';
 
 const LANES = [1, 2, 3, 4, 5] as const;
 
@@ -9,9 +9,9 @@ const laneBindings = Object.fromEntries(
       {
         hotkey: String(lane),
         args: [lane - 1, false],
-        target: "canvas",
+        target: 'canvas',
         name: `Toggle lane ${lane} note`,
-        group: "Highway",
+        group: 'Highway',
       },
     ],
     [
@@ -19,9 +19,9 @@ const laneBindings = Object.fromEntries(
       {
         hotkey: `Shift+${lane}`,
         args: [lane - 1, true],
-        target: "canvas",
+        target: 'canvas',
         name: `Toggle lane ${lane} note (preserve sustain)`,
-        group: "Highway",
+        group: 'Highway',
       },
     ],
     [
@@ -29,133 +29,133 @@ const laneBindings = Object.fromEntries(
       {
         hotkey: String(lane),
         args: [lane - 1],
-        target: "document",
-        options: { eventType: "keyup", ignoreInputs: false },
+        target: 'document',
+        options: { eventType: 'keyup', ignoreInputs: false },
         name: `Release lane ${lane} note`,
-        group: "Highway",
+        group: 'Highway',
       },
     ],
   ]),
 );
 
 /** Hotkeys active while the active viewport shows the Highway. */
-export const highwayBindings = defineBindings("highway", {
+export const highwayBindings = defineBindings('highway', {
   // Tools
-  "highway.set-tool#select": {
-    hotkey: "Q",
-    args: ["select"],
-    name: "Select tool",
-    group: "Highway tools",
+  'highway.set-tool#select': {
+    hotkey: 'Q',
+    args: ['select'],
+    name: 'Select tool',
+    group: 'Highway tools',
   },
-  "highway.set-tool#place": {
-    hotkey: "W",
-    args: ["place"],
-    name: "Place tool",
-    group: "Highway tools",
+  'highway.set-tool#place': {
+    hotkey: 'W',
+    args: ['place'],
+    name: 'Place tool',
+    group: 'Highway tools',
   },
-  "highway.set-tool#remove": {
-    hotkey: "E",
-    args: ["remove"],
-    name: "Remove tool",
-    group: "Highway tools",
+  'highway.set-tool#remove': {
+    hotkey: 'E',
+    args: ['remove'],
+    name: 'Remove tool',
+    group: 'Highway tools',
   },
-  "highway.toggle-phrase-tool#stagePower": {
-    hotkey: "R",
-    args: ["stagePower"],
-    name: "Stagepower phrase tool",
-    group: "Highway tools",
+  'highway.toggle-phrase-tool#stagePower': {
+    hotkey: 'R',
+    args: ['stagePower'],
+    name: 'Stagepower phrase tool',
+    group: 'Highway tools',
   },
-  "highway.toggle-phrase-tool#solo": {
-    hotkey: "T",
-    args: ["solo"],
-    name: "Solo phrase tool",
-    group: "Highway tools",
+  'highway.toggle-phrase-tool#solo': {
+    hotkey: 'T',
+    args: ['solo'],
+    name: 'Solo phrase tool',
+    group: 'Highway tools',
   },
 
   // Notes
   ...laneBindings,
 
   // Navigation
-  "highway.clear-selection": {
-    hotkey: "Escape",
-    target: "canvas",
-    name: "Clear selection range",
-    group: "Highway",
+  'highway.clear-selection': {
+    hotkey: 'Escape',
+    target: 'canvas',
+    name: 'Clear selection range',
+    group: 'Highway',
   },
-  "highway.step-playhead#forward": {
-    hotkey: "ArrowUp",
+  'highway.step-playhead#forward': {
+    hotkey: 'ArrowUp',
     args: [1],
-    target: "canvas",
+    target: 'canvas',
     options: { requireReset: false },
-    name: "Move forward",
-    group: "Highway",
+    name: 'Move forward',
+    group: 'Highway',
   },
-  "highway.step-playhead#backward": {
-    hotkey: "ArrowDown",
+  'highway.step-playhead#backward': {
+    hotkey: 'ArrowDown',
     args: [-1],
-    target: "canvas",
+    target: 'canvas',
     options: { requireReset: false },
-    name: "Move backward",
-    group: "Highway",
+    name: 'Move backward',
+    group: 'Highway',
   },
-  "highway.step-playhead#forward-shift": {
-    hotkey: "Shift+ArrowUp",
+  'highway.step-playhead#forward-shift': {
+    hotkey: 'Shift+ArrowUp',
     args: [1, true],
-    target: "canvas",
+    target: 'canvas',
     options: { requireReset: false },
-    name: "Extend selection forward",
-    group: "Highway",
+    name: 'Extend selection forward',
+    group: 'Highway',
   },
-  "highway.step-playhead#backward-shift": {
-    hotkey: "Shift+ArrowDown",
+  'highway.step-playhead#backward-shift': {
+    hotkey: 'Shift+ArrowDown',
     args: [-1, true],
-    target: "canvas",
+    target: 'canvas',
     options: { requireReset: false },
-    name: "Extend selection backward",
-    group: "Highway",
+    name: 'Extend selection backward',
+    group: 'Highway',
   },
-  "editor.step-snap-denominator#decrease": {
-    hotkey: "ArrowLeft",
+  'editor.step-snap-denominator#decrease': {
+    hotkey: 'ArrowLeft',
     args: [-1],
-    target: "canvas",
+    target: 'canvas',
     options: { requireReset: false },
-    name: "Decrease snap interval",
-    group: "Highway",
+    name: 'Decrease snap interval',
+    group: 'Highway',
   },
-  "editor.step-snap-denominator#increase": {
-    hotkey: "ArrowRight",
+  'editor.step-snap-denominator#increase': {
+    hotkey: 'ArrowRight',
     args: [1],
-    target: "canvas",
+    target: 'canvas',
     options: { requireReset: false },
-    name: "Increase snap interval",
-    group: "Highway",
+    name: 'Increase snap interval',
+    group: 'Highway',
   },
-  "highway.seek-section#next-alt": {
-    hotkey: "Alt+ArrowUp",
+  'highway.seek-section#next-alt': {
+    hotkey: 'Alt+ArrowUp',
     args: [1],
-    target: "canvas",
-    name: "Next section",
-    group: "Highway",
+    target: 'canvas',
+    name: 'Next section',
+    group: 'Highway',
   },
-  "highway.seek-section#previous-alt": {
-    hotkey: "Alt+ArrowDown",
+  'highway.seek-section#previous-alt': {
+    hotkey: 'Alt+ArrowDown',
     args: [-1],
-    target: "canvas",
-    name: "Previous section",
-    group: "Highway",
+    target: 'canvas',
+    name: 'Previous section',
+    group: 'Highway',
   },
-  "highway.seek-section#next": {
-    hotkey: "]",
+  'highway.seek-section#next': {
+    hotkey: ']',
     args: [1],
-    target: "canvas",
-    name: "Next section (alternate)",
-    group: "Highway",
+    target: 'canvas',
+    name: 'Next section (alternate)',
+    group: 'Highway',
   },
-  "highway.seek-section#previous": {
-    hotkey: "[",
+  'highway.seek-section#previous': {
+    hotkey: '[',
     args: [-1],
-    target: "canvas",
-    name: "Previous section (alternate)",
-    group: "Highway",
+    target: 'canvas',
+    name: 'Previous section (alternate)',
+    group: 'Highway',
   },
 });

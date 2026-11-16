@@ -1,14 +1,14 @@
-import type { styleFn } from "styled-system";
+import type { styleFn } from 'styled-system';
 import {
-  color,
-  textAlign,
-  fontWeight,
-  compose,
   border,
-  fontSize,
-  size,
+  color,
+  compose,
   flexbox,
-} from "styled-system";
+  fontSize,
+  fontWeight,
+  size,
+  textAlign,
+} from 'styled-system';
 
 const getTextSystemStyles: styleFn = compose(
   textAlign,

@@ -1,22 +1,24 @@
-import { useState } from "react";
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Dropdown, type DropdownOption, type DropdownProps } from "..";
-import { DropdownButton } from "./DropdownButton";
+import { useState } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Dropdown, type DropdownOption, type DropdownProps } from '..';
+import { DropdownButton } from './DropdownButton';
 
 const options: DropdownOption[] = [
-  { value: "piano", label: "Piano" },
-  { value: "guitar", label: "Guitar" },
-  { value: "drums", label: "Drums" },
+  { value: 'piano', label: 'Piano' },
+  { value: 'guitar', label: 'Guitar' },
+  { value: 'drums', label: 'Drums' },
 ];
 
 const meta = {
-  title: "Shared/Dropdowns",
+  title: 'Shared/Dropdowns',
   component: Dropdown,
   args: {
     options,
-    value: "piano",
+    value: 'piano',
     onChange: () => {},
-    "aria-label": "Instrument",
+    'aria-label': 'Instrument',
   },
 } satisfies Meta<typeof Dropdown>;
 
@@ -29,14 +31,14 @@ const ControlledDropdown = (args: DropdownProps) => {
 };
 
 const ControlledDropdownButton = () => {
-  const [value, setValue] = useState("piano");
+  const [value, setValue] = useState('piano');
   return (
     <DropdownButton
       label="Instrument"
       options={options}
       value={value}
       onChange={setValue}
-      onToggle={(active) => console.info("Dropdown button active:", active)}
+      onToggle={(active) => console.info('Dropdown button active:', active)}
     />
   );
 };

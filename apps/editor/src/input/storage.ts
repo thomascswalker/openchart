@@ -1,6 +1,6 @@
-import type { CustomHotkeys } from "./lib.ts";
+import type { CustomHotkeys } from './lib.ts';
 
-export const HOTKEYS_STORAGE_KEY = "openchart.hotkeys";
+export const HOTKEYS_STORAGE_KEY = 'openchart.hotkeys';
 
 /**
  * Loads the user's custom hotkeys (only the differences from the defaults,
@@ -13,7 +13,7 @@ export function loadCustomHotkeys(): CustomHotkeys {
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (
-      typeof parsed !== "object" ||
+      typeof parsed !== 'object' ||
       parsed === null ||
       Array.isArray(parsed)
     ) {
@@ -21,7 +21,7 @@ export function loadCustomHotkeys(): CustomHotkeys {
     }
     return Object.fromEntries(
       Object.entries(parsed).filter(
-        ([, value]) => value === null || typeof value === "string",
+        ([, value]) => value === null || typeof value === 'string',
       ),
     ) as CustomHotkeys;
   } catch {

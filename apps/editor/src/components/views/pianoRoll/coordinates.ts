@@ -1,7 +1,10 @@
-import type { TempoEvent } from "@openchart/midi";
-import { msToTicks, ticksToMs } from "@openchart/midi";
-import { clamp } from "es-toolkit";
-import { Box2, Vector2 } from "three";
+import type { TempoEvent } from '@openchart/midi';
+import { msToTicks, ticksToMs } from '@openchart/midi';
+import { clamp } from 'es-toolkit';
+import { Box2, Vector2 } from 'three';
+
+import type { ChartViewState } from '../AbstractChartView';
+import { BaseCoordinates } from '../shared/coordinates';
 import {
   HeaderHeight,
   KeyboardWidth,
@@ -10,16 +13,14 @@ import {
   MinimumPixelsPerQuarter,
   MinimumPixelsPerSemitone,
   ZoomSensitivity,
-} from "./constants";
-import type { ChartViewState } from "../AbstractChartView";
+} from './constants';
 import {
   GENERIC_PROFILE,
-  gridTopFor,
   type LaneDef,
   type PianoRollProfile,
-} from "./profile";
-import type { PianoRollCamera, PianoRollNote } from "./types";
-import { BaseCoordinates } from "../shared/coordinates";
+  gridTopFor,
+} from './profile';
+import type { PianoRollCamera, PianoRollNote } from './types';
 
 export interface CoordinateSystemContext {
   getPpqn(): number;

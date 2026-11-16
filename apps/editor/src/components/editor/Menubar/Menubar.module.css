@@ -29,7 +29,7 @@
 }
 
 .midiMenubarTrigger:hover,
-.midiMenubarTrigger[aria-expanded="true"] {
+.midiMenubarTrigger[aria-expanded='true'] {
   background: #333;
 }
 

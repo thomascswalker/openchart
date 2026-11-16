@@ -28,7 +28,7 @@
   height: 4px;
   border-bottom: 2px solid currentColor;
   border-left: 2px solid currentColor;
-  content: "";
+  content: '';
   opacity: 0;
   transform: rotate(-45deg) translate(1px, -1px);
 }

@@ -1,9 +1,10 @@
-import { kebabCase } from "es-toolkit";
-import type { ContextStore } from "./context";
-import { buildModuleId, type ModuleCollection } from "./modules";
-import type { ServiceRegistry, ServicesAccessor } from "./services";
+import { kebabCase } from 'es-toolkit';
 
-export interface ActionOptions {
+import type { ContextStore } from './context';
+import { type ModuleCollection, buildModuleId } from './modules';
+import type { ServiceRegistry, ServicesAccessor } from './services';
+
+interface ActionOptions {
   id?: string;
   condition?: Record<string, unknown>;
 }
@@ -11,21 +12,21 @@ export interface ActionOptions {
 export class ActionUnavailableError extends Error {
   constructor(id: string) {
     super(`Action ${id} is not available in the current context.`);
-    this.name = "ActionUnavailableError";
+    this.name = 'ActionUnavailableError';
   }
 }
 
 export class ActionNotFoundError extends Error {
   constructor(id: string) {
     super(`Action ${id} is not registered.`);
-    this.name = "ActionNotFoundError";
+    this.name = 'ActionNotFoundError';
   }
 }
 
 export class ActionCancelledError extends Error {
-  constructor(message = "Action was cancelled.") {
+  constructor(message = 'Action was cancelled.') {
     super(message);
-    this.name = "ActionCancelledError";
+    this.name = 'ActionCancelledError';
   }
 }
 
@@ -37,7 +38,7 @@ export abstract class Action<Args extends unknown[] = [], Result = void> {
     // (trimming `Action` if it's at the end of the class name).
     if (!options?.id) {
       const className = this.constructor.name;
-      const end = className.indexOf("Action");
+      const end = className.indexOf('Action');
       const baseName = className.substring(0, end);
       options.id = kebabCase(baseName);
     }
@@ -46,6 +47,7 @@ export abstract class Action<Args extends unknown[] = [], Result = void> {
 
   abstract run(
     accessor: ServicesAccessor,
+
     ...args: Args
   ): Result | Promise<Result>;
 }
@@ -70,14 +72,14 @@ export class ActionRegistry {
     this.contextStore = contextStore;
 
     for (const filepath of Object.keys(modules).sort()) {
-      const id = buildModuleId(filepath, "actions");
+      const id = buildModuleId(filepath, 'actions');
       if (!id) {
         continue;
       }
 
       const actionClasses = Object.values(modules[filepath]).filter(
         (candidate): candidate is ActionConstructor =>
-          typeof candidate === "function" &&
+          typeof candidate === 'function' &&
           candidate.prototype instanceof Action,
       );
       if (!actionClasses.length) {
@@ -99,7 +101,7 @@ export class ActionRegistry {
     id = action.options.id,
   ): void {
     if (!id) {
-      throw new Error("An action ID is required when registering an action.");
+      throw new Error('An action ID is required when registering an action.');
     }
     if (this.actions.has(id)) {
       throw new Error(`Action ${id} is already registered.`);
@@ -135,10 +137,10 @@ export class ActionRegistry {
     try {
       const result = action.run(accessor, ...args);
       if (
-        typeof result === "object" &&
+        typeof result === 'object' &&
         result !== null &&
-        "then" in result &&
-        typeof result.then === "function"
+        'then' in result &&
+        typeof result.then === 'function'
       ) {
         return Promise.resolve(result).catch((error: unknown) => {
           throw this.normalizeError(error);
@@ -151,7 +153,7 @@ export class ActionRegistry {
   }
 
   private normalizeError(error: unknown): Error {
-    if (error instanceof DOMException && error.name === "AbortError") {
+    if (error instanceof DOMException && error.name === 'AbortError') {
       return new ActionCancelledError(error.message);
     }
     return error instanceof Error ? error : new Error(String(error));

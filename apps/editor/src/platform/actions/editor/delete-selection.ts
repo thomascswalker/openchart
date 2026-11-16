@@ -1,7 +1,8 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { EditCommandType, type EntityId } from "@openchart/views";
-import type { EditingService } from "../../services/editor/editing";
+import { EditCommandType, type EntityId } from '@openchart/views';
+
+import { Action } from '../../actions';
+import type { EditingService } from '../../services/editor/editing';
+import type { ServicesAccessor } from '../../services/registry';
 
 /** Deletes the active editing session's selected entities. */
 export class DeleteSelectionAction extends Action {
@@ -15,7 +16,7 @@ export class DeleteSelectionAction extends Action {
 
   run(accessor: ServicesAccessor): void {
     const session = accessor
-      .get<EditingService>("editor.editing")
+      .get<EditingService>('editor.editing')
       .getActiveSession();
     if (!session) return;
     const targetIds = session.selection.getSelectedIds() as EntityId[];

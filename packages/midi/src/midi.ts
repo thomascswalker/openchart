@@ -1,5 +1,19 @@
 // https://midimusic.github.io/tech/midispec.html
+import * as ini from 'ini';
 
+import {
+  concatBytes,
+  decodeBase64,
+  decodeMetaPayload,
+  encodeBase64,
+  encodeMetaPayload,
+  parseInteger,
+  writeAscii,
+  writeUInt16BE,
+  writeUInt32BE,
+} from './codec';
+import { trackParser } from './parsers';
+import { MidiTrack } from './track';
 import {
   ChannelMessage,
   MetaType,
@@ -9,26 +23,12 @@ import {
   MidiMetaEvent,
   MidiSysExEvent,
   TempoEvent,
-  TimeSignatureEvent,
-  TextMidiEvent,
   TextMetaType,
+  TextMidiEvent,
+  TimeSignatureEvent,
   extractMetaPayload,
-} from "./types";
-import { isTwoByteMessage } from "./util";
-import {
-  concatBytes,
-  decodeMetaPayload,
-  encodeMetaPayload,
-  writeAscii,
-  writeUInt16BE,
-  writeUInt32BE,
-  encodeBase64,
-  decodeBase64,
-  parseInteger,
-} from "./codec";
-import { trackParser } from "./parsers";
-import * as ini from "ini";
-import { MidiTrack } from "./track";
+} from './types';
+import { isTwoByteMessage } from './util';
 
 class MidiHeader {
   format: MidiFormat = 1;
@@ -64,7 +64,7 @@ class Midi {
   private parse(data: Uint8Array): void {
     // Ensure at least the main file header exists
     if (data.length < 14) {
-      throw new Error("MIDI file is truncated");
+      throw new Error('MIDI file is truncated');
     }
 
     // Data reader
@@ -73,8 +73,8 @@ class Midi {
     // Validate file header
     const magic = String.fromCharCode(...data.subarray(0, 4));
     const headerLength = view.getUint32(4);
-    if (magic !== "MThd" || headerLength !== 6) {
-      throw new Error("Invalid MIDI header chunk");
+    if (magic !== 'MThd' || headerLength !== 6) {
+      throw new Error('Invalid MIDI header chunk');
     }
     this.header.format = view.getUint16(8) as MidiFormat;
     const declaredTrackCount = view.getUint16(10);
@@ -87,25 +87,25 @@ class Midi {
     let offset = 14;
     while (offset < data.length) {
       if (data.length - offset < 8) {
-        throw new Error("MIDI track chunk header is truncated");
+        throw new Error('MIDI track chunk header is truncated');
       }
       const trackMagic = String.fromCharCode(
         ...data.subarray(offset, offset + 4),
       );
       const length = view.getUint32(offset + 4);
       const chunkEnd = offset + 8 + length;
-      if (trackMagic !== "MTrk") {
+      if (trackMagic !== 'MTrk') {
         throw new Error(`Invalid MIDI track chunk '${trackMagic}'`);
       }
       if (chunkEnd > data.length) {
-        throw new Error("MIDI track chunk is truncated");
+        throw new Error('MIDI track chunk is truncated');
       }
       parsedTracks.push(trackParser.parse(data.subarray(offset, chunkEnd)));
       offset = chunkEnd;
     }
 
     if (parsedTracks.length === 0 && declaredTrackCount > 0) {
-      throw new Error("MIDI header declares tracks but contains none");
+      throw new Error('MIDI header declares tracks but contains none');
     }
     // The actual chunks are authoritative for the in-memory document. This
     // also makes a later write repair stale header track-count metadata.
@@ -116,7 +116,7 @@ class Midi {
 
       track.format = this.header.format;
       track.events = (parsedTrack.events as MidiEvent[]).map((event) => {
-        if (event.status === 0xff && "data" in event) {
+        if (event.status === 0xff && 'data' in event) {
           const metaEvent = event as MidiMetaEvent & {
             data: Record<string, unknown> | Uint8Array;
           };
@@ -169,7 +169,7 @@ class Midi {
     const track = this.tracks[0];
 
     if (!track) {
-      throw new Error("Midi file has no tracks");
+      throw new Error('Midi file has no tracks');
     }
 
     const event: TempoEvent = {
@@ -199,7 +199,7 @@ class Midi {
     const track = this.tracks[0];
 
     if (!track) {
-      throw new Error("Midi file has no tracks");
+      throw new Error('Midi file has no tracks');
     }
 
     const event: TimeSignatureEvent = {
@@ -230,15 +230,15 @@ class Midi {
       this.header.format < 0 ||
       this.header.format > 2
     ) {
-      throw new RangeError("MIDI format must be 0, 1, or 2");
+      throw new RangeError('MIDI format must be 0, 1, or 2');
     }
 
     if (this.header.format === MidiFormat.Single && this.trackCount !== 1) {
-      throw new Error("Format 0 MIDI files must contain exactly one track");
+      throw new Error('Format 0 MIDI files must contain exactly one track');
     }
 
     if (this.trackCount === 0) {
-      throw new Error("A MIDI file must contain at least one track");
+      throw new Error('A MIDI file must contain at least one track');
     }
 
     if (
@@ -246,7 +246,7 @@ class Midi {
       this.header.division < 0 ||
       this.header.division > 0x7fff
     ) {
-      throw new RangeError("MIDI division must fit in the lower 15 bits");
+      throw new RangeError('MIDI division must fit in the lower 15 bits');
     }
   }
 
@@ -258,7 +258,7 @@ class Midi {
       : this.header.division;
 
     const header = new Uint8Array(14);
-    writeAscii(header, 0, "MThd");
+    writeAscii(header, 0, 'MThd');
     writeUInt32BE(header, 4, 6);
     writeUInt16BE(header, 8, this.header.format);
     writeUInt16BE(header, 10, this.trackCount);
@@ -277,7 +277,7 @@ class Midi {
 
     this.header.trackCount = this.trackCount;
 
-    const headerString = ini.stringify(this.header, { section: "header" });
+    const headerString = ini.stringify(this.header, { section: 'header' });
 
     const serializeEvent = (event: MidiEvent): string => {
       if (event.status === 0xff) {
@@ -289,7 +289,7 @@ class Midi {
           event.status,
           metaEvent.type,
           encodeBase64(encodedPayload),
-        ].join(" ");
+        ].join(' ');
       }
 
       if (event.status === 0xf0 || event.status === 0xf7) {
@@ -297,7 +297,7 @@ class Midi {
           event.deltaTime,
           event.status,
           encodeBase64((event as MidiSysExEvent).data),
-        ].join(" ");
+        ].join(' ');
       }
 
       const channelEvent = event as MidiChannelEvent;
@@ -311,7 +311,7 @@ class Midi {
         values.push(channelEvent.data2 ?? 0);
       }
 
-      return values.join(" ");
+      return values.join(' ');
     };
 
     const tracks = this.tracks.map((track) => {
@@ -320,9 +320,9 @@ class Midi {
         e: track.events.map(serializeEvent),
       };
     });
-    const tracksString = ini.stringify(tracks, { section: "tracks" });
+    const tracksString = ini.stringify(tracks, { section: 'tracks' });
 
-    return [headerString, tracksString].join("\n");
+    return [headerString, tracksString].join('\n');
   }
 
   public static fromIni(content: string): Midi {
@@ -333,24 +333,24 @@ class Midi {
     const iniHeader = obj.header;
 
     if (!iniHeader) {
-      throw new Error("INI MIDI data is missing a header section");
+      throw new Error('INI MIDI data is missing a header section');
     }
 
     const midi = new Midi();
     midi.header = {
       format: parseInteger(
-        iniHeader.format ?? "",
-        "header format",
+        iniHeader.format ?? '',
+        'header format',
       ) as MidiFormat,
-      trackCount: parseInteger(iniHeader.trackCount ?? "", "header trackCount"),
-      division: parseInteger(iniHeader.division ?? "", "header division"),
-      isSMPTE: iniHeader.isSMPTE === "true",
+      trackCount: parseInteger(iniHeader.trackCount ?? '', 'header trackCount'),
+      division: parseInteger(iniHeader.division ?? '', 'header division'),
+      isSMPTE: iniHeader.isSMPTE === 'true',
     };
 
     const parseEvent = (record: string): MidiEvent => {
       const values = record.trim().split(/\s+/);
-      const deltaTime = parseInteger(values[0] ?? "", "event deltaTime");
-      const status = parseInteger(values[1] ?? "", "event status");
+      const deltaTime = parseInteger(values[0] ?? '', 'event deltaTime');
+      const status = parseInteger(values[1] ?? '', 'event status');
 
       if (status >= 0x80 && status < 0xf0) {
         const messageType = status & 0xf0;
@@ -368,11 +368,11 @@ class Midi {
           status,
           channel: status & 0x0f,
           messageType: messageType as ChannelMessage,
-          data1: parseInteger(values[2], "channel event data1"),
+          data1: parseInteger(values[2], 'channel event data1'),
         };
 
         if (isTwoByteMessage(status)) {
-          channelEvent.data2 = parseInteger(values[3], "channel event data2");
+          channelEvent.data2 = parseInteger(values[3], 'channel event data2');
         }
 
         return channelEvent;
@@ -380,10 +380,10 @@ class Midi {
 
       if (status === 0xff) {
         if (values.length !== 4) {
-          throw new Error("Meta event has an invalid field count");
+          throw new Error('Meta event has an invalid field count');
         }
 
-        const type = parseInteger(values[2], "meta event type");
+        const type = parseInteger(values[2], 'meta event type');
         const bytes = decodeBase64(values[3]);
         const event: MidiMetaEvent = {
           deltaTime,
@@ -409,7 +409,7 @@ class Midi {
 
       if (status === 0xf0 || status === 0xf7) {
         if (values.length !== 3) {
-          throw new Error("SysEx event has an invalid field count");
+          throw new Error('SysEx event has an invalid field count');
         }
 
         const data = decodeBase64(values[2]);
@@ -421,7 +421,7 @@ class Midi {
     };
 
     for (const trackData of Object.values(obj.tracks ?? {})) {
-      const track = new MidiTrack(trackData.name ?? "");
+      const track = new MidiTrack(trackData.name ?? '');
       const records = trackData.e === undefined ? [] : [trackData.e].flat();
       track.format = midi.header.format;
       track.events = records.map(parseEvent);
@@ -430,7 +430,7 @@ class Midi {
 
     if (midi.header.trackCount !== midi.trackCount) {
       throw new Error(
-        "INI MIDI header trackCount does not match the track sections",
+        'INI MIDI header trackCount does not match the track sections',
       );
     }
 

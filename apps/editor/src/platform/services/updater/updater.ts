@@ -1,15 +1,17 @@
-import type { DownloadEvent, Update } from "@tauri-apps/plugin-updater";
-import type { LoggerService } from "../logger";
-import { StatefulService } from "../../services";
+import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater';
+
+import { ILoggerService } from '../logger';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
 
 export type UpdaterStatus =
-  | "idle"
-  | "checking"
-  | "up-to-date"
-  | "available"
-  | "downloading"
-  | "installing"
-  | "error";
+  | 'idle'
+  | 'checking'
+  | 'up-to-date'
+  | 'available'
+  | 'downloading'
+  | 'installing'
+  | 'error';
 
 export interface UpdaterSnapshot {
   status: UpdaterStatus;
@@ -18,7 +20,7 @@ export interface UpdaterSnapshot {
   notes: string | null;
   downloadedBytes: number;
   totalBytes: number | null;
-  errorPhase: "check" | "install" | null;
+  errorPhase: 'check' | 'install' | null;
   error: string | null;
 }
 
@@ -26,8 +28,8 @@ const CHECK_TIMEOUT_MS = 30_000;
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
-  if (typeof error === "string" && error) return error;
-  return "An unknown error occurred.";
+  if (typeof error === 'string' && error) return error;
+  return 'An unknown error occurred.';
 }
 
 /**
@@ -35,19 +37,15 @@ function errorMessage(error: unknown): string {
  * the web build never loads them.
  */
 export class UpdaterService extends StatefulService<UpdaterSnapshot> {
-  static dependencies = ["logger"];
+  #pending: Update | null = null;
 
-  private _logger: LoggerService;
-  private _pending: Update | null = null;
-
-  constructor(logger: LoggerService) {
+  constructor(@ILoggerService private loggerService: ILoggerService) {
     super();
-    this._logger = logger;
   }
 
   static defaultSnapshot(): UpdaterSnapshot {
     return {
-      status: "idle",
+      status: 'idle',
       currentVersion: null,
       availableVersion: null,
       notes: null,
@@ -67,16 +65,16 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
   public readonly isBusy = (): boolean => {
     const { status } = this._snapshot;
     return (
-      status === "checking" ||
-      status === "downloading" ||
-      status === "installing"
+      status === 'checking' ||
+      status === 'downloading' ||
+      status === 'installing'
     );
   };
 
   public readonly canDismiss = (): boolean => {
     const { status } = this._snapshot;
     return (
-      status === "up-to-date" || status === "available" || status === "error"
+      status === 'up-to-date' || status === 'available' || status === 'error'
     );
   };
 
@@ -86,39 +84,39 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
     this.releasePending();
     this._snapshot = {
       ...UpdaterService.defaultSnapshot(),
-      status: "checking",
+      status: 'checking',
     };
     this.notify();
 
     try {
-      const { check } = await import("@tauri-apps/plugin-updater");
+      const { check } = await import('@tauri-apps/plugin-updater');
       const update = await check({ timeout: CHECK_TIMEOUT_MS });
       if (!update) {
-        this._logger.info("No update available.");
-        this.setState({ status: "up-to-date" });
+        this.loggerService.info('No update available.');
+        this.setState({ status: 'up-to-date' });
         return;
       }
-      this._pending = update;
-      this._logger.info(`Update ${update.version} is available.`);
+      this.#pending = update;
+      this.loggerService.info(`Update ${update.version} is available.`);
       this.setState({
-        status: "available",
+        status: 'available',
         currentVersion: update.currentVersion,
         availableVersion: update.version,
         notes: update.body?.trim() ? update.body : null,
       });
     } catch (error: unknown) {
       const message = errorMessage(error);
-      this._logger.error(`Update check failed: ${message}`);
-      this.setState({ status: "error", errorPhase: "check", error: message });
+      this.loggerService.error(`Update check failed: ${message}`);
+      this.setState({ status: 'error', errorPhase: 'check', error: message });
     }
   };
 
   public readonly install = async (): Promise<void> => {
-    const update = this._pending;
-    if (this._snapshot.status !== "available" || !update) return;
+    const update = this.#pending;
+    if (this._snapshot.status !== 'available' || !update) return;
 
     this.setState({
-      status: "downloading",
+      status: 'downloading',
       downloadedBytes: 0,
       totalBytes: null,
     });
@@ -129,11 +127,11 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
 
     const onEvent = (event: DownloadEvent): void => {
       switch (event.event) {
-        case "Started":
+        case 'Started':
           total = event.data.contentLength ?? null;
           this.setState({ totalBytes: total });
           break;
-        case "Progress": {
+        case 'Progress': {
           downloaded += event.data.chunkLength;
           // Only re-render when the visible progress changes.
           const marker = total
@@ -145,22 +143,22 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
           }
           break;
         }
-        case "Finished":
-          this.setState({ status: "installing", downloadedBytes: downloaded });
+        case 'Finished':
+          this.setState({ status: 'installing', downloadedBytes: downloaded });
           break;
       }
     };
 
     try {
       await update.downloadAndInstall(onEvent);
-      this._logger.info("Update installed; relaunching.");
+      this.loggerService.info('Update installed; relaunching.');
       // On Windows the installer exits the app before this point.
-      const { relaunch } = await import("@tauri-apps/plugin-process");
+      const { relaunch } = await import('@tauri-apps/plugin-process');
       await relaunch();
     } catch (error: unknown) {
       const message = errorMessage(error);
-      this._logger.error(`Update install failed: ${message}`);
-      this.setState({ status: "error", errorPhase: "install", error: message });
+      this.loggerService.error(`Update install failed: ${message}`);
+      this.setState({ status: 'error', errorPhase: 'install', error: message });
     }
   };
 
@@ -172,8 +170,8 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
   };
 
   private releasePending(): void {
-    const pending = this._pending;
-    this._pending = null;
+    const pending = this.#pending;
+    this.#pending = null;
     if (pending) {
       void pending.close().catch(() => {});
     }
@@ -184,3 +182,6 @@ export class UpdaterService extends StatefulService<UpdaterSnapshot> {
     this.notify();
   }
 }
+
+export type IUpdaterService = UpdaterService;
+export const IUpdaterService = createDecorator<IUpdaterService>('updater');

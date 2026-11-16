@@ -1,4 +1,4 @@
-import { type MidiTrack, MetaType } from "@openchart/midi";
+import { MetaType, type MidiTrack } from '@openchart/midi';
 
 export interface SectionMarker {
   name: string;

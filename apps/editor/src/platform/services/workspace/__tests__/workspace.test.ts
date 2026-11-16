@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { testWorkspaceService } from "./utils";
+import { describe, expect, it } from 'vitest';
 
-describe("Workspace Service", () => {
-  it("returns a snapshot", () => {
+import { testWorkspaceService } from './utils';
+
+describe('Workspace Service', () => {
+  it('returns a snapshot', () => {
     const service = testWorkspaceService();
     expect(service.getSnapshot()).toBeDefined();
   });

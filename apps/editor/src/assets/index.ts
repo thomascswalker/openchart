@@ -1,9 +1,9 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 
 export type Rgb = [number, number, number];
 export type AssetPropertyValue = string | number | Rgb;
 export type MaterialPropertyName =
-  "diffuseTex" | "emissionTex" | "emissionMaskTex";
+  'diffuseTex' | 'emissionTex' | 'emissionMaskTex';
 
 export interface MaterialProperties {
   diffuseTex?: string;

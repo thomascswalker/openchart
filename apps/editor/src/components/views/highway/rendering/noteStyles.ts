@@ -1,4 +1,4 @@
-import type { MidiEvent } from "@openchart/midi";
+import type { MidiEvent } from '@openchart/midi';
 
 export interface GuitarNoteLike {
   pitch: number;
@@ -24,7 +24,7 @@ interface SysExEventLike {
 function isSysExEvent(event: MidiEvent): event is MidiEvent & SysExEventLike {
   return (
     (event.status === 0xf0 || event.status === 0xf7) &&
-    "data" in event &&
+    'data' in event &&
     event.data instanceof Uint8Array
   );
 }
@@ -57,7 +57,7 @@ export function getTapSysExRanges(events: readonly MidiEvent[]): TickRange[] {
   return ranges;
 }
 
-export type AutoHopoExclusion = "sameLaneAsPrevious" | "chord";
+export type AutoHopoExclusion = 'sameLaneAsPrevious' | 'chord';
 
 /**
  * HOPO / tap styling for lane notes. Everything comes from the track's
@@ -126,8 +126,8 @@ export function getFiveFretNoteStyles<T extends GuitarNoteLike>(
       !forceStrum &&
       previous !== null &&
       withinThreshold(tick - previous.tick) &&
-      (!exclusions.has("chord") || group.length === 1) &&
-      (!exclusions.has("sameLaneAsPrevious") ||
+      (!exclusions.has('chord') || group.length === 1) &&
+      (!exclusions.has('sameLaneAsPrevious') ||
         !previous.notes.some((previousNote) =>
           group.some((note) => note.pitch === previousNote.pitch),
         ));

@@ -1,7 +1,9 @@
-import { useEffect, useEffectEvent, useRef, type RefObject } from "react";
-import { useResizeObserver } from "usehooks-ts";
-import type { AnyChartView } from "../../views/ChartViews";
-import { drawTimeline } from "./util";
+import { type RefObject, useEffect, useEffectEvent, useRef } from 'react';
+
+import { useResizeObserver } from 'usehooks-ts';
+
+import type { AnyChartView } from '../../views/ChartViews';
+import { drawTimeline } from './util';
 
 interface TimelineRenderOptions {
   chartViews: AnyChartView[];
@@ -20,7 +22,7 @@ export const useTimelineRender = ({
 
   const { width = 0, height = 0 } = useResizeObserver({
     ref: containerRef as RefObject<HTMLElement>,
-    box: "border-box",
+    box: 'border-box',
   });
 
   const redraw = useEffectEvent(() => {

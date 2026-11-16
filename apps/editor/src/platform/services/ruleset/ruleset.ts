@@ -1,12 +1,14 @@
 import {
-  compileRuleset,
-  DefaultRuleset,
-  loadRuleset,
   type CompiledRuleset,
+  DefaultRuleset,
   type Ruleset,
-} from "@openchart/views";
-import { StatefulService } from "../../services";
-import type { EditorStateService } from "../editor/state";
+  compileRuleset,
+  loadRuleset,
+} from '@openchart/views';
+
+import { IEditorStateService } from '../editor/state';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
 
 export interface RulesetSnapshot {
   /** The active, validated ruleset. */
@@ -17,20 +19,24 @@ export interface RulesetSnapshot {
   revision: number;
 }
 
+function createSnapshot(ruleset: Ruleset, revision: number): RulesetSnapshot {
+  return { ruleset, compiled: compileRuleset(ruleset), revision };
+}
+
 /**
  * Owns the active ruleset. Everything chart-shaped (track list, lanes, phrases,
  * editing rules, project settings) derives from `snapshot.compiled`, so
  * replacing the ruleset re-derives the whole hierarchy.
  */
 export class RulesetService extends StatefulService<RulesetSnapshot> {
-  public static dependencies = ["editor.state"];
-
-  private readonly editorState: EditorStateService;
-
-  constructor(editorState: EditorStateService) {
+  constructor(
+    @IEditorStateService private editorStateService: IEditorStateService,
+  ) {
     super();
-    this.editorState = editorState;
-    this._snapshot = createSnapshot(DefaultRuleset, 0);
+  }
+
+  public static defaultSnapshot(): RulesetSnapshot {
+    return createSnapshot(DefaultRuleset, 0);
   }
 
   /** The compiled rules of the active ruleset. */
@@ -56,9 +62,9 @@ export class RulesetService extends StatefulService<RulesetSnapshot> {
     if (!result.ok) {
       const detail = result.issues
         .slice(0, 5)
-        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
-        .join("; ");
-      this.editorState.setError(`Invalid ruleset: ${detail}`);
+        .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+        .join('; ');
+      this.editorStateService.setError(`Invalid ruleset: ${detail}`);
       return false;
     }
     this._snapshot = createSnapshot(
@@ -70,6 +76,5 @@ export class RulesetService extends StatefulService<RulesetSnapshot> {
   };
 }
 
-function createSnapshot(ruleset: Ruleset, revision: number): RulesetSnapshot {
-  return { ruleset, compiled: compileRuleset(ruleset), revision };
-}
+export type IRulesetService = RulesetService;
+export const IRulesetService = createDecorator<IRulesetService>('ruleset');

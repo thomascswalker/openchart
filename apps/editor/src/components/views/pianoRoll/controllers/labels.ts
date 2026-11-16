@@ -1,21 +1,22 @@
-import type { CSSProperties } from "react";
-import { applyStyle } from "../../../../util/css";
+import type { CSSProperties } from 'react';
+
+import { applyStyle } from '../../../../util/css';
 import {
   HeaderHeight,
   KeyboardWidth,
   MinimumPixelsPerSemitone,
-} from "../constants";
-import type { CoordinateSystem } from "../coordinates";
-import type { HeaderController, HeaderLane } from "./header";
-import { pitchName } from "../profile";
-import type { PianoRollContext } from "../types";
+} from '../constants';
+import type { CoordinateSystem } from '../coordinates';
+import { pitchName } from '../profile';
+import type { PianoRollContext } from '../types';
+import type { HeaderController, HeaderLane } from './header';
 
 const LabelStyle: CSSProperties = {
-  position: "absolute",
-  font: "10px sans-serif",
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  pointerEvents: "none",
+  position: 'absolute',
+  font: '10px sans-serif',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  pointerEvents: 'none',
 };
 
 export class PianoRollLabels {
@@ -63,15 +64,15 @@ export class PianoRollLabels {
       const label = this.label(this.#headerLaneLabels, index);
       label.textContent = this.headerLaneLabel(lane);
       applyStyle(label, {
-        left: "0",
+        left: '0',
         top: `${(HeaderHeight / headerLanes.length) * index}px`,
         lineHeight: `${HeaderHeight / headerLanes.length}px`,
         width: `${KeyboardWidth}px`,
-        boxSizing: "border-box",
-        paddingLeft: "4px",
-        color: "#bbb",
-        backgroundColor: "#2a2a2a",
-        display: "block",
+        boxSizing: 'border-box',
+        paddingLeft: '4px',
+        color: '#bbb',
+        backgroundColor: '#2a2a2a',
+        display: 'block',
       });
     });
 
@@ -84,19 +85,19 @@ export class PianoRollLabels {
       // Get or make a label for this lane
       const label = this.label(this.#laneLabels, laneCount++);
       label.textContent = lane.label;
-      label.title = `${lane.label} (pitch ${lane.pitches.join(", ")})`;
+      label.title = `${lane.label} (pitch ${lane.pitches.join(', ')})`;
 
       // Set the style
       const style: CSSProperties = {
-        left: "0",
+        left: '0',
         top: `${y}px`,
         lineHeight: `${laneHeight}px`,
         width: `${KeyboardWidth}px`,
-        boxSizing: "border-box",
-        paddingLeft: "4px",
-        color: "#bbb",
-        backgroundColor: "#2a2a2a",
-        display: "block",
+        boxSizing: 'border-box',
+        paddingLeft: '4px',
+        color: '#bbb',
+        backgroundColor: '#2a2a2a',
+        display: 'block',
       };
       applyStyle(label, style);
     });
@@ -137,8 +138,8 @@ export class PianoRollLabels {
           top: `${y}px`,
           lineHeight: `${camera.v}px`,
           width: `${KeyboardWidth * 0.3}px`,
-          color: "#333",
-          display: "block",
+          color: '#333',
+          display: 'block',
         };
         applyStyle(label, style);
       }
@@ -153,12 +154,12 @@ export class PianoRollLabels {
 
   private headerLaneLabel(lane: HeaderLane): string {
     switch (lane) {
-      case "tempo":
-        return "Tempo";
-      case "timeSignature":
-        return "Time Sig";
-      case "text":
-        return "Text";
+      case 'tempo':
+        return 'Tempo';
+      case 'timeSignature':
+        return 'Time Sig';
+      case 'text':
+        return 'Text';
     }
   }
 
@@ -166,8 +167,8 @@ export class PianoRollLabels {
   private label(pool: HTMLDivElement[], index: number): HTMLDivElement {
     let label = pool[index];
     if (!label) {
-      label = document.createElement("div");
-      label.className = "piano-roll-label";
+      label = document.createElement('div');
+      label.className = 'piano-roll-label';
 
       applyStyle(label, LabelStyle);
       pool[index] = label;
@@ -179,7 +180,7 @@ export class PianoRollLabels {
   /* Hide elements in the pool starting from the specified index to the end. */
   private hideFrom(pool: HTMLDivElement[], index: number): void {
     for (let i = index; i < pool.length; i++) {
-      pool[i].style.display = "none";
+      pool[i].style.display = 'none';
     }
   }
 }

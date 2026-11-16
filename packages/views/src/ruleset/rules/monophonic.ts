@@ -1,19 +1,19 @@
 import {
+  type ConstraintOf,
+  type RuleCheck,
   compact,
   spansOverlap,
   violation,
-  type ConstraintOf,
-  type RuleCheck,
-} from "../context";
+} from '../context';
 
 /** Notes of the listed classes may not overlap one another. */
-export const checkMonophonic: RuleCheck<ConstraintOf<"monophonic">> = (
+export const checkMonophonic: RuleCheck<ConstraintOf<'monophonic'>> = (
   ctx,
   c,
 ) => {
   const classes = new Set(c.noteClasses);
   const notes = ctx.notes
-    .filter((n) => n.role.kind === "noteClass" && classes.has(n.role.id))
+    .filter((n) => n.role.kind === 'noteClass' && classes.has(n.role.id))
     .sort((a, b) => a.tick - b.tick);
   const out = [];
   for (let i = 0; i < notes.length; i++) {
@@ -27,7 +27,7 @@ export const checkMonophonic: RuleCheck<ConstraintOf<"monophonic">> = (
           violation(
             c.id,
             c.severity,
-            "Notes may not overlap on a monophonic track",
+            'Notes may not overlap on a monophonic track',
             b.tick,
             [a.id, b.id],
           ),

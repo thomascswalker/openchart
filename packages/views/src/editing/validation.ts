@@ -5,29 +5,29 @@
  * overlay with `computePreview`, and hands the enforcer the affected tracks.
  * Nothing here mutates the document.
  */
-import type { TrackRules } from "../ruleset/compile";
-import type { CompiledRuleset } from "../ruleset/compile";
+import type { TrackRules } from '../ruleset/compile';
+import type { CompiledRuleset } from '../ruleset/compile';
 import {
-  RuleEnforcer,
   type EnforcerNote,
+  RuleEnforcer,
   type RuleViolation,
   type RulesetContext,
   type TrackEdit,
-} from "../ruleset/index";
-import { checkTextEvent } from "../ruleset/textEvents";
-import type { GeneralCommand } from "./commands";
-import { EditCommandType } from "./commands";
-import { parseEntityFromId, type EntityId } from "./entity";
-import type { EditingTarget } from "./modes/mode";
-import { computePreview } from "./preview";
-import type { ChartDocumentReader, NoteSnapshot } from "./reader";
+} from '../ruleset/index';
+import { checkTextEvent } from '../ruleset/textEvents';
+import type { GeneralCommand } from './commands';
+import { EditCommandType } from './commands';
+import { type EntityId, parseEntityFromId } from './entity';
+import type { EditingTarget } from './modes/mode';
+import { computePreview } from './preview';
+import type { DocumentReader, NoteSnapshot } from './reader';
 
 /** Virtual track index for notes added to a track that does not exist yet. */
 const PENDING_TRACK = -1;
 
 export function validateRawCommands(
   commands: readonly GeneralCommand[],
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
   rulesContext: RulesetContext,
@@ -44,7 +44,7 @@ export function validateRawCommands(
 
 function rulesForTrack(
   trackIndex: number,
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
 ): TrackRules | null {
@@ -56,7 +56,7 @@ function rulesForTrack(
 
 export function buildTrackEdits(
   commands: readonly GeneralCommand[],
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
 ): TrackEdit[] {
@@ -135,7 +135,7 @@ function windowNotes(
 /** Grammar check for ADD_TEXT / UPDATE_TEXT on configured tracks. */
 function validateTextCommands(
   commands: readonly GeneralCommand[],
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
   target: EditingTarget,
   compiled: CompiledRuleset,
 ): RuleViolation[] {
@@ -182,10 +182,10 @@ function validateTextCommands(
 
 function parseTextId(
   id: EntityId,
-  reader: ChartDocumentReader,
+  reader: DocumentReader,
 ): { trackIndex: number; metaType: number; tick: number } | null {
   const parsed = parseEntityFromId(id);
-  if (!parsed || parsed.type !== "text" || parsed.trackIndex === undefined) {
+  if (!parsed || parsed.type !== 'text' || parsed.trackIndex === undefined) {
     return null;
   }
   const event = reader

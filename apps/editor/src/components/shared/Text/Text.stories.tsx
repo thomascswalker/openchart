@@ -1,16 +1,17 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Code } from "./Code";
-import { CodeBlock } from "./Code";
-import { Heading } from "./Heading";
-import { Text } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Text } from '..';
+import { Code } from './Code';
+import { CodeBlock } from './Code';
+import { Heading } from './Heading';
 
 const levels = [1, 2, 3, 4, 5, 6] as const;
 
 const meta = {
-  title: "Shared/Text",
+  title: 'Shared/Text',
   component: Text,
   args: {
-    children: "The quick brown fox jumps over the lazy dog.",
+    children: 'The quick brown fox jumps over the lazy dog.',
   },
 } satisfies Meta<typeof Text>;
 
@@ -21,7 +22,7 @@ export const Default: Story = {};
 
 export const Headings: Story = {
   render: () => (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div style={{ display: 'grid', gap: 12 }}>
       {levels.map((level) => (
         <Heading key={level} level={level}>
           Heading level {level}
@@ -37,7 +38,7 @@ export const _CodeBlock: Story = {
 const foo = "bar";
 console.log(hello, foo);`;
     return (
-      <div style={{ gap: "12px", display: "grid" }}>
+      <div style={{ gap: '12px', display: 'grid' }}>
         <CodeBlock>{code}</CodeBlock>
         <CodeBlock variation="error">{code}</CodeBlock>
       </div>

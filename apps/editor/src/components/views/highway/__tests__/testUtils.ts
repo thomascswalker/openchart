@@ -1,23 +1,24 @@
-import { Midi } from "@openchart/midi";
+import { Midi } from '@openchart/midi';
 import {
-  DefaultCompiledRuleset,
-  createStandaloneEditing,
-  Difficulty,
-  formatNoteId,
-  SongView,
   type ClipboardPayload,
   type CompiledRuleset,
+  DefaultCompiledRuleset,
+  Difficulty,
   type EditingSession,
   type PhraseEffect,
   type PreviewState,
+  SongView,
   type TrackDescriptor,
-} from "@openchart/views";
-import type { ChartView } from "@openchart/views";
-import type { ChartViewState } from "../../AbstractChartView";
-import type { HighwayContext } from "../context";
+  createStandaloneEditing,
+  formatNoteId,
+} from '@openchart/views';
+import type { ChartView } from '@openchart/views';
+
+import type { ChartViewState } from '../../AbstractChartView';
+import type { HighwayContext } from '../context';
 
 export function createHighwayTestSetup(
-  trackKey: "lead-guitar" | "drums" = "lead-guitar",
+  trackKey: 'lead-guitar' | 'drums' = 'lead-guitar',
   rules: CompiledRuleset = DefaultCompiledRuleset,
   difficulty = Difficulty.Expert,
 ) {
@@ -38,7 +39,7 @@ export function createHighwayTestSetup(
   const editing = createStandaloneEditing(midi, rules);
   const session = editing.createSession(
     { trackKey, trackIndex, difficulty },
-    "highway",
+    'highway',
   );
   const state: ChartViewState = {
     midi,
@@ -51,13 +52,13 @@ export function createHighwayTestSetup(
     isPlaying: false,
   };
   let preview: PreviewState | null = null;
-  let toolMode: "select" | "place" | "remove" = "select";
-  let phraseMode: "solo" | "stagepower" | null = null;
+  let toolMode: 'select' | 'place' | 'remove' = 'select';
+  let phraseMode: 'solo' | 'stagepower' | null = null;
   let playheadTick = 0;
   let cameraTick = 0;
   let selectionRange: { start: number; end: number } | null = null;
-  let notePlacementType = "normal";
-  let drumPlacementKind: "pad" | "cymbal" | "kick" = "pad";
+  let notePlacementType = 'normal';
+  let drumPlacementKind: 'pad' | 'cymbal' | 'kick' = 'pad';
   const context = {
     getState: () => state,
     getMidi: () => midi,
@@ -110,22 +111,22 @@ export function createHighwayTestSetup(
     selection,
     setNotePlacementType: (next: typeof notePlacementType) => {
       notePlacementType =
-        next === "force-hopo"
-          ? "marker:forceHopo"
-          : next === "force-strum"
-            ? "marker:forceStrum"
-            : next === "tap"
-              ? "marker:forceTap"
+        next === 'force-hopo'
+          ? 'marker:forceHopo'
+          : next === 'force-strum'
+            ? 'marker:forceStrum'
+            : next === 'tap'
+              ? 'marker:forceTap'
               : next;
     },
     setDrumPlacementKind: (next: typeof drumPlacementKind) => {
       drumPlacementKind = next;
       notePlacementType =
-        next === "cymbal"
-          ? "padType:cymbal"
-          : next === "kick"
-            ? "bar:kick"
-            : "normal";
+        next === 'cymbal'
+          ? 'padType:cymbal'
+          : next === 'kick'
+            ? 'bar:kick'
+            : 'normal';
     },
     setToolMode: (next: typeof toolMode) => {
       toolMode = next;
@@ -162,8 +163,8 @@ export function getPhrasePitch(
   kind: string,
 ): number | undefined {
   const effectByKind: Record<string, PhraseEffect> = {
-    stagepower: "starPower",
-    solo: "solo",
+    stagepower: 'starPower',
+    solo: 'solo',
   };
   const phrase = descriptor.rules.phrases.find(
     (item) => item.id === kind || item.effect === effectByKind[kind],
@@ -176,7 +177,7 @@ export function copyHighwaySelectionToClipboard(
 ): ClipboardPayload {
   const trackIndex = setup.session.target.trackIndex;
   if (trackIndex === null) {
-    throw new Error("Highway test session has no target track");
+    throw new Error('Highway test session has no target track');
   }
   const selectedIds = new Set(setup.session.selection.getSelectedIds());
   const notes = setup.midiTrack.getNotes().flatMap((note) => {
@@ -202,7 +203,7 @@ export function copyHighwaySelectionToClipboard(
     ];
   });
   if (notes.length === 0) {
-    throw new Error("Highway test selection has no notes");
+    throw new Error('Highway test selection has no notes');
   }
   const firstTick = Math.min(...notes.map(({ snapshot }) => snapshot.tick));
   const payload: ClipboardPayload = {

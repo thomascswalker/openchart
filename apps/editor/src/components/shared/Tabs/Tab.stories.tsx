@@ -1,15 +1,16 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, HorizontalSeparator, Tabs, type TabsProps } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Button, HorizontalSeparator, Tabs, type TabsProps } from '..';
 
 const meta = {
-  title: "Shared/Tabs",
+  title: 'Shared/Tabs',
   component: Tabs,
 } satisfies Meta<typeof Tabs>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const options = ["Tab1", "Tab2", "Tab3"].map((title) => ({
+const options = ['Tab1', 'Tab2', 'Tab3'].map((title) => ({
   title,
   icon: title,
 }));
@@ -40,7 +41,7 @@ export const Default: Story = {
 
 const AlignmentView = ({ options, children }: TabsProps) => {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       Left
       <Tabs options={options} alignment="left">
         {children}

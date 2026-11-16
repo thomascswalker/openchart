@@ -71,7 +71,7 @@
   background: var(--primary-lighter);
 }
 
-.horizontal:has(> .pane:first-child [data-collapsed="true"])
+.horizontal:has(> .pane:first-child [data-collapsed='true'])
   > .pane:first-child {
   flex: 0 0 max-content !important;
   width: max-content;

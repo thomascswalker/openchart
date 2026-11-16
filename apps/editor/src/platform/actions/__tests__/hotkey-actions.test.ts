@@ -1,33 +1,40 @@
-import { describe, expect, it, vi } from "vitest";
-import { VocalNoteKind, VocalPhraseKind } from "@openchart/views";
-import type { ServicesAccessor } from "../../services";
-import { ViewportService } from "../../services/editor/viewports";
-import { EditorStateService } from "../../services/editor/state";
-import { ActiveChartViewService } from "../../services/editor/activeChartView";
-import { CloseTopmostDialogAction } from "../dialog/close-topmost";
-import { SetHighwayToolAction } from "../highway/set-tool";
-import { ToggleHighwayPhraseToolAction } from "../highway/toggle-phrase-tool";
-import { ToggleVocalPhraseAction } from "../piano-roll/toggle-vocal-phrase";
-import { DeleteSelectionAction } from "../editor/delete-selection";
-import { StepSnapDenominatorAction } from "../editor/step-snap-denominator";
-import { TransposeSelectionAction } from "../piano-roll/transpose-selection";
-import { ToggleLaneNoteAction } from "../highway/toggle-lane-note";
-import { ReleaseLaneNoteAction } from "../highway/release-lane-note";
-import { createTestRulesetService } from "../../services/ruleset/__tests__/testUtils";
-import { EditingModeId } from "@openchart/views";
+import { VocalNoteKind, VocalPhraseKind } from '@openchart/views';
+import { EditingModeId } from '@openchart/views';
+import { describe, expect, it, vi } from 'vitest';
+
+import { ActiveChartViewService } from '../../services/editor/activeChartView';
+import { EditorStateService } from '../../services/editor/state';
+import { ViewportService } from '../../services/editor/viewports';
+import type { ServicesAccessor } from '../../services/registry';
+import { createTestRulesetService } from '../../services/ruleset/__tests__/testUtils';
+import { CloseTopmostDialogAction } from '../dialog/close-topmost';
+import { DeleteSelectionAction } from '../editor/delete-selection';
+import { StepSnapDenominatorAction } from '../editor/step-snap-denominator';
+import { ReleaseLaneNoteAction } from '../highway/release-lane-note';
+import { SetHighwayToolAction } from '../highway/set-tool';
+import { ToggleLaneNoteAction } from '../highway/toggle-lane-note';
+import { ToggleHighwayPhraseToolAction } from '../highway/toggle-phrase-tool';
+import { ToggleVocalPhraseAction } from '../piano-roll/toggle-vocal-phrase';
+import { TransposeSelectionAction } from '../piano-roll/transpose-selection';
 
 function accessor(services: Record<string, unknown>): ServicesAccessor {
   return { get: <T>(id: string) => services[id] as T };
 }
 
-describe("viewport tool actions", () => {
+function createViewportService(): ViewportService {
+  const service = new ViewportService(createTestRulesetService());
+  service.init();
+  return service;
+}
+
+describe('viewport tool actions', () => {
   function toolServices(viewports: ViewportService, modeId: string) {
     const editing = {
       getActiveSession: () => ({
-        mode: { id: modeId, tools: [{ stateKey: "phrase" }] },
+        mode: { id: modeId, tools: [{ stateKey: 'phrase' }] },
         getTools: () => [
-          { stateKey: "phrase", value: "solo" },
-          { stateKey: "phrase", value: "stagepower" },
+          { stateKey: 'phrase', value: 'solo' },
+          { stateKey: 'phrase', value: 'stagepower' },
         ],
         getToolState: () => viewports.getActiveViewport()?.tools[modeId] ?? {},
       }),
@@ -44,28 +51,28 @@ describe("viewport tool actions", () => {
       },
     };
     return accessor({
-      "editor.viewports": viewports,
-      "editor.editing": editing,
+      'editor.viewports': viewports,
+      'editor.editing': editing,
     });
   }
 
-  it("sets the highway tool on the active viewport only", () => {
-    const viewports = new ViewportService(createTestRulesetService());
+  it('sets the highway tool on the active viewport only', () => {
+    const viewports = createViewportService();
     const other = viewports.getSnapshot().activeViewportId;
     viewports.setModeToolState(other, EditingModeId.ChartLanes, {
-      tool: "select",
+      tool: 'select',
       phrase: null,
-      placement: "normal",
+      placement: 'normal',
     });
-    const active = viewports.addViewport("highway")!;
+    const active = viewports.addViewport('highway')!;
     viewports.setModeToolState(active, EditingModeId.ChartLanes, {
-      tool: "select",
-      phrase: "solo",
-      placement: "normal",
+      tool: 'select',
+      phrase: 'solo',
+      placement: 'normal',
     });
     new SetHighwayToolAction().run(
       toolServices(viewports, EditingModeId.ChartLanes),
-      "place",
+      'place',
     );
     expect(
       (
@@ -73,7 +80,7 @@ describe("viewport tool actions", () => {
           tool: string;
         }
       ).tool,
-    ).toBe("place");
+    ).toBe('place');
     expect(
       (
         viewports.getViewport(active)?.tools[EditingModeId.ChartLanes] as {
@@ -87,37 +94,37 @@ describe("viewport tool actions", () => {
           tool: string;
         }
       ).tool,
-    ).toBe("select");
+    ).toBe('select');
   });
 
-  it("toggles phrase tools back to select", () => {
-    const viewports = new ViewportService(createTestRulesetService());
+  it('toggles phrase tools back to select', () => {
+    const viewports = createViewportService();
     const services = toolServices(viewports, EditingModeId.ChartLanes);
     const action = new ToggleHighwayPhraseToolAction();
-    action.run(services, "solo");
+    action.run(services, 'solo');
     expect(
       (
         viewports.getActiveViewport()?.tools[EditingModeId.ChartLanes] as {
           phrase: string;
         }
       ).phrase,
-    ).toBe("solo");
+    ).toBe('solo');
     expect(
       (
         viewports.getActiveViewport()?.tools[EditingModeId.ChartLanes] as {
           tool: string;
         }
       ).tool,
-    ).toBe("select");
-    action.run(services, "stagepower");
+    ).toBe('select');
+    action.run(services, 'stagepower');
     expect(
       (
         viewports.getActiveViewport()?.tools[EditingModeId.ChartLanes] as {
           phrase: string;
         }
       ).phrase,
-    ).toBe("stagepower");
-    action.run(services, "stagepower");
+    ).toBe('stagepower');
+    action.run(services, 'stagepower');
     expect(
       (
         viewports.getActiveViewport()?.tools[EditingModeId.ChartLanes] as {
@@ -127,8 +134,8 @@ describe("viewport tool actions", () => {
     ).toBeNull();
   });
 
-  it("toggles vocal phrases and keeps the note kind", () => {
-    const viewports = new ViewportService(createTestRulesetService());
+  it('toggles vocal phrases and keeps the note kind', () => {
+    const viewports = createViewportService();
     const id = viewports.getSnapshot().activeViewportId;
     viewports.setModeToolState(id, EditingModeId.MidiVocals, {
       noteKind: VocalNoteKind.Percussion,
@@ -153,11 +160,11 @@ describe("viewport tool actions", () => {
     ).toBeNull();
   });
 
-  it("steps the snap denominator through the available choices", () => {
-    const viewports = new ViewportService(createTestRulesetService());
+  it('steps the snap denominator through the available choices', () => {
+    const viewports = createViewportService();
     viewports.setSnapDenominator(4);
     const action = new StepSnapDenominatorAction();
-    const services = accessor({ "editor.viewports": viewports });
+    const services = accessor({ 'editor.viewports': viewports });
     action.run(services, 1);
     expect(viewports.getSnapshot().snapDenominator).toBeGreaterThan(4);
     action.run(services, -1);
@@ -165,26 +172,27 @@ describe("viewport tool actions", () => {
   });
 });
 
-describe("dialog.close-topmost", () => {
-  it("closes one dialog at a time, frontmost first", () => {
+describe('dialog.close-topmost', () => {
+  it('closes one dialog at a time, frontmost first', () => {
     const state = new EditorStateService();
     state.setSettingsVisible(true);
     state.setAboutVisible(true);
     const action = new CloseTopmostDialogAction();
-    action.run(accessor({ "editor.state": state }));
+    action.run(accessor({ 'editor.state': state }));
     expect(state.getSnapshot().aboutVisible).toBe(false);
     expect(state.getSnapshot().settingsVisible).toBe(true);
-    action.run(accessor({ "editor.state": state }));
+    action.run(accessor({ 'editor.state': state }));
     expect(state.getSnapshot().settingsVisible).toBe(false);
   });
 });
 
-describe("view command actions", () => {
-  it("do nothing without a matching active view", () => {
+describe('view command actions', () => {
+  it('do nothing without a matching active view', () => {
     const active = new ActiveChartViewService();
+    active.init();
     const services = accessor({
-      "editor.active-chart-view": active,
-      "editor.editing": { getActiveSession: () => null },
+      'editor.active-chart-view': active,
+      'editor.editing': { getActiveSession: () => null },
     });
     expect(() => new DeleteSelectionAction().run(services)).not.toThrow();
     expect(() =>
@@ -194,10 +202,11 @@ describe("view command actions", () => {
     expect(() => new TransposeSelectionAction().run(services, 1)).not.toThrow();
   });
 
-  it("route to the active view only when the kind matches", () => {
+  it('route to the active view only when the kind matches', () => {
     const active = new ActiveChartViewService();
+    active.init();
     const highway = {
-      kind: "highway" as const,
+      kind: 'highway' as const,
       toggleLaneNote: vi.fn(),
       releaseLaneNote: vi.fn(),
       deleteSelection: vi.fn(),
@@ -206,8 +215,8 @@ describe("view command actions", () => {
     const selection = { getSelectedIds: () => [] };
     const editingSession = { selection, execute: vi.fn() };
     const services = accessor({
-      "editor.active-chart-view": active,
-      "editor.editing": { getActiveSession: () => editingSession },
+      'editor.active-chart-view': active,
+      'editor.editing': { getActiveSession: () => editingSession },
     });
     new ToggleLaneNoteAction().run(services, 2, true);
     expect(highway.toggleLaneNote).toHaveBeenCalledWith(2, true);
@@ -218,6 +227,6 @@ describe("view command actions", () => {
     expect(editingSession.execute).not.toHaveBeenCalled();
     // A piano roll command must not reach a highway view.
     new TransposeSelectionAction().run(services, 12);
-    expect(active.getActive("piano-roll")).toBeNull();
+    expect(active.getActive('piano-roll')).toBeNull();
   });
 });

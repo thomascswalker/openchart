@@ -1,15 +1,17 @@
 import {
-  useRef,
-  useState,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
-} from "react";
-import classNames from "classnames";
-import styles from "./splitter.module.css";
+  useRef,
+  useState,
+} from 'react';
+
+import classNames from 'classnames';
+
+import styles from './splitter.module.css';
 
 /** Horizontal places panes side by side; vertical stacks them. */
-type SplitterOrientation = "horizontal" | "vertical";
+type SplitterOrientation = 'horizontal' | 'vertical';
 
 interface SplitterProps {
   children: [ReactNode, ReactNode];
@@ -27,7 +29,7 @@ interface DragState {
 
 function Splitter({
   children,
-  orientation = "horizontal",
+  orientation = 'horizontal',
   initialSize = 400,
   minFirstSize = 120,
   minSecondSize = 160,
@@ -35,7 +37,7 @@ function Splitter({
   const [firstSize, setFirstSize] = useState(initialSize);
   const drag = useRef<DragState | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const isHorizontal = orientation === "horizontal";
+  const isHorizontal = orientation === 'horizontal';
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -77,8 +79,8 @@ function Splitter({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const decrementKey = isHorizontal ? "ArrowLeft" : "ArrowUp";
-    const incrementKey = isHorizontal ? "ArrowRight" : "ArrowDown";
+    const decrementKey = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
+    const incrementKey = isHorizontal ? 'ArrowRight' : 'ArrowDown';
     if (event.key !== decrementKey && event.key !== incrementKey) {
       return;
     }
@@ -124,7 +126,7 @@ function Splitter({
         className={styles.separator}
         role="separator"
         aria-label="Resize panels"
-        aria-orientation={isHorizontal ? "vertical" : "horizontal"}
+        aria-orientation={isHorizontal ? 'vertical' : 'horizontal'}
         aria-valuenow={firstSize}
         aria-valuemin={minFirstSize}
         tabIndex={0}

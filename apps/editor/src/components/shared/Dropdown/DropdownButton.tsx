@@ -1,8 +1,10 @@
-import { useState } from "react";
-import type { ReactNode } from "react";
-import "choices.js/public/assets/styles/choices.css";
-import { Button, Dropdown, type DropdownOption } from "..";
-import styles from "./dropdown.module.css";
+import { useState } from 'react';
+import type { ReactNode } from 'react';
+
+import 'choices.js/public/assets/styles/choices.css';
+
+import { Button, Dropdown, type DropdownOption } from '..';
+import styles from './dropdown.module.css';
 
 interface DropdownButtonProps {
   label: string;
@@ -46,11 +48,11 @@ const DropdownButton = ({
 
   return (
     <div
-      className={styles["dropdown-button"]}
+      className={styles['dropdown-button']}
       style={{
         minWidth: dropdownWidth,
         maxWidth: Number(dropdownWidth) + 50,
-        border: "none",
+        border: 'none',
       }}
     >
       <Button
@@ -58,7 +60,7 @@ const DropdownButton = ({
         borderTopRightRadius={0}
         borderBottomRightRadius={0}
         border="none"
-        className={styles["dropdown-button__value"]}
+        className={styles['dropdown-button__value']}
         checked={isActive}
         disabled={disabled}
         aria-label={ariaLabel ?? label}
@@ -73,7 +75,7 @@ const DropdownButton = ({
         value={value}
         onChange={onChange}
         disabled={disabled || dropdownDisabled}
-        className={styles["dropdown-button__select"]}
+        className={styles['dropdown-button__select']}
       />
     </div>
   );

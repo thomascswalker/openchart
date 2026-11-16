@@ -1,19 +1,19 @@
 import {
+  type ConstraintOf,
+  type RuleCheck,
   compact,
   spansOverlap,
   violation,
-  type ConstraintOf,
-  type RuleCheck,
-} from "../context";
+} from '../context';
 
 /** Notes and markers of the same pitch may not overlap. Phrase pitches are covered by the implicit phrase rule. */
 export const checkNoOverlappingSamePitch: RuleCheck<
-  ConstraintOf<"noOverlappingSamePitch">
+  ConstraintOf<'noOverlappingSamePitch'>
 > = (ctx, c) => {
   const out = [];
   for (const n of ctx.notes) {
     if (!ctx.touched.has(n.id)) continue;
-    if (n.role.kind !== "laneNote" && n.role.kind !== "marker") continue;
+    if (n.role.kind !== 'laneNote' && n.role.kind !== 'marker') continue;
     for (const o of ctx.byPitch.get(n.pitch) ?? []) {
       if (o.id === n.id) continue;
       if (ctx.touched.has(o.id) && o.id < n.id) continue; // report each pair once

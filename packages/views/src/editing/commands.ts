@@ -1,5 +1,6 @@
-import type { TextMetaType } from "@openchart/midi";
-import type { EntityId } from "./entity";
+import type { TextMetaType } from '@openchart/midi';
+
+import type { EntityId } from './entity';
 
 /** Values needed to insert a note at an absolute tick. */
 export interface InsertNoteOptions {
@@ -20,34 +21,34 @@ export interface UpdateNoteOptions {
 }
 
 export enum EditCommandType {
-  AddNotes = "ADD_NOTES",
-  UpdateNotes = "UPDATE_NOTES",
-  MoveNotes = "MOVE_NOTES",
-  ResizeNotes = "RESIZE_NOTES",
-  DeleteEntities = "DELETE_ENTITIES",
-  AddText = "ADD_TEXT",
-  UpdateText = "UPDATE_TEXT",
-  SetTempo = "SET_TEMPO",
-  RemoveTempo = "REMOVE_TEMPO",
-  SetTimeSignature = "SET_TIME_SIGNATURE",
-  RemoveTimeSignature = "REMOVE_TIME_SIGNATURE",
+  AddNotes = 'ADD_NOTES',
+  UpdateNotes = 'UPDATE_NOTES',
+  MoveNotes = 'MOVE_NOTES',
+  ResizeNotes = 'RESIZE_NOTES',
+  DeleteEntities = 'DELETE_ENTITIES',
+  AddText = 'ADD_TEXT',
+  UpdateText = 'UPDATE_TEXT',
+  SetTempo = 'SET_TEMPO',
+  RemoveTempo = 'REMOVE_TEMPO',
+  SetTimeSignature = 'SET_TIME_SIGNATURE',
+  RemoveTimeSignature = 'REMOVE_TIME_SIGNATURE',
 }
 
 export enum DomainCommandType {
-  PlaceChartNote = "PLACE_CHART_NOTE",
-  MoveChartNotes = "MOVE_CHART_NOTES",
-  SetSustainEnd = "SET_SUSTAIN_END",
-  CutSustains = "CUT_SUSTAINS",
-  CreatePhrase = "CREATE_PHRASE",
-  UpdatePhrase = "UPDATE_PHRASE",
-  PasteChartNotes = "PASTE_CHART_NOTES",
-  AddVocalNote = "ADD_VOCAL_NOTE",
-  SetLyric = "SET_LYRIC",
-  MoveVocalEntities = "MOVE_VOCAL_ENTITIES",
-  ResizeVocalEntities = "RESIZE_VOCAL_ENTITIES",
-  CreateVocalPhrase = "CREATE_VOCAL_PHRASE",
-  AddSection = "ADD_SECTION",
-  PasteClipboard = "PASTE_CLIPBOARD",
+  PlaceChartNote = 'PLACE_CHART_NOTE',
+  MoveChartNotes = 'MOVE_CHART_NOTES',
+  SetSustainEnd = 'SET_SUSTAIN_END',
+  CutSustains = 'CUT_SUSTAINS',
+  CreatePhrase = 'CREATE_PHRASE',
+  UpdatePhrase = 'UPDATE_PHRASE',
+  PasteChartNotes = 'PASTE_CHART_NOTES',
+  AddVocalNote = 'ADD_VOCAL_NOTE',
+  SetLyric = 'SET_LYRIC',
+  MoveVocalEntities = 'MOVE_VOCAL_ENTITIES',
+  ResizeVocalEntities = 'RESIZE_VOCAL_ENTITIES',
+  CreateVocalPhrase = 'CREATE_VOCAL_PHRASE',
+  AddSection = 'ADD_SECTION',
+  PasteClipboard = 'PASTE_CLIPBOARD',
 }
 
 export interface ICommand {

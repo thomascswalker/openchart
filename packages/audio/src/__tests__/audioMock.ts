@@ -1,4 +1,4 @@
-import type { AudioSampleOptions } from "../sample.js";
+import type { AudioSampleOptions } from '../sample.js';
 
 export type MockAudioEvent = { data: unknown };
 
@@ -57,19 +57,19 @@ export function createMockAudio(options: AudioSampleOptions): MockAudio {
     },
     emit(eventType, data) {
       switch (eventType) {
-        case "loaded":
+        case 'loaded':
           this.options.onLoaded?.({ data });
           break;
-        case "play":
+        case 'play':
           this.options.onPlay?.({ data });
           break;
-        case "pause":
+        case 'pause':
           this.options.onPause?.({ data });
           break;
-        case "stop":
+        case 'stop':
           this.options.onStop?.({ data });
           break;
-        case "ended":
+        case 'ended':
           this.options.onEnded?.({ data });
           break;
       }

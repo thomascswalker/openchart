@@ -1,6 +1,6 @@
-import type { EditCommand } from "./commands";
-import type { RuleViolation } from "../ruleset/index";
-import type { EntityId } from "./entity";
+import type { RuleViolation } from '../ruleset/index';
+import type { EditCommand } from './commands';
+import type { EntityId } from './entity';
 
 /** A command-specific explanation for an edit that could not be expanded. */
 export interface Rejection {
@@ -27,7 +27,7 @@ export class EditRejectedError extends Error {
 
   public constructor(code: string, message: string, command: EditCommand) {
     super(message);
-    this.name = "EditRejectedError";
+    this.name = 'EditRejectedError';
     this.code = code;
     this.command = command;
   }

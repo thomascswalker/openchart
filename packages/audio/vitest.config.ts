@@ -1,10 +1,10 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ['src/**/*.test.ts'],
     printConsoleTrace: true,
     disableConsoleIntercept: true,
-    setupFiles: ["./vitest.setup.ts"],
+    setupFiles: ['./vitest.setup.ts'],
   },
 });

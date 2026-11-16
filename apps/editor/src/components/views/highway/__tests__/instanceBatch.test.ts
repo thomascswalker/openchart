@@ -1,7 +1,8 @@
-import * as THREE from "three";
-import { describe, expect, it, vi } from "vitest";
-import { HIGHWAY_GEOMETRY_CATALOG } from "../rendering/geometryCatalog";
-import { NoteInstanceBatch } from "../rendering/instanceBatch";
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
+
+import { HIGHWAY_GEOMETRY_CATALOG } from '../rendering/geometryCatalog';
+import { NoteInstanceBatch } from '../rendering/instanceBatch';
 
 function primitive(): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -9,8 +10,8 @@ function primitive(): THREE.Mesh {
   return new THREE.Mesh(geometry, material);
 }
 
-describe("NoteInstanceBatch", () => {
-  it("shares instance buffers across model primitives", () => {
+describe('NoteInstanceBatch', () => {
+  it('shares instance buffers across model primitives', () => {
     const scene = new THREE.Scene();
     const template = new THREE.Group();
     template.add(primitive(), primitive());
@@ -19,7 +20,7 @@ describe("NoteInstanceBatch", () => {
     const batch = new NoteInstanceBatch(
       scene,
       template,
-      ["tinted", "neutral"],
+      ['tinted', 'neutral'],
       {
         noteTinted: tintedMaterial,
         noteGrayscale: grayscaleMaterial,
@@ -31,8 +32,8 @@ describe("NoteInstanceBatch", () => {
 
     expect(batch.meshes).toHaveLength(2);
     expect(batch.meshes[0].instanceMatrix).toBe(batch.meshes[1].instanceMatrix);
-    expect(batch.meshes[0].geometry.getAttribute("aLaneColorSelected")).toBe(
-      batch.meshes[1].geometry.getAttribute("aLaneColorSelected"),
+    expect(batch.meshes[0].geometry.getAttribute('aLaneColorSelected')).toBe(
+      batch.meshes[1].geometry.getAttribute('aLaneColorSelected'),
     );
     expect(batch.meshes[0].material).toBeInstanceOf(THREE.ShaderMaterial);
     expect(batch.meshes[0].material).not.toBe(batch.meshes[1].material);
@@ -58,12 +59,12 @@ describe("NoteInstanceBatch", () => {
     expect(batch.meshes[1].count).toBe(2);
     expect(batch.meshes[0].instanceMatrix.array[12]).toBe(1);
     expect(
-      batch.meshes[0].geometry.getAttribute("aLaneColorSelected").array,
+      batch.meshes[0].geometry.getAttribute('aLaneColorSelected').array,
     ).toEqual(expect.objectContaining({ 0: 1, 1: 0, 2: 0, 3: 1, 4: 0, 5: 1 }));
     const matrixVersion = batch.meshes[0].instanceMatrix.version;
     const colorVersion = (
       batch.meshes[0].geometry.getAttribute(
-        "aLaneColorSelected",
+        'aLaneColorSelected',
       ) as THREE.BufferAttribute
     ).version;
     batch.write([
@@ -74,7 +75,7 @@ describe("NoteInstanceBatch", () => {
     expect(
       (
         batch.meshes[0].geometry.getAttribute(
-          "aLaneColorSelected",
+          'aLaneColorSelected',
         ) as THREE.BufferAttribute
       ).version,
     ).toBe(colorVersion);
@@ -91,14 +92,14 @@ describe("NoteInstanceBatch", () => {
     expect(scene.children).toHaveLength(0);
   });
 
-  it("grows in powers of two and shrinks after sustained low usage", () => {
+  it('grows in powers of two and shrinks after sustained low usage', () => {
     const scene = new THREE.Scene();
     const template = new THREE.Group();
     template.add(primitive());
     const batch = new NoteInstanceBatch(
       scene,
       template,
-      ["tinted"],
+      ['tinted'],
       {
         noteTinted: new THREE.ShaderMaterial(),
         noteGrayscale: new THREE.ShaderMaterial(),
@@ -108,7 +109,7 @@ describe("NoteInstanceBatch", () => {
       5,
     );
     let now = 0;
-    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
 
     batch.write(
       Array.from({ length: 5 }, (_, index) => ({
@@ -130,7 +131,7 @@ describe("NoteInstanceBatch", () => {
     batch.dispose();
   });
 
-  it("shares baked geometry data between batches with independent shells", () => {
+  it('shares baked geometry data between batches with independent shells', () => {
     const scene = new THREE.Scene();
     const template = new THREE.Group();
     template.add(primitive());
@@ -138,7 +139,7 @@ describe("NoteInstanceBatch", () => {
       new NoteInstanceBatch(
         scene,
         template,
-        ["tinted"],
+        ['tinted'],
         {
           noteTinted: new THREE.ShaderMaterial(),
           noteGrayscale: new THREE.ShaderMaterial(),
@@ -149,15 +150,15 @@ describe("NoteInstanceBatch", () => {
       );
     const first = createBatch();
     const second = createBatch();
-    const sharedPosition = first.meshes[0].geometry.getAttribute("position");
+    const sharedPosition = first.meshes[0].geometry.getAttribute('position');
 
     expect(second.meshes[0].geometry).not.toBe(first.meshes[0].geometry);
-    expect(second.meshes[0].geometry.getAttribute("position")).toBe(
+    expect(second.meshes[0].geometry.getAttribute('position')).toBe(
       sharedPosition,
     );
 
     first.dispose();
-    expect(second.meshes[0].geometry.getAttribute("position")).toBe(
+    expect(second.meshes[0].geometry.getAttribute('position')).toBe(
       sharedPosition,
     );
     second.dispose();
@@ -169,14 +170,14 @@ describe("NoteInstanceBatch", () => {
     });
   });
 
-  it("keeps nearest notes and reports overflow at the hard ceiling", () => {
+  it('keeps nearest notes and reports overflow at the hard ceiling', () => {
     const scene = new THREE.Scene();
     const template = new THREE.Group();
     template.add(primitive());
     const batch = new NoteInstanceBatch(
       scene,
       template,
-      ["tinted"],
+      ['tinted'],
       {
         noteTinted: new THREE.ShaderMaterial(),
         noteGrayscale: new THREE.ShaderMaterial(),

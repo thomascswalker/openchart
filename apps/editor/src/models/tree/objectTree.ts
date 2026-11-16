@@ -1,5 +1,5 @@
-import { Subscriber } from "../../util/subscriber";
-import type { ITreeModel, ITreeNode } from "./tree";
+import { Subscriber } from '../../util/subscriber';
+import type { ITreeModel, ITreeNode } from './tree';
 
 export interface ObjectTreeModelOptions<T> {
   onRefresh?: () => void | Promise<void>;

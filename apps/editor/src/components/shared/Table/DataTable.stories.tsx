@@ -2,17 +2,18 @@ import {
   ChannelMessage,
   MetaType,
   Midi,
+  type MidiChannelEvent,
+  type MidiMetaEvent,
   addRandomChannelEvents,
   addRandomMetaEvents,
   getStatusString,
-  type MidiChannelEvent,
-  type MidiMetaEvent,
-} from "@openchart/midi";
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { DataTable, createAppColumnHelper } from "..";
+} from '@openchart/midi';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { DataTable, createAppColumnHelper } from '..';
 
 const meta = {
-  title: "Shared/DataTable",
+  title: 'Shared/DataTable',
   component: DataTable,
 } satisfies Meta<typeof DataTable>;
 
@@ -38,7 +39,7 @@ const midiMetaEvent: MidiMetaEvent & { bytes: Uint8Array } = {
   length: 0,
   bytes: new Uint8Array([0]),
 };
-type MidiMetaEventHeader = (keyof MidiMetaEvent | "bytes" | "tick")[];
+type MidiMetaEventHeader = (keyof MidiMetaEvent | 'bytes' | 'tick')[];
 
 const makeTrack = () => {
   const midi = new Midi();
@@ -56,7 +57,7 @@ const makeChannelEvents = (
     const { tick } = event;
     const row: Record<string, string> = { tick: String(tick) };
     headers.forEach((header) => {
-      row[header] = String(event[header as keyof typeof event] ?? "");
+      row[header] = String(event[header as keyof typeof event] ?? '');
     });
     return row;
   });
@@ -71,9 +72,9 @@ const makeMetaEvents = (headers: MidiMetaEventHeader, rowCount: number) => {
     const row: Record<string, string> = { tick: String(tick) };
     headers.forEach((header) => {
       const value =
-        header === "bytes" && "text" in event
+        header === 'bytes' && 'text' in event
           ? event.text
-          : header === "bytes" && "bytes" in event
+          : header === 'bytes' && 'bytes' in event
             ? String(event.bytes)
             : event[header as keyof typeof event];
       row[header] = String(value);
@@ -86,32 +87,32 @@ const columnHelper = createAppColumnHelper();
 const columnNames = Object.keys(midiChannelEvent) as (keyof MidiChannelEvent)[];
 
 const channelEventColumnDefs = [
-  columnHelper.accessor("tick" as "deltaTime", {
-    header: "Tick",
+  columnHelper.accessor('tick' as 'deltaTime', {
+    header: 'Tick',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("deltaTime", {
-    header: "Delta Time",
+  columnHelper.accessor('deltaTime', {
+    header: 'Delta Time',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("status", {
-    header: "Status",
+  columnHelper.accessor('status', {
+    header: 'Status',
     cell: ({ cell }) => String(getStatusString(cell.getValue())),
   }),
-  columnHelper.accessor("channel", {
-    header: "Channel",
+  columnHelper.accessor('channel', {
+    header: 'Channel',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("messageType", {
-    header: "Message Type",
+  columnHelper.accessor('messageType', {
+    header: 'Message Type',
     cell: ({ cell }) => ChannelMessage[cell.getValue()],
   }),
-  columnHelper.accessor("data1", {
-    header: "Data 1",
+  columnHelper.accessor('data1', {
+    header: 'Data 1',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("data2", {
-    header: "Data 2",
+  columnHelper.accessor('data2', {
+    header: 'Data 2',
     cell: ({ cell }) => String(cell.getValue()),
   }),
 ];
@@ -120,42 +121,42 @@ const metaColumnNames = Object.keys(
   midiMetaEvent,
 ) as (keyof typeof midiMetaEvent)[];
 const metaColumnDefs = [
-  columnHelper.accessor("tick" as "deltaTime", {
-    header: "Tick",
+  columnHelper.accessor('tick' as 'deltaTime', {
+    header: 'Tick',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("deltaTime", {
-    header: "Delta Time",
+  columnHelper.accessor('deltaTime', {
+    header: 'Delta Time',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("status", {
-    header: "Status",
+  columnHelper.accessor('status', {
+    header: 'Status',
     cell: ({ cell }) => String(getStatusString(cell.getValue())),
   }),
-  columnHelper.accessor("type", {
-    header: "Type",
+  columnHelper.accessor('type', {
+    header: 'Type',
     cell: ({ cell }) => String(MetaType[cell.getValue()]),
   }),
-  columnHelper.accessor("length", {
-    header: "Length",
+  columnHelper.accessor('length', {
+    header: 'Length',
     cell: ({ cell }) => String(cell.getValue()),
   }),
-  columnHelper.accessor("bytes", {
-    header: "Data",
+  columnHelper.accessor('bytes', {
+    header: 'Data',
     cell: ({ cell }) => String(cell.getValue()),
   }),
 ];
 
 export const MidiChannelEvents: Story = {
   args: {
-    id: "midi-events",
+    id: 'midi-events',
     columnDefs: channelEventColumnDefs,
     data: makeChannelEvents(columnNames, 25),
   },
 };
 export const MidiMetaEvents: Story = {
   args: {
-    id: "midi-meta-events",
+    id: 'midi-meta-events',
     columnDefs: metaColumnDefs,
     data: makeMetaEvents(metaColumnNames, 5),
   },

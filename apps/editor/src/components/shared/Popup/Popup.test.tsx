@@ -1,14 +1,16 @@
-import { act, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
-import { Button } from "../Button";
-import { Popup } from "./Popup";
+import { type ReactNode, act } from 'react';
+import { type Root, createRoot } from 'react-dom/client';
+
+import { describe, expect, it, vi } from 'vitest';
+
+import { Button } from '../Button';
+import { Popup } from './Popup';
 
 function render(element: ReactNode): {
   container: HTMLDivElement;
   root: Root;
 } {
-  const container = document.createElement("div");
+  const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   act(() => root.render(element));
@@ -30,7 +32,7 @@ function makeRect(left: number, top: number, width: number, height: number) {
 }
 
 function setRect(element: Element, rect: DOMRect): void {
-  vi.spyOn(element, "getBoundingClientRect").mockReturnValue(rect);
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(rect);
 }
 
 function cleanup(root: Root, container: HTMLDivElement): void {
@@ -38,8 +40,8 @@ function cleanup(root: Root, container: HTMLDivElement): void {
   container.remove();
 }
 
-describe("Popup", () => {
-  it("opens accessibly, closes on a second trigger press, and dismisses on Escape", () => {
+describe('Popup', () => {
+  it('opens accessibly, closes on a second trigger press, and dismisses on Escape', () => {
     const { container, root } = render(
       <Popup
         trigger={<Button aria-label="Viewport settings">Settings</Button>}
@@ -48,26 +50,26 @@ describe("Popup", () => {
         <input aria-label="Lighting" />
       </Popup>,
     );
-    const trigger = container.querySelector<HTMLButtonElement>("button")!;
+    const trigger = container.querySelector<HTMLButtonElement>('button')!;
 
-    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     act(() => trigger.click());
 
     const dialog = document.querySelector('[role="dialog"]');
     // expect(dialog?.getAttribute("aria-labelledby")).toBeTruthy();
-    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(
       dialog?.querySelector('input[aria-label="Lighting"]'),
     );
 
     act(() => trigger.click());
     expect(document.querySelector('[role="dialog"]')).toBeNull();
-    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
     act(() => trigger.click());
     act(() => {
       document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       );
     });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
@@ -76,7 +78,7 @@ describe("Popup", () => {
     cleanup(root, container);
   });
 
-  it("closes when the pointer is pressed outside the trigger and popup", () => {
+  it('closes when the pointer is pressed outside the trigger and popup', () => {
     const { container, root } = render(
       <>
         <Popup
@@ -88,22 +90,22 @@ describe("Popup", () => {
         <button data-testid="outside">Outside</button>
       </>,
     );
-    const trigger = container.querySelector<HTMLButtonElement>("button")!;
+    const trigger = container.querySelector<HTMLButtonElement>('button')!;
     act(() => trigger.click());
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 
     act(() => {
       document
         .querySelector<HTMLButtonElement>('[data-testid="outside"]')!
-        .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
-    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
     cleanup(root, container);
   });
 
-  it("flips above and shifts left when the trigger is near the viewport edges", () => {
+  it('flips above and shifts left when the trigger is near the viewport edges', () => {
     const { container, root } = render(
       <Popup
         trigger={<Button aria-label="Viewport settings">Settings</Button>}
@@ -112,7 +114,7 @@ describe("Popup", () => {
         <input aria-label="Lighting" />
       </Popup>,
     );
-    const trigger = container.querySelector<HTMLButtonElement>("button")!;
+    const trigger = container.querySelector<HTMLButtonElement>('button')!;
     const triggerTop = window.innerHeight - 45;
     setRect(trigger, makeRect(window.innerWidth - 50, triggerTop, 40, 40));
 
@@ -121,10 +123,10 @@ describe("Popup", () => {
     setRect(popup, makeRect(0, 0, 280, 200));
 
     act(() => {
-      window.dispatchEvent(new Event("resize"));
+      window.dispatchEvent(new Event('resize'));
     });
 
-    expect(popup.dataset.placement).toBe("top");
+    expect(popup.dataset.placement).toBe('top');
     expect(Number.parseFloat(popup.style.top)).toBeLessThan(triggerTop);
     expect(Number.parseFloat(popup.style.left)).toBeLessThanOrEqual(
       window.innerWidth - 280 - 8,

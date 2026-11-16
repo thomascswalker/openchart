@@ -1,14 +1,15 @@
-import * as THREE from "three";
-import type { MeshDefinition } from "../../../../assets/index";
+import * as THREE from 'three';
+
+import type { MeshDefinition } from '../../../../assets/index';
+import { applyGeometryModelTransform, meshesInModel } from './geometry';
+import type { ITransform } from './geometryCatalog';
 import {
-  setMaterialStateForMaterial,
   type MaterialState,
   type Rgb,
-} from "./materials";
-import { applyGeometryModelTransform, meshesInModel } from "./geometry";
-import type { ITransform } from "./geometryCatalog";
+  setMaterialStateForMaterial,
+} from './materials';
 
-export type PrimitiveMaterialRole = "tinted" | "neutral";
+export type PrimitiveMaterialRole = 'tinted' | 'neutral';
 type MaterialSource =
   THREE.Material | ((primitiveIndex: number) => THREE.Material);
 
@@ -23,7 +24,7 @@ function cloneModelMeshes(
       ? templateMesh.material
       : [templateMesh.material];
     const meshMaterials = templateMaterials.map(() =>
-      typeof material === "function" ? material(primitiveIndex++) : material,
+      typeof material === 'function' ? material(primitiveIndex++) : material,
     );
     const mesh = templateMesh.clone();
     mesh.material =
@@ -53,7 +54,7 @@ export function primitiveRolesForModel(
           `Mesh definition material "${material.name}" is not declared for this model.`,
         );
       }
-      return tintedIds.has(material.name) ? "tinted" : "neutral";
+      return tintedIds.has(material.name) ? 'tinted' : 'neutral';
     });
   });
 }
@@ -86,15 +87,15 @@ export function createFretAssembly(
 ): THREE.Group {
   const assembly = new THREE.Group();
   const { object, meshes } = cloneModelMeshes(template, (primitiveIndex) =>
-    primitiveRoles[primitiveIndex] === "tinted"
+    primitiveRoles[primitiveIndex] === 'tinted'
       ? material.clone()
       : neutralMaterial.clone(),
   );
   applyGeometryModelTransform(object, transform);
   applyPrimitiveMaterialStates(meshes, primitiveRoles, (role) => ({
     baseColor: laneColor,
-    emissionColor: role === "neutral" ? [1, 1, 1] : laneColor,
-    tint: role === "tinted",
+    emissionColor: role === 'neutral' ? [1, 1, 1] : laneColor,
+    tint: role === 'tinted',
   }));
   assembly.add(object);
   scene.add(assembly);
@@ -114,7 +115,7 @@ function applyPrimitiveMaterialStates(
         ? [mesh.material]
         : [];
     materials.forEach((material) => {
-      const role = primitiveRoles[primitiveIndex++] ?? "neutral";
+      const role = primitiveRoles[primitiveIndex++] ?? 'neutral';
       setMaterialStateForMaterial(material, stateForRole(role));
     });
   });

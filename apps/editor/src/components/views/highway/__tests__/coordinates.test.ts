@@ -1,16 +1,17 @@
-import { describe, expect, it } from "vitest";
-import { Difficulty } from "@openchart/views";
-import type { ChartView } from "@openchart/views";
-import * as THREE from "three";
-import type { ChartViewState } from "../../AbstractChartView";
-import { HighwayCoordinateSystem } from "../coordinates";
+import { Difficulty } from '@openchart/views';
+import type { ChartView } from '@openchart/views';
+import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
 
-describe("HighwayCoordinateSystem", () => {
+import type { ChartViewState } from '../../AbstractChartView';
+import { HighwayCoordinateSystem } from '../coordinates';
+
+describe('HighwayCoordinateSystem', () => {
   const state: ChartViewState = {
     midi: null,
     selectedTrackKey: null,
     selectedTrackIndex: null,
-    selectedInstrument: "LEAD GUITAR",
+    selectedInstrument: 'LEAD GUITAR',
     selectedDifficulty: Difficulty.Expert,
     snap: { enabled: true, denominator: 4 },
     lockCursor: false,
@@ -36,28 +37,28 @@ describe("HighwayCoordinateSystem", () => {
     new THREE.PerspectiveCamera(45, 4 / 3, 0.1, 64),
   );
 
-  it("maps lane indices across the highway", () => {
+  it('maps lane indices across the highway', () => {
     expect(coordinates.getLaneX(0)).toBeCloseTo(-2.4);
     expect(coordinates.getLaneX(4)).toBeCloseTo(2.4);
   });
 
-  it("uses four centered physical lanes for drums", () => {
-    state.selectedInstrument = "DRUMS";
+  it('uses four centered physical lanes for drums', () => {
+    state.selectedInstrument = 'DRUMS';
     currentChart = chartWithColumns(4);
     expect(coordinates.getPhysicalLaneCount()).toBe(4);
     expect([0, 1, 2, 3].map((lane) => coordinates.getLaneX(lane))).toEqual([
       -2.25, -0.75, 0.75, 2.25,
     ]);
-    state.selectedInstrument = "LEAD GUITAR";
+    state.selectedInstrument = 'LEAD GUITAR';
     currentChart = chartWithColumns(5);
     expect(coordinates.getPhysicalLaneCount()).toBe(5);
   });
 
-  it("uses the configured lane count for pad tracks", () => {
+  it('uses the configured lane count for pad tracks', () => {
     currentChart = {
       getColumns: () => Array.from({ length: 4 }),
     } as unknown as ChartView;
-    state.selectedInstrument = "FOUR PAD";
+    state.selectedInstrument = 'FOUR PAD';
     expect(coordinates.getPhysicalLaneCount()).toBe(4);
     expect([0, 1, 2, 3].map((lane) => coordinates.getLaneX(lane))).toEqual([
       -2.25, -0.75, 0.75, 2.25,
@@ -66,7 +67,7 @@ describe("HighwayCoordinateSystem", () => {
     currentChart = {
       getColumns: () => Array.from({ length: 5 }),
     } as unknown as ChartView;
-    state.selectedInstrument = "FIVE PAD";
+    state.selectedInstrument = 'FIVE PAD';
     expect(coordinates.getPhysicalLaneCount()).toBe(5);
     [0, 1, 2, 3, 4].forEach((lane, index) => {
       expect(coordinates.getLaneX(lane)).toBeCloseTo(
@@ -74,10 +75,10 @@ describe("HighwayCoordinateSystem", () => {
       );
     });
     currentChart = null;
-    state.selectedInstrument = "LEAD GUITAR";
+    state.selectedInstrument = 'LEAD GUITAR';
   });
 
-  it("converts ticks to depth and back", () => {
+  it('converts ticks to depth and back', () => {
     expect(coordinates.getNoteZ(1_220)).toBeCloseTo(-6.5);
     expect(coordinates.getTickAtDepth(-6.5)).toBeCloseTo(1_220);
     cameraTick = 250;
@@ -86,7 +87,7 @@ describe("HighwayCoordinateSystem", () => {
     );
   });
 
-  it("scales visual tick spacing while keeping coordinate conversions inverse", () => {
+  it('scales visual tick spacing while keeping coordinate conversions inverse', () => {
     cameraTick = 250;
     scrollSpeedMultiplier = 2;
     const noteZ = coordinates.getNoteZ(730);
@@ -99,7 +100,7 @@ describe("HighwayCoordinateSystem", () => {
     scrollSpeedMultiplier = 1;
   });
 
-  it("keeps the playhead at the strike line, including before tick zero", () => {
+  it('keeps the playhead at the strike line, including before tick zero', () => {
     const strikeTick = 0;
     const strikeLineZ = -3.5;
     const nextCameraTick = coordinates.getCameraTickAtDepth(
@@ -112,7 +113,7 @@ describe("HighwayCoordinateSystem", () => {
     expect(coordinates.getTickAtDepth(strikeLineZ)).toBeCloseTo(strikeTick);
   });
 
-  it("snaps down to the configured grid and clamps negative ticks", () => {
+  it('snaps down to the configured grid and clamps negative ticks', () => {
     expect(coordinates.getSnapTicks()).toBe(480);
     expect(coordinates.snapTick(500)).toBe(480);
     expect(coordinates.snapTick(-30)).toBe(0);

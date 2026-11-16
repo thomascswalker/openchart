@@ -1,20 +1,22 @@
-import { fn } from "storybook/test";
-import { useSyncExternalStore } from "react";
-import type { PlaybackSnapshot } from "../platform/services/playback/playback";
+import { useSyncExternalStore } from 'react';
 
-export * from "./usePlayback";
+import { fn } from 'storybook/test';
+
+import type { PlaybackSnapshot } from '../platform/services/playback/playback';
+
+export * from './usePlayback';
 
 const TICKS_PER_SECOND = 960; // 120 BPM at 480 PPQN
 const FRAME_MS = 1000 / 60;
 
 type MockState = Pick<
   PlaybackSnapshot,
-  | "isPlaying"
-  | "playbackTick"
-  | "totalTimelineTicks"
-  | "isMetronomeEnabled"
-  | "isClapEnabled"
-  | "isVocalPitchFeedbackEnabled"
+  | 'isPlaying'
+  | 'playbackTick'
+  | 'totalTimelineTicks'
+  | 'isMetronomeEnabled'
+  | 'isClapEnabled'
+  | 'isVocalPitchFeedbackEnabled'
 >;
 
 const initialState: MockState = {
@@ -29,7 +31,7 @@ const initialState: MockState = {
 /**
  * In-memory stand-in for PlaybackService. It owns the same state and exposes
  * the same commands, so the Timeline controls and scrubbing behave as in the
- * app without audio or a document.
+ * app without audio or a project.
  */
 function createMockPlaybackService() {
   let state: MockState = { ...initialState };
@@ -106,15 +108,15 @@ function createMockPlaybackService() {
   snapshot = buildSnapshot();
 
   const actions: Record<string, (...args: unknown[]) => void> = {
-    "playback.play": () => api.play(),
-    "playback.pause": () => api.pause(),
-    "playback.toggle": () => api.togglePlay(),
-    "playback.seek-start": () => api.seekStart(),
-    "playback.seek-end": () => api.seekEnd(),
-    "playback.set-tick": (tick) => api.setPlaybackTick(tick as number),
-    "playback.toggle-metronome": () => api.toggleMetronome(),
-    "playback.toggle-clap": () => api.toggleClap(),
-    "playback.toggle-vocal-pitch-feedback": () =>
+    'playback.play': () => api.play(),
+    'playback.pause': () => api.pause(),
+    'playback.toggle': () => api.togglePlay(),
+    'playback.seek-start': () => api.seekStart(),
+    'playback.seek-end': () => api.seekEnd(),
+    'playback.set-tick': (tick) => api.setPlaybackTick(tick as number),
+    'playback.toggle-metronome': () => api.toggleMetronome(),
+    'playback.toggle-clap': () => api.toggleClap(),
+    'playback.toggle-vocal-pitch-feedback': () =>
       api.toggleVocalPitchFeedback(),
   };
 

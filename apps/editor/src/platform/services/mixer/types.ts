@@ -1,4 +1,4 @@
-import { Mixer } from "@openchart/audio";
+import { Mixer } from '@openchart/audio';
 
 type MixerInstance = InstanceType<typeof Mixer>;
 

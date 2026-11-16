@@ -1,13 +1,15 @@
-import { Action } from "../../actions";
-import type { ServicesAccessor } from "../../services";
-import { ViewportService } from "../../services/editor/viewports";
+import { Action } from '../../actions';
+import { ViewportService } from '../../services/editor/viewports';
+import type { ServicesAccessor } from '../../services/registry';
 
-export class CloseViewportAction extends Action<[string], boolean> {
+type TArgs = [id: string];
+type TResult = boolean;
+export class CloseViewportAction extends Action<TArgs, TResult> {
   constructor() {
-    super({ condition: { "editor.can-close-viewport": true } });
+    super({ condition: { 'editor.can-close-viewport': true } });
   }
 
-  run(accessor: ServicesAccessor, id: string): boolean {
-    return accessor.get<ViewportService>("editor.viewports").closeViewport(id);
+  run(accessor: ServicesAccessor, id: string) {
+    return accessor.get<ViewportService>('editor.viewports').closeViewport(id);
   }
 }

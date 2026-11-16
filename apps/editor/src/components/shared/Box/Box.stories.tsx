@@ -1,8 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Box, Button } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Box, Button } from '..';
 
 const meta = {
-  title: "Shared/Box",
+  title: 'Shared/Box',
   component: Box,
 } satisfies Meta<typeof Box>;
 
@@ -23,9 +24,9 @@ export const ItemAlignment: Story = {
   render: ({ children, ...props }) => (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
       }}
     >
       <Box {...props} border="var(--border-primary)">

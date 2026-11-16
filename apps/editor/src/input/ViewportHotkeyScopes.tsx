@@ -1,9 +1,10 @@
-import { useContext } from "react";
-import { useViewport } from "../hooks/useViewport.ts";
-import { InputProviderContext } from "./context.ts";
-import { Hotkeys } from "./Hotkeys.tsx";
-import { highwayBindings, pianoRollBindings } from "./index.ts";
-import { HotkeysProvider } from "./lib.ts";
+import { useContext } from 'react';
+
+import { useViewport } from '../hooks/useViewport.ts';
+import { Hotkeys } from './Hotkeys.tsx';
+import { InputProviderContext } from './context.ts';
+import { highwayBindings, pianoRollBindings } from './index.ts';
+import { HotkeysProvider } from './lib.ts';
 
 /**
  * Registers the view-specific bindings. Each scope is nested inside the root
@@ -18,12 +19,12 @@ export function ViewHotkeyScopes() {
   if (!ready) return null;
   return (
     <>
-      <HotkeysProvider scope="highway" enabled={activeViewId === "highway"}>
+      <HotkeysProvider scope="highway" enabled={activeViewId === 'highway'}>
         <Hotkeys bindings={highwayBindings} />
       </HotkeysProvider>
       <HotkeysProvider
         scope="pianoroll"
-        enabled={activeViewId === "piano-roll"}
+        enabled={activeViewId === 'piano-roll'}
       >
         <Hotkeys bindings={pianoRollBindings} />
       </HotkeysProvider>

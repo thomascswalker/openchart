@@ -1,9 +1,10 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { InputProviderContext } from "./context.ts";
-import { appHotkeys, allBindings } from "./index.ts";
-import { displayHotkey, EffectiveLabelsContext } from "./labels.ts";
-import { HotkeysProvider, useAppHotkeys, type CustomHotkeys } from "./lib.ts";
-import { loadCustomHotkeys, saveCustomHotkeys } from "./storage.ts";
+import { type ReactNode, useMemo, useState } from 'react';
+
+import { InputProviderContext } from './context.ts';
+import { allBindings, appHotkeys } from './index.ts';
+import { EffectiveLabelsContext, displayHotkey } from './labels.ts';
+import { type CustomHotkeys, HotkeysProvider, useAppHotkeys } from './lib.ts';
+import { loadCustomHotkeys, saveCustomHotkeys } from './storage.ts';
 
 /** Publishes display labels for the effective (default or custom) hotkeys. */
 function EffectiveLabelsBridge({ children }: { children: ReactNode }) {

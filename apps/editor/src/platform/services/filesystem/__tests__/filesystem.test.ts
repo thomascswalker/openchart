@@ -1,20 +1,21 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { MidiFilePickerTypes } from "../../document/types";
-import { FileSystemService } from "..";
-import { mockLoggerService } from "../../__mock__/logger.mock";
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const TEST_FILENAME = "test_read_write.mid";
+import { FileSystemService } from '..';
+import { mockLoggerService } from '../../__mock__/logger.mock';
+import { MidiFilePickerTypes } from '../../project/types';
+
+const TEST_FILENAME = 'test_read_write.mid';
 
 const makeFileSystemService = () => {
   return new FileSystemService(mockLoggerService());
 };
 
-describe("FileSystemService", () => {
+describe('FileSystemService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("writes and reads bytes through file picker handles", async () => {
+  it('writes and reads bytes through file picker handles', async () => {
     // Initialize a variable to store the bytes written to the mock file handle
     let storedBytes = new Uint8Array();
 
@@ -41,16 +42,16 @@ describe("FileSystemService", () => {
     } as unknown as FileSystemFileHandle;
 
     // Mock anchor element for testing download link behavior
-    const anchor = { click: vi.fn(), href: "", download: "" };
+    const anchor = { click: vi.fn(), href: '', download: '' };
 
     // Stub global objects to simulate browser environment for file picker and download link
-    vi.stubGlobal("window", {
+    vi.stubGlobal('window', {
       showSaveFilePicker: vi.fn(async () => fileHandle),
       showOpenFilePicker: vi.fn(async () => [fileHandle]),
     });
-    vi.stubGlobal("document", { createElement: vi.fn(() => anchor) });
-    vi.stubGlobal("URL", {
-      createObjectURL: vi.fn(() => "blob:test"),
+    vi.stubGlobal('document', { createElement: vi.fn(() => anchor) });
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn(() => 'blob:test'),
       revokeObjectURL: vi.fn(),
     });
 
@@ -62,7 +63,7 @@ describe("FileSystemService", () => {
 
     expect(service.isAccessible()).toBe(true);
     await expect(
-      service.write(bytes, "export.mid", [], "audio/midi"),
+      service.write(bytes, 'export.mid', [], 'audio/midi'),
     ).resolves.toEqual({ name: TEST_FILENAME, handle: fileHandle });
     await expect(service.read()).resolves.toEqual({
       name: TEST_FILENAME,
@@ -72,20 +73,20 @@ describe("FileSystemService", () => {
     expect(anchor.click).not.toHaveBeenCalled();
   });
 
-  it("opens a MIDI file directly without selecting its containing folder", async () => {
+  it('opens a MIDI file directly without selecting its containing folder', async () => {
     const bytes = new Uint8Array([0x4d, 0x54, 0x68, 0x64]);
     const midiHandle = {
-      name: "chart.mid",
+      name: 'chart.mid',
       async getFile() {
         return {
-          name: "chart.mid",
+          name: 'chart.mid',
           arrayBuffer: async () => bytes.slice().buffer,
         } as File;
       },
     } as unknown as FileSystemFileHandle;
     const showOpenFilePicker = vi.fn(async () => [midiHandle]);
     const showDirectoryPicker = vi.fn();
-    vi.stubGlobal("window", {
+    vi.stubGlobal('window', {
       showOpenFilePicker,
       showSaveFilePicker: vi.fn(),
       showDirectoryPicker,
@@ -93,7 +94,7 @@ describe("FileSystemService", () => {
     const service = makeFileSystemService();
 
     const opened = await service.read(MidiFilePickerTypes);
-    expect(opened?.name).toBe("chart.mid");
+    expect(opened?.name).toBe('chart.mid');
     expect(opened?.bytes).toEqual(bytes);
     expect(opened?.handle).toBe(midiHandle);
     expect(opened?.directoryHandle).toBeUndefined();
@@ -103,79 +104,79 @@ describe("FileSystemService", () => {
     expect(showDirectoryPicker).not.toHaveBeenCalled();
   });
 
-  it("returns a path relative to the supplied project directory", async () => {
+  it('returns a path relative to the supplied project directory', async () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const fileHandle = {
-      name: "song.wav",
+      name: 'song.wav',
       async getFile() {
         return {
-          name: "song.wav",
+          name: 'song.wav',
           arrayBuffer: async () => bytes.slice().buffer,
         } as File;
       },
     } as unknown as FileSystemFileHandle;
     const projectDirectory = {
-      resolve: vi.fn(async () => ["audio", "song.wav"]),
+      resolve: vi.fn(async () => ['audio', 'song.wav']),
     } as unknown as FileSystemDirectoryHandle;
-    vi.stubGlobal("window", {
+    vi.stubGlobal('window', {
       showOpenFilePicker: vi.fn(async () => [fileHandle]),
       showSaveFilePicker: vi.fn(),
     });
     const service = makeFileSystemService();
 
     await expect(service.read([], projectDirectory)).resolves.toMatchObject({
-      name: "song.wav",
-      relativePath: "audio/song.wav",
+      name: 'song.wav',
+      relativePath: 'audio/song.wav',
       bytes,
       handle: fileHandle,
     });
     expect(projectDirectory.resolve).toHaveBeenCalledWith(fileHandle);
   });
 
-  it("returns audio file paths relative to the selected audio root", async () => {
+  it('returns audio file paths relative to the selected audio root', async () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const fileHandle = {
-      name: "lead.wav",
+      name: 'lead.wav',
       async getFile() {
         return {
-          name: "lead.wav",
+          name: 'lead.wav',
           arrayBuffer: async () => bytes.slice().buffer,
         } as File;
       },
     } as unknown as FileSystemFileHandle;
     const audioDirectory = {
-      resolve: vi.fn(async () => ["lead.wav"]),
+      resolve: vi.fn(async () => ['lead.wav']),
     } as unknown as FileSystemDirectoryHandle;
     const projectDirectory = {
       getDirectoryHandle: vi.fn(async () => audioDirectory),
     } as unknown as FileSystemDirectoryHandle;
-    vi.stubGlobal("window", {
+    vi.stubGlobal('window', {
       showOpenFilePicker: vi.fn(async () => [fileHandle]),
       showSaveFilePicker: vi.fn(),
     });
     const service = makeFileSystemService();
 
     await expect(
-      service.read([], projectDirectory, "stems"),
-    ).resolves.toMatchObject({ relativePath: "lead.wav" });
-    expect(projectDirectory.getDirectoryHandle).toHaveBeenCalledWith("stems");
+      service.read([], projectDirectory, 'stems'),
+    ).resolves.toMatchObject({ relativePath: 'lead.wav' });
+    expect(projectDirectory.getDirectoryHandle).toHaveBeenCalledWith('stems');
   });
 
-  it("returns a selected audio directory relative to the project folder", async () => {
+  it('returns a selected audio directory relative to the project folder', async () => {
     const selectedDirectory = {
-      name: "stems",
+      name: 'stems',
     } as FileSystemDirectoryHandle;
     const projectDirectory = {
-      resolve: vi.fn(async () => ["audio", "stems"]),
+      resolve: vi.fn(async () => ['audio', 'stems']),
     } as unknown as FileSystemDirectoryHandle;
-    vi.stubGlobal("window", {
+    vi.stubGlobal('window', {
       showDirectoryPicker: vi.fn(async () => selectedDirectory),
     });
     const service = makeFileSystemService();
 
     await expect(service.readDirectory(projectDirectory)).resolves.toEqual({
-      name: "stems",
-      relativePath: "audio/stems",
+      name: 'stems',
+      relativePath: 'audio/stems',
       handle: selectedDirectory,
     });
   });

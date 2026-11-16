@@ -1,6 +1,7 @@
-import { createContext, useContext } from "react";
-import { allBindings, type Binding } from "./index.ts";
-import { formatForDisplay } from "./lib.ts";
+import { createContext, useContext } from 'react';
+
+import { type Binding, allBindings } from './index.ts';
+import { formatForDisplay } from './lib.ts';
 
 /** Binding id -> display label (`null` when the user unbound it). */
 export type EffectiveLabels = ReadonlyMap<string, string | null>;
@@ -11,11 +12,11 @@ export const EffectiveLabelsContext = createContext<EffectiveLabels | null>(
 
 /** Formats a chord or sequence for display on the current platform. */
 export function displayHotkey(hotkey: unknown): string | null {
-  if (typeof hotkey === "string") {
+  if (typeof hotkey === 'string') {
     return formatForDisplay(hotkey as never);
   }
   if (Array.isArray(hotkey)) {
-    return hotkey.map((step) => formatForDisplay(step as never)).join(" ");
+    return hotkey.map((step) => formatForDisplay(step as never)).join(' ');
   }
   return null;
 }

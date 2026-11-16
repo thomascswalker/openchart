@@ -1,6 +1,7 @@
-import { Midi } from "@openchart/midi";
-import { describe, expect, it } from "vitest";
-import { History } from "../History.js";
+import { Midi } from '@openchart/midi';
+import { describe, expect, it } from 'vitest';
+
+import { History } from '../History.js';
 
 function createMidi(): Midi {
   const midi = new Midi();
@@ -8,8 +9,8 @@ function createMidi(): Midi {
   return midi;
 }
 
-describe("MIDI history", () => {
-  it("undoes and redoes MIDI edits from shared snapshots", () => {
+describe('MIDI history', () => {
+  it('undoes and redoes MIDI edits from shared snapshots', () => {
     const midi = createMidi();
     const history = new History();
     history.reset(midi);
@@ -25,7 +26,7 @@ describe("MIDI history", () => {
     expect(redone.tracks[0].getNotes()).toHaveLength(1);
   });
 
-  it("commits a transaction once and discards redo after a branch", () => {
+  it('commits a transaction once and discards redo after a branch', () => {
     const midi = createMidi();
     const history = new History();
     history.reset(midi);
@@ -44,7 +45,7 @@ describe("MIDI history", () => {
     expect(history.undo()!.tracks[0].getNotes()).toHaveLength(0);
   });
 
-  it("trims retained edits to the configured capacity", () => {
+  it('trims retained edits to the configured capacity', () => {
     const midi = createMidi();
     const history = new History(2);
     history.reset(midi);
@@ -59,7 +60,7 @@ describe("MIDI history", () => {
     expect(history.canUndo).toBe(false);
   });
 
-  it("shrinks the retained history while keeping the nearest undo step", () => {
+  it('shrinks the retained history while keeping the nearest undo step', () => {
     const midi = createMidi();
     const history = new History(3);
     history.reset(midi);
@@ -74,7 +75,7 @@ describe("MIDI history", () => {
     expect(history.canUndo).toBe(false);
   });
 
-  it("resets history and validates capacity", () => {
+  it('resets history and validates capacity', () => {
     const midi = createMidi();
     const history = new History();
     history.reset(midi);

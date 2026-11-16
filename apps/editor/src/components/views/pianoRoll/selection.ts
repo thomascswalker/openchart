@@ -1,7 +1,8 @@
-import { Box2 } from "three";
-import type { SelectionModel } from "@openchart/views";
-import type { PianoRollNote } from "./types";
-import { BaseSelection } from "../shared/selection";
+import type { SelectionModel } from '@openchart/views';
+import { Box2 } from 'three';
+
+import { BaseSelection } from '../shared/selection';
+import type { PianoRollNote } from './types';
 
 export class SelectionContext extends BaseSelection<PianoRollNote> {
   #bounds: Box2 | null = null;

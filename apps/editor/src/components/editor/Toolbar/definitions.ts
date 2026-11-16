@@ -1,5 +1,6 @@
-import type { EditingSession } from "@openchart/views";
-import { Difficulty, EditingModeId } from "@openchart/views";
+import type { EditingSession } from '@openchart/views';
+import { Difficulty, EditingModeId } from '@openchart/views';
+
 import {
   EasyIcon,
   ExpertIcon,
@@ -11,14 +12,14 @@ import {
   SnapIcon,
   UnlockIcon,
   VolumeIcon,
-} from "../../shared/Icon/Icon";
-import { getToolIcon } from "../../shared/Icon/toolIcons";
-import type { ToolbarContextState, ToolGroupDef, ToolItemDef } from "./types";
+} from '../../shared/Icon/Icon';
+import { getToolIcon } from '../../shared/Icon/toolIcons';
+import type { ToolGroupDef, ToolItemDef, ToolbarContextState } from './types';
 
-type Icon = ToolItemDef["icon"];
+type Icon = ToolItemDef['icon'];
 
 const viewportArgs = (
-  view: "piano-roll" | "highway",
+  view: 'piano-roll' | 'highway',
   context: ToolbarContextState,
 ): readonly unknown[] => [
   context.sessionId,
@@ -29,15 +30,15 @@ const makeViewDef = (
   id: string,
   icon: Icon,
   label: string,
-  view: "piano-roll" | "highway",
+  view: 'piano-roll' | 'highway',
 ): ToolItemDef => ({
   id,
   icon,
   label,
-  actionId: "editor.update-viewport",
+  actionId: 'editor.update-viewport',
   actionPayload: (context) => viewportArgs(view, context),
   beforeActions: (context) => [
-    { id: "editor.focus-viewport", args: [context.sessionId] },
+    { id: 'editor.focus-viewport', args: [context.sessionId] },
   ],
   isActive: (context) => context.activeView === view,
   isDisabled: (context) => !context.canHostView(view),
@@ -46,29 +47,29 @@ const makeViewDef = (
 /** Fixed view and editor controls shared by every editing mode. */
 export const ToolbarGroups: ToolGroupDef[] = [
   {
-    id: "view-selector",
+    id: 'view-selector',
     items: [
-      makeViewDef("piano-roll", PianoIcon, "Piano Roll", "piano-roll"),
-      makeViewDef("highway", Highway3dIcon, "Highway", "highway"),
+      makeViewDef('piano-roll', PianoIcon, 'Piano Roll', 'piano-roll'),
+      makeViewDef('highway', Highway3dIcon, 'Highway', 'highway'),
     ],
   },
   {
-    id: "general-tools",
+    id: 'general-tools',
     items: [
       {
-        id: "lock-cursor",
+        id: 'lock-cursor',
         icon: UnlockIcon,
         activeIcon: LockIcon,
-        label: "Lock/Unlock Cursor",
-        actionId: "editor.set-lock-cursor",
+        label: 'Lock/Unlock Cursor',
+        actionId: 'editor.set-lock-cursor',
         actionPayload: (_context, state) => [!state.lockCursor],
         isActive: (_context, state) => state.lockCursor,
       },
       {
-        id: "snap",
+        id: 'snap',
         icon: SnapIcon,
-        label: "Snap",
-        actionId: "editor.set-snap-enabled",
+        label: 'Snap',
+        actionId: 'editor.set-snap-enabled',
         actionPayload: (_context, state) => [!state.snapEnabled],
         isActive: (_context, state) => state.snapEnabled,
       },
@@ -85,13 +86,13 @@ export function createModeToolbarGroups(
   const tools = session.getTools();
   const groups = new Map<string, ToolItemDef[]>();
   for (const tool of tools) {
-    if (tool.group === "placement") continue;
+    if (tool.group === 'placement') continue;
     const items = groups.get(tool.group) ?? [];
     items.push({
       id: tool.id,
       icon: getToolIcon(tool.icon),
       label: tool.label,
-      actionId: "editor.set-viewport-tools",
+      actionId: 'editor.set-viewport-tools',
       actionPayload: (actionContext, state) => {
         const values = getStateValues(state.toolState);
         const active = Object.is(values[tool.stateKey], tool.value);
@@ -99,12 +100,12 @@ export function createModeToolbarGroups(
           [tool.stateKey]:
             tool.toggle && active ? tool.toggle.offValue : tool.value,
         };
-        if (tool.group === "highway-tools") {
-          if (tool.stateKey === "phrase") {
-            update.tool = "select";
+        if (tool.group === 'highway-tools') {
+          if (tool.stateKey === 'phrase') {
+            update.tool = 'select';
           } else if (
-            tool.stateKey === "tool" &&
-            tools.some((descriptor) => descriptor.stateKey === "phrase")
+            tool.stateKey === 'tool' &&
+            tools.some((descriptor) => descriptor.stateKey === 'phrase')
           ) {
             update.phrase = null;
           }
@@ -123,31 +124,31 @@ export function createModeToolbarGroups(
     id,
     items,
     isVisible: (groupContext) =>
-      (id === "highway-tools" && groupContext.activeView === "highway") ||
-      (id === "vocal-tools" && groupContext.activeView === "piano-roll") ||
-      !["highway-tools", "vocal-tools"].includes(id),
+      (id === 'highway-tools' && groupContext.activeView === 'highway') ||
+      (id === 'vocal-tools' && groupContext.activeView === 'piano-roll') ||
+      !['highway-tools', 'vocal-tools'].includes(id),
   }));
   if (mode.id === EditingModeId.MidiVocals) {
-    const vocalGroup = modeGroups.find((group) => group.id === "vocal-tools");
+    const vocalGroup = modeGroups.find((group) => group.id === 'vocal-tools');
     if (vocalGroup) {
       vocalGroup.items.push({
-        id: "vocal-pitch-feedback",
+        id: 'vocal-pitch-feedback',
         icon: VolumeIcon,
-        label: "Vocal pitch feedback",
-        actionId: "playback.toggle-vocal-pitch-feedback",
+        label: 'Vocal pitch feedback',
+        actionId: 'playback.toggle-vocal-pitch-feedback',
         isActive: (_context, state) => state.vocalPitchFeedbackEnabled,
       });
     }
   }
   if (mode.capabilities.requiresDifficulty) {
     modeGroups.push({
-      id: "difficulty",
-      isVisible: (groupContext) => groupContext.activeView === "highway",
+      id: 'difficulty',
+      isVisible: (groupContext) => groupContext.activeView === 'highway',
       items: [
-        makeDifficultyDef(Difficulty.Easy, EasyIcon, "easy"),
-        makeDifficultyDef(Difficulty.Medium, MediumIcon, "medium"),
-        makeDifficultyDef(Difficulty.Hard, HardIcon, "hard"),
-        makeDifficultyDef(Difficulty.Expert, ExpertIcon, "expert"),
+        makeDifficultyDef(Difficulty.Easy, EasyIcon, 'easy'),
+        makeDifficultyDef(Difficulty.Medium, MediumIcon, 'medium'),
+        makeDifficultyDef(Difficulty.Hard, HardIcon, 'hard'),
+        makeDifficultyDef(Difficulty.Expert, ExpertIcon, 'expert'),
       ],
     });
   }
@@ -163,14 +164,14 @@ function makeDifficultyDef(
     id: `difficulty-${label.toLowerCase()}`,
     icon,
     label,
-    actionId: "editor.update-viewport",
+    actionId: 'editor.update-viewport',
     actionPayload: (context) => [context.sessionId, { difficulty }],
     isActive: (_context, state) => state.session.difficulty === difficulty,
   };
 }
 
 export function getStateValues(state: unknown): Record<string, unknown> {
-  return typeof state === "object" && state !== null && !Array.isArray(state)
+  return typeof state === 'object' && state !== null && !Array.isArray(state)
     ? (state as Record<string, unknown>)
     : {};
 }

@@ -1,16 +1,17 @@
-import { runAction } from "../../../platform/actions/execute";
-import { Box, Button, Text } from "../../shared";
-import styles from "./Timeline.module.css";
-import type { TimelinePosition } from "./util";
-import { layout, compose, type LayoutProps, type styleFn } from "styled-system";
-import { vars } from "../../../util/css";
+import { type LayoutProps, compose, layout, type styleFn } from 'styled-system';
 
-const Rewind = "◀|";
-const Play = "▶";
-const Pause = "⏸";
-const FastForward = "|▶";
-const ClockItemWidth = "70px";
-const ActionButtonWidth = "40px";
+import { runAction } from '../../../platform/actions/execute';
+import { vars } from '../../../util/css';
+import { Box, Button, Text } from '../../shared';
+import styles from './Timeline.module.css';
+import type { TimelinePosition } from './util';
+
+const Rewind = '◀|';
+const Play = '▶';
+const Pause = '⏸';
+const FastForward = '|▶';
+const ClockItemWidth = '70px';
+const ActionButtonWidth = '40px';
 
 const clockItemStyles: styleFn = compose(layout);
 
@@ -27,10 +28,10 @@ const TimelineClockLabel = ({
   const clockItem = clockItemStyles(props);
 
   return (
-    <span className={styles["clock-item"]} style={clockItem}>
-      <Box padding={0} backgroundColor={vars("transparent")}>
+    <span className={styles['clock-item']} style={clockItem}>
+      <Box padding={0} backgroundColor={vars('transparent')}>
         <Text
-          className={styles["clock-label"]}
+          className={styles['clock-label']}
           alignContent="flex-start"
           justifyContent="center"
           fontSize="10px"
@@ -39,7 +40,7 @@ const TimelineClockLabel = ({
           {label}
         </Text>
       </Box>
-      <Box padding={0} backgroundColor={vars("black")}>
+      <Box padding={0} backgroundColor={vars('black')}>
         <Text fontSize="10px" mono>
           {value}
         </Text>
@@ -56,31 +57,31 @@ interface ControlsProps {
 const TimelineControls = ({ position, isPlaying }: ControlsProps) => {
   const buttons = [
     {
-      action: "playback.seek-start",
+      action: 'playback.seek-start',
       width: ActionButtonWidth,
       label: Rewind,
-      ariaLabel: "Jump to Beginning",
+      ariaLabel: 'Jump to Beginning',
       disabled: isPlaying,
     },
     {
-      action: "playback.toggle",
+      action: 'playback.toggle',
       width: ActionButtonWidth,
       label: isPlaying ? Pause : Play,
-      ariaLabel: "Play/Pause",
+      ariaLabel: 'Play/Pause',
       disabled: false,
     },
     {
-      action: "playback.seek-end",
+      action: 'playback.seek-end',
       width: ActionButtonWidth,
       label: FastForward,
-      ariaLabel: "Jump to End",
+      ariaLabel: 'Jump to End',
       disabled: isPlaying,
     },
   ];
   return (
-    <div className={styles["controls"]}>
+    <div className={styles['controls']}>
       <output
-        className={styles["clock"]}
+        className={styles['clock']}
         aria-label={`Playback position: tick ${position.tick}, time ${position.time}, measure ${position.measure}`}
       >
         <TimelineClockLabel

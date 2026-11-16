@@ -3,12 +3,13 @@ import {
   EditCommandType,
   type EntityId,
   type GestureHandle,
-} from "@openchart/views";
-import { formatNoteId } from "@openchart/views";
-import type { HighwayContext } from "../context";
-import { HighwayCoordinateSystem } from "../coordinates";
-import type { HighwayPhrase } from "../hitTesting";
-import type { HighwayPhraseDragState } from "../types";
+} from '@openchart/views';
+import { formatNoteId } from '@openchart/views';
+
+import type { HighwayContext } from '../context';
+import { HighwayCoordinateSystem } from '../coordinates';
+import type { HighwayPhrase } from '../hitTesting';
+import type { HighwayPhraseDragState } from '../types';
 
 export class HighwayPhraseEditingController {
   private readonly context: HighwayContext;
@@ -48,7 +49,7 @@ export class HighwayPhraseEditingController {
         duration: note.end - note.start,
         velocity: note.velocity,
       });
-      return classification.type === "phrase" ? [id] : [];
+      return classification.type === 'phrase' ? [id] : [];
     });
   }
 
@@ -74,7 +75,7 @@ export class HighwayPhraseEditingController {
     kind: string,
     tick: number,
     phrase: HighwayPhrase | null,
-    operation: HighwayPhraseDragState["operation"],
+    operation: HighwayPhraseDragState['operation'],
   ): void {
     const session = this.context.getEditingSession();
     if (!session) return;
@@ -98,12 +99,12 @@ export class HighwayPhraseEditingController {
     const drag = this.dragState;
     if (!drag) return;
     const nextTick =
-      drag.operation === "move" ? this.coordinates.snapTick(tick) : tick;
+      drag.operation === 'move' ? this.coordinates.snapTick(tick) : tick;
     drag.moved ||= nextTick !== drag.pointerTick;
-    if (drag.operation === "create") {
+    if (drag.operation === 'create') {
       drag.startTick = Math.min(drag.pointerTick, nextTick);
       drag.endTick = Math.max(drag.pointerTick, nextTick);
-    } else if (drag.operation === "move") {
+    } else if (drag.operation === 'move') {
       const start = Math.max(
         0,
         this.coordinates.snapTick(
@@ -113,7 +114,7 @@ export class HighwayPhraseEditingController {
       const duration = drag.initialEndTick - drag.initialStartTick;
       drag.startTick = start;
       drag.endTick = start + duration;
-    } else if (drag.operation === "resize-start") {
+    } else if (drag.operation === 'resize-start') {
       drag.startTick = Math.min(drag.initialEndTick - 1, Math.max(0, nextTick));
     } else {
       drag.endTick = Math.max(drag.initialStartTick + 1, nextTick);
@@ -127,7 +128,7 @@ export class HighwayPhraseEditingController {
     this.dragState = null;
     this.gesture = null;
     if (!drag || !gesture) return false;
-    if (drag.operation === "create" && !drag.moved) {
+    if (drag.operation === 'create' && !drag.moved) {
       gesture.cancel();
       this.context.setPreviewState(null);
       return false;
@@ -166,7 +167,7 @@ export class HighwayPhraseEditingController {
 
   private updatePreview(drag: HighwayPhraseDragState): void {
     const gesture = this.gesture;
-    if (!gesture || (drag.operation === "create" && !drag.moved)) return;
+    if (!gesture || (drag.operation === 'create' && !drag.moved)) return;
     const startTick = Math.min(drag.startTick, drag.endTick);
     const endTick = Math.max(startTick + 1, drag.endTick);
     const command = drag.id

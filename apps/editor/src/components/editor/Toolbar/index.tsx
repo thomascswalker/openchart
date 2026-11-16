@@ -1,21 +1,23 @@
-import { Fragment } from "react";
-import { runAction } from "../../../platform/actions/execute";
-import { usePlaybackSelector } from "../../../hooks/usePlayback";
-import { useViewport } from "../../../hooks/useViewport";
-import Platform from "../../../platform";
-import type { EditingService } from "../../../platform/services/editor/editing";
-import type { ViewportSession } from "../../../platform/services/editor/viewports";
-import { Dropdown, Section } from "../../shared";
-import { ToolGroup } from "./ToolGroup";
+import { Fragment } from 'react';
+
+import { EditingModeId } from '@openchart/views';
+
+import { usePlaybackSelector } from '../../../hooks/usePlayback';
+import { useViewport } from '../../../hooks/useViewport';
+import Platform from '../../../platform';
+import { runAction } from '../../../platform/actions/execute';
+import type { EditingService } from '../../../platform/services/editor/editing';
+import type { ViewportSession } from '../../../platform/services/editor/viewports';
+import { Dropdown, Section } from '../../shared';
+import { ToolGroup } from './ToolGroup';
+import { SnapOptions } from './constants';
 import {
+  ToolbarGroups,
   createModeToolbarGroups,
   getStateValues,
-  ToolbarGroups,
-} from "./definitions";
-import type { ToolbarContextState, ToolbarEditorState } from "./types";
-import { SnapOptions } from "./constants";
-import styles from "./toolbar.module.css";
-import { EditingModeId } from "@openchart/views";
+} from './definitions';
+import styles from './toolbar.module.css';
+import type { ToolbarContextState, ToolbarEditorState } from './types';
 
 interface ToolbarProps {
   session: ViewportSession;
@@ -27,7 +29,7 @@ export default function Toolbar({ session }: ToolbarProps) {
   const vocalPitchFeedbackEnabled = usePlaybackSelector(
     (snapshot) => snapshot.isVocalPitchFeedbackEnabled,
   );
-  const editing = Platform.services.get<EditingService>("editor.editing");
+  const editing = Platform.services.get<EditingService>('editor.editing');
   const editingSession = editing.getSession(session.id);
   const mode = editingSession?.mode;
   const toolState = editingSession?.getToolState();
@@ -52,16 +54,16 @@ export default function Toolbar({ session }: ToolbarProps) {
     ? createModeToolbarGroups(editingSession)
     : [];
   const placementTools =
-    editingSession?.getTools().filter((tool) => tool.group === "placement") ??
+    editingSession?.getTools().filter((tool) => tool.group === 'placement') ??
     [];
   const placementState = getStateValues(toolState);
   const placementStateKey = placementTools[0]?.stateKey;
   const placementValue =
     placementStateKey === undefined
-      ? ""
-      : String(placementState[placementStateKey] ?? "");
+      ? ''
+      : String(placementState[placementStateKey] ?? '');
   const placementOptions = placementTools
-    .filter((tool) => typeof tool.value === "string")
+    .filter((tool) => typeof tool.value === 'string')
     .map((tool) => ({
       value: tool.value as string,
       label: placementLabel(tool.value as string, tool.label),
@@ -72,14 +74,14 @@ export default function Toolbar({ session }: ToolbarProps) {
       return null;
     }
     const isVocalMode =
-      mode.id === EditingModeId.MidiVocals && session.view === "piano-roll";
-    const isHighway = session.view === "highway";
+      mode.id === EditingModeId.MidiVocals && session.view === 'piano-roll';
+    const isHighway = session.view === 'highway';
 
     if (!isVocalMode && !isHighway) {
       return null;
     }
 
-    const ariaLabel = isVocalMode ? "Vocal note type" : "Note type";
+    const ariaLabel = isVocalMode ? 'Vocal note type' : 'Note type';
     const disabled = isVocalMode && placementState.phrase !== null;
     return (
       <Dropdown
@@ -91,7 +93,7 @@ export default function Toolbar({ session }: ToolbarProps) {
             (tool) => String(tool.value) === value,
           );
           if (selected) {
-            runAction("editor.set-viewport-tools", session.id, mode.id, {
+            runAction('editor.set-viewport-tools', session.id, mode.id, {
               [placementStateKey]: selected.value,
             });
           }
@@ -122,14 +124,14 @@ export default function Toolbar({ session }: ToolbarProps) {
             context={context}
             editorState={editorState}
           />
-          {group.id === "general-tools" && (
+          {group.id === 'general-tools' && (
             <>
               <Dropdown
                 disabled={!snapEnabled}
                 aria-label="Snap denominator"
                 value={String(snapDenominator)}
                 onChange={(value) =>
-                  runAction("editor.set-snap-denominator", Number(value))
+                  runAction('editor.set-snap-denominator', Number(value))
                 }
                 minWidth="70px"
                 maxWidth="70px"
@@ -156,9 +158,9 @@ function placementLabel(value: string, fallback: string): string {
   const labels: Record<string, string> = {
     // Chart placement labels come from the ruleset tool descriptors
     // (`fallback`); only the vocal note kinds are named here.
-    pitched: "Pitched",
-    percussion: "Percussion",
-    pitchless: "Pitchless",
+    pitched: 'Pitched',
+    percussion: 'Percussion',
+    pitchless: 'Pitchless',
   };
   return labels[value] ?? fallback;
 }

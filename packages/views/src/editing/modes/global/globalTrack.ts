@@ -1,22 +1,23 @@
-import { MetaType } from "@openchart/midi";
-import { EntityType } from "../../entity";
-import { z } from "zod";
-import type { ClipboardPayload } from "../../clipboard";
+import { MetaType } from '@openchart/midi';
+import { z } from 'zod';
+
+import type { ClipboardPayload } from '../../clipboard';
 import {
   DomainCommandType,
-  EditCommandType,
   type EditCommand,
+  EditCommandType,
   type GeneralCommand,
-} from "../../commands";
-import { parseEntityFromId, type EntityId } from "../../entity";
+} from '../../commands';
+import { EntityType } from '../../entity';
+import { type EntityId, parseEntityFromId } from '../../entity';
+import type { NoteSnapshot } from '../../reader';
 import type {
   EditingMode,
   ExpansionResult,
   ModeContext,
   Projection,
-} from "../mode";
-import { EditingModeId, isRawCommand } from "../mode";
-import type { NoteSnapshot } from "../../reader";
+} from '../mode';
+import { EditingModeId, isRawCommand } from '../mode';
 
 const EmptyToolStateSchema = z.object({});
 const AddSectionSchema = z.object({
@@ -39,8 +40,8 @@ const rawCommandTypes = new Set([
 export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
   return {
     id: EditingModeId.MidiGlobal,
-    label: "Global MIDI",
-    hostKinds: new Set(["global"]),
+    label: 'Global MIDI',
+    hostKinds: new Set(['global']),
     appliesTo: () => true,
     capabilities: {
       rawCommands: new Set([
@@ -71,7 +72,7 @@ export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
     }),
     classify: (_note: NoteSnapshot) => ({
       type: EntityType.Text,
-      subtype: "global",
+      subtype: 'global',
       movable: false,
       resizable: false,
     }),
@@ -82,8 +83,8 @@ export function createGlobalTrackMode(): EditingMode<Record<string, never>> {
       commands: [],
       rejections: [
         {
-          code: "unsupported-paste",
-          message: "midi.global does not support paste",
+          code: 'unsupported-paste',
+          message: 'midi.global does not support paste',
           command: { type: DomainCommandType.PasteClipboard },
         },
       ],
@@ -99,7 +100,7 @@ function expandGlobalCommand(
   if (AddSectionSchema.safeParse(command).success) {
     const section = AddSectionSchema.parse(command);
     if (context.target.trackIndex === null) {
-      return rejected(command, "missing-track");
+      return rejected(command, 'missing-track');
     }
     const raw: GeneralCommand = {
       type: EditCommandType.AddText,
@@ -112,14 +113,14 @@ function expandGlobalCommand(
   }
 
   if (!isRawCommand(command) || !rawCommandTypes.has(command.type)) {
-    return rejected(command, "unsupported-command");
+    return rejected(command, 'unsupported-command');
   }
   if (command.type === EditCommandType.DeleteEntities) {
     const targetIds = command.targetIds.filter((id) =>
       isTargetText(id, context),
     );
     if (targetIds.length !== command.targetIds.length) {
-      return rejected(command, "wrong-entity");
+      return rejected(command, 'wrong-entity');
     }
     return {
       commands: [{ type: EditCommandType.DeleteEntities, targetIds }],
@@ -129,13 +130,13 @@ function expandGlobalCommand(
   if (command.type === EditCommandType.UpdateText) {
     return isTargetText(command.id, context)
       ? { commands: [command], rejections: [] }
-      : rejected(command, "wrong-track");
+      : rejected(command, 'wrong-track');
   }
   if (command.type === EditCommandType.AddText) {
     return command.trackIndex === context.target.trackIndex &&
       command.metaType !== MetaType.Lyric
       ? { commands: [command], rejections: [] }
-      : rejected(command, "wrong-track");
+      : rejected(command, 'wrong-track');
   }
   return { commands: [command], rejections: [] };
 }
@@ -144,7 +145,7 @@ function isTargetText(id: EntityId, context: ModeContext): boolean {
   const parsed = parseEntityFromId(id);
   if (
     context.target.trackIndex === null ||
-    parsed?.type !== "text" ||
+    parsed?.type !== 'text' ||
     parsed.trackIndex !== context.target.trackIndex
   ) {
     return false;

@@ -1,7 +1,7 @@
-import { runAction } from "../platform/actions/execute.ts";
-import Platform from "../platform";
-import type { EditorClipboardService } from "../platform/services/editor/clipboard.ts";
-import type { Binding } from "./define.ts";
+import Platform from '../platform';
+import { runAction } from '../platform/actions/execute.ts';
+import type { EditorClipboardService } from '../platform/services/editor/clipboard.ts';
+import type { Binding } from './define.ts';
 
 /**
  * Runs an action for a hotkey. An unavailable action is a silent no-op (not an
@@ -12,13 +12,13 @@ export function dispatchAction(
   args: readonly unknown[] = [],
 ): void {
   // Availability of clipboard actions depends on the active view's selection.
-  Platform.services.get<EditorClipboardService>("editor.clipboard").sync();
+  Platform.services.get<EditorClipboardService>('editor.clipboard').sync();
   if (!Platform.actions.isAvailable(action)) {
     return;
   }
   runAction(action, ...args);
 }
 
-export function dispatchBinding(binding: Pick<Binding, "action" | "args">) {
+export function dispatchBinding(binding: Pick<Binding, 'action' | 'args'>) {
   dispatchAction(binding.action, binding.args);
 }

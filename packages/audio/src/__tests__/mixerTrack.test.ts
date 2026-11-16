@@ -1,23 +1,32 @@
-import { expect, test, vi } from "vitest";
-import "./mixerTestSetup.js";
-import { MixerTrack } from "../track.js";
-import { audioInstances } from "./audioMock.js";
+import { expect, test, vi } from 'vitest';
 
-test("Track can instantiate", () => {
-  const track = new MixerTrack("track1", "sample.wav");
+import { MixerTrack } from '../track.js';
+import { audioInstances } from './audioMock.js';
+
+vi.mock('../sample.js', async () => {
+  const { createSampleMock } = await import('./mixerTestSetup.js');
+  return createSampleMock();
+});
+vi.mock('../engine.js', async () => {
+  const { createEngineMock } = await import('./mixerTestSetup.js');
+  return createEngineMock();
+});
+
+test('Track can instantiate', () => {
+  const track = new MixerTrack('track1', 'sample.wav');
   expect(track).toBeDefined();
 });
 
-test("Track loads file", () => {
-  const filename = "sample.wav";
-  const track = new MixerTrack("track1", filename);
+test('Track loads file', () => {
+  const filename = 'sample.wav';
+  const track = new MixerTrack('track1', filename);
   expect(track.filename).toBe(filename);
-  expect(track.id).toBe("track1");
+  expect(track.id).toBe('track1');
 });
 
-test("Track mutes and unmutes, preserving volume", () => {
-  const filename = "sample.wav";
-  const track = new MixerTrack("track1", filename);
+test('Track mutes and unmutes, preserving volume', () => {
+  const filename = 'sample.wav';
+  const track = new MixerTrack('track1', filename);
   const initialVolume = track.volume;
   track.muted = true;
   expect(track.muted).toBe(true);
@@ -29,8 +38,8 @@ test("Track mutes and unmutes, preserving volume", () => {
   expect(track.effectiveVolume).toBe(initialVolume);
 });
 
-test("Track volume scaling is preserved while muted", () => {
-  const track = new MixerTrack("track1", "sample.wav");
+test('Track volume scaling is preserved while muted', () => {
+  const track = new MixerTrack('track1', 'sample.wav');
   track.volumeScale = 0.5;
   track.muted = true;
   expect(track.volume).toBe(1);
@@ -45,13 +54,13 @@ test("Track volume scaling is preserved while muted", () => {
   expect(track.effectiveVolume).toBe(0.2);
 });
 
-test("Track forwards audio callbacks", () => {
-  const track = new MixerTrack("track1", "sample.wav");
+test('Track forwards audio callbacks', () => {
+  const track = new MixerTrack('track1', 'sample.wav');
   const audio = audioInstances.at(-1)!;
   const callback = vi.fn();
 
   track.onPlay = callback;
-  audio.emit("play", "started");
+  audio.emit('play', 'started');
 
-  expect(callback).toHaveBeenCalledWith({ data: "started" });
+  expect(callback).toHaveBeenCalledWith({ data: 'started' });
 });

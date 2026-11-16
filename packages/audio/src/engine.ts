@@ -83,11 +83,11 @@ export class AudioEngine {
   /** The shared context, created on first use. */
   get context(): AudioContext {
     if (this.#disposed) {
-      throw new Error("AudioEngine has been disposed");
+      throw new Error('AudioEngine has been disposed');
     }
     if (this.#context === null) {
       const contextOptions: AudioContextOptions = {
-        latencyHint: this.#options.latencyHint ?? "playback",
+        latencyHint: this.#options.latencyHint ?? 'playback',
       };
       if (this.#options.sampleRate !== undefined) {
         contextOptions.sampleRate = this.#options.sampleRate;
@@ -116,7 +116,7 @@ export class AudioEngine {
 
   /** "closed" when no context exists, so callers never create one by asking. */
   get state(): AudioContextState {
-    return this.#context?.state ?? "closed";
+    return this.#context?.state ?? 'closed';
   }
 
   /**
@@ -135,7 +135,7 @@ export class AudioEngine {
   /** Starts (or resumes) the context. Call from a user gesture when possible. */
   async resume(): Promise<void> {
     const context = this.context;
-    if (context.state === "suspended") {
+    if (context.state === 'suspended') {
       await context.resume();
     }
   }
@@ -173,9 +173,9 @@ export class AudioEngine {
     const context = this.#context;
     this.#context = null;
     this.#input = null;
-    if (context && context.state !== "closed") {
+    if (context && context.state !== 'closed') {
       void context.close().catch((error: unknown) => {
-        console.error("Error closing audio context", error);
+        console.error('Error closing audio context', error);
       });
     }
   }
@@ -184,7 +184,7 @@ export class AudioEngine {
     const input = context.createGain();
     if (
       this.#options.softClip === false ||
-      typeof context.createWaveShaper !== "function"
+      typeof context.createWaveShaper !== 'function'
     ) {
       input.connect(context.destination);
       return input;
@@ -193,14 +193,14 @@ export class AudioEngine {
     const pre = context.createGain();
     pre.gain.value = 0.5;
     const shaper = context.createWaveShaper();
-    if (typeof shaper.connect !== "function") {
+    if (typeof shaper.connect !== 'function') {
       input.connect(context.destination);
       return input;
     }
     // The curve is typed for ArrayBuffer-backed arrays; ours always is.
     shaper.curve = createSoftClipCurve() as Float32Array<ArrayBuffer>;
     // Oversampling would add filter ripple to the otherwise transparent path.
-    shaper.oversample = "none";
+    shaper.oversample = 'none';
     const post = context.createGain();
     post.gain.value = 2;
 

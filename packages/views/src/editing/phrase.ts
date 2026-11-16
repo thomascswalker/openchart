@@ -1,4 +1,4 @@
-import type { MidiNote, MidiTrack } from "@openchart/midi";
+import type { MidiNote, MidiTrack } from '@openchart/midi';
 
 /** A phrase span read from a MIDI track. `kind` is a phrase id or kind name. */
 export interface NotePhrase {

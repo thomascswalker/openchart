@@ -1,14 +1,14 @@
 import {
-  compact,
-  violation,
   type ConstraintOf,
   type RuleCheck,
-} from "../context";
-import { phraseId, phraseSpans, spansOverlap } from "../phrases";
+  compact,
+  violation,
+} from '../context';
+import { phraseId, phraseSpans, spansOverlap } from '../phrases';
 
 /** Spans of the listed phrases (of different ids) may not overlap. Same-id overlap is the implicit rule. */
 export const checkPhrasesMayNotOverlap: RuleCheck<
-  ConstraintOf<"phrasesMayNotOverlap">
+  ConstraintOf<'phrasesMayNotOverlap'>
 > = (ctx, c) => {
   const spans = phraseSpans(ctx, new Set(c.phrases));
   const out = [];

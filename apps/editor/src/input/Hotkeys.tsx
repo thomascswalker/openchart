@@ -1,14 +1,15 @@
-import { useContext, useMemo, useSyncExternalStore } from "react";
-import { useService } from "../platform";
-import type { ActiveChartViewService } from "../platform/services/editor/activeChartView.ts";
-import { InputProviderContext } from "./context.ts";
-import type { Binding } from "./define.ts";
-import { dispatchBinding } from "./dispatch.ts";
-import { useAppHotkeys, useHotkeys } from "./lib.ts";
+import { useContext, useMemo, useSyncExternalStore } from 'react';
+
+import { useService } from '../platform';
+import type { ActiveChartViewService } from '../platform/services/editor/activeChartView.ts';
+import { InputProviderContext } from './context.ts';
+import type { Binding } from './define.ts';
+import { dispatchBinding } from './dispatch.ts';
+import { useAppHotkeys, useHotkeys } from './lib.ts';
 
 function useActiveCanvas(): HTMLCanvasElement | null {
   const service = useService<ActiveChartViewService>(
-    "editor.active-chart-view",
+    'editor.active-chart-view',
   );
   const view = useSyncExternalStore(
     service.subscribe,
@@ -39,11 +40,11 @@ function useBindingHotkeys(
 function RegisteredHotkeys({ bindings }: { bindings: readonly Binding[] }) {
   const canvas = useActiveCanvas();
   const documentBindings = useMemo(
-    () => bindings.filter((binding) => binding.target === "document"),
+    () => bindings.filter((binding) => binding.target === 'document'),
     [bindings],
   );
   const canvasBindings = useMemo(
-    () => bindings.filter((binding) => binding.target === "canvas"),
+    () => bindings.filter((binding) => binding.target === 'canvas'),
     [bindings],
   );
 

@@ -1,11 +1,12 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Popup, Slider } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Button, Popup, Slider } from '..';
 
 const meta = {
-  title: "Shared/Popup",
+  title: 'Shared/Popup',
   component: Popup,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
   },
 } satisfies Meta<typeof Popup>;
 
@@ -15,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 export const ViewportSettings: Story = {
   args: {
     trigger: <Button aria-label="Viewport settings">V</Button>,
-    title: "Viewport Settings",
+    title: 'Viewport Settings',
     width: 280,
     children: (
       <label className="viewport-panel__scroll-speed">

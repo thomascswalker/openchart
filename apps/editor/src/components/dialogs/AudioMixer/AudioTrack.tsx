@@ -1,9 +1,10 @@
-import { H6, ResetIcon, Section, Text } from "../../shared";
-import type { MixerTrack } from "@openchart/audio";
-import styles from "./AudioMixer.module.css";
-import { startCase } from "es-toolkit";
-import { VolumeSlider } from "./VolumeSlider";
-import { AudioTrackButton } from "./AudioTrackButton";
+import type { MixerTrack } from '@openchart/audio';
+import { startCase } from 'es-toolkit';
+
+import { H6, ResetIcon, Section, Text } from '../../shared';
+import styles from './AudioMixer.module.css';
+import { AudioTrackButton } from './AudioTrackButton';
+import { VolumeSlider } from './VolumeSlider';
 
 interface AudioTrackProps {
   name?: string;
@@ -34,14 +35,14 @@ export const AudioTrack = ({
       flexDirection="row"
       minHeight="64px"
       padding={0}
-      className={styles["ui-track-mixer-track"]}
+      className={styles['ui-track-mixer-track']}
     >
       <Section
         maxWidth="var(--size-med)"
         padding={0}
         flexDirection="row"
         alignItems="center"
-        className={styles["ui-track-mixer-track-index"]}
+        className={styles['ui-track-mixer-track-index']}
       >
         <H6 textAlign="center" disabled={!enabled}>
           {index}
@@ -49,17 +50,17 @@ export const AudioTrack = ({
       </Section>
       <Section
         padding={0}
-        paddingLeft={"8px"}
+        paddingLeft={'8px'}
         alignItems="center"
         flexDirection="row"
-        className={styles["ui-track-mixer-track-controls"]}
+        className={styles['ui-track-mixer-track-controls']}
       >
         <Text
-          className={styles["ui-track-mixer-track-name"]}
+          className={styles['ui-track-mixer-track-name']}
           textAlign="left"
           disabled={!enabled}
         >
-          {startCase(name || "")}
+          {startCase(name || '')}
         </Text>
         <VolumeSlider
           onChange={(volume) => onVolumeChange?.(track, volume)}

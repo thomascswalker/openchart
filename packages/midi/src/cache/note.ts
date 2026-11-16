@@ -1,12 +1,12 @@
 import {
+  ChannelMessage,
   MidiChannelEvent,
-  MidiNote,
   MidiEvent,
+  MidiNote,
   TextMidiEvent,
   isNoteEvent,
-  ChannelMessage,
-} from "../types";
-import { IEventCacheList } from "./cache";
+} from '../types';
+import { IEventCacheList } from './cache';
 
 interface PendingNote {
   pitch: number;

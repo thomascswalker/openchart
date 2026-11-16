@@ -1,4 +1,4 @@
-import { EntityType, parseEntityFromId, type EntityId } from "@openchart/views";
+import { type EntityId, EntityType, parseEntityFromId } from '@openchart/views';
 
 export function parseSelectedNoteEntityIds(ids: readonly string[]): EntityId[] {
   return ids.flatMap((id) => {

@@ -10,5 +10,5 @@ export {
   formatForDisplay,
   useAppHotkeys,
   useHotkeys,
-} from "@tanstack/react-hotkeys";
-export type { CustomHotkeys } from "@tanstack/react-hotkeys";
+} from '@tanstack/react-hotkeys';
+export type { CustomHotkeys } from '@tanstack/react-hotkeys';

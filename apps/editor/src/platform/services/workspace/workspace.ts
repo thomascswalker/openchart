@@ -1,5 +1,6 @@
-import { StatefulService } from "../../services";
-import { FileTreeModel } from "../../../models/tree/fileTree";
+import { FileTreeModel } from '../../../models/tree/fileTree';
+import { createDecorator } from '../service';
+import { StatefulService } from '../statefulService';
 
 export interface WorkspaceSnapshot {
   /** The file tree representing the structure of the workspace. */
@@ -46,11 +47,11 @@ export class WorkspaceService extends StatefulService<WorkspaceSnapshot> {
    */
   public async showSetDirectory(): Promise<void> {
     try {
-      const handle = await window.showDirectoryPicker({ mode: "read" });
+      const handle = await window.showDirectoryPicker({ mode: 'read' });
       await this.setDirectory(handle as unknown as FileSystemDirectoryHandle);
     } catch (error) {
       // The user dismissing the picker is not an error.
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
         throw error;
       }
     }
@@ -117,4 +118,6 @@ export class WorkspaceService extends StatefulService<WorkspaceSnapshot> {
   }
 }
 
-export interface IWorkspaceService extends WorkspaceService {}
+export type IWorkspaceService = WorkspaceService;
+export const IWorkspaceService =
+  createDecorator<IWorkspaceService>('workspace');

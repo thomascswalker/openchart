@@ -1,17 +1,17 @@
-import type { Binding, InputScope } from "./define.ts";
+import type { Binding, InputScope } from './define.ts';
 
 const KEY_NAMES: Record<string, string> = {
-  Mod: "Ctrl/Cmd",
-  ArrowUp: "Up",
-  ArrowDown: "Down",
-  ArrowLeft: "Left",
-  ArrowRight: "Right",
+  Mod: 'Ctrl/Cmd',
+  ArrowUp: 'Up',
+  ArrowDown: 'Down',
+  ArrowLeft: 'Left',
+  ArrowRight: 'Right',
 };
 
 const SCOPE_TITLES: Record<InputScope, string> = {
-  global: "Global",
-  highway: "Highway",
-  pianoroll: "Piano Roll",
+  global: 'Global',
+  highway: 'Highway',
+  pianoroll: 'Piano Roll',
 };
 
 /** Platform-neutral chord text for documentation, e.g. `Ctrl/Cmd + Shift + S`. */
@@ -19,9 +19,9 @@ export function formatHotkeyForDocs(hotkey: string): string {
   // A trailing "+" separator is never part of a chord here, so a plain split
   // is safe; bindings use `Mod+,` rather than `Mod++`.
   return hotkey
-    .split("+")
+    .split('+')
     .map((part) => KEY_NAMES[part] ?? part)
-    .join(" + ");
+    .join(' + ');
 }
 
 /**
@@ -29,7 +29,7 @@ export function formatHotkeyForDocs(hotkey: string): string {
  * the docs can never drift from the code. Run `npm run docs:controls`.
  */
 export function renderHotkeyTables(bindings: readonly Binding[]): string {
-  const scopes: InputScope[] = ["global", "highway", "pianoroll"];
+  const scopes: InputScope[] = ['global', 'highway', 'pianoroll'];
   const sections = scopes.map((scope) => {
     const rows = bindings
       .filter((binding) => binding.scope === scope)
@@ -39,11 +39,11 @@ export function renderHotkeyTables(bindings: readonly Binding[]): string {
       );
     return [
       `### ${SCOPE_TITLES[scope]}`,
-      "",
-      "| Hotkey | Description | Group |",
-      "| ------ | ----------- | ----- |",
+      '',
+      '| Hotkey | Description | Group |',
+      '| ------ | ----------- | ----- |',
       ...rows,
-    ].join("\n");
+    ].join('\n');
   });
-  return sections.join("\n\n");
+  return sections.join('\n\n');
 }

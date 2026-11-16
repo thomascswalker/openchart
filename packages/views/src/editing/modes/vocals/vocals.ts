@@ -1,21 +1,23 @@
-import { MetaType } from "@openchart/midi";
-import { z } from "zod";
-import { EntityType } from "../../entity";
+import { MetaType } from '@openchart/midi';
+import { z } from 'zod';
+
+import { phraseIcon, phraseLabel } from '../../../ruleset/labels';
 import {
+  VOCAL_NOTE_KINDS,
+  type VocalLayout,
   VocalNoteKind,
   VocalPhraseKind,
-  VOCAL_NOTE_KINDS,
   VocalTrackView,
-  type VocalLayout,
-} from "../../../views/vocal";
-import { phraseIcon, phraseLabel } from "../../../ruleset/labels";
-import type { EntityId } from "../../entity";
+} from '../../../views/vocal';
+import { ClipboardPayload } from '../../clipboard';
 import {
   DomainCommandType,
-  EditCommandType,
   type EditCommand,
+  EditCommandType,
   type GeneralCommand,
-} from "../../commands";
+} from '../../commands';
+import { EntityType } from '../../entity';
+import type { EntityId } from '../../entity';
 import type {
   EditingMode,
   EntityClassification,
@@ -23,19 +25,18 @@ import type {
   ModeContext,
   Projection,
   ProjectionRow,
-} from "../../modes/mode";
-import { EditingModeId, isRawCommand } from "../../modes/mode";
-import type { NoteSnapshot } from "../../reader";
-import type { Rejection } from "../../result";
+} from '../../modes/mode';
+import { EditingModeId, isRawCommand } from '../../modes/mode';
+import type { NoteSnapshot } from '../../reader';
+import type { Rejection } from '../../result';
 import {
   ownsNotes,
   rejected,
-  targetRules,
   targetNotes,
+  targetRules,
   targetTrackIndex,
   validSpan,
-} from "../common";
-import { ClipboardPayload } from "../../clipboard";
+} from '../common';
 
 const VocalNoteKindSchema = z.nativeEnum(VocalNoteKind);
 const VocalPhraseKindSchema = z.nativeEnum(VocalPhraseKind);
@@ -88,9 +89,9 @@ const domainCommandTypes = new Set([
 export function createVocalsMode(): EditingMode<VocalsToolState> {
   return {
     id: EditingModeId.MidiVocals,
-    label: "Vocals",
-    hostKinds: new Set(["piano-roll"]),
-    appliesTo: (track) => track.kind === "vocals",
+    label: 'Vocals',
+    hostKinds: new Set(['piano-roll']),
+    appliesTo: (track) => track.kind === 'vocals',
     capabilities: {
       rawCommands: new Set([EditCommandType.DeleteEntities]),
       domainCommands: domainCommandTypes,
@@ -117,9 +118,9 @@ export function createVocalsMode(): EditingMode<VocalsToolState> {
 }
 
 const PHRASE_TOOLS = [
-  [VocalPhraseKind.Vocal, "lyricPhrase"],
-  [VocalPhraseKind.PowerWindow, "powerWindow"],
-  [VocalPhraseKind.StagePower, "starPower"],
+  [VocalPhraseKind.Vocal, 'lyricPhrase'],
+  [VocalPhraseKind.PowerWindow, 'powerWindow'],
+  [VocalPhraseKind.StagePower, 'starPower'],
 ] as const;
 
 function createTools(context: ModeContext) {
@@ -131,8 +132,8 @@ function createTools(context: ModeContext) {
       id: `vocal-note-${noteKind}`,
       label: noteKind,
       icon: noteKind,
-      group: "placement",
-      stateKey: "noteKind",
+      group: 'placement',
+      stateKey: 'noteKind',
       value: noteKind,
     })),
     ...PHRASE_TOOLS.filter(([phrase]) => phrasePitch(phrase) >= 0).map(
@@ -141,8 +142,8 @@ function createTools(context: ModeContext) {
         label: `${phraseLabel(effect)} phrase`,
         icon:
           phrase === VocalPhraseKind.StagePower ? phraseIcon(effect) : phrase,
-        group: "vocal-tools",
-        stateKey: "phrase",
+        group: 'vocal-tools',
+        stateKey: 'phrase',
         value: phrase,
         toggle: { offValue: null as null },
       }),
@@ -164,8 +165,8 @@ function expandVocalPaste(
   if (!layout) {
     return rejected(
       pasteCommand,
-      "missing-config",
-      "Vocal layout is unavailable",
+      'missing-config',
+      'Vocal layout is unavailable',
     );
   }
 
@@ -174,8 +175,8 @@ function expandVocalPaste(
     const endTick = tick + entity.duration;
     if (!validSpan(tick, endTick) || !Number.isSafeInteger(endTick)) {
       rejections.push({
-        code: "invalid-paste-span",
-        message: "Pasted vocal span is invalid",
+        code: 'invalid-paste-span',
+        message: 'Pasted vocal span is invalid',
         command: pasteCommand,
       });
       continue;
@@ -185,29 +186,29 @@ function expandVocalPaste(
     const vocalClassification = sameMode
       ? null
       : VocalTrackView.classifyPitch(layout, entity.pitch);
-    if (vocalClassification?.type === "unknown") {
+    if (vocalClassification?.type === 'unknown') {
       rejections.push({
-        code: "invalid-vocal-note",
-        message: "This note is not valid for the vocal chart",
+        code: 'invalid-vocal-note',
+        message: 'This note is not valid for the vocal chart',
         command: pasteCommand,
       });
       continue;
     }
     const entityKind = sameMode
       ? entity.classification.type
-      : vocalClassification?.type === "phrase"
-        ? "phrase"
-        : "note";
+      : vocalClassification?.type === 'phrase'
+        ? 'phrase'
+        : 'note';
     const subtype = sameMode
       ? entity.classification.subtype
-      : (vocalClassification?.kind ?? "unknown");
+      : (vocalClassification?.kind ?? 'unknown');
     let command: EditCommand;
-    if (entityKind === "phrase") {
+    if (entityKind === 'phrase') {
       const phraseKind = VocalPhraseKindSchema.safeParse(subtype);
       if (!phraseKind.success) {
         rejections.push({
-          code: "invalid-vocal-phrase",
-          message: "This phrase kind is not supported by the vocal chart",
+          code: 'invalid-vocal-phrase',
+          message: 'This phrase kind is not supported by the vocal chart',
           command: pasteCommand,
         });
         continue;
@@ -222,8 +223,8 @@ function expandVocalPaste(
       const kind = VocalNoteKindSchema.safeParse(subtype);
       if (!kind.success) {
         rejections.push({
-          code: "invalid-vocal-note",
-          message: "This note is not valid for the vocal chart",
+          code: 'invalid-vocal-note',
+          message: 'This note is not valid for the vocal chart',
           command: pasteCommand,
         });
         continue;
@@ -273,7 +274,7 @@ function createVocalProjection(context: ModeContext): Projection {
     rowForNote: (note) => {
       const classification = VocalTrackView.classifyPitch(layout, note.pitch);
       if (
-        classification.type === "note" &&
+        classification.type === 'note' &&
         classification.kind === VocalNoteKind.Pitched
       ) {
         return rows[note.pitch - layout.range.low] ?? null;
@@ -303,7 +304,7 @@ function classifyVocalNote(
   const layout = getLayout(context);
   const classification =
     layout && VocalTrackView.classifyPitch(layout, note.pitch);
-  if (!classification || classification.type === "unknown") {
+  if (!classification || classification.type === 'unknown') {
     return {
       type: EntityType.Note,
       subtype: EntityType.Unknown,
@@ -326,7 +327,7 @@ function expandVocalCommand(
   const layout = getLayout(context);
   const trackIndex = targetTrackIndex(context);
   if (!layout)
-    return rejected(command, "missing-config", "Vocal layout is unavailable");
+    return rejected(command, 'missing-config', 'Vocal layout is unavailable');
   if (
     isRawCommand(command) &&
     command.type === EditCommandType.DeleteEntities
@@ -338,7 +339,7 @@ function expandVocalCommand(
     for (const note of owned.notes) {
       const classification = VocalTrackView.classifyPitch(layout, note.pitch);
       if (
-        classification.type !== "note" ||
+        classification.type !== 'note' ||
         !VocalTrackView.kindNeedsLyric(classification.kind)
       ) {
         continue;
@@ -363,7 +364,7 @@ function expandVocalCommand(
         !parsed.success ||
         !validSpan(parsed.data.tick, parsed.data.endTick)
       ) {
-        return rejected(command, "invalid-span", "Vocal note span is invalid");
+        return rejected(command, 'invalid-span', 'Vocal note span is invalid');
       }
       const pitch = VocalTrackView.notePitch(
         layout,
@@ -373,8 +374,8 @@ function expandVocalCommand(
       if (pitch === null) {
         return rejected(
           command,
-          "invalid-pitch",
-          "Vocal note pitch is outside its configured range",
+          'invalid-pitch',
+          'Vocal note pitch is outside its configured range',
         );
       }
       const commands: GeneralCommand[] = [
@@ -409,8 +410,8 @@ function expandVocalCommand(
       if (!parsed.success || !parsed.data.text.trim()) {
         return rejected(
           command,
-          "invalid-lyric",
-          "Lyric text must not be empty",
+          'invalid-lyric',
+          'Lyric text must not be empty',
         );
       }
       const owned = ownsNotes([parsed.data.id], context, command);
@@ -419,13 +420,13 @@ function expandVocalCommand(
       const note = owned.notes[0]!;
       const classification = VocalTrackView.classifyPitch(layout, note.pitch);
       if (
-        classification.type !== "note" ||
+        classification.type !== 'note' ||
         !VocalTrackView.kindNeedsLyric(classification.kind)
       ) {
         return rejected(
           command,
-          "not-lyric-note",
-          "This vocal entity cannot have a lyric",
+          'not-lyric-note',
+          'This vocal entity cannot have a lyric',
         );
       }
       const existing = pairedLyrics(context, layout).get(note.id);
@@ -453,7 +454,7 @@ function expandVocalCommand(
     case DomainCommandType.MoveVocalEntities: {
       const parsed = MoveSchema.safeParse(command);
       if (!parsed.success) {
-        return rejected(command, "invalid-command", "Vocal move is invalid");
+        return rejected(command, 'invalid-command', 'Vocal move is invalid');
       }
       const owned = ownsNotes(parsed.data.targetIds, context, command);
       if (owned.rejection)
@@ -461,13 +462,13 @@ function expandVocalCommand(
       if (
         owned.notes.some(
           (note) =>
-            VocalTrackView.classifyPitch(layout, note.pitch).type === "unknown",
+            VocalTrackView.classifyPitch(layout, note.pitch).type === 'unknown',
         )
       ) {
         return rejected(
           command,
-          "not-movable",
-          "Unknown vocal entities cannot be moved",
+          'not-movable',
+          'Unknown vocal entities cannot be moved',
         );
       }
       const lyricMap = pairedLyrics(context, layout);
@@ -488,7 +489,7 @@ function expandVocalCommand(
             tick,
           };
           if (
-            classification.type === "note" &&
+            classification.type === 'note' &&
             classification.kind === VocalNoteKind.Pitched
           ) {
             patch.pitch = Math.max(
@@ -520,14 +521,14 @@ function expandVocalCommand(
         return commands;
       };
       const hasErrors = (commands: GeneralCommand[]) =>
-        context.validate(commands).some((v) => v.severity === "error");
+        context.validate(commands).some((v) => v.severity === 'error');
 
       const requested = build(parsed.data.tickDelta);
       if (requested === null) {
         return rejected(
           command,
-          "invalid-tick",
-          "Moved vocal tick is outside the safe integer range",
+          'invalid-tick',
+          'Moved vocal tick is outside the safe integer range',
         );
       }
       // When the requested offset breaks a rule (e.g. a phrase would overlap
@@ -547,7 +548,7 @@ function expandVocalCommand(
     case DomainCommandType.ResizeVocalEntities: {
       const parsed = ResizeSchema.safeParse(command);
       if (!parsed.success) {
-        return rejected(command, "invalid-command", "Vocal resize is invalid");
+        return rejected(command, 'invalid-command', 'Vocal resize is invalid');
       }
       const owned = ownsNotes(parsed.data.targetIds, context, command);
       if (owned.rejection)
@@ -564,7 +565,7 @@ function expandVocalCommand(
         ) {
           return rejected(
             command,
-            "invalid-range",
+            'invalid-range',
             `Resized vocal entity '${note.id}' is outside the safe tick range`,
           );
         }
@@ -582,16 +583,16 @@ function expandVocalCommand(
       ) {
         return rejected(
           command,
-          "invalid-span",
-          "Vocal phrase span is invalid",
+          'invalid-span',
+          'Vocal phrase span is invalid',
         );
       }
       const pitch = VocalTrackView.phrasePitch(layout, parsed.data.phraseKind);
       if (pitch < 0) {
         return rejected(
           command,
-          "missing-config-note",
-          "This phrase kind is not defined by the ruleset",
+          'missing-config-note',
+          'This phrase kind is not defined by the ruleset',
         );
       }
       return {
@@ -614,7 +615,7 @@ function expandVocalCommand(
     default:
       return rejected(
         command,
-        "unsupported-command",
+        'unsupported-command',
         `Command '${command.type}' is unsupported by vocals`,
       );
   }
@@ -640,7 +641,7 @@ function pairedLyrics(
   for (const note of targetNotes(context)) {
     const classification = VocalTrackView.classifyPitch(layout, note.pitch);
     if (
-      classification.type !== "note" ||
+      classification.type !== 'note' ||
       !VocalTrackView.kindNeedsLyric(classification.kind)
     ) {
       continue;
@@ -653,7 +654,7 @@ function pairedLyrics(
 
 function getLayout(context: ModeContext): VocalLayout | null {
   const rules = targetRules(context);
-  return rules && rules.kind === "vocals"
+  return rules && rules.kind === 'vocals'
     ? VocalTrackView.layoutFromRules(rules)
     : null;
 }

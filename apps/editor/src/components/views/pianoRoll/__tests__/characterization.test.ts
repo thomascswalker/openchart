@@ -1,37 +1,38 @@
-import { MetaType, Midi, type MidiNote } from "@openchart/midi";
+import { MetaType, Midi, type MidiNote } from '@openchart/midi';
 import {
+  Difficulty,
   DomainCommandType,
   EditCommandType,
   EntityType,
-  createStandaloneEditing,
-  Difficulty,
-  formatNoteId,
-  parseEntityFromId,
   SongView,
   VocalNoteKind,
   VocalPhraseKind,
-} from "@openchart/views";
-import { describe, expect, it } from "vitest";
-import characterization from "../../../../../../../packages/views/src/editing/modes/__tests__/fixtures/characterization/editing.json" with { type: "json" };
+  createStandaloneEditing,
+  formatNoteId,
+  parseEntityFromId,
+} from '@openchart/views';
+import { describe, expect, it } from 'vitest';
 
-describe("editing characterization: Piano Roll vocals", () => {
-  it("preserves vocal move, lane, phrase, delete, and paste behavior through a session", () => {
+import characterization from '../../../../../../../packages/views/src/editing/modes/__tests__/fixtures/characterization/editing.json' with { type: 'json' };
+
+describe('editing characterization: Piano Roll vocals', () => {
+  it('preserves vocal move, lane, phrase, delete, and paste behavior through a session', () => {
     const midi = new Midi();
     midi.addTrack();
     const song = new SongView(midi);
     const descriptor = song
       .getTrackDescriptors()
-      .find((item) => item.name === "VOCALS")!;
+      .find((item) => item.name === 'VOCALS')!;
     const standalone = createStandaloneEditing(midi);
-    const track = song.ensureMidiTrack("vocals")!;
-    const vocalView = song.getVocalTrackView("VOCALS")!;
+    const track = song.ensureMidiTrack('vocals')!;
+    const vocalView = song.getVocalTrackView('VOCALS')!;
     const session = standalone.createSession(
       {
         trackKey: descriptor.key,
         trackIndex: midi.tracks.indexOf(track),
         difficulty: Difficulty.Expert,
       },
-      "piano-roll",
+      'piano-roll',
     );
     const pitched = vocalView.addNote(VocalNoteKind.Pitched, 0, 120, {
       pitch: characterization.vocal.pitchedMove.fromPitch,

@@ -34,7 +34,7 @@
 }
 
 .piano-roll-story__toolbar select,
-.piano-roll-story__toolbar input[type="number"] {
+.piano-roll-story__toolbar input[type='number'] {
   min-height: 30px;
   padding: 3px 6px;
   color: #eee;
@@ -43,7 +43,7 @@
   border-radius: 4px;
 }
 
-.piano-roll-story__toolbar input[type="number"] {
+.piano-roll-story__toolbar input[type='number'] {
   width: 90px;
 }
 

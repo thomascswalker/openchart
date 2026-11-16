@@ -8,12 +8,13 @@
  * `tests/__tests__/newConfig.test.ts` runs an Ajv-vs-Zod differential test so
  * the two cannot drift apart.
  */
-import { z } from "zod";
-import defaultRulesetData from "../../configs/default.ruleset.json" with { type: "json" };
-import { type RulesetIssue, validateRulesetSemantics } from "./semantics";
+import { z } from 'zod';
 
-export type { RulesetIssue } from "./semantics";
-export { validateRulesetSemantics } from "./semantics";
+import defaultRulesetData from '../../configs/default.ruleset.json' with { type: 'json' };
+import { type RulesetIssue, validateRulesetSemantics } from './semantics';
+
+export type { RulesetIssue } from './semantics';
+export { validateRulesetSemantics } from './semantics';
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -23,7 +24,7 @@ export { validateRulesetSemantics } from "./semantics";
 function unique<T extends z.ZodType<unknown[]>>(schema: T) {
   return schema.refine(
     (items) => new Set(items as unknown[]).size === (items as unknown[]).length,
-    { message: "Items must be unique" },
+    { message: 'Items must be unique' },
   );
 }
 
@@ -36,7 +37,7 @@ const primitive = z.union([z.boolean(), z.number(), z.string()]);
 
 export const identifierSchema = z
   .string()
-  .regex(/^[a-z][A-Za-z0-9]*$/, "Must be a camelCase identifier");
+  .regex(/^[a-z][A-Za-z0-9]*$/, 'Must be a camelCase identifier');
 export const pitchSchema = z.number().int().min(0).max(127);
 export const velocitySchema = z.number().int().min(1).max(127);
 export const pitchRangeSchema = z.strictObject({
@@ -51,16 +52,16 @@ export const velocityRangeSchema = z.strictObject({
   min: velocitySchema,
   max: velocitySchema,
 });
-export const severitySchema = z.enum(["error", "warning", "info", "ignore"]);
-export const statusSchema = z.enum(["stable", "provisional", "todo"]);
+export const severitySchema = z.enum(['error', 'warning', 'info', 'ignore']);
+export const statusSchema = z.enum(['stable', 'provisional', 'todo']);
 export const difficultyNameSchema = z.enum([
-  "easy",
-  "medium",
-  "hard",
-  "expert",
+  'easy',
+  'medium',
+  'hard',
+  'expert',
 ]);
 export const difficultySetSchema = z.union([
-  z.literal("all"),
+  z.literal('all'),
   unique(z.array(difficultyNameSchema).min(1)),
 ]);
 export const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
@@ -88,7 +89,7 @@ export const detectionSchema = z.strictObject({
 
 export const midiConfigSchema = z.strictObject({
   fileFormat: z.literal(1),
-  timeDivision: z.literal("ticksPerQuarter"),
+  timeDivision: z.literal('ticksPerQuarter'),
   recommendedResolution: z.number().int().min(1).optional(),
   trackNameEvent: z
     .strictObject({
@@ -118,9 +119,9 @@ export const midiConfigSchema = z.strictObject({
 
 export const textEventGrammarSchema = z.strictObject({
   metaEventTypes: unique(z.array(z.number().int().min(1).max(15)).min(1)),
-  encoding: z.enum(["utf-8", "any"]).optional(),
-  brackets: z.enum(["required", "optional"]),
-  componentSyntax: z.enum(["freeform", "structured"]),
+  encoding: z.enum(['utf-8', 'any']).optional(),
+  brackets: z.enum(['required', 'optional']),
+  componentSyntax: z.enum(['freeform', 'structured']),
   allowUnderscoreAsSpace: z.boolean().optional(),
   caseSensitive: z.boolean().optional(),
   stringEscapes: unique(z.array(z.string())).optional(),
@@ -141,8 +142,8 @@ export const settingsSourceSchema = z.strictObject({
   keys: z.array(
     z.strictObject({
       name: z.string(),
-      type: z.enum(["boolean", "integer", "number", "string"]),
-      unit: z.enum(["ticks", "seconds", "none"]).optional(),
+      type: z.enum(['boolean', 'integer', 'number', 'string']),
+      unit: z.enum(['ticks', 'seconds', 'none']).optional(),
       allowedValues: z.array(primitive).optional(),
       default: primitive.optional(),
       description: descriptionSchema.optional(),
@@ -166,23 +167,23 @@ export const vocabularySchema = z.strictObject({
 /* Threshold                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const thresholdValueSchema = z.discriminatedUnion("unit", [
+const thresholdValueSchema = z.discriminatedUnion('unit', [
   z.strictObject({
-    unit: z.literal("step"),
+    unit: z.literal('step'),
     denominator: z.number().int().min(1),
   }),
   z.strictObject({
-    unit: z.literal("ticks"),
+    unit: z.literal('ticks'),
     ticks: z.number().int().min(0),
   }),
   z.strictObject({
-    unit: z.literal("resolutionFormula"),
+    unit: z.literal('resolutionFormula'),
     divisor: z.number().gt(0),
     addTicks: z.number().int(),
-    rounding: z.enum(["floor", "round", "ceil"]),
+    rounding: z.enum(['floor', 'round', 'ceil']),
   }),
   z.strictObject({
-    unit: z.literal("seconds"),
+    unit: z.literal('seconds'),
     seconds: z.number().min(0),
   }),
 ]);
@@ -211,7 +212,7 @@ export type Condition =
   | {
       textEvent: string;
       track?: string | undefined;
-      relation?: "present" | "before" | "after" | undefined;
+      relation?: 'present' | 'before' | 'after' | undefined;
     }
   | {
       setting: {
@@ -233,7 +234,7 @@ export const conditionSchema: z.ZodType<Condition> = z.lazy(() =>
     z.strictObject({
       textEvent: identifierSchema,
       track: z.string().optional(),
-      relation: z.enum(["present", "before", "after"]).optional(),
+      relation: z.enum(['present', 'before', 'after']).optional(),
     }),
     z.strictObject({
       setting: z.strictObject({
@@ -257,7 +258,7 @@ export const conditionSchema: z.ZodType<Condition> = z.lazy(() =>
 /* -------------------------------------------------------------------------- */
 
 export const sysexMatcherSchema = z.strictObject({
-  format: z.literal("phaseShift"),
+  format: z.literal('phaseShift'),
   modifierCode: z.number().int().min(0).max(255),
   difficultyBytes: unique(
     z
@@ -274,20 +275,20 @@ export const sysexMatcherSchema = z.strictObject({
   ),
 });
 
-export const modifierSourceSchema = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("note"), pitch: pitchSchema }),
-  z.strictObject({ kind: z.literal("sysex"), sysex: sysexMatcherSchema }),
-  z.strictObject({ kind: z.literal("velocity"), velocity: velocitySchema }),
+export const modifierSourceSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('note'), pitch: pitchSchema }),
+  z.strictObject({ kind: z.literal('sysex'), sysex: sysexMatcherSchema }),
+  z.strictObject({ kind: z.literal('velocity'), velocity: velocitySchema }),
 ]);
 
-export const padTypeSchema = z.enum(["tom", "cymbal"]);
+export const padTypeSchema = z.enum(['tom', 'cymbal']);
 
 export const laneDefSchema = z.strictObject({
   id: identifierSchema,
   index: z.number().int().min(0),
   displayName: z.string(),
   color: colorSchema.optional(),
-  shape: z.enum(["gem", "openBar", "pad", "kickBar"]).optional(),
+  shape: z.enum(['gem', 'openBar', 'pad', 'kickBar']).optional(),
   padTypes: unique(z.array(padTypeSchema).min(1)).optional(),
   defaultPadType: padTypeSchema.optional(),
   onlyOnTracks: trackNamesSchema.optional(),
@@ -305,16 +306,16 @@ export const difficultyNoteSchema = z.strictObject({
 });
 
 export const markerEffectSchema = z.enum([
-  "forceHopo",
-  "forceStrum",
-  "forceTap",
-  "flam",
+  'forceHopo',
+  'forceStrum',
+  'forceTap',
+  'flam',
 ]);
 
 export const difficultyMarkerSchema = z.strictObject({
   pitch: pitchSchema,
   effect: markerEffectSchema,
-  scope: z.enum(["sameTick", "span"]).optional(),
+  scope: z.enum(['sameTick', 'span']).optional(),
   includesEndTick: z.boolean().optional(),
   status: statusSchema.optional(),
   description: descriptionSchema.optional(),
@@ -334,24 +335,24 @@ export const difficultyBlockSchema = z.strictObject({
 export const difficultiesSchema = z
   .partialRecord(difficultyNameSchema, difficultyBlockSchema)
   .refine((d) => Object.keys(d).length >= 1, {
-    message: "At least one difficulty is required",
+    message: 'At least one difficulty is required',
   });
 
 export const modifierDefSchema = z.strictObject({
   id: identifierSchema,
   effect: z.enum([
-    "forceHopo",
-    "forceStrum",
-    "forceTap",
-    "open",
-    "setPadType",
-    "flam",
-    "accent",
-    "ghost",
+    'forceHopo',
+    'forceStrum',
+    'forceTap',
+    'open',
+    'setPadType',
+    'flam',
+    'accent',
+    'ghost',
   ]),
   padType: padTypeSchema.optional(),
   source: modifierSourceSchema,
-  scope: z.enum(["sameTick", "span"]).optional(),
+  scope: z.enum(['sameTick', 'span']).optional(),
   includesEndTick: z.boolean().optional(),
   appliesTo: difficultySetSchema.optional(),
   appliesToLanes: unique(z.array(identifierSchema)).optional(),
@@ -366,28 +367,28 @@ export const modifierDefSchema = z.strictObject({
 /* -------------------------------------------------------------------------- */
 
 export const phraseEffectSchema = z.enum([
-  "starPower",
-  "starPowerActivation",
-  "solo",
-  "trill",
-  "tremolo",
-  "singleLaneRoll",
-  "doubleLaneRoll",
-  "drumFill",
-  "bigRockEnding",
-  "versusPlayer1",
-  "versusPlayer2",
-  "lyricPhrase",
-  "lyricPhraseSecondary",
-  "powerWindow",
-  "discoFlip",
+  'starPower',
+  'starPowerActivation',
+  'solo',
+  'trill',
+  'tremolo',
+  'singleLaneRoll',
+  'doubleLaneRoll',
+  'drumFill',
+  'bigRockEnding',
+  'versusPlayer1',
+  'versusPlayer2',
+  'lyricPhrase',
+  'lyricPhraseSecondary',
+  'powerWindow',
+  'discoFlip',
 ]);
 
 export const phraseDefSchema = z.strictObject({
   id: identifierSchema,
   effect: phraseEffectSchema,
   pitches: unique(z.array(pitchSchema).min(1)),
-  pitchRequirement: z.enum(["any", "all"]).optional(),
+  pitchRequirement: z.enum(['any', 'all']).optional(),
   appliesTo: difficultySetSchema.optional(),
   velocityRules: z
     .array(
@@ -402,7 +403,7 @@ export const phraseDefSchema = z.strictObject({
   requires: conditionSchema.optional(),
   alsoActsAs: z
     .strictObject({
-      effect: z.literal("starPower"),
+      effect: z.literal('starPower'),
       when: conditionSchema,
     })
     .optional(),
@@ -412,10 +413,10 @@ export const phraseDefSchema = z.strictObject({
   maxDistinctLanes: z.number().int().min(1).optional(),
   activation: z
     .strictObject({
-      target: z.literal("nearestNoteToEnd"),
+      target: z.literal('nearestNoteToEnd'),
       window: thresholdSchema,
       includeNotesOutsidePhrase: z.boolean().optional(),
-      lengthMeaning: z.enum(["indicatorLength", "none"]).optional(),
+      lengthMeaning: z.enum(['indicatorLength', 'none']).optional(),
     })
     .optional(),
   status: statusSchema.optional(),
@@ -425,18 +426,18 @@ export const phraseDefSchema = z.strictObject({
 export const eventNoteDefSchema = z.strictObject({
   id: identifierSchema,
   category: z.enum([
-    "handPosition",
-    "animation",
-    "performerFocus",
-    "cameraCut",
-    "spotlight",
-    "singalong",
-    "beatline",
-    "vocalKey",
-    "vocalRangeShift",
-    "vocalLyricShift",
-    "practiceAssist",
-    "other",
+    'handPosition',
+    'animation',
+    'performerFocus',
+    'cameraCut',
+    'spotlight',
+    'singalong',
+    'beatline',
+    'vocalKey',
+    'vocalRangeShift',
+    'vocalLyricShift',
+    'practiceAssist',
+    'other',
   ]),
   pitches: pitchSetSchema,
   valueLabels: z.array(z.string()).optional(),
@@ -445,10 +446,10 @@ export const eventNoteDefSchema = z.strictObject({
 });
 
 export const textEventArgTypeSchema = z.enum([
-  "identifier",
-  "string",
-  "number",
-  "integer",
+  'identifier',
+  'string',
+  'number',
+  'integer',
 ]);
 
 export const textEventArgumentSchema = z.strictObject({
@@ -466,7 +467,7 @@ export const textEventArgumentSchema = z.strictObject({
 });
 
 const textEventShared = {
-  placement: z.enum(["trackStart", "anywhere"]).optional(),
+  placement: z.enum(['trackStart', 'anywhere']).optional(),
   honoredOnTracks: trackNamesSchema.optional(),
   maxOccurrences: z.number().int().min(1).optional(),
   status: statusSchema.optional(),
@@ -510,46 +511,46 @@ const constraintBase = {
 export const constraintSchema = z.union([
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("forbiddenPitches"),
+    rule: z.literal('forbiddenPitches'),
     pitches: pitchSetSchema,
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("mutuallyExclusiveAtTick"),
+    rule: z.literal('mutuallyExclusiveAtTick'),
     members: unique(z.array(identifierSchema).min(2)),
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("notesWithinPhrase"),
+    rule: z.literal('notesWithinPhrase'),
     phrases: z.array(identifierSchema).min(1),
     noteClasses: z.array(identifierSchema).min(1),
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("noSustains"),
+    rule: z.literal('noSustains'),
     threshold: thresholdSchema,
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("noOverlappingSamePitch"),
+    rule: z.literal('noOverlappingSamePitch'),
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("noOverlappingSameLane"),
+    rule: z.literal('noOverlappingSameLane'),
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("monophonic"),
+    rule: z.literal('monophonic'),
     noteClasses: z.array(identifierSchema).min(1),
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("phrasesMayNotOverlap"),
+    rule: z.literal('phrasesMayNotOverlap'),
     phrases: unique(z.array(identifierSchema).min(2)),
   }),
   z.strictObject({
     ...constraintBase,
-    rule: z.literal("phraseMustBeBetween"),
+    rule: z.literal('phraseMustBeBetween'),
     phrase: identifierSchema,
     between: identifierSchema,
   }),
@@ -581,13 +582,13 @@ const trackCommon = {
 
 export const headerTrackSchema = z.strictObject({
   ...trackCommon,
-  kind: z.literal("header"),
+  kind: z.literal('header'),
   versionCheck: z
     .strictObject({
       textEvent: identifierSchema,
       argument: identifierSchema,
       accepted: unique(z.array(z.string()).min(1)),
-      compareAs: z.literal("string"),
+      compareAs: z.literal('string'),
       onMissing: severitySchema.optional(),
       onMismatch: severitySchema,
     })
@@ -596,13 +597,13 @@ export const headerTrackSchema = z.strictObject({
 
 export const globalTrackSchema = z.strictObject({
   ...trackCommon,
-  kind: z.literal("global"),
+  kind: z.literal('global'),
 });
 
 export const guitarMechanicsSchema = z.strictObject({
   hopoThreshold: thresholdSchema.optional(),
   autoHopoExclusions: unique(
-    z.array(z.enum(["sameLaneAsPrevious", "chord"])),
+    z.array(z.enum(['sameLaneAsPrevious', 'chord'])),
   ).optional(),
   sustainCutoff: thresholdSchema.optional(),
   sustainGap: thresholdSchema.optional(),
@@ -624,7 +625,7 @@ const laneTrackCommon = {
 
 export const guitarTrackSchema = z.strictObject({
   ...laneTrackCommon,
-  kind: z.literal("guitar"),
+  kind: z.literal('guitar'),
   modifiers: z.array(modifierDefSchema).optional(),
   phrases: z.array(phraseDefSchema).optional(),
   mechanics: guitarMechanicsSchema.optional(),
@@ -638,7 +639,7 @@ export const drumVariantsSchema = z.strictObject({
       z.union([
         z.strictObject({ when: conditionSchema, result: identifierSchema }),
         z.strictObject({
-          heuristic: z.enum(["tomMarkersPresent", "cymbalPitchesPresent"]),
+          heuristic: z.enum(['tomMarkersPresent', 'cymbalPitchesPresent']),
           result: identifierSchema,
         }),
         z.strictObject({ default: identifierSchema }),
@@ -650,7 +651,7 @@ export const drumVariantsSchema = z.strictObject({
       z.strictObject({
         variant: identifierSchema,
         from: identifierSchema,
-        rule: z.literal("cymbalsToToms"),
+        rule: z.literal('cymbalsToToms'),
         description: descriptionSchema.optional(),
       }),
     )
@@ -660,7 +661,7 @@ export const drumVariantsSchema = z.strictObject({
 
 export const drumsTrackSchema = z.strictObject({
   ...laneTrackCommon,
-  kind: z.literal("drums"),
+  kind: z.literal('drums'),
   modifiers: z.array(modifierDefSchema).optional(),
   phrases: z.array(phraseDefSchema).optional(),
   variants: drumVariantsSchema,
@@ -668,12 +669,12 @@ export const drumsTrackSchema = z.strictObject({
 
 export const vocalNoteClassSchema = z.strictObject({
   id: identifierSchema,
-  class: z.enum(["pitched", "pitchless", "percussion"]),
+  class: z.enum(['pitched', 'pitchless', 'percussion']),
   pitches: pitchSetSchema,
   displayed: z.boolean().optional(),
   noteNaming: z
     .strictObject({
-      scheme: z.literal("scientific"),
+      scheme: z.literal('scientific'),
       c4Pitch: pitchSchema,
     })
     .optional(),
@@ -682,27 +683,27 @@ export const vocalNoteClassSchema = z.strictObject({
 
 export const vocalsTrackSchema = z.strictObject({
   ...trackCommon,
-  kind: z.literal("vocals"),
-  difficultyModel: z.literal("shared"),
+  kind: z.literal('vocals'),
+  difficultyModel: z.literal('shared'),
   noteClasses: z.array(vocalNoteClassSchema).min(1),
   phrases: z.array(phraseDefSchema).optional(),
   lyrics: z.strictObject({
     metaEventTypes: unique(z.array(z.number().int().min(1).max(15)).min(1)),
-    encoding: z.enum(["utf-8", "any"]).optional(),
-    alignment: z.enum(["mustMatchNoteStart", "pairedIfAligned"]),
+    encoding: z.enum(['utf-8', 'any']).optional(),
+    alignment: z.enum(['mustMatchNoteStart', 'pairedIfAligned']),
     alignmentSeverity: severitySchema.optional(),
     allowLyricsOnlyChart: z.boolean().optional(),
-    duplicateAtTick: z.enum(["ignoreIfIdentical", "error"]).optional(),
+    duplicateAtTick: z.enum(['ignoreIfIdentical', 'error']).optional(),
   }),
 });
 
 export const gamepadTrackSchema = z.strictObject({
   ...laneTrackCommon,
-  kind: z.literal("gamepad"),
+  kind: z.literal('gamepad'),
   phrases: z.array(phraseDefSchema).optional(),
 });
 
-export const trackDefinitionSchema = z.discriminatedUnion("kind", [
+export const trackDefinitionSchema = z.discriminatedUnion('kind', [
   headerTrackSchema,
   globalTrackSchema,
   guitarTrackSchema,
@@ -717,7 +718,7 @@ export const trackDefinitionSchema = z.discriminatedUnion("kind", [
 
 const RootObjectSchema = z.strictObject({
   $schema: z.string().optional(),
-  schemaVersion: z.literal("2.0.0"),
+  schemaVersion: z.literal('2.0.0'),
   profile: profileSchema,
   detection: detectionSchema.optional(),
   midi: midiConfigSchema,
@@ -737,7 +738,7 @@ const RootObjectSchema = z.strictObject({
 export const RulesetSchema = RootObjectSchema.superRefine((ruleset, ctx) => {
   for (const issue of validateRulesetSemantics(ruleset)) {
     ctx.addIssue({
-      code: "custom",
+      code: 'custom',
       path: issue.path,
       message: `[rule ${issue.rule}] ${issue.message}`,
     });
@@ -759,7 +760,7 @@ export type GuitarTrackDefinition = z.infer<typeof guitarTrackSchema>;
 export type DrumsTrackDefinition = z.infer<typeof drumsTrackSchema>;
 export type VocalsTrackDefinition = z.infer<typeof vocalsTrackSchema>;
 export type GamepadTrackDefinition = z.infer<typeof gamepadTrackSchema>;
-export type TrackKind = TrackDefinition["kind"];
+export type TrackKind = TrackDefinition['kind'];
 export type LaneDef = z.infer<typeof laneDefSchema>;
 export type PadType = z.infer<typeof padTypeSchema>;
 export type PhraseDef = z.infer<typeof phraseDefSchema>;
@@ -796,7 +797,7 @@ export type LoadRulesetResult =
  */
 export function loadRuleset(json: string | unknown): LoadRulesetResult {
   let data: unknown = json;
-  if (typeof json === "string") {
+  if (typeof json === 'string') {
     try {
       data = JSON.parse(json);
     } catch (e) {
@@ -805,7 +806,7 @@ export function loadRuleset(json: string | unknown): LoadRulesetResult {
         issues: [
           {
             path: [],
-            rule: "parse",
+            rule: 'parse',
             message: `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
           },
         ],
@@ -819,8 +820,8 @@ export function loadRuleset(json: string | unknown): LoadRulesetResult {
     return {
       ok: false,
       issues: structural.error.issues.map((i) => ({
-        path: i.path.map((p) => (typeof p === "symbol" ? String(p) : p)),
-        rule: "schema",
+        path: i.path.map((p) => (typeof p === 'symbol' ? String(p) : p)),
+        rule: 'schema',
         message: i.message,
       })),
     };
@@ -837,8 +838,8 @@ function loadDefaultRuleset(): Ruleset {
   if (!result.ok) {
     const detail = result.issues
       .slice(0, 10)
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join("\n");
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('\n');
     throw new Error(`Bundled default ruleset is invalid:\n${detail}`);
   }
   return result.ruleset;

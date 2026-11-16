@@ -1,18 +1,19 @@
-import type { MidiNote } from "@openchart/midi";
+import type { MidiNote } from '@openchart/midi';
 import {
   DefaultCompiledRuleset,
   Difficulty,
-  formatNoteId,
   type EntityId,
-} from "@openchart/views";
-import { describe, expect, it } from "vitest";
-import { HighwayNoteEditingController } from "../editing/noteEditing";
+  formatNoteId,
+} from '@openchart/views';
+import { describe, expect, it } from 'vitest';
+
+import { HighwayNoteEditingController } from '../editing/noteEditing';
 import {
   copyHighwaySelectionToClipboard,
   createHighwayTestSetup,
-} from "./testUtils";
+} from './testUtils';
 
-type NotePlacement = "force-hopo" | "force-strum" | "tap";
+type NotePlacement = 'force-hopo' | 'force-strum' | 'tap';
 
 function addNote(
   setup: ReturnType<typeof createHighwayTestSetup>,
@@ -39,8 +40,8 @@ function getNoteId(
   );
 }
 
-describe("HighwayNoteEditingController", () => {
-  it("copies relative pitches and ticks, preserves note data, and selects pasted IDs", () => {
+describe('HighwayNoteEditingController', () => {
+  it('copies relative pitches and ticks, preserves note data, and selects pasted IDs', () => {
     const setup = createHighwayTestSetup();
     const offset = setup.chart.getOffset();
     const source = [
@@ -75,7 +76,7 @@ describe("HighwayNoteEditingController", () => {
     );
   });
 
-  it("can remove a note without changing selection when requested", () => {
+  it('can remove a note without changing selection when requested', () => {
     const setup = createHighwayTestSetup();
     const note = addNote(setup, setup.chart.getOffset() + 2, 0, 120);
     const id = getNoteId(setup, note);
@@ -87,9 +88,9 @@ describe("HighwayNoteEditingController", () => {
     expect(setup.session.selection.isSelected(id)).toBe(true);
   });
 
-  it("places only the selected drum kind on a compatible physical lane", () => {
-    const setup = createHighwayTestSetup("drums");
-    setup.setDrumPlacementKind("cymbal");
+  it('places only the selected drum kind on a compatible physical lane', () => {
+    const setup = createHighwayTestSetup('drums');
+    setup.setDrumPlacementKind('cymbal');
     const editing = new HighwayNoteEditingController(setup.context);
 
     expect(editing.placeNoteAt(setup.chart, 1, 480, false)).toBe(true);
@@ -99,9 +100,9 @@ describe("HighwayNoteEditingController", () => {
     ).toEqual([[101, 480]]);
   });
 
-  it("allows a kick to be placed from any of the four drum lanes", () => {
-    const setup = createHighwayTestSetup("drums");
-    setup.setDrumPlacementKind("kick");
+  it('allows a kick to be placed from any of the four drum lanes', () => {
+    const setup = createHighwayTestSetup('drums');
+    setup.setDrumPlacementKind('kick');
     const editing = new HighwayNoteEditingController(setup.context);
 
     expect(editing.placeNoteAt(setup.chart, 3, 480, false)).toBe(true);
@@ -111,14 +112,14 @@ describe("HighwayNoteEditingController", () => {
   });
 
   it.each([
-    ["force-hopo", 101],
-    ["force-strum", 102],
-    ["tap", 103],
+    ['force-hopo', 101],
+    ['force-strum', 102],
+    ['tap', 103],
   ] as const)(
-    "adds the configured %s marker when placing a Lead/Groove note",
+    'adds the configured %s marker when placing a Lead/Groove note',
     (placementType: NotePlacement, markerPitch: number) => {
       const setup = createHighwayTestSetup(
-        "lead-guitar",
+        'lead-guitar',
         DefaultCompiledRuleset,
         Difficulty.Expert,
       );
@@ -134,8 +135,8 @@ describe("HighwayNoteEditingController", () => {
     },
   );
 
-  it("previews mode-aware moves, preserves Kick2, and rejects marker movement", () => {
-    const setup = createHighwayTestSetup("drums");
+  it('previews mode-aware moves, preserves Kick2, and rejects marker movement', () => {
+    const setup = createHighwayTestSetup('drums');
     const cymbal = addNote(setup, 101, 480, 120);
     const kick2 = addNote(setup, 95, 960, 120);
     const marker = addNote(setup, 104, 1200, 120);
@@ -174,8 +175,8 @@ describe("HighwayNoteEditingController", () => {
     expect(editing.commitGesture()).toBe(false);
   });
 
-  it("copies and pastes drum kinds without canonicalizing Kick2", () => {
-    const setup = createHighwayTestSetup("drums");
+  it('copies and pastes drum kinds without canonicalizing Kick2', () => {
+    const setup = createHighwayTestSetup('drums');
     const kick2 = addNote(setup, 95, 120, 1);
     const cymbal = addNote(setup, 101, 240, 1);
     setup.session.selection.setSelectedIds([
@@ -199,8 +200,8 @@ describe("HighwayNoteEditingController", () => {
     ]);
   });
 
-  it("skips pasted notes that land on existing notes", () => {
-    const setup = createHighwayTestSetup("drums");
+  it('skips pasted notes that land on existing notes', () => {
+    const setup = createHighwayTestSetup('drums');
     const kick2 = addNote(setup, 95, 120, 1);
     const cymbal = addNote(setup, 101, 240, 1);
     setup.session.selection.setSelectedIds([

@@ -1,15 +1,16 @@
+import { type CSSProperties, useMemo, useState } from 'react';
+
 import {
-  useFileTreeModel,
   type FileTreeNode,
-} from "../../../models/tree/fileTree";
-import { Text } from "../Text";
-import { DownIcon, FileIcon, ResetIcon } from "../Icon";
-import styles from "./Tree.module.css";
-import { useMemo, useState, type CSSProperties } from "react";
-import { Button } from "../Button";
-import { Section } from "../Section";
-import { Input } from "../Input";
-import { HorizontalSeparator } from "../Separator";
+  useFileTreeModel,
+} from '../../../models/tree/fileTree';
+import { Button } from '../Button';
+import { DownIcon, FileIcon, ResetIcon } from '../Icon';
+import { Input } from '../Input';
+import { Section } from '../Section';
+import { HorizontalSeparator } from '../Separator';
+import { Text } from '../Text';
+import styles from './Tree.module.css';
 
 const DefaultRowHeight = 20;
 
@@ -20,13 +21,13 @@ interface FileTreeItemProps {
 }
 
 const FileTreeItem = ({ node, rowHeight, onClick }: FileTreeItemProps) => {
-  const name = node.element.name || "root";
-  const isDirectory = node.element.kind === "directory";
+  const name = node.element.name || 'root';
+  const isDirectory = node.element.kind === 'directory';
   const iconSize = (rowHeight * 3) / 4;
 
   const arrowStyle = {
-    transform: node.collapsed ? "rotate(-90deg)" : "rotate(0deg)",
-    transition: "transform 0.1s ease",
+    transform: node.collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+    transition: 'transform 0.1s ease',
   };
   const icon = isDirectory ? (
     <DownIcon size={iconSize} style={arrowStyle} />
@@ -35,13 +36,13 @@ const FileTreeItem = ({ node, rowHeight, onClick }: FileTreeItemProps) => {
   );
   return (
     <div
-      className={`${styles["tree-item"]} ${node.selected ? styles["selected"] : ""}`}
+      className={`${styles['tree-item']} ${node.selected ? styles['selected'] : ''}`}
       key={node.element.name}
       style={
         {
-          "--item-height": `${rowHeight}px`,
-          "--item-depth": node.depth,
-          "--icon-size": `${iconSize}px`,
+          '--item-height': `${rowHeight}px`,
+          '--item-depth': node.depth,
+          '--icon-size': `${iconSize}px`,
         } as CSSProperties
       }
       onClick={() => onClick?.(node)}
@@ -76,7 +77,7 @@ const FileTreeContent = ({
 }: FileTreeViewProps & { rootHandle: FileSystemDirectoryHandle }) => {
   const { nodes, visibleNodes, refresh, toggleCollapse, select, deselect } =
     useFileTreeModel(rootHandle);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
 
   const makeKey = (node: FileTreeNode): string => {
     const parts: string[] = [];
@@ -87,7 +88,7 @@ const FileTreeContent = ({
       n = n.parent;
     }
 
-    return parts.join("/");
+    return parts.join('/');
   };
 
   // While searching, show matching nodes plus their ancestors, ignoring

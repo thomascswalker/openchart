@@ -1,8 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ErrorBoundary } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { ErrorBoundary } from '..';
 
 const meta = {
-  title: "Shared/ErrorBoundary",
+  title: 'Shared/ErrorBoundary',
   component: ErrorBoundary,
 } satisfies Meta<typeof ErrorBoundary>;
 
@@ -19,7 +20,7 @@ export const CaughtError: Story = {
   args: { children: null },
   render: () => {
     const BrokenChild = () => {
-      throw new Error("Example rendering error");
+      throw new Error('Example rendering error');
     };
 
     return (

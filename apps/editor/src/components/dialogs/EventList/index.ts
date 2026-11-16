@@ -1,1 +1,1 @@
-export { EventList } from "./EventList";
+export { EventList } from './EventList';

@@ -1,4 +1,4 @@
-import type { Subscriber } from "../../util/subscriber";
+import type { Subscriber } from '../../util/subscriber';
 
 export interface ITreeNode<T> {
   readonly element: T;

@@ -1,10 +1,10 @@
-import AudioSample from "./sample.js";
-import type { AudioEngine } from "./engine.js";
+import type { AudioEngine } from './engine.js';
 import type {
   AudioEvent,
   AudioEventCallback,
   AudioEventData,
-} from "./events.js";
+} from './events.js';
+import AudioSample from './sample.js';
 
 type MixerTrackId = string;
 
@@ -24,11 +24,11 @@ class MixerTrack implements Disposable {
     this.#filename = filename;
     this.#audio = AudioSample.load(filename, {
       engine,
-      onLoaded: (event) => this.#emit("loaded", event),
-      onPlay: (event) => this.#emit("play", event),
-      onPause: (event) => this.#emit("pause", event),
-      onStop: (event) => this.#emit("stop", event),
-      onEnded: (event) => this.#emit("ended", event),
+      onLoaded: (event) => this.#emit('loaded', event),
+      onPlay: (event) => this.#emit('play', event),
+      onPause: (event) => this.#emit('pause', event),
+      onStop: (event) => this.#emit('stop', event),
+      onEnded: (event) => this.#emit('ended', event),
     });
     this.#volume = 1;
     // Nothing awaits `ready`, so surface load failures instead of leaving an
@@ -104,23 +104,23 @@ class MixerTrack implements Disposable {
   }
 
   public set onLoaded(callback: AudioEventCallback) {
-    this.#on("loaded", callback);
+    this.#on('loaded', callback);
   }
 
   public set onPlay(callback: AudioEventCallback) {
-    this.#on("play", callback);
+    this.#on('play', callback);
   }
 
   public set onPause(callback: AudioEventCallback) {
-    this.#on("pause", callback);
+    this.#on('pause', callback);
   }
 
   public set onStop(callback: AudioEventCallback) {
-    this.#on("stop", callback);
+    this.#on('stop', callback);
   }
 
   public set onEnded(callback: AudioEventCallback) {
-    this.#on("ended", callback);
+    this.#on('ended', callback);
   }
 
   public get playing(): boolean {

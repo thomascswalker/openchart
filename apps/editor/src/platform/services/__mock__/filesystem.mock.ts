@@ -1,5 +1,6 @@
-import { vi } from "vitest";
-import { type FileSystemService } from "../filesystem";
+import { vi } from 'vitest';
+
+import { type FileSystemService } from '../filesystem';
 
 type IFileSystemService = FileSystemService;
 

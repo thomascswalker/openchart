@@ -13,7 +13,7 @@
  * (Example: when a specific note is preferred, cut all other sustains)
  */
 export type SustainCutPolicy =
-  "all" | "none" | "preferred-only" | "all-but-preferred";
+  'all' | 'none' | 'preferred-only' | 'all-but-preferred';
 
 export interface SustainCutOptions<TNoteOn = unknown> {
   cutPolicy: SustainCutPolicy;
@@ -32,15 +32,15 @@ export function getSustainCutOptions<TNoteOn>(
   const cutPolicy =
     preferredNoteOn === null
       ? shiftKey
-        ? "none"
-        : "all"
+        ? 'none'
+        : 'all'
       : sameLanePlacement
         ? shiftKey
-          ? "preferred-only"
-          : "all"
+          ? 'preferred-only'
+          : 'all'
         : shiftKey
-          ? "all"
-          : "preferred-only";
+          ? 'all'
+          : 'preferred-only';
   return { cutPolicy, preferredNoteOn };
 }
 
@@ -72,19 +72,19 @@ export function getSustainCutTargets<
 >(
   notes: readonly T[],
   tick: number,
-  options: SustainCutOptions<T["noteOn"]>,
+  options: SustainCutOptions<T['noteOn']>,
 ): T[] {
   const crossing = getSustainsAtTick(notes, tick);
   switch (options.cutPolicy) {
-    case "all":
+    case 'all':
       return crossing;
-    case "none":
+    case 'none':
       return [];
-    case "preferred-only":
+    case 'preferred-only':
       return options.preferredNoteOn == null
         ? []
         : crossing.filter((note) => note.noteOn === options.preferredNoteOn);
-    case "all-but-preferred":
+    case 'all-but-preferred':
       return options.preferredNoteOn == null
         ? crossing
         : crossing.filter((note) => note.noteOn !== options.preferredNoteOn);

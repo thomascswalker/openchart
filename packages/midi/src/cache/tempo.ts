@@ -1,5 +1,5 @@
-import { MetaType, MidiEvent, TempoEvent } from "../types";
-import { IEventCacheList } from "./cache";
+import { MetaType, MidiEvent, TempoEvent } from '../types';
+import { IEventCacheList } from './cache';
 
 export class TempoEventCache extends IEventCacheList<TempoEvent, MidiEvent> {
   public override build(events: MidiEvent[]): void {
@@ -7,7 +7,7 @@ export class TempoEventCache extends IEventCacheList<TempoEvent, MidiEvent> {
     events.forEach((event) => {
       if (
         event.status !== 0xff ||
-        !("type" in event) ||
+        !('type' in event) ||
         event.type !== MetaType.Tempo
       ) {
         return;

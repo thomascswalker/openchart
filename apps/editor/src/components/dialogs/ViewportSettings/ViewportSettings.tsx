@@ -1,6 +1,6 @@
-import { useSettings } from "../../../hooks/useApplication";
-import { HighwayScrollSpeedRange } from "../../../platform/services/settings/schema";
-import { Checkbox, Slider, Text } from "../../shared";
+import { useSettings } from '../../../hooks/useApplication';
+import { HighwayScrollSpeedRange } from '../../../platform/services/settings/schema';
+import { Checkbox, Slider, Text } from '../../shared';
 
 export const ViewportSettings = () => {
   const { settings, applySetting } = useSettings();
@@ -8,9 +8,9 @@ export const ViewportSettings = () => {
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        padding: "12px",
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        padding: '12px',
       }}
     >
       <Text>Antialiasing</Text>
@@ -18,7 +18,7 @@ export const ViewportSettings = () => {
         label=""
         checked={settings.display.antialiasing}
         onChange={(event) =>
-          applySetting("display.antialiasing", Boolean(event.target.checked))
+          applySetting('display.antialiasing', Boolean(event.target.checked))
         }
       />
       <Text>Scroll Speed</Text>
@@ -26,7 +26,7 @@ export const ViewportSettings = () => {
         aria-label="Scroll speed"
         value={String(settings.display.scrollSpeed)}
         onInput={(event) =>
-          applySetting("display.scrollSpeed", Number(event.currentTarget.value))
+          applySetting('display.scrollSpeed', Number(event.currentTarget.value))
         }
         step={HighwayScrollSpeedRange.step}
         min={HighwayScrollSpeedRange.min}

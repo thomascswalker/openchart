@@ -1,12 +1,14 @@
-import { useState } from "react";
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Label, Modal, Section, Text } from "..";
+import { useState } from 'react';
+
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Button, Label, Modal, Section, Text } from '..';
 
 const meta = {
-  title: "Shared/Modal",
+  title: 'Shared/Modal',
   component: Modal,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
   },
 } satisfies Meta<typeof Modal>;
 

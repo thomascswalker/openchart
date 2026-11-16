@@ -2,8 +2,9 @@ import {
   MetaType,
   type TempoEvent,
   type TimeSignatureEvent,
-} from "@openchart/midi";
-import type { PianoRollVocalMarks } from "./types";
+} from '@openchart/midi';
+
+import type { PianoRollVocalMarks } from './types';
 
 export const BlackPitchClasses = new Set([
   1, // C#

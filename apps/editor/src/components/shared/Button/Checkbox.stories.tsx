@@ -1,11 +1,12 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Checkbox } from "./Checkbox";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Checkbox } from './Checkbox';
 
 const meta = {
-  title: "Shared/Buttons/Checkbox",
+  title: 'Shared/Buttons/Checkbox',
   component: Checkbox,
   args: {
-    label: "Example checkbox",
+    label: 'Example checkbox',
   },
 } satisfies Meta<typeof Checkbox>;
 

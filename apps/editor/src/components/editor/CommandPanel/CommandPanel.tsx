@@ -1,6 +1,6 @@
-import { useCommandPanel } from "./useCommandPanel";
-import { Box, Tabs } from "../../shared";
-import styles from "./CommandPanel.module.css";
+import { Box, Tabs } from '../../shared';
+import styles from './CommandPanel.module.css';
+import { useCommandPanel } from './useCommandPanel';
 
 const CommandPanel = () => {
   const { options, children } = useCommandPanel();

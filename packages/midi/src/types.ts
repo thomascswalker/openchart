@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 type MergeShapes<T extends z.ZodObject<any>[] | readonly z.ZodObject<any>[]> =
   T extends [infer First, ...infer Rest]
@@ -95,13 +95,13 @@ const TextMetaTypeValues = {
   Lyric: MetaType.Lyric,
   Marker: MetaType.Marker,
   CuePoint: MetaType.CuePoint,
-  [MetaType.Text]: "Text",
-  [MetaType.Copyright]: "Copyright",
-  [MetaType.TrackName]: "TrackName",
-  [MetaType.InstrumentName]: "InstrumentName",
-  [MetaType.Lyric]: "Lyric",
-  [MetaType.Marker]: "Marker",
-  [MetaType.CuePoint]: "CuePoint",
+  [MetaType.Text]: 'Text',
+  [MetaType.Copyright]: 'Copyright',
+  [MetaType.TrackName]: 'TrackName',
+  [MetaType.InstrumentName]: 'InstrumentName',
+  [MetaType.Lyric]: 'Lyric',
+  [MetaType.Marker]: 'Marker',
+  [MetaType.CuePoint]: 'CuePoint',
 } as const;
 
 export const TextMetaType: typeof TextMetaTypeValues & Record<number, string> =
@@ -266,7 +266,7 @@ export type TextMidiEvent = z.infer<typeof TextEventSchema>;
 export type TempoEvent = z.infer<typeof TempoEventSchema>;
 export type TimeSignatureEvent = z.infer<typeof TimeSignatureEventSchema>;
 
-type TimedFields = Pick<BaseMidiEvent, "tick" | "order">;
+type TimedFields = Pick<BaseMidiEvent, 'tick' | 'order'>;
 
 /** Orders events by absolute tick, then by `order` within a tick. */
 export function sortEvents(a: TimedFields, b: TimedFields): number {
@@ -274,7 +274,7 @@ export function sortEvents(a: TimedFields, b: TimedFields): number {
 }
 
 export function extractMetaPayload(event: MidiMetaEvent): MidiMetaPayload {
-  const excludedKeys = ["deltaTime", "status", "type", "tick", "order"];
+  const excludedKeys = ['deltaTime', 'status', 'type', 'tick', 'order'];
   const payload: Record<string, any> = {};
   for (const [key, value] of Object.entries(event)) {
     if (!excludedKeys.includes(key)) {
@@ -359,7 +359,7 @@ export const isEndOfTrack = (
 ): event is MidiMetaEvent | TextMidiEvent => {
   return (
     event.status === 0xff &&
-    "type" in event &&
+    'type' in event &&
     event.type === MetaType.EndOfTrack
   );
 };
@@ -369,13 +369,13 @@ export const isTimeSignatureEvent = (
 ): event is TimeSignatureEvent => {
   return (
     event.status === 0xff &&
-    "type" in event &&
+    'type' in event &&
     event.type === MetaType.TimeSignature
   );
 };
 
 export const isTempoEvent = (event: MidiEvent): event is TempoEvent => {
   return (
-    event.status === 0xff && "type" in event && event.type === MetaType.Tempo
+    event.status === 0xff && 'type' in event && event.type === MetaType.Tempo
   );
 };

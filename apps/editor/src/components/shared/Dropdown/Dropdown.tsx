@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import type { SelectHTMLAttributes } from "react";
-import Choices from "choices.js";
-import "choices.js/public/assets/styles/choices.css";
-import classNames from "classnames";
-import { compose, layout, size } from "styled-system";
-import type { LayoutProps, SizeProps, styleFn } from "styled-system";
-import styles from "./dropdown.module.css";
+import { useEffect, useRef, useState } from 'react';
+import type { SelectHTMLAttributes } from 'react';
+
+import Choices from 'choices.js';
+import 'choices.js/public/assets/styles/choices.css';
+import classNames from 'classnames';
+import { compose, layout, size } from 'styled-system';
+import type { LayoutProps, SizeProps, styleFn } from 'styled-system';
+
+import styles from './dropdown.module.css';
 
 const getSystemStyles: styleFn = compose(size, layout);
 
@@ -19,7 +21,7 @@ interface DropdownProps
   extends
     Omit<
       SelectHTMLAttributes<HTMLSelectElement>,
-      "children" | "onChange" | "value" | "size" | keyof LayoutProps
+      'children' | 'onChange' | 'value' | 'size' | keyof LayoutProps
     >,
     SizeProps,
     LayoutProps {
@@ -77,16 +79,16 @@ const Dropdown = ({
 
     const clearDropdownMenuPosition = () => {
       cancelAnimationFrame(showDropdownFrame);
-      document.removeEventListener("scroll", repositionDropdownMenu, true);
-      window.removeEventListener("resize", repositionDropdownMenu);
+      document.removeEventListener('scroll', repositionDropdownMenu, true);
+      window.removeEventListener('resize', repositionDropdownMenu);
 
       if (dropdownMenu) {
-        dropdownMenu.style.position = "";
-        dropdownMenu.style.top = "";
-        dropdownMenu.style.right = "";
-        dropdownMenu.style.bottom = "";
-        dropdownMenu.style.left = "";
-        dropdownMenu.style.width = "";
+        dropdownMenu.style.position = '';
+        dropdownMenu.style.top = '';
+        dropdownMenu.style.right = '';
+        dropdownMenu.style.bottom = '';
+        dropdownMenu.style.left = '';
+        dropdownMenu.style.width = '';
       }
       dropdownMenu = null;
       dropdownAnchor = null;
@@ -94,9 +96,9 @@ const Dropdown = ({
 
     const handleShowDropdown = () => {
       showDropdownFrame = requestAnimationFrame(() => {
-        const choicesContainer = select.closest<HTMLElement>(".choices");
+        const choicesContainer = select.closest<HTMLElement>('.choices');
         const menu = choicesContainer?.querySelector<HTMLElement>(
-          ".choices__list--dropdown",
+          '.choices__list--dropdown',
         );
         if (!choicesContainer || !menu) return;
 
@@ -111,7 +113,7 @@ const Dropdown = ({
             ancestor = ancestor.parentElement
           ) {
             const { overflowX, overflowY } = getComputedStyle(ancestor);
-            if (overflowX !== "visible" || overflowY !== "visible") {
+            if (overflowX !== 'visible' || overflowY !== 'visible') {
               return true;
             }
           }
@@ -127,23 +129,23 @@ const Dropdown = ({
         menuTopOffset = menuRect.top - anchorRect.top;
         menuLeftOffset = menuRect.left - anchorRect.left;
 
-        menu.style.position = "fixed";
-        menu.style.right = "auto";
-        menu.style.bottom = "auto";
+        menu.style.position = 'fixed';
+        menu.style.right = 'auto';
+        menu.style.bottom = 'auto';
         menu.style.width = `${menuRect.width}px`;
         repositionDropdownMenu();
 
-        document.addEventListener("scroll", repositionDropdownMenu, true);
-        window.addEventListener("resize", repositionDropdownMenu);
+        document.addEventListener('scroll', repositionDropdownMenu, true);
+        window.addEventListener('resize', repositionDropdownMenu);
       });
     };
 
-    select.addEventListener("showDropdown", handleShowDropdown);
-    select.addEventListener("hideDropdown", clearDropdownMenuPosition);
+    select.addEventListener('showDropdown', handleShowDropdown);
+    select.addEventListener('hideDropdown', clearDropdownMenuPosition);
 
     const choices = new Choices(select, {
       allowHTML: false,
-      itemSelectText: "",
+      itemSelectText: '',
       placeholder: Boolean(placeholder),
       searchEnabled: false,
       shouldSort: false,
@@ -151,8 +153,8 @@ const Dropdown = ({
     setChoices(choices);
 
     return () => {
-      select.removeEventListener("showDropdown", handleShowDropdown);
-      select.removeEventListener("hideDropdown", clearDropdownMenuPosition);
+      select.removeEventListener('showDropdown', handleShowDropdown);
+      select.removeEventListener('hideDropdown', clearDropdownMenuPosition);
       clearDropdownMenuPosition();
       choices.destroy();
     };
@@ -164,15 +166,15 @@ const Dropdown = ({
     choices.setChoices(
       [
         ...(placeholder
-          ? [{ value: "", label: placeholder, disabled: true }]
+          ? [{ value: '', label: placeholder, disabled: true }]
           : []),
         ...options,
       ].map((option) => ({
         ...option,
         selected: option.value === value,
       })),
-      "value",
-      "label",
+      'value',
+      'label',
       true,
       true,
       true,
@@ -186,7 +188,7 @@ const Dropdown = ({
       <select
         ref={selectRef}
         disabled={disabled}
-        aria-label={selectProps["aria-label"]}
+        aria-label={selectProps['aria-label']}
         onChange={(event) => onChange(event.currentTarget.value)}
         {...selectProps}
       />

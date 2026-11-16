@@ -1,4 +1,4 @@
-export type AudioEvent = "loaded" | "play" | "pause" | "stop" | "ended";
+export type AudioEvent = 'loaded' | 'play' | 'pause' | 'stop' | 'ended';
 
 export interface AudioEventData {
   data: unknown;

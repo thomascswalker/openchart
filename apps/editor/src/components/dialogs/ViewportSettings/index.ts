@@ -1,1 +1,1 @@
-export { ViewportSettings } from "./ViewportSettings";
+export { ViewportSettings } from './ViewportSettings';

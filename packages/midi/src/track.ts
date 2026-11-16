@@ -1,40 +1,41 @@
-import { NoteByEventIdCache } from "./cache/eventId";
-import { PitchCache } from "./cache/pitch";
-import { NoteCache } from "./cache/note";
-import { EventIdCache } from "./cache/eventId";
-import { TextEventCache } from "./cache/text";
+import { inRange } from 'es-toolkit';
+
+import { NoteByEventIdCache } from './cache/eventId';
+import { EventIdCache } from './cache/eventId';
+import { LyricEntry, LyricNoteCache } from './cache/lyric';
+import { NoteCache } from './cache/note';
+import { PitchCache } from './cache/pitch';
+import { TempoEventCache } from './cache/tempo';
+import { TextEventCache } from './cache/text';
+import { TimeSignatureEventCache } from './cache/timeSignature';
 import {
-  textByteLength,
-  encodeMidiEvent,
   concatBytes,
+  encodeMidiEvent,
+  textByteLength,
   writeAscii,
   writeUInt32BE,
-} from "./codec";
+} from './codec';
 import {
-  MidiFormat,
-  MidiEvent,
-  MidiNote,
-  MidiEventId,
-  TextMidiEvent,
-  MidiSysExEvent,
-  MidiChannelEvent,
+  AddNoteResult,
   ChannelMessage,
-  TempoEvent,
-  MetaType,
-  sortEvents,
-  TimeSignatureEvent,
-  TextMetaType,
   GetNotesOptions,
   InsertNoteOptions,
+  MetaType,
+  MidiChannelEvent,
+  MidiEvent,
+  MidiEventId,
+  MidiFormat,
+  MidiNote,
+  MidiSysExEvent,
   NotePatchFields,
-  AddNoteResult,
-  isTextEvent,
+  TempoEvent,
+  TextMetaType,
+  TextMidiEvent,
+  TimeSignatureEvent,
   isEndOfTrack,
-} from "./types";
-import { inRange } from "es-toolkit";
-import { LyricEntry, LyricNoteCache } from "./cache/lyric";
-import { TimeSignatureEventCache } from "./cache/timeSignature";
-import { TempoEventCache } from "./cache/tempo";
+  isTextEvent,
+  sortEvents,
+} from './types';
 
 /** `order` for EndOfTrack so it always sorts last on its tick. */
 const END_OF_TRACK_ORDER = Number.MAX_SAFE_INTEGER;
@@ -111,12 +112,12 @@ class CacheMap {
 
 export class MidiTrack {
   format: MidiFormat = 0;
-  name: string = "";
+  name: string = '';
   #events: MidiEvent[] = [];
 
   readonly #caches = new CacheMap();
 
-  public constructor(name: string = "") {
+  public constructor(name: string = '') {
     this.name = name;
   }
 
@@ -206,7 +207,7 @@ export class MidiTrack {
 
   public addTempoEvent(tick: number, bpm: number): TempoEvent {
     if (tick < 0) {
-      throw new RangeError("tick must be a non-negative integer");
+      throw new RangeError('tick must be a non-negative integer');
     }
     const microsecondsPerQuarterNote = Math.round(60000000 / bpm);
     const data = new Uint8Array(3);
@@ -231,7 +232,7 @@ export class MidiTrack {
     denominator: number = 4,
   ): TimeSignatureEvent {
     if (tick < 0) {
-      throw new RangeError("tick must be a non-negative integer");
+      throw new RangeError('tick must be a non-negative integer');
     }
     const event: TimeSignatureEvent = {
       deltaTime: 0,
@@ -253,10 +254,10 @@ export class MidiTrack {
     text: string,
   ): TextMidiEvent {
     if (tick < 0) {
-      throw new RangeError("tick must be a non-negative integer");
+      throw new RangeError('tick must be a non-negative integer');
     }
     if (!text.trim()) {
-      throw new Error("Text events must contain text");
+      throw new Error('Text events must contain text');
     }
     const event: TextMidiEvent = {
       deltaTime: 0,
@@ -285,7 +286,7 @@ export class MidiTrack {
       return false;
     }
     if (tick < 0) {
-      throw new RangeError("tick must be a non-negative integer");
+      throw new RangeError('tick must be a non-negative integer');
     }
     event.tick = tick;
     event.order = MOVED_EVENT_ORDER;
@@ -309,7 +310,7 @@ export class MidiTrack {
     if (tick !== undefined && tick !== event.tick) {
       return this.moveEvent(event, tick);
     }
-    if ("deltaTime" in fields) {
+    if ('deltaTime' in fields) {
       this.syncTiming();
     }
     this.#caches.invalidateAll();
@@ -386,7 +387,7 @@ export class MidiTrack {
 
   public getAbsoluteTickAt(eventIndex: number): number {
     if (eventIndex < 0 || eventIndex > this.events.length) {
-      throw new RangeError("eventIndex is outside the MIDI track");
+      throw new RangeError('eventIndex is outside the MIDI track');
     }
 
     return eventIndex === 0 ? 0 : this.#events[eventIndex - 1]!.tick;
@@ -394,7 +395,7 @@ export class MidiTrack {
 
   public getInsertionIndexAt(absoluteTick: number): number {
     if (absoluteTick < 0) {
-      throw new RangeError("absoluteTick must be a non-negative integer");
+      throw new RangeError('absoluteTick must be a non-negative integer');
     }
 
     const endOfTrackIndex = this.#events.findIndex(isEndOfTrack);
@@ -416,7 +417,7 @@ export class MidiTrack {
   public insertEventsAt(events: readonly MidiEvent[]): void {
     for (const event of events) {
       if (event.tick < 0) {
-        throw new RangeError("tick must be a non-negative integer");
+        throw new RangeError('tick must be a non-negative integer');
       }
     }
     const firstNewOrder = this.#events.length;
@@ -434,23 +435,23 @@ export class MidiTrack {
     insertAt: number = this.events.length,
   ): AddNoteResult {
     if (pitch < 0 || pitch > 127) {
-      throw new RangeError("MIDI note must be between 0 and 127");
+      throw new RangeError('MIDI note must be between 0 and 127');
     }
 
     if (startDelta < 0) {
-      throw new RangeError("startDelta must be a non-negative integer");
+      throw new RangeError('startDelta must be a non-negative integer');
     }
 
     if (endDelta < 0) {
-      throw new RangeError("endDelta must be a non-negative integer");
+      throw new RangeError('endDelta must be a non-negative integer');
     }
 
     if (velocity < 1 || velocity > 127) {
-      throw new RangeError("NoteOn velocity must be between 1 and 127");
+      throw new RangeError('NoteOn velocity must be between 1 and 127');
     }
 
     if (insertAt < 0 || insertAt > this.events.length) {
-      throw new RangeError("insertAt is outside the MIDI track");
+      throw new RangeError('insertAt is outside the MIDI track');
     }
 
     const startTick = this.getAbsoluteTickAt(insertAt) + startDelta;
@@ -486,19 +487,19 @@ export class MidiTrack {
   public insertNote(options: InsertNoteOptions): MidiNote {
     const { tick, pitch, duration, velocity = 100, channel = 0 } = options;
     if (tick < 0) {
-      throw new RangeError("tick must be a non-negative integer");
+      throw new RangeError('tick must be a non-negative integer');
     }
     if (duration < 1) {
-      throw new RangeError("duration must be a positive integer");
+      throw new RangeError('duration must be a positive integer');
     }
     if (pitch < 0 || pitch > 127) {
-      throw new RangeError("MIDI note must be between 0 and 127");
+      throw new RangeError('MIDI note must be between 0 and 127');
     }
     if (velocity < 1 || velocity > 127) {
-      throw new RangeError("NoteOn velocity must be between 1 and 127");
+      throw new RangeError('NoteOn velocity must be between 1 and 127');
     }
     if (channel < 0 || channel > 15) {
-      throw new RangeError("MIDI channel must be between 0 and 15");
+      throw new RangeError('MIDI channel must be between 0 and 15');
     }
 
     const noteOn: MidiChannelEvent = {
@@ -521,7 +522,7 @@ export class MidiTrack {
     };
     this.insertEventsAt([noteOn, noteOff]);
     const note = this.getNoteByEventId(this.#caches.eventId.getEventId(noteOn));
-    if (!note) throw new Error("Inserted note was not found in the note cache");
+    if (!note) throw new Error('Inserted note was not found in the note cache');
     return note;
   }
 
@@ -534,9 +535,9 @@ export class MidiTrack {
     note: MidiNote | MidiChannelEvent,
     pairedNoteOff?: MidiChannelEvent,
   ): boolean {
-    const noteOn = "noteOn" in note ? note.noteOn : note;
+    const noteOn = 'noteOn' in note ? note.noteOn : note;
     const noteOff =
-      pairedNoteOff ?? ("noteOff" in note ? note.noteOff : undefined);
+      pairedNoteOff ?? ('noteOff' in note ? note.noteOff : undefined);
     if (!noteOn || !noteOff) {
       return false;
     }
@@ -574,7 +575,7 @@ export class MidiTrack {
    */
   public setNotePitch(note: MidiNote, pitch: number): boolean {
     if (!inRange(pitch, 0, 127)) {
-      throw new RangeError("MIDI note must be between 0 and 127");
+      throw new RangeError('MIDI note must be between 0 and 127');
     }
     return this.updateNote(note, { pitch });
   }
@@ -594,16 +595,16 @@ export class MidiTrack {
     const duration = patch.duration ?? currentNote.end - currentNote.start;
     const end = start + duration;
     if (!inRange(pitch, 0, 127)) {
-      throw new RangeError("MIDI note must be between 0 and 127");
+      throw new RangeError('MIDI note must be between 0 and 127');
     }
     if (!inRange(velocity, 1, 127)) {
-      throw new RangeError("NoteOn velocity must be between 1 and 127");
+      throw new RangeError('NoteOn velocity must be between 1 and 127');
     }
     if (start < 0) {
-      throw new RangeError("startTick must be a non-negative integer");
+      throw new RangeError('startTick must be a non-negative integer');
     }
     if (duration < 1) {
-      throw new RangeError("duration must be a positive integer");
+      throw new RangeError('duration must be a positive integer');
     }
 
     if (!this.#events.includes(currentNote.noteOn)) return false;
@@ -636,7 +637,7 @@ export class MidiTrack {
    */
   public setNoteDuration(note: MidiNote, durationTicks: number): boolean {
     if (durationTicks < 1) {
-      throw new RangeError("durationTicks must be a positive integer");
+      throw new RangeError('durationTicks must be a positive integer');
     }
     const currentNote = this.getNoteByEventId(
       this.#caches.eventId.getEventId(note.noteOn),
@@ -653,7 +654,7 @@ export class MidiTrack {
    */
   public setNoteStart(note: MidiNote, startTick: number): boolean {
     if (startTick < 0) {
-      throw new RangeError("startTick must be a non-negative integer");
+      throw new RangeError('startTick must be a non-negative integer');
     }
     const currentNote = this.getNoteByEventId(
       this.#caches.eventId.getEventId(note.noteOn),
@@ -713,7 +714,7 @@ export class MidiTrack {
       (endOfTrackIndices.length === 1 &&
         endOfTrackIndices[0] !== this.events.length - 1)
     ) {
-      throw new Error("EndOfTrack must be the final event in a MIDI track");
+      throw new Error('EndOfTrack must be the final event in a MIDI track');
     }
   }
 
@@ -724,7 +725,7 @@ export class MidiTrack {
     const body = concatBytes(eventBytes);
     const chunk = new Uint8Array(8);
 
-    writeAscii(chunk, 0, "MTrk");
+    writeAscii(chunk, 0, 'MTrk');
     writeUInt32BE(chunk, 4, body.length);
 
     return concatBytes([chunk, body]);

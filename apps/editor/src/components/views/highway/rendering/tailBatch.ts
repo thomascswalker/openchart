@@ -1,9 +1,10 @@
-import * as THREE from "three";
+import * as THREE from 'three';
+
 import {
-  setMaterialStateForMaterial,
   type MaterialState,
   type Rgb,
-} from "./materials";
+  setMaterialStateForMaterial,
+} from './materials';
 
 export interface SustainInstanceData {
   x: number;
@@ -85,13 +86,13 @@ export class SustainTailBatch {
       4,
     );
     this.colors.setUsage(THREE.DynamicDrawUsage);
-    this.geometry.setAttribute("aLaneColorSelected", this.colors);
+    this.geometry.setAttribute('aLaneColorSelected', this.colors);
     this.tickRanges = new THREE.InstancedBufferAttribute(
       new Float32Array(capacity * 2),
       2,
     );
     this.tickRanges.setUsage(THREE.DynamicDrawUsage);
-    this.geometry.setAttribute("aTickRange", this.tickRanges);
+    this.geometry.setAttribute('aTickRange', this.tickRanges);
     this.mesh = new THREE.InstancedMesh(this.geometry, this.material, capacity);
     this.mesh.count = 0;
     this.mesh.renderOrder = this.renderOrder;

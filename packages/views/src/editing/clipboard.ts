@@ -1,4 +1,4 @@
-import type { EditingModeId, EntityClassification } from "./modes/mode";
+import type { EditingModeId, EntityClassification } from './modes/mode';
 
 export interface ClipboardEntity {
   relativeTick: number;

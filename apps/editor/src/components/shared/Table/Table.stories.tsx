@@ -1,8 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Table } from "..";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import { Table } from '..';
 
 const meta = {
-  title: "Shared/Table",
+  title: 'Shared/Table',
   component: Table,
 } satisfies Meta<typeof Table>;
 
@@ -10,19 +11,19 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const getDefaultTable = () => {
-  const headers: string[] = ["Header 1", "Header 2"];
+  const headers: string[] = ['Header 1', 'Header 2'];
   const data: Record<string, string>[] = [
     {
-      "Header 1": "Data 1",
-      "Header 2": "Data 2",
+      'Header 1': 'Data 1',
+      'Header 2': 'Data 2',
     },
     {
-      "Header 1": "Data 3",
-      "Header 2": "Data 4",
+      'Header 1': 'Data 3',
+      'Header 2': 'Data 4',
     },
     {
-      "Header 1": "Data 5",
-      "Header 2": "Data 6",
+      'Header 1': 'Data 5',
+      'Header 2': 'Data 6',
     },
   ];
   return (

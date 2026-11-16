@@ -1,17 +1,18 @@
-import * as THREE from "three";
-import type {
-  MaterialKey,
-  ResourceRegistry,
-} from "../../../../rendering/registry";
+import * as THREE from 'three';
+
 import type {
   MaterialPropertyName,
   ResolvedMaterialDefinition,
   ResolvedTextureResource,
-} from "../../../../assets/index";
+} from '../../../../assets/index';
+import type {
+  MaterialKey,
+  ResourceRegistry,
+} from '../../../../rendering/registry';
 import {
   HIGHWAY_GEOMETRY_CATALOG,
   type NoteShapeKind,
-} from "./geometryCatalog";
+} from './geometryCatalog';
 
 export type Rgb = [number, number, number];
 
@@ -143,7 +144,7 @@ function textureProperty(
 ): THREE.Texture | undefined {
   const property = definition.properties[name] as
     ResolvedTextureResource | number | Rgb | undefined;
-  return property && typeof property === "object" && "value" in property
+  return property && typeof property === 'object' && 'value' in property
     ? property.value
     : undefined;
 }
@@ -161,16 +162,16 @@ class MaterialManager {
       fragmentShader: definition.fragmentShader,
       uniforms: {
         uBaseTexture: {
-          value: textureProperty(definition, "diffuseTex") ?? whiteTexture,
+          value: textureProperty(definition, 'diffuseTex') ?? whiteTexture,
         },
         uBaseColor: { value: [1, 1, 1] },
         uBaseIntensity: { value: [1, 1, 1] },
         uEmissionTexture: {
-          value: textureProperty(definition, "emissionTex") ?? whiteTexture,
+          value: textureProperty(definition, 'emissionTex') ?? whiteTexture,
         },
         uEmissionMaskTexture: {
           value:
-            textureProperty(definition, "emissionMaskTex") ?? whiteMaskTexture,
+            textureProperty(definition, 'emissionMaskTex') ?? whiteMaskTexture,
         },
         uEmissionColor: { value: [1, 1, 1] },
         uEmissionIntensity: { value: 1 },
@@ -221,21 +222,21 @@ export function createMaterialSet(registry: ResourceRegistry): MaterialSet {
   };
   const fret = createVariants(
     HIGHWAY_GEOMETRY_CATALOG.fret.materialKey!,
-    "fret",
+    'fret',
   );
   const note = createVariants(
     HIGHWAY_GEOMETRY_CATALOG.note.materialKey!,
-    "roundNote",
+    'roundNote',
   );
-  const sustain = manager.create("sustain", registry.getMaterial("sustain"), {
+  const sustain = manager.create('sustain', registry.getMaterial('sustain'), {
     transparent: true,
   });
   const createDrumMaterials = (kind: NoteShapeKind): NoteMaterialVariants => {
     const geometry = HIGHWAY_GEOMETRY_CATALOG[kind];
     return createVariants(
       geometry.materialKey as MaterialKey,
-      kind === "bar" ? "kick" : kind,
-      geometry.renderPass !== "topNote",
+      kind === 'bar' ? 'kick' : kind,
+      geometry.renderPass !== 'topNote',
     );
   };
   return {
@@ -246,9 +247,9 @@ export function createMaterialSet(registry: ResourceRegistry): MaterialSet {
     noteGhostTinted: note.noteGhostTinted,
     noteGhostGrayscale: note.noteGhostGrayscale,
     drum: {
-      bar: createDrumMaterials("bar"),
-      cymbal: createDrumMaterials("cymbal"),
-      pad: createDrumMaterials("pad"),
+      bar: createDrumMaterials('bar'),
+      cymbal: createDrumMaterials('cymbal'),
+      pad: createDrumMaterials('pad'),
     },
     sustain,
     destroy() {

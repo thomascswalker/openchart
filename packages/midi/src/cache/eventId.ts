@@ -1,5 +1,5 @@
-import { MidiEvent, MidiEventId, MidiNote } from "../types";
-import { IEventCacheMap } from "./cache";
+import { MidiEvent, MidiEventId, MidiNote } from '../types';
+import { IEventCacheMap } from './cache';
 
 export class EventIdCache {
   #eventIds = new WeakMap<MidiEvent, MidiEventId>();

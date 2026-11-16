@@ -1,23 +1,25 @@
-import { forwardRef, type ReactNode } from "react";
-import { Box } from "..";
-import styles from "./Table.module.css";
-import classNames from "classnames";
+import { type ReactNode, forwardRef } from 'react';
+
+import classNames from 'classnames';
+
+import { Box } from '..';
+import styles from './Table.module.css';
 
 interface CellProps {
   children?: ReactNode;
 }
 
 const Cell = ({ children }: CellProps) => {
-  return <td className={styles["ui-table-cell"]}>{children}</td>;
+  return <td className={styles['ui-table-cell']}>{children}</td>;
 };
 
 interface RowProps {
   children?: ReactNode;
   ref?: (element: HTMLTableRowElement | null) => void;
-  "data-index"?: number;
+  'data-index'?: number;
 }
 
-const Row = ({ children, ref, "data-index": dataIndex }: RowProps) => {
+const Row = ({ children, ref, 'data-index': dataIndex }: RowProps) => {
   return (
     <tr ref={ref} data-index={dataIndex}>
       {children}
@@ -31,8 +33,8 @@ interface HeaderCellProps {
 
 const HeaderCell = ({ children }: HeaderCellProps) => {
   const headerClassName = classNames(
-    styles["ui-table-cell"],
-    styles["ui-table-header-cell"],
+    styles['ui-table-cell'],
+    styles['ui-table-header-cell'],
   );
   return <th className={headerClassName}>{children}</th>;
 };
@@ -55,8 +57,8 @@ interface TableProps {
 
 const Table = forwardRef<HTMLDivElement, TableProps>(({ children }, ref) => {
   return (
-    <Box ref={ref} className={styles["ui-table-container"]}>
-      <table className={styles["ui-table"]}>{children}</table>
+    <Box ref={ref} className={styles['ui-table-container']}>
+      <table className={styles['ui-table']}>{children}</table>
     </Box>
   );
 });
