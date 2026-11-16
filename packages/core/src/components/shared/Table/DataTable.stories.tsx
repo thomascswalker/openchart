@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { DataTable, createAppColumnHelper } from '..';
+import { DataTable, createAppColumnHelper, useCellContext } from '..';
 
 const meta = {
   title: 'Shared/DataTable',
@@ -23,6 +23,11 @@ const columnDefs = [
   columnHelper.accessor('value', { header: 'Value' }),
 ];
 
+const StatusCell = () => {
+  const cell = useCellContext<string>();
+  return <strong>{cell.getValue()}</strong>;
+};
+
 export const Default: Story = {
   args: {
     id: 'data-table',
@@ -31,6 +36,17 @@ export const Default: Story = {
       { name: 'Project', status: 'Ready', value: 'OpenChart' },
       { name: 'Changes', status: 'Modified', value: '4 files' },
       { name: 'Version', status: 'Current', value: '1.0.0' },
+    ],
+  },
+};
+
+export const CellContext: Story = {
+  args: {
+    ...Default.args,
+    columnDefs: [
+      columnHelper.accessor('name', { header: 'Name' }),
+      columnHelper.accessor('status', { header: 'Status', cell: StatusCell }),
+      columnHelper.accessor('value', { header: 'Value' }),
     ],
   },
 };

@@ -1,14 +1,16 @@
-import { Box, Button, FilesIcon, H1, Text } from '@openchart/core';
+import {
+  Box,
+  Button,
+  DataTable,
+  FilesIcon,
+  createAppColumnHelper,
+} from '@openchart/core';
+
+import Assignments from '../components/Assignments';
 
 const Home = () => {
   return (
-    <Box flexDirection="column" gap={16} padding={24}>
-      <Text>OpenChart</Text>
-      <H1>Workflow Desktop</H1>
-      <Text>
-        This foundation app is intentionally minimal. Repository and MIDI
-        workflows are deferred to a future milestone.
-      </Text>
+    <Box flexDirection="column" gap={16} padding={24} width="100%">
       <Box gap={12}>
         <Button
           className="primary-button"
@@ -21,6 +23,7 @@ const Home = () => {
           View docs
         </Button>
       </Box>
+      <Assignments />
     </Box>
   );
 };

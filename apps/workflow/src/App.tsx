@@ -1,20 +1,19 @@
+import { Box } from '@openchart/core';
 import '@openchart/core/styles.css';
 
 import Home from './pages/Home';
+import { GithubContext, GithubService } from './services/githubService';
 import './styles.css';
+
+const githubService = new GithubService();
 
 const App = () => {
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Home />
-    </main>
+    <Box width="100vw" height="100vh">
+      <GithubContext.Provider value={githubService}>
+        <Home />
+      </GithubContext.Provider>
+    </Box>
   );
 };
 

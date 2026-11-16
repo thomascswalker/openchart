@@ -15,7 +15,13 @@ const Features = tableFeatures({
   columnVisibilityFeature,
 });
 
-const { createAppColumnHelper, useAppTable } = createTableHook({
+const {
+  createAppColumnHelper,
+  useAppTable,
+  useCellContext,
+  useHeaderContext,
+  useTableContext,
+} = createTableHook({
   features: Features,
   getRowId: (row) => row.id,
   cellComponents: {
@@ -64,75 +70,87 @@ const DataTable = ({ id, data, columnDefs }: DataTableProps) => {
   const totalSize = rowVirtualizer.getTotalSize();
 
   return (
-    <Table ref={tableContainerRef}>
-      <Table.Head>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <Table.Row key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <Table.HeaderCell key={header.id}>
-                {header.isPlaceholder ? null : (
-                  <table.FlexRender header={header} />
-                )}
-              </Table.HeaderCell>
-            ))}
-          </Table.Row>
-        ))}
-      </Table.Head>
-      <Table.Body>
-        {!totalSize ? (
-          <tr>
-            <td colSpan={columns.length} style={{ textAlign: 'center' }}>
-              <Text color="var(--text-disabled)">No events</Text>
-            </td>
-          </tr>
-        ) : (
-          <>
-            {virtualRows[0]?.start > 0 && (
-              <tr aria-hidden="true">
-                <td
-                  colSpan={columns.length}
-                  style={{
-                    height: virtualRows[0].start,
-                    padding: 0,
-                    border: 0,
-                  }}
-                />
-              </tr>
-            )}
-            {virtualRows.map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              return (
-                <Table.Row
-                  key={row.id}
-                  ref={rowVirtualizer.measureElement}
-                  data-index={virtualRow.index}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Cell key={cell.id}>
-                      <table.FlexRender cell={cell} />
-                    </Table.Cell>
-                  ))}
-                </Table.Row>
-              );
-            })}
-            {virtualRows.length > 0 &&
-              totalSize - virtualRows[virtualRows.length - 1].end > 0 && (
+    <table.AppTable>
+      <Table ref={tableContainerRef}>
+        <Table.Head>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <Table.Row key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <Table.HeaderCell key={header.id}>
+                  {header.isPlaceholder ? null : (
+                    <table.AppHeader header={header}>
+                      {(appHeader) => <appHeader.FlexRender />}
+                    </table.AppHeader>
+                  )}
+                </Table.HeaderCell>
+              ))}
+            </Table.Row>
+          ))}
+        </Table.Head>
+        <Table.Body>
+          {!totalSize ? (
+            <tr>
+              <td colSpan={columns.length} style={{ textAlign: 'center' }}>
+                <Text color="var(--text-disabled)">No events</Text>
+              </td>
+            </tr>
+          ) : (
+            <>
+              {virtualRows[0]?.start > 0 && (
                 <tr aria-hidden="true">
                   <td
                     colSpan={columns.length}
                     style={{
-                      height:
-                        totalSize - virtualRows[virtualRows.length - 1].end,
+                      height: virtualRows[0].start,
                       padding: 0,
                       border: 0,
                     }}
                   />
                 </tr>
               )}
-          </>
-        )}
-      </Table.Body>
-    </Table>
+              {virtualRows.map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                return (
+                  <Table.Row
+                    key={row.id}
+                    ref={rowVirtualizer.measureElement}
+                    data-index={virtualRow.index}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <Table.Cell key={cell.id}>
+                        <table.AppCell cell={cell}>
+                          {(appCell) => <appCell.FlexRender />}
+                        </table.AppCell>
+                      </Table.Cell>
+                    ))}
+                  </Table.Row>
+                );
+              })}
+              {virtualRows.length > 0 &&
+                totalSize - virtualRows[virtualRows.length - 1].end > 0 && (
+                  <tr aria-hidden="true">
+                    <td
+                      colSpan={columns.length}
+                      style={{
+                        height:
+                          totalSize - virtualRows[virtualRows.length - 1].end,
+                        padding: 0,
+                        border: 0,
+                      }}
+                    />
+                  </tr>
+                )}
+            </>
+          )}
+        </Table.Body>
+      </Table>
+    </table.AppTable>
   );
 };
-export { DataTable, createAppColumnHelper };
+export {
+  DataTable,
+  createAppColumnHelper,
+  useCellContext,
+  useHeaderContext,
+  useTableContext,
+};
