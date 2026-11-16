@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@isomorphic-git/lightning-fs": "^4.10.5",
     "@openchart/core": "1.0.0",
+    "@tauri-apps/api": "^2.12.5",
+    "@tauri-apps/plugin-deep-link": "^2.6.3",
+    "@tauri-apps/plugin-opener": "^2.7.3",
+    "isomorphic-git": "^1.44.15",
     "octokit": "^5.0.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

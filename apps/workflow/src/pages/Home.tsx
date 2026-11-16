@@ -7,6 +7,7 @@ import {
 } from '@openchart/core';
 
 import Assignments from '../components/Assignments';
+import { initiateGitHubLogin } from '../services/githubAuth';
 
 const Home = () => {
   return (
@@ -21,6 +22,14 @@ const Home = () => {
         </Button>
         <Button className="secondary-button" flat type="button">
           View docs
+        </Button>
+        <Button
+          className="secondary-button"
+          flat
+          type="button"
+          onClick={() => void initiateGitHubLogin()}
+        >
+          Sign in with GitHub
         </Button>
       </Box>
       <Assignments />
