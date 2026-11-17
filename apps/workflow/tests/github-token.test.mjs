@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 
-import handler, { config } from '../netlify/github-token.js';
+import handler, { config } from '../netlify/github-token';
 
 const originalFetch = globalThis.fetch;
 const originalId = process.env.GITHUB_WEB_CLIENT_ID;
