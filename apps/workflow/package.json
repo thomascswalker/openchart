@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
     "check-types": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run && node --test tests/github-token.test.mjs",
+    "test": "vitest run --config vitest.unit.config.ts && vitest run",
     "preview": "vite preview"
   },
   "dependencies": {

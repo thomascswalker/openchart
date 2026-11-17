@@ -24,7 +24,8 @@
     "api",
     "netlify",
     "vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.unit.config.ts"
   ],
   "references": []
 }
