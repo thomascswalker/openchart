@@ -1,14 +1,11 @@
-import { Box, Button, FilesIcon, H1, Text } from '@openchart/core';
+import { Box, Button, FilesIcon } from '@openchart/core';
+
+import Assignments from '../components/Assignments';
+import { initiateGitHubLogin } from '../services/githubAuth';
 
 const Home = () => {
   return (
-    <Box flexDirection="column" gap={16} padding={24}>
-      <Text>OpenChart</Text>
-      <H1>Workflow Desktop</H1>
-      <Text>
-        This foundation app is intentionally minimal. Repository and MIDI
-        workflows are deferred to a future milestone.
-      </Text>
+    <Box flexDirection="column" gap={16} padding={24} width="100%">
       <Box gap={12}>
         <Button
           className="primary-button"
@@ -20,7 +17,16 @@ const Home = () => {
         <Button className="secondary-button" flat type="button">
           View docs
         </Button>
+        <Button
+          className="secondary-button"
+          flat
+          type="button"
+          onClick={() => void initiateGitHubLogin()}
+        >
+          Sign in with GitHub
+        </Button>
       </Box>
+      <Assignments />
     </Box>
   );
 };

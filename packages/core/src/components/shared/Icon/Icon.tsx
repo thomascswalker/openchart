@@ -143,5 +143,7 @@ export const {
   TracksIcon,
   FileIcon,
   FilesIcon,
+  UploadIcon,
+  BookIcon,
 } = icons;
 export { Icon };
