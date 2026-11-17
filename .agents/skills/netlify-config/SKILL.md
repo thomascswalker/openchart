@@ -6,6 +6,7 @@ description: Configure Netlify builds and routing via netlify.toml, _redirects, 
 # Netlify configuration
 
 Config lives in three files at the repo **root** (or the base/package directory for monorepos):
+
 - `netlify.toml`: build, contexts, plugins, functions, redirects, headers, dev.
 - `_redirects`: plain-text redirect/rewrite rules, saved to the **publish directory**, no extension.
 - `_headers`: plain-text response headers, saved to the **publish directory**.
@@ -13,6 +14,7 @@ Config lives in three files at the repo **root** (or the base/package directory 
 `netlify.toml` values **take precedence over the Netlify UI** when they conflict. Paths in `netlify.toml` are absolute relative to the **base directory** (root `/` by default).
 
 ## Modern vs legacy syntax to reach for
+
 - Schema: start `netlify.toml` with `"$schema" = "https://open-api.netlify.com/netlify.schema.json"` (key is quoted). Editors and agents with TOML JSON-schema support suggest and validate properties. In VS Code, use the Even Better TOML extension. Netlify ignores the key at build/deploy. **A schema-valid file can still fail to build**, because checks like whether a directory exists happen only during the build.
 - Functions bundler: use `node_bundler = "esbuild"`. `zisi` is the legacy JS default. TypeScript always uses `esbuild`.
 - Temporary redirect: use `status = 302`. `307` is **unsupported**.
@@ -48,9 +50,11 @@ Config lives in three files at the repo **root** (or the base/package directory 
 `_redirects` rules are processed **first**, then `netlify.toml`. Within each, the **first matching rule top-to-bottom wins**, so list specific rules before general ones. Edge functions run before redirects.
 
 SPA history-`pushState` fallback (required for clean URLs):
+
 ```
 /*  /index.html  200
 ```
+
 ```toml
 [[redirects]]
   from = "/*"
@@ -59,6 +63,7 @@ SPA history-`pushState` fallback (required for clean URLs):
 ```
 
 `_redirects` syntax is `from to [status] [conditions]`. Lines starting with `#` are comments, paths are case-sensitive, and special chars must be URL-encoded:
+
 ```
 /home         /              301
 /my-redirect  /              302
@@ -74,6 +79,7 @@ SPA history-`pushState` fallback (required for clean URLs):
 ```
 
 `[[redirects]]` keywords:
+
 - `from`, `to`
 - `status` (default `301`)
 - `force` (default `false`; same as `!`/shadow)
@@ -83,6 +89,7 @@ SPA history-`pushState` fallback (required for clean URLs):
 - `signed` (env var name for signed proxies)
 
 **Gotchas:**
+
 - You **cannot** add or remove a trailing slash with a redirect. The CDN normalizes URLs first, so a `/x/ → /x 301!` rule loops infinitely. Rely on Pretty URLs (default on).
 - Splat asterisks work only at the **end** of a segment (`/jobs/*`), not mid-path (`/jobs/*.html` is invalid). Placeholders (`:x`) work only at the start of a segment. You can't mix a wildcard and a placeholder in one segment.
 - You can't exclude a path from a splat. Put a more specific rule first instead.
@@ -96,6 +103,7 @@ SPA history-`pushState` fallback (required for clean URLs):
 /api/*           https://api.example.com/:splat        200
 /netlify-site/*  https://my-other-site.netlify.app/:splat  200   # use .netlify.app, not custom domain
 ```
+
 ```toml
 [[redirects]]                     # custom request headers + force
   from = "/search"
@@ -104,7 +112,9 @@ SPA history-`pushState` fallback (required for clean URLs):
   force = true
   headers = {X-From = "Netlify"}
 ```
+
 Signed proxy rules:
+
 - `signed` names an env var scoped to **Runtime**.
 - The rule must live in `netlify.toml`.
 - JWS signing works for external targets only, not Netlify→Netlify.
@@ -119,6 +129,7 @@ Signed proxy rules:
 ```
 
 **Gotchas:**
+
 - Cross-team rewrites are disallowed.
 - Rewrites within the same password-protected site are OK, but not across separate protected sites.
 - Proxy timeout is **26 s**.
@@ -134,7 +145,9 @@ Signed proxy rules:
 /templates/index2.html
   X-Frame-Options: SAMEORIGIN
 ```
+
 For multi-value headers, repeat the key (`_headers`) or use a multiline TOML string:
+
 ```toml
 [[headers]]
   for = "/*"
@@ -147,6 +160,7 @@ For multi-value headers, repeat the key (`_headers`) or use a multiline TOML str
 ```
 
 **Gotchas:**
+
 - Headers in `_headers`/`netlify.toml` are **global**, NOT scoped to branch/context. Workaround: remove global headers, keep header files in a custom dir, and `cp` them into the publish dir from a per-context build command:
   ```toml
   [context.staging]
@@ -174,6 +188,7 @@ For multi-value headers, repeat the key (`_headers`) or use a multiline TOML str
 ## Environment variables
 
 Two storage methods:
+
 - **UI / CLI / API**: stored on Netlify, not in the repo.
   - Supports site + shared vars, per-context values, and scopes.
   - Reaches builds, functions/edge/ODB, snippet injection, forms, and signed proxies.
@@ -186,6 +201,7 @@ Two storage methods:
 `netlify.toml` env vars **override** same-key UI/CLI/API vars.
 
 Per-context values in TOML:
+
 ```toml
 [context.production]
   environment = { NODE_VERSION = "14.15.3" }
@@ -196,6 +212,7 @@ Per-context values in TOML:
 ```
 
 CLI:
+
 ```bash
 netlify env:set KEY value          # --secret marks it a secret
 netlify env:import .env             # site vars; --replace-existing wipes others first
@@ -203,11 +220,13 @@ netlify env:unset KEY
 netlify env:list --plain --context production > .env
 netlify build                       # local build with Netlify's env vars
 ```
+
 API: `createEnvVars` / `updateEnvVar` (`is_secret: true`) / `setEnvVarValue` / `deleteEnvVar` / `deleteEnvVarValue`.
 
 **Access syntax:** Bash `$VAR` in `build.command`/`ignore.command`; `process.env.VAR` in Node scripts and plugins.
 
 **Scopes** (Pro/Enterprise; default is all scopes):
+
 - Builds: site builds.
 - Functions: Functions, Edge Functions, ODB.
 - Runtime: forms, signed proxies.
@@ -216,6 +235,7 @@ API: `createEnvVars` / `updateEnvVar` (`is_secret: true`) / `setEnvVarValue` / `
 Shared vars are Pro/Enterprise and **Team-Owner-only** to read/edit. When a site var and a shared var use the same key, precedence resolves **per scope**: the site var only wins within the scopes it actually carries.
 
 **Naming/limits:**
+
 - Keys use only alphanumerics and underscores, and must start with a letter (`1KEY` and `_KEY1` are invalid).
 - Keys ≤255 chars, values ≤5,000 chars.
 - Read-only variable names are reserved.
@@ -228,25 +248,31 @@ Shared vars are Pro/Enterprise and **Team-Owner-only** to read/edit. When a site
 **`CI` gotcha:** `CI` defaults to `true`. If it breaks a build, prepend `CI='' ` to the build command.
 
 ### Injecting env values into headers/redirects
+
 `key = "$VAR"` is unsupported. For headers and redirects, substitute values from the build command (the var's scope must include **Builds**):
+
 ```toml
 [build]
   command = "sed -i \"s|HEADER_PLACEHOLDER|${PROD_API_LOCATION}|g\" netlify.toml && yarn build"
 ```
+
 `sed` substitution works **only** for `[[headers]]`/`[[redirects]]`, which are read after the build. It is **not** visible to build plugins, which run before the build command. For changes plugins must see, use a local build plugin that edits `netlifyConfig`.
 
 ### Useful read-only build vars
+
 `CONTEXT` (`production`/`deploy-preview`/`branch-deploy`/`dev`), `BRANCH`, `COMMIT_REF`, `CACHED_COMMIT_REF`, `PULL_REQUEST`, `REVIEW_ID`, `URL`, `DEPLOY_URL`, `DEPLOY_PRIME_URL`, `SITE_ID`, `SITE_NAME`.
 
 ## Secrets Controller
 
 Flag a var as secret with `Contains secret values` (UI), `--secret` (CLI), or `is_secret: true` (API). The policy is enforced and can't be customized:
+
 - Secret values are **write-only**: there is no readable version after setting, and the flag can't be removed to reveal the value.
 - Secrets need explicit contexts + scopes and **cannot** carry the `post processing` scope.
 - Only code on Netlify (edge/serverless/build) reads unmasked values. Code off Netlify sees masked values.
 - The `dev`-context value is exempt and stays unmasked from UI/CLI/API. `netlify build` never emits raw values.
 
 **Secret scanning** runs automatically once any var is secret, and also through smart detection. It fails the build on detection and logs the location. Configure it with env vars set per context:
+
 - `SECRETS_SCAN_ENABLED=false` disables **all** scanning, which removes all secret protection.
 - `SECRETS_SCAN_SMART_DETECTION_ENABLED=false` disables smart detection only.
 - `SECRETS_SCAN_OMIT_KEYS` and `SECRETS_SCAN_OMIT_PATHS` take comma lists. Paths are relative to the repo root; globs are OK.
@@ -256,7 +282,9 @@ Flag a var as secret with `Contains secret values` (UI), `--secret` (CLI), or `i
 Scanning covers all build files. It checks secret values longer than 4 chars that aren't booleans, searching plaintext, base64, and URI-encoded permutations.
 
 ### Sensitive variable policy (public repos only)
+
 This policy governs whether **untrusted** deploys (from unrecognized authors) get sensitive vars. Site members' Git deploys are always trusted, even from forks. Set it at Project configuration > Environment variables > Site policies:
+
 - **Require approval** (default): untrusted deploys wait for a member's approval.
 - **Deploy without sensitive variables**: builds run, but sensitive vars are withheld.
 - **Deploy without restrictions**: all vars are present.
@@ -266,25 +294,30 @@ The policy is NOT available for GitHub Enterprise Server or GitLab self-managed 
 ## Ignore builds
 
 `ignore` under `[build]` decides whether to rebuild. It runs from the base directory in Bash, or in Node.js 18 (fixed version; site `package.json` deps are **not** available).
+
 - **Exit `1` = changed → build continues.**
 - **Exit `0` = no change → build stops.**
 - A build hook always builds, regardless of exit code.
+
 ```toml
 [build]
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF packages/blog-1 packages/common"
 ```
+
 ```toml
 [build]
   ignore = "node ignore_build.js"   # separate file paths must start with ./
 ```
+
 ```js
 // ignore_build.js
-process.exitCode = process.env.BRANCH.includes("debug") ? 0 : 1
+process.exitCode = process.env.BRANCH.includes('debug') ? 0 : 1;
 ```
 
 ## Monorepos
 
 Recommended setup:
+
 1. Set the site subdirectory as the **package directory** and keep its `netlify.toml` there.
 2. Leave the base directory at root `/`.
 3. Declare deps at the subdirectory level.
@@ -303,6 +336,7 @@ Config files are discovered in this order: package dir → base dir → root. Pa
 ## Netlify Dev `[dev]`
 
 `[dev]` does **NOT** run in Bash, so don't use Bash syntax in `command`. There is **no `environment` key**; set local env vars under `[context.dev.environment]`.
+
 ```toml
 [dev]
   command = "yarn start"
@@ -329,6 +363,7 @@ package = "netlify-plugin-check-output-for-puppy-references"
 ```
 
 ## Reference pages
+
 - Build environment variables: https://docs.netlify.com/build/configure-builds/environment-variables.md
 - Env-var overview: https://docs.netlify.com/build/environment-variables/overview.md
 - Secrets Controller: https://docs.netlify.com/build/environment-variables/secrets-controller.md
@@ -341,6 +376,7 @@ package = "netlify-plugin-check-output-for-puppy-references"
 <!-- Plan gating for the sensitive variable policy itself is unspecified in the sources; only its public-repo requirement and the smart-detection plan list are documented. -->
 
 <!-- system: agent-context/config/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (config)
 
 These are org conventions, not docs facts — merged into the rendered skill by

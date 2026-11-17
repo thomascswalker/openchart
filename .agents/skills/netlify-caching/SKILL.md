@@ -10,18 +10,20 @@ description: Cache dynamic and static responses on Netlify's CDN from Functions,
 Dynamic responses (Functions, Edge Functions, proxies) are **NOT cached by default**. You must opt in. Set `Netlify-CDN-Cache-Control` on the response:
 
 ```ts
-import type { Context } from "@netlify/functions";
+import type { Context } from '@netlify/functions';
 
 export default async (req: Request, context: Context) => {
-  return new Response("Hello world", {
+  return new Response('Hello world', {
     headers: {
-      'Netlify-CDN-Cache-Control': 'public, durable, max-age=60, stale-while-revalidate=120'
-    }
+      'Netlify-CDN-Cache-Control':
+        'public, durable, max-age=60, stale-while-revalidate=120',
+    },
   });
 };
 ```
 
 Header choice (most specific wins; `CDN-Cache-Control`/`Cache-Control` always pass downstream):
+
 - `Netlify-CDN-Cache-Control` applies to the Netlify CDN only. **Reach for this.**
 - `CDN-Cache-Control` applies to all CDNs that support it.
 - `Cache-Control` applies to any CDN or the browser.
@@ -45,6 +47,7 @@ Header choice (most specific wins; `CDN-Cache-Control`/`Cache-Control` always pa
 - `durable` (serverless only) stores the response in Netlify's durable cache so other edge nodes reuse it instead of re-invoking the function.
 
 Defaults when no header is set:
+
 - Static: `Netlify-CDN-Cache-Control: public, s-maxage=31536000, must-revalidate`
 - Dynamic: `Cache-Control: public, max-age=0, must-revalidate`
 
@@ -92,32 +95,33 @@ After opting out, purge on demand after relevant changes, e.g. redirect/proxy or
 Purge from a **deployed function or edge function** with `purgeCache` from `@netlify/cache`. The site and purge token are configured automatically. Purging covers everything cached for the site, including Cache API entries:
 
 ```ts
-import { purgeCache } from "@netlify/cache";
+import { purgeCache } from '@netlify/cache';
 
 export default async () => {
   await purgeCache(); // no args = purge everything for the site
-  return new Response("Purged!", { status: 202 });
+  return new Response('Purged!', { status: 202 });
 };
 ```
 
 Purge by tag, optionally targeting a deploy/subdomain:
 
 ```ts
-import { purgeCache } from "@netlify/cache";
+import { purgeCache } from '@netlify/cache';
 
 export default async (req: Request) => {
-  const cacheTag = new URL(req.url).searchParams.get("tag");
+  const cacheTag = new URL(req.url).searchParams.get('tag');
   if (!cacheTag) return;
   await purgeCache({
     tags: [cacheTag],
-    deployAlias: "deploy-preview-11",
-    domain: "early-access.company.com",
+    deployAlias: 'deploy-preview-11',
+    domain: 'early-access.company.com',
   });
-  return new Response("Purged!", { status: 202 });
+  return new Response('Purged!', { status: 202 });
 };
 ```
 
 `purgeCache(options?)` options:
+
 - `tags`: tags to purge. Omit to purge the whole site. Tag purges apply to all deploys unless you target one.
 - `deployAlias` (e.g. `deploy-preview-11`): targets that alias on the primary domain.
 - `domain` (e.g. `early-access.company.com`): targets the published production deploy on that domain.
@@ -128,12 +132,12 @@ export default async (req: Request) => {
 **Lambda-compatible functions** use the legacy `module.exports.handler = async (event, context) => {…}` signature. They must pass `context.clientContext.custom.purge_api_token`:
 
 ```ts
-import { purgeCache } from "@netlify/cache";
+import { purgeCache } from '@netlify/cache';
 
 module.exports.handler = async (event, context) => {
   const token = context.clientContext.custom.purge_api_token;
-  await purgeCache({ tags: ["tag1", "tag2"], token });
-  return { body: "Purged!", statusCode: 202 };
+  await purgeCache({ tags: ['tag1', 'tag2'], token });
+  return { body: 'Purged!', statusCode: 202 };
 };
 ```
 
@@ -160,32 +164,34 @@ Programmatic read/write of HTTP responses from Functions/Edge Functions. Use it 
 **Scope rule:** call `caches.open()` anywhere, but call `match`/`put`/`delete` **only inside the request handler**. Doing them at module/global scope throws.
 
 ```ts
-import type { Config, Context } from "@netlify/functions";
+import type { Config, Context } from '@netlify/functions';
 
-const cache = await caches.open("my-cache"); // ok in global scope
+const cache = await caches.open('my-cache'); // ok in global scope
 
 export default async (req: Request, context: Context) => {
-  const request = new Request("https://example.com/expensive-api");
+  const request = new Request('https://example.com/expensive-api');
   const cached = await cache.match(request);
   if (cached) return cached;
 
   const fresh = await fetch(request);
   if (fresh.ok) {
     cache.put(request, fresh.clone()).catch((error) => {
-      console.error("Failed to add to the cache:", error);
+      console.error('Failed to add to the cache:', error);
     });
   }
   return fresh;
 };
 
-export const config: Config = { path: "/cache-api-example" };
+export const config: Config = { path: '/cache-api-example' };
 ```
 
 `CacheStorage` subset:
+
 - `caches.match(request)` returns a `Response` from any cache, or `undefined`.
 - `caches.open(name)` returns a `Cache`. Distinct names fragment the cache and lower the hit ratio, so use few, meaningful names.
 
 `Cache` methods (all require `caches.open()`):
+
 - `cache.match(request)` returns a `Response` or `undefined`.
 - `cache.put(request, response)` adds a response.
 - `cache.add(request)` / `cache.addAll(requests)` fetch and store.
@@ -195,10 +201,12 @@ export const config: Config = { path: "/cache-api-example" };
 Consistency: reads/writes are strongly consistent. **Deletes are eventually consistent**, so a deleted entry may still return briefly.
 
 **Cannot cache:**
+
 - Partial responses (206), `Vary: *`, or non-`GET` methods.
 - Responses over **10 MB**. These are silently not stored.
 
 Responses also need all of the following, otherwise storage errors:
+
 - a cache-control header with `max-age`/`s-maxage` ≥ 1s
 - `public` (not `private`/`no-cache`/`no-store`)
 - a 2xx status
@@ -220,8 +228,9 @@ npm install @netlify/cache
 **Local-dev workaround:** the `caches` global isn't part of Node.js. Netlify provides it in its Functions/Edge runtimes, both live and under `netlify dev`. If you run your framework's own dev server, the global is undefined and throws. Import it instead:
 
 ```ts
-import { caches } from "@netlify/cache";
-const cache = await caches.open("my-cache");
+import { caches } from '@netlify/cache';
+
+const cache = await caches.open('my-cache');
 ```
 
 This requires Netlify CLI 20.0.3+. Nothing persists locally: lookups return nothing, and writes/deletes don't mutate. There is no functional change from the global.
@@ -229,22 +238,22 @@ This requires Netlify CLI 20.0.3+. Nothing persists locally: lookups return noth
 ### `cacheHeaders(settings)` → header object
 
 ```ts
-import { cacheHeaders, DAY } from "@netlify/cache";
+import { DAY, cacheHeaders } from '@netlify/cache';
 
 const headers = {
-  "x-custom-header": "some value",
+  'x-custom-header': 'some value',
   ...cacheHeaders({
-    ttl: 2 * DAY,          // s-maxage
-    swr: HOUR,             // stale-while-revalidate
+    ttl: 2 * DAY, // s-maxage
+    swr: HOUR, // stale-while-revalidate
     durable: true,
-    tags: ["product", "sale"],
-    overrideDeployRevalidation: ["tag"], // opt out of atomic-deploy invalidation
+    tags: ['product', 'sale'],
+    overrideDeployRevalidation: ['tag'], // opt out of atomic-deploy invalidation
     vary: {
-      cookie: ["ab_test_name", "ab_test_bucket"],
-      query: ["item_id", "page"], // or true for all
-      country: ["us", ["es", "pt"]], // nested = OR
-      language: ["en"],
-      header: ["Device-Type"],
+      cookie: ['ab_test_name', 'ab_test_bucket'],
+      query: ['item_id', 'page'], // or true for all
+      country: ['us', ['es', 'pt']], // nested = OR
+      language: ['en'],
+      header: ['Device-Type'],
     },
   }),
 };
@@ -257,12 +266,12 @@ For only generic (non-Netlify) headers, use the `cdn-cache-control` npm module i
 Drop-in `fetch` that returns a cached response, or fetches, stores, and returns. `cacheSettings` override conflicting response headers. With `swr`, background revalidation is handled automatically.
 
 ```ts
-import { fetchWithCache, DAY } from "@netlify/cache";
+import { DAY, fetchWithCache } from '@netlify/cache';
 
-const response = await fetchWithCache("https://example.com/expensive-api", {
+const response = await fetchWithCache('https://example.com/expensive-api', {
   ttl: 2 * DAY,
-  tags: ["product", "sale"],
-  vary: { cookie: ["ab_test_name"], query: ["item_id", "page"] },
+  tags: ['product', 'sale'],
+  vary: { cookie: ['ab_test_name'], query: ['item_id', 'page'] },
 });
 ```
 
@@ -284,10 +293,13 @@ if (cached) {
     context.waitUntil(
       fetch(request).then((fresh) => {
         const response = new Response(fresh.body, {
-          headers: { ...Object.fromEntries(fresh.headers), ...cacheHeaders({ ttl: MINUTE, swr: HOUR }) },
+          headers: {
+            ...Object.fromEntries(fresh.headers),
+            ...cacheHeaders({ ttl: MINUTE, swr: HOUR }),
+          },
         });
         return cache.put(request, response);
-      })
+      }),
     );
   }
   return cached;
@@ -319,6 +331,7 @@ A negative `ttl` is the number of seconds since expiry. Each request may hit a d
 purgeCache `domain` is documented both as a site selector and as a deploy target; whether a 429 rate limit surfaces as a Promise rejection is unstated. -->
 
 <!-- system: agent-context/caching/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (caching)
 
 These are org conventions, not docs facts — merged into the rendered skill by

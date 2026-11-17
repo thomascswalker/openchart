@@ -1,9 +1,9 @@
+import { useEffect } from 'react';
+
 import { Box } from '@openchart/core';
 import '@openchart/core/styles.css';
-
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrent, onOpenUrl } from '@tauri-apps/plugin-deep-link';
-import { useEffect } from 'react';
 
 import AuthCallback from './pages/AuthCallback';
 import Home from './pages/Home';

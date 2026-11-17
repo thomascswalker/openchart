@@ -7,7 +7,7 @@ description: Build, deploy, and secure Model Context Protocol (MCP) servers on N
 
 An MCP server exposes **tools** (and optionally resources/prompts) that an AI client — Claude Desktop, Claude Code, Cursor — can call. On Netlify, a remote MCP server is just **one Netlify Function** that speaks the MCP protocol over HTTP. This skill gets you a working, secure server and connects a client to it.
 
-**"Netlify MCP" means two different things — make sure you're building the right one.** Netlify publishes its *own* hosted MCP server that lets an AI client operate the **Netlify platform** on your behalf — create projects, trigger deploys, manage env vars and infrastructure through your Netlify account. You don't write that one; you point your client at Netlify's hosted MCP server per Netlify's MCP-server docs (and see the **netlify-agent-runner** skill for running agents against your site). This skill is the *other* thing: building **your own** MCP server — an endpoint that exposes *your* app's tools and data to an agent — hosted on a Netlify Function. If the ask is "let my agent manage my Netlify sites/deploys/env vars," that's the hosted Netlify MCP server, not a function you write.
+**"Netlify MCP" means two different things — make sure you're building the right one.** Netlify publishes its _own_ hosted MCP server that lets an AI client operate the **Netlify platform** on your behalf — create projects, trigger deploys, manage env vars and infrastructure through your Netlify account. You don't write that one; you point your client at Netlify's hosted MCP server per Netlify's MCP-server docs (and see the **netlify-agent-runner** skill for running agents against your site). This skill is the _other_ thing: building **your own** MCP server — an endpoint that exposes _your_ app's tools and data to an agent — hosted on a Netlify Function. If the ask is "let my agent manage my Netlify sites/deploys/env vars," that's the hosted Netlify MCP server, not a function you write.
 
 The same setup works two ways:
 
@@ -32,28 +32,31 @@ npm install @modelcontextprotocol/sdk zod
 
 A Netlify Function already speaks the web platform — it receives a `Request` and returns a `Response`. The SDK ships a transport built on exactly those primitives, `WebStandardStreamableHTTPServerTransport` (the same core the SDK runs on internally, and what Cloudflare Workers / Deno / Bun use): you hand it the `Request` and return the `Response` it produces — no adapter, no version pin. Older guides reach for the Node-flavored `StreamableHTTPServerTransport` plus a `fetch-to-node` bridge to synthesize the Node `req`/`res` objects it expects; on Netlify you need neither, and skipping them is both simpler and what's verified to work here.
 
-One gotcha, independent of all this: the transport returns **HTTP 406** to any POST whose `Accept` header lacks *both* `application/json` and `text/event-stream`. That's an MCP-spec requirement the *client* must satisfy — a 406 means fix the client's `Accept` header, not the server. Letting the SDK own the protocol also means you don't hand-maintain JSON-RPC framing or the protocol-version handshake.
+One gotcha, independent of all this: the transport returns **HTTP 406** to any POST whose `Accept` header lacks _both_ `application/json` and `text/event-stream`. That's an MCP-spec requirement the _client_ must satisfy — a 406 means fix the client's `Accept` header, not the server. Letting the SDK own the protocol also means you don't hand-maintain JSON-RPC framing or the protocol-version handshake.
 
 ## The server function
 
 With the Web-standard transport this is a few lines — most of what older guides show was the Node bridge, which you don't need. Put it in `netlify/functions/mcp.ts`:
 
 ```typescript
-import type { Config, Context } from "@netlify/functions";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { z } from "zod";
-import { checkBearer } from "../lib/mcp/bearer"; // see Authentication
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import type { Config, Context } from '@netlify/functions';
+import { z } from 'zod';
+
+import { checkBearer } from '../lib/mcp/bearer';
+
+// see Authentication
 
 function buildServer() {
-  const server = new McpServer({ name: "my-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: 'my-mcp', version: '0.1.0' });
 
   server.tool(
-    "get_item",
-    "Fetch a single item by id. Read-only.",
+    'get_item',
+    'Fetch a single item by id. Read-only.',
     { id: z.string().describe("The item's unique id") },
     async ({ id }) => ({
-      content: [{ type: "text", text: JSON.stringify(await getItem(id)) }],
+      content: [{ type: 'text', text: JSON.stringify(await getItem(id)) }],
     }),
   );
 
@@ -61,12 +64,13 @@ function buildServer() {
 }
 
 export default async (req: Request, _context: Context) => {
-  if (!checkBearer(req)) return new Response("Unauthorized", { status: 401 });
+  if (!checkBearer(req)) return new Response('Unauthorized', { status: 401 });
 
   // Stateless JSON server: it only does request/response over POST. Reject other
   // methods — a GET makes the transport open an SSE stream that never closes, which
   // a serverless function can't serve (you'll get a 502).
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (req.method !== 'POST')
+    return new Response('Method not allowed', { status: 405 });
 
   // Fresh server + transport per request, no session to persist. enableJsonResponse
   // returns one application/json body instead of an SSE stream — the right fit here.
@@ -82,7 +86,7 @@ export default async (req: Request, _context: Context) => {
   return transport.handleRequest(req);
 };
 
-export const config: Config = { path: "/mcp" };
+export const config: Config = { path: '/mcp' };
 ```
 
 That's a complete, deployable server. Everything else is tools, auth, and safety.
@@ -95,13 +99,14 @@ It only matters when your MCP client runs **in a browser** — a web app calling
 
 ```typescript
 const CORS = {
-  "Access-Control-Allow-Origin": Netlify.env.get("MCP_ALLOWED_ORIGIN") ?? "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type, Mcp-Session-Id",
+  'Access-Control-Allow-Origin': Netlify.env.get('MCP_ALLOWED_ORIGIN') ?? '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Mcp-Session-Id',
 };
 
 // In the handler, before the 405 check:
-if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+if (req.method === 'OPTIONS')
+  return new Response(null, { status: 204, headers: CORS });
 // ...then reject other non-POST methods with 405, and add CORS to the transport's Response.
 ```
 
@@ -120,12 +125,12 @@ The MCP client must prove it's allowed to call your server. Every request carrie
 **Single shared secret** (personal / single-user). One env var, compared in constant time. Put this in `netlify/lib/mcp/bearer.ts`:
 
 ```typescript
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from 'node:crypto';
 
 export function checkBearer(req: Request): boolean {
-  const expected = Netlify.env.get("MCP_BEARER_TOKEN");
+  const expected = Netlify.env.get('MCP_BEARER_TOKEN');
   if (!expected) return false;
-  const match = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i);
+  const match = req.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i);
   if (!match) return false;
   const a = Buffer.from(match[1]);
   const b = Buffer.from(expected);
@@ -147,7 +152,7 @@ Tools are a public API handed to an autonomous agent. Be deliberate:
 
 - **Expose the least that does the job.** Separate reads from writes, and think hard before exposing destructive tools. A common, sound choice is to **omit delete tools entirely** and keep destructive actions in a human-operated UI.
 - **Guard irreversible or public actions** by putting explicit instructions in the tool's description — e.g. "show the user the exact text and get confirmation before posting." This is a soft, model-level guard, so back it with a real kill switch: a token you can revoke instantly.
-- **Keep the client's credential separate from your backend's.** The client authenticates to your server (bearer/API key); your server authenticates to the database or third-party API with its *own* secret. Never pass your backend god-key out to the client.
+- **Keep the client's credential separate from your backend's.** The client authenticates to your server (bearer/API key); your server authenticates to the database or third-party API with its _own_ secret. Never pass your backend god-key out to the client.
 - **Use least-privilege backend credentials** — app passwords or scoped tokens, not account-level ones, so a leak is contained and revocable.
 - **Validate inputs** (your `zod` schemas do this) and **log every tool call** so you can see what the agent did — `console.info` shows up in Netlify function logs.
 
@@ -157,11 +162,11 @@ An MCP server is a public endpoint an autonomous agent can hit in a tight loop �
 
 ```typescript
 export const config: Config = {
-  path: "/mcp",
+  path: '/mcp',
   rateLimit: {
-    windowSize: 60,               // time window in seconds; capped at 180
-    windowLimit: 100,             // max requests per window
-    aggregateBy: ["ip", "domain"], // group by ip, domain, or both
+    windowSize: 60, // time window in seconds; capped at 180
+    windowLimit: 100, // max requests per window
+    aggregateBy: ['ip', 'domain'], // group by ip, domain, or both
   },
 };
 ```
@@ -170,11 +175,11 @@ Over the limit the platform returns HTTP `429` by default (or set `action: "rewr
 
 ## File uploads
 
-When a tool needs the agent to supply a file (an image to post, a doc to attach), don't push the bytes through the tool call as base64 — it bloats the model's context and runs into payload limits. Instead hand the agent a short-lived, single-use **presigned URL** to `PUT` the raw bytes to, store them in **Netlify Blobs**, and reference the file by a stable key from your other tools. Sign the URL with an **HMAC-SHA256** over the upload id, content-type, size, and expiry, keyed by a **secret env var**, and **verify it in constant time** — the signature *is* the authorization, so the `PUT` carries no bearer token. On the upload endpoint, enforce the declared content-type and size and reject replays. Full three-step flow (`prepare_upload` → `PUT` → `finalize_upload`) with code: [file uploads](references/file-uploads.md).
+When a tool needs the agent to supply a file (an image to post, a doc to attach), don't push the bytes through the tool call as base64 — it bloats the model's context and runs into payload limits. Instead hand the agent a short-lived, single-use **presigned URL** to `PUT` the raw bytes to, store them in **Netlify Blobs**, and reference the file by a stable key from your other tools. Sign the URL with an **HMAC-SHA256** over the upload id, content-type, size, and expiry, keyed by a **secret env var**, and **verify it in constant time** — the signature _is_ the authorization, so the `PUT` carries no bearer token. On the upload endpoint, enforce the declared content-type and size and reject replays. Full three-step flow (`prepare_upload` → `PUT` → `finalize_upload`) with code: [file uploads](references/file-uploads.md).
 
 ## State doesn't survive between requests
 
-Every request builds a fresh server and transport, and any invocation may land on a **different** — or cold-started — function instance. Module-level memory is not shared between instances and not durable across cold starts. So state you need to persist between calls **cannot** live in a module-scoped `Set`/`Map`/variable: single-use / replay tracking for the presigned uploads above, idempotency keys, "already processed this id" guards, per-user counters you track by hand. An in-memory guard *looks* correct locally and on one warm instance, then silently lets a replayed upload through (or double-processes a call) the moment another instance serves the request. Keep that state in a **durable store** — Netlify Blobs or your database — keyed by the upload/request id, and check-and-mark it there. (This is also why the server itself runs stateless, with `sessionIdGenerator: undefined`.)
+Every request builds a fresh server and transport, and any invocation may land on a **different** — or cold-started — function instance. Module-level memory is not shared between instances and not durable across cold starts. So state you need to persist between calls **cannot** live in a module-scoped `Set`/`Map`/variable: single-use / replay tracking for the presigned uploads above, idempotency keys, "already processed this id" guards, per-user counters you track by hand. An in-memory guard _looks_ correct locally and on one warm instance, then silently lets a replayed upload through (or double-processes a call) the moment another instance serves the request. Keep that state in a **durable store** — Netlify Blobs or your database — keyed by the upload/request id, and check-and-mark it there. (This is also why the server itself runs stateless, with `sessionIdGenerator: undefined`.)
 
 ## Connecting a client
 
@@ -197,7 +202,7 @@ Full client matrix and the OAuth / Custom Connector deep-dive: [connecting clien
 
 ## Cross-cutting rules
 
-- Never hardcode secrets. Store tokens, API keys, and signing secrets as Netlify environment variables (mark them secret). Beyond the leak risk, a bearer token or signing secret written into source (or any file the build publishes) trips **Netlify's secrets scanning and fails the deploy** even after an otherwise-green build — the fix is to move it to a secret env var and read it at runtime with `Netlify.env.get(...)`, and rotate the token if it was committed, *not* to disable the scanner. See **netlify-deploy** for the scan controls.
+- Never hardcode secrets. Store tokens, API keys, and signing secrets as Netlify environment variables (mark them secret). Beyond the leak risk, a bearer token or signing secret written into source (or any file the build publishes) trips **Netlify's secrets scanning and fails the deploy** even after an otherwise-green build — the fix is to move it to a secret env var and read it at runtime with `Netlify.env.get(...)`, and rotate the token if it was committed, _not_ to disable the scanner. See **netlify-deploy** for the scan controls.
 - Inside functions, read env vars with `Netlify.env.get("VAR")`, not `process.env`.
 - Add `.netlify` to `.gitignore`.
 

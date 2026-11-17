@@ -22,22 +22,31 @@ Framework examples (Next.js/Astro/Remix/SvelteKit) and the full API reference ar
 ## Client auth (browser)
 
 ```ts
-import { signup, login, logout, getUser, oauthLogin, handleAuthCallback } from '@netlify/identity'
+import {
+  getUser,
+  handleAuthCallback,
+  login,
+  logout,
+  oauthLogin,
+  signup,
+} from '@netlify/identity';
 
 // Register — confirmation email sent by default (unless autoconfirm is on)
-const user = await signup('jane@example.com', 'securepassword', { full_name: 'Jane Doe' })
+const user = await signup('jane@example.com', 'securepassword', {
+  full_name: 'Jane Doe',
+});
 
 // Log in / out
-await login('jane@example.com', 'securepassword')
-await logout()
+await login('jane@example.com', 'securepassword');
+await logout();
 
 // Current user or null
-const current = await getUser()
-if (current) console.log(`Logged in as ${current.email}`)
+const current = await getUser();
+if (current) console.log(`Logged in as ${current.email}`);
 
 // External provider — redirects the browser; provider is one of
 // 'google' | 'github' | 'gitlab' | 'bitbucket'
-oauthLogin('github')
+oauthLogin('github');
 ```
 
 > **`handleAuthCallback()` is mandatory on your landing page.** Without it, OAuth redirects, email-confirmation links, password-recovery links, and invite links never complete. Call it on page load.
@@ -45,17 +54,18 @@ oauthLogin('github')
 > **Invites are NOT logged in by `handleAuthCallback()`.** For an invite it returns `type === 'invite'` with the token in `result.token` and `result.user === null`. The account does not exist yet. You must collect a password and call `acceptInvite(result.token, password)`. If you skip this step, invited users never get an account.
 
 ```ts
-import { handleAuthCallback, acceptInvite } from '@netlify/identity'
+import { acceptInvite, handleAuthCallback } from '@netlify/identity';
 
-const result = await handleAuthCallback() // falsy if no token in URL hash
+const result = await handleAuthCallback(); // falsy if no token in URL hash
 if (result?.type === 'invite' && result.token) {
   // Invited user has no account yet. Ask them to choose a password first.
-  const password = (document.getElementById('password') as HTMLInputElement).value
-  const user = await acceptInvite(result.token, password)
-  console.log('Account created:', user.email)
+  const password = (document.getElementById('password') as HTMLInputElement)
+    .value;
+  const user = await acceptInvite(result.token, password);
+  console.log('Account created:', user.email);
 } else if (result) {
   // OAuth, email confirmation, recovery, or email change
-  console.log(result.type, result.user?.email)
+  console.log(result.type, result.user?.email);
 }
 ```
 
@@ -71,14 +81,14 @@ Server-side `getUser()`/`login()`/`admin.*` require modern **v2 functions** (`ex
 
 ```ts
 // netlify/functions/me.ts — verify user
-import { getUser } from '@netlify/identity'
-import type { Context } from '@netlify/functions'
+import type { Context } from '@netlify/functions';
+import { getUser } from '@netlify/identity';
 
 export default async (req: Request, context: Context) => {
-  const user = await getUser()
-  if (!user) return new Response('Unauthorized', { status: 401 })
-  return Response.json({ id: user.id, email: user.email })
-}
+  const user = await getUser();
+  if (!user) return new Response('Unauthorized', { status: 401 });
+  return Response.json({ id: user.id, email: user.email });
+};
 ```
 
 The Edge Function form is identical but imports `Context` from `@netlify/edge-functions`.
@@ -87,16 +97,17 @@ The Edge Function form is identical but imports `Context` from `@netlify/edge-fu
 
 ```ts
 // netlify/functions/admin-users.ts
-import { getUser, admin } from '@netlify/identity'
-import type { Context } from '@netlify/functions'
+import type { Context } from '@netlify/functions';
+import { admin, getUser } from '@netlify/identity';
 
 export default async (req: Request, context: Context) => {
-  const user = await getUser()
-  if (!user) return new Response('Unauthorized', { status: 401 })
-  if (!user.roles.includes('admin')) return new Response('Forbidden', { status: 403 })
-  const users = await admin.listUsers()
-  return Response.json({ users })
-}
+  const user = await getUser();
+  if (!user) return new Response('Unauthorized', { status: 401 });
+  if (!user.roles.includes('admin'))
+    return new Response('Forbidden', { status: 403 });
+  const users = await admin.listUsers();
+  return Response.json({ users });
+};
 ```
 
 ### CSRF: required for server-side auth endpoints
@@ -105,15 +116,18 @@ export default async (req: Request, context: Context) => {
 
 ```ts
 // netlify/functions/login.ts
-import { login, verifyRequestOrigin } from '@netlify/identity'
-import type { Context } from '@netlify/functions'
+import type { Context } from '@netlify/functions';
+import { login, verifyRequestOrigin } from '@netlify/identity';
 
 export default async (req: Request, context: Context) => {
-  verifyRequestOrigin(req)
-  const { email, password } = await req.json()
-  await login(email, password)
-  return new Response(null, { status: 302, headers: { Location: '/dashboard' } })
-}
+  verifyRequestOrigin(req);
+  const { email, password } = await req.json();
+  await login(email, password);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: '/dashboard' },
+  });
+};
 ```
 
 ## Identity event functions
@@ -122,36 +136,41 @@ The platform calls your handler when an Identity event occurs. Export a default 
 
 > Typed handlers (`UserSignupEvent`, `event.deny()`) require `@netlify/functions` ≥ 5.2.0. Older installs must use the legacy filename convention (`identity-signup.ts`, etc.). See `references/authorization-and-sessions.md`.
 
-| Handler | Fires when |
-|---|---|
-| `userValidate` | Signup attempt, before account creation. Block bad signups here. |
-| `userSignup` | Signup completes (after email confirmation if enabled). Assign roles, sync, welcome. |
-| `userLogin` | User logs in. Track/last-seen/block. |
-| `userModified` | Profile updated. |
-| `userDeleted` | User deleted (notification only). |
+| Handler        | Fires when                                                                           |
+| -------------- | ------------------------------------------------------------------------------------ |
+| `userValidate` | Signup attempt, before account creation. Block bad signups here.                     |
+| `userSignup`   | Signup completes (after email confirmation if enabled). Assign roles, sync, welcome. |
+| `userLogin`    | User logs in. Track/last-seen/block.                                                 |
+| `userModified` | Profile updated.                                                                     |
+| `userDeleted`  | User deleted (notification only).                                                    |
 
 Event `user` fields are camelCase (`appMetadata`, `userMetadata`, `confirmedAt`).
 
 ```typescript
 // netlify/functions/identity.mts — deny a signup
-import type { UserValidateEvent } from "@netlify/functions"
+import type { UserValidateEvent } from '@netlify/functions';
 
 export default {
   userValidate(event: UserValidateEvent) {
-    if (!event.user.email?.endsWith("@example.com")) return event.deny()
+    if (!event.user.email?.endsWith('@example.com')) return event.deny();
   },
-}
+};
 ```
 
 ```typescript
 // netlify/functions/identity.mts — assign roles at signup
-import type { UserSignupEvent } from "@netlify/functions"
+import type { UserSignupEvent } from '@netlify/functions';
 
 export default {
   userSignup(event: UserSignupEvent) {
-    return { user: { ...event.user, appMetadata: { ...event.user.appMetadata, roles: ["member"] } } }
+    return {
+      user: {
+        ...event.user,
+        appMetadata: { ...event.user.appMetadata, roles: ['member'] },
+      },
+    };
   },
-}
+};
 ```
 
 - `event.deny()` rejects the action. The end user gets a `401`, and no error appears in observability. The first handler to call it aborts the chain, and later subscribers are not invoked. Legacy filename functions signal denial with a non-2xx `Response` instead.
@@ -174,6 +193,7 @@ Deep guides for SSR/session hydration and authorization live in `references/adva
 Enforced at the edge with no origin round trip. A mismatched role gets a 404 unless you add a fallback. **Always pair a role-gated rule with a fallback.**
 
 `_redirects`:
+
 ```
 /admin/*  /admin/:splat  200!  Role=admin
 /admin/*  /login         401!
@@ -182,6 +202,7 @@ Enforced at the edge with no origin round trip. A mismatched role gets a 404 unl
 ```
 
 `netlify.toml`:
+
 ```toml
 [[redirects]]
   from = "/admin/*"
@@ -210,6 +231,7 @@ The default sender is `no-reply@netlify.com`. A custom SMTP sender and custom te
 Template variables (Go syntax): `{{ .Email }}`, `{{ .NewEmail }}` (email-change only), `{{ .SiteURL }}`, `{{ .ConfirmationURL }}`, `{{ .Token }}`.
 
 Custom-link hash fragments per action:
+
 ```
 {{ .SiteURL }}/path/#invite_token={{ .Token }}
 {{ .SiteURL }}/path/#confirmation_token={{ .Token }}
@@ -218,6 +240,7 @@ Custom-link hash fragments per action:
 ```
 
 Custom template constraints:
+
 - Inline CSS only.
 - Absolute image links.
 - **No `<html>`/`<head>`/`<body>` tags.**
@@ -240,6 +263,7 @@ Available on **Enterprise plans**. You may use Netlify Identity OR an external J
 ## On failure — stop, don't guess
 
 If callbacks 404, `/.netlify/identity/*` is unreachable, or an OAuth flow never returns:
+
 1. Surface the error.
 2. Give the dashboard URL (`https://app.netlify.com/projects/{site_name}/identity`).
 3. Name the setting to check (registration preference, external provider config, confirmation/autoconfirm).
@@ -253,6 +277,7 @@ Site-gating requests ("lock this site to my company", employees-only) route to t
 <!-- gap: handleAuthCallback() result.type strings other than 'invite' are not enumerated. -->
 
 <!-- system: agent-context/identity/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (identity)
 
 These are org conventions, not docs facts — merged into the rendered skill by

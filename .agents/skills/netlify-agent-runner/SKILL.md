@@ -29,7 +29,7 @@ If a documented command fails, report the exact error and context to the user an
 Read this before creating a task — agent tasks behave differently from running an agent locally, and the differences are easy to miss.
 
 - **Remote, not local.** Tasks run on Netlify infrastructure, not on your machine. They operate on the site's **connected repository**, not your local working tree. The remote agent only sees what has been pushed to the remote — it cannot see uncommitted or unpushed changes.
-- **Branch-based.** By default a task runs against the production branch (`main` or `master`). To choose a different *base* branch for the agent to start from, use `-b <branch>` and make sure that branch has been **pushed to the remote first**, or the agent will be working from code that doesn't exist remotely. `-b` sets the base (starting) branch — not where the results are written (see the next bullet).
+- **Branch-based.** By default a task runs against the production branch (`main` or `master`). To choose a different _base_ branch for the agent to start from, use `-b <branch>` and make sure that branch has been **pushed to the remote first**, or the agent will be working from code that doesn't exist remotely. `-b` sets the base (starting) branch — not where the results are written (see the next bullet).
 - **Output lands on a new branch — not in place.** The agent does **not** commit its changes onto the base branch you selected. It pushes its work to a **new branch** with its own **Deploy Preview**, so your existing branch (or `main`) is never overwritten. Review the task's results on that new branch / Deploy Preview — don't expect the base branch to change directly.
 - **Asynchronous.** `netlify agents:create` returns as soon as the task is queued — it does **not** block until the work is finished. When the command returns, the task is still running remotely.
 - **No webhooks or callbacks.** Nothing notifies you when a task changes state or completes. To find out what's happening, you have to **poll** with `netlify agents:show <task-id>` or `netlify agents:list`.
@@ -64,14 +64,14 @@ netlify agents:create "Add a footer" --json
 
 ### Options
 
-| Flag | Description |
-|------|-------------|
-| `-a, --agent <agent>` | Agent type: `claude`, `codex`, or `gemini` |
-| `-p, --prompt <prompt>` | The prompt for the agent to execute |
-| `-b, --branch <branch>` | Git branch to work on |
-| `-m, --model <model>` | Model to use for the agent |
-| `--project <project>` | Project ID or name |
-| `--json` | Output result as JSON |
+| Flag                    | Description                                |
+| ----------------------- | ------------------------------------------ |
+| `-a, --agent <agent>`   | Agent type: `claude`, `codex`, or `gemini` |
+| `-p, --prompt <prompt>` | The prompt for the agent to execute        |
+| `-b, --branch <branch>` | Git branch to work on                      |
+| `-m, --model <model>`   | Model to use for the agent                 |
+| `--project <project>`   | Project ID or name                         |
+| `--json`                | Output result as JSON                      |
 
 ## Managing Agent Tasks
 
@@ -111,25 +111,25 @@ netlify agents:stop <task-id>
 
 Some of the many things you can do with Agent Runners:
 
-| Category | Example prompt |
-|----------|---------------|
-| Prototyping / internal tools | "Build an internal dashboard for our HR team" |
-| Code reviews | "Audit the code with fresh eyes and identify areas for improvement" |
-| Security audits | "Do a deep security audit of our codebase to identify any potential issues" |
-| Feature suggestions | "Based on our current codebase & docs, what should we build next?" |
-| Performance improvements | "Scan our codebase for performance bottlenecks and suggest improvements" |
-| Telemetry & analytics | "What analytics things are we not tracking but probably should" |
-| SEO audit | "Audit our site for SEO issues — missing meta tags, broken links, slow pages, missing alt text" |
-| Copy improvements | "Rewrite our landing page copy to be more compelling and conversion-focused" |
-| Accessibility | "Run an accessibility audit and fix all WCAG 2.1 AA violations" |
-| Mobile responsiveness | "Improve the mobile responsiveness — audit every page on small viewports" |
-| End-to-end tests | "Add end-to-end tests for our critical user flows using Playwright" |
-| Unit tests | "Generate unit tests for our untested utility functions" |
-| Documentation | "Generate a README and contributing guide based on our codebase" |
-| Error handling | "Add proper error boundaries, logging, and user-friendly error states throughout the app" |
-| UX polish | "Add loading states, skeleton screens, & transitions to improve perceived performance" |
-| Form hardening | "Add form validation, rate limiting, and spam protection to our contact form" |
-| Edge Functions | "Add an edge function for A/B testing on our landing page" |
+| Category                     | Example prompt                                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| Prototyping / internal tools | "Build an internal dashboard for our HR team"                                                   |
+| Code reviews                 | "Audit the code with fresh eyes and identify areas for improvement"                             |
+| Security audits              | "Do a deep security audit of our codebase to identify any potential issues"                     |
+| Feature suggestions          | "Based on our current codebase & docs, what should we build next?"                              |
+| Performance improvements     | "Scan our codebase for performance bottlenecks and suggest improvements"                        |
+| Telemetry & analytics        | "What analytics things are we not tracking but probably should"                                 |
+| SEO audit                    | "Audit our site for SEO issues — missing meta tags, broken links, slow pages, missing alt text" |
+| Copy improvements            | "Rewrite our landing page copy to be more compelling and conversion-focused"                    |
+| Accessibility                | "Run an accessibility audit and fix all WCAG 2.1 AA violations"                                 |
+| Mobile responsiveness        | "Improve the mobile responsiveness — audit every page on small viewports"                       |
+| End-to-end tests             | "Add end-to-end tests for our critical user flows using Playwright"                             |
+| Unit tests                   | "Generate unit tests for our untested utility functions"                                        |
+| Documentation                | "Generate a README and contributing guide based on our codebase"                                |
+| Error handling               | "Add proper error boundaries, logging, and user-friendly error states throughout the app"       |
+| UX polish                    | "Add loading states, skeleton screens, & transitions to improve perceived performance"          |
+| Form hardening               | "Add form validation, rate limiting, and spam protection to our contact form"                   |
+| Edge Functions               | "Add an edge function for A/B testing on our landing page"                                      |
 
 ## Using as an Agent
 
@@ -142,7 +142,7 @@ Make the permission request a concrete proposal, not a menu:
 - **The exact command**, filled in — e.g. `netlify agents:create -p "<the real prompt>" -a codex` — not a `<placeholder>` and not a pick-one list of agents.
 - **One agent, already chosen** — commit to a single `-a` value and say why you picked it ("codex for a second opinion on the auth logic"), rather than offering claude/codex/gemini as interchangeable options.
 - **Why**, plus **what happens after "yes"**: the run is asynchronous — `agents:create` returns as soon as the task is queued, there's no callback, and you'll poll `netlify agents:show <task-id>` for the outcome.
-- **Even if a prerequisite is missing** (not authenticated, not linked to a site, not a git repo yet), still show the exact command and chosen agent you'll run *once it's resolved* — surface the blocker **and** the concrete proposal, rather than collapsing to only describing the blocker.
+- **Even if a prerequisite is missing** (not authenticated, not linked to a site, not a git repo yet), still show the exact command and chosen agent you'll run _once it's resolved_ — surface the blocker **and** the concrete proposal, rather than collapsing to only describing the blocker.
 
 Never run these commands without the user's approval.
 

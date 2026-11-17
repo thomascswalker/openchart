@@ -30,9 +30,7 @@ publish = ".next"
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "example.com" },
-    ],
+    remotePatterns: [{ protocol: 'https', hostname: 'example.com' }],
   },
 };
 
@@ -85,8 +83,8 @@ Next.js middleware is deployed as a Netlify Edge Function:
 
 ```typescript
 // middleware.ts
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   // Runs at the edge on Netlify

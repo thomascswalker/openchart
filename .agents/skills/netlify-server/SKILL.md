@@ -13,10 +13,11 @@ It is free during Early Access and intended for evaluation, experimentation, and
 
 ```ts
 // ✅ netlify/server/index.ts — handler (same signature as Netlify Functions)
-import type { Context, Config } from "@netlify/server";
+import type { Config, Context } from '@netlify/server';
+
 export default async (req: Request, context: Context) =>
-  new Response(`Hello from ${context.geo.city ?? "somewhere"}`);
-export const config: Config = { path: "/api/*" };
+  new Response(`Hello from ${context.geo.city ?? 'somewhere'}`);
+export const config: Config = { path: '/api/*' };
 ```
 
 ```js
@@ -49,15 +50,16 @@ You don't configure ports, add health endpoints, or install adapters. Install th
 
 Netlify uses the **first matching row** for the default export:
 
-| Default export | Run as | WebSockets |
-|---|---|---|
-| `http.Server` without `listen()` | Requests sent to it | `upgrade` event (`ws`, Socket.IO) |
-| Object with `fetch` (Fetchable, e.g. Hono) | `fetch(request, context)` | `upgradeWebSocket` |
-| Express/Connect app, or a function with ≥3 params | Wrapped in its own HTTP server | **501** |
-| Any other function | `(request, context) => Response` | `upgradeWebSocket` |
-| Anything else / nothing | Waits for your code to listen | `upgrade` event |
+| Default export                                    | Run as                           | WebSockets                        |
+| ------------------------------------------------- | -------------------------------- | --------------------------------- |
+| `http.Server` without `listen()`                  | Requests sent to it              | `upgrade` event (`ws`, Socket.IO) |
+| Object with `fetch` (Fetchable, e.g. Hono)        | `fetch(request, context)`        | `upgradeWebSocket`                |
+| Express/Connect app, or a function with ≥3 params | Wrapped in its own HTTP server   | **501**                           |
+| Any other function                                | `(request, context) => Response` | `upgradeWebSocket`                |
+| Anything else / nothing                           | Waits for your code to listen    | `upgrade` event                   |
 
 > ⚠️ **Self-started servers must listen within 10 s after start hooks finish.**
+>
 > - If your code starts several servers, the one on `process.env.PORT` wins. If none listens on it, the start fails.
 > - Reserved ports are `53` and `15000–15099`.
 > - Only Node.js HTTP servers are supported, not raw TCP.
@@ -65,6 +67,7 @@ Netlify uses the **first matching row** for the default export:
 Create shared resources such as a DB pool at top level so they are reused across requests.
 
 > ⚠️ **Outbound connections are closed after 60 s without data in either direction.** TCP keepalives don't count.
+>
 > - Set your pool's idle timeout **below 60 s** (e.g. `idleTimeoutMillis: 30_000`), or it hands out dead connections.
 > - Quiet connections such as Postgres `LISTEN` need traffic at least every 60 s (e.g. `SELECT 1`), or must reconnect on close. The symptom is `Connection terminated unexpectedly`.
 
@@ -72,12 +75,13 @@ Create shared resources such as a DB pool at top level so they are reused across
 
 ```js
 // netlify/server/index.mjs — Express, self-started
-import express from "express";
-import { getContext } from "@netlify/server";
+import { getContext } from '@netlify/server';
+import express from 'express';
+
 const app = express();
-app.get("/api/hello", (req, res) => {
+app.get('/api/hello', (req, res) => {
   const { geo } = getContext();
-  res.json({ message: `Hello from ${geo.city ?? "somewhere"}` });
+  res.json({ message: `Hello from ${geo.city ?? 'somewhere'}` });
 });
 app.listen(process.env.PORT || 3000);
 ```
@@ -85,7 +89,9 @@ app.listen(process.env.PORT || 3000);
 ```js
 // Fastify
 const app = Fastify();
-app.get("/api/hello", async () => ({ message: `Hello from ${getContext().geo.city ?? "somewhere"}` }));
+app.get('/api/hello', async () => ({
+  message: `Hello from ${getContext().geo.city ?? 'somewhere'}`,
+}));
 await app.listen({ port: Number(process.env.PORT) || 3000 });
 ```
 
@@ -101,6 +107,7 @@ export default async (req: Request, context: Context) => {
 ```
 
 How `waitUntil` behaves:
+
 - It is not bound by the request duration limit.
 - Rejections are logged.
 - On replacement, background work gets up to 90 s. Persist critical work to Netlify Database or Netlify Blobs.
@@ -108,14 +115,15 @@ How `waitUntil` behaves:
 ### WebSockets (handler/Fetchable)
 
 ```ts
-import { upgradeWebSocket } from "@netlify/server";
+import { upgradeWebSocket } from '@netlify/server';
+
 export default async (req: Request) => {
-  if (req.headers.get("upgrade") === "websocket") {
+  if (req.headers.get('upgrade') === 'websocket') {
     const { socket, response } = upgradeWebSocket(req, { idleTimeout: 30 }); // pings off unless set
     socket.onmessage = (e) => socket.send(`Echo: ${e.data}`);
     return response; // return as is
   }
-  return new Response("Connect with a WebSocket client");
+  return new Response('Connect with a WebSocket client');
 };
 ```
 
@@ -124,7 +132,7 @@ export default async (req: Request) => {
 ```js
 const server = app.listen(process.env.PORT);
 const wss = new WebSocketServer({ server });
-wss.on("connection", (ws) => ws.on("message", (d) => ws.send(d)));
+wss.on('connection', (ws) => ws.on('message', (d) => ws.send(d)));
 // On shutdown, close wss.clients yourself. getWebSockets() doesn't include them.
 ```
 
@@ -132,12 +140,22 @@ wss.on("connection", (ws) => ws.on("message", (d) => ws.send(d)));
 
 ```ts
 export default async () => {
-  const enc = new TextEncoder(); let t: ReturnType<typeof setInterval>;
+  const enc = new TextEncoder();
+  let t: ReturnType<typeof setInterval>;
   const stream = new ReadableStream({
-    start(c) { t = setInterval(() => c.enqueue(enc.encode(`data: ${new Date().toISOString()}\n\n`)), 1000); },
-    cancel() { clearInterval(t); },
+    start(c) {
+      t = setInterval(
+        () => c.enqueue(enc.encode(`data: ${new Date().toISOString()}\n\n`)),
+        1000,
+      );
+    },
+    cancel() {
+      clearInterval(t);
+    },
   });
-  return new Response(stream, { headers: { "content-type": "text/event-stream" } });
+  return new Response(stream, {
+    headers: { 'content-type': 'text/event-stream' },
+  });
 };
 ```
 
@@ -147,8 +165,10 @@ Browser `WebSocket` doesn't reconnect on its own; `EventSource` does.
 
 ```js
 function connect() {
-  const s = new WebSocket("wss://example.com/api/chat");
-  s.addEventListener("close", (e) => setTimeout(connect, e.code === 1012 ? 0 : 1000));
+  const s = new WebSocket('wss://example.com/api/chat');
+  s.addEventListener('close', (e) =>
+    setTimeout(connect, e.code === 1012 ? 0 : 1000),
+  );
   return s;
 }
 ```
@@ -156,24 +176,39 @@ function connect() {
 ### Lifecycle hooks
 
 ```ts
-import { onStart, onShutdown, onHealthCheck, getWebSockets } from "@netlify/server";
+import {
+  getWebSockets,
+  onHealthCheck,
+  onShutdown,
+  onStart,
+} from '@netlify/server';
 
-onStart(async () => { await db.connect(); }); // in order; rejection = start fails
+onStart(async () => {
+  await db.connect();
+}); // in order; rejection = start fails
 
-onShutdown(async ({ drained }) => {           // all hooks run in parallel
+onShutdown(async ({ drained }) => {
+  // all hooks run in parallel
   queue.stop();
-  for (const s of getWebSockets()) s.close(1012, "Server restarting");
-  await drained;                              // never rejects
-  await pool.end();                           // close resources only after drained
+  for (const s of getWebSockets()) s.close(1012, 'Server restarting');
+  await drained; // never rejects
+  await pool.end(); // close resources only after drained
 });
 
-onHealthCheck(() => ({                        // load signal, not health
-  utilization: { db_pool: (pool.totalCount - pool.idleCount) / pool.options.max }, // 0–1
-  namedMetrics: { db_pool_waiting: pool.waitingCount },  // observability only
-}), { interval: 1000 });                      // default and minimum 1000 ms
+onHealthCheck(
+  () => ({
+    // load signal, not health
+    utilization: {
+      db_pool: (pool.totalCount - pool.idleCount) / pool.options.max,
+    }, // 0–1
+    namedMetrics: { db_pool_waiting: pool.waitingCount }, // observability only
+  }),
+  { interval: 1000 },
+); // default and minimum 1000 ms
 ```
 
 Hook rules:
+
 - `onStart` must be called while the entry file loads. **Calling it later throws.**
 - `getContext()` **throws outside a request**, including at top level and inside hooks.
 - In health reports, `event_loop` and `memory` are reserved keys. `applicationUtilization` (0–1) overrides the max entry.
@@ -184,11 +219,14 @@ Hook rules:
 **Responses are never cached unless you set headers.**
 
 ```ts
-return Response.json(data, { headers: { "Netlify-CDN-Cache-Control": "public, max-age=3600, durable" } });
+return Response.json(data, {
+  headers: { 'Netlify-CDN-Cache-Control': 'public, max-age=3600, durable' },
+});
 // Express: res.set(...)  Hono: c.header(...)  Fastify: reply.header(...)
 ```
 
 Supported features:
+
 - `stale-while-revalidate`
 - Cache keys varied by query, header, language, country, or cookie
 - Invalidation by site or cache tag
@@ -219,22 +257,24 @@ Set config with `export const config: Config` in the entry file (or `config` on 
   max = 2
 ```
 
-| Key | Values / default |
-|---|---|
-| `path` | One or more paths starting with `/`. Same syntax as [function paths](https://docs.netlify.com/build/functions/configuration/#routing). Default `/*` |
-| `excludedPath` | Paths handed back to the rest of the project, e.g. `["/legacy/*", "/status"]` |
-| `region` | `cmh` (US East Ohio, default) or `fra` (Frankfurt). Also settable in the UI under **Server → Region**, but a `netlify.toml` region overrides it. Changes apply on the next deploy |
-| `size` | `small` (1 GB, shared vCPU, 512 MB disk, 32 concurrent requests, default); `medium` (2 GB/1 vCPU/1 GB/64); `large` (4 GB/2 vCPU/2 GB/128). Free/Personal plans can use `small` only |
-| `scale` | `{ min, max }`. **`min` must be 0** in Early Access. `max` ≤ 3, or 1 on Free/Personal. Higher values fail the deploy |
-| `includedFiles` | Globs for files read at runtime. Entry-file globs are relative to the entry file and **replace** the toml list. Read them via `import.meta.dirname`, never `process.cwd()` |
+| Key             | Values / default                                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`          | One or more paths starting with `/`. Same syntax as [function paths](https://docs.netlify.com/build/functions/configuration/#routing). Default `/*`                                 |
+| `excludedPath`  | Paths handed back to the rest of the project, e.g. `["/legacy/*", "/status"]`                                                                                                       |
+| `region`        | `cmh` (US East Ohio, default) or `fra` (Frankfurt). Also settable in the UI under **Server → Region**, but a `netlify.toml` region overrides it. Changes apply on the next deploy   |
+| `size`          | `small` (1 GB, shared vCPU, 512 MB disk, 32 concurrent requests, default); `medium` (2 GB/1 vCPU/1 GB/64); `large` (4 GB/2 vCPU/2 GB/128). Free/Personal plans can use `small` only |
+| `scale`         | `{ min, max }`. **`min` must be 0** in Early Access. `max` ≤ 3, or 1 on Free/Personal. Higher values fail the deploy                                                                |
+| `includedFiles` | Globs for files read at runtime. Entry-file globs are relative to the entry file and **replace** the toml list. Read them via `import.meta.dirname`, never `process.cwd()`          |
 
 Other settings:
+
 - **Environment variables:** use `process.env` with variables scoped to **Functions**. Values are fixed at deploy time, so **redeploy after changes**.
 - **Filesystem:** read-only except `/tmp`, which is per-instance and wiped on stop.
 
 ## Routing
 
 Requests are handled in this order:
+
 1. Edge functions
 2. Redirects/rewrites
 3. Static files
@@ -242,6 +282,7 @@ Requests are handled in this order:
 5. The server, which owns its own 404s
 
 > ⚠️ **Server gets no requests?** Check these causes:
+>
 > - An SPA catch-all `/* /index.html 200` swallows everything. Scope it to frontend paths.
 > - A static file or function already occupies the same path. **Static files always win.**
 > - `path`/`excludedPath` excludes the path.
@@ -249,6 +290,7 @@ Requests are handled in this order:
 > - **Full-stack frameworks** (Next.js, Astro, Nuxt, SvelteKit, React Router, TanStack Start) don't run on Netlify Server. Their adapters claim every path, so don't add a server to those projects.
 
 Choosing between options:
+
 - Use a server for a new backend.
 - Use [scheduled functions](https://docs.netlify.com/build/functions/scheduled-functions/) for cron jobs and webhooks.
 - Use edge functions for logic close to visitors.
@@ -257,17 +299,20 @@ Choosing between options:
 ## Instances and lifecycle
 
 **Assume multiple instances.** They overlap during deploys and are replaced every 8 h, and memory and `/tmp` are per-instance. Practical consequences:
+
 - In-memory state is a cache. Put shared data in Netlify Database or Netlify Blobs.
 - Each instance holds its own WebSocket connections.
 - Once-only work can run twice or never. Use a scheduled function and record completion.
 
 Scaling and limits:
+
 - **Concurrency:** depends on size: 32 (`small`), 64 (`medium`), or 128 (`large`) requests per instance. Each open SSE/stream holds one of those slots. WebSockets don't use these slots. They have a separate limit of a couple of hundred per instance, and an instance full of WebSockets still serves ordinary requests.
 - **Routing:** new requests go to the least-loaded instance, judged by event loop, memory, and health hooks.
 - **Scale to zero:** an instance stops after 5 min idle. Open requests, WS/SSE connections, and `waitUntil` work pause the timer; `setInterval` does not.
 - **Cold starts:** the first request waits for the entry file and start hooks. **That time counts toward the 20 s response timeout.** Lazy-init route-specific services and keep dependencies small.
 
 Shutdown sequence:
+
 1. New traffic stops.
 2. `SIGTERM` is sent.
 3. Your server stops accepting connections.
@@ -279,32 +324,34 @@ Shutdown sequence:
 Close sockets with code `1012` in `onShutdown` so clients move immediately.
 
 **Deploys:**
+
 - A production deploy publishes only after its new server has started. If the server fails to start, the deploy isn't published and the old one keeps serving.
 - Rollback rolls back the server too.
 - Deploy Previews and branch deploys start their server on first request. That request is a cold start, so slow startup can turn it into a 502.
 
 ## Limits
 
-| Limit | Value |
-|---|---|
-| Response timeout | **20 s to send status + headers, else 502. Cold-start time is included.** Stream the body, or respond and finish with `waitUntil` |
-| Request duration (incl. WS/SSE) | 30 min; 2 h on Pro, Business, and Enterprise |
-| Outbound connections | Closed after 60 s idle; keepalives don't count |
-| Instance lifetime | 8 h |
-| Instances | 3 (credit-based Pro/Enterprise); 1 (Free/Personal) |
+| Limit                           | Value                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Response timeout                | **20 s to send status + headers, else 502. Cold-start time is included.** Stream the body, or respond and finish with `waitUntil` |
+| Request duration (incl. WS/SSE) | 30 min; 2 h on Pro, Business, and Enterprise                                                                                      |
+| Outbound connections            | Closed after 60 s idle; keepalives don't count                                                                                    |
+| Instance lifetime               | 8 h                                                                                                                               |
+| Instances                       | 3 (credit-based Pro/Enterprise); 1 (Free/Personal)                                                                                |
 
 ## Errors
 
-| Status | Meaning / fix |
-|---|---|
-| 429 | All concurrency slots (32/64/128 by size) are full at max instances. Long SSE streams are often the cause |
-| 500 | The instance failed to start (top-level/start hook threw, or no listen on PORT within 10 s), or the handler threw |
-| 501 | WebSocket upgrade on a directly exported Express/Connect app. Use `listen()` or `createServer` |
-| 502 | No headers within 20 s (including cold start), or the instance crashed/OOM'd |
+| Status | Meaning / fix                                                                                                     |
+| ------ | ----------------------------------------------------------------------------------------------------------------- |
+| 429    | All concurrency slots (32/64/128 by size) are full at max instances. Long SSE streams are often the cause         |
+| 500    | The instance failed to start (top-level/start hook threw, or no listen on PORT within 10 s), or the handler threw |
+| 501    | WebSocket upgrade on a directly exported Express/Connect app. Use `listen()` or `createServer`                    |
+| 502    | No headers within 20 s (including cold start), or the instance crashed/OOM'd                                      |
 
 ## Local dev and logs
 
 **Local dev:**
+
 - Run `netlify dev` (CLI 27.17.0+). The **Netlify Vite plugin doesn't run the server.**
 - The CLI restarts the server on changes inside `netlify/server/` only. Restart the CLI for changes elsewhere.
 - Local differences from production:
@@ -317,6 +364,7 @@ Close sockets with code `1012` in `onShutdown` so clients move immediately.
 - For E2E tests, use `@netlify/dev`: `new NetlifyDev({ projectRoot, server: { enabled: true } })`, then `start()` / `stop()`.
 
 **Monitoring and logs:**
+
 - Use the **Server** page under **Cloud compute**. It opens in Live mode (last hour) and shows production by default, and you can switch branches to see branch deploys or Deploy Previews.
   - **Overview:** requests/errors, p95 latency, memory, CPU, and saturation.
   - **Instances table:** state, start reason, and failed-start warnings.
@@ -341,6 +389,7 @@ netlify logs --source server --follow       # stream lines as written
 <!-- Exact per-instance WebSocket limit, netlify.toml spelling of excludedPath/includedFiles, and GA credit rates are unstated. -->
 
 <!-- system: agent-context/server/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (server)
 
 These are org conventions, not docs facts — they are merged into the rendered

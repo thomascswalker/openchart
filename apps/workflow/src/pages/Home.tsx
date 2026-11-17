@@ -1,10 +1,4 @@
-import {
-  Box,
-  Button,
-  DataTable,
-  FilesIcon,
-  createAppColumnHelper,
-} from '@openchart/core';
+import { Box, Button, FilesIcon } from '@openchart/core';
 
 import Assignments from '../components/Assignments';
 import { initiateGitHubLogin } from '../services/githubAuth';

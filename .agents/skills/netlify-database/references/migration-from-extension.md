@@ -30,33 +30,33 @@ On a new branch:
 
 1. Run `netlify database init` to install `@netlify/database` and verify the database is reachable. **Decline the sample data prompt** — a separate baseline migration follows in the next step:
 
-    ```bash
-    netlify database init
-    ```
+   ```bash
+   netlify database init
+   ```
 
 2. Create the baseline migration:
 
-    ```bash
-    netlify database migrations new -d baseline
-    ```
+   ```bash
+   netlify database migrations new -d baseline
+   ```
 
 3. Populate the new `migration.sql` with a schema-only dump of the source. What matters is that running this migration against an empty database leaves it with the right shape:
 
-    ```bash
-    pg_dump --schema-only --no-owner --no-privileges "$SOURCE_DATABASE_URL"
-    ```
+   ```bash
+   pg_dump --schema-only --no-owner --no-privileges "$SOURCE_DATABASE_URL"
+   ```
 
-    If the project already has Drizzle migrations, point `drizzle-kit` at `netlify/database/migrations/` and move them in instead of the schema dump. `pg_dump` 18+ emits `\restrict` / `\unrestrict` psql meta-commands that are not valid SQL — strip them: `... | grep -v -E '^\\(restrict|unrestrict)'`.
+   If the project already has Drizzle migrations, point `drizzle-kit` at `netlify/database/migrations/` and move them in instead of the schema dump. `pg_dump` 18+ emits `\restrict` / `\unrestrict` psql meta-commands that are not valid SQL — strip them: `... | grep -v -E '^\\(restrict|unrestrict)'`.
 
-    > **Switching from the Netlify DB extension with Neon Auth?** The source contains a `neon_auth` schema with auth tables. Add `--schema=public` to exclude them. If you're switching auth providers too, handle that separately.
+   > **Switching from the Netlify DB extension with Neon Auth?** The source contains a `neon_auth` schema with auth tables. Add `--schema=public` to exclude them. If you're switching auth providers too, handle that separately.
 
 4. Push the branch. Netlify detects `@netlify/database`, provisions a preview database branch, and applies the baseline migration. The preview goes live still serving from the source database — app code hasn't changed yet.
 
 5. Confirm the baseline applied cleanly:
 
-    ```bash
-    netlify database status --branch <preview-branch>
-    ```
+   ```bash
+   netlify database status --branch <preview-branch>
+   ```
 
 6. Merge the branch. Netlify provisions the production database branch and applies the baseline migration there too. Production still serves from the source.
 
@@ -70,48 +70,49 @@ On a new branch:
 
 1. Update application code to read and write through `@netlify/database`. Wire Drizzle to the native adapter:
 
-    ```typescript
-    // db/index.ts
-    import { drizzle } from "drizzle-orm/netlify-db";
-    import * as schema from "./schema";
+   ```typescript
+   // db/index.ts
+   import { drizzle } from 'drizzle-orm/netlify-db';
 
-    export const db = drizzle({ schema });
-    ```
+   import * as schema from './schema';
 
-    > **Switching from the Netlify DB extension.** Replace `import { neon } from "@netlify/neon"` and any direct calls to `neon()` with the Drizzle adapter above. The `NETLIFY_DATABASE_URL` env var from the legacy extension is no longer read.
+   export const db = drizzle({ schema });
+   ```
 
-    > **Not using Drizzle?** The same flow works with any Postgres-compatible driver — see the native-driver section in `SKILL.md`.
+   > **Switching from the Netlify DB extension.** Replace `import { neon } from "@netlify/neon"` and any direct calls to `neon()` with the Drizzle adapter above. The `NETLIFY_DATABASE_URL` env var from the legacy extension is no longer read.
+
+   > **Not using Drizzle?** The same flow works with any Postgres-compatible driver — see the native-driver section in `SKILL.md`.
 
 2. Update Drizzle config to point at the GA migrations directory:
 
-    ```typescript
-    // drizzle.config.ts
-    import { defineConfig } from "drizzle-kit";
+   ```typescript
+   // drizzle.config.ts
+   import { defineConfig } from 'drizzle-kit';
 
-    export default defineConfig({
-      dialect: "postgresql",
-      schema: "./db/schema.ts",
-      out: "netlify/database/migrations",
-    });
-    ```
+   export default defineConfig({
+     dialect: 'postgresql',
+     schema: './db/schema.ts',
+     out: 'netlify/database/migrations',
+   });
+   ```
 
 3. Remove old-provider packages and any scripts that ran `drizzle-kit migrate` against explicit staging/production URLs. The GA product auto-applies schema migrations on every deploy.
 
-    > **Switching from the Netlify DB extension.** Remove `@netlify/neon`, `@neondatabase/serverless`, and `@neondatabase/toolkit`. Keep `@neondatabase/neon-js` only if the frontend uses it for Neon Auth and auth is not being switched in this pass.
+   > **Switching from the Netlify DB extension.** Remove `@netlify/neon`, `@neondatabase/serverless`, and `@neondatabase/toolkit`. Keep `@neondatabase/neon-js` only if the frontend uses it for Neon Auth and auth is not being switched in this pass.
 
 4. Push the branch. Netlify creates a preview deploy with its own preview database branch, forked from the (currently empty) production Netlify Database.
 
 5. Get the preview branch's connection string with credentials:
 
-    ```bash
-    netlify database status --branch <preview-branch> --show-credentials
-    ```
+   ```bash
+   netlify database status --branch <preview-branch> --show-credentials
+   ```
 
 6. Copy a snapshot of data from the source into the preview branch. Use `--data-only` because the schema is already in place via the baseline migration, and `--no-acl` because Netlify Database manages its own privileges:
 
-    ```bash
-    pg_dump -Fc --data-only "$SOURCE_DATABASE_URL" | pg_restore --no-owner --no-acl --dbname="$PREVIEW_DATABASE_URL"
-    ```
+   ```bash
+   pg_dump -Fc --data-only "$SOURCE_DATABASE_URL" | pg_restore --no-owner --no-acl --dbname="$PREVIEW_DATABASE_URL"
+   ```
 
 7. Exercise the preview URL — click through reads and writes, validate the critical flows end-to-end. If something's off, iterate on the branch and push again. Each push gets a fresh preview branch, so the rehearsal can be repeated until the path is clean.
 
@@ -123,15 +124,15 @@ When the rehearsal is clean:
 
 1. Get the production database connection string with credentials:
 
-    ```bash
-    netlify database status --show-credentials
-    ```
+   ```bash
+   netlify database status --show-credentials
+   ```
 
 2. Export data from the source and import into production Netlify Database:
 
-    ```bash
-    pg_dump -Fc --data-only "$SOURCE_DATABASE_URL" | pg_restore --no-owner --no-acl --dbname="$PRODUCTION_DATABASE_URL"
-    ```
+   ```bash
+   pg_dump -Fc --data-only "$SOURCE_DATABASE_URL" | pg_restore --no-owner --no-acl --dbname="$PRODUCTION_DATABASE_URL"
+   ```
 
 3. Merge the Phase 2 branch to trigger a production deploy. Once it completes, the app reads and writes through Netlify Database.
 

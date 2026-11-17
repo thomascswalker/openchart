@@ -9,13 +9,13 @@ description: Write, route, cache, and debug Netlify Edge Functions, the Deno-bas
 
 ```ts
 // netlify/edge-functions/hello.ts
-import type { Config, Context } from "@netlify/edge-functions";
+import type { Config, Context } from '@netlify/edge-functions';
 
 export default async (request: Request, context: Context) => {
-  return new Response(`Hello from ${context.geo.country?.name ?? "somewhere"}`);
+  return new Response(`Hello from ${context.geo.country?.name ?? 'somewhere'}`);
 };
 
-export const config: Config = { path: "/hello" };
+export const config: Config = { path: '/hello' };
 ```
 
 - One file = one function: a default-export handler plus a **named** `config` export with the route. Alternatively, declare the route in `netlify.toml`.
@@ -23,15 +23,16 @@ export const config: Config = { path: "/hello" };
   ```ts
   export default {
     async fetch(request: Request, context: Context) {
-      return new Response("Hello");
+      return new Response('Hello');
     },
   };
-  export const config: Config = { path: "/hello" }; // still a named export
+  export const config: Config = { path: '/hello' }; // still a named export
   ```
 - `Request` and `Response` are global. Import `Context` and `Config` types from `@netlify/edge-functions`.
 - Read env vars with `Netlify.env.get()`. `process.env` works only for Next.js middleware.
 
 **Avoid these:**
+
 - A file with no `config.path` or `pattern` and no `[[edge_functions]]` entry. It deploys but never runs.
 - Import maps in `deno.json`. They are unsupported. Use a separate file with `[functions] deno_import_map`.
 - Variables set in `netlify.toml`. They are invisible to edge functions.
@@ -56,56 +57,65 @@ export const config: Config = { path: "/hello" };
 
 ## Files
 
-| What | Where |
-|---|---|
-| Functions | `<base>/netlify/edge-functions/*.{js,ts,jsx,tsx}` |
-| Custom dir | `[build] edge_functions = "my-dir"` (relative to base dir; keep it outside the publish dir) |
-| Name in toml | file name without extension (`auth.ts` → `function = "auth"`) |
-| Import map | any JSON file, referenced by `[functions] deno_import_map = "./import_map.json"` |
+| What         | Where                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| Functions    | `<base>/netlify/edge-functions/*.{js,ts,jsx,tsx}`                                           |
+| Custom dir   | `[build] edge_functions = "my-dir"` (relative to base dir; keep it outside the publish dir) |
+| Name in toml | file name without extension (`auth.ts` → `function = "auth"`)                               |
+| Import map   | any JSON file, referenced by `[functions] deno_import_map = "./import_map.json"`            |
 
 ## Return values
 
-| Return | Effect |
-|---|---|
-| `Response` | sent to client; chain ends |
-| `URL` | same-site rewrite, 200, address bar unchanged |
-| `undefined` / `return;` | skip this function; chain continues |
+| Return                  | Effect                                        |
+| ----------------------- | --------------------------------------------- |
+| `Response`              | sent to client; chain ends                    |
+| `URL`                   | same-site rewrite, 200, address bar unchanged |
+| `undefined` / `return;` | skip this function; chain continues           |
 
 ### Endpoint
+
 ```ts
 export default async () =>
-  new Response("Hello, World!", { headers: { "content-type": "text/html" } });
-export const config = { path: "/api/hello" };
+  new Response('Hello, World!', { headers: { 'content-type': 'text/html' } });
+export const config = { path: '/api/hello' };
 ```
 
 ### Redirect / rewrite
+
 ```ts
-import type { Context } from "@netlify/edge-functions";
+import type { Context } from '@netlify/edge-functions';
 
 export default async (req: Request, { cookies, geo }: Context) => {
-  if (geo.city === "Paris" && cookies.get("promo-code") === "15-for-followers") {
-    return Response.redirect(new URL("/subscriber-sale", req.url)); // redirect
+  if (
+    geo.city === 'Paris' &&
+    cookies.get('promo-code') === '15-for-followers'
+  ) {
+    return Response.redirect(new URL('/subscriber-sale', req.url)); // redirect
     // or: return new URL("/subscriber-sale", req.url);             // rewrite (same-site only)
   }
 };
-export const config = { path: "/sale" };
+export const config = { path: '/sale' };
 ```
+
 Rewrites must target the same site. To reach other sites, use `fetch`.
 
 ### Middleware (modify origin response)
+
 ```ts
-import type { Context } from "@netlify/edge-functions";
+import type { Context } from '@netlify/edge-functions';
 
 export default async (request: Request, context: Context) => {
-  if (new URL(request.url).searchParams.get("method") !== "transform") return;
+  if (new URL(request.url).searchParams.get('method') !== 'transform') return;
   const response = await context.next();
   return new Response((await response.text()).toUpperCase(), response);
 };
-export const config = { path: "/blog/*" };
+export const config = { path: '/blog/*' };
 ```
+
 Call `context.next()` only when you need the response body. If you just return `undefined`, the chain continues on its own.
 
 ### Conditional requests
+
 ```ts
 export default async (req: Request, { next }: Context) => {
   const res = await next({ sendConditionalRequest: true });
@@ -113,69 +123,83 @@ export default async (req: Request, { next }: Context) => {
   return new Response((await res.text()).toUpperCase(), res);
 };
 ```
+
 By default, `next()` strips conditional headers, so it always returns a full response.
 
 ### Read body, then continue
+
 ```ts
 export default async (req: Request, context: Context) => {
   const body = await req.json();
-  if (!isValid(body.access_token)) return new Response("forbidden", { status: 403 });
+  if (!isValid(body.access_token))
+    return new Response('forbidden', { status: 403 });
   return context.next(new Request(req, { body: JSON.stringify(body) }));
 };
 ```
 
 ### Netlify user gate (private / team-login-protected projects)
+
 ```ts
-import type { Config, Context } from "@netlify/edge-functions";
+import type { Config, Context } from '@netlify/edge-functions';
 
 export default async (req: Request, context: Context) => {
   const user = context.user; // undefined: public project, password protection, netlify dev
-  if (!user) return new Response("Forbidden", { status: 403 });
-  const allowed = (Netlify.env.get("ADMIN_USER_IDS") ?? "").split(",");
-  if (!allowed.includes(user.id)) return new Response("Forbidden", { status: 403 });
+  if (!user) return new Response('Forbidden', { status: 403 });
+  const allowed = (Netlify.env.get('ADMIN_USER_IDS') ?? '').split(',');
+  if (!allowed.includes(user.id))
+    return new Response('Forbidden', { status: 403 });
   // user.email may be undefined, so use it for display only
 };
-export const config: Config = { path: "/admin/*" };
+export const config: Config = { path: '/admin/*' };
 ```
 
 ### Post-response work
+
 ```ts
 export default async (req: Request, context: Context) => {
-  context.waitUntil(fetch("https://analytics.example.com/event", { method: "POST" }));
-  return new Response("ok");
+  context.waitUntil(
+    fetch('https://analytics.example.com/event', { method: 'POST' }),
+  );
+  return new Response('ok');
 };
 ```
+
 `waitUntil` does not block the response, but it still counts against the 50 ms CPU limit.
 
 ### Streaming SSR (`.tsx`)
+
 ```tsx
-import React from "https://esm.sh/react";
-import { renderToReadableStream } from "https://esm.sh/react-dom/server";
-import type { Config, Context } from "@netlify/edge-functions";
+import type { Config, Context } from '@netlify/edge-functions';
+import React from 'https://esm.sh/react';
+import { renderToReadableStream } from 'https://esm.sh/react-dom/server';
 
 export default async (req: Request, context: Context) => {
   const stream = await renderToReadableStream(
-    <html><body><h1>Hello {context.geo.country?.name}</h1></body></html>
+    <html>
+      <body>
+        <h1>Hello {context.geo.country?.name}</h1>
+      </body>
+    </html>,
   );
-  return new Response(stream, { headers: { "Content-Type": "text/html" } });
+  return new Response(stream, { headers: { 'Content-Type': 'text/html' } });
 };
-export const config: Config = { path: "/hello" };
+export const config: Config = { path: '/hello' };
 ```
 
 ## `Context`
 
-| Property | Notes |
-|---|---|
-| `cookies.get(name)` / `.set(options)` / `.delete(name \| options)` | `set` and `delete` use `CookieStore` option format; they act on the outgoing response |
-| `geo` | `city`, `country.{code,name}`, `subdivision.{code,name}`, `latitude`, `longitude`, `timezone`, `postalCode` (format varies) |
-| `ip` | client IP |
-| `next(options?)` / `next(request, options?)` | `Promise<Response>` from the next item in the chain |
-| `params` | URLPattern named groups from `path` (`/pets/:name` → `{ name }`). For the query string, use `request.url` |
-| `user` | `{ id, email?, expiresAt }` or `undefined`. It is a Netlify account, not Netlify Identity; for Identity, use `getUser()` from `@netlify/identity` |
-| `waitUntil(promise)` | runs after the response is sent |
-| `requestId`, `account.id`, `server.region` | — |
-| `site` | `{ id, name, url }` |
-| `deploy` | `{ context, id, published, skewProtectionToken }` |
+| Property                                                           | Notes                                                                                                                                             |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cookies.get(name)` / `.set(options)` / `.delete(name \| options)` | `set` and `delete` use `CookieStore` option format; they act on the outgoing response                                                             |
+| `geo`                                                              | `city`, `country.{code,name}`, `subdivision.{code,name}`, `latitude`, `longitude`, `timezone`, `postalCode` (format varies)                       |
+| `ip`                                                               | client IP                                                                                                                                         |
+| `next(options?)` / `next(request, options?)`                       | `Promise<Response>` from the next item in the chain                                                                                               |
+| `params`                                                           | URLPattern named groups from `path` (`/pets/:name` → `{ name }`). For the query string, use `request.url`                                         |
+| `user`                                                             | `{ id, email?, expiresAt }` or `undefined`. It is a Netlify account, not Netlify Identity; for Identity, use `getUser()` from `@netlify/identity` |
+| `waitUntil(promise)`                                               | runs after the response is sent                                                                                                                   |
+| `requestId`, `account.id`, `server.region`                         | —                                                                                                                                                 |
+| `site`                                                             | `{ id, name, url }`                                                                                                                               |
+| `deploy`                                                           | `{ context, id, published, skewProtectionToken }`                                                                                                 |
 
 Netlify adds no client-info headers to the request. Read client info from `context` instead.
 
@@ -184,6 +208,7 @@ Netlify adds no client-info headers to the request. Read client info from `conte
 `Netlify.env`: `get(name)`, `has(name)`, `toObject()`, and invocation-scoped `set` and `delete`. To change variables persistently, use the [env API](https://open-api.netlify.com/#tag/environmentVariables).
 
 Web APIs:
+
 - `console`, `atob`, `btoa`
 - `fetch`, `Request`, `Response`, `URL`, `File`, `Blob`
 - `TextEncoder`/`TextDecoder` (and their Stream variants), `Performance`
@@ -194,6 +219,7 @@ Web APIs:
 - URLPattern
 
 Modules:
+
 - Node built-ins: use the `node:` prefix (`import { randomBytes } from "node:crypto"`).
 - Deno modules: import by URL, or through an import map.
 - npm packages (beta): import by name. Packages with native binaries or runtime dynamic imports may break.
@@ -201,26 +227,29 @@ Modules:
 ## Declarations
 
 ### Inline `config`
-| Key | Value |
-|---|---|
-| `path` | URLPattern string or array; must start with `/` |
-| `excludedPath` | URLPattern string or array; must start with `/` |
-| `pattern` / `excludedPattern` | regex alternatives to `path` / `excludedPath` |
-| `method` | HTTP method string or array |
-| `header` | `{ name: true \| false \| "regex" }`; case-insensitive names; multi-value headers match the comma-joined list |
-| `onError` | `"fail"` (default), `"/custom-path"`, or `"bypass"` |
-| `cache` | `"manual"` |
+
+| Key                           | Value                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `path`                        | URLPattern string or array; must start with `/`                                                               |
+| `excludedPath`                | URLPattern string or array; must start with `/`                                                               |
+| `pattern` / `excludedPattern` | regex alternatives to `path` / `excludedPath`                                                                 |
+| `method`                      | HTTP method string or array                                                                                   |
+| `header`                      | `{ name: true \| false \| "regex" }`; case-insensitive names; multi-value headers match the comma-joined list |
+| `onError`                     | `"fail"` (default), `"/custom-path"`, or `"bypass"`                                                           |
+| `cache`                       | `"manual"`                                                                                                    |
 
 ```ts
 export const config: Config = {
-  path: "/*",
-  excludedPath: ["/*.css", "/*.js", "/img/*"],
-  header: { "user-agent": "(iPhone|Android)" },
+  path: '/*',
+  excludedPath: ['/*.css', '/*.js', '/img/*'],
+  header: { 'user-agent': '(iPhone|Android)' },
 };
 ```
+
 The `netlify-agent-category` request header maps any user-agent to a [client category](https://docs.netlify.com/build/user-agent-categories).
 
 ### `netlify.toml`
+
 The toml form supports `function`, `path`, `excludedPath`, `pattern`, `excludedPattern`, `[edge_functions.header]`, and `cache`. Set `onError` inline. Use toml when you need explicit ordering of several functions on one path.
 
 ```toml
@@ -246,9 +275,11 @@ The toml form supports `function`, `path`, `excludedPath`, `pattern`, `excludedP
   x-required = true
   x-forbidden = false
 ```
+
 A request to `/admin` runs `auth`, then `common`, then `injector`.
 
 ### Order
+
 Netlify walks the following order **twice** for the request path. The first pass runs only functions without caching configured. The second pass runs only cached functions.
 
 1. Framework-generated functions declared in a config file.
@@ -260,17 +291,21 @@ If the same function is declared both in toml and inline, the configs are merged
 
 After the edge functions, redirect rules run, unless a function already returned a `Response`. A redirect to a new path repeats the whole process for that path.
 
-An edge function declared on the *target* of a static rewrite does not run for rewritten requests.
+An edge function declared on the _target_ of a static rewrite does not run for rewritten requests.
 
 ## Response caching
+
 ```ts
-import type { Config } from "@netlify/edge-functions";
+import type { Config } from '@netlify/edge-functions';
 
 export default async () =>
-  new Response("Hello world", { headers: { "cache-control": "public, s-maxage=3600" } });
+  new Response('Hello world', {
+    headers: { 'cache-control': 'public, s-maxage=3600' },
+  });
 
-export const config: Config = { path: "/hello", cache: "manual" };
+export const config: Config = { path: '/hello', cache: 'manual' };
 ```
+
 - Headers must be set in the function code. Supported headers:
   - `Cache-Control`, `CDN-Cache-Control`, `Netlify-CDN-Cache-Control`
   - `Expires` (overridden by `max-age`/`s-maxage`)
@@ -283,21 +318,24 @@ export const config: Config = { path: "/hello", cache: "manual" };
 - Local dev has no cache. Cache headers are ignored locally.
 
 ## Error handling (`onError`)
-| Value | Effect |
-|---|---|
-| `"fail"` (default) | chain stops; generic error page is shown |
-| `"/unavailable"` | rewrite to that same-site path; edge functions on it are not invoked |
-| `"bypass"` | skip the failing function; chain continues |
+
+| Value              | Effect                                                               |
+| ------------------ | -------------------------------------------------------------------- |
+| `"fail"` (default) | chain stops; generic error page is shown                             |
+| `"/unavailable"`   | rewrite to that same-site path; edge functions on it are not invoked |
+| `"bypass"`         | skip the failing function; chain continues                           |
 
 Fail closed for critical logic: use the default for internal auth, or a custom path for customer-facing auth. Fail open (`bypass`) for nice-to-haves such as localization.
 
 ## Environment variables
+
 - Variables must have the **Functions** scope.
 - **Build**-scoped variables exist only at build time; embed their values during the build if needed.
 - Changing a variable requires a new deploy.
 - Deploy info (site, region, deploy id) comes from `context`, not from env vars.
 
 ## Local dev / deploy / logs
+
 - Run `npm install netlify-cli -g`, then `netlify dev`. Visit `http://localhost:8888/<path>`.
   - Changes apply on the next request.
   - Debug with `--edge-inspect` or `--edge-inspect-brk`.
@@ -311,12 +349,13 @@ Fail closed for critical logic: use the default for internal auth, or a custom p
   - [Log Drains](https://docs.netlify.com/manage/monitoring/log-drains) are available on Enterprise plans.
 
 ## Limits
-| Limit | Value |
-|---|---|
-| Bundle size | 20 MB compressed |
-| Memory (per set of deployed functions) | 512 MB |
-| CPU time per request | 50 ms (excludes I/O wait) |
-| Response header timeout | 40 s |
+
+| Limit                                  | Value                     |
+| -------------------------------------- | ------------------------- |
+| Bundle size                            | 20 MB compressed          |
+| Memory (per set of deployed functions) | 512 MB                    |
+| CPU time per request                   | 50 ms (excludes I/O wait) |
+| Response header timeout                | 40 s                      |
 
 - Prerendering does not apply to paths served by an edge function.
 - Multiple framework plugins that generate edge functions may collide.
@@ -328,6 +367,7 @@ Docs: [API](https://docs.netlify.com/build/edge-functions/api.md) · [Declaratio
 <!-- Undocumented: whether Netlify uses Fetchable module members other than `fetch`. -->
 
 <!-- system: agent-context/edge-functions/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (edge-functions)
 
 These are org conventions and field-learned guardrails, not docs facts — they

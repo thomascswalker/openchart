@@ -68,7 +68,9 @@ export const handleGitHubCallback = async (
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.access_token) {
-    throw new Error(data.error_description ?? data.error ?? 'Token exchange failed');
+    throw new Error(
+      data.error_description ?? data.error ?? 'Token exchange failed',
+    );
   }
 
   localStorage.setItem(TOKEN_KEY, data.access_token);

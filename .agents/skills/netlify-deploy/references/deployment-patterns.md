@@ -9,11 +9,13 @@ Don't gate deploys behind a `netlify status` pre-check. Run the real command; if
 **Context**: A project in a Git repository that should deploy automatically.
 
 **Setup once**:
+
 ```bash
 netlify init   # Creates/links a site and connects Git CI/CD
 ```
 
 After that, Netlify builds on its own servers on every push:
+
 - Push to the production branch → production deploy.
 - Open a pull request → deploy preview with a unique URL.
 - Push to another branch → branch deploy, **only if** branch deploys are enabled (off by default; enable in the site's build & deploy settings).
@@ -82,6 +84,7 @@ Custom domains are configured in the Netlify UI (Domain settings), not through a
 ### "Publish directory not found"
 
 The build didn't produce the expected output directory, or the path is wrong.
+
 - Run the build yourself (`netlify build`, or the project's own build command) and check which directory it actually emits — don't guess from the framework name or just `ls` for a missing folder.
 - If the build fails, surface the error and stop — don't change `publish` to paper over a broken build.
 - Once it succeeds, fix the `publish` path in `netlify.toml` (or `--dir`) to match that real output directory, remembering it's relative to any `base` directory.
@@ -89,6 +92,7 @@ The build didn't produce the expected output directory, or the path is wrong.
 ### "Build failed" / exit code 1
 
 The build command failed.
+
 - Read the deploy log (the CLI prints a log URL) for the specific error.
 - Fix the underlying cause and redeploy. A failed deploy never publishes, so the previous deploy is still live — there's nothing to roll back.
 

@@ -9,7 +9,7 @@ These are different layers (see the main skill). Below are the four ways to sati
 
 ## Option A — Invite-only Netlify Identity (best default for "just my team")
 
-Enable Netlify Identity in **invite-only** registration mode and invite only company addresses. Identity becomes the perimeter *and* the in-app identity: no uninvited user can sign in, and every signed-in user is a real Identity user with `nf_jwt` and roles.
+Enable Netlify Identity in **invite-only** registration mode and invite only company addresses. Identity becomes the perimeter _and_ the in-app identity: no uninvited user can sign in, and every signed-in user is a real Identity user with `nf_jwt` and roles.
 
 - **Plans:** all (free).
 - **Logins:** one.
@@ -39,7 +39,7 @@ Put a shared-password gate in front of the site (Pro+) and run Identity inside f
 Enable Team/Org SAML SSO and Password Protection with **team login** (optionally "Only SSO allowed (strict)"), then run Netlify Identity separately for app sessions.
 
 - **Plans:** Enterprise.
-- **Logins:** **two** — the CDN-edge perimeter (company SSO) *and* the app's Identity login.
+- **Logins:** **two** — the CDN-edge perimeter (company SSO) _and_ the app's Identity login.
 - **Per-user identity:** full, in-app via Identity.
 - **Tradeoffs:** the double login (below) and a hidden seat cost — **team login admits only Netlify team members, so every employee who passes it needs a paid Netlify seat.** Choose this only when a true CDN-edge perimeter is a hard requirement and the double login is acceptable.
 
@@ -50,7 +50,7 @@ When the perimeter gate and Identity are both active, the two sessions are indep
 - The perimeter (Password Protection / SAML SSO) authenticates a **Netlify team member** and issues its own session (SSO tokens via this path expire after ~1 hour).
 - Netlify Identity authenticates an **app end user** and issues the `nf_jwt` cookie.
 
-There is **no documented passthrough** — no shared cookie, no forwarded header, no JWT exchange — that turns "passed the perimeter" into "logged in to the app." A perimeter session also represents *team-member* identity, not an app *end-user* record with `app_metadata.roles`, so even a hypothetical bridge wouldn't cleanly become the app's user.
+There is **no documented passthrough** — no shared cookie, no forwarded header, no JWT exchange — that turns "passed the perimeter" into "logged in to the app." A perimeter session also represents _team-member_ identity, not an app _end-user_ record with `app_metadata.roles`, so even a hypothetical bridge wouldn't cleanly become the app's user.
 
 > An unofficial `netlify/netlify-plugin-identity-sso` repo once attempted a bridge, but it is unofficial, dormant (last release 2021), and hardcoded for `@netlify.com` emails. Don't build on it.
 
@@ -61,9 +61,10 @@ Practical takeaway: if single sign-on matters, pick Option A or B. Don't spend i
 While writing code, an agent **cannot** read whether Identity is enabled, which OAuth providers are configured, or whether Password Protection / SSO is on — none of it is exposed by the Netlify API, CLI, or MCP server; it lives in the dashboard. The one runtime exception is the live Identity provider list:
 
 ```typescript
-import { getSettings } from '@netlify/identity'
+import { getSettings } from '@netlify/identity';
+
 // Returns autoconfirm, disableSignup, and providers — read this from the running app
-const settings = await getSettings()
+const settings = await getSettings();
 ```
 
 `getSettings()` hits `/.netlify/identity/settings` and works against any origin serving the page — including localhost under `netlify dev`, which proxies to the live service — so it helps the running app render the right buttons. It does not help at authoring time (before the app runs), so ask the user what's already configured rather than guessing, and hand off any dashboard changes with an explicit checklist.

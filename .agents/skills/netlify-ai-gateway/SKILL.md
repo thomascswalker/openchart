@@ -27,48 +27,58 @@ Write normal Function/handler code — there is no AI-specific file type. A func
 The gateway injects each provider's own env vars, so the official SDK works with zero config.
 
 Anthropic Claude:
+
 ```js
 import Anthropic from '@anthropic-ai/sdk';
+
 const anthropic = new Anthropic(); // uses ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL
 
 const message = await anthropic.messages.create({
   model: 'claude-sonnet-5-5',
   max_tokens: 1024,
-  messages: [{ role: 'user', content: 'Hello!' }]
+  messages: [{ role: 'user', content: 'Hello!' }],
 });
 ```
 
 OpenAI:
+
 ```js
 import OpenAI from 'openai';
+
 const openai = new OpenAI(); // uses OPENAI_API_KEY, OPENAI_BASE_URL
 
 const completion = await openai.chat.completions.create({
   model: 'gpt-6.1-sol',
-  messages: [{ role: 'user', content: 'Hello!' }]
+  messages: [{ role: 'user', content: 'Hello!' }],
 });
 ```
 
 Google Gemini:
+
 ```js
 import { GoogleGenAI } from '@google/genai';
+
 const genAI = new GoogleGenAI({}); // uses GEMINI_API_KEY, GOOGLE_GEMINI_BASE_URL
 
 const result = await genAI.models.generateContent({
   model: 'gemini-3.8-flash',
-  contents: 'Hello!'
+  contents: 'Hello!',
 });
 ```
 
 TypeSafe (Jev) — structured decisions (e.g. routing/classifying form submissions):
+
 ```ts
 import type { Config, Context } from '@netlify/functions';
-import { choice, TypeSafeClient } from '@typesafe-ai/sdk';
+import { TypeSafeClient, choice } from '@typesafe-ai/sdk';
 
 export default async (req: Request, context: Context) => {
   const body = await req.json().catch(() => undefined);
   if (body === undefined)
-    return Response.json({ error: 'Request body must be valid JSON.' }, { status: 400 });
+    return Response.json(
+      { error: 'Request body must be valid JSON.' },
+      { status: 400 },
+    );
 
   const client = new TypeSafeClient(); // uses TYPESAFE_API_KEY, TYPESAFE_BASE_URL
   const { answers } = await client.systemOne({
@@ -82,23 +92,29 @@ export default async (req: Request, context: Context) => {
     },
   });
 
-  return Response.json({ team: answers.team.choice, requestId: context.requestId });
+  return Response.json({
+    team: answers.team.choice,
+    requestId: context.requestId,
+  });
 };
 
 export const config: Config = { path: '/api/route', method: 'POST' };
 ```
+
 `systemOne` defaults to the `jev-latest` model. Each question is a `choice(prompt, options)` mapping named options to `null`; the result is at `answers.<question>.choice`. POST a JSON body (e.g. `{"message":"Can someone help us upgrade to 200 seats?"}`) with `Content-Type: application/json`.
 
 OpenRouter (SDK 1.2.43+ required — see footguns):
+
 ```js
 import { OpenRouter } from '@openrouter/sdk';
+
 const openRouter = new OpenRouter(); // uses OPENROUTER_API_KEY, OPENROUTER_BASE_URL
 
 const result = await openRouter.chat.send({
   chatRequest: {
     model: 'x-ai/grok-4.5',
-    messages: [{ role: 'user', content: 'Hello!' }]
-  }
+    messages: [{ role: 'user', content: 'Hello!' }],
+  },
 });
 ```
 
@@ -127,37 +143,47 @@ To stop all injection, disable AI Features: https://docs.netlify.com/build/build
 Detect gateway availability by checking for an injected var, then call the SDK.
 
 Install the client first: `npm install openai`. Then create `netlify/functions/joke.js`:
+
 ```js
-import process from "process";
-import OpenAI from "openai";
+import OpenAI from 'openai';
+import process from 'process';
 
 export default async () => {
   if (!process.env.OPENAI_BASE_URL)
-    return Response.json({ error: "AI Gateway not active — deploy to prod once on a credit-based plan" });
+    return Response.json({
+      error:
+        'AI Gateway not active — deploy to prod once on a credit-based plan',
+    });
 
   try {
     const client = new OpenAI();
     const res = await client.responses.create({
-      model: "gpt-6-luna",
-      input: [{ role: "user", content: "Give me a short dad joke about coffee" }],
-      reasoning: { effort: "none" },
+      model: 'gpt-6-luna',
+      input: [
+        { role: 'user', content: 'Give me a short dad joke about coffee' },
+      ],
+      reasoning: { effort: 'none' },
     });
     return Response.json({
-      joke: res.output_text?.trim() || "Out of jokes",
+      joke: res.output_text?.trim() || 'Out of jokes',
       model: res.model,
-      tokens: { input: res.usage.input_tokens, output: res.usage.output_tokens },
+      tokens: {
+        input: res.usage.input_tokens,
+        output: res.usage.output_tokens,
+      },
     });
   } catch (e) {
     return Response.json({ error: `${e}` }, { status: 500 });
   }
 };
 
-export const config = { path: "/api/joke" };
+export const config = { path: '/api/joke' };
 ```
 
 `src/App.jsx` fetches `/api/joke`:
+
 ```jsx
-import { useState } from "react";
+import { useState } from 'react';
 
 export default function App() {
   const [joke, setJoke] = useState();
@@ -166,7 +192,7 @@ export default function App() {
   const getJoke = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/joke");
+      const res = await fetch('/api/joke');
       setJoke(res.ok ? await res.json() : { error: res.status });
     } finally {
       setLoading(false);
@@ -176,7 +202,7 @@ export default function App() {
   return (
     <>
       <button onClick={getJoke} disabled={loading}>
-        {loading ? "Thinking..." : "Get joke"}
+        {loading ? 'Thinking...' : 'Get joke'}
       </button>
       <pre>{JSON.stringify(joke, null, 2)}</pre>
     </>
@@ -190,16 +216,18 @@ Two options — both need at least one prior production deploy:
 
 1. **Netlify CLI:** `netlify dev` gives full gateway support.
 2. **Vite plugin:** access the gateway locally without `netlify dev`. Add `@netlify/vite-plugin` and run your native dev command (`npm run dev`):
+
 ```js
 // vite.config.js
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import netlify from "@netlify/vite-plugin";
+import netlify from '@netlify/vite-plugin';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
-export default defineConfig({ plugins: [react(), netlify()] })
+export default defineConfig({ plugins: [react(), netlify()] });
 ```
 
 Setup flow:
+
 ```shell
 npm install -g netlify-cli@latest
 netlify login
@@ -233,6 +261,7 @@ Monitor usage: https://docs.netlify.com/manage/accounts-and-billing/billing/bill
 <!-- Gap: exact directly-served model names (Anthropic/OpenAI/Gemini/TypeSafe) are not statically enumerable — rendered at build time from the live providers endpoint. -->
 
 <!-- system: agent-context/ai-gateway/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (ai-gateway)
 
 These are org conventions, not docs facts — merged into the rendered skill by

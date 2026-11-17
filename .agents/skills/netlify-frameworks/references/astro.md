@@ -20,11 +20,11 @@ npm install @astrojs/netlify
 
 ```typescript
 // astro.config.mjs
-import { defineConfig } from "astro/config";
-import netlify from "@astrojs/netlify";
+import netlify from '@astrojs/netlify';
+import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  output: "server",  // on-demand (SSR) by default; or "static" (the default) for prerendered
+  output: 'server', // on-demand (SSR) by default; or "static" (the default) for prerendered
   adapter: netlify(),
 });
 ```
@@ -33,10 +33,10 @@ export default defineConfig({
 
 Astro 5 removed the `"hybrid"` mode — there are now two output modes, and per-route control replaces it. Both modes need the adapter once any route renders on demand.
 
-| Mode | Behavior |
-|---|---|
+| Mode                 | Behavior                                                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `"static"` (default) | Prerendered (hybrid-by-default): pages are static HTML at build time. Opt individual routes into on-demand rendering with `export const prerender = false`. |
-| `"server"` | On-demand (SSR) by default. Opt individual routes into prerendering with `export const prerender = true`. |
+| `"server"`           | On-demand (SSR) by default. Opt individual routes into prerendering with `export const prerender = true`.                                                   |
 
 ## What the Adapter Does
 
@@ -51,11 +51,11 @@ Astro API routes (in `src/pages/api/`) are handled by the adapter:
 
 ```typescript
 // src/pages/api/items.ts
-import type { APIRoute } from "astro";
+import type { APIRoute } from 'astro';
 
 export const GET: APIRoute = async () => {
   return new Response(JSON.stringify({ items: [] }), {
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
   });
 };
 
@@ -90,7 +90,7 @@ For form submissions that should redirect back with feedback, handle the POST in
 export const POST: APIRoute = async ({ request, redirect }) => {
   const formData = await request.formData();
   // Process form...
-  return redirect("/contact?success=true");
+  return redirect('/contact?success=true');
 };
 ```
 

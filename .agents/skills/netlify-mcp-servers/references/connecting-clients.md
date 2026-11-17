@@ -36,9 +36,11 @@ For clients that only speak stdio, or can't set headers natively, `mcp-remote` b
     "my-mcp": {
       "command": "npx",
       "args": [
-        "-y", "mcp-remote",
+        "-y",
+        "mcp-remote",
         "https://<site>.netlify.app/mcp",
-        "--header", "Authorization: Bearer <token>"
+        "--header",
+        "Authorization: Bearer <token>"
       ]
     }
   }

@@ -20,15 +20,15 @@ curl -vs 'https://mysitename.netlify.app/.netlify/images?url=/owl.jpeg&w=50'
 
 ## Query parameters
 
-| Parameter | Purpose | Values | Default |
-|-----------|---------|--------|---------|
-| `url` | Source asset (required) | Relative path or remote URL | — |
-| `w` | Width in pixels | Integer | — |
-| `h` | Height in pixels | Integer | — |
-| `fit` | Resize behavior | `contain`, `cover`, `fill` | `contain` |
-| `position` | Crop anchor when `fit=cover` | `top`, `bottom`, `left`, `right`, `center` | `center` |
-| `fm` | Output format | `avif`, `jpg`, `png`, `webp`, `gif`, `blurhash` | content-negotiated |
-| `q` | Quality for lossy output | Integer `1`–`100` | `75` |
+| Parameter  | Purpose                      | Values                                          | Default            |
+| ---------- | ---------------------------- | ----------------------------------------------- | ------------------ |
+| `url`      | Source asset (required)      | Relative path or remote URL                     | —                  |
+| `w`        | Width in pixels              | Integer                                         | —                  |
+| `h`        | Height in pixels             | Integer                                         | —                  |
+| `fit`      | Resize behavior              | `contain`, `cover`, `fill`                      | `contain`          |
+| `position` | Crop anchor when `fit=cover` | `top`, `bottom`, `left`, `right`, `center`      | `center`           |
+| `fm`       | Output format                | `avif`, `jpg`, `png`, `webp`, `gif`, `blurhash` | content-negotiated |
+| `q`        | Quality for lossy output     | Integer `1`–`100`                               | `75`               |
 
 ## Common transformations
 
@@ -71,6 +71,7 @@ const src = `/.netlify/images?url=${encodeURIComponent('https://my-images.com/ow
 ```
 
 Constraints:
+
 - Remote sources must be **publicly accessible**.
 - Credential-bearing headers (`Authorization`, `Cookie`) are **NOT forwarded** when fetching a remote source. For authenticated sources, use URLs that carry their own authorization (e.g. S3 presigned URLs) and make sure your `remote_images` patterns match those full URLs.
 
@@ -89,11 +90,13 @@ The only meaningful escape is the literal dot (`\.`). Forward slashes are NOT me
 Map a friendly path to the endpoint with a redirect/rewrite.
 
 `_redirects`:
+
 ```
 /transform-small/* /.netlify/images?url=/:splat&w=50&h=50 200
 ```
 
 `netlify.toml`:
+
 ```toml
 [[redirects]]
   from = "/transform-small/*"
@@ -108,6 +111,7 @@ Then `GET /transform-small/owl.jpeg` returns the transformed image. **Cross-site
 Apply custom headers to source images on the site's own domain; they carry through to the transformed output.
 
 `netlify.toml`:
+
 ```toml
 [[headers]]
   for = "/source-images/*"
@@ -134,13 +138,13 @@ For pipelines composing Functions + Blobs + Image CDN (handling user-uploaded im
 
 Many frameworks route their built-in image optimization through Netlify Image CDN — use the framework's standard image component/syntax and only configure the remote allowlist. For unlisted frameworks, call `/.netlify/images` directly.
 
-| Framework | Prerequisites | Remote allowlist location |
-|-----------|---------------|---------------------------|
-| Angular | None; `NgOptimizedImage` uses it automatically | `[images] remote_images` in `netlify.toml` |
-| Astro | None; `<Image />` uses it automatically | `image.domains` or `image.remotePatterns` in `astro.config.mjs` |
-| Gatsby (both 5.13+ and 5.11 or earlier) | Set env `NETLIFY_IMAGE_CDN=true`; use Contentful/Drupal/WordPress source plugins | `[images] remote_images` in `netlify.toml` |
-| Next.js | Next.js 13.5+ and Next.js adapter v5 | `remotePatterns` in `next.config.js` |
-| Nuxt | None; `nuxt/image` module uses it automatically | `image.domains` in `nuxt.config.ts` |
+| Framework                               | Prerequisites                                                                    | Remote allowlist location                                       |
+| --------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Angular                                 | None; `NgOptimizedImage` uses it automatically                                   | `[images] remote_images` in `netlify.toml`                      |
+| Astro                                   | None; `<Image />` uses it automatically                                          | `image.domains` or `image.remotePatterns` in `astro.config.mjs` |
+| Gatsby (both 5.13+ and 5.11 or earlier) | Set env `NETLIFY_IMAGE_CDN=true`; use Contentful/Drupal/WordPress source plugins | `[images] remote_images` in `netlify.toml`                      |
+| Next.js                                 | Next.js 13.5+ and Next.js adapter v5                                             | `remotePatterns` in `next.config.js`                            |
+| Nuxt                                    | None; `nuxt/image` module uses it automatically                                  | `image.domains` in `nuxt.config.ts`                             |
 
 Setup guides: [Angular](https://docs.netlify.com/build/frameworks/framework-setup-guides/angular#netlify-image-cdn), [Astro](https://docs.netlify.com/build/frameworks/framework-setup-guides/astro#netlify-image-cdn), [Gatsby](https://docs.netlify.com/build/frameworks/framework-setup-guides/gatsby/#netlify-image-cdn), [Next.js](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview), [Nuxt](https://docs.netlify.com/build/frameworks/framework-setup-guides/nuxt#netlify-image-cdn).
 
@@ -153,6 +157,7 @@ Setup guides: [Angular](https://docs.netlify.com/build/frameworks/framework-setu
 Interactive parameter playground: https://image-cdn-playground.netlify.app/
 
 <!-- system: agent-context/image-cdn/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (image-cdn)
 
 These are org conventions, not docs facts — merged into the rendered skill by

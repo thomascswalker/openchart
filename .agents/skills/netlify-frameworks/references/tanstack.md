@@ -14,10 +14,10 @@ Register it in `vite.config.ts` alongside the TanStack Start and React plugins:
 
 ```typescript
 // vite.config.ts
-import { defineConfig } from "vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import netlify from "@netlify/vite-plugin-tanstack-start";
-import viteReact from "@vitejs/plugin-react";
+import netlify from '@netlify/vite-plugin-tanstack-start';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import viteReact from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [tanstackStart(), netlify(), viteReact()],
@@ -39,9 +39,9 @@ export default defineConfig({
 TanStack Start uses `createServerFn` for server-side logic. These are automatically handled by the Netlify plugin — no raw Netlify Functions needed:
 
 ```typescript
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start';
 
-const getItems = createServerFn({ method: "GET" }).handler(async () => {
+const getItems = createServerFn({ method: 'GET' }).handler(async () => {
   // Server-side code — runs as Netlify Function in production
   const items = await db.select().from(itemsTable);
   return items;

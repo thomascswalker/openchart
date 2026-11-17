@@ -35,14 +35,14 @@ api_keys
 ### Generate
 
 ```typescript
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes } from 'node:crypto';
 
 export function generateApiKey() {
-  const plaintext = `mk_${randomBytes(24).toString("base64url")}`;
+  const plaintext = `mk_${randomBytes(24).toString('base64url')}`;
   return {
-    plaintext,                                   // return to the user ONCE
-    prefix: plaintext.slice(0, 11),              // store + display
-    keyHash: createHash("sha256").update(plaintext).digest("hex"), // store
+    plaintext, // return to the user ONCE
+    prefix: plaintext.slice(0, 11), // store + display
+    keyHash: createHash('sha256').update(plaintext).digest('hex'), // store
   };
 }
 ```
@@ -53,7 +53,7 @@ Hash the incoming token and look up an active row. The hash is unique, so a dire
 
 ```typescript
 export async function resolveApiKey(db, plaintext: string) {
-  const keyHash = createHash("sha256").update(plaintext).digest("hex");
+  const keyHash = createHash('sha256').update(plaintext).digest('hex');
   const row = await db.findActiveKeyByHash(keyHash); // WHERE key_hash = ? AND revoked_at IS NULL
   if (!row) return null;
   await db.touchKey(row.id); // last_used_at = now()
@@ -65,7 +65,7 @@ In the function: extract the bearer token, `resolveApiKey`, 401 if null, otherwi
 
 ```typescript
 const user = await resolveApiKey(db, token);
-if (!user) return new Response("Unauthorized", { status: 401 });
+if (!user) return new Response('Unauthorized', { status: 401 });
 // build the server with { db, user } in scope; tools read user.userEmail
 ```
 

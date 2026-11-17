@@ -8,8 +8,10 @@ description: Store and retrieve unstructured objects, files, and cache-like stat
 Modern syntax: import from `@netlify/blobs`, open a store, then call methods on the handle.
 
 ```ts
-import { getStore, getDeployStore, listStores } from "@netlify/blobs";
-import type { Context } from "@netlify/functions"; // or "@netlify/edge-functions"
+import { getDeployStore, getStore, listStores } from '@netlify/blobs';
+import type { Context } from '@netlify/functions';
+
+// or "@netlify/edge-functions"
 ```
 
 In Functions, Edge Functions, and Build Plugins, `siteID`, `deployID`, `token` (and `region` for `getDeployStore`) are injected automatically. Install with `npm install @netlify/blobs`.
@@ -27,18 +29,20 @@ In Functions, Edge Functions, and Build Plugins, `siteID`, `deployID`, `token` (
 ## Core writes and reads
 
 ```ts
-const uploads = getStore("file-uploads");
+const uploads = getStore('file-uploads');
 
 // set: value is ArrayBuffer | Blob | string
-await uploads.set(key, file, { metadata: { country: "Spain" } });
+await uploads.set(key, file, { metadata: { country: 'Spain' } });
 
 // setJSON: any JSON-serializable value
-await uploads.setJSON(key, { hello: "world" });
+await uploads.setJSON(key, { hello: 'world' });
 
 // get: returns value or null. type: text (default) | json | arrayBuffer | blob | stream
-const entry = await uploads.get(key);            // string
-const obj = await uploads.get(key, { type: "json" });
-if (entry === null) { /* 404 */ }
+const entry = await uploads.get(key); // string
+const obj = await uploads.get(key, { type: 'json' });
+if (entry === null) {
+  /* 404 */
+}
 ```
 
 `set`/`setJSON` overwrite an existing key. Both return `{ modified, etag }`. `etag` is omitted when no new entry was generated.
@@ -46,17 +50,19 @@ if (entry === null) { /* 404 */ }
 ### Persisting a user upload (Function)
 
 ```ts
-import { getStore } from "@netlify/blobs";
-import type { Context } from "@netlify/functions";
-import { v4 as uuid } from "uuid";
+import { getStore } from '@netlify/blobs';
+import type { Context } from '@netlify/functions';
+import { v4 as uuid } from 'uuid';
 
 export default async (req: Request, context: Context) => {
   const form = await req.formData();
-  const file = form.get("file") as File;
+  const file = form.get('file') as File;
   const key = uuid();
-  const uploads = getStore("file-uploads");
-  await uploads.set(key, file, { metadata: { country: context.geo.country.name } });
-  return new Response("Submission saved");
+  const uploads = getStore('file-uploads');
+  await uploads.set(key, file, {
+    metadata: { country: context.geo.country.name },
+  });
+  return new Response('Submission saved');
 };
 ```
 
@@ -67,7 +73,7 @@ Edge functions are identical except `import type { Context } from "@netlify/edge
 ```ts
 export default async (req: Request, context: Context) => {
   const { key } = context.params;
-  const uploads = getStore("file-uploads");
+  const uploads = getStore('file-uploads');
   const entry = await uploads.get(key);
   if (entry === null) return new Response(`Not found: ${key}`, { status: 404 });
   return new Response(entry);
@@ -83,11 +89,13 @@ export default async (req: Request, context: Context) => {
 const entry = await uploads.getWithMetadata(key);
 if (entry === null) return new Response(`Not found: ${key}`, { status: 404 });
 const { data, metadata } = entry;
-return new Response(data, { headers: { "X-Country": metadata.country } });
+return new Response(data, { headers: { 'X-Country': metadata.country } });
 
 // getMetadata: metadata + etag only, without downloading the blob
 const meta = await uploads.getMetadata(key); // { etag, metadata } or null
-if (meta === null) { /* missing */ }
+if (meta === null) {
+  /* missing */
+}
 ```
 
 Both accept `{ consistency, etag, type }`.
@@ -95,7 +103,7 @@ Both accept `{ consistency, etag, type }`.
 **Conditional read:** pass a cached `etag`. If it still matches server-side, `data` is `null`, which means your copy is fresh. Compare the whole ETag value, including surrounding quotes and any weakness prefix.
 
 ```ts
-const entry = await uploads.getWithMetadata("my-key", { etag: cachedETag });
+const entry = await uploads.getWithMetadata('my-key', { etag: cachedETag });
 if (entry !== null && entry.etag === cachedETag) {
   // entry.data is null: cached copy still fresh
 }
@@ -130,7 +138,7 @@ const { blobs, directories } = await animals.list({ directories: true });
 // directories: ["cats", "dogs"]; blobs: top-level keys only
 
 // Drill in. Trailing slash REQUIRED (without it "catsuit" also matches)
-const res = await animals.list({ directories: true, prefix: "cats/" });
+const res = await animals.list({ directories: true, prefix: 'cats/' });
 ```
 
 Pagination: `list` returns all pages by default, in pages of up to 1,000 entries. Set `paginate: true` to get an `AsyncIterator`:
@@ -146,7 +154,7 @@ for await (const page of store.list({ paginate: true })) {
 ## Deleting
 
 ```ts
-await uploads.delete(key);                        // resolves undefined
+await uploads.delete(key); // resolves undefined
 const { deletedBlobs } = await uploads.deleteAll(); // deletes every object = deletes the store
 ```
 
@@ -155,9 +163,11 @@ const { deletedBlobs } = await uploads.deleteAll(); // deletes every object = de
 Blobs never expire on their own. Store an expiration timestamp in metadata, check it on read, and `delete` the blob once it has passed:
 
 ```ts
-await uploads.set(key, body, { metadata: { expiration: new Date("2025-01-01").getTime() } });
+await uploads.set(key, body, {
+  metadata: { expiration: new Date('2025-01-01').getTime() },
+});
 const entry = await uploads.getWithMetadata(key);
-if (entry === null) return new Response("Blob does not exist");
+if (entry === null) return new Response('Blob does not exist');
 const { expiration } = entry.metadata;
 if (expiration && expiration < Date.now()) await uploads.delete(key);
 ```
@@ -167,8 +177,8 @@ if (expiration && expiration < Date.now()) await uploads.delete(key);
 The default is **eventual** consistency. New writes are globally available immediately, but updates and deletions take up to 60 seconds to reach all edge locations. Opt into **strong** consistency per store or per read:
 
 ```ts
-const store = getStore({ name: "animals", consistency: "strong" }); // whole store
-await store.get("dog", { consistency: "strong" });                  // single read
+const store = getStore({ name: 'animals', consistency: 'strong' }); // whole store
+await store.get('dog', { consistency: 'strong' }); // single read
 ```
 
 Netlify CLI always uses strong consistency.
@@ -185,8 +195,11 @@ Netlify CLI always uses strong consistency.
 **Footgun: changing a region does not move data.** The store appears empty in the new region while its data stays in the old one. To migrate, copy each entry to a store opened in the new region, then delete it from the old one.
 
 ```ts
-const uploads = getDeployStore({ name: "file-uploads", region: "ap-southeast-2" });
-const profiles = getStore({ name: "user-profiles", region: "eu-central-1" });
+const uploads = getDeployStore({
+  name: 'file-uploads',
+  region: 'ap-southeast-2',
+});
+const profiles = getStore({ name: 'user-profiles', region: 'eu-central-1' });
 ```
 
 ## File-based uploads (no build plugin)
@@ -240,6 +253,7 @@ netlify recipes blobs-migrate YOUR_STORE_NAME
 Full API and background: [Netlify Blobs docs](https://docs.netlify.com/build/data-and-storage/netlify-blobs/) and the [data & storage overview](https://docs.netlify.com/build/data-and-storage/overview/).
 
 <!-- system: agent-context/blobs/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (blobs)
 
 These are org conventions, not docs facts — merged into the rendered skill by

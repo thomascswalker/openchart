@@ -92,11 +92,13 @@ See `references/netlify-toml.md` for the full context precedence rules and `refe
 Template code must be in a **public** repo on **GitHub.com or GitLab.com**.
 
 Markdown:
+
 ```md
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/netlify/netlify-statuskit)
 ```
 
 URL variants (base link `https://app.netlify.com/start/deploy`):
+
 ```txt
 # require/pre-fill env vars (hash, client-side only; values may be null)
 ...?repository=<repo>#SECRET_TOKEN=specialuniquevalue&CUSTOM_LOGO=
@@ -115,6 +117,7 @@ URL variants (base link `https://app.netlify.com/start/deploy`):
 ```
 
 File-based template config, `[template]` in the repo root `netlify.toml`:
+
 ```toml
 [template]
   incoming-hooks = ["Contentful"]
@@ -135,7 +138,7 @@ You **cannot** set env var values or a base directory in `[template]` — use UR
 
 ## Fixing a failed deploy — no rollbacks
 
-**A failed deploy never publishes** — the previous deploy is still live, so there is nothing to restore. If someone asks to roll back or restore a previous deploy, correct the premise: after a failed deploy nothing changed, and for a bad *published* deploy, **fix forward** — revert the commit and let CI redeploy it. Do not call `restoreSiteDeploy` or `publishDeploy`, and do not hand over a dashboard rollback as the answer.
+**A failed deploy never publishes** — the previous deploy is still live, so there is nothing to restore. If someone asks to roll back or restore a previous deploy, correct the premise: after a failed deploy nothing changed, and for a bad _published_ deploy, **fix forward** — revert the commit and let CI redeploy it. Do not call `restoreSiteDeploy` or `publishDeploy`, and do not hand over a dashboard rollback as the answer.
 
 Netlify surfaces a **Why did it fail?** AI diagnosis above the deploy log — this diagnosis and its suggested solution do **NOT** consume credits. Selecting **Fix with agent** starts an agent run, which **DOES** consume credits from your team's balance. See https://docs.netlify.com/resources/troubleshooting/fix-a-failed-deploy/.
 
@@ -158,6 +161,7 @@ See `references/cli-commands.md` for the full CLI surface and flags.
 <!-- Sources don't state noindex behavior for unpublished production deploys or permalinks. -->
 
 <!-- system: agent-context/deploy/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (deploy)
 
 These are org conventions, not docs facts — merged into the rendered skill by

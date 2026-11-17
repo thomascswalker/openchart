@@ -13,9 +13,15 @@ Prerequisite: form detection must be enabled once in the Netlify UI (Forms > **E
 
 ```html
 <form name="contact" method="POST" data-netlify="true">
-  <p><label>Your Name: <input type="text" name="name" /></label></p>
-  <p><label>Your Email: <input type="email" name="email" /></label></p>
-  <p><label>Message: <textarea name="message"></textarea></label></p>
+  <p>
+    <label>Your Name: <input type="text" name="name" /></label>
+  </p>
+  <p>
+    <label>Your Email: <input type="email" name="email" /></label>
+  </p>
+  <p>
+    <label>Message: <textarea name="message"></textarea></label>
+  </p>
   <p><button type="submit">Send</button></p>
 </form>
 ```
@@ -41,7 +47,12 @@ Two required pieces:
 **2. The rendered form** carries a matching hidden `form-name` input:
 
 ```jsx
-<form name="pizzaOrder" method="post" data-netlify="true" onSubmit={handleSubmit}>
+<form
+  name="pizzaOrder"
+  method="post"
+  data-netlify="true"
+  onSubmit={handleSubmit}
+>
   <input type="hidden" name="form-name" value="pizzaOrder" />
   <input name="order" type="text" onChange={handleChange} />
   <input type="submit" />
@@ -57,18 +68,19 @@ Two required pieces:
 ## AJAX submission
 
 ```js
-const handleSubmit = event => {
+const handleSubmit = (event) => {
   event.preventDefault();
   const formData = new FormData(event.target);
-  fetch("/__forms.html", {   // static sites may POST to "/"; SSR must target the skeleton file
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(formData).toString()
+  fetch('/__forms.html', {
+    // static sites may POST to "/"; SSR must target the skeleton file
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(formData).toString(),
   })
-    .then(() => alert("Thank you for your submission"))  // or navigate("/thank-you")
-    .catch(error => alert(error));
+    .then(() => alert('Thank you for your submission')) // or navigate("/thank-you")
+    .catch((error) => alert(error));
 };
-document.querySelector("form").addEventListener("submit", handleSubmit);
+document.querySelector('form').addEventListener('submit', handleSubmit);
 ```
 
 - **Body MUST be URL-encoded. JSON is NOT supported.**
@@ -80,10 +92,12 @@ document.querySelector("form").addEventListener("submit", handleSubmit);
 Add `type="file"`; optionally `enctype="multipart/form-data"` on the `<form>`. For AJAX file uploads, **do NOT set a `Content-Type` header** — let the browser set it (with the multipart boundary).
 
 ```js
-document.forms.fileForm.addEventListener("submit", event => {
+document.forms.fileForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  fetch("/", { body: new FormData(event.target), method: "POST" })  // no headers
-    .then(() => { /* success */ });
+  fetch('/', { body: new FormData(event.target), method: 'POST' }) // no headers
+    .then(() => {
+      /* success */
+    });
 });
 ```
 
@@ -94,10 +108,15 @@ Limits: one file per field (use multiple fields for multiple files) · 8 MB max 
 Add an `action` path relative to site root, starting with `/`. **Use extensionless paths** — Netlify serves `thank-you.html` at `/thank-you`; the `.html` path returns 404.
 
 ```html
-<form name="contact" action="/thank-you" method="POST" data-netlify="true"></form>
+<form
+  name="contact"
+  action="/thank-you"
+  method="POST"
+  data-netlify="true"
+></form>
 ```
 
-Custom success *alert* is only possible via AJAX (substitute the redirect with your own logic).
+Custom success _alert_ is only possible via AJAX (substitute the redirect with your own logic).
 
 ## Spam prevention
 
@@ -106,8 +125,15 @@ All submissions are filtered by Akismet. Passed → **Verified submissions**; fl
 **Honeypot:** add `netlify-honeypot="bot-field"` to the `<form>` and include a CSS-hidden field of that name. Any value entered → submission quietly rejected.
 
 ```html
-<form name="contact" method="POST" netlify-honeypot="bot-field" data-netlify="true">
-  <p class="hidden"><label>Don’t fill this out: <input name="bot-field" /></label></p>
+<form
+  name="contact"
+  method="POST"
+  netlify-honeypot="bot-field"
+  data-netlify="true"
+>
+  <p class="hidden">
+    <label>Don’t fill this out: <input name="bot-field" /></label>
+  </p>
   <!-- real fields -->
 </form>
 ```
@@ -115,6 +141,7 @@ All submissions are filtered by Akismet. Passed → **Verified submissions**; fl
 **Netlify reCAPTCHA 2:** add `data-netlify-recaptcha="true"` to the `<form>` AND an empty `<div data-netlify-recaptcha="true"></div>` where it renders. Only ONE Netlify-provided challenge per page — for multiple, use custom reCAPTCHA. For JS-rendered forms, also add the `div` to the static skeleton file.
 
 **Custom reCAPTCHA 2:** your own reCAPTCHA snippet + `data-netlify-recaptcha="true"` on the `<form>`, plus env vars:
+
 - `SITE_RECAPTCHA_KEY` — site key (scopes: Builds + Runtime)
 - `SITE_RECAPTCHA_SECRET` — secret (scope: Runtime)
 
@@ -123,7 +150,11 @@ All submissions are filtered by Akismet. Passed → **Verified submissions**; fl
 Default sender: `formresponses@netlify.com`. Set subject via a hidden `subject` input **or** the Netlify UI (Forms > Submission notifications) — **not both; the HTML value always overrides the UI.**
 
 ```html
-<input type="hidden" name="subject" value="New lead from %{formName} (%{submissionId})" />
+<input
+  type="hidden"
+  name="subject"
+  value="New lead from %{formName} (%{submissionId})"
+/>
 ```
 
 Variables: `%{formName}`, `%{siteName}`, `%{submissionId}`. Forms created before **May 5, 2023** carry a `[Netlify]` subject prefix — remove it by adding the `data-remove-prefix` attribute to the `subject` input.
@@ -145,6 +176,7 @@ Use only documented surfaces. Do NOT invent `api.netlify.com` endpoints or read 
 ## Submission summary (field order matters)
 
 The UI summary is derived from field **type**, not name:
+
 - **Title**: first non-hidden text `<input>` that isn't email-like (`type="email"`, or name matching `email`/`mail`/`from`/`twitter`/`sender`); falls back to a field named `title` or `subject`.
 - **Body**: first `<textarea>`.
 
@@ -171,6 +203,7 @@ Field order in the HTML affects what appears in the summary.
      Gap: docs don't say whether the active-team-member recipient rule applies to webhooks, or how upcoming recipient email verification will work. -->
 
 <!-- system: agent-context/forms/system.md — human-owned, merged by ctx-gen; edit system.md, not this section -->
+
 # Netlify house rules (forms)
 
 These are org conventions and field-learned guardrails, not docs facts — they
