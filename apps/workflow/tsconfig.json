@@ -11,12 +11,20 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": ["vite/client", "node"]
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "tests",
+    "api",
+    "netlify",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
   "references": []
 }

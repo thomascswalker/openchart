@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { handleGitHubCallback } from '../services/githubAuth';
 
 const AuthCallback = () => {
   const [error, setError] = useState<string | null>(null);
+  const callback = useRef<Promise<string> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    handleGitHubCallback(window.location.href)
+    callback.current ??= handleGitHubCallback(window.location.href);
+    callback.current
       .then(() => {
         if (!cancelled) window.location.replace('/');
       })

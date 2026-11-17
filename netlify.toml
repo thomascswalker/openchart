@@ -1,15 +1,10 @@
+"$schema" = "https://open-api.netlify.com/netlify.schema.json"
+
 # example netlify.toml
 [build]
   command = "npx turbo run build --filter=@openchart/workflow..."
   functions = "apps/workflow/netlify"
   publish = "apps/workflow/dist"
-
-  ## Uncomment to use this redirect for Single Page Applications like create-react-app.
-  ## Not needed for static site generators.
-  #[[redirects]]
-  #  from = "/*"
-  #  to = "/index.html"
-  #  status = 200
 
   ## (optional) Settings for Netlify Dev
   ## https://github.com/netlify/cli/blob/main/docs/netlify-dev.md#project-detection
@@ -19,3 +14,8 @@
   #  publish = "dist" # Folder with the static content for _redirect file
 
   ## more info on configuring this file: https://ntl.fyi/file-based-build-config
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
