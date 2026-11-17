@@ -1,3 +1,3 @@
-export { default } from '../api/auth/github/token.ts';
+export { default } from '../api/auth/github/token.js';
 
 export const config = { path: '/api/auth/github/token' };
