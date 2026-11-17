@@ -12,23 +12,28 @@ const onAuth = () => ({ username: getAccessToken() ?? '' });
 // REST
 
 export const listRepos = async () => {
-  const { data } = await getAuthenticatedOctokit().rest.repos.listForAuthenticatedUser({
-    per_page: 100,
-    sort: 'updated',
-  });
+  const { data } =
+    await getAuthenticatedOctokit().rest.repos.listForAuthenticatedUser({
+      per_page: 100,
+      sort: 'updated',
+    });
   return data;
 };
 
 export const createRepo = async (name: string, isPrivate = true) => {
-  const { data } = await getAuthenticatedOctokit().rest.repos.createForAuthenticatedUser({
-    name,
-    private: isPrivate,
-  });
+  const { data } =
+    await getAuthenticatedOctokit().rest.repos.createForAuthenticatedUser({
+      name,
+      private: isPrivate,
+    });
   return data;
 };
 
 export const listBranches = async (owner: string, repo: string) => {
-  const { data } = await getAuthenticatedOctokit().rest.repos.listBranches({ owner, repo });
+  const { data } = await getAuthenticatedOctokit().rest.repos.listBranches({
+    owner,
+    repo,
+  });
   return data;
 };
 
@@ -53,7 +58,9 @@ export const createPullRequest = async (
 
 export const listProjects = async () => {
   const res = await getAuthenticatedOctokit().graphql<{
-    viewer: { projectsV2: { nodes: { id: string; title: string; url: string }[] } };
+    viewer: {
+      projectsV2: { nodes: { id: string; title: string; url: string }[] };
+    };
   }>(`query {
     viewer { projectsV2(first: 50) { nodes { id title url } } }
   }`);
@@ -122,10 +129,28 @@ export const updateItemTextField = async (
 const repoDir = (name: string) => `/${name}`;
 
 export const cloneRepo = (url: string, name: string) =>
-  git.clone({ fs, http, dir: repoDir(name), url, singleBranch: true, depth: 1, onAuth });
+  git.clone({
+    fs,
+    http,
+    dir: repoDir(name),
+    url,
+    singleBranch: true,
+    depth: 1,
+    onAuth,
+  });
 
-export const pullRepo = (name: string, author: { name: string; email: string }) =>
-  git.pull({ fs, http, dir: repoDir(name), author, singleBranch: true, onAuth });
+export const pullRepo = (
+  name: string,
+  author: { name: string; email: string },
+) =>
+  git.pull({
+    fs,
+    http,
+    dir: repoDir(name),
+    author,
+    singleBranch: true,
+    onAuth,
+  });
 
 export const pushRepo = (name: string) =>
   git.push({ fs, http, dir: repoDir(name), onAuth });

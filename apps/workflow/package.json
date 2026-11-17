@@ -16,6 +16,7 @@
     "@tauri-apps/plugin-deep-link": "^2.6.3",
     "@tauri-apps/plugin-opener": "^2.7.3",
     "isomorphic-git": "^1.44.15",
+    "netlify": "^27.20.0",
     "octokit": "^5.0.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
