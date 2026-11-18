@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { handleGitHubCallback } from '../services/githubAuth';
+import { handleGitHubCallback } from '../services/github/auth';
 
 const AuthCallback = () => {
   const [error, setError] = useState<string | null>(null);

@@ -12,5 +12,8 @@ the repository root and use the URL it reports. Configure the OAuth callback for
 the frontend and server variables shown in [`.env.example`](./.env.example).
 Set server secrets in Netlify's environment, not in frontend variables or
 committed files. Deploy changes before testing the production callback.
+For local browser sign-in, register `http://localhost:5174/auth/callback` as
+a callback URL for the GitHub OAuth app and set `VITE_GITHUB_WEB_CALLBACK_URL`
+to that exact URL.
 
 Run the workflow browser tests with `npm run test --workspace=@openchart/workflow`.

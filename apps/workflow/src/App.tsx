@@ -7,8 +7,8 @@ import { getCurrent, onOpenUrl } from '@tauri-apps/plugin-deep-link';
 
 import AuthCallback from './pages/AuthCallback';
 import Home from './pages/Home';
-import { handleGitHubCallback } from './services/githubAuth';
-import { GithubContext, GithubService } from './services/githubService';
+import { handleGitHubCallback } from './services/github/auth';
+import { GithubContext, GithubService } from './services/github/service';
 import './styles.css';
 
 const githubService = new GithubService();

@@ -4,9 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 
 import AuthCallback from '../src/pages/AuthCallback';
-import { handleGitHubCallback } from '../src/services/githubAuth';
+import { handleGitHubCallback } from '../src/services/github/auth';
 
-vi.mock('../src/services/githubAuth', () => ({
+vi.mock('../src/services/github/auth', () => ({
   handleGitHubCallback: vi.fn(),
 }));
 

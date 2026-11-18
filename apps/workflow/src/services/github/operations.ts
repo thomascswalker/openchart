@@ -1,8 +1,13 @@
 import LightningFS from '@isomorphic-git/lightning-fs';
+import type {
+  ProjectV2Item,
+  UpdateProjectV2ItemFieldValueInput,
+  UpdateProjectV2ItemFieldValuePayload,
+} from '@octokit/graphql-schema';
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 
-import { getAccessToken, getAuthenticatedOctokit } from './githubAuth';
+import { getAccessToken, getAuthenticatedOctokit } from './auth';
 
 // Web uses IndexedDB-backed LightningFS. A native Tauri FS adapter could replace this for Desktop.
 const fs = new LightningFS('openchart-git');
@@ -57,19 +62,104 @@ export const createPullRequest = async (
 // Projects V2 (GraphQL)
 
 export const listProjects = async () => {
-  const res = await getAuthenticatedOctokit().graphql<{
+  interface ProjectNode {
+    id: string;
+    title: string;
+    url: string;
+    closed: boolean;
+  }
+
+  const octokit = getAuthenticatedOctokit();
+  const personal = await octokit.graphql<{
     viewer: {
-      projectsV2: { nodes: { id: string; title: string; url: string }[] };
+      projectsV2: { nodes: ProjectNode[] };
     };
   }>(`query {
-    viewer { projectsV2(first: 50) { nodes { id title url } } }
+    viewer {
+      projectsV2(first: 50) {
+        nodes { id title url closed }
+      }
+    }
   }`);
-  return res.viewer.projectsV2.nodes;
+
+  let organizations: Array<{ login: string }> = [];
+  let organizationScopeWarning: string | null = null;
+  try {
+    const account = await octokit.graphql<{
+      viewer: {
+        organizations: { nodes: Array<{ login: string }> };
+      };
+    }>(`query {
+      viewer {
+        organizations(first: 100) {
+          nodes { login }
+        }
+      }
+    }`);
+    organizations = account.viewer.organizations.nodes;
+  } catch (error) {
+    organizationScopeWarning =
+      error instanceof Error
+        ? error.message
+        : 'Unable to list organization memberships.';
+  }
+
+  const organizationResults = await Promise.all(
+    organizations.map(async (organization) => {
+      try {
+        const result = await octokit.graphql<{
+          organization: { projectsV2: { nodes: ProjectNode[] } } | null;
+        }>(
+          `query($login: String!) {
+            organization(login: $login) {
+              projectsV2(first: 100) {
+                nodes { id title url closed }
+              }
+            }
+          }`,
+          { login: organization.login },
+        );
+        return {
+          login: organization.login,
+          projects: result.organization?.projectsV2.nodes ?? [],
+          warning: null,
+        };
+      } catch (error) {
+        return {
+          login: organization.login,
+          projects: [] as ProjectNode[],
+          warning:
+            error instanceof Error
+              ? error.message
+              : 'Organization project access is restricted.',
+        };
+      }
+    }),
+  );
+
+  const combinedProjects = [
+    ...personal.viewer.projectsV2.nodes,
+    ...organizationResults.flatMap((result) => result.projects),
+  ];
+  const seen = new Set<string>();
+  const projects = combinedProjects.filter((project) => {
+    if (seen.has(project.id)) return false;
+    seen.add(project.id);
+    return true;
+  });
+  const restrictedOrganizations = organizationResults
+    .filter((result) => result.warning)
+    .map((result) => result.login);
+  return {
+    projects,
+    restrictedOrganizations,
+    organizationScopeWarning,
+  };
 };
 
 export const listProjectItems = async (projectId: string) => {
   const res = await getAuthenticatedOctokit().graphql<{
-    node: { items: { nodes: unknown[] } };
+    node: { items: { nodes: ProjectV2Item[] } };
   }>(
     `query($id: ID!) {
       node(id: $id) {

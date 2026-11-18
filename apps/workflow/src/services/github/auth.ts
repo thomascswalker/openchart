@@ -3,8 +3,9 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { Octokit } from 'octokit';
 
 const TOKEN_KEY = 'github_access_token';
+const USERNAME_KEY = 'github_username';
 const STATE_KEY = 'github_oauth_state';
-const SCOPES = 'repo project read:user';
+const SCOPES = 'repo project read:user read:org';
 
 let memoryState: string | null = null;
 
@@ -30,9 +31,15 @@ export const initiateGitHubLogin = async (): Promise<void> => {
   const clientId = desktop
     ? env.VITE_GITHUB_DESKTOP_CLIENT_ID
     : env.VITE_GITHUB_WEB_CLIENT_ID;
+  if (!clientId) {
+    throw new Error(
+      'GitHub OAuth is not configured. Set VITE_GITHUB_WEB_CLIENT_ID or VITE_GITHUB_DESKTOP_CLIENT_ID.',
+    );
+  }
   const redirectUri = desktop
     ? `${env.VITE_TAURI_DEEP_LINK_SCHEME}://auth/callback`
-    : `${window.location.origin}/auth/callback`;
+    : env.VITE_GITHUB_WEB_CALLBACK_URL ??
+      `${window.location.origin}/auth/callback`;
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -61,7 +68,9 @@ export const handleGitHubCallback = async (
     throw new Error('OAuth state mismatch');
   }
 
-  const res = await fetch(env.VITE_AUTH_PROXY_URL, {
+  const authProxyUrl =
+    env.VITE_AUTH_PROXY_URL ?? '/api/auth/github/token';
+  const res = await fetch(authProxyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, platform: isTauri() ? 'desktop' : 'web' }),
@@ -74,13 +83,26 @@ export const handleGitHubCallback = async (
   }
 
   localStorage.setItem(TOKEN_KEY, data.access_token);
+  try {
+    const { data: user } =
+      await new Octokit({ auth: data.access_token }).rest.users.getAuthenticated();
+    localStorage.setItem(USERNAME_KEY, user.login);
+  } catch {
+    localStorage.removeItem(USERNAME_KEY);
+  }
   return data.access_token;
 };
 
 export const getAccessToken = (): string | null =>
   localStorage.getItem(TOKEN_KEY);
 
-export const logout = () => localStorage.removeItem(TOKEN_KEY);
+export const getGitHubUsername = (): string | null =>
+  localStorage.getItem(USERNAME_KEY);
+
+export const logout = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USERNAME_KEY);
+};
 
 export const getAuthenticatedOctokit = (): Octokit => {
   const token = getAccessToken();
